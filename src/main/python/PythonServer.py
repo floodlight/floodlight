@@ -2,7 +2,7 @@
 
 import sys
 import logging
-sys.path.append('../gen-py')
+sys.path.append('../../../target/gen-py')
 
 from packetstreamer import PacketStreamer
 from packetstreamer.ttypes import *

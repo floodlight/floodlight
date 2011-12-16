@@ -22,20 +22,17 @@
 
 <project default="dist" name="Floodlight">
 
-    <property name="target" location="target/"/>
-    <property name="build" location="${target}/bin/"/>
-    <property name="build-test" location="${target}/bin-test/"/>
-    <property name="test-output" location="${target}/test/"/>
-    <property name="source" location="src/main/java/"/>
-    <property name="source-test" location="src/test/java/"/>
+    <property name="target" location="target"/>
+    <property name="build" location="${target}/bin"/>
+    <property name="build-test" location="${target}/bin-test"/>
+    <property name="test-output" location="${target}/test"/>
+    <property name="source" location="src/main/java"/>
+    <property name="source-test" location="src/test/java"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.internal.Controller"/>
-    <property name="packagelib" location="lib" />
-    <property name="packetstreamer-gen" location="packetstreamerd/gen-java" />
-    <property name="packetstreamer-gen-build" location="packetstreamerd/gen-java/bin" />
-    <property name="packetstreamer-src" location="packetstreamerd/java/src/main/java" />
-    <property name="packetstreamer-src-build" location="packetstreamerd/java/bin" />
-    <property name="packetstreamer-thrift-jar" location="${packagelib}/packetstreamer-thrift.jar" />
+    <property name="packetstreamer-gen" location="${target}/gen-java" />
+    <property name="packetstreamer-gen-build" location="${target}/gen-java-bin"/>
+    <property name="packetstreamer-thrift-jar" location="${target}/lib/packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
 
@@ -52,6 +49,8 @@
         <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
         <include name="simple-4.1.21.jar"/>
         <include name="netty-3.2.6.Final.jar"/>
+    </patternset>
+    <patternset id="genlib">
         <include name="libthrift-0.7.0.jar"/>
         <include name="packetstreamer-thrift.jar"/>
     </patternset>
@@ -59,6 +58,9 @@
     <path id="classpath">
         <fileset dir="lib">
             <patternset refid="lib"/>
+        </fileset>
+        <fileset dir="${target}/lib">
+            <patternset refid="genlib"/>
         </fileset>
     </path>
 
@@ -76,32 +78,51 @@
     <target name="init">
         <exec executable="${basedir}/setup.sh" failonerror="true"/>
         <mkdir dir="${build}"/>
-        <mkdir dir="${packetstreamer-gen-build}"/>
-        <mkdir dir="${packetstreamer-src-build}"/>
         <mkdir dir="${build-test}"/>
+        <mkdir dir="${target}/lib"/>
+        <mkdir dir="${packetstreamer-gen-build}"/>
         <mkdir dir="${test-output}"/>
     </target>
 
     <target name="compile" depends="init,packetstreamer-thrift">
-        <javac includeAntRuntime="false" classpathref="classpath" debug="true" srcdir="${source}" destdir="${build}"/>
+        <javac includeAntRuntime="false" 
+	       classpathref="classpath" 
+	       debug="true" 
+	       srcdir="${source}:${packetstreamer-gen}"
+	       destdir="${build}">
+	</javac>
     </target>
 
     <target name="compile-tests" depends="compile-test"/>
     <target name="compile-test" depends="compile">
-        <javac includeAntRuntime="false" debug="true" srcdir="${source-test}" classpath="${build}" classpathref="classpath-test" destdir="${build-test}"/>
+        <javac includeAntRuntime="false" debug="true" 
+	       srcdir="${source-test}"
+	       classpath="${build}"
+	       classpathref="classpath-test"
+	       destdir="${build-test}"/>
+    </target>
+
+    <target name="compile-thrift" depends="init">
+        <javac srcdir="${packetstreamer-gen}" 
+	       includeantruntime="false" 
+	       destdir="${packetstreamer-gen-build}"
+	       debug="true" debuglevel="lines,vars,source"
+	       classpathref="classpath" />
+    </target>
+    <target name="packetstreamer-thrift" depends="compile-thrift">
+        <jar jarfile="${packetstreamer-thrift-jar}"
+	     basedir="${packetstreamer-gen-build}"/>
     </target>
 
     <target name="clean">
         <delete dir="${target}"/>
-        <delete dir="${packetstreamer-src-build}"/>
-        <delete dir="${packetstreamer-gen-build}"/>
     </target>
 
     <target name="run" depends="dist">
         <java fork="true" jar="${floodlight-jar}" classpath="${jar}" classpathref="classpath">
             <jvmarg value="-server"/>
-            <jvmarg value="-Xms512M"/>
-            <jvmarg value="-Xmx512M"/>
+            <jvmarg value="-Xms1024M"/>
+            <jvmarg value="-Xmx1024M"/>
         </java>
     </target>
 
@@ -124,27 +145,19 @@
         <fail if="junit.failure" message="Unit test(s) failed.  See reports!"/>
     </target>
 
-    <target name="compile-thrift" depends="init">
-        <javac srcdir="${packetstreamer-gen}" includeantruntime="false" destdir="${packetstreamer-gen-build}" debug="true" debuglevel="lines,vars,source" classpathref="classpath" />
-    </target>
-
-    <target name="packetstreamer-thrift" depends="compile-thrift">
-        <jar jarfile="${packetstreamer-thrift-jar}" basedir="${packetstreamer-gen-build}"/>
-    </target>
-
-    <target name="compile-packetstreamer" depends="packetstreamer-thrift">
-        <javac srcdir="${packetstreamer-src}" includeantruntime="false" destdir="${build}" debug="true" debuglevel="lines,vars,source" classpathref="classpath" />
-    </target>
-
-    <target name="dist" depends="compile,compile-packetstreamer,compile-tests">
+    <target name="dist" depends="compile,compile-tests">
         <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
+            <fileset dir="${packetstreamer-gen-build}"/>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib"/>
+            </zipgroupfileset>
+            <zipgroupfileset dir="${target}/lib">
+                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
@@ -154,6 +167,9 @@
             <fileset dir="${build-test}"/>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib-test"/>
+            </zipgroupfileset>
+            <zipgroupfileset dir="${target}/lib">
+                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
     </target>
@@ -176,12 +192,15 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="packetstreamer-thrift">
+    <target name="eclipse" depends="init">
         <pathconvert property="lib">
             <map from="${basedir}/" to=""/>
             <fileset dir="lib">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
+            </fileset>
+            <fileset dir="${target}/lib">
+                <patternset refid="genlib"/>
             </fileset>
         </pathconvert>
         <exec executable="${basedir}/setup-eclipse.sh">

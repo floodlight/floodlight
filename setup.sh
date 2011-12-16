@@ -4,6 +4,8 @@ set -ex
 
 DOWNLOADS=${DOWNLOADS:-${HOME}/Downloads}
 mkdir -p ${DOWNLOADS}
+TARGET=target
+PACKAGELIB=${TARGET}/lib
 
 THRIFT_VERSION=0.7.0
 THRIFT_PKG=thrift-${THRIFT_VERSION}.tar.gz
@@ -23,7 +25,7 @@ if [ ! -d thrift ]; then
     mv thrift-${THRIFT_VERSION} thrift
 fi
 
-if [ ! -f lib/libthrift-${THRIFT_VERSION}.jar -o ! -f thrift/compiler/cpp/thrift ]; then
+if [ ! -f ${PACKAGELIB}/libthrift-${THRIFT_VERSION}.jar -o ! -f thrift/compiler/cpp/thrift ]; then
   (
       cd thrift
       chmod +x ./configure 
@@ -32,13 +34,9 @@ if [ ! -f lib/libthrift-${THRIFT_VERSION}.jar -o ! -f thrift/compiler/cpp/thrift
       cd lib/java 
       ant
   )
-  mkdir -p lib
-  cp thrift/lib/java/build/libthrift-${THRIFT_VERSION}.jar lib/
+  mkdir -p ${PACKAGELIB}
+  cp thrift/lib/java/build/libthrift-${THRIFT_VERSION}.jar ${PACKAGELIB}
 fi
 
-cp lib/libthrift-${THRIFT_VERSION}.jar packetstreamerd/lib/
-(
-    cd packetstreamerd
-    ../thrift/compiler/cpp/thrift --gen py --gen java packetstreamer.thrift
-    cd java; ant
-)
+./thrift/compiler/cpp/thrift --gen py --gen java -o ${TARGET} src/main/thrift/packetstreamer.thrift
+

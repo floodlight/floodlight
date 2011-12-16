@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-sys.path.append('../gen-py')
+sys.path.append('../../../target/gen-py')
 
 from packetstreamer import PacketStreamer
 from packetstreamer.ttypes import *

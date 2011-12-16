@@ -32,7 +32,6 @@ cat >$d/.classpath <<EOF
 <classpath>
 	<classpathentry kind="src" path="src/main/java" output="target/bin"/>
         <classpathentry kind="src" path="src/test/java" output="target/bin-test"/>
-        <classpathentry kind="src" path="packetstreamerd/java/src/main/java" output="target/bin-test"/>
 EOF
 (
 IFS=":"
