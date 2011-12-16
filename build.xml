@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+ <!--
+   Copyright 2011, Big Switch Networks, Inc.
+   
+   Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
+
+<project default="dist" name="Floodlight">
+
+    <property name="target" location="target/"/>
+    <property name="build" location="${target}/bin/"/>
+    <property name="build-test" location="${target}/bin-test/"/>
+    <property name="test-output" location="${target}/test/"/>
+    <property name="source" location="src/main/java/"/>
+    <property name="source-test" location="src/test/java/"/>
+    <property name="docs" location="${target}/docs"/>
+    <property name="main-class" value="net.floodlightcontroller.core.internal.Controller"/>
+    <property name="packagelib" location="lib" />
+    <property name="packetstreamer-gen" location="packetstreamerd/gen-java" />
+    <property name="packetstreamer-gen-build" location="packetstreamerd/gen-java/bin" />
+    <property name="packetstreamer-src" location="packetstreamerd/java/src/main/java" />
+    <property name="packetstreamer-src-build" location="packetstreamerd/java/bin" />
+    <property name="packetstreamer-thrift-jar" location="${packagelib}/packetstreamer-thrift.jar" />
+    <property name="floodlight-jar" location="${target}/floodlight.jar"/>
+    <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
+
+    <patternset id="lib">
+        <include name="logback-classic-1.0.0.jar"/>
+        <include name="logback-core-1.0.0.jar"/>
+        <include name="jackson-core-asl-1.8.6.jar"/>
+        <include name="jackson-mapper-asl-1.8.6.jar"/>
+        <include name="org.easymock_2.5.2.jar"/>
+        <include name="slf4j-api-1.6.4.jar"/>
+        <include name="org.restlet-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.jackson-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.simple-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
+        <include name="simple-4.1.21.jar"/>
+        <include name="netty-3.2.6.Final.jar"/>
+        <include name="libthrift-0.7.0.jar"/>
+        <include name="packetstreamer-thrift.jar"/>
+    </patternset>
+
+    <path id="classpath">
+        <fileset dir="lib">
+            <patternset refid="lib"/>
+        </fileset>
+    </path>
+
+    <patternset id="lib-test">
+        <include name="junit-4.8.2.jar"/>
+        <include name="org.easymock_2.5.2.jar"/>
+    </patternset>
+    <path id="classpath-test">
+        <fileset dir="lib">
+            <patternset refid="lib-test"/>
+            <patternset refid="lib"/>
+        </fileset>
+    </path>
+
+    <target name="init">
+        <exec executable="${basedir}/setup.sh" failonerror="true"/>
+        <mkdir dir="${build}"/>
+        <mkdir dir="${packetstreamer-gen-build}"/>
+        <mkdir dir="${packetstreamer-src-build}"/>
+        <mkdir dir="${build-test}"/>
+        <mkdir dir="${test-output}"/>
+    </target>
+
+    <target name="compile" depends="init,packetstreamer-thrift">
+        <javac includeAntRuntime="false" classpathref="classpath" debug="true" srcdir="${source}" destdir="${build}"/>
+    </target>
+
+    <target name="compile-tests" depends="compile-test"/>
+    <target name="compile-test" depends="compile">
+        <javac includeAntRuntime="false" debug="true" srcdir="${source-test}" classpath="${build}" classpathref="classpath-test" destdir="${build-test}"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="${target}"/>
+        <delete dir="${packetstreamer-src-build}"/>
+        <delete dir="${packetstreamer-gen-build}"/>
+    </target>
+
+    <target name="run" depends="dist">
+        <java fork="true" jar="${floodlight-jar}" classpath="${jar}" classpathref="classpath">
+            <jvmarg value="-server"/>
+            <jvmarg value="-Xms512M"/>
+            <jvmarg value="-Xmx512M"/>
+        </java>
+    </target>
+
+    <target name="tests" depends="test"/>
+    <target name="test" depends="compile-test">
+        <junit failureproperty="junit.failure" printsummary="on">
+            <classpath>
+                <pathelement location="${build}"/>
+                <pathelement location="${build-test}"/>
+                <path refid="classpath-test"/>
+            </classpath>
+            <formatter type="brief" usefile="true" />
+            <batchtest todir="${test-output}">
+                <fileset dir="${source-test}">
+                    <exclude name="**/storage/tests/StorageTest.java"/>
+                    <exclude name="**/test/Mock*"/>
+                </fileset>
+            </batchtest>
+        </junit>
+        <fail if="junit.failure" message="Unit test(s) failed.  See reports!"/>
+    </target>
+
+    <target name="compile-thrift" depends="init">
+        <javac srcdir="${packetstreamer-gen}" includeantruntime="false" destdir="${packetstreamer-gen-build}" debug="true" debuglevel="lines,vars,source" classpathref="classpath" />
+    </target>
+
+    <target name="packetstreamer-thrift" depends="compile-thrift">
+        <jar jarfile="${packetstreamer-thrift-jar}" basedir="${packetstreamer-gen-build}"/>
+    </target>
+
+    <target name="compile-packetstreamer" depends="packetstreamer-thrift">
+        <javac srcdir="${packetstreamer-src}" includeantruntime="false" destdir="${build}" debug="true" debuglevel="lines,vars,source" classpathref="classpath" />
+    </target>
+
+    <target name="dist" depends="compile,compile-packetstreamer,compile-tests">
+        <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="${build}"/>
+            <zipgroupfileset dir="lib">
+                <patternset refid="lib"/>
+            </zipgroupfileset>
+        </jar>
+        <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="${build-test}"/>
+            <zipgroupfileset dir="lib">
+                <patternset refid="lib-test"/>
+            </zipgroupfileset>
+        </jar>
+    </target>
+
+    <target name="javadoc">
+        <javadoc access="protected"
+            author="true"
+            classpathref="classpath"
+            destdir="${docs}"
+            doctitle="Floodlight"
+            nodeprecated="false"
+            nodeprecatedlist="false"
+            noindex="false"
+            nonavbar="false"
+            notree="false"
+            source="1.6"
+            sourcepath="${source}"
+            splitindex="true"
+            use="true"
+            version="true"/>
+    </target>
+
+    <target name="eclipse" depends="packetstreamer-thrift">
+        <pathconvert property="lib">
+            <map from="${basedir}/" to=""/>
+            <fileset dir="lib">
+                <patternset refid="lib"/>
+                <patternset refid="lib-test"/>
+            </fileset>
+        </pathconvert>
+        <exec executable="${basedir}/setup-eclipse.sh">
+            <arg value="${main-class}"/>
+            <arg value="${lib}"/>
+        </exec>
+    </target>
+
+</project>

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -ex
+
+java -Dlog4j.debug -Dlog4j.configuration=log4j.properties -cp ../target/packetstreamer.jar net.floodlightcontroller.packetstreamer.PacketStreamerClient
