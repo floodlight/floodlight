@@ -191,7 +191,7 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="init">
+    <target name="eclipse" depends="init,packetstreamer-thrift">
         <pathconvert property="lib">
             <map from="${basedir}/" to=""/>
             <fileset dir="lib">
