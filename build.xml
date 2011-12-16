@@ -152,7 +152,6 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
-            <fileset dir="${packetstreamer-gen-build}"/>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib"/>
             </zipgroupfileset>
