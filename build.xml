@@ -100,6 +100,7 @@
     <target name="compile-test" depends="compile">
         <javac includeAntRuntime="false" debug="true" 
 	       srcdir="${source-test}"
+	       classpath="${build}"
 	       classpathref="classpath-test"
 	       destdir="${build-test}"/>
     </target>
