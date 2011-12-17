@@ -73,6 +73,9 @@
             <patternset refid="lib-test"/>
             <patternset refid="lib"/>
         </fileset>
+        <fileset dir="${target}/lib">
+            <patternset refid="genlib"/>
+        </fileset>
     </path>
 
     <target name="init">
@@ -97,7 +100,6 @@
     <target name="compile-test" depends="compile">
         <javac includeAntRuntime="false" debug="true" 
 	       srcdir="${source-test}"
-	       classpath="${build}"
 	       classpathref="classpath-test"
 	       destdir="${build-test}"/>
     </target>
