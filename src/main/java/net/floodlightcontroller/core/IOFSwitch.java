@@ -19,10 +19,8 @@ package net.floodlightcontroller.core;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
 import net.floodlightcontroller.core.types.MacVlanPair;
@@ -139,7 +137,7 @@ public interface IOFSwitch {
      * Get the portmap
      * @return
      */
-    public HashMap<Short, OFPhysicalPort> getPorts();
+    public Map<Short, OFPhysicalPort> getPorts();
 
     /**
      * @param portNumber
@@ -171,7 +169,7 @@ public interface IOFSwitch {
      * Retrieves attributes of this switch
      * @return
      */
-    public ConcurrentMap<Object, Object> getAttributes();
+    public Map<Object, Object> getAttributes();
 
     /**
      * Retrieves the date the switch connected to this controller

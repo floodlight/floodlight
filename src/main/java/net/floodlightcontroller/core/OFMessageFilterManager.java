@@ -20,9 +20,9 @@ package net.floodlightcontroller.core;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,7 +78,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
     protected IFloodlightProvider floodlightProvider = null;
     // filter List is a key value pair.  Key is the session id, value is the filter rules.
-    protected ConcurrentHashMap<String, HashMap<String,String>> filterMap = null;
+    protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> filterMap = null;
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
     protected Timer timer = null;
 
@@ -104,12 +104,12 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
     public void init (IFloodlightProvider bp) {
         floodlightProvider = bp;
-        filterMap = new ConcurrentHashMap<String, HashMap<String,String>>();
+        filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
         filterTimeoutMap = new ConcurrentHashMap<String, Long>();
         serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
     }
 
-    protected String addFilter(HashMap<String,String> f, long delta) {
+    protected String addFilter(ConcurrentHashMap<String,String> f, long delta) {
 
         // Create unique session ID.  
         int prime = 33791;
@@ -143,7 +143,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         return s;  // the return string is the session ID.
     }
 
-    public String setupFilter(String sid, HashMap<String,String> f, int deltaInSecond) {
+    public String setupFilter(String sid, ConcurrentHashMap<String,String> f, int deltaInSecond) {
 
         if (sid == null) {
             // Delta in filter needs to be milliseconds
@@ -230,7 +230,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         while (filterIt.hasNext()) {   // for every filter
             boolean filterMatch = false;
             String filterSessionId = filterIt.next();
-            HashMap<String,String> filter = filterMap.get(filterSessionId);            
+            Map<String,String> filter = filterMap.get(filterSessionId);
 
             // If the filter has empty fields, then it is not considered as a match.
             if (filter == null || filter.isEmpty()) continue;                  

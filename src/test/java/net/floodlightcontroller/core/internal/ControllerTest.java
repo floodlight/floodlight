@@ -20,9 +20,9 @@ package net.floodlightcontroller.core.internal;
 import static org.easymock.EasyMock.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -284,19 +284,19 @@ public class ControllerTest extends FloodlightTestCase {
         mfm.init(mbp);
         mfm.startUp();
 
-        HashMap <String, String> filter;
+        ConcurrentHashMap <String, String> filter;
         int i;
 
         //Adding the filter works -- adds up to the maximum filter size.
         for(i=mfm.getMaxFilterSize(); i > 0; --i) {
-            filter = new HashMap<String,String>();
+            filter = new ConcurrentHashMap<String,String>();
             filter.put("mac", String.format("00:11:22:33:44:%d%d", i,i));
             sid = mfm.setupFilter(null, filter, 6);
             assertTrue(mfm.getNumberOfFilters() == mfm.getMaxFilterSize() - i +1);
         }
 
         // Add one more to see if you can't
-        filter = new HashMap<String,String>();
+        filter = new ConcurrentHashMap<String,String>();
         filter.put("mac", "mac2");
         mfm.setupFilter(null, filter, 10);
 
