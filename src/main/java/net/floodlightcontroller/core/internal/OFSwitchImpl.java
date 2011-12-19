@@ -20,7 +20,6 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,7 +65,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected String stringId;
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
-    protected HashMap<Short, OFPhysicalPort> ports;
+    protected Map<Short, OFPhysicalPort> ports;
     protected Long switchClusterId;
     protected Map<MacVlanPair,Short> macVlanToPortMap;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
@@ -81,10 +80,10 @@ public class OFSwitchImpl implements IOFSwitch {
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
-        this.ports = new HashMap<Short, OFPhysicalPort>();
+        this.ports = new ConcurrentHashMap<Short, OFPhysicalPort>();
         this.switchClusterId = null;
         this.connected = true;
-        this.statsFutureMap = new HashMap<Integer,OFStatisticsFuture>();
+        this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
@@ -179,7 +178,7 @@ public class OFSwitchImpl implements IOFSwitch {
         ports.put(port.getPortNumber(), port);
     }
     
-    public HashMap<Short, OFPhysicalPort> getPorts() {
+    public Map<Short, OFPhysicalPort> getPorts() {
         return ports;
     }
 
@@ -315,7 +314,7 @@ public class OFSwitchImpl implements IOFSwitch {
     public synchronized Map<MacVlanPair, Short> getMacVlanToPortMap() {
         // Note that this function intentionally returns a copy
         if (macVlanToPortMap != null)
-            return new HashMap<MacVlanPair, Short>(macVlanToPortMap);
+            return new ConcurrentHashMap<MacVlanPair, Short>(macVlanToPortMap);
         else
             return null;
     }
