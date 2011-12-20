@@ -14,12 +14,20 @@ import org.slf4j.LoggerFactory;
 // Generated code
 import net.floodlightcontroller.packetstreamer.thrift.*;
 
+/**
+ * The PacketStreamer Server that brokers the packet streaming service.
+ */
 public class PacketStreamerServer {
     protected static Logger log = LoggerFactory.getLogger(PacketStreamerServer.class);
     protected static int port = 9090;
     protected static PacketStreamerHandler handler;
     protected static PacketStreamer.Processor<PacketStreamerHandler> processor;
 
+    
+    /** 
+     * Main function entry point;
+     * @param args
+     */
     public static void main(String [] args) {
         try {
             port = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
@@ -39,9 +47,13 @@ public class PacketStreamerServer {
         }
     }
 
+    
+    /** 
+     * The function to create a thrift Half-Sync and Half-Async Server.
+     * @param processor
+     */
     public static void hshaServer(PacketStreamer.Processor<PacketStreamerHandler> processor) {
         try {
-            // Use this for a HsHa server
             TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(port);
             THsHaServer.Args args = new THsHaServer.Args(serverTransport);
             args.processor(processor);

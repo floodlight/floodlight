@@ -13,37 +13,56 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The PacketStreamer handler class that implements the service APIs.
+ */
 public class PacketStreamerHandler implements PacketStreamer.Iface {
 
+	/**
+	 * The queue wrapper class that contains the queue for the streamed packets.
+	 */
     protected class SessionQueue {
         protected BlockingQueue<ByteBuffer> pQueue;
-        protected boolean terminated;
 
+        /**
+         * The queue wrapper constructor
+         */
         public SessionQueue() {
             this.pQueue = new LinkedBlockingQueue<ByteBuffer>();
-            this.terminated = false;
         }
 
-        public boolean isTerminated() {
-            return this.terminated;
-        }
-
-        public void setTerminated(boolean terminated) {
-            this.terminated = terminated;
-        }
-
+        /**
+         * The access method to get to the internal queue.
+         */
         public BlockingQueue<ByteBuffer> getQueue() {
             return this.pQueue;
         }
     }
     
+    /**
+     * The class logger object
+     */
     protected static Logger log = LoggerFactory.getLogger(PacketStreamerServer.class);
+    
+    /**
+     * A sessionId-to-queue mapping
+     */
     protected Map<String, SessionQueue> msgQueues;
 
+    /**
+     * The handler's constructor
+     */
     public PacketStreamerHandler() {
         this.msgQueues = new ConcurrentHashMap<String, SessionQueue>();
     }
 
+    /**
+     * The implementation for getPackets() function.
+     * This is a blocking API.
+     * 
+     * @param sessionid
+     * @return A list of packets associated with the session
+     */
     @Override
     public List<ByteBuffer> getPackets(String sessionid)
             throws org.apache.thrift.TException {
@@ -71,6 +90,13 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
         return packets;
     }
 
+    /**
+     * The implementation for pushMessageSync() function.
+     * 
+     * @param msg
+     * @return 1 for success, 0 for failure
+     * @throws TException
+     */
     @Override
     public int pushMessageSync(Message msg)
             throws org.apache.thrift.TException {
@@ -109,6 +135,12 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
         return 1;
     }
 
+    /**
+     * The implementation for pushMessageAsync() function.
+     * 
+     * @param msg
+     * @throws TException
+     */
     @Override
     public void pushMessageAsync(Message msg)
             throws org.apache.thrift.TException {
@@ -116,26 +148,32 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
         return;
     }
 
+    /**
+     * The implementation for terminateSession() function.
+     * It removes the session to queue association.
+     * @param sessionid
+     * @throws TException
+     */
     @Override
-    public void terminateSession(String sid)
+    public void terminateSession(String sessionid)
             throws org.apache.thrift.TException {
-        if (!msgQueues.containsKey(sid)) {
+        if (!msgQueues.containsKey(sessionid)) {
             return;
         }
 
-        SessionQueue pQueue = msgQueues.get(sid);
+        SessionQueue pQueue = msgQueues.get(sessionid);
 
-        log.debug("terminateSession: SessionId: " + sid + "\n");
+        log.debug("terminateSession: SessionId: " + sessionid + "\n");
         String data = "FilterTimeout";
         ByteBuffer bb = ByteBuffer.wrap(data.getBytes());
         BlockingQueue<ByteBuffer> queue = pQueue.getQueue();
         if (queue != null) {
             if (!queue.offer(bb)) {
-                log.error("Failed to queue message for session: " + sid);
+                log.error("Failed to queue message for session: " + sessionid);
             }
-            msgQueues.remove(sid);
+            msgQueues.remove(sessionid);
         } else {
-            log.error("queue for session {} is null", sid);
+            log.error("queue for session {} is null", sessionid);
         }
     }
 }

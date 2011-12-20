@@ -16,9 +16,16 @@ import org.apache.thrift.protocol.TProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The PacketStreamer Sample Client.
+ */
 public class PacketStreamerClient {
     protected static Logger log = LoggerFactory.getLogger(PacketStreamerClient.class);
 
+    /** 
+     * Main function entry point;
+     * @param args
+     */
     public static void main(String [] args) {
         try {
             int serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
@@ -40,6 +47,14 @@ public class PacketStreamerClient {
         } 
     }
 
+    /** 
+     * Send test packets of the given OFMessageType to the packetstreamer server;
+     * @param client Packetstreamer client object
+     * @param numPackets number of test packets to be sent
+     * @param ofType OFMessageType of the test packets
+     * @param sync true if send with synchronous interface, false for asynchronous interface
+     * @throws TException
+     */
     private static void sendPackets(PacketStreamer.Client client, short numPackets, OFMessageType ofType, boolean sync) 
     throws TException {
         while (numPackets-- > 0) {
