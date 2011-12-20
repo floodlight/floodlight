@@ -23,12 +23,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.packet.Ethernet;
@@ -60,9 +60,9 @@ public class Device {
     }
     
     public Device() {
-        this.networkAddresses = new HashMap<Integer, DeviceNetworkAddress>();
-        this.attachmentPoints = new HashMap<SwitchPortTuple, DeviceAttachmentPoint>();
-        this.oldAttachmentPoints = new HashMap<SwitchPortTuple, DeviceAttachmentPoint>();
+        this.networkAddresses = new ConcurrentHashMap<Integer, DeviceNetworkAddress>();
+        this.attachmentPoints = new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
+        this.oldAttachmentPoints = new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
         this.lastSeen = new Date();
         this.lastSeenInStorage = null;
         this.lastWrittenToStorage = null;
@@ -83,7 +83,7 @@ public class Device {
         lastSeenInStorage = device.lastSeenInStorage;
         
         oldAttachmentPoints = 
-                new HashMap<SwitchPortTuple, DeviceAttachmentPoint>();
+                new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
         for (Entry<SwitchPortTuple, DeviceAttachmentPoint> e : 
              device.oldAttachmentPoints.entrySet()) {
             oldAttachmentPoints.put(e.getKey(), e.getValue());
@@ -218,7 +218,7 @@ public class Device {
      * @param attachmentPoints the new collection of attachment points for the device
      */
     public void setAttachmentPoints(Collection<DeviceAttachmentPoint> attachmentPoints) {
-        this.attachmentPoints = new HashMap<SwitchPortTuple, DeviceAttachmentPoint>();
+        this.attachmentPoints = new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
         for (DeviceAttachmentPoint attachmentPoint: attachmentPoints) {
             assert(attachmentPoint.getSwitchPort() != null);
             addAttachmentPoint(attachmentPoint);
@@ -284,7 +284,7 @@ public class Device {
      */
     public void setNetworkAddresses(Collection<DeviceNetworkAddress> networkAddresses) {
         // FIXME: Should we really be exposing this method? Who would use it?
-        this.networkAddresses = new HashMap<Integer, DeviceNetworkAddress>();
+        this.networkAddresses = new ConcurrentHashMap<Integer, DeviceNetworkAddress>();
         for (DeviceNetworkAddress networkAddress: networkAddresses) {
             assert(networkAddress.getNetworkAddress() != null);
             addNetworkAddress(networkAddress);
