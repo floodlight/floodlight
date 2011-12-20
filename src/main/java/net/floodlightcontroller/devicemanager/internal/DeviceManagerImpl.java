@@ -21,6 +21,7 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
@@ -140,7 +141,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             switchPortDeviceMap =
                 new ConcurrentHashMap<SwitchPortTuple, Map<Integer, Device>>();
             switchUnresolvedAPMap = 
-                new HashMap<Long, List<PendingAttachmentPoint>>();
+                new ConcurrentHashMap<Long, List<PendingAttachmentPoint>>();
         }
 
         // ***********
@@ -520,7 +521,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 devMgrMaps.switchUnresolvedAPMap.get(dpid);
             if (papl == null) {
                 devMgrMaps.switchUnresolvedAPMap.put(dpid, 
-                        papl = new ArrayList<PendingAttachmentPoint>());
+                        papl = Collections.synchronizedList(new ArrayList<PendingAttachmentPoint>()));
             }
             papl.add(pap);
         }
