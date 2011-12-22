@@ -775,6 +775,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             boolean newNetworkAddress = false;
             boolean updateAttachmentPointLastSeen = false;
             boolean updateNetworkAddressLastSeen = false;
+            boolean updateNeworkAddressMap = false;
             boolean updateDeviceVlan = false;
             boolean clearAttachmentPoints = false;
             boolean updateDevice = false;
@@ -806,13 +807,30 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                                                 currentDate);
                     newNetworkAddress = true;
                 }
+
+                // Also, if this address is currently mapped to a different device, fix it.
+                //
+                // NOTE: the mapping is observed, and the decision is made based on that, outside a lock.
+                // So the state may change by the time we get to do the map update. But that is OK since
+                // the mapping will eventually get consistent.
+                Device deviceByNwaddr = this.getDeviceByIPv4Address(nwSrc);
+                if ((deviceByNwaddr != null) &&
+                    (deviceByNwaddr.getDataLayerAddressAsLong() != device.getDataLayerAddressAsLong())) {
+                    updateNeworkAddressMap = true;
+                    Device dCopy = new Device(deviceByNwaddr);
+                    Map<Integer, DeviceNetworkAddress> namap = dCopy.getNetworkAddressesMap();
+                    if (namap.containsKey(nwSrc)) namap.remove(nwSrc);
+                    dCopy.setNetworkAddresses(namap.values());
+                    this.devMgrMaps.updateMaps(dCopy);
+                }
+
             }
             if ((vlan == null && device.getVlanId() != null) ||
                     (vlan != null && !vlan.equals(device.getVlanId()))) {
                 updateDeviceVlan = true;
             }
 
-            if (newAttachmentPoint || newNetworkAddress || updateDeviceVlan) {
+            if (newAttachmentPoint || newNetworkAddress || updateDeviceVlan || updateNeworkAddressMap) {
 
                 Device nd = new Device(device);
 
@@ -834,6 +852,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                         log.debug("Device {} added IP {}", 
                                             nd, IPv4.fromIPv4Address(nwSrc));
                     }
+
                     if (updateDeviceVlan) {
                         nd.setVlanId(vlan);
                         writeDeviceToStorage(nd, currentDate);
