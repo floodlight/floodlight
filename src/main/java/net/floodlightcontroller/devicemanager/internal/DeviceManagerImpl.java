@@ -809,6 +809,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 }
 
                 // Also, if this address is currently mapped to a different device, fix it.
+                // This should be rare, so it is OK to do update the storage from here.
                 //
                 // NOTE: the mapping is observed, and the decision is made based on that, outside a lock.
                 // So the state may change by the time we get to do the map update. But that is OK since
@@ -818,10 +819,12 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     (deviceByNwaddr.getDataLayerAddressAsLong() != device.getDataLayerAddressAsLong())) {
                     updateNeworkAddressMap = true;
                     Device dCopy = new Device(deviceByNwaddr);
+                    DeviceNetworkAddress naOld = dCopy.getNetworkAddress(nwSrc);
                     Map<Integer, DeviceNetworkAddress> namap = dCopy.getNetworkAddressesMap();
                     if (namap.containsKey(nwSrc)) namap.remove(nwSrc);
                     dCopy.setNetworkAddresses(namap.values());
                     this.devMgrMaps.updateMaps(dCopy);
+                    if (naOld !=null) removeNetworkAddressFromStorage(dCopy, naOld);
                 }
 
             }
