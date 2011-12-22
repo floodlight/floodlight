@@ -15,6 +15,9 @@ docs:
 doc:
 	ant javadoc
 
+javadoc:
+	ant javadoc
+
 test: tests
 
 tests: all unit-tests
