@@ -67,8 +67,9 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
     public List<ByteBuffer> getPackets(String sessionid)
             throws org.apache.thrift.TException {
         List<ByteBuffer> packets = new ArrayList<ByteBuffer>();
-
-        while (!msgQueues.containsKey(sessionid)) {
+        int count = 0;
+        
+        while (!msgQueues.containsKey(sessionid) && count++ < 100) {
             log.debug("Queue for session {} doesn't exist yet.", sessionid);
             try {
                 Thread.sleep(100);    // Wait 100 ms to check again.
@@ -77,14 +78,16 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
             }
         }
 
-        SessionQueue pQueue = msgQueues.get(sessionid);
-        BlockingQueue<ByteBuffer> queue = pQueue.getQueue();
-        // Block if queue is empty
-        try {
-            packets.add(queue.take());
-            queue.drainTo(packets);
-        } catch (InterruptedException e) {
-            log.error(e.toString());
+        if (count < 100) {
+	        SessionQueue pQueue = msgQueues.get(sessionid);
+	        BlockingQueue<ByteBuffer> queue = pQueue.getQueue();
+	        // Block if queue is empty
+	        try {
+	            packets.add(queue.take());
+	            queue.drainTo(packets);
+	        } catch (InterruptedException e) {
+	            log.error(e.toString());
+	        }
         }
 
         return packets;

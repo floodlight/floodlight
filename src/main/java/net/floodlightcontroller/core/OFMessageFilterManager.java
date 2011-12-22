@@ -213,15 +213,17 @@ public class OFMessageFilterManager implements IOFMessageListener {
         if (m.getType() == OFType.PACKET_IN) {
             eth = IFloodlightProvider.bcStore.get(cntx, 
                     IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-
-
         } else if (m.getType() == OFType.PACKET_OUT) {
             eth = new Ethernet();
             OFPacketOut p = (OFPacketOut) m;
+            
+            // No MAC match if packetOut doesn't have the packet.
+            if (p.getPacketData() == null) return null;
+            
             eth.deserialize(p.getPacketData(), 0, p.getPacketData().length);
-
         } else if (m.getType() == OFType.FLOW_MOD) {
-            // no action performed.
+            // flow-mod can't be matched by mac.
+            return null;
         }
 
         if (eth == null) return null;
@@ -238,10 +240,11 @@ public class OFMessageFilterManager implements IOFMessageListener {
             while (fieldIt.hasNext()) {   
                 String filterFieldType = fieldIt.next();
                 String filterFieldValue = filter.get(filterFieldType);
-                if (filterFieldType == "mac") {
+                if (filterFieldType.equals("mac")) {
 
                     String srcMac = HexString.toHexString(eth.getSourceMACAddress());
                     String dstMac = HexString.toHexString(eth.getDestinationMACAddress());
+                    log.debug("srcMac: {}, dstMac: {}", srcMac, dstMac);
 
                     if (filterFieldValue.equals(srcMac) || 
                             filterFieldValue.equals(dstMac)){
@@ -343,7 +346,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return false;
+        return (type == OFType.PACKET_IN && name.equals("learningswitch"));
     }
 
     @Override
@@ -368,7 +371,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 log.error("sendPacket exception: {}", e);
             }
         }
-
+        
         return Command.CONTINUE;
     }
 
@@ -421,7 +424,6 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 OFPacketIn pktIn = (OFPacketIn)msg;
                 packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), pktIn.getInPort()));
                 bb = ChannelBuffers.buffer(pktIn.getLength());
-                log.debug("Packet-In length is: {}", pktIn.getLength());
                 pktIn.writeTo(bb);
                 packet.setData(getData(sw, msg, cntx));
                 break;
