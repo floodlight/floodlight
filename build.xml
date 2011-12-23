@@ -122,7 +122,7 @@
     </target>
 
     <target name="run" depends="dist">
-        <java fork="true" jar="${floodlight-jar}" classpath="${jar}" classpathref="classpath">
+        <java fork="true" jar="${floodlight-jar}" classpathref="classpath">
             <jvmarg value="-server"/>
             <jvmarg value="-Xms1024M"/>
             <jvmarg value="-Xmx1024M"/>
