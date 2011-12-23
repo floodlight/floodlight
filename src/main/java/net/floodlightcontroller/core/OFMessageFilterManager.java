@@ -563,7 +563,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         return sb.toString().getBytes();
     }
 
-    private String getStringFromEthernetPacket(Ethernet eth) {
+    public String getStringFromEthernetPacket(Ethernet eth) {
 
         StringBuffer sb = new StringBuffer("\n");
 

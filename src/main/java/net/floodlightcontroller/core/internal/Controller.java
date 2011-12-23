@@ -723,6 +723,8 @@ public class Controller
             throws IOException {
         Ethernet eth = null;
 
+        long startTime = System.nanoTime();
+
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -785,8 +787,16 @@ public class Controller
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
                 }
-                break;
+
+                long processingTime = System.nanoTime() - startTime;
+                if (processingTime > (long)500000000) {  // processing takes more than half a second
+                    log.info("--**--**-- Time to process packet-in: {} ns", processingTime);
+                    if (eth!= null)
+                        log.info("{}", messageFilterManager.getStringFromEthernetPacket(eth));
+                    log.info("--**--**-- ");
+                }
         }
+
     }
     
     /**
