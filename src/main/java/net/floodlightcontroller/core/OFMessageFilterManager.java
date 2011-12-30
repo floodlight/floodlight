@@ -475,7 +475,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         }
     }
 
-    private byte[] getData(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+    public String getDataAsString(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 
         Ethernet eth;
         StringBuffer sb =  new StringBuffer("");
@@ -490,7 +490,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
             case PACKET_IN:
                 OFPacketIn pktIn = (OFPacketIn) msg;
                 sb.append("packet_in          [ ");
-                sb.append(HexString.toHexString(sw.getId()));
+                sb.append(sw.getStringId());
                 sb.append(" -> Controller");
                 sb.append(" ]");
 
@@ -560,7 +560,12 @@ public class OFMessageFilterManager implements IOFMessageListener {
         }
 
         sb.append("\n\n");
-        return sb.toString().getBytes();
+        return sb.toString();
+
+    }
+
+    public byte[] getData(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        return this.getDataAsString(sw, msg, cntx).getBytes();
     }
 
     public String getStringFromEthernetPacket(Ethernet eth) {

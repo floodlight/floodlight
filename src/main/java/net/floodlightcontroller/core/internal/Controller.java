@@ -723,8 +723,6 @@ public class Controller
             throws IOException {
         Ethernet eth = null;
 
-        long startTime = System.nanoTime();
-
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -758,6 +756,16 @@ public class Controller
                                 eth);
                     }
                     
+                    // Print the packet-in for debugging purposes at this point
+                    // The context would have the necessary information for
+                    // the OFMessageFilterManager's getDataToString to work
+                    // for packet-ins.
+                    if (log.isDebugEnabled()) {
+                        String str = messageFilterManager.getDataAsString(sw, m, bc);
+                        log.debug("{}", str);
+                    }
+
+
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
                     // monitoring is turned on
@@ -787,16 +795,7 @@ public class Controller
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
                 }
-
-                long processingTime = System.nanoTime() - startTime;
-                if (processingTime > (long)500000000) {  // processing takes more than half a second
-                    log.info("--**--**-- Time to process packet-in: {} ns", processingTime);
-                    if (eth!= null)
-                        log.info("{}", messageFilterManager.getStringFromEthernetPacket(eth));
-                    log.info("--**--**-- ");
-                }
         }
-
     }
     
     /**
@@ -1011,6 +1010,11 @@ public class Controller
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
                                       FloodlightContext bc) {
+        if (log.isDebugEnabled()) {
+            String str = messageFilterManager.getDataAsString(sw, m, bc);
+            log.debug("{}", str);
+        }
+
         List<IOFMessageListener> listeners = null;
         if (messageListeners.containsKey(m.getType())) {
             listeners = 
