@@ -153,7 +153,7 @@ public class ControllerTest extends FloodlightTestCase {
         reset(test1, test2, sw);
         expect(test1.receive(eq(sw), eq(pi), isA(FloodlightContext.class))).andReturn(Command.STOP);       
         expect(test1.getId()).andReturn(0).anyTimes();
-        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00");
+        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
         expect(sw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         replay(test1, test2, sw);
         controller.handleMessage(sw, pi, null);
