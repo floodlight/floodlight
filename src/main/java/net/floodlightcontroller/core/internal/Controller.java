@@ -96,6 +96,8 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.timeout.IdleStateAwareChannelUpstreamHandler;
 import org.jboss.netty.handler.timeout.IdleStateEvent;
 import org.jboss.netty.handler.timeout.ReadTimeoutException;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
 import org.openflow.protocol.OFEchoReply;
 import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFError.OFBadActionCode;
@@ -170,9 +172,9 @@ public class Controller
     
     protected List<RestletRoutable> restlets;
 
-    protected static final int REST_PORT = 8080;
-    protected static final int OPENFLOW_PORT = 6633;
-    
+    protected int restPort;
+    protected int openFlowPort;
+
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
     
@@ -213,6 +215,10 @@ public class Controller
     }
 
     public Controller() {
+        this(new PortSettings());
+    }
+
+    public Controller(PortSettings settings) {
         this.messageListeners =
             new ConcurrentHashMap<OFType, 
                                   ListenerDispatcher<OFType, 
@@ -220,6 +226,8 @@ public class Controller
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
         this.updates = new LinkedBlockingQueue<Update>();
         this.restlets = new ArrayList<RestletRoutable>();
+        this.restPort = settings.getRestPort();
+        this.openFlowPort = settings.getOpenFlowPort();
     }
     
     // **********************
@@ -1311,7 +1319,7 @@ public class Controller
         try {            
             // Start listening for REST requests
             final Component component = new Component();
-            component.getServers().add(Protocol.HTTP, REST_PORT);
+            component.getServers().add(Protocol.HTTP, restPort);
             component.getDefaultHost().attach(this);
             
             component.start();
@@ -1341,7 +1349,7 @@ public class Controller
             ChannelPipelineFactory pfact = 
                     new OpenflowPipelineFactory(this, null);
             bootstrap.setPipelineFactory(pfact);
-            InetSocketAddress sa = new InetSocketAddress(OPENFLOW_PORT);
+            InetSocketAddress sa = new InetSocketAddress(openFlowPort);
             final ChannelGroup cg = new DefaultChannelGroup();
             cg.add(bootstrap.bind(sa));
             
@@ -1470,8 +1478,17 @@ public class Controller
     public static void main(String args[]) throws Exception {
         System.setProperty("org.restlet.engine.loggerFacadeClass", 
                            "org.restlet.ext.slf4j.Slf4jLoggerFacade");
-        
-        Controller controller = new Controller();
+
+        PortSettings settings = new PortSettings();
+        CmdLineParser parser = new CmdLineParser(settings);
+        try {
+            parser.parseArgument(args);
+        } catch (CmdLineException e) {
+            parser.printUsage(System.out);
+            System.exit(1);
+        }
+
+        Controller controller = new Controller(settings);
         controller.init();
         controller.startupComponents();
         controller.run();
