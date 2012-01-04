@@ -826,10 +826,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     this.devMgrMaps.updateMaps(dCopy);
                     if (naOld !=null) removeNetworkAddressFromStorage(dCopy, naOld);
                     log.info("Network address {} moved from {} to {} due to packet {}",
-                    		new Object[] {networkAddress,
-                    		              deviceByNwaddr.getDataLayerAddress(),
-                    		              device.getDataLayerAddress(),
-                    		              eth});
+                    		new Object[] {IPv4.fromIPv4Address(nwSrc),
+                    		HexString.toHexString(deviceByNwaddr.getDataLayerAddress()),
+                    		HexString.toHexString(device.getDataLayerAddress()),
+                    		eth});
                 }
 
             }
