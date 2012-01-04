@@ -49,18 +49,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 
-import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.BPDU;
-import net.floodlightcontroller.packet.DHCP;
-import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.LLC;
-import net.floodlightcontroller.packet.LLDP;
-import net.floodlightcontroller.packet.TCP;
-import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packetstreamer.thrift.*;
 
 public class OFMessageFilterManager implements IOFMessageListener {
@@ -507,7 +496,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 eth = IFloodlightProvider.bcStore.get(cntx,
                         IFloodlightProvider.CONTEXT_PI_PAYLOAD);
 
-                sb.append(getStringFromEthernetPacket(eth));
+                sb.append(eth.toString());
 
                 break;
 
@@ -537,7 +526,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
                 eth = IFloodlightProvider.bcStore.get(cntx,
                         IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-                sb.append(getStringFromEthernetPacket(eth));
+                sb.append(eth.toString());
 
                 sb.append("ADD: cookie: ");
                 sb.append(fm.getCookie());
@@ -566,104 +555,6 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
     public byte[] getData(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         return this.getDataAsString(sw, msg, cntx).getBytes();
-    }
-
-    public String getStringFromEthernetPacket(Ethernet eth) {
-
-        StringBuffer sb = new StringBuffer("\n");
-
-        IPacket pkt = (IPacket) eth.getPayload();
-
-        if (pkt instanceof ARP)
-            sb.append("arp");
-        else if (pkt instanceof LLDP)
-            sb.append("lldp");
-        else if (pkt instanceof ICMP)
-            sb.append("icmp");
-        else if (pkt instanceof IPv4)
-            sb.append("ip");
-        else if (pkt instanceof DHCP)
-            sb.append("dhcp");
-        else  sb.append(eth.getEtherType());
-
-        sb.append("\ndl_vlan: ");
-        if (eth.getVlanID() == Ethernet.VLAN_UNTAGGED)
-            sb.append("untagged");
-        else
-            sb.append(eth.getVlanID());
-        sb.append("\ndl_vlan_pcp: ");
-        sb.append(eth.getPriorityCode());
-        sb.append("\ndl_src: ");
-        sb.append(HexString.toHexString(eth.getSourceMACAddress()));
-        sb.append("\ndl_dst: ");
-        sb.append(HexString.toHexString(eth.getDestinationMACAddress()));
-
-
-        if (pkt instanceof ARP) {
-            ARP p = (ARP) pkt;
-            sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getSenderProtocolAddress())));
-            sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getTargetProtocolAddress())));
-        }
-        else if (pkt instanceof LLDP) {
-            sb.append("lldp packet");
-        }
-        else if (pkt instanceof ICMP) {
-            ICMP icmp = (ICMP) pkt;
-            sb.append("\nicmp_type: ");
-            sb.append(icmp.getIcmpType());
-            sb.append("\nicmp_code: ");
-            sb.append(icmp.getIcmpCode());
-        }
-        else if (pkt instanceof IPv4) {
-            IPv4 p = (IPv4) pkt;
-            sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(p.getSourceAddress()));
-            sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(p.getDestinationAddress()));
-            sb.append("\nnw_tos: ");
-            sb.append(p.getDiffServ());
-            sb.append("\nnw_proto: ");
-            sb.append(p.getProtocol());
-
-            if (pkt instanceof TCP) {
-                sb.append("\ntp_src: ");
-                sb.append(((TCP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((TCP) pkt).getDestinationPort());
-
-            } else if (pkt instanceof UDP) {
-                sb.append("\ntp_src: ");
-                sb.append(((UDP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((UDP) pkt).getDestinationPort());
-            }
-
-            if (pkt instanceof ICMP) {
-                ICMP icmp = (ICMP) pkt;
-                sb.append("\nicmp_type: ");
-                sb.append(icmp.getIcmpType());
-                sb.append("\nicmp_code: ");
-                sb.append(icmp.getIcmpCode());
-            }
-
-        }
-        else if (pkt instanceof DHCP) {
-            sb.append("\ndhcp packet");
-        }
-        else if (pkt instanceof Data) {
-            sb.append("\ndata packet");
-        }
-        else if (pkt instanceof LLC) {
-            sb.append("\nllc packet");
-        }
-        else if (pkt instanceof BPDU) {
-            sb.append("\nbpdu packet");
-        }
-        else sb.append("\nunknwon packet");
-
-        return sb.toString();
     }
 
 }

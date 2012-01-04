@@ -825,6 +825,11 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     dCopy.setNetworkAddresses(namap.values());
                     this.devMgrMaps.updateMaps(dCopy);
                     if (naOld !=null) removeNetworkAddressFromStorage(dCopy, naOld);
+                    log.info("Network address {} moved from {} to {} due to packet {}",
+                    		new Object[] {networkAddress,
+                    		              deviceByNwaddr.getDataLayerAddress(),
+                    		              device.getDataLayerAddress(),
+                    		              eth});
                 }
 
             }
@@ -1426,6 +1431,12 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                             networkAddress.getNetworkAddress());
         String networkAddressId = deviceId + "-" + networkAddressString;
 
+        if (networkAddress.getNetworkAddress() == 0) {
+        	log.error("Zero network address for device {}\n {}",
+        			   device, Thread.currentThread().getStackTrace());
+        	return;
+        }
+        
         Map<String, Object> rowValues = new HashMap<String, Object>();
         rowValues.put(ID_COLUMN_NAME, networkAddressId);
         rowValues.put(DEVICE_COLUMN_NAME, deviceId);

@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.openflow.util.HexString;
+
 /**
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -362,4 +364,107 @@ public class Ethernet extends BasePacket {
             return false;
         return true;
     }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString(java.lang.Object)
+     */
+    @Override
+    public String toString() {
+
+        StringBuffer sb = new StringBuffer("\n");
+
+        IPacket pkt = (IPacket) this.getPayload();
+
+        if (pkt instanceof ARP)
+            sb.append("arp");
+        else if (pkt instanceof LLDP)
+            sb.append("lldp");
+        else if (pkt instanceof ICMP)
+            sb.append("icmp");
+        else if (pkt instanceof IPv4)
+            sb.append("ip");
+        else if (pkt instanceof DHCP)
+            sb.append("dhcp");
+        else  sb.append(this.getEtherType());
+
+        sb.append("\ndl_vlan: ");
+        if (this.getVlanID() == Ethernet.VLAN_UNTAGGED)
+            sb.append("untagged");
+        else
+            sb.append(this.getVlanID());
+        sb.append("\ndl_vlan_pcp: ");
+        sb.append(this.getPriorityCode());
+        sb.append("\ndl_src: ");
+        sb.append(HexString.toHexString(this.getSourceMACAddress()));
+        sb.append("\ndl_dst: ");
+        sb.append(HexString.toHexString(this.getDestinationMACAddress()));
+
+
+        if (pkt instanceof ARP) {
+            ARP p = (ARP) pkt;
+            sb.append("\nnw_src: ");
+            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getSenderProtocolAddress())));
+            sb.append("\nnw_dst: ");
+            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getTargetProtocolAddress())));
+        }
+        else if (pkt instanceof LLDP) {
+            sb.append("lldp packet");
+        }
+        else if (pkt instanceof ICMP) {
+            ICMP icmp = (ICMP) pkt;
+            sb.append("\nicmp_type: ");
+            sb.append(icmp.getIcmpType());
+            sb.append("\nicmp_code: ");
+            sb.append(icmp.getIcmpCode());
+        }
+        else if (pkt instanceof IPv4) {
+            IPv4 p = (IPv4) pkt;
+            sb.append("\nnw_src: ");
+            sb.append(IPv4.fromIPv4Address(p.getSourceAddress()));
+            sb.append("\nnw_dst: ");
+            sb.append(IPv4.fromIPv4Address(p.getDestinationAddress()));
+            sb.append("\nnw_tos: ");
+            sb.append(p.getDiffServ());
+            sb.append("\nnw_proto: ");
+            sb.append(p.getProtocol());
+
+            if (pkt instanceof TCP) {
+                sb.append("\ntp_src: ");
+                sb.append(((TCP) pkt).getSourcePort());
+                sb.append("\ntp_dst: ");
+                sb.append(((TCP) pkt).getDestinationPort());
+
+            } else if (pkt instanceof UDP) {
+                sb.append("\ntp_src: ");
+                sb.append(((UDP) pkt).getSourcePort());
+                sb.append("\ntp_dst: ");
+                sb.append(((UDP) pkt).getDestinationPort());
+            }
+
+            if (pkt instanceof ICMP) {
+                ICMP icmp = (ICMP) pkt;
+                sb.append("\nicmp_type: ");
+                sb.append(icmp.getIcmpType());
+                sb.append("\nicmp_code: ");
+                sb.append(icmp.getIcmpCode());
+            }
+
+        }
+        else if (pkt instanceof DHCP) {
+            sb.append("\ndhcp packet");
+        }
+        else if (pkt instanceof Data) {
+            sb.append("\ndata packet");
+        }
+        else if (pkt instanceof LLC) {
+            sb.append("\nllc packet");
+        }
+        else if (pkt instanceof BPDU) {
+            sb.append("\nbpdu packet");
+        }
+        else sb.append("\nunknwon packet");
+
+        return sb.toString();
+    }
+
 }
