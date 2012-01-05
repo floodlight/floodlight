@@ -54,11 +54,11 @@ public class Device {
     protected Date lastWrittenToStorage;
 
     private static long LAST_SEEN_STORAGE_UPDATE_INTERVAL = 1000 * 60 * 5; // 5 minutes
-    
+
     public static void setStorageUpdateInterval(int intervalInMs) {
         LAST_SEEN_STORAGE_UPDATE_INTERVAL = intervalInMs;
     }
-    
+
     public Device() {
         this.networkAddresses = new ConcurrentHashMap<Integer, DeviceNetworkAddress>();
         this.attachmentPoints = new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
@@ -67,7 +67,7 @@ public class Device {
         this.lastSeenInStorage = null;
         this.lastWrittenToStorage = null;
     }
-    
+
     /**
      * Copy constructor
      * @param device
@@ -81,7 +81,7 @@ public class Device {
         setAttachmentPoints(device.getAttachmentPoints());
         lastWrittenToStorage = device.lastWrittenToStorage;
         lastSeenInStorage = device.lastSeenInStorage;
-        
+
         oldAttachmentPoints = 
                 new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
         for (Entry<SwitchPortTuple, DeviceAttachmentPoint> e : 
@@ -89,12 +89,12 @@ public class Device {
             oldAttachmentPoints.put(e.getKey(), e.getValue());
         }
     }
-    
+
     public Device(byte[] dataLayerAddress) {
         this();
         setDataLayerAddress(dataLayerAddress);
     }
-    
+
     public Device(byte[] dataLayerAddress, Date lastSeen) {
         this(dataLayerAddress);
         if (lastSeen != null) {
@@ -124,7 +124,7 @@ public class Device {
     public byte[] getDataLayerAddress() {
         return dataLayerAddress;
     }
-    
+
     /**
      * @return the dataLayerAddress as a long
      */
@@ -154,19 +154,43 @@ public class Device {
     public Collection<DeviceAttachmentPoint> getAttachmentPoints() {
         return attachmentPoints.values();
     }
-    
+
+    /**
+     * Get the latest attachment point that is unblocked
+     * @return
+     */
+
+    public DeviceAttachmentPoint getAttachmentPointLatestUnblocked() {
+        DeviceAttachmentPoint dap = null;
+        for (DeviceAttachmentPoint dapTemp : attachmentPoints.values()) {
+            if (dapTemp.isBlocked()) {
+                continue;
+            }
+            if (dap == null) {
+                dap = dapTemp;
+            } else {
+                if (dapTemp.getLastSeen().after(dap.getLastSeen())) {
+                    dap = dapTemp;
+                }
+            }
+        }
+        return dap;
+    }
+
     public Map<SwitchPortTuple, DeviceAttachmentPoint> 
                                                 getAttachmentPointsMap() {
         return attachmentPoints;
     }
-    
+
     public Map<SwitchPortTuple, DeviceAttachmentPoint> 
                                                 getOldAttachmentPointsMap() {
         return oldAttachmentPoints;
     }
-    
-    public Collection<DeviceAttachmentPoint> getAttachmentPointsSorted(Comparator<DeviceAttachmentPoint> c) {
-        List<DeviceAttachmentPoint> daps = new ArrayList<DeviceAttachmentPoint>(attachmentPoints.values());
+
+    public Collection<DeviceAttachmentPoint> getAttachmentPointsSorted(
+                                        Comparator<DeviceAttachmentPoint> c) {
+        List<DeviceAttachmentPoint> daps = 
+                new ArrayList<DeviceAttachmentPoint>(attachmentPoints.values());
         Collections.sort(daps, c);
         return daps;
     }
@@ -174,7 +198,7 @@ public class Device {
     public DeviceAttachmentPoint getAttachmentPoint(SwitchPortTuple switchPort) {
         return attachmentPoints.get(switchPort);
     }
-    
+
     public void addAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
         if (attachmentPoint != null) {
             attachmentPoints.put(attachmentPoint.getSwitchPort(), attachmentPoint);
@@ -183,27 +207,27 @@ public class Device {
             }
         }
     }
-    
+
     /**
      * Clears current attachment points.
      */
     public void clearAttachmentPoints() {
         attachmentPoints.clear();
     }
-    
+
     public void addAttachmentPoint(SwitchPortTuple switchPort, Date lastSeen) {
         DeviceAttachmentPoint attachmentPoint = new DeviceAttachmentPoint(switchPort, lastSeen);
         addAttachmentPoint(attachmentPoint);
     }
-   
+
     public DeviceAttachmentPoint removeAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
         return attachmentPoints.remove(attachmentPoint.getSwitchPort());
     }
-    
+
     public DeviceAttachmentPoint removeAttachmentPoint(SwitchPortTuple switchPort) {
         return attachmentPoints.remove(switchPort);
     }
-    
+
     public Set<DeviceAttachmentPoint> removeAttachmentPointsForSwitch(IOFSwitch sw) {
         Set<DeviceAttachmentPoint> removedPoints = new HashSet<DeviceAttachmentPoint>();
         for (SwitchPortTuple swt : attachmentPoints.keySet()) {
@@ -213,7 +237,7 @@ public class Device {
         }
         return removedPoints;
     }
-    
+
     /**
      * @param attachmentPoints the new collection of attachment points for the device
      */
@@ -224,7 +248,7 @@ public class Device {
             addAttachmentPoint(attachmentPoint);
         }
     }
-    
+
     public Collection<DeviceAttachmentPoint> getOldAttachmentPoints() {
         return oldAttachmentPoints.values();
     }
@@ -232,11 +256,11 @@ public class Device {
     public DeviceAttachmentPoint getOldAttachmentPoint(SwitchPortTuple switchPort) {
         return oldAttachmentPoints.get(switchPort);
     }
-    
+
     public void addOldAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
         oldAttachmentPoints.put(attachmentPoint.getSwitchPort(), attachmentPoint);
     }
-    
+
     public DeviceAttachmentPoint removeOldAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
         return oldAttachmentPoints.remove(attachmentPoint.getSwitchPort());
     }
@@ -251,18 +275,18 @@ public class Device {
     public Map<Integer, DeviceNetworkAddress> getNetworkAddressesMap() {
         return networkAddresses;
     }
-    
+
     public DeviceNetworkAddress getNetworkAddress(Integer networkAddress) {
         return networkAddresses.get(networkAddress);
     }
-    
+
     public void addNetworkAddress(DeviceNetworkAddress networkAddress) {
         networkAddresses.put(networkAddress.getNetworkAddress(), networkAddress);
         if (networkAddress.getLastSeen().after(lastSeen)) {
             lastSeen = networkAddress.getLastSeen();
         }
     }
-    
+
     public void addNetworkAddress(Integer networkAddress, Date lastSeen) {
         if (networkAddress != 0) {
             DeviceNetworkAddress deviceNetworkAddress = 
@@ -278,7 +302,7 @@ public class Device {
     public DeviceNetworkAddress removeNetworkAddress(DeviceNetworkAddress networkAddress) {
         return networkAddresses.remove(networkAddress.getNetworkAddress());
     }
-    
+
     /**
      * @param networkAddresses the networkAddresses to set
      */
@@ -290,17 +314,17 @@ public class Device {
             addNetworkAddress(networkAddress);
         }
     }
-    
+
     public void lastSeenWrittenToStorage(Date lastWrittenDate) {
         lastSeenInStorage = lastSeen;
         lastWrittenToStorage = lastWrittenDate;
     }
-    
+
     public boolean shouldWriteLastSeenToStorage() {
         return (lastSeen != lastSeenInStorage) && ((lastWrittenToStorage == null) ||
                 (lastSeen.getTime() >= lastWrittenToStorage.getTime() + LAST_SEEN_STORAGE_UPDATE_INTERVAL));
     }
-    
+
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */

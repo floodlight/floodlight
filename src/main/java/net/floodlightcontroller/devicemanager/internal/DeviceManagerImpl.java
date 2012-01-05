@@ -292,7 +292,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * Overall update, delete and clear methods for the set of maps
          * @param d the device to update
          */
-        private void updateMaps(Device d) {
+        private synchronized void updateMaps(Device d) {
             // Update dataLayerAddressDeviceMap
             updateDataLayerAddressDeviceMap(d);
             // Update ipv4AddressDeviceMap
@@ -521,7 +521,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 devMgrMaps.switchUnresolvedAPMap.get(dpid);
             if (papl == null) {
                 devMgrMaps.switchUnresolvedAPMap.put(dpid, 
-                        papl = Collections.synchronizedList(new ArrayList<PendingAttachmentPoint>()));
+                        papl = Collections.synchronizedList(
+                                new ArrayList<PendingAttachmentPoint>()));
             }
             papl.add(pap);
         }
@@ -808,28 +809,34 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     newNetworkAddress = true;
                 }
 
-                // Also, if this address is currently mapped to a different device, fix it.
-                // This should be rare, so it is OK to do update the storage from here.
+                // Also, if this address is currently mapped to a different 
+                // device, fix it. This should be rare, so it is OK to do update
+                // the storage from here.
                 //
-                // NOTE: the mapping is observed, and the decision is made based on that, outside a lock.
-                // So the state may change by the time we get to do the map update. But that is OK since
-                // the mapping will eventually get consistent.
+                // NOTE: the mapping is observed, and the decision is made based
+                // on that, outside a lock. So the state may change by the time 
+                // we get to do the map update. But that is OK since the mapping
+                // will eventually get consistent.
                 Device deviceByNwaddr = this.getDeviceByIPv4Address(nwSrc);
                 if ((deviceByNwaddr != null) &&
-                    (deviceByNwaddr.getDataLayerAddressAsLong() != device.getDataLayerAddressAsLong())) {
+                    (deviceByNwaddr.getDataLayerAddressAsLong() != 
+                                    device.getDataLayerAddressAsLong())) {
                     updateNeworkAddressMap = true;
                     Device dCopy = new Device(deviceByNwaddr);
                     DeviceNetworkAddress naOld = dCopy.getNetworkAddress(nwSrc);
-                    Map<Integer, DeviceNetworkAddress> namap = dCopy.getNetworkAddressesMap();
+                    Map<Integer, DeviceNetworkAddress> namap = 
+                                                dCopy.getNetworkAddressesMap();
                     if (namap.containsKey(nwSrc)) namap.remove(nwSrc);
                     dCopy.setNetworkAddresses(namap.values());
                     this.devMgrMaps.updateMaps(dCopy);
-                    if (naOld !=null) removeNetworkAddressFromStorage(dCopy, naOld);
-                    log.info("Network address {} moved from {} to {} due to packet {}",
-                    		new Object[] {IPv4.fromIPv4Address(nwSrc),
-                    		HexString.toHexString(deviceByNwaddr.getDataLayerAddress()),
-                    		HexString.toHexString(device.getDataLayerAddress()),
-                    		eth});
+                    if (naOld !=null) 
+                                removeNetworkAddressFromStorage(dCopy, naOld);
+                    log.info(
+                     "Network address {} moved from {} to {} due to packet {}",
+                            new Object[] {networkAddress,
+                                          deviceByNwaddr.getDataLayerAddress(),
+                                          device.getDataLayerAddress(),
+                                          eth});
                 }
 
             }
@@ -838,7 +845,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 updateDeviceVlan = true;
             }
 
-            if (newAttachmentPoint || newNetworkAddress || updateDeviceVlan || updateNeworkAddressMap) {
+            if (newAttachmentPoint || newNetworkAddress || updateDeviceVlan || 
+                                updateNeworkAddressMap) {
 
                 Device nd = new Device(device);
 
