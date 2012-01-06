@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.Device;
@@ -45,6 +46,7 @@ import net.floodlightcontroller.routing.IRoutingEngine;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.topology.ITopology;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.forwarding.Forwarding;
 
@@ -69,6 +71,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected IDeviceManager deviceManager;
     protected IRoutingEngine routingEngine;
     protected Forwarding forwarding;
+    protected ITopology topology;
     protected IOFSwitch sw1, sw2;
     protected Device srcDevice, dstDevice;
     protected OFPacketIn packetIn;
@@ -88,9 +91,11 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding = getForwarding();
         deviceManager = createMock(IDeviceManager.class);
         routingEngine = createMock(IRoutingEngine.class);
+        topology = createMock(ITopology.class);
         forwarding.setFloodlightProvider(mockFloodlightProvider);
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
+        forwarding.setTopology(topology);
 
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
@@ -178,6 +183,8 @@ public class ForwardingTest extends FloodlightTestCase {
                      ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST;
         expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK;
 
+        // Add the packet to the context store
+        IFloodlightProvider.bcStore.put(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD, (Ethernet)testPacket);
     }
 
     private Forwarding getForwarding() {
