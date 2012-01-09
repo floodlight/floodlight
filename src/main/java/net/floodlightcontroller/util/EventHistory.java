@@ -4,7 +4,6 @@
 package net.floodlightcontroller.util;
 
 import java.util.ArrayList;
-import java.util.Date;
 
 /**
  * @author subrata
@@ -121,6 +120,7 @@ public class EventHistory<T> {
         int origIdx = evIdx;
         for (int idx = 0; idx < topSz; idx++) {
             Event evH         = eventHist.events.get(--origIdx);
+            evH.base_info.idx = idx;
             events.add(idx, evH);
         }
 

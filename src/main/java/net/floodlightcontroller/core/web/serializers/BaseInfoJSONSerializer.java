@@ -19,7 +19,6 @@ package net.floodlightcontroller.core.web.serializers;
 import java.io.IOException;
 import java.util.Date;
 
-import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.BaseInfo;
 
 import org.codehaus.jackson.JsonGenerator;
