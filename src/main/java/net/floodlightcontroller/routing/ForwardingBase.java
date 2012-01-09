@@ -395,6 +395,10 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             .setMatch(match)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
+        if (log.isDebugEnabled()) {
+            log.debug("Device move detected: Device {}, Old Switch: {}, old port: {}, new switch: {}, new port: {}", new Object[] {device, oldSw, oldPort, sw, port});
+        }
+
         // Flush to all switches
         for (IOFSwitch outSw : floodlightProvider.getSwitches().values()) {
             try {
