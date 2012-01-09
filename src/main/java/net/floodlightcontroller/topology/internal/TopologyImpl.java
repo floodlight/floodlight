@@ -379,8 +379,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         HashMap<Long, Long> treeNodes = clusterTree.getNodes();
         for (IOFSwitch sw : cluster.getSwitches()) {
             if (!switchLinks.containsKey(sw)) {
-                log.error("detectLoopInCluster, No link for switch {} in cluster {}",
-                          sw, HexString.toHexString(cluster.getId()));
                 continue;
             }
             for (LinkTuple linktp : switchLinks.get(sw)) {
