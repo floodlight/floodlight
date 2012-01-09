@@ -62,6 +62,8 @@ import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.topology.ITopology;
 import net.floodlightcontroller.topology.ITopologyAware;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.util.EventHistory;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -88,6 +90,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
     protected IFloodlightProvider floodlightProvider;
+    
+    
 
     /**
      * Class to maintain all the device manager maps which consists of four
@@ -345,7 +349,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * attachment point in the device objects if any
          * @param swPrt The {@link SwitchPortTuple} to remove
          */
-        protected void removeSwPort(SwitchPortTuple swPrt) { // done
+        protected void removeSwPort(SwitchPortTuple swPrt) {
 
             Map<Integer, Device> switchPortDevices = 
                                             switchPortDeviceMap.remove(swPrt);
@@ -358,6 +362,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             for (Device d : switchPortDevices.values()) {
                 // Remove the device from the switch->device mapping
                 delDevAttachmentPoint(d, swPrt);
+                evHistAttachmtPt(d, swPrt, EvAction.REMOVED,
+                                                        "SwitchPort removed");
             }
         }
 
@@ -426,7 +432,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @param port The port for the new attachment point
          * @param lastSeen the new last seen timestamp
          */
-        protected void addDevAttachmentPoint(long mac,
+        protected boolean addDevAttachmentPoint(long mac,
                                              IOFSwitch sw,
                                              short port,
                                              Date lastSeen) {
@@ -438,7 +444,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             if (dap != null) {
                 // The attachment point is already there
                 dap.setLastSeen(lastSeen); // TODO
-                return;
+                return false;
             }
 
             // new device attachment point for this device
@@ -448,6 +454,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             // Now add this updated device to the maps, which will replace
             // the old copy
             updateMaps(dCopy);
+            return true;
         }
 
         // ******************************************
@@ -469,7 +476,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @param sw the {@link IOFSwitch} for the attachment point to remove
          * @param port the port for the attachment point to remove
          */
-        protected void delDevAttachmentPoint(Device d,
+        protected boolean delDevAttachmentPoint(Device d,
                                              IOFSwitch sw,
                                              short port) {
 
@@ -477,7 +484,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             SwitchPortTuple swPort = new SwitchPortTuple(sw, port);
             if (d.getAttachmentPoint(swPort) == null) {
                 // The attachment point is NOT there
-                return;
+                return false;
             }
 
             // Make a copy of this device
@@ -496,6 +503,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             log.debug("Device 2 {}", dCopy);
             removeAttachmentPointFromStorage(d, dap);
             d = null; // to catch if anyone is using this reference
+            return true;
         }
 
         /**
@@ -615,6 +623,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         this.devMgrMaps = new DevMgrMaps();
         this.lock = new ReentrantReadWriteLock();
         this.updates = new LinkedList<Update>();
+        this.evHistDevMgrAttachPt = 
+                new EventHistory<EvHistAttachmentPt>("Attachment-Point");
+        this.evHistDevMgrPktIn =
+                new EventHistory<OFMatch>("Pakcet-In");
     }
 
     public void startUp() {
@@ -692,6 +704,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         // Create the new device with attachment point and network address
         Device device = new Device(mac, currentDate);
         device.addAttachmentPoint(swPort, currentDate);
+        evHistAttachmtPt(mac, swPort, EvAction.ADDED, "New device");
         device.addNetworkAddress(nwAddr, currentDate);
         device.setVlanId(vlan);
         // Update the maps - insert the device in the maps
@@ -745,7 +758,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                           FloodlightContext cntx) {
         Command ret = Command.CONTINUE;
         OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
+        // Add this packet-in to event history
+        evHistPktIn(match);
 
         // Create attachment point/update network address if required
         SwitchPortTuple switchPort = new SwitchPortTuple(sw, pi.getInPort());
@@ -856,10 +871,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     if (newAttachmentPoint) {
                         attachmentPoint = getNewAttachmentPoint(nd, switchPort);
                         nd.addAttachmentPoint(attachmentPoint);
+                        evHistAttachmtPt(nd, attachmentPoint.getSwitchPort(),
+                                         EvAction.ADDED, "New AP from pkt-in");
                     }
 
                     if (clearAttachmentPoints) {
                         nd.clearAttachmentPoints();
+                        evHistAttachmtPt(nd, 0L, (short)(-1),
+                                EvAction.CLEARED, "Grat. ARP from pkt-in");
                     }
 
                     if (newNetworkAddress) {
@@ -957,6 +976,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         } else {
             attachmentPoint.setLastSeen(currentDate);
             if (attachmentPoint.isBlocked()) {
+                // Attachment point is currently in blocked state
                 // If curAttachmentPoint exists and active, drop the packet
                 if (curAttachmentPoint != null &&
                     currentDate.getTime() - 
@@ -966,19 +986,23 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 log.info("Unblocking {} for device {}",
                          attachmentPoint.getSwitchPort(), device);
                 attachmentPoint.setBlocked(false);
+                evHistAttachmtPt(device, swPort, 
+                    EvAction.UNBLOCKED, "packet-in after block timer expired");
             }
             // Remove from old list
             device.removeOldAttachmentPoint(attachmentPoint);
         }
 
-        // Update mappings   
+        // Update mappings
         devMgrMaps.addDevAttachmentPoint(
                 device.getDataLayerAddressAsLong(), swPort, currentDate);
+        evHistAttachmtPt(device, swPort, EvAction.ADDED, "packet-in GNAP");
 
         // If curAttachmentPoint exists, we mark it a conflict and may block it.
         if (curAttachmentPoint != null) {
             curAttachmentPoint.setConflict(currentDate);
             device.removeAttachmentPoint(curAttachmentPoint);
+            evHistAttachmtPt(device, swPort, EvAction.BLOCKED, "Conflict");
             device.addOldAttachmentPoint(curAttachmentPoint);
             if (curAttachmentPoint.isFlapping()) {
                 curAttachmentPoint.setBlocked(true);
@@ -1117,6 +1141,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     // Add attachment point
                     devMgrMaps.addDevAttachmentPoint(
                             pap.mac, sw, pap.switchPort, pap.lastSeen);
+                    evHistAttachmtPt(pap.mac,
+                            sw.getId(), pap.switchPort,
+                            EvAction.ADDED, "Switch Added");
                 }
                 devMgrMaps.switchUnresolvedAPMap.remove(swDpid);
             }
@@ -1265,7 +1292,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                                 DeviceAttachmentPoint newDap) {
         // We also clear the attachment points on other islands
         device.clearAttachmentPoints();
+        evHistAttachmtPt(device, 0L, (short)(-1), EvAction.CLEARED, "Moved");
         device.addAttachmentPoint(newDap);
+        evHistAttachmtPt(device, newDap.getSwitchPort(), 
+                                                    EvAction.ADDED, "Moved");
         
         synchronized (updates) {
             Update update = new Update(UpdateType.MOVED);
@@ -1554,6 +1584,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
            } else {
                devMgrMaps.addDevAttachmentPoint(
                                        mac, sw, port.shortValue(), lastSeen);
+               evHistAttachmtPt(mac, sw.getId(), port.shortValue(), 
+                                       EvAction.ADDED, "Read from storage");
            }
         }
     }
@@ -1637,6 +1669,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
                 device.removeAttachmentPoint(ap.getSwitchPort());
+                evHistAttachmtPt(device, ap.getSwitchPort(), EvAction.REMOVED,
+                        "Aged");
             }
         }
     }
@@ -1816,7 +1850,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         return false;
     }
 
-    protected class DeviceUpdateWorker implements Runnable {   
+    protected class DeviceUpdateWorker implements Runnable {
         @Override
         public void run() {
             try { 
@@ -1830,6 +1864,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                             for (Device d: devMgrMaps.getDevicesOnASwitch(sw)) {
                                 Device dCopy = new Device(d);
                                 cleanupAttachmentPoints(dCopy);
+                                /*
+                                evHistAttachmtPt(dCopy, 0L, (short)(-1),
+                                        EvAction.UPDATED, "DeviceUpdateWorker");
+                                */
                                 for (DeviceAttachmentPoint dap : 
                                             dCopy.getOldAttachmentPoints()) {
                                     // Don't remove conflict attachment points 
@@ -1866,5 +1904,88 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
             removedSwitch(sw);
         }
+    }
+    
+    // **************************************************
+    // Device Manager's Event History members and methods
+    // **************************************************
+
+    /***
+     * Attachment-Point Event history related classes and members
+     * @author subrata
+     *
+     */
+    public class EvHistAttachmentPt {
+        public String   reason;
+        // The following fields are not stored as String to save memory
+        // They shoudl be converted to appropriate human-readable strings by 
+        // the front end (e.g. in cli in python)
+        public long     mac;
+        public short    vlan;
+        public short    port;
+        public long     dpid;
+
+        public long getMac() {
+            return mac;
+        }
+        public short getVlan() {
+            return vlan;
+        }
+        public short getPort() {
+            return port;
+        }
+        public long getDpid() {
+            return dpid;
+        }
+        public String getReason() {
+            return reason;
+        }
+    }
+
+    // Attachment-point event history
+    public EventHistory<EvHistAttachmentPt> evHistDevMgrAttachPt;
+    public EvHistAttachmentPt evHAP;
+
+    private void evHistAttachmtPt(Device d, SwitchPortTuple swPrt,
+                                            EvAction action, String reason) {
+        evHistAttachmtPt(
+                d.getDataLayerAddressAsLong(),
+                swPrt.getSw().getId(),
+                swPrt.getPort(), action, reason);
+    }
+
+    private void evHistAttachmtPt(byte [] mac, SwitchPortTuple swPrt,
+                                          EvAction action, String reason) {
+        evHistAttachmtPt(Ethernet.toLong(mac), swPrt.getSw().getId(),
+                                            swPrt.getPort(), action, reason);
+    }
+
+    private void evHistAttachmtPt(Device d, long dpid, short port,
+                                            EvAction op, String reason) {
+        evHistAttachmtPt(d.getDataLayerAddressAsLong(),dpid, port, op, reason);
+    }
+
+    private void evHistAttachmtPt(long mac, long dpid, short port,
+                                              EvAction action, String reason) {
+        if (evHAP == null) {
+            evHAP = new EvHistAttachmentPt();
+        }
+        evHAP.dpid   = dpid;
+        evHAP.port   = port;
+        evHAP.mac    = mac;
+        evHAP.reason = reason;
+        evHAP = evHistDevMgrAttachPt.put(evHAP, action);
+    }
+
+    /***
+     * Packet-In Event history related classes and members
+     * @author subrata
+     *
+     */
+
+    public EventHistory<OFMatch> evHistDevMgrPktIn;
+
+    private void evHistPktIn(OFMatch packetIn) {
+        evHistDevMgrPktIn.put(packetIn, EvAction.PKT_IN);
     }
 }

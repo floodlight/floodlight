@@ -770,7 +770,7 @@ public class Controller
                     // for packet-ins.
                     if (log.isDebugEnabled()) {
                         String str = messageFilterManager.getDataAsString(sw, m, bc);
-                        log.debug("{}", str);
+                        log.trace("{}", str);
                     }
 
 
@@ -1020,7 +1020,7 @@ public class Controller
                                       FloodlightContext bc) {
         if (log.isDebugEnabled()) {
             String str = messageFilterManager.getDataAsString(sw, m, bc);
-            log.debug("{}", str);
+            log.trace("{}", str);
         }
 
         List<IOFMessageListener> listeners = null;

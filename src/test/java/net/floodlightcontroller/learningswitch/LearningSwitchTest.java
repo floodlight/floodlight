@@ -156,6 +156,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         mockSwitch.addToPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42, (short) 1);       
         expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42)).andReturn(null);        
         //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
+        expect(mockSwitch.getId()).andReturn(1L);
         mockSwitch.write(po, null);
 
         // Start recording the replay on the mocks       
@@ -190,7 +191,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setCommand(OFFlowMod.OFPFC_ADD)
             .setIdleTimeout((short) 5)
             .setMatch(new OFMatch()
-                .loadFromPacket(testPacketSerialized, (short) 1)
+                .loadFromPacket(testPacketSerialized, (short) 1, 1L)
                 .setWildcards(OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST
                         | OFMatch.OFPFW_NW_TOS))
             .setOutPort(OFPort.OFPP_NONE.getValue())
@@ -205,7 +206,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setCommand(OFFlowMod.OFPFC_ADD)
             .setIdleTimeout((short) 5)
             .setMatch(new OFMatch()
-                .loadFromPacket(testPacketReplySerialized, (short) 2)
+                .loadFromPacket(testPacketReplySerialized, (short) 2, 1L)
                 .setWildcards(OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST
                         | OFMatch.OFPFW_NW_TOS))
             .setOutPort(OFPort.OFPP_NONE.getValue())

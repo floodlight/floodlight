@@ -51,6 +51,7 @@ public class OFMatchJSONSerializer extends JsonSerializer<OFMatch> {
         jGen.writeNumberField("dataLayerType", match.getDataLayerType());
         jGen.writeNumberField("dataLayerVirtualLan", match.getDataLayerVirtualLan());
         jGen.writeNumberField("dataLayerVirtualLanPriorityCodePoint", match.getDataLayerVirtualLanPriorityCodePoint());
+        jGen.writeStringField("inputSwitch", HexString.toHexString(match.getSwitchDataPathId()));
         jGen.writeNumberField("inputPort", match.getInputPort());
         jGen.writeStringField("networkDestination", intToIp(match.getNetworkDestination()));
         jGen.writeNumberField("networkDestinationMaskLen", match.getNetworkDestinationMaskLen());
@@ -63,7 +64,7 @@ public class OFMatchJSONSerializer extends JsonSerializer<OFMatch> {
         jGen.writeNumberField("wildcards", match.getWildcards());
         jGen.writeEndObject();
     }
-    
+
     /**
      * Tells SimpleModule that we are the serializer for OFMatch
      */

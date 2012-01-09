@@ -40,7 +40,7 @@ public class Forwarding extends ForwardingBase {
     @Override
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
 
         // Check if we have the location of the destination
         Device dstDevice = deviceManager.getDeviceByDataLayerAddress(match.getDataLayerDestination());
