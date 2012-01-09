@@ -492,12 +492,14 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append("\nbuffer: ");
                 sb.append(pktIn.getBufferId());
 
+                // If the conext is not set by floodlight, then ignore.
+                if (cntx != null) {
                 // packet type  icmp, arp, etc.
-                eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-
-                sb.append(eth.toString());
-
+                    eth = IFloodlightProvider.bcStore.get(cntx,
+                            IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    if (eth != null)
+                           sb.append(eth.toString());
+                }
                 break;
 
             case PACKET_OUT:
@@ -522,13 +524,15 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(HexString.toHexString(sw.getId()));
                 sb.append(" ]");
 
-                eth = new Ethernet();
-
-                eth = IFloodlightProvider.bcStore.get(cntx,
+                // If the conext is not set by floodlight, then ignore.
+                if (cntx != null) {
+                    eth = IFloodlightProvider.bcStore.get(cntx,
                         IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-                sb.append(eth.toString());
+                    if (eth != null)
+                        sb.append(eth.toString());
+                }
 
-                sb.append("ADD: cookie: ");
+                sb.append("\nADD: cookie: ");
                 sb.append(fm.getCookie());
                 sb.append(" idle: ");
                 sb.append(fm.getIdleTimeout());
