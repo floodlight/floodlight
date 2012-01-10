@@ -1393,12 +1393,12 @@ public class Controller
      * new components
      */
     protected void init() {
-        initStorageSource();
         topology = new TopologyImpl();
         deviceManager = new DeviceManagerImpl();
         counterStore = new CounterStore();
         pktinProcTime = new PktinProcessingTime();
         routingEngine = new RoutingImpl();
+        initStorageSource();
         
         topology.setFloodlightProvider(this);
         topology.setStorageSource(storageSource);
