@@ -63,10 +63,12 @@ import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
+import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
-import net.floodlightcontroller.learningswitch.LearningSwitch;
+import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
 import net.floodlightcontroller.perfmon.PktinProcessingTime;
 import net.floodlightcontroller.storage.IResultSet;
@@ -165,7 +167,8 @@ public class Controller
     protected IStorageSource storageSource;
     protected TopologyImpl topology;
     protected DeviceManagerImpl deviceManager;
-    protected LearningSwitch learningSwitch;
+    protected RoutingImpl routingEngine;
+    protected Forwarding forwarding;
     protected OFMessageFilterManager messageFilterManager;
     protected PktinProcessingTime pktinProcTime;
     private StaticFlowEntryPusher staticFlowEntryPusher;
@@ -1393,9 +1396,7 @@ public class Controller
         topology = new TopologyImpl();
         deviceManager = new DeviceManagerImpl();
         storageSource = new MemoryStorageSource();
-        learningSwitch = new LearningSwitch();
         counterStore = new CounterStore();
-        messageFilterManager = new OFMessageFilterManager();
         pktinProcTime = new PktinProcessingTime();
         
         topology.setFloodlightProvider(this);
@@ -1405,24 +1406,47 @@ public class Controller
         deviceManager.setStorageSource(storageSource);
         deviceManager.setTopology(topology);
         
-        messageFilterManager.init(this);
-        
-        staticFlowEntryPusher = new StaticFlowEntryPusher();
-        staticFlowEntryPusher.setFloodlightProvider(this);
-        
-        learningSwitch.setFloodlightProvider(this);
-        learningSwitch.setCounterStore(counterStore);
+        initMessageFilterManager();
+        initStaticFlowPusher();
+        routingEngine = new RoutingImpl();
+        initForwarding();
         
         // call this explicitly because it does setup
         this.setStorageSource(storageSource);        
         
         HashSet<ITopologyAware> topologyAware = new HashSet<ITopologyAware>();
         topologyAware.add(deviceManager);
+        topologyAware.add(routingEngine);
         topology.setTopologyAware(topologyAware);
+        topology.setRoutingEngine(routingEngine);
 
+        HashSet<IDeviceManagerAware> dmAware = 
+            new HashSet<IDeviceManagerAware>();
+        dmAware.add(forwarding);
+        deviceManager.setDeviceManagerAware(dmAware);
+        
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());
         JacksonCustomConverter.replaceConverter();
+    }
+    
+    protected void initMessageFilterManager() {
+        messageFilterManager = new OFMessageFilterManager();
+        messageFilterManager.init(this);
+    }
+    
+    protected void initStaticFlowPusher() {
+        staticFlowEntryPusher = new StaticFlowEntryPusher();
+        staticFlowEntryPusher.setFloodlightProvider(this);
+    }
+    
+    protected void initForwarding() {
+        forwarding = new Forwarding();
+        forwarding.setFloodlightProvider(this);
+        forwarding.setCounterStore(counterStore);
+        forwarding.setDeviceManager(deviceManager);
+        forwarding.setRoutingEngine(routingEngine);
+        forwarding.setTopology(topology);
     }
     
     /**
@@ -1434,10 +1458,12 @@ public class Controller
         context.getAttributes().put("storageSource", storageSource);
         context.getAttributes().put("deviceManager", deviceManager);
         context.getAttributes().put("messageFilterManager",
-                                                        messageFilterManager);
+                                    messageFilterManager);
         context.getAttributes().put("pktinProcessingTime", pktinProcTime);
-        context.getAttributes().put("staticFlowEntryPusher", 
-                                                        staticFlowEntryPusher);
+        if (staticFlowEntryPusher != null) {
+            context.getAttributes().put("staticFlowEntryPusher", 
+                                        staticFlowEntryPusher);
+        }
         context.getAttributes().put("topology", topology);
     }
     
@@ -1460,19 +1486,19 @@ public class Controller
         // no need to do storageSource.startUp()
         log.debug("Starting counterStore service");
         counterStore.startUp();
-        log.debug("Starting learningSwitch service");
-        learningSwitch.startUp();
-        
+        log.debug("Starting routingEngine service");
+        routingEngine.startUp();
+        log.debug("Starting forwarding service");
+        forwarding.startUp(); 
         log.debug("Starting messageFilter service");
         messageFilterManager.startUp();
-  
         log.debug("Starting staticFlowEntryPusher service");
         staticFlowEntryPusher.startUp();
     }
     
     /** 
      * Main function entry point; override init() for adding modules
-     * @param args
+     * @param args Command line arguments
      */
     
     public static void main(String args[]) throws Exception {

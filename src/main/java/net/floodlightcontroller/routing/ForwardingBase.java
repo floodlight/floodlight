@@ -103,6 +103,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 IRoutingDecision decision = null;
                 if (cntx != null) decision = 
                     IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); 
+                
                 return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
         }
         log.error("received an unexpected message {} from switch {}", msg, sw);
@@ -130,16 +131,13 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     
     /**
      * Push routes from back to front
-     * @param route
-     * @param match
-     * @param srcSwPort
-     * @param dstSwPort
-     * @param bufferId
-     * @param srcSwitch
-     * @param pi
-     * @return
+     * @param route Route to push
+     * @param match OpenFlow fields to match on
+     * @param srcSwPort Source switch port for the first hop
+     * @param dstSwPort Destination switch port for final hop
+     * @param bufferId BufferId of the original PacketIn
+     * @return srcSwitchIincluded True if the source switch is included in this route
      */
-
     public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
             SwitchPortTuple srcSwPort,
             SwitchPortTuple dstSwPort, int bufferId,
@@ -187,8 +185,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 fm.getMatch().setInputPort(link.getInPort());
                 try {
                     updateCounterStore(sw, fm);
-                    log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
-                              new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), ((OFActionOutput)fm.getActions().get(0)).getPort() });
+                    if (log.isDebugEnabled()) {
+                        log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
+                                  new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), 
+                                                 ((OFActionOutput)fm.getActions().get(0)).getPort() });
+                    }
                     sw.write(fm, cntx);
                     
                     // Push the packet out the source switch
