@@ -1393,11 +1393,12 @@ public class Controller
      * new components
      */
     protected void init() {
+        initStorageSource();
         topology = new TopologyImpl();
         deviceManager = new DeviceManagerImpl();
-        storageSource = new MemoryStorageSource();
         counterStore = new CounterStore();
         pktinProcTime = new PktinProcessingTime();
+        routingEngine = new RoutingImpl();
         
         topology.setFloodlightProvider(this);
         topology.setStorageSource(storageSource);
@@ -1408,7 +1409,6 @@ public class Controller
         
         initMessageFilterManager();
         initStaticFlowPusher();
-        routingEngine = new RoutingImpl();
         initForwarding();
         
         // call this explicitly because it does setup
@@ -1428,6 +1428,10 @@ public class Controller
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());
         JacksonCustomConverter.replaceConverter();
+    }
+    
+    protected void initStorageSource() {
+        storageSource = new MemoryStorageSource();
     }
     
     protected void initMessageFilterManager() {
