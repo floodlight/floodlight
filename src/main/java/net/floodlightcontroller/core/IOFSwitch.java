@@ -60,7 +60,7 @@ public interface IOFSwitch {
     /**
      * Writes the list of messages to the output stream
      * The message will be handed to the floodlightProvider for possible filtering
-     * @param m  
+     * @param msglist
      * @param bc
      * @throws IOException
      */
@@ -94,7 +94,7 @@ public interface IOFSwitch {
     
     /**
      * Set the SwitchProperties based on it's description
-     * @param featuresReply
+     * @param description
      */
     public void setSwitchProperties(OFDescriptionStatistics description);    
 
