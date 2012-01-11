@@ -35,30 +35,9 @@ public class EventHistory<T> {
         return events;
     }
 
-    public class BaseInfo {
-        public int              idx;
-        public long             time_ns; // timestamp in nanoseconds
-        public EvState          state;
-        public EvAction         action;
-
-        // Getters
-        public int getIdx() {
-            return idx;
-        }
-        public long getTime_ns() {
-            return time_ns;
-        }
-        public EvState getState() {
-            return state;
-        }
-        public EvAction getAction() {
-            return action;
-        }
-    }
-
     public class Event {
-        public BaseInfo  base_info;
-        public T          info;
+        public EventHistoryBaseInfo base_info;
+        public T info;
     }
 
     public enum EvState {
@@ -84,7 +63,7 @@ public class EventHistory<T> {
 
         for (int idx = 0; idx < maxEvents; idx++) {
             Event evH     = new Event();
-            evH.base_info = new BaseInfo();
+            evH.base_info = new EventHistoryBaseInfo();
             evH.info      = null;
             evH.base_info.state = EvState.FREE;
             evH.base_info.idx   = idx;
@@ -103,10 +82,7 @@ public class EventHistory<T> {
     }
 
     // Copy constructor - copy latest k items of the event history
-    public EventHistory(Object eventHistIn, int latestK) {
-
-        EventHistory<T> eventHist = (EventHistory<T>)eventHistIn;
-
+    public EventHistory(EventHistory<T> eventHist, int latestK) {
         int curSize = (eventHist.full)?eventHist.event_history_size:
                                                     eventHist.current_index;
         int size  = (latestK < curSize)?latestK:curSize;

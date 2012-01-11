@@ -17,37 +17,42 @@
 package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
-import java.util.Date;
 
-import net.floodlightcontroller.util.EventHistory.BaseInfo;
+import java.sql.Timestamp;
+
+import net.floodlightcontroller.util.EventHistoryBaseInfo;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
 
+
 /**
  * @author subrata
  *
  */
 
-public class BaseInfoJSONSerializer extends 
-                                    JsonSerializer<BaseInfo> {
+public class EventHistoryBaseInfoJSONSerializer extends 
+                                    JsonSerializer<EventHistoryBaseInfo> {
 
  
     /**
      * Performs the serialization of a EventHistory.BaseInfo object
      */
     @Override
-    public void serialize(BaseInfo base_info, JsonGenerator jGen,
+    public void serialize(EventHistoryBaseInfo base_info, JsonGenerator jGen,
                     SerializerProvider serializer) 
                     throws IOException, JsonProcessingException {
         jGen.writeStartObject();
         jGen.writeNumberField("Idx",    base_info.getIdx());
-        jGen.writeStringField("Time",   
+        jGen.writeStringField("Time",
                             convertNanoSecondsToStr(base_info.getTime_ns()));
         jGen.writeStringField("State",  base_info.getState().name());
-        jGen.writeStringField("Action", base_info.getAction().name());
+        String acStr = base_info.getAction().name().toLowerCase();
+        // Capitalize the first letter
+        acStr = acStr.substring(0,1).toUpperCase().concat(acStr.substring(1));
+        jGen.writeStringField("Action", acStr);
         jGen.writeEndObject();
     }
 
@@ -55,13 +60,21 @@ public class BaseInfoJSONSerializer extends
      * Tells SimpleModule that we are the serializer for OFMatch
      */
     @Override
-    public Class<BaseInfo> handledType() {
-        return BaseInfo.class;
+    public Class<EventHistoryBaseInfo> handledType() {
+        return EventHistoryBaseInfo.class;
     }
-    
+
     public String convertNanoSecondsToStr(long nanoSeconds) {
-        long millisecs = nanoSeconds / 1000000;
-        String timeStr = (new Date(millisecs)).toString();
+        long millisecs    = nanoSeconds / 1000000;
+        int  remaining_ns = (int)(nanoSeconds % 1000000000);
+        Timestamp ts      = new Timestamp(millisecs);
+        ts.setNanos(remaining_ns);
+        // Show up to microseconds resolution
+        // length of "2012-01-09 14:54:45.067253" is 26
+        String timeStr = ts.toString();
+        while (timeStr.length() < 26) {
+            timeStr = timeStr.concat("0");
+        }
         return timeStr;
     }
 }

@@ -624,7 +624,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         this.lock = new ReentrantReadWriteLock();
         this.updates = new LinkedList<Update>();
         this.evHistDevMgrAttachPt = 
-                new EventHistory<EvHistAttachmentPt>("Attachment-Point");
+                new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
         this.evHistDevMgrPktIn =
                 new EventHistory<OFMatch>("Pakcet-In");
     }
@@ -1910,41 +1910,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     // Device Manager's Event History members and methods
     // **************************************************
 
-    /***
-     * Attachment-Point Event history related classes and members
-     * @author subrata
-     *
-     */
-    public class EvHistAttachmentPt {
-        public String   reason;
-        // The following fields are not stored as String to save memory
-        // They shoudl be converted to appropriate human-readable strings by 
-        // the front end (e.g. in cli in python)
-        public long     mac;
-        public short    vlan;
-        public short    port;
-        public long     dpid;
-
-        public long getMac() {
-            return mac;
-        }
-        public short getVlan() {
-            return vlan;
-        }
-        public short getPort() {
-            return port;
-        }
-        public long getDpid() {
-            return dpid;
-        }
-        public String getReason() {
-            return reason;
-        }
-    }
-
     // Attachment-point event history
-    public EventHistory<EvHistAttachmentPt> evHistDevMgrAttachPt;
-    public EvHistAttachmentPt evHAP;
+    public EventHistory<EventHistoryAttachmentPoint> evHistDevMgrAttachPt;
+    public EventHistoryAttachmentPoint evHAP;
 
     private void evHistAttachmtPt(Device d, SwitchPortTuple swPrt,
                                             EvAction action, String reason) {
@@ -1968,7 +1936,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     private void evHistAttachmtPt(long mac, long dpid, short port,
                                               EvAction action, String reason) {
         if (evHAP == null) {
-            evHAP = new EvHistAttachmentPt();
+            evHAP = new EventHistoryAttachmentPoint();
         }
         evHAP.dpid   = dpid;
         evHAP.port   = port;

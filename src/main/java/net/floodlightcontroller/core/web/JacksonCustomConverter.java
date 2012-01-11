@@ -19,6 +19,8 @@ package net.floodlightcontroller.core.web;
 
 import java.util.List;
 
+import net.floodlightcontroller.core.web.serializers.EventHistoryAttachmentPointJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.EventHistoryBaseInfoJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFFeaturesReplyJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFMatchJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFPhysicalPortJSONSerializer;
@@ -44,7 +46,8 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class JacksonCustomConverter extends JacksonConverter {
-    protected static Logger log = LoggerFactory.getLogger(JacksonCustomConverter.class);
+    protected static Logger log = 
+                        LoggerFactory.getLogger(JacksonCustomConverter.class);
 
     protected static ObjectMapper jsonObjectMapper;
     protected static SimpleModule jsonModule;
@@ -56,19 +59,26 @@ public class JacksonCustomConverter extends JacksonConverter {
         jsonModule.addSerializer(new OFMatchJSONSerializer());
         jsonModule.addSerializer(new OFFeaturesReplyJSONSerializer());
         jsonModule.addSerializer(new OFPhysicalPortJSONSerializer());
+        jsonModule.addSerializer(new EventHistoryBaseInfoJSONSerializer());
+        jsonModule.addSerializer(
+                            new EventHistoryAttachmentPointJSONSerializer());
         jsonObjectMapper.registerModule(jsonModule);
     }
     
     @Override
-    protected <T> JacksonRepresentation<T> create(MediaType mediaType, T source) {
-        JacksonRepresentation<T> jr = new JacksonRepresentation<T>(mediaType, source);
+    protected <T> JacksonRepresentation<T> 
+                                        create(MediaType mediaType, T source) {
+        JacksonRepresentation<T> jr = 
+                                new JacksonRepresentation<T>(mediaType, source);
         jr.setObjectMapper(jsonObjectMapper);
         return jr;
     }
 
     @Override
-    protected <T> JacksonRepresentation<T> create(Representation source, Class<T> objectClass) {
-        JacksonRepresentation<T> jr = new JacksonRepresentation<T>(source, objectClass);
+    protected <T> JacksonRepresentation<T> 
+                        create(Representation source, Class<T> objectClass) {
+        JacksonRepresentation<T> jr = 
+                        new JacksonRepresentation<T>(source, objectClass);
         jr.setObjectMapper(jsonObjectMapper);
         return jr;
     }
@@ -81,7 +91,8 @@ public class JacksonCustomConverter extends JacksonConverter {
     public static void replaceConverter() {
         ConverterHelper oldConverter = null;
 
-        List<ConverterHelper> converters = Engine.getInstance().getRegisteredConverters();
+        List<ConverterHelper> converters = 
+                            Engine.getInstance().getRegisteredConverters();
         for (ConverterHelper converter : converters) {
             if (converter.getClass().equals(JacksonConverter.class)) {
                 converters.remove(converter);
@@ -93,7 +104,8 @@ public class JacksonCustomConverter extends JacksonConverter {
         converters.add(new JacksonCustomConverter());
 
         if (oldConverter == null) {
-            log.debug("Added {} to Restlet Engine", JacksonCustomConverter.class);
+            log.debug("Added {} to Restlet Engine", 
+                                                JacksonCustomConverter.class);
         } else {
             log.debug("Replaced {} with {} in Restlet Engine", 
                          oldConverter.getClass(), JacksonCustomConverter.class);
