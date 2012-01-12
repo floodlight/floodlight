@@ -1285,7 +1285,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * Puts an update in queue to indicate the Device moved.  Must be called
      * from within the write lock.
      * @param device The device that has moved.
-     * @param oldPort The old switchport
+     * @param oldSwPort The old switchport
      * @param newDap The new attachment point
      */
     protected void updateMoved(Device device, SwitchPortTuple oldSwPort, 
@@ -1341,7 +1341,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     /**
      * Removes any attachment points that are in the same 
      * {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster} 
-     * @param The device to update the attachment points
+     * @param d The device to update the attachment points
      */
     public void cleanupAttachmentPoints(Device d) {
         // The long here is the SwitchCluster ID
