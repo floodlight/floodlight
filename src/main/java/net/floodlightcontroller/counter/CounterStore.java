@@ -139,7 +139,8 @@ public class CounterStore {
      * Create a new ICounter and set the title.  Note that the title must be unique, otherwise this will
      * throw an IllegalArgumentException.
      * 
-     * @param title
+     * @param key
+     * @param type
      * @return
      */
     public ICounter createCounter(String key, CounterValue.CounterType type) {
