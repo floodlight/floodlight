@@ -24,6 +24,8 @@ import net.floodlightcontroller.core.web.serializers.EventHistoryBaseInfoJSONSer
 import net.floodlightcontroller.core.web.serializers.OFFeaturesReplyJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFMatchJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFPhysicalPortJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.PerfMonCumulativeTimeBucketJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.PerfMonOneComponentTimeJSONSerializer;
 
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.Version;
@@ -62,6 +64,9 @@ public class JacksonCustomConverter extends JacksonConverter {
         jsonModule.addSerializer(new EventHistoryBaseInfoJSONSerializer());
         jsonModule.addSerializer(
                             new EventHistoryAttachmentPointJSONSerializer());
+        jsonModule.addSerializer(new PerfMonOneComponentTimeJSONSerializer());
+        jsonModule.addSerializer(
+                            new PerfMonCumulativeTimeBucketJSONSerializer());
         jsonObjectMapper.registerModule(jsonModule);
     }
     

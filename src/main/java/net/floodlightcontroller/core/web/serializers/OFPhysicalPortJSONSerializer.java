@@ -45,7 +45,7 @@ public class OFPhysicalPortJSONSerializer extends JsonSerializer<OFPhysicalPort>
         jGen.writeNumberField("supportedFeatures", port.getSupportedFeatures());
         jGen.writeEndObject();
     }
-    
+
     /**
      * Tells SimpleModule that we are the serializer for OFPhysicalPort
      */

@@ -39,32 +39,46 @@ public class OFMatchJSONSerializer extends JsonSerializer<OFMatch> {
                ((i >>  8 ) & 0xFF) + "." +
                ( i        & 0xFF);
     }
-    
+
     /**
      * Performs the serialization of a OFMatch object
      */
     @Override
-    public void serialize(OFMatch match, JsonGenerator jGen, SerializerProvider serializer) throws IOException, JsonProcessingException {
+    public void serialize(OFMatch match, JsonGenerator jGen, 
+                                SerializerProvider serializer) 
+                                throws IOException, JsonProcessingException {
         jGen.writeStartObject();
-        jGen.writeStringField("dataLayerDestination", HexString.toHexString(match.getDataLayerDestination()));
-        jGen.writeStringField("dataLayerSource", HexString.toHexString(match.getDataLayerSource()));
+        jGen.writeStringField("dataLayerDestination", 
+                    HexString.toHexString(match.getDataLayerDestination()));
+        jGen.writeStringField("dataLayerSource", 
+                    HexString.toHexString(match.getDataLayerSource()));
         String dataType = Integer.toHexString(match.getDataLayerType());
         while (dataType.length() < 4) {
             dataType = "0".concat(dataType);
         }
         jGen.writeStringField("dataLayerType", "0x" + dataType);
-        jGen.writeNumberField("dataLayerVirtualLan", match.getDataLayerVirtualLan());
-        jGen.writeNumberField("dataLayerVirtualLanPriorityCodePoint", match.getDataLayerVirtualLanPriorityCodePoint());
-        jGen.writeStringField("inputSwitch", HexString.toHexString(match.getSwitchDataPathId()));
+        jGen.writeNumberField("dataLayerVirtualLan", 
+                    match.getDataLayerVirtualLan());
+        jGen.writeNumberField("dataLayerVirtualLanPriorityCodePoint", 
+                    match.getDataLayerVirtualLanPriorityCodePoint());
+        jGen.writeStringField("inputSwitch", 
+                    HexString.toHexString(match.getSwitchDataPathId()));
         jGen.writeNumberField("inputPort", match.getInputPort());
-        jGen.writeStringField("networkDestination", intToIp(match.getNetworkDestination()));
-        jGen.writeNumberField("networkDestinationMaskLen", match.getNetworkDestinationMaskLen());
+        jGen.writeStringField("networkDestination", 
+                    intToIp(match.getNetworkDestination()));
+        jGen.writeNumberField("networkDestinationMaskLen", 
+                    match.getNetworkDestinationMaskLen());
         jGen.writeNumberField("networkProtocol", match.getNetworkProtocol());
-        jGen.writeStringField("networkSource", intToIp(match.getNetworkSource()));
-        jGen.writeNumberField("networkSourceMaskLen", match.getNetworkSourceMaskLen());
-        jGen.writeNumberField("networkTypeOfService", match.getNetworkTypeOfService());
-        jGen.writeNumberField("transportDestination", match.getTransportDestination());
-        jGen.writeNumberField("transportSource", match.getTransportSource());
+        jGen.writeStringField("networkSource", 
+                    intToIp(match.getNetworkSource()));
+        jGen.writeNumberField("networkSourceMaskLen", 
+                    match.getNetworkSourceMaskLen());
+        jGen.writeNumberField("networkTypeOfService", 
+                    match.getNetworkTypeOfService());
+        jGen.writeNumberField("transportDestination", 
+                    match.getTransportDestination());
+        jGen.writeNumberField("transportSource", 
+                    match.getTransportSource());
         jGen.writeNumberField("wildcards", match.getWildcards());
         jGen.writeEndObject();
     }
