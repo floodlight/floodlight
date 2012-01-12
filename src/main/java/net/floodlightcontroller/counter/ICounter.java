@@ -63,7 +63,7 @@ public interface ICounter {
    * Returns a CountSeries that is a snapshot of the counter's values for the given dateSpan.  (Further changes
    * to this counter won't be reflected in the CountSeries that comes  back.)
    * 
-   * @param startDate
+   * @param dateSpan
    * @return
    */
   public CountSeries snapshot(DateSpan dateSpan);
