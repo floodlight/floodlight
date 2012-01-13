@@ -215,6 +215,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public TopologyImpl() {
         this.lock = new ReentrantReadWriteLock();
         this.updates = new LinkedBlockingQueue<Update>();
+        this.links = new HashMap<LinkTuple, LinkInfo>();
+        this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
+
     }
 
     private void doUpdatesThread() throws InterruptedException {
@@ -262,9 +266,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFSwitchListener(this);
-        links = new HashMap<LinkTuple, LinkInfo>();
-        portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
-        switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
 
         ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
 
