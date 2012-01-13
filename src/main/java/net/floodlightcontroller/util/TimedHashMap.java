@@ -25,14 +25,15 @@ import java.util.Map;
 // The value is time-stamp in milliseconds
 // The time interval denotes the interval for which the entry should remain in the hashmap.
 
-// If an entry is present in the Linkedhashmap, it does not mean that 
+// If an entry is present in the Linkedhashmap, it does not mean that it's valid (recently seen)
 
 
-public class TimedHashMap<K, V> extends LinkedHashMap<K, V> {
+public class TimedHashMap<K> extends LinkedHashMap<K, Long> {
     
     private static final long serialVersionUID = 1L;
     
     private final long timeoutInterval;    //specified in milliseconds.
+    private long cacheHits = 0;
     
     public TimedHashMap(int ti)
     {
@@ -40,12 +41,42 @@ public class TimedHashMap<K, V> extends LinkedHashMap<K, V> {
         this.timeoutInterval = ti;
     }
     
-    protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
-       return (((Long)eldest.getValue()) < System.currentTimeMillis() - this.timeoutInterval);
+    protected boolean removeEldestEntry(Map.Entry<K, Long> eldest) {
+       return eldest.getValue() < (System.currentTimeMillis() - this.timeoutInterval);
     }
     
     public long getTimeoutInterval()
     {
         return this.timeoutInterval;
+    }
+    
+    public long getCacheHits()
+    {
+    	return cacheHits;
+    }
+
+    /**
+     * Return true if key is present; otherwise add key to cache
+     * @param key
+     * @return
+     */
+    public boolean isPresent(K key)
+    {
+        Long old = this.get(key);
+        Long cur = new Long(System.currentTimeMillis());
+        
+        if (old == null) {
+        	this.put(key, cur);
+        	return false;
+        }
+
+        if (cur - old > this.timeoutInterval) {
+        	this.remove(key);   // this may be unnecessary
+            this.put(key, cur);        
+            return false;
+        }
+        
+        cacheHits++;
+        return true;
     }
 }
