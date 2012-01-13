@@ -56,6 +56,7 @@ import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.util.ClusterDFS;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -508,8 +509,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     protected void sendLLDPs(IOFSwitch sw) {
-        for (OFPhysicalPort port : sw.getEnabledPorts()) {
-            sendLLDPs(sw, port);
+        if (sw.getEnabledPorts() != null) {
+            for (OFPhysicalPort port : sw.getEnabledPorts()) {
+                sendLLDPs(sw, port);
+            }
         }
     }
 
@@ -905,15 +908,39 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     @Override
     public boolean isInternal(SwitchPortTuple idPort) {
         lock.readLock().lock();
-        boolean result;
+        boolean result = false;
+
+        // A SwitchPortTuple is internal if the switch is a core switch
+        // or the current switch and the switch connected on the switch
+        // port tuple are in the same cluster.
+
         try {
-            result = this.portLinks.containsKey(idPort) || 
-                idPort.getSw().hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
+            // If it is a core switch, then return true
+            if (idPort.getSw().hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH))
+                result = true;            
+
+            else {
+                Set<LinkTuple> ltSet = this.portLinks.get(idPort);
+                // The assumption is there could be at most two links for this
+                // switch port: one incoming and one outgoing to the same 
+                // other switch.  So, verifying one of these two links is 
+                // sufficient.
+                if (ltSet != null) {
+                    for(LinkTuple lt: ltSet) {
+                        Long c1 = lt.getSrc().getSw().getSwitchClusterId();
+                        Long c2 = lt.getDst().getSw().getSwitchClusterId();
+                        result = c1.equals(c2);
+                        break;
+                    }
+                }
+            }
         } finally {
             lock.readLock().unlock();
         }
         return result;
     }
+
+
 
     @Override
     public LinkInfo getLinkInfo(SwitchPortTuple idPort, boolean isSrcPort) {
@@ -966,27 +993,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return linkInfo.linkStpBlocked();
     }
 
-    private void traverseCluster(Set<LinkTuple> links, SwitchCluster cluster) {
-        // NOTE: This function assumes that the caller has already acquired
-        // a write lock on the "lock" data member.
-        // FIXME: To handle large networks we probably should recode this to not
-        // use recursion to avoid stack overflow.
-        // FIXME: See if we can optimize not creating a new SwitchCluster object for
-        // each switch.
-        for (LinkTuple link: links) {
-            // FIXME: Is this the right check for handling STP correctly?
-            if (!linkStpBlocked(link)) {
-                IOFSwitch dstSw = link.getDst().getSw();
-                if (switchClusterMap.get(dstSw) == null) {
-                    cluster.add(dstSw);
-                    switchClusterMap.put(dstSw, cluster);
-                    Set<LinkTuple> dstLinks = switchLinks.get(dstSw);
-                    traverseCluster(dstLinks, cluster);
-                }
-            }
-        }
-    }
-
     protected void updateClusters() {
         // NOTE: This function assumes that the caller has already acquired
         // a write lock on the "lock" data member.
@@ -998,31 +1004,127 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             log.trace("Updating topology cluster info");
         }
 
+        // Initialize all the new structures.
         switchClusterMap = new HashMap<IOFSwitch, SwitchCluster>();
         clusters = new HashSet<SwitchCluster>();
-        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
+        Map<Long, IOFSwitch>  switches = floodlightProvider.getSwitches();
         Set<Long> switchKeys = new HashSet<Long>(switches.keySet());
+        Map<IOFSwitch, ClusterDFS> dfsList = new HashMap<IOFSwitch, ClusterDFS>();
+
         for (Map.Entry<IOFSwitch, Set<LinkTuple>> entry: switchLinks.entrySet()) {
             IOFSwitch sw = entry.getKey();
             switchKeys.remove(sw.getId());
-            if (switchClusterMap.get(sw) == null) {
-                SwitchCluster cluster = new SwitchCluster();
-                cluster.add(sw);
-                switchClusterMap.put(sw, cluster);
-                clusters.add(cluster);
-                traverseCluster(entry.getValue(), cluster);
+            ClusterDFS cdfs = new ClusterDFS(); 
+            dfsList.put(sw, cdfs);
+        }
+
+        // Get a set of switch keys in a set
+        Set<IOFSwitch> currSet = new HashSet<IOFSwitch>();
+
+        for (Map.Entry<IOFSwitch, Set<LinkTuple>> entry: switchLinks.entrySet()) {
+            // check if they have been dfs visited already, if not start 
+            // a new dfs.
+            //dfsTraverse(parentIndex, currIndex, key, switches, dfsList);
+            IOFSwitch sw = entry.getKey();
+            ClusterDFS cdfs = dfsList.get(sw);
+            if (cdfs == null) {
+                log.error("Do DFS object for key found.");
+            }else if (!cdfs.isVisited()) {
+                this.dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters);
             }
         }
+        
         // switchKeys contains switches that have no links to other switches
         // Each of these switches would be in their own one-switch cluster
         for (Long key: switchKeys) {
             IOFSwitch sw = switches.get(key);
-            if (sw != null)
-                sw.setSwitchClusterId(sw.getId());
+            if (sw != null) {
+                SwitchCluster sc = new SwitchCluster();
+                sc.add(sw);
+                switchClusterMap.put(sw, sc);
+                clusters.add(sc);
+            } 
         }
 
         updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
     }
+
+    protected long dfsTraverse (long parentIndex, long currIndex, 
+            IOFSwitch currSw, Map<Long, IOFSwitch> switches, 
+            Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet, 
+            Set <SwitchCluster> clusters) {
+
+        //Get the DFS object corresponding to the current switch
+        ClusterDFS currDFS = dfsList.get(currSw);
+        // Get all the links corresponding to this switch
+        Set<LinkTuple> links = switchLinks.get(currSw);
+
+        //Assign the DFS object with right values.
+        currDFS.setVisited(true);
+        currDFS.setParentDFSIndex(parentIndex);
+        currDFS.setDfsIndex(currIndex);
+        currIndex++;
+
+        // Traverse the graph through every outgoing link.
+        for(LinkTuple lt: links) {
+            IOFSwitch dstSw = lt.getDst().getSw();
+
+            // ignore incoming links.
+            if (dstSw == currSw) continue;
+
+            // ignore outgoing links if it is blocked.
+            if (linkStpBlocked(lt)) continue;
+
+            // Get the DFS object corresponding to the dstSw
+            ClusterDFS dstDFS = dfsList.get(dstSw);
+
+            if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
+                // could be a potential lowpoint
+                if (dstDFS.getDfsIndex() < currDFS.getLowpoint()) 
+                    currDFS.setLowpoint(dstDFS.getDfsIndex());
+
+            } else if (!dstDFS.isVisited()) {
+                // make a DFS visit
+                currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
+                        switches, dfsList, currSet, clusters);
+
+                // update lowpoint after the visit
+                if (dstDFS.getLowpoint() < currDFS.getLowpoint()) 
+                    currDFS.setLowpoint(dstDFS.getLowpoint());
+            } 
+            // else, it is a node already visited with a higher 
+            // dfs index, just ignore.
+        }
+
+        // Add current node to currSet.
+        currSet.add(currSw);
+
+        // Cluster computation.
+        // If the node's lowpoint is greater than its parent's DFS index,
+        // we need to form a new cluster with all the switches in the 
+        // currSet.
+        if (currDFS.getLowpoint() > currDFS.getParentDFSIndex()) {
+            // The cluster thus far forms a strongly connected component.
+            // create a new switch cluster and the switches in the current
+            // set to the switch cluster.
+            SwitchCluster sc = new SwitchCluster();
+            Iterator<IOFSwitch> e = currSet.iterator(); 
+            while (e.hasNext()) {
+                IOFSwitch sw = e.next();
+                sc.add(sw);
+                switchClusterMap.put(sw, sc);
+            }
+            // delete all the nodes in the current set.
+            currSet.clear();
+
+            // add the newly formed switch clusters to the cluster set.
+            clusters.add(sc);
+        }
+
+        return currIndex;
+    }
+
+
 
     public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw) {
         SwitchCluster cluster = switchClusterMap.get(sw);

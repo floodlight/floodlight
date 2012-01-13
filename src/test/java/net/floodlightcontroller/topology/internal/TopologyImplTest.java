@@ -265,41 +265,47 @@ public class TopologyImplTest extends FloodlightTestCase {
         
         // Create several switches
         IOFSwitch[] switches = new IOFSwitch[6];
+        Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
+
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
             switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
+            switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
+        mockFloodlightProvider.setSwitches(switchMap);
 
         // Create links among the switches
         int linkInfoArray1[][] = {
                 // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
                 { 1, 1, 0, 2, 1, 0},
-                { 2, 1, 0, 1, 1, 0},
-                { 1, 2, 0, 3, 1, 0},
-                { 3, 1, 0, 1, 2, 0},
                 { 2, 2, 0, 3, 2, 0},
-                { 3, 2, 0, 2, 2, 0},
+                { 3, 1, 0, 1, 2, 0},
                 { 2, 3, 0, 4, 2, 0},
-                { 4, 2, 0, 2, 3, 0},
                 { 3, 3, 0, 4, 1, 0},
-                { 4, 1, 0, 3, 3, 0},
-                { 5, 3, 0, 6, 1, 0},
-                { 6, 1, 0, 5, 3, 0},
         };
         createLinks(topology, switches, linkInfoArray1);
         
         int expectedClusters1[][] = {
-                {1,2,3,4},
-                {5,6}
+                {1,2,3},
+                {4},
+                {5},
+                {6}
         };
         verifyClusters(topology, switches, expectedClusters1);
         
         int linkInfoArray2[][] = {
-            { 4, 3, 0, 5, 1, 0},
-            { 5, 1, 0, 4, 3, 0},
-            { 2, 4, 0, 5, 2, 0},
-            { 5, 2, 0, 2, 4, 0},
+                { 3, 2, 0, 2, 2, 0},
+                { 2, 1, 0, 1, 1, 0},
+                { 1, 2, 0, 3, 1, 0},
+                { 4, 2, 0, 2, 3, 0},
+                { 4, 1, 0, 3, 3, 0},
+                { 4, 3, 0, 5, 1, 0},
+                { 5, 1, 0, 4, 3, 0},
+                { 2, 4, 0, 5, 2, 0},
+                { 5, 2, 0, 2, 4, 0},
+                { 6, 1, 0, 5, 3, 0},
+                { 5, 3, 0, 6, 1, 0},
         };
         createLinks(topology, switches, linkInfoArray2);
         int expectedClusters2[][] = {
