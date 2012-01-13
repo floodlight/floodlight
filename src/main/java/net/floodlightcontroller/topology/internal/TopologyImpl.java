@@ -997,6 +997,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
+<<<<<<< HEAD
      * @author Srinivasan Ramasubramanian
      * 
      * This function divides the network into clusters. Every cluster is 
