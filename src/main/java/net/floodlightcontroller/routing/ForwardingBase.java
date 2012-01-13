@@ -264,12 +264,8 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        if (sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)) {
-            actions.add(new OFActionOutput(OFPort.OFPP_TABLE.getValue(), (short) 0));
-        }
-        else {
-            actions.add(new OFActionOutput(outport, (short) 0));
-        }
+        actions.add(new OFActionOutput(outport, (short) 0));
+
         po.setActions(actions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
         short poLength = (short)(po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);

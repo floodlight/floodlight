@@ -167,7 +167,7 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOut.setBufferId(this.packetIn.getBufferId())
             .setInPort(this.packetIn.getInPort());
         List<OFAction> poactions = new ArrayList<OFAction>();
-        poactions.add(new OFActionOutput(OFPort.OFPP_TABLE.getValue(), (short) 0));
+        poactions.add(new OFActionOutput((short) 3, (short) 0));
         packetOut.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
             .setPacketData(testPacketSerialized)
@@ -196,13 +196,13 @@ public class ForwardingTest extends FloodlightTestCase {
         dstDevice.addAttachmentPoint(new SwitchPortTuple(sw2, (short)3), currentDate);
         Route route = new Route(1L, 2L);
         route.setPath(new ArrayList<Link>());
-        route.getPath().add(new Link((short)2, (short)1, 2L));
+        route.getPath().add(new Link((short)3, (short)1, 2L));
         expect(routingEngine.getRoute(1L, 2L)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods
         OFMatch match = new OFMatch();
         match.loadFromPacket(testPacketSerialized, (short) 1);
-        OFActionOutput action = new OFActionOutput((short)2, (short)0);
+        OFActionOutput action = new OFActionOutput((short)3, (short)0);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
