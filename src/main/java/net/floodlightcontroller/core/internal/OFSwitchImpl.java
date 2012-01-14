@@ -31,7 +31,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
-import net.floodlightcontroller.util.TimedHashMap;
+import net.floodlightcontroller.util.TimedCache;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -71,7 +71,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<MacVlanPair,Short> macVlanToPortMap;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected boolean connected;
-    protected TimedHashMap<Long> timedCache;
+    protected TimedCache<Long> timedCache;
     
     public static IOFSwitchFeatures switchFeatures;
     
@@ -86,7 +86,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.switchClusterId = null;
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
-        this.timedCache = new TimedHashMap<Long>( 5*1000 );  // 5 seconds interval
+        this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
@@ -357,7 +357,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-	public TimedHashMap<Long> getTimedCache() {
+	public TimedCache<Long> getTimedCache() {
         return timedCache;
 	}
 }

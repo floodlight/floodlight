@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 import net.floodlightcontroller.core.types.MacVlanPair;
-import net.floodlightcontroller.util.TimedHashMap;
+import net.floodlightcontroller.util.TimedCache;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -303,5 +303,5 @@ public interface IOFSwitch {
      * @param data
      * @return
      */
-    public TimedHashMap<Long> getTimedCache();
+    public TimedCache<Long> getTimedCache();
 }
