@@ -266,7 +266,6 @@ public class TopologyImplTest extends FloodlightTestCase {
         // Create several switches
         IOFSwitch[] switches = new IOFSwitch[6];
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
-
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
             switches[i].setSwitchClusterId((long)i+1);
@@ -274,7 +273,25 @@ public class TopologyImplTest extends FloodlightTestCase {
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
         mockFloodlightProvider.setSwitches(switchMap);
+        
+        /* Test 0 */
+        int linkInfoArray0[][] = {
+                // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
+                { 1, 1, 0, 2, 1, 0},
+        };
+        createLinks(topology, switches, linkInfoArray0);
+        
+        int expectedClusters0[][] = {
+                {1},
+                {2},
+                {3},
+                {4},
+                {5},
+                {6}
+        };
+        verifyClusters(topology, switches, expectedClusters0);
 
+        
         // Create links among the switches
         int linkInfoArray1[][] = {
                 // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
@@ -294,18 +311,65 @@ public class TopologyImplTest extends FloodlightTestCase {
         };
         verifyClusters(topology, switches, expectedClusters1);
         
+        /* Test 1a*/
+        int linkInfoArray1a[][] = {
+                { 5, 3, 0, 6, 1, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1a);
+        verifyClusters(topology, switches, expectedClusters1);
+        
+        /* Test 1b*/
+        int linkInfoArray1b[][] = {
+                { 6, 1, 0, 5, 3, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1b);
+        int expectedClusters1b[][] = {
+                {1,2,3},
+                {4},
+                {5, 6}
+        };
+        verifyClusters(topology, switches, expectedClusters1b);
+        
+        /* Test 1c */
+        int linkInfoArray1c[][] = {
+                { 4, 2, 0, 2, 3, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1c);
+        int expectedClusters1c[][] = {
+                {1,2,3,4},
+                {5, 6}
+        };
+        verifyClusters(topology, switches, expectedClusters1c);
+        
+        /* Test 1d */
+        int linkInfoArray1d[][] = {
+                { 4, 3, 0, 5, 1, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1d);
+        int expectedClusters1d[][] = {
+                {1,2,3,4},
+                {5, 6}
+        };
+        verifyClusters(topology, switches, expectedClusters1d);
+        
+        /* Test 1e */
+        int linkInfoArray1e[][] = {
+                { 5, 2, 0, 2, 4, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1e);
+        int expectedClusters1e[][] = {
+                {1,2,3,4,5,6}
+        };
+        verifyClusters(topology, switches, expectedClusters1e);
+        
+        /* Test 2 */
         int linkInfoArray2[][] = {
                 { 3, 2, 0, 2, 2, 0},
                 { 2, 1, 0, 1, 1, 0},
                 { 1, 2, 0, 3, 1, 0},
-                { 4, 2, 0, 2, 3, 0},
                 { 4, 1, 0, 3, 3, 0},
-                { 4, 3, 0, 5, 1, 0},
                 { 5, 1, 0, 4, 3, 0},
                 { 2, 4, 0, 5, 2, 0},
-                { 5, 2, 0, 2, 4, 0},
-                { 6, 1, 0, 5, 3, 0},
-                { 5, 3, 0, 6, 1, 0},
         };
         createLinks(topology, switches, linkInfoArray2);
         int expectedClusters2[][] = {
@@ -351,91 +415,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         verifyClusters(topology, switches, expectedClusters5);
     }
     
-    @Test
-    public void testSwitchClusterMerge() {
-        // We create 3 switches, merge them one by one then ensure the clusters are merged
-        TopologyImpl topology = getTopology();
-        IOFSwitch sw2 = createMockSwitch(2L);
-        IOFSwitch sw3 = createMockSwitch(3L);
-        
-        Capture<Long> sw2ClusterIdCapture = new Capture<Long>(CaptureType.LAST);
-        Capture<Long> sw3ClusterIdCapture = new Capture<Long>(CaptureType.LAST);
-        
-        sw3.setSwitchClusterId(capture(sw3ClusterIdCapture));
-        expectLastCall().anyTimes();
-        sw2.setSwitchClusterId(capture(sw2ClusterIdCapture));
-        expectLastCall().anyTimes();
-        replay(sw2, sw3);
-        
-        LinkTuple lt = new LinkTuple(sw2, (short)2, sw3, (short)1);
-        topology.addOrUpdateLink(lt, 
-                OFPortState.OFPPS_STP_FORWARD.getValue(), 
-                OFPortState.OFPPS_STP_FORWARD.getValue());
-        lt = new LinkTuple(sw3, (short)1, sw2, (short)2);
-        topology.addOrUpdateLink(lt, 
-                OFPortState.OFPPS_STP_FORWARD.getValue(), 
-                OFPortState.OFPPS_STP_FORWARD.getValue());
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        verify(sw2);
-        verify(sw3);
-        
-        assertTrue(sw2ClusterIdCapture.hasCaptured());
-        assertEquals(new Long(2L), sw2ClusterIdCapture.getValue());
-        assertTrue(sw3ClusterIdCapture.hasCaptured());
-        assertEquals(new Long(2L), sw3ClusterIdCapture.getValue());
-        
-        sw2ClusterIdCapture.reset();
-        sw3ClusterIdCapture.reset();
-        reset(sw2, sw3);
-        
-        IOFSwitch sw1 = createMockSwitch(1L);
-        Capture<Long> sw1ClusterIdCapture = new Capture<Long>(CaptureType.LAST);
-        
-        expect(sw2.getId()).andReturn(2L).anyTimes();
-        expect(sw3.getId()).andReturn(3L).anyTimes();
-        
-        sw1.setSwitchClusterId(capture(sw1ClusterIdCapture));
-        expectLastCall().anyTimes();
-        sw3.setSwitchClusterId(capture(sw3ClusterIdCapture));
-        expectLastCall().anyTimes();
-        sw2.setSwitchClusterId(capture(sw2ClusterIdCapture));
-        expectLastCall().anyTimes();
-        
-        replay(sw1, sw2, sw3);
-        
-        lt = new LinkTuple(sw1, (short)1, sw2, (short)1);
-        topology.addOrUpdateLink(lt, 
-                OFPortState.OFPPS_STP_FORWARD.getValue(), 
-                OFPortState.OFPPS_STP_FORWARD.getValue());
-        lt = new LinkTuple(sw2, (short)1, sw1, (short)1);
-        topology.addOrUpdateLink(lt, 
-                OFPortState.OFPPS_STP_FORWARD.getValue(), 
-                OFPortState.OFPPS_STP_FORWARD.getValue());
-        
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        verify(sw1);
-        verify(sw2);
-        verify(sw3);
-        
-        assertTrue(sw1ClusterIdCapture.hasCaptured());
-        assertEquals(new Long(1L), sw2ClusterIdCapture.getValue());
-        assertTrue(sw2ClusterIdCapture.hasCaptured());
-        assertEquals(new Long(1L), sw2ClusterIdCapture.getValue());
-        assertTrue(sw3ClusterIdCapture.hasCaptured());
-        assertEquals(new Long(1L), sw3ClusterIdCapture.getValue());
-    }
+
     
     private void verifyBroadcastTree(TopologyImpl topology, IOFSwitch[] switches, int[][] linkInfoArray) {
         Map<LinkTuple, LinkInfo> thisLinkInfos = new HashMap<LinkTuple, LinkInfo>();
@@ -493,13 +473,16 @@ public class TopologyImplTest extends FloodlightTestCase {
         //
         TopologyImpl topology = getTopology();
         
+        Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         // Create several switches
         IOFSwitch[] switches = new IOFSwitch[6];
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
             switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
+            switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
+        mockFloodlightProvider.setSwitches(switchMap);
 
         // Create links among the switches
         int linkInfoArray[][] = {
@@ -567,14 +550,16 @@ public class TopologyImplTest extends FloodlightTestCase {
         
         //
         TopologyImpl topology = getTopology();
-        
+        Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         // Create several switches
         IOFSwitch[] switches = new IOFSwitch[10];
         for (int i = 0; i < 10; i++) {
             switches[i] = createMockSwitch((long)i+1);
             switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
+            switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
+        mockFloodlightProvider.setSwitches(switchMap);
 
         // Create links among the switches
         int linkInfoArray[][] = {
@@ -651,13 +636,16 @@ public class TopologyImplTest extends FloodlightTestCase {
         //
         TopologyImpl topology = getTopology();
         
+        Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         // Create several switches
         IOFSwitch[] switches = new IOFSwitch[6];
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
             switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
+            switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
+        mockFloodlightProvider.setSwitches(switchMap);
 
         // Create links among the switches
         int linkInfoArray[][] = {
@@ -727,5 +715,52 @@ public class TopologyImplTest extends FloodlightTestCase {
         
         verifyClusters(topology, switches, expectedClusters2);
         verifyBroadcastTree(topology, switches, linkInfoArray3);
+    }
+    
+    @Test
+    public void testSwitchClusterMerge() {
+        // Testing cluster merging once again! 
+        TopologyImpl topology = getTopology();
+        
+        // Create several switches
+        IOFSwitch[] switches = new IOFSwitch[3];
+        Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
+        for (int i = 0; i < 3; i++) {
+            switches[i] = createMockSwitch((long)i+1);
+            switches[i].setSwitchClusterId((long)i+1);
+            replay(switches[i]);
+            switchMap.put(new Long(switches[i].getId()), switches[i]);
+        }
+        mockFloodlightProvider.setSwitches(switchMap);
+        
+        /* Test 0 */
+        int linkInfoArray0[][] = {
+                // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
+                { 3, 1, 0, 2, 1, 0},
+                { 2, 1, 0, 3, 1, 0},
+        };
+        createLinks(topology, switches, linkInfoArray0);
+        
+        int expectedClusters0[][] = {
+                {1},
+                {2,3},
+        };
+        verifyClusters(topology, switches, expectedClusters0);
+        assertTrue(topology.getSwitchCluster(switches[0]).getId() == 1);        
+        assertTrue(topology.getSwitchCluster(switches[2]).getId() == 2);        
+        
+        /* Test 0 */
+        int linkInfoArray1[][] = {
+                // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
+                { 1, 2, 0, 2, 2, 0},
+                { 2, 2, 0, 1, 2, 0},
+        };
+        createLinks(topology, switches, linkInfoArray1);
+        
+        int expectedClusters1[][] = {
+                {1,2,3},
+        };
+        verifyClusters(topology, switches, expectedClusters1);
+        assertTrue(topology.getSwitchCluster(switches[2]).getId() == 1);
     }
 }

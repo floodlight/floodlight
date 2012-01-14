@@ -993,9 +993,23 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return linkInfo.linkStpBlocked();
     }
 
+    /**
+     * @author Srinivasan Ramasubramanian
+     * 
+     * This function divides the network into clusters. Every cluster is 
+     * a strongly connected component. The network may contain unidirectional 
+     * links.
+     * 
+     * The computation of strongly connected components is based on
+     * Tarjan's algorithm.  For more details, please see the Wikipedia
+     * link below.
+     * 
+     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+     */
     protected void updateClusters() {
         // NOTE: This function assumes that the caller has already acquired
         // a write lock on the "lock" data member.
+
         if (!lock.isWriteLockedByCurrentThread()) {
             log.error("Expected lock in updateClusters()");
             return;
@@ -1008,12 +1022,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         switchClusterMap = new HashMap<IOFSwitch, SwitchCluster>();
         clusters = new HashSet<SwitchCluster>();
         Map<Long, IOFSwitch>  switches = floodlightProvider.getSwitches();
-        Set<Long> switchKeys = new HashSet<Long>(switches.keySet());
         Map<IOFSwitch, ClusterDFS> dfsList = new HashMap<IOFSwitch, ClusterDFS>();
 
-        for (Map.Entry<IOFSwitch, Set<LinkTuple>> entry: switchLinks.entrySet()) {
-            IOFSwitch sw = entry.getKey();
-            switchKeys.remove(sw.getId());
+        for (Long key: switches.keySet()) {
+            IOFSwitch sw = switches.get(key);
             ClusterDFS cdfs = new ClusterDFS(); 
             dfsList.put(sw, cdfs);
         }
@@ -1021,35 +1033,20 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // Get a set of switch keys in a set
         Set<IOFSwitch> currSet = new HashSet<IOFSwitch>();
 
-        for (Map.Entry<IOFSwitch, Set<LinkTuple>> entry: switchLinks.entrySet()) {
-            // check if they have been dfs visited already, if not start 
-            // a new dfs.
-            //dfsTraverse(parentIndex, currIndex, key, switches, dfsList);
-            IOFSwitch sw = entry.getKey();
+        for (Long key: switches.keySet()) {
+            IOFSwitch sw = switches.get(key);
             ClusterDFS cdfs = dfsList.get(sw);
             if (cdfs == null) {
                 log.error("Do DFS object for key found.");
             }else if (!cdfs.isVisited()) {
-                this.dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters);
+                this.dfsTraverse(1, sw, switches, dfsList, currSet, clusters);
             }
-        }
-        
-        // switchKeys contains switches that have no links to other switches
-        // Each of these switches would be in their own one-switch cluster
-        for (Long key: switchKeys) {
-            IOFSwitch sw = switches.get(key);
-            if (sw != null) {
-                SwitchCluster sc = new SwitchCluster();
-                sc.add(sw);
-                switchClusterMap.put(sw, sc);
-                clusters.add(sc);
-            } 
         }
 
         updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
     }
 
-    protected long dfsTraverse (long parentIndex, long currIndex, 
+    protected long dfsTraverse (long currIndex, 
             IOFSwitch currSw, Map<Long, IOFSwitch> switches, 
             Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet, 
             Set <SwitchCluster> clusters) {
@@ -1061,39 +1058,41 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
         //Assign the DFS object with right values.
         currDFS.setVisited(true);
-        currDFS.setParentDFSIndex(parentIndex);
         currDFS.setDfsIndex(currIndex);
+        currDFS.setLowpoint(currIndex);
         currIndex++;
 
         // Traverse the graph through every outgoing link.
-        for(LinkTuple lt: links) {
-            IOFSwitch dstSw = lt.getDst().getSw();
+        if (links != null) {
+            for(LinkTuple lt: links) {
+                IOFSwitch dstSw = lt.getDst().getSw();
 
-            // ignore incoming links.
-            if (dstSw == currSw) continue;
+                // ignore incoming links.
+                if (dstSw == currSw) continue;
 
-            // ignore outgoing links if it is blocked.
-            if (linkStpBlocked(lt)) continue;
+                // ignore outgoing links if it is blocked.
+                if (linkStpBlocked(lt)) continue;
 
-            // Get the DFS object corresponding to the dstSw
-            ClusterDFS dstDFS = dfsList.get(dstSw);
+                // Get the DFS object corresponding to the dstSw
+                ClusterDFS dstDFS = dfsList.get(dstSw);
 
-            if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
-                // could be a potential lowpoint
-                if (dstDFS.getDfsIndex() < currDFS.getLowpoint()) 
-                    currDFS.setLowpoint(dstDFS.getDfsIndex());
+                if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
+                    // could be a potential lowpoint
+                    if (dstDFS.getDfsIndex() < currDFS.getLowpoint()) 
+                        currDFS.setLowpoint(dstDFS.getDfsIndex());
 
-            } else if (!dstDFS.isVisited()) {
-                // make a DFS visit
-                currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                        switches, dfsList, currSet, clusters);
+                } else if (!dstDFS.isVisited()) {
+                    // make a DFS visit
+                    currIndex = dfsTraverse(currIndex, dstSw,
+                            switches, dfsList, currSet, clusters);
 
-                // update lowpoint after the visit
-                if (dstDFS.getLowpoint() < currDFS.getLowpoint()) 
-                    currDFS.setLowpoint(dstDFS.getLowpoint());
-            } 
-            // else, it is a node already visited with a higher 
-            // dfs index, just ignore.
+                    // update lowpoint after the visit
+                    if (dstDFS.getLowpoint() < currDFS.getLowpoint()) 
+                        currDFS.setLowpoint(dstDFS.getLowpoint());
+                } 
+                // else, it is a node already visited with a higher 
+                // dfs index, just ignore.
+            }
         }
 
         // Add current node to currSet.
@@ -1103,7 +1102,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // If the node's lowpoint is greater than its parent's DFS index,
         // we need to form a new cluster with all the switches in the 
         // currSet.
-        if (currDFS.getLowpoint() > currDFS.getParentDFSIndex()) {
+        if (currDFS.getLowpoint() == currDFS.getDfsIndex()) {
             // The cluster thus far forms a strongly connected component.
             // create a new switch cluster and the switches in the current
             // set to the switch cluster.
