@@ -1326,7 +1326,8 @@ public class Controller
             final ServerBootstrap bootstrap = new ServerBootstrap(
                     new NioServerSocketChannelFactory(
                             Executors.newCachedThreadPool(),
-                            Executors.newCachedThreadPool()));
+                            Executors.newCachedThreadPool(),
+                            1));  // single threaded
 
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
