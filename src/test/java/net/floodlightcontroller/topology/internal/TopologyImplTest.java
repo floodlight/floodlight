@@ -28,12 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.easymock.Capture;
-import org.easymock.CaptureType;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPhysicalPort;
 
