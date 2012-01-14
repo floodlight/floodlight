@@ -49,6 +49,7 @@
         <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
         <include name="simple-4.1.21.jar"/>
         <include name="netty-3.2.6.Final.jar"/>
+        <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
     </patternset>
     <patternset id="genlib">
         <include name="libthrift-0.7.0.jar"/>
