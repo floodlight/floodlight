@@ -299,7 +299,14 @@ public class TopologyImplTest extends FloodlightTestCase {
                 { 3, 3, 0, 4, 1, 0},
         };
         createLinks(topology, switches, linkInfoArray1);
-        
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
         int expectedClusters1[][] = {
                 {1,2,3},
                 {4},
@@ -369,6 +376,14 @@ public class TopologyImplTest extends FloodlightTestCase {
                 { 2, 4, 0, 5, 2, 0},
         };
         createLinks(topology, switches, linkInfoArray2);
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
         int expectedClusters2[][] = {
                 {1,2,3,4,5,6},
         };
