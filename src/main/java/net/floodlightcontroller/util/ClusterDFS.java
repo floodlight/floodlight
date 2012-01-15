@@ -1,7 +1,8 @@
 package net.floodlightcontroller.util;
 
 public class ClusterDFS {
-    long dfsIndex; 
+    long dfsIndex;
+    long parentDfsIndex;
     long lowpoint;
     boolean visited; 
 
@@ -19,6 +20,13 @@ public class ClusterDFS {
         this.dfsIndex = dfsIndex;
     }
 
+    public long getParentDfsIndex() {
+        return parentDfsIndex;
+    }
+
+    public void setParentDfsIndex(long parentDfsIndex) {
+        this.parentDfsIndex = parentDfsIndex;
+    }
     public long getLowpoint() {
         return lowpoint;
     }
@@ -34,4 +42,6 @@ public class ClusterDFS {
     public void setVisited(boolean visited) {
         this.visited = visited;
     }
+
+
 }
