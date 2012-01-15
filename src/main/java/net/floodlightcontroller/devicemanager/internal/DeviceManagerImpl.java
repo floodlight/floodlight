@@ -1350,7 +1350,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
         // Get only the latest DAPs into a map
         for (DeviceAttachmentPoint dap : d.getAttachmentPoints()) {
-            if (DeviceAttachmentPoint.isNotNull(dap)) {
+            if (DeviceAttachmentPoint.isNotNull(dap) &&
+                            !topology.isInternal(dap.getSwitchPort())) {
                 long clusterId = 
                             dap.getSwitchPort().getSw().getSwitchClusterId();
                 if (map.containsKey(clusterId)) {
@@ -1358,8 +1359,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     // point to "old" list.
                     // They are removed after deleting from storage.
                     DeviceAttachmentPoint value = map.get(clusterId);
-                    if (dap.getLastSeen().after(value.getLastSeen()) && 
-                            !topology.isInternal(dap.getSwitchPort())) {
+                    if (dap.getLastSeen().after(value.getLastSeen())) { 
                         map.put(clusterId, dap);
                         d.addOldAttachmentPoint(value); // on copy of device
                     }
