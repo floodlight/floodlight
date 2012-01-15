@@ -1061,7 +1061,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         //Assign the DFS object with right values.
         currDFS.setVisited(true);
         currDFS.setDfsIndex(currIndex);
-        currDFS.setParentDfsIndex(parentIndex);
+        currDFS.setParentDFSIndex(parentIndex);
         currIndex++;
 
         // Traverse the graph through every outgoing link.
@@ -1104,7 +1104,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // If the node's lowpoint is greater than its parent's DFS index,
         // we need to form a new cluster with all the switches in the 
         // currSet.
-        if (currDFS.getLowpoint() > currDFS.getParentDfsIndex()) {
+        if (currDFS.getLowpoint() > currDFS.getParentDFSIndex()) {
             // The cluster thus far forms a strongly connected component.
             // create a new switch cluster and the switches in the current
             // set to the switch cluster.
