@@ -30,6 +30,7 @@ import org.openflow.util.HexString;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class Ethernet extends BasePacket {
+    private static String HEXES = "0123456789ABCDEF";
     public static final short TYPE_ARP = 0x0806;
     public static final short TYPE_IPv4 = 0x0800;
     public static final short TYPE_LLDP = (short) 0x88cc;
@@ -251,10 +252,28 @@ public class Ethernet extends BasePacket {
     }
 
     /**
+     * Checks to see if a string is a valid MAC address.
+     * @param macAddress
+     * @return True if macAddress is a valid MAC, False otherwise
+     */
+    public static boolean isMACAddress(String macAddress) {
+        String[] macBytes = macAddress.split(":");
+        if (macBytes.length != 6)
+            return false;
+        for (int i = 0; i < 6; ++i) {
+            if (HEXES.indexOf(macBytes[i].toUpperCase().charAt(0)) == -1 || 
+                HEXES.indexOf(macBytes[i].toUpperCase().charAt(1)) == -1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Accepts a MAC address of the form 00:aa:11:bb:22:cc, case does not
      * matter, and returns a corresponding byte[].
-     * @param macAddress
-     * @return
+     * @param macAddress The MAC address to convert into a bye array
+     * @return The macAddress as a byte array 
      */
     public static byte[] toMACAddress(String macAddress) {
         return MACAddress.valueOf(macAddress).toBytes();
