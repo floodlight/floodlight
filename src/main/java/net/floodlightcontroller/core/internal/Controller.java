@@ -218,10 +218,10 @@ public class Controller
     }
 
     public Controller() {
-        this(new PortSettings());
+        this(new CmdLineSettings());
     }
 
-    public Controller(PortSettings settings) {
+    public Controller(CmdLineSettings settings) {
         this.messageListeners =
             new ConcurrentHashMap<OFType, 
                                   ListenerDispatcher<OFType, 
@@ -1504,12 +1504,11 @@ public class Controller
      * Main function entry point; override init() for adding modules
      * @param args Command line arguments
      */
-    
     public static void main(String args[]) throws Exception {
         System.setProperty("org.restlet.engine.loggerFacadeClass", 
                            "org.restlet.ext.slf4j.Slf4jLoggerFacade");
 
-        PortSettings settings = new PortSettings();
+        CmdLineSettings settings = new CmdLineSettings();
         CmdLineParser parser = new CmdLineParser(settings);
         try {
             parser.parseArgument(args);

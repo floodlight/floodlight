@@ -41,6 +41,7 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,11 +74,13 @@ public class Forwarding extends ForwardingBase {
             Long srcIsland = sw.getSwitchClusterId();
             
             if (srcDevice == null) {
-                log.error("No device entry found for source device {}", dstDevice.getDataLayerAddress());
+                log.error("No device entry found for source device {}", 
+                          HexString.toHexString(dstDevice.getDataLayerAddress()));
                 return;
             }
             if (srcIsland == null) {
-                log.error("No openflow island found for source device {}", dstDevice.getDataLayerAddress());
+                log.error("No openflow island found for source device {}", 
+                          HexString.toHexString(dstDevice.getDataLayerAddress()));
                 return;
             }
                                                 

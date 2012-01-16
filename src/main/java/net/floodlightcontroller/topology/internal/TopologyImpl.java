@@ -775,11 +775,13 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
                 List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
                 if (this.portLinks.containsKey(tuple)) {
-                    log.debug("handlePortStatus: Switch {} port #{} " +
-                             "reason {}; removing links",
-                             new Object[] {HexString.toHexString(sw.getId()),
-                                            ps.getDesc().getPortNumber(),
-                                            ps.getReason()});
+                    if (log.isDebugEnabled()) {
+                        log.debug("handlePortStatus: Switch {} port #{} " +
+                                  "reason {}; removing links",
+                                  new Object[] {HexString.toHexString(sw.getId()),
+                                                ps.getDesc().getPortNumber(),
+                                                ps.getReason()});
+                    }
                     eraseList.addAll(this.portLinks.get(tuple));
                     deleteLinks(eraseList);
                     topologyChanged = true;
@@ -831,6 +833,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         } finally {
             lock.writeLock().unlock();
         }
+        
         if (!link_deleted) {
             // Send LLDP right away when port state is changed for faster 
             // cluster-merge. If it is a link delete then there is not need
@@ -1015,7 +1018,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             return;
         }
         if (log.isTraceEnabled()) {
-            log.trace("Updating topology cluster info");
+            log.trace("Computing topology cluster info");
         }
 
         // Initialize all the new structures.
