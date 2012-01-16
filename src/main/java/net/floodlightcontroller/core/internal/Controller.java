@@ -177,6 +177,7 @@ public class Controller
 
     protected int restPort;
     protected int openFlowPort;
+    protected boolean cbenchSupported;
 
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -218,10 +219,10 @@ public class Controller
     }
 
     public Controller() {
-        this(new PortSettings());
+        this(new CmdLineSettings());
     }
 
-    public Controller(PortSettings settings) {
+    public Controller(CmdLineSettings settings) {
         this.messageListeners =
             new ConcurrentHashMap<OFType, 
                                   ListenerDispatcher<OFType, 
@@ -231,6 +232,7 @@ public class Controller
         this.restlets = new ArrayList<RestletRoutable>();
         this.restPort = settings.getRestPort();
         this.openFlowPort = settings.getOpenFlowPort();
+        this.cbenchSupported = settings.isCbenchSupported();
     }
     
     // **********************
@@ -488,9 +490,12 @@ public class Controller
                         sw.setFeaturesReply((OFFeaturesReply) m);
                         sendFeatureReplyConfiguration();
                         state.hsState = HandshakeState.FEATURES_REPLY;
-                        // uncomment to enable "dumb" switches like cbench
-                        // state.hsState = HandshakeState.READY;
-                        // addSwitch(sw);
+                        
+                        if (cbenchSupported) {
+	                        // enables "dumb" switches like cbench
+	                        state.hsState = HandshakeState.READY;
+	                        addSwitch(sw);
+                        }
                     } else {
                         String em = "Unexpected FEATURES_REPLY from " + sw;
                         throw new SwitchStateException(em);
@@ -1509,7 +1514,7 @@ public class Controller
         System.setProperty("org.restlet.engine.loggerFacadeClass", 
                            "org.restlet.ext.slf4j.Slf4jLoggerFacade");
 
-        PortSettings settings = new PortSettings();
+        CmdLineSettings settings = new CmdLineSettings();
         CmdLineParser parser = new CmdLineParser(settings);
         try {
             parser.parseArgument(args);
