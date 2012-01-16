@@ -1864,12 +1864,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                             for (Device d: devMgrMaps.getDevicesOnASwitch(sw)) {
                                 Device dCopy = new Device(d);
                                 cleanupAttachmentPoints(dCopy);
-                                /*
-                                evHistAttachmtPt(dCopy, 0L, (short)(-1),
-                                        EvAction.UPDATED, "DeviceUpdateWorker");
-                                */
                                 for (DeviceAttachmentPoint dap : 
-                                            dCopy.getOldAttachmentPoints()) {
+                                    dCopy.getOldAttachmentPoints()) {
                                     // Don't remove conflict attachment points 
                                     // with recent activities
                                     if (dap.isInConflict())
@@ -1879,21 +1875,25 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                     // leave stale attachment points on storage.
                                     removeAttachmentPointFromStorage(dCopy, dap);
                                     dCopy.removeOldAttachmentPoint(dap);
-                                    // Update the maps with the new dev. copy
-                                    devMgrMaps.updateMaps(dCopy);
                                 }
+                                // Update the maps with the new device copy
+                                devMgrMaps.updateMaps(dCopy);
                             }
-                            maxIter = 0;
+                            break;
                         }  catch (ConcurrentModificationException e) {
                             maxIter--;
                         } catch (NullPointerException e) { }
                     }
+                    if (maxIter == 0) {
+                        log.warn("Device attachment point clean up " +
+                                "attempted three times and failed.");
+                    }
                 }
                 log.debug("DeviceUpdateWorker: finished cleaning up device " +
-                            "attachment points");
+                          "attachment points");
             } catch (StorageException e) {
                 log.error("DeviceUpdateWorker had a storage exception, " +
-                            "Floodlight exiting");
+                        "Floodlight exiting");
                 System.exit(1);
             }
         }
