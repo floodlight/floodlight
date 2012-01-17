@@ -80,6 +80,7 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.storage.web.StorageWebRoutable;
 import net.floodlightcontroller.topology.ITopologyAware;
 import net.floodlightcontroller.topology.internal.TopologyImpl;
+import net.floodlightcontroller.topology.web.TopologyWebRouteable;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -1427,6 +1428,7 @@ public class Controller
         
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());
+        restlets.add(new TopologyWebRouteable());
         JacksonCustomConverter.replaceConverter();
     }
     
