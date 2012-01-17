@@ -80,6 +80,7 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.storage.web.StorageWebRoutable;
 import net.floodlightcontroller.topology.ITopologyAware;
 import net.floodlightcontroller.topology.internal.TopologyImpl;
+import net.floodlightcontroller.topology.web.TopologyWebRouteable;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -218,10 +219,10 @@ public class Controller
     }
 
     public Controller() {
-        this(new PortSettings());
+        this(new CmdLineSettings());
     }
 
-    public Controller(PortSettings settings) {
+    public Controller(CmdLineSettings settings) {
         this.messageListeners =
             new ConcurrentHashMap<OFType, 
                                   ListenerDispatcher<OFType, 
@@ -1427,6 +1428,7 @@ public class Controller
         
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());
+        restlets.add(new TopologyWebRouteable());
         JacksonCustomConverter.replaceConverter();
     }
     
@@ -1504,12 +1506,11 @@ public class Controller
      * Main function entry point; override init() for adding modules
      * @param args Command line arguments
      */
-    
     public static void main(String args[]) throws Exception {
         System.setProperty("org.restlet.engine.loggerFacadeClass", 
                            "org.restlet.ext.slf4j.Slf4jLoggerFacade");
 
-        PortSettings settings = new PortSettings();
+        CmdLineSettings settings = new CmdLineSettings();
         CmdLineParser parser = new CmdLineParser(settings);
         try {
             parser.parseArgument(args);

@@ -5,7 +5,7 @@ import org.kohsuke.args4j.Option;
 /**
  * Expresses the port settings of OpenFlow controller.
  */
-public class PortSettings {
+public class CmdLineSettings {
     private final int DEFAULT_OPENFLOW_PORT = 6633;
     private final int DEFAULT_REST_PORT = 8080;
 
