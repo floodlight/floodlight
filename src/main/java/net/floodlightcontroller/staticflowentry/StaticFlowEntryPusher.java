@@ -68,7 +68,7 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
     protected ArrayList<String> flowmodList;
     protected ArrayList<IOFSwitch> activeSwitches;
     protected HashMap<Long, HashMap<String, OFFlowMod>> flowmods;
-    protected Long pushEntriesFrequency = 25L;
+    protected int pushEntriesFrequency = 25; // seconds
     protected Runnable pushEntriesTimer;
 
     public StaticFlowEntryPusher() {
@@ -90,8 +90,20 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
         this.floodlightProvider = floodlightProvider;
     }
     
-    public long getFlowPushTimeSeconds() {
+    /**
+     * Gets the static flow entry push interval
+     * @return The push interval in seconds
+     */
+    public int getFlowPushTimeSeconds() {
         return pushEntriesFrequency;
+    }
+    
+    /**
+     * Sets the static flow entry push interval
+     * @param s The interval in seconds to set
+     */
+    public void setFlowPushTimeSeconds(int s) {
+        pushEntriesFrequency = s;
     }
 
     @Override
@@ -542,7 +554,7 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
             fm.setMatch(match);
             fm.setActions(actions);
             fm.setPriority((short)Integer.parseInt(priority));
-            fm.setCookie(computeEntryCookie(fm, (int)Integer.parseInt(userCookie), name));  
+            fm.setCookie(computeEntryCookie((int)Integer.parseInt(userCookie), name));  
             fm.setLength(U16.t(OFFlowMod.MINIMUM_LENGTH + actionsLength));
             
             flowmod.dpidStr = switchDpid;
@@ -560,12 +572,11 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
     /**
      * Utility method to compute Cookie for an OFFlowMod object
      * 
-     * @param fm
      * @param userCookie
      * @param name
      * @return long
      */
-    protected long computeEntryCookie(OFFlowMod fm, int userCookie, String name) {
+    protected long computeEntryCookie(int userCookie, String name) {
         // Placeholder for now, but we should do something like this...
         int STATIC_FLOW_APP_ID = 10;
 
@@ -608,7 +619,8 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
                 }
             }
         };
-        floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 1000, TimeUnit.MILLISECONDS);
+        // Initially push entries in 1 second
+        floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 1, TimeUnit.SECONDS);
     }
 
     /**
