@@ -32,13 +32,41 @@ public class OFPhysicalPort {
     public static int OFP_ETH_ALEN = 6;
 
     public enum OFPortConfig {
-        OFPPC_PORT_DOWN    (1 << 0),
-        OFPPC_NO_STP       (1 << 1),
-        OFPPC_NO_RECV      (1 << 2),
-        OFPPC_NO_RECV_STP  (1 << 3),
-        OFPPC_NO_FLOOD     (1 << 4),
-        OFPPC_NO_FWD       (1 << 5),
-        OFPPC_NO_PACKET_IN (1 << 6);
+        OFPPC_PORT_DOWN    (1 << 0) {
+            public String toString() {
+                return "port-down (0x1)";
+            }
+        },
+        OFPPC_NO_STP       (1 << 1) {
+            public String toString() {
+                return "no-stp (0x2)";
+            }
+        },
+        OFPPC_NO_RECV      (1 << 2) {
+            public String toString() {
+                return "no-recv (0x4)";
+            }
+        },
+        OFPPC_NO_RECV_STP  (1 << 3) {
+            public String toString() {
+                return "no-recv-stp (0x8)";
+            }
+        },
+        OFPPC_NO_FLOOD     (1 << 4) {
+            public String toString() {
+                return "no-flood (0x10)";
+            }
+        },
+        OFPPC_NO_FWD       (1 << 5) {
+            public String toString() {
+                return "no-fwd (0x20)";
+            }
+        },
+        OFPPC_NO_PACKET_IN (1 << 6) {
+            public String toString() {
+                return "no-pkt-in (0x40)";
+            }
+        };
 
         protected int value;
 
@@ -55,12 +83,36 @@ public class OFPhysicalPort {
     }
 
     public enum OFPortState {
-        OFPPS_LINK_DOWN   (1 << 0),
-        OFPPS_STP_LISTEN  (0 << 8),
-        OFPPS_STP_LEARN   (1 << 8),
-        OFPPS_STP_FORWARD (2 << 8),
-        OFPPS_STP_BLOCK   (3 << 8),
-        OFPPS_STP_MASK    (3 << 8);
+        OFPPS_LINK_DOWN   (1 << 0) {
+            public String toString() {
+                return "link-down (0x1)";
+            }
+        },
+        OFPPS_STP_LISTEN  (0 << 8) {
+            public String toString() {
+                return "listen (0x0)";
+            }
+        },
+        OFPPS_STP_LEARN   (1 << 8) {
+            public String toString() {
+                return "learn-no-relay (0x100)";
+            }
+        },
+        OFPPS_STP_FORWARD (2 << 8) {
+            public String toString() {
+                return "forward (0x200)";
+            }
+        },
+        OFPPS_STP_BLOCK   (3 << 8) {
+            public String toString() {
+                return "block-broadcast (0x300)";
+            }
+        },
+        OFPPS_STP_MASK    (3 << 8) {
+            public String toString() {
+                return "block-broadcast (0x300)";
+            }
+        };
 
         protected int value;
 
@@ -77,18 +129,66 @@ public class OFPhysicalPort {
     }
 
     public enum OFPortFeatures {
-        OFPPF_10MB_HD    (1 << 0),
-        OFPPF_10MB_FD    (1 << 1),
-        OFPPF_100MB_HD   (1 << 2),
-        OFPPF_100MB_FD   (1 << 3),
-        OFPPF_1GB_HD     (1 << 4),
-        OFPPF_1GB_FD     (1 << 5),
-        OFPPF_10GB_FD    (1 << 6),
-        OFPPF_COPPER     (1 << 7),
-        OFPPF_FIBER      (1 << 8),
-        OFPPF_AUTONEG    (1 << 9),
-        OFPPF_PAUSE      (1 << 10),
-        OFPPF_PAUSE_ASYM (1 << 11);
+        OFPPF_10MB_HD    (1 << 0) {
+            public String toString() {
+                return "10mb-hd (0x1)";
+            }
+        },
+        OFPPF_10MB_FD    (1 << 1) {
+            public String toString() {
+                return "10mb-fd (0x2)";
+            }
+        },
+        OFPPF_100MB_HD   (1 << 2) {
+            public String toString() {
+                return "100mb-hd (0x4)";
+            }
+        },
+        OFPPF_100MB_FD   (1 << 3) {
+            public String toString() {
+                return "100mb-fd (0x8)";
+            }
+        },
+        OFPPF_1GB_HD     (1 << 4) {
+            public String toString() {
+                return "1gb-hd (0x10)";
+            }
+        },
+        OFPPF_1GB_FD     (1 << 5) {
+            public String toString() {
+                return "1gb-fd (0x20)";
+            }
+        },
+        OFPPF_10GB_FD    (1 << 6) {
+            public String toString() {
+                return "10gb-fd (0x40)";
+            }
+        },
+        OFPPF_COPPER     (1 << 7) {
+            public String toString() {
+                return "copper (0x80)";
+            }
+        },
+        OFPPF_FIBER      (1 << 8) {
+            public String toString() {
+                return "fiber (0x100)";
+            }
+        },
+        OFPPF_AUTONEG    (1 << 9) {
+            public String toString() {
+                return "autoneg (0x200)";
+            }
+        },
+        OFPPF_PAUSE      (1 << 10) {
+            public String toString() {
+                return "pause (0x400)";
+            }
+        },
+        OFPPF_PAUSE_ASYM (1 << 11) {
+            public String toString() {
+                return "pause-asym (0x800)";
+            }
+        };
 
         protected int value;
 
