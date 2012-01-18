@@ -167,6 +167,7 @@ public class Controller
     protected OFMessageFilterManager messageFilterManager;
     protected PktinProcessingTime pktinProcTime;
     private StaticFlowEntryPusher staticFlowEntryPusher;
+    protected long ptWarningThresholdInNano;
     
     protected List<RestletRoutable> restlets;
 
@@ -723,6 +724,8 @@ public class Controller
             throws IOException {
         Ethernet eth = null;
 
+        long startTime = System.nanoTime();
+
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -794,6 +797,13 @@ public class Controller
                     pktinProcTime.updateCumulativeTimeTotal(startTime_ns);
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
+                }
+
+                long processingTime = System.nanoTime() - startTime;
+                if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
+                    log.warn("Time to process packet-in: {} us", processingTime/1000.0);
+                    if (eth != null)
+                        log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
                 }
         }
     }
@@ -1416,6 +1426,13 @@ public class Controller
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());
         JacksonCustomConverter.replaceConverter();
+
+        // Processing Time Warning Threshold
+        ptWarningThresholdInNano = Long.parseLong(System.getProperty("net.floodlightcontroller.core.PTWarningThreholdInMilli", "0")) * 1000000;
+        if (ptWarningThresholdInNano > 0) {
+            log.info("Packet processing time threshold for warning set to {} ms.",
+                 ptWarningThresholdInNano/1000000);
+        }
     }
     
     /**

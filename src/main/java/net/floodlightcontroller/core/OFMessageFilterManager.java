@@ -504,10 +504,11 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(pktIn.getBufferId());
 
                 // packet type  icmp, arp, etc.
-                eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-
-                sb.append(getStringFromEthernetPacket(eth));
+                if (cntx != null) {
+                    eth = IFloodlightProvider.bcStore.get(cntx,
+                                                          IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    sb.append(getStringFromEthernetPacket(eth));
+                }
 
                 break;
 
@@ -533,26 +534,28 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(HexString.toHexString(sw.getId()));
                 sb.append(" ]");
 
-                eth = new Ethernet();
+                if (cntx != null) {
+                    eth = new Ethernet();
 
-                eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-                sb.append(getStringFromEthernetPacket(eth));
+                    eth = IFloodlightProvider.bcStore.get(cntx,
+                            IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    sb.append(getStringFromEthernetPacket(eth));
 
-                sb.append("ADD: cookie: ");
-                sb.append(fm.getCookie());
-                sb.append(" idle: ");
-                sb.append(fm.getIdleTimeout());
-                sb.append(" hard: ");
-                sb.append(fm.getHardTimeout());
-                sb.append(" pri: ");
-                sb.append(fm.getPriority());
-                sb.append(" buf: ");
-                sb.append(fm.getBufferId());
-                sb.append(" flg: ");
-                sb.append(fm.getFlags());
-                sb.append("\nactions: ");
-                sb.append(fm.getActions().toString());
+                    sb.append("\nADD: cookie: ");
+                    sb.append(fm.getCookie());
+                    sb.append(" idle: ");
+                    sb.append(fm.getIdleTimeout());
+                    sb.append(" hard: ");
+                    sb.append(fm.getHardTimeout());
+                    sb.append(" pri: ");
+                    sb.append(fm.getPriority());
+                    sb.append(" buf: ");
+                    sb.append(fm.getBufferId());
+                    sb.append(" flg: ");
+                    sb.append(fm.getFlags());
+                    sb.append("\nactions: ");
+                    sb.append(fm.getActions().toString());
+                }
                 break;
 
             default:
