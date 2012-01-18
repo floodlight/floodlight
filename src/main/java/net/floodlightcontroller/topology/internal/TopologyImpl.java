@@ -123,8 +123,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Map from link to the most recent time it was verified functioning
      */
     protected Map<LinkTuple, LinkInfo> links;
-    protected Long lldpFrequency = 15L * 1000; // sending frequency
-    protected Long lldpTimeout = 35L * 1000; // timeout
+    protected int lldpFrequency = 15 * 1000; // sending frequency
+    protected int lldpTimeout = 35 * 1000; // timeout
     protected ReentrantReadWriteLock lock;
 
     /**
@@ -149,11 +149,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public static enum UpdateOperation {ADD, UPDATE, REMOVE, 
                                         SWITCH_UPDATED, CLUSTER_MERGED};
 
-    public Long getLldpFrequency() {
+    public int getLldpFrequency() {
         return lldpFrequency;
     }
 
-    public Long getLldpTimeout() {
+    public int getLldpTimeout() {
         return lldpTimeout;
     }
 
@@ -296,6 +296,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         Runnable timeoutLinksTimer = new Runnable() {
             @Override
             public void run() {
+                log.trace("Running timeoutLinksTimer");
                 try {
                     timeoutLinks();
                     if (!shuttingDown) {
@@ -308,7 +309,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                               "terminating process", e);
                     floodlightProvider.terminate();
                 } catch (Exception e) {
-                    log.error("Exception in link timer", e);
+                    log.error("Exception in timeoutLinksTimer", e);
                 }
             }
         };
@@ -711,8 +712,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
-     *
-     * @param links
+     * Removes links from memory and storage.
+     * @param links The List of @LinkTuple to delete.
      */
     protected void deleteLinks(List<LinkTuple> links) {
         lock.writeLock().lock();
@@ -747,7 +748,14 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             lock.writeLock().unlock();
         }
     }
-
+    
+    /**
+     * Handles an OFPortStatus message from a switch. We will add or
+     * delete LinkTupes as well re-compute the topology if needed.
+     * @param sw The IOFSwitch that sent the port status message
+     * @param ps The OFPortStatus message
+     * @return The Command to continue or stop after we process this message
+     */
     protected Command handlePortStatus(IOFSwitch sw, OFPortStatus ps) {
         if (log.isDebugEnabled()) {
             log.debug("handlePortStatus: Switch {} port #{} reason {}; " + 
@@ -844,11 +852,21 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return Command.CONTINUE;
     }
 
+    /**
+     * We send out LLDP messages when a switch is added to discover the topology
+     * @param sw The IOFSwitch that connected to the controller
+     */
     @Override
     public void addedSwitch(IOFSwitch sw) {
+        // TODO - Send LLDPs only from the switch that was added
         sendLLDPs();
     }
 
+    /**
+     * When a switch disconnects we remove any links from our map and re-compute
+     * the topology.
+     * @param sw The IOFSwitch that disconnected from the controller
+     */
     @Override
     public void removedSwitch(IOFSwitch sw) {
         List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
@@ -865,6 +883,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
     }
 
+    /**
+     * Iterates though @SwitchCluster links and then deletes ones
+     * that have timed out. The timeout is set by lldpTimeout.
+     * If links are deleted updateClusters() is then called.
+     */
     protected void timeoutLinks() {
         List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
         Long curTime = System.currentTimeMillis();
@@ -881,8 +904,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     eraseList.add(entry.getKey());
                 }
             }
-    
-            deleteLinks(eraseList);
+            
+            if (eraseList.size() > 0) {
+                deleteLinks(eraseList);
+                updateClusters();
+            }
         } finally {
             lock.writeLock().unlock();
         }
@@ -902,12 +928,20 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
+     * Sets the IFloodlightProvider for this TopologyImpl.
      * @param floodlightProvider the floodlightProvider to set
      */
     public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 
+    /**
+     * Checks to see if a SwitchPortTuple is internal. A SwitchPortTuple is
+     * defined as internal if the switch is a core switch if only switches that
+     * are in the same SwitchCluster are connected to it.
+     * @param idPort The SwitchPortTuple to check
+     * @return True if it is internal, false otherwise
+     */
     @Override
     public boolean isInternal(SwitchPortTuple idPort) {
         lock.readLock().lock();
@@ -942,8 +976,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
         return result;
     }
-
-
 
     @Override
     public LinkInfo getLinkInfo(SwitchPortTuple idPort, boolean isSrcPort) {
@@ -997,7 +1029,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
-<<<<<<< HEAD
      * @author Srinivasan Ramasubramanian
      * 
      * This function divides the network into clusters. Every cluster is 
@@ -1126,8 +1157,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return currIndex;
     }
 
-
-
     public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw) {
         SwitchCluster cluster = switchClusterMap.get(sw);
         if (cluster == null){
@@ -1136,10 +1165,19 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return cluster.getSwitches();
     }
 
+    /**
+     * Returns the SwitchCluster that contains the switch.
+     * @param sw The IOFSwitch to get
+     * @return The SwitchCluster that it is part of
+     */
     public SwitchCluster getSwitchCluster(IOFSwitch sw) {
         return switchClusterMap.get(sw);
     }
 
+    /**
+     * Checks if two IOFSwitches are in the same SwitchCluster
+     * @return True if they are in the same cluster, false otherwise
+     */
     public boolean inSameCluster(IOFSwitch switch1, IOFSwitch switch2) {
         if (switchClusterMap != null) {
             lock.readLock().lock();
@@ -1156,11 +1194,18 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     // STORAGE METHODS
-    
+    /**
+     * Deletes all links from storage
+     */
     void clearAllLinks() {
         storageSource.deleteRowsAsync(LINK_TABLE_NAME, null);
     }
 
+    /**
+     * Gets the storage key for a LinkTuple
+     * @param lt The LinkTuple to get
+     * @return The storage key as a String
+     */
     private String getLinkId(LinkTuple lt) {
         String srcDpid = lt.getSrc().getSw().getStringId();
         String dstDpid = lt.getDst().getSw().getStringId();
@@ -1168,6 +1213,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             dstDpid + "-" + lt.getDst().getPort();
     }
     
+    /**
+     * Writes a LinkTuple and corresponding LinkInfo to storage
+     * @param lt The LinkTuple to write
+     * @param linkInfo The LinkInfo to write
+     */
     void writeLink(LinkTuple lt, LinkInfo linkInfo) {
         Map<String, Object> rowValues = new HashMap<String, Object>();
         
@@ -1278,6 +1328,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         storageSource.updateRowAsync(LINK_TABLE_NAME, id, rowValues);
     }
     
+    /**
+     * Removes a link from storage using an asynchronous call.
+     * @param lt The LinkTuple to delete.
+     */
     void removeLink(LinkTuple lt) {
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
@@ -1292,7 +1346,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
-     * @param storageSource the storage source to use for persisting link info
+     * Sets the IStorageSource to use for ITology
+     * @param storageSource the storage source to use
      */
     public void setStorageSource(IStorageSource storageSource) {
         this.storageSource = storageSource;
@@ -1300,6 +1355,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
     }
 
+    /**
+     * Gets the storage source for this ITopology
+     * @return The IStorageSource ITopology is writing to
+     */
     public IStorageSource getStorageSource() {
         return storageSource;
     }
@@ -1325,7 +1384,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
-
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
         for(Object key: rowKeys) {
@@ -1379,5 +1437,4 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // Ignore delete events, the switch delete will do the right thing on it's own
     }
-
 }
