@@ -27,27 +27,27 @@ public class MACAddressTest {
 
     @Test(expected=NumberFormatException.class)
     public void testIllegalFormat() {
-        MACAddress address = MACAddress.valueOf("0T:00:01:02:03:04");
+        MACAddress.valueOf("0T:00:01:02:03:04");
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testLongStringFields() {
-        MACAddress address = MACAddress.valueOf("00:01:02:03:04:05:06");
+        MACAddress.valueOf("00:01:02:03:04:05:06");
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testShortStringFields() {
-        MACAddress address = MACAddress.valueOf("00:01:02:03:04");
+        MACAddress.valueOf("00:01:02:03:04");
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testLongByteFields() {
-        MACAddress address = MACAddress.valueOf(new byte[]{0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
+        MACAddress.valueOf(new byte[]{0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testShortByteField() {
-        MACAddress address = MACAddress.valueOf(new byte[]{0x01, 0x01, 0x02, 0x03, 0x04});
+        MACAddress.valueOf(new byte[]{0x01, 0x01, 0x02, 0x03, 0x04});
     }
 
     //  Test data is imported from net.floodlightcontroller.packet.EthernetTest
