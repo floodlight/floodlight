@@ -1428,7 +1428,7 @@ public class Controller
         JacksonCustomConverter.replaceConverter();
 
         // Processing Time Warning Threshold
-        ptWarningThresholdInNano = Long.parseLong(System.getProperty("net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
+        ptWarningThresholdInNano = Long.parseLong(System.getProperty("net.floodlightcontroller.core.PTWarningThreholdInMilli", "0")) * 1000000;
         if (ptWarningThresholdInNano > 0) {
             log.info("Packet processing time threshold for warning set to {} ms.",
                  ptWarningThresholdInNano/1000000);
