@@ -1033,7 +1033,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * 
      * This function divides the network into clusters. Every cluster is 
      * a strongly connected component. The network may contain unidirectional 
-     * links.
+     * links.  The function calls dfsTraverse for performing depth first 
+     * search and cluster formation. 
      * 
      * The computation of strongly connected components is based on
      * Tarjan's algorithm.  For more details, please see the Wikipedia
@@ -1083,6 +1084,32 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
     }
 
+    /**
+     * @author Srinivasan Ramasubramanian
+     * 
+     * This algorithm computes the depth first search (DFS) travesral of the
+     * switches in the network, computes the lowpoint, and creates clusters 
+     * (of strongly connected components).
+     * 
+     * The computation of strongly connected components is based on
+     * Tarjan's algorithm.  For more details, please see the Wikipedia
+     * link below.
+     * 
+     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+     * 
+     * The initialization of lowpoint and the check condition for when a 
+     * cluster should be formed is modified as we do not remove switches that
+     * are already part of a cluster.
+     * 
+     * @param parentIndex: DFS index of the parent node
+     * @param currIndex: DFS index to be assigned to a newly visited node
+     * @param currSw: Object for the current switch
+     * @param switches: HashMap of switches in the network.
+     * @param dfsList: HashMap of DFS data structure for each switch
+     * @param currSet: Set of nodes in the current cluster in formation
+     * @param clusters: Set of already formed clusters
+     * @return long: DSF index to be used when a new node is visited
+     */
     protected long dfsTraverse (long parentIndex, long currIndex, 
             IOFSwitch currSw, Map<Long, IOFSwitch> switches, 
             Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet, 
