@@ -65,6 +65,8 @@ import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.learningswitch.LearningSwitch;
+import net.floodlightcontroller.forwarding.Forwarding;
+import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
@@ -1478,9 +1480,29 @@ public class Controller
   
         log.debug("Starting staticFlowEntryPusher service");
         staticFlowEntryPusher.startUp();
+        log.debug("Starting DebugServer");
+        this.debugserver_start();
     }
     
-    /** 
+    /**
+     * Start debug server, put global state as local variables for the jython shell
+     */
+    protected void debugserver_start() {
+        Map<String, Object> locals = new HashMap<String, Object>();
+        locals.put("controller", this);
+        locals.put("deviceManager", this.deviceManager);
+        locals.put("topology", this.topology);
+        locals.put("staticFlowEntryPusher", this.staticFlowEntryPusher);
+        locals.put("counterStore", this.counterStore);
+        locals.put("storageSource", this.storageSource);
+        locals.put("switches", this.switches);
+        locals.put("messageFilterManager", this.messageFilterManager);
+
+        Server debug_server = new Server(6655, locals);
+        debug_server.start();
+	}
+
+    /**
      * Main function entry point; override init() for adding modules
      * @param args
      */

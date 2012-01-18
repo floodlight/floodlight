@@ -28,6 +28,7 @@
     <property name="test-output" location="${target}/test"/>
     <property name="source" location="src/main/java"/>
     <property name="source-test" location="src/test/java"/>
+    <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.internal.Controller"/>
     <property name="packetstreamer-gen" location="${target}/gen-java" />
@@ -50,6 +51,7 @@
         <include name="simple-4.1.21.jar"/>
         <include name="netty-3.2.6.Final.jar"/>
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
+        <include name="jython-2.5.2.jar"/>
     </patternset>
     <patternset id="genlib">
         <include name="libthrift-0.7.0.jar"/>
@@ -156,6 +158,9 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
+            <fileset dir="${python-src}">
+                <include name="**/*.py"/>
+            </fileset>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib"/>
             </zipgroupfileset>
