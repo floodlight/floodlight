@@ -540,22 +540,22 @@ public class OFMessageFilterManager implements IOFMessageListener {
                     eth = IFloodlightProvider.bcStore.get(cntx,
                             IFloodlightProvider.CONTEXT_PI_PAYLOAD);
                     sb.append(getStringFromEthernetPacket(eth));
+	        }
 
-                    sb.append("\nADD: cookie: ");
-                    sb.append(fm.getCookie());
-                    sb.append(" idle: ");
-                    sb.append(fm.getIdleTimeout());
-                    sb.append(" hard: ");
-                    sb.append(fm.getHardTimeout());
-                    sb.append(" pri: ");
-                    sb.append(fm.getPriority());
-                    sb.append(" buf: ");
-                    sb.append(fm.getBufferId());
-                    sb.append(" flg: ");
-                    sb.append(fm.getFlags());
-                    sb.append("\nactions: ");
-                    sb.append(fm.getActions().toString());
-                }
+                sb.append("\nADD: cookie: ");
+                sb.append(fm.getCookie());
+                sb.append(" idle: ");
+                sb.append(fm.getIdleTimeout());
+                sb.append(" hard: ");
+                sb.append(fm.getHardTimeout());
+                sb.append(" pri: ");
+                sb.append(fm.getPriority());
+                sb.append(" buf: ");
+                sb.append(fm.getBufferId());
+                sb.append(" flg: ");
+                sb.append(fm.getFlags());
+                sb.append("\nactions: ");
+                sb.append(fm.getActions().toString());
                 break;
 
             default:
