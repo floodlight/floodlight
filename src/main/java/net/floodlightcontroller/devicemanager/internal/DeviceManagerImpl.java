@@ -818,7 +818,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 networkAddress = device.getNetworkAddress(nwSrc);
                 if (networkAddress != null) {
                     updateNetworkAddressLastSeen = true;
-                } else {
+                } else if (eth != null && (eth.getPayload() instanceof ARP)) {
                     networkAddress = new DeviceNetworkAddress(nwSrc, 
                                                                 currentDate);
                     newNetworkAddress = true;
