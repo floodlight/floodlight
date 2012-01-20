@@ -887,8 +887,7 @@ public class Controller
             log.error("New switch connection {} for already-connected switch {}",
                       sw, oldSw);
             oldSw.setConnected(false);
-            if (sw.getFeaturesReply() != null)
-                    updateInactiveSwitchInfo(sw);
+            updateInactiveSwitchInfo(oldSw);
 
             // we need to clean out old switch state definitively 
             // before adding the new switch
@@ -897,6 +896,9 @@ public class Controller
                     listener.removedSwitch(oldSw);
                 }
             }
+            // will eventually trigger a removeSwitch(), which will cause
+            // a "Not removing Switch ... already removed debug message.
+            oldSw.getChannel().close();
         }
         
         updateActiveSwitchInfo(sw);

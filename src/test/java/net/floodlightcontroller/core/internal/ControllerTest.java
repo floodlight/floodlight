@@ -20,6 +20,8 @@ package net.floodlightcontroller.core.internal;
 import static org.easymock.EasyMock.*;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,10 +41,12 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
+import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
@@ -381,5 +385,37 @@ public class ControllerTest extends FloodlightTestCase {
         // Wait for 8 seconds for all filters to be timed out.
         Thread.sleep(8000);
         assertTrue(mfm.getNumberOfFilters() == 0);
+    }
+
+    @Test
+    public void testAddSwitch() throws Exception {
+        controller.switches = new ConcurrentHashMap<Long, IOFSwitch>();
+
+        IOFSwitch oldsw = createMock(IOFSwitch.class);
+        expect(oldsw.getId()).andReturn(0L).anyTimes();
+        oldsw.setConnected(false);
+        expect(oldsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
+        expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+
+        Channel channel = createMock(Channel.class);
+        expect(oldsw.getChannel()).andReturn(channel);
+        expect(channel.close()).andReturn(null);
+
+        IOFSwitch newsw = createMock(IOFSwitch.class);
+        expect(newsw.getId()).andReturn(0L).anyTimes();
+        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        expect(newsw.getConnectedSince()).andReturn(new Date());
+        Channel channel2 = createMock(Channel.class);
+        expect(newsw.getChannel()).andReturn(channel2);
+        expect(channel2.getRemoteAddress()).andReturn(null);
+        expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
+        expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
+
+        controller.switches.put(0L, oldsw);
+        replay(oldsw, newsw, channel, channel2);
+
+        controller.addSwitch(newsw);
+
+        verify(oldsw, newsw, channel, channel2);
     }
 }
