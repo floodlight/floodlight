@@ -360,9 +360,4 @@ public class OFSwitchImpl implements IOFSwitch {
 	public TimedCache<Long> getTimedCache() {
         return timedCache;
 	}
-
-    protected void finalize() {
-        if (this.channel != null)
-            this.channel.close();
-    }
 }

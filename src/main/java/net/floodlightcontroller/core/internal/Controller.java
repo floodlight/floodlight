@@ -898,7 +898,7 @@ public class Controller
             }
             // will eventually trigger a removeSwitch(), which will cause
             // a "Not removing Switch ... already removed debug message.
-            // oldSw.getChannel().close();
+            oldSw.getChannel().close();
         }
         
         updateActiveSwitchInfo(sw);
