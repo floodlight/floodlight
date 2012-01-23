@@ -1,9 +1,12 @@
 package net.floodlightcontroller.jython;
 
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.python.util.PythonInterpreter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class starts a thread that runs a jython interpreter that
@@ -13,6 +16,8 @@ import org.python.util.PythonInterpreter;
  *
  */
 public class Server extends Thread {
+    protected static Logger log = LoggerFactory.getLogger(Server.class);
+
 	int port;
 	Map<String, Object> locals;
 	
@@ -23,7 +28,10 @@ public class Server extends Thread {
 	public Server(int port_, Map<String, Object> locals_) {
 		this.port = port_ ;
 		this.locals = locals_;
-		
+		if (this.locals == null) {
+			this.locals = new HashMap<String, Object>();
+		}
+		this.locals.put("log", Server.log);
 	}
 
     /**
