@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+from threading import currentThread
 from SocketServer import BaseRequestHandler, TCPServer
 from code import InteractiveConsole
 
@@ -37,7 +38,8 @@ class DebugConsole(InteractiveConsole):
 
 class DebugServerHandler(BaseRequestHandler):
     def __init__(self, request, client_address, server):
-        _log.debug('Open connection to DebugServer from: %s' % str(client_address))
+        currentThread()._thread.setName("debugserver-%s:%d" % client_address)
+        _log.debug('Open connection to DebugServer from %s:%d' % client_address)
         BaseRequestHandler.__init__(self, request, client_address, server)
 
     def handle(self):
@@ -51,13 +53,14 @@ class DebugServer(TCPServer):
     allow_reuse_address = True
 
     def handle_error(self, request, client_address):
-        _log.debug('Closing connection to DebugServer from: %s' % str(client_address))
+        _log.debug('Closing connection to DebugServer from %s:%d' % client_address)
         request.close()
 
 def run_server(port=6655, host='0.0.0.0', locals=locals()):
+    currentThread()._thread.setName("debugserver-main")
+
     global _locals
     _locals = locals
-
     if "log" in locals.keys():
         global _log
         _log = locals["log"]

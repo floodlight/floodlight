@@ -32,6 +32,7 @@ public class Server extends Thread {
 			this.locals = new HashMap<String, Object>();
 		}
 		this.locals.put("log", Server.log);
+		this.setName("debugserver");
 	}
 
     /**
