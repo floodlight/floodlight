@@ -26,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
@@ -72,6 +74,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected boolean connected;
     protected TimedCache<Long> timedCache;
+    protected ReentrantReadWriteLock lock;
     
     public static IOFSwitchFeatures switchFeatures;
     
@@ -87,6 +90,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
+        this.lock = new ReentrantReadWriteLock();
         
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
@@ -360,4 +364,14 @@ public class OFSwitchImpl implements IOFSwitch {
 	public TimedCache<Long> getTimedCache() {
         return timedCache;
 	}
+
+    @Override
+    public Lock processMessageLock() {
+        return lock.readLock();
+    }
+
+    @Override
+    public Lock asyncRemoveSwitchLock() {
+        return lock.writeLock();
+    }
 }
