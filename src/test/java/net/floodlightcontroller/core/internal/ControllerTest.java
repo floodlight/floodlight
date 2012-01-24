@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
@@ -390,9 +392,11 @@ public class ControllerTest extends FloodlightTestCase {
     @Test
     public void testAddSwitch() throws Exception {
         controller.switches = new ConcurrentHashMap<Long, IOFSwitch>();
+        ReentrantReadWriteLock rwlock = new ReentrantReadWriteLock();
 
         IOFSwitch oldsw = createMock(IOFSwitch.class);
         expect(oldsw.getId()).andReturn(0L).anyTimes();
+        expect(oldsw.asyncRemoveSwitchLock()).andReturn(rwlock.writeLock()).anyTimes();
         oldsw.setConnected(false);
         expect(oldsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
