@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
 
 import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.util.TimedCache;
@@ -243,12 +244,14 @@ public interface IOFSwitch {
     
     /**
      * Check if the switch is still connected;
+     * Only call while holding processMessageLock
      * @return whether the switch is still disconnected
      */
     public boolean isConnected();
     
     /**
      * Set whether the switch is connected
+     * Only call while holding modifySwitchLock
      * @param connected whether the switch is connected
      */
     public void setConnected(boolean connected);
@@ -304,4 +307,19 @@ public interface IOFSwitch {
      * @return
      */
     public TimedCache<Long> getTimedCache();
+
+    /**
+     * Return a lock that need to be held while processing a message. Multiple threads
+     * can hold this lock. 
+     * @return 
+     */
+    public Lock processMessageLock();
+    
+    /**
+     * Return a lock that needs to be held while the switch is removed asynchronously, i.e.,
+     * the removing is not triggered by events on this switch's channel.
+     * Mutex with processMessageLock
+     * @return
+     */
+    public Lock asyncRemoveSwitchLock();
 }

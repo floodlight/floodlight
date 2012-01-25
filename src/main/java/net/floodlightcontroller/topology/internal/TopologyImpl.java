@@ -858,7 +858,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      */
     @Override
     public void addedSwitch(IOFSwitch sw) {
-        sendLLDPs(sw);
+        // It's probably overkill to send LLDP from all switches, but we don't
+        // know which switches might be connected to the new switch.
+        // Need to optimize when supporting a large number of switches.
+        sendLLDPs();
     }
 
     /**
