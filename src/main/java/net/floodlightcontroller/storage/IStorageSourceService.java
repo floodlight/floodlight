@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 
+import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.perfmon.PktinProcessingTime;
 
-public interface IStorageSource {
+public interface IStorageSourceService extends IFloodlightService {
 
     /** Set the column to be used as the primary key for a table. This should
      * be guaranteed to be unique for all of the rows in the table, although the

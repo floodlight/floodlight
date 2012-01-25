@@ -51,7 +51,7 @@ import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchListener {
+public class StaticFlowEntryPusher implements IStaticFlowEntryPusherService, IOFSwitchListener {
 
     // Utility data structure
     private class FlowModFields {

@@ -25,12 +25,14 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.List;
 
+import net.floodlightcontroller.core.IFloodlightService;
+
 /**
  * Used to interact with DeviceManager implementations
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IDeviceManager {
+public interface IDeviceManagerService extends IFloodlightService {
 
     /**
      * Returns a device for the given data layer address

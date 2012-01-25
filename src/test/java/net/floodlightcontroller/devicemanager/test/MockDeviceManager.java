@@ -26,10 +26,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.devicemanager.Device;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Ethernet;
 
-public class MockDeviceManager implements IDeviceManager {
+public class MockDeviceManager implements IDeviceManagerService {
     protected Map<Long, Device> devices;
 
     public MockDeviceManager() {

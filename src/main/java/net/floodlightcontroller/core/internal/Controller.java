@@ -61,7 +61,7 @@ import net.floodlightcontroller.core.web.JacksonCustomConverter;
 import net.floodlightcontroller.core.web.RestletRoutable;
 import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterService;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
@@ -74,12 +74,12 @@ import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
 import net.floodlightcontroller.perfmon.PktinProcessingTime;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.storage.web.StorageWebRoutable;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.internal.TopologyImpl;
 import net.floodlightcontroller.topology.web.TopologyWebRouteable;
 
@@ -166,7 +166,7 @@ public class Controller
     protected ScheduledExecutorService executor = 
             Executors.newScheduledThreadPool(5);
     
-    protected IStorageSource storageSource;
+    protected IStorageSourceService storageSource;
     protected TopologyImpl topology;
     protected DeviceManagerImpl deviceManager;
     protected RoutingImpl routingEngine;
@@ -178,9 +178,12 @@ public class Controller
     
     protected List<RestletRoutable> restlets;
 
+    // Configuration options
     protected int restPort;
     protected int openFlowPort;
+    protected String moduleFile;
 
+    // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
     
@@ -234,6 +237,7 @@ public class Controller
         this.restlets = new ArrayList<RestletRoutable>();
         this.restPort = settings.getRestPort();
         this.openFlowPort = settings.getOpenFlowPort();
+        this.moduleFile = settings.getModuleFile();
     }
     
     // **********************
@@ -644,28 +648,28 @@ public class Controller
                                                NetworkLayer.L3);
         
         try {
-            ICounter portCounter = 
+            ICounterService portCounter = 
                     counterStore.getCounter(portCounterName);
             if (portCounter == null) {
                 portCounter = 
                         counterStore.createCounter(portCounterName, 
                                                    CounterType.LONG);
             }
-            ICounter switchCounter = 
+            ICounterService switchCounter = 
                     counterStore.getCounter(switchCounterName);
             if (switchCounter == null) {
                 switchCounter = 
                         counterStore.createCounter(switchCounterName, 
                                                    CounterType.LONG);
             }
-            ICounter portL3Counter = 
+            ICounterService portL3Counter = 
                     counterStore.getCounter(portL3CategoryCounterName);
             if (portL3Counter == null) {
                 portL3Counter = 
                         counterStore.createCounter(portL3CategoryCounterName,
                                                    CounterType.LONG);
             }
-            ICounter switchL3Counter = 
+            ICounterService switchL3Counter = 
                     counterStore.getCounter(switchL3CategoryCounterName);
             if (switchL3Counter == null) {
                 switchL3Counter = 
@@ -699,14 +703,14 @@ public class Controller
                                                        l4Type, 
                                                        NetworkLayer.L4);
                 
-                ICounter portL4Counter = 
+                ICounterService portL4Counter = 
                         counterStore.getCounter(portL4CategoryCounterName);
                 if (portL4Counter == null) {
                     portL4Counter = 
                             counterStore.createCounter(portL4CategoryCounterName, 
                                                        CounterType.LONG);
                 }
-                ICounter switchL4Counter = 
+                ICounterService switchL4Counter = 
                         counterStore.getCounter(switchL4CategoryCounterName);
                 if (switchL4Counter == null) {
                     switchL4Counter = 
@@ -1111,7 +1115,6 @@ public class Controller
     // **************
     // Initialization
     // **************
-    
     /**
      * Call after init() has run, but before this.run()
      * @throws IOException
@@ -1150,7 +1153,7 @@ public class Controller
         log.info("Shutdown complete");
     }
 
-    protected void setStorageSource(IStorageSource storageSource) {
+    protected void setStorageSource(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
         IStorageExceptionHandler handler = 
                 new TerminationStorageExceptionHandler(this);
@@ -1332,7 +1335,7 @@ public class Controller
      * Tell controller that we're ready to accept switches loop
      * @throws IOException 
      */
-    protected void run() {
+    public void run() {
         try {            
             // Start listening for REST requests
             final Component component = new Component();
@@ -1406,7 +1409,7 @@ public class Controller
      * Initialize all of the controller's components; override me for
      * new components
      */
-    protected void init() {
+    public void init() {
         topology = new TopologyImpl();
         deviceManager = new DeviceManagerImpl();
         counterStore = new CounterStore();
@@ -1428,7 +1431,7 @@ public class Controller
         // call this explicitly because it does setup
         this.setStorageSource(storageSource);        
         
-        HashSet<ITopologyAware> topologyAware = new HashSet<ITopologyAware>();
+        HashSet<ITopologyListener> topologyAware = new HashSet<ITopologyListener>();
         topologyAware.add(deviceManager);
         topologyAware.add(routingEngine);
         topology.setTopologyAware(topologyAware);
@@ -1496,7 +1499,7 @@ public class Controller
     /**
      * Startup all of the controller's components
      */
-    protected void startupComponents() {
+    public void startupComponents() {
         // now, do our own init
         try {
             log.debug("Doing controller internal setup");

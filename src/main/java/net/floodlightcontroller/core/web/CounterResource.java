@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterService;
 
 import org.restlet.resource.Get;
 
@@ -35,12 +35,12 @@ public class CounterResource extends CounterResourceBase {
         Map<String, Object> model = new HashMap<String,Object>();
         CounterValue v;
         if (counterTitle.equalsIgnoreCase("all")) {
-            Map<String, ICounter> counters = this.counterStore.getAll();
+            Map<String, ICounterService> counters = this.counterStore.getAll();
             if (counters != null) {
-                Iterator<Map.Entry<String, ICounter>> it = 
+                Iterator<Map.Entry<String, ICounterService>> it = 
                     counters.entrySet().iterator();
                 while (it.hasNext()) {
-                    Entry<String, ICounter> entry = it.next();
+                    Entry<String, ICounterService> entry = it.next();
                     String counterName = entry.getKey();
                     v = entry.getValue().getCounterValue();
 
@@ -52,7 +52,7 @@ public class CounterResource extends CounterResourceBase {
                 }   
             }   
         } else {
-            ICounter counter = this.counterStore.getCounter(counterTitle);
+            ICounterService counter = this.counterStore.getCounter(counterTitle);
             if (counter != null) {
                 v = counter.getCounterValue();
             } else {

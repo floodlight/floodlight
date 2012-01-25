@@ -37,7 +37,7 @@ import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IRowMapper;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.NullValueStorageException;
 import net.floodlightcontroller.storage.OperatorPredicate;
@@ -48,7 +48,7 @@ import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     
-    protected IStorageSource storageSource;
+    protected IStorageSourceService storageSource;
     
     protected String PERSON_TABLE_NAME = "Person";
     

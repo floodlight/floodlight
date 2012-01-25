@@ -28,17 +28,17 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingEngine;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ITopology;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -61,9 +61,9 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT=5; // in seconds
 
     protected IFloodlightProvider floodlightProvider;
-    protected IDeviceManager deviceManager;
+    protected IDeviceManagerService deviceManager;
     protected IRoutingEngine routingEngine;
-    protected ITopology topology;
+    protected ITopologyService topology;
     protected CounterStore counterStore;
     
     // flow-mod - for use in the cookie
@@ -117,7 +117,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             // flowmod is per switch. portid = -1
             String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
             try {
-                ICounter counter = counterStore.getCounter(counterName);
+                ICounterService counter = counterStore.getCounter(counterName);
                 if (counter == null) {
                     counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
                 }
@@ -349,14 +349,14 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     /**
      * @param deviceManager the deviceManager to set
      */
-    public void setDeviceManager(IDeviceManager deviceManager) {
+    public void setDeviceManager(IDeviceManagerService deviceManager) {
         this.deviceManager = deviceManager;
     }
     
     /**
      * @param topology the topology to set
      */
-    public void setTopology(ITopology topology) {
+    public void setTopology(ITopologyService topology) {
         this.topology = topology;
     }
     

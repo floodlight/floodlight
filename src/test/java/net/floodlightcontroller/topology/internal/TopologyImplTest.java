@@ -38,7 +38,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 
@@ -67,7 +67,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         topology.setStorageSource(new MemoryStorageSource());
         RoutingImpl routingEngine = new RoutingImpl();
         topology.setRoutingEngine(routingEngine);
-        HashSet<ITopologyAware> topologyAware = new HashSet<ITopologyAware>();
+        HashSet<ITopologyListener> topologyAware = new HashSet<ITopologyListener>();
         topologyAware.add(routingEngine);
         topology.setTopologyAware(topologyAware);
         topology.startUp();

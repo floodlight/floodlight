@@ -20,7 +20,6 @@ package net.floodlightcontroller.util;
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-
 /**
  * The key is any object/hash-code
  * The value is time-stamp in milliseconds
@@ -29,9 +28,7 @@ import java.util.concurrent.ConcurrentMap;
  * 
  * @param <K> Type of the values in this cache
  */
-public class TimedCache<K> {
-    private static final long serialVersionUID = 1L;
-    
+public class TimedCache<K> {    
     private final long timeoutInterval;    //specified in milliseconds.
 	private ConcurrentMap<K, Long> cache;
     private long cacheHits;

@@ -40,7 +40,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFError;
@@ -142,7 +142,7 @@ public class LearningSwitch implements IOFMessageListener {
             // flowmod is per switch. portid = -1
             String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
             try {
-                ICounter counter = counterStore.getCounter(counterName);
+                ICounterService counter = counterStore.getCounter(counterName);
                 if (counter == null) {
                     counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
                 }
@@ -257,7 +257,7 @@ public class LearningSwitch implements IOFMessageListener {
         }
     }
     
-    private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi) {
+    private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
@@ -378,7 +378,7 @@ public class LearningSwitch implements IOFMessageListener {
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                return this.processPacketInMessage(sw, (OFPacketIn) msg);
+                return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
             case PORT_STATUS:
                 return this.processPortStatusMessage(sw, (OFPortStatus) msg);
             case FLOW_REMOVED:

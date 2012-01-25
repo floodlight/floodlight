@@ -27,7 +27,7 @@ import org.openflow.protocol.OFFlowMod;
  * Represents the parts of the staticflowentry that are exposed as a service to other floodlight apps
  *
  */
-public interface IStaticFlowEntryPusher {
+public interface IStaticFlowEntryPusherService {
     /**
      * Pushes a flow-mod to this switch as a one-time push
      * 

@@ -23,11 +23,13 @@ package net.floodlightcontroller.counter;
 
 import java.util.Date;
 
+import net.floodlightcontroller.core.IFloodlightService;
+
 /**
  * @author kyle
  *
  */
-public interface ICounter {
+public interface ICounterService extends IFloodlightService {
   
   /**
    * Most commonly used method

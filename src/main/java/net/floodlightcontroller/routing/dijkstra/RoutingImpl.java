@@ -35,14 +35,14 @@ import net.floodlightcontroller.routing.IRoutingEngine;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyListener;
 
 /**
  * Floodlight component to find shortest paths based on dijkstra's algorithm
  *
  * @author Mandeep Dhami (mandeep.dhami@bigswitch.com)
  */
-public class RoutingImpl implements IRoutingEngine, ITopologyAware {
+public class RoutingImpl implements IRoutingEngine, ITopologyListener {
     
     public static final int MAX_LINK_WEIGHT = 1000;
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;

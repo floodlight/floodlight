@@ -46,7 +46,7 @@ public class CounterStore {
     }
 
     protected class CounterEntry {
-        protected ICounter counter;
+        protected ICounterService counter;
         String title;
     }
 
@@ -56,8 +56,8 @@ public class CounterStore {
     protected Map<String, CounterEntry> nameToCEIndex = 
             new ConcurrentHashMap<String, CounterEntry>();
 
-    protected ICounter heartbeatCounter;
-    protected ICounter randomCounter;
+    protected ICounterService heartbeatCounter;
+    protected ICounterService randomCounter;
 
     /**
      * Counter Categories grouped by network layers
@@ -143,9 +143,9 @@ public class CounterStore {
      * @param type
      * @return
      */
-    public ICounter createCounter(String key, CounterValue.CounterType type) {
+    public ICounterService createCounter(String key, CounterValue.CounterType type) {
         CounterEntry ce;
-        ICounter c;
+        ICounterService c;
 
         if (!nameToCEIndex.containsKey(key)) {
             c = SimpleCounter.createCounter(new Date(), type);
@@ -178,7 +178,7 @@ public class CounterStore {
     /**
      * Retrieves a counter with the given title, or null if none can be found.
      */
-    public ICounter getCounter(String key) {
+    public ICounterService getCounter(String key) {
         CounterEntry counter = nameToCEIndex.get(key);
         if (counter != null) {
             return counter.counter;
@@ -192,11 +192,11 @@ public class CounterStore {
      * 
      * (Note - this method may be slow - primarily for debugging/UI)
      */
-    public Map<String, ICounter> getAll() {
-        Map<String, ICounter> ret = new ConcurrentHashMap<String, ICounter>();
+    public Map<String, ICounterService> getAll() {
+        Map<String, ICounterService> ret = new ConcurrentHashMap<String, ICounterService>();
         for(Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
             String key = counterEntry.getKey();
-            ICounter counter = counterEntry.getValue().counter;
+            ICounterService counter = counterEntry.getValue().counter;
             ret.put(key, counter);
         }
         return ret;

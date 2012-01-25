@@ -37,7 +37,7 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopology;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.junit.Before;
@@ -176,7 +176,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1))).andReturn(false);
         deviceManager.setTopology(mockTopology);
 
@@ -236,7 +236,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        ITopology mockTopology = createNiceMock(ITopology.class);
+        ITopologyService mockTopology = createNiceMock(ITopologyService.class);
         
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
@@ -316,7 +316,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createNiceMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).atLeastOnce();
-        ITopology mockTopology = createNiceMock(ITopology.class);
+        ITopologyService mockTopology = createNiceMock(ITopologyService.class);
         //expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1))).andReturn(false);
         deviceManager.setTopology(mockTopology);
 
@@ -359,7 +359,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))

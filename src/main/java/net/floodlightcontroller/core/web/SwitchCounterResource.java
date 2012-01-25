@@ -27,7 +27,7 @@ import org.restlet.resource.Get;
 
 import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterService;
 
 /**
  * Get counters for a particular switch 
@@ -68,7 +68,7 @@ public class SwitchCounterResource extends CounterResourceBase {
             //Just leave counterTitle undecoded if there is an issue - fail silently
         }
 
-        ICounter counter = this.counterStore.getCounter(fullCounterName);
+        ICounterService counter = this.counterStore.getCounter(fullCounterName);
         Map<String, Long> sample = new HashMap<String, Long> ();
         if (counter != null) {
             sample.put(counter.getCounterDate().toString(), 

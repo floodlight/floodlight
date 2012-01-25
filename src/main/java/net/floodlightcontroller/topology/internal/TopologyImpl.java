@@ -46,12 +46,12 @@ import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingEngine;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.topology.ITopology;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
@@ -98,7 +98,7 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class TopologyImpl implements IOFMessageListener, IOFSwitchListener, 
-                                            IStorageSourceListener, ITopology {
+                                            IStorageSourceListener, ITopologyService {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
     // Names of table/fields for links in the storage API
@@ -116,7 +116,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     private static final String SWITCH_CORE_SWITCH = "core_switch";
 
     protected IFloodlightProvider floodlightProvider;
-    protected IStorageSource storageSource;
+    protected IStorageSourceService storageSource;
     protected IRoutingEngine routingEngine;
 
     /**
@@ -139,7 +139,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Map from switch id to a set of all links with it as an endpoint
      */
     protected Map<IOFSwitch, Set<LinkTuple>> switchLinks;
-    protected Set<ITopologyAware> topologyAware;
+    protected Set<ITopologyListener> topologyAware;
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
@@ -226,7 +226,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         do {
             Update update = updates.take();
             if (topologyAware != null) {
-                for (ITopologyAware ta : topologyAware) {
+                for (ITopologyListener ta : topologyAware) {
                     if (log.isDebugEnabled()) {
                         log.debug("Dispatching topology update {} {} {} {} {}",
                                   new Object[]{update.operation,
@@ -527,11 +527,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
     }
 
+    // TODO get rid of this
     @Override
     public String getName() {
         return "topology";
     }
-
+ 
     @Override
     public int getId() {
         return FlListenerID.TOPOLOGYIMPL;
@@ -1365,7 +1366,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     /**
      * @param topologyAware the topologyAware to set
      */
-    public void setTopologyAware(Set<ITopologyAware> topologyAware) {
+    public void setTopologyAware(Set<ITopologyListener> topologyAware) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware = topologyAware;
     }
@@ -1374,7 +1375,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Sets the IStorageSource to use for ITology
      * @param storageSource the storage source to use
      */
-    public void setStorageSource(IStorageSource storageSource) {
+    public void setStorageSource(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
@@ -1384,7 +1385,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Gets the storage source for this ITopology
      * @return The IStorageSource ITopology is writing to
      */
-    public IStorageSource getStorageSource() {
+    public IStorageSourceService getStorageSource() {
         return storageSource;
     }
 
@@ -1461,5 +1462,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // Ignore delete events, the switch delete will do the right thing on it's own
+    }
+
+    @Override
+    public void addTopologyListener(ITopologyListener listener) {
+        // TODO Auto-generated method stub
+        
     }
 }

@@ -47,7 +47,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
@@ -56,11 +56,11 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.topology.ITopology;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
@@ -84,15 +84,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
-        IOFSwitchListener, ITopologyAware {  
+public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
+        IOFSwitchListener, ITopologyListener {  
     protected static Logger log = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
     protected IFloodlightProvider floodlightProvider;
     
-    
-
     /**
      * Class to maintain all the device manager maps which consists of four
      * main maps. 
@@ -546,9 +544,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     protected ReentrantReadWriteLock lock;
     protected volatile boolean shuttingDown = false;
 
-    protected ITopology topology;
+    protected ITopologyService topology;
     protected LinkedList<Update> updates;
-    protected IStorageSource storageSource;
+    protected IStorageSourceService storageSource;
 
     protected Runnable deviceAgingTimer;
     protected SingletonTask deviceUpdateTask;
@@ -1077,7 +1075,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     /**
      * @param topology the topology to set
      */
-    public void setTopology(ITopology topology) {
+    public void setTopology(ITopologyService topology) {
         this.topology = topology;
     }
 
@@ -1208,7 +1206,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         this.deviceManagerAware = deviceManagerAware;
     }
 
-    public void setStorageSource(IStorageSource storageSource) {
+    public void setStorageSource(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
         storageSource.createTable(DEVICE_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(

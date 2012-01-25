@@ -33,7 +33,7 @@ import org.openflow.protocol.factory.BasicFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IFloodlightProvider {
+public interface IFloodlightProvider extends IFloodlightService {
 
     /**
      * A value stored in the floodlight context containing a parsed packet

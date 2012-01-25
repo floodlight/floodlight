@@ -53,7 +53,7 @@ import net.floodlightcontroller.counter.CounterValue.CounterType;
  * @author kyle
  *
  */
-public class ConcurrentCounter implements ICounter {
+public class ConcurrentCounter implements ICounterService {
 
   protected static final Map<DateSpan, Integer> MAX_HISTORY = new HashMap<DateSpan, Integer>();
   static {
@@ -110,7 +110,7 @@ public class ConcurrentCounter implements ICounter {
    * @param startDate
    * @return
    */
-  public static ICounter createCounter(Date startDate) {
+  public static ICounterService createCounter(Date startDate) {
     ConcurrentCounter cc = new ConcurrentCounter(startDate);
     ConcurrentCounter.liveCounters.add(cc);
     return cc;

@@ -30,7 +30,7 @@ import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractStorageSource implements IStorageSource {
+public abstract class AbstractStorageSource implements IStorageSourceService {
     protected static Logger logger = LoggerFactory.getLogger(AbstractStorageSource.class);
 
     // Shared instance of the executor to use to execute the storage tasks.

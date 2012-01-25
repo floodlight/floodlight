@@ -19,7 +19,7 @@ package net.floodlightcontroller.counter;
 
 import java.util.Date;
 
-import net.floodlightcontroller.counter.ICounter.DateSpan;
+import net.floodlightcontroller.counter.ICounterService.DateSpan;
 
 
 /**
