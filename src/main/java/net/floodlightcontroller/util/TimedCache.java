@@ -30,8 +30,6 @@ import java.util.concurrent.ConcurrentMap;
  * @param <K> Type of the values in this cache
  */
 public class TimedCache<K> {
-    private static final long serialVersionUID = 1L;
-    
     private final long timeoutInterval;    //specified in milliseconds.
 	private ConcurrentMap<K, Long> cache;
     private long cacheHits;
