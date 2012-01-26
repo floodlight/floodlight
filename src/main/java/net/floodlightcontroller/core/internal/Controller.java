@@ -885,7 +885,7 @@ public class Controller
     protected void addSwitch(IOFSwitch sw) {
         // TODO: is it save to modify the HashMap without holding 
         // the old switch's lock
-        IOFSwitch oldSw = this.switches.put(sw.getId(), sw);
+        OFSwitchImpl oldSw = (OFSwitchImpl) this.switches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
             log.info("New add switch for pre-existing switch {}", sw);
