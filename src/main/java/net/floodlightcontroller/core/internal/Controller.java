@@ -180,6 +180,7 @@ public class Controller
 
     protected int restPort;
     protected int openFlowPort;
+    protected int workerThreads;
 
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -234,6 +235,7 @@ public class Controller
         this.restlets = new ArrayList<RestletRoutable>();
         this.restPort = settings.getRestPort();
         this.openFlowPort = settings.getOpenFlowPort();
+        this.workerThreads = settings.getWorkerThreads();
     }
     
     // **********************
@@ -1368,10 +1370,7 @@ public class Controller
             //long maxMem = Runtime.getRuntime().maxMemory() * 1 / 3;
             //long memPerChannel = 2 * 1024 * 1024;
 
-            final ServerBootstrap bootstrap = new ServerBootstrap(
-                    new NioServerSocketChannelFactory(
-                            Executors.newCachedThreadPool(),
-                            Executors.newCachedThreadPool()));
+            final ServerBootstrap bootstrap = createServerBootStrap(workerThreads);
 
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
@@ -1421,7 +1420,21 @@ public class Controller
             }
         }
     }
-    
+
+    private ServerBootstrap createServerBootStrap(int threads) {
+        if (threads == 0) {
+            return new ServerBootstrap(
+                    new NioServerSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool()));
+        } else {
+            return new ServerBootstrap(
+                    new NioServerSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool(), threads));
+        }
+    }
+
     /**
      * Initialize all of the controller's components; override me for
      * new components
