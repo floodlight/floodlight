@@ -21,6 +21,9 @@ import java.util.List;
 
 import net.floodlightcontroller.core.web.serializers.EventHistoryAttachmentPointJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.EventHistoryBaseInfoJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.EventHistoryTopologyClusterJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.EventHistoryTopologyLinkJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.EventHistoryTopologySwitchJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.LinkTupleSerializer;
 import net.floodlightcontroller.core.web.serializers.OFFeaturesReplyJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFMatchJSONSerializer;
@@ -49,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class JacksonCustomConverter extends JacksonConverter {
-    protected static Logger log = 
+    protected static Logger log =
                         LoggerFactory.getLogger(JacksonCustomConverter.class);
 
     protected static ObjectMapper jsonObjectMapper;
@@ -69,9 +72,12 @@ public class JacksonCustomConverter extends JacksonConverter {
         jsonModule.addSerializer(
                             new PerfMonCumulativeTimeBucketJSONSerializer());
         jsonModule.addSerializer(new LinkTupleSerializer());
+        jsonModule.addSerializer(new EventHistoryTopologySwitchJSONSerializer());
+        jsonModule.addSerializer(new EventHistoryTopologyLinkJSONSerializer());
+        jsonModule.addSerializer(new EventHistoryTopologyClusterJSONSerializer());
         jsonObjectMapper.registerModule(jsonModule);
     }
-    
+
     @Override
     protected <T> JacksonRepresentation<T> 
                                         create(MediaType mediaType, T source) {

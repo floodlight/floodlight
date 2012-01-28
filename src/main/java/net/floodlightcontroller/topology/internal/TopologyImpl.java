@@ -18,6 +18,8 @@
 package net.floodlightcontroller.topology.internal;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,7 +59,10 @@ import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.util.ClusterDFS;
+import net.floodlightcontroller.util.EventHistory;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
+import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
@@ -219,6 +224,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
+        this.evHistTopologySwitch = 
+            new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
+        this.evHistTopologyLink = 
+            new EventHistory<EventHistoryTopologyLink>("Topology: Link");
+        this.evHistTopologyCluster = 
+            new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
 
     }
 
@@ -666,6 +677,13 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 linkChanged = true;
 
                 log.info("Added link {}", lt);
+                // Add to event history
+                evHistTopoLink(lt.getSrc().getSw().getId(), 
+                                lt.getDst().getSw().getId(), 
+                                lt.getSrc().getPort(),
+                                lt.getDst().getPort(),
+                                srcPortState, dstPortState,
+                                EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
                 // Only update the port states if they've changed
                 if (srcPortState == oldLinkInfo.getSrcPortState().intValue())
@@ -694,6 +712,14 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                         log.trace("Updated link {}", lt);
                     }
                     log.info("Updated link {}", lt);
+                    // Add to event history
+                    evHistTopoLink(lt.getSrc().getSw().getId(), 
+                                    lt.getDst().getSw().getId(), 
+                                    lt.getSrc().getPort(),
+                                    lt.getDst().getPort(),
+                                    srcPortState, dstPortState,
+                                    EvAction.LINK_PORT_STATE_UPDATED, 
+                                    "LLDP Recvd");
                 }
             }
 
@@ -714,7 +740,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Removes links from memory and storage.
      * @param links The List of @LinkTuple to delete.
      */
-    protected void deleteLinks(List<LinkTuple> links) {
+    protected void deleteLinks(List<LinkTuple> links, String reason) {
         lock.writeLock().lock();
         try {
             for (LinkTuple lt : links) {
@@ -737,7 +763,15 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 this.links.remove(lt);
                 updates.add(new Update(lt, 0, 0, UpdateOperation.REMOVE));
 
+                // Update Event History
+                evHistTopoLink(lt.getSrc().getSw().getId(), 
+                        lt.getDst().getSw().getId(), 
+                        lt.getSrc().getPort(),
+                        lt.getDst().getPort(),
+                        0, 0, // Port states
+                        EvAction.LINK_DELETED, reason);
                 removeLink(lt);
+                
 
                 if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
@@ -790,7 +824,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                                                 ps.getReason()});
                     }
                     eraseList.addAll(this.portLinks.get(tuple));
-                    deleteLinks(eraseList);
+                    deleteLinks(eraseList, "Port Status Changed");
                     topologyChanged = true;
                     link_deleted    = true;
                 }
@@ -861,6 +895,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // know which switches might be connected to the new switch.
         // Need to optimize when supporting a large number of switches.
         sendLLDPs();
+        // Update event history
+        evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
     }
 
     /**
@@ -870,13 +906,15 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      */
     @Override
     public void removedSwitch(IOFSwitch sw) {
+        // Update event history
+        evHistTopoSwitch(sw, EvAction.SWITCH_DISCONNECTED, "None");
         List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
         lock.writeLock().lock();
         try {
             if (switchLinks.containsKey(sw)) {
                 // add all tuples with an endpoint on this switch to erase list
                 eraseList.addAll(switchLinks.get(sw));
-                deleteLinks(eraseList);
+                deleteLinks(eraseList, "Switch Removed");
                 updateClusters();
             }
         } finally {
@@ -907,7 +945,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             }
             
             if (eraseList.size() > 0) {
-                deleteLinks(eraseList);
+                deleteLinks(eraseList, "LLDP timeout");
                 updateClusters();
             }
         } finally {
@@ -1171,7 +1209,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             // The cluster thus far forms a strongly connected component.
             // create a new switch cluster and the switches in the current
             // set to the switch cluster.
-            SwitchCluster sc = new SwitchCluster();
+            SwitchCluster sc = new SwitchCluster(this);
             for(IOFSwitch sw: currSet){
                 sc.add(sw);
                 switchClusterMap.put(sw, sc);
@@ -1464,5 +1502,69 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // Ignore delete events, the switch delete will do the right thing on it's own
+    }
+
+    // ****************************************************
+    // Topology Manager's Event History members and methods
+    // ****************************************************
+
+    // Topology Manager event history
+    public EventHistory<EventHistoryTopologySwitch>  evHistTopologySwitch;
+    public EventHistory<EventHistoryTopologyLink>    evHistTopologyLink;
+    public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
+    public EventHistoryTopologySwitch  evTopoSwitch;
+    public EventHistoryTopologyLink    evTopoLink;
+    public EventHistoryTopologyCluster evTopoCluster;
+
+    // Switch Added/Deleted
+    private void evHistTopoSwitch(IOFSwitch sw, EvAction actn, String reason) {
+        if (evTopoSwitch == null) {
+            evTopoSwitch = new EventHistoryTopologySwitch();
+        }
+        evTopoSwitch.dpid     = sw.getId();
+        if ((sw.getChannel() != null) &&
+            (SocketAddress.class.isInstance(
+                sw.getChannel().getRemoteAddress()))) {
+            evTopoSwitch.ipv4Addr =
+                ((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getAddress().getAddress();
+            evTopoSwitch.l4Port   =
+                (short)(((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getPort());
+        } else {
+            byte[] zeroIpa = new byte[] {(byte)0, (byte)0, (byte)0, (byte)0};
+            evTopoSwitch.ipv4Addr = zeroIpa;
+            evTopoSwitch.l4Port = 0;
+        }
+        evTopoSwitch.reason   = reason;
+        evTopoSwitch = evHistTopologySwitch.put(evTopoSwitch, actn);
+    }
+
+    private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
+            short dstPort, int srcPortState, int dstPortState,
+            EvAction actn, String reason) {
+        if (evTopoLink == null) {
+            evTopoLink = new EventHistoryTopologyLink();
+        }
+        evTopoLink.srcSwDpid = srcDpid;
+        evTopoLink.dstSwDpid = dstDpid;
+        evTopoLink.srcSwport = srcPort; 
+        evTopoLink.dstSwport = dstPort;
+        evTopoLink.srcPortState = srcPortState;
+        evTopoLink.dstPortState = dstPortState;
+        evTopoLink.reason    = reason;
+        evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
+    }
+
+    public void evHistTopoCluster(long dpid, long clusterIdOld, 
+                    long clusterIdNew, EvAction action, String reason) {
+        if (evTopoCluster == null) {
+            evTopoCluster = new EventHistoryTopologyCluster();
+        }
+        evTopoCluster.dpid         = dpid;
+        evTopoCluster.clusterIdOld = clusterIdOld;
+        evTopoCluster.clusterIdNew = clusterIdNew;
+        evTopoCluster.reason       = reason;
+        evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
     }
 }

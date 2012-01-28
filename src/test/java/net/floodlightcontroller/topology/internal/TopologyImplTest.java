@@ -100,7 +100,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         replay(sw1, sw2);
         LinkTuple lt = new LinkTuple(sw1, 2, sw2, 1);
         topology.addOrUpdateLink(lt, 0, 0);
-        topology.deleteLinks(Collections.singletonList(lt));
+        topology.deleteLinks(Collections.singletonList(lt), "Test");
 
         // check invariants hold
         assertNull(topology.switchLinks.get(lt.getSrc().getSw()));
@@ -136,7 +136,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         replay(sw1);
         LinkTuple lt = new LinkTuple(sw1, 2, sw1, 3);
         topology.addOrUpdateLink(lt, 0, 0);
-        topology.deleteLinks(Collections.singletonList(lt));
+        topology.deleteLinks(Collections.singletonList(lt), "Test to self");
 
         // check invariants hold
         assertNull(topology.switchLinks.get(lt.getSrc().getSw()));

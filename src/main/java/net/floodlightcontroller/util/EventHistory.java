@@ -55,6 +55,13 @@ public class EventHistory<T> {
         CLEARED,  // All entries are removed
         PKT_IN,
         PKT_OUT,
+        SWITCH_CONNECTED,
+        SWITCH_DISCONNECTED,
+        LINK_ADDED,
+        LINK_DELETED,
+        LINK_PORT_STATE_UPDATED,
+        CLUSTER_ID_CHANGED_FOR_CLUSTER,
+        CLUSTER_ID_CHANGED_FOR_A_SWITCH,
     }
 
     // Constructor
