@@ -22,19 +22,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounterService;
+import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -60,22 +61,19 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     
     public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT=5; // in seconds
 
-    protected IFloodlightProvider floodlightProvider;
+    protected IFloodlightProviderService floodlightProvider;
     protected IDeviceManagerService deviceManager;
-    protected IRoutingEngine routingEngine;
+    protected IRoutingEngineService routingEngine;
     protected ITopologyService topology;
-    protected CounterStore counterStore;
+    protected ICounterStoreService counterStore;
     
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed by a global APP_ID class
 
 
     public void startUp() {
+        deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-    }
-
-    public void shutDown() {
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
     }
 
     @Override
@@ -117,7 +115,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             // flowmod is per switch. portid = -1
             String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
             try {
-                ICounterService counter = counterStore.getCounter(counterName);
+                ICounter counter = counterStore.getCounter(counterName);
                 if (counter == null) {
                     counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
                 }
@@ -291,7 +289,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         }
     }
 
-    public static boolean blockHost(IFloodlightProvider floodlightProvider, 
+    public static boolean blockHost(IFloodlightProviderService floodlightProvider, 
             SwitchPortTuple sw_tup, long host_mac, 
             short hardTimeout) {
 
@@ -335,14 +333,14 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 
     /**
      * @param routingEngine the routingEngine to set
      */
-    public void setRoutingEngine(IRoutingEngine routingEngine) {
+    public void setRoutingEngine(IRoutingEngineService routingEngine) {
         this.routingEngine = routingEngine;
     }
 
@@ -360,11 +358,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         this.topology = topology;
     }
     
-    public CounterStore getCounterStore() {
+    public ICounterStoreService getCounterStore() {
         return counterStore;
     }
     
-    public void setCounterStore(CounterStore counterStore) {
+    public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
     }
 

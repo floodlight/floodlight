@@ -67,4 +67,10 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @return
      */
     public List<Device> getDevices();
+    
+    /**
+     * Adds a listener to listen for IDeviceManagerServices notifications
+     * @param listener The listener that wants the notifications
+     */
+    public void addListener(IDeviceManagerAware listener);
 }

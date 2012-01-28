@@ -20,7 +20,7 @@ package net.floodlightcontroller.counter;
 import java.util.Arrays;
 import java.util.Date;
 
-import net.floodlightcontroller.counter.ICounterService.DateSpan;
+import net.floodlightcontroller.counter.ICounter.DateSpan;
 
 /**
  * Simple immutable class to store a series of historic counter values

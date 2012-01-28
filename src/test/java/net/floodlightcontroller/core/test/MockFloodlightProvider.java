@@ -26,7 +26,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
@@ -43,7 +43,7 @@ import org.openflow.protocol.factory.BasicFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class MockFloodlightProvider implements IFloodlightProvider {
+public class MockFloodlightProvider implements IFloodlightProviderService {
     protected Map<OFType, List<IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
     protected Map<Long, IOFSwitch> switches;
@@ -123,8 +123,8 @@ public class MockFloodlightProvider implements IFloodlightProvider {
                 OFPacketIn pi = (OFPacketIn)msg;
                 Ethernet eth = new Ethernet();
                 eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
-                IFloodlightProvider.bcStore.put(bc, 
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
+                IFloodlightProviderService.bcStore.put(bc, 
+                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                         eth);
             }
             while (it.hasNext() && !Command.STOP.equals(result)) {

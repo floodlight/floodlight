@@ -35,18 +35,13 @@ import javax.annotation.PostConstruct;
  * @author kyle
  *
  */
-public class CounterStore {
-    public final static String TitleDelimitor = "__";
-
-    /** L2 EtherType subCategories */
-    public final static String L3ET_IPV4 = "L3_IPv4";
-
+public class CounterStore implements ICounterStoreService {
     public enum NetworkLayer {
         L3, L4
     }
 
     protected class CounterEntry {
-        protected ICounterService counter;
+        protected ICounter counter;
         String title;
     }
 
@@ -56,8 +51,8 @@ public class CounterStore {
     protected Map<String, CounterEntry> nameToCEIndex = 
             new ConcurrentHashMap<String, CounterEntry>();
 
-    protected ICounterService heartbeatCounter;
-    protected ICounterService randomCounter;
+    protected ICounter heartbeatCounter;
+    protected ICounter randomCounter;
 
     /**
      * Counter Categories grouped by network layers
@@ -121,10 +116,7 @@ public class CounterStore {
         return fullCounterName;
     }
 
-    /**
-     * Retrieve a list of subCategories by counterName.
-     * null if nothing.
-     */
+    @Override
     public List<String> getAllCategories(String counterName, NetworkLayer layer) {
         if (layeredCategories.containsKey(layer)) {
             Map<String, List<String>> counterToCategories = layeredCategories.get(layer);
@@ -135,17 +127,10 @@ public class CounterStore {
         return null;
     }
     
-    /**
-     * Create a new ICounter and set the title.  Note that the title must be unique, otherwise this will
-     * throw an IllegalArgumentException.
-     * 
-     * @param key
-     * @param type
-     * @return
-     */
-    public ICounterService createCounter(String key, CounterValue.CounterType type) {
+    @Override
+    public ICounter createCounter(String key, CounterValue.CounterType type) {
         CounterEntry ce;
-        ICounterService c;
+        ICounter c;
 
         if (!nameToCEIndex.containsKey(key)) {
             c = SimpleCounter.createCounter(new Date(), type);
@@ -175,10 +160,8 @@ public class CounterStore {
             }}, 100, 100, TimeUnit.MILLISECONDS);
     }
     
-    /**
-     * Retrieves a counter with the given title, or null if none can be found.
-     */
-    public ICounterService getCounter(String key) {
+    @Override
+    public ICounter getCounter(String key) {
         CounterEntry counter = nameToCEIndex.get(key);
         if (counter != null) {
             return counter.counter;
@@ -187,16 +170,15 @@ public class CounterStore {
         }
     }
 
-    /**
-     * Returns an immutable map of title:counter with all of the counters in the store.
-     * 
-     * (Note - this method may be slow - primarily for debugging/UI)
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.counter.ICounterStoreService#getAll()
      */
-    public Map<String, ICounterService> getAll() {
-        Map<String, ICounterService> ret = new ConcurrentHashMap<String, ICounterService>();
+    @Override
+    public Map<String, ICounter> getAll() {
+        Map<String, ICounter> ret = new ConcurrentHashMap<String, ICounter>();
         for(Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
             String key = counterEntry.getKey();
-            ICounterService counter = counterEntry.getValue().counter;
+            ICounter counter = counterEntry.getValue().counter;
             ret.put(key, counter);
         }
         return ret;

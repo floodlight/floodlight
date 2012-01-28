@@ -27,10 +27,15 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractStorageSource implements IStorageSourceService {
+public abstract class AbstractStorageSource 
+    implements IStorageSourceService, IFloodlightModule {
     protected static Logger logger = LoggerFactory.getLogger(AbstractStorageSource.class);
 
     // Shared instance of the executor to use to execute the storage tasks.
@@ -81,12 +86,6 @@ public abstract class AbstractStorageSource implements IStorageSourceService {
     
     public AbstractStorageSource() {
         this.executorService = defaultExecutorService;
-    }
-
-    public AbstractStorageSource(ExecutorService executorService,
-            IStorageExceptionHandler exceptionHandler) {
-        setExecutorService(executorService);
-        this.exceptionHandler = exceptionHandler;
     }
 
     public void setExecutorService(ExecutorService executorService) {
@@ -330,4 +329,9 @@ public abstract class AbstractStorageSource implements IStorageSourceService {
             notifyListeners(notification);
     }
     
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // TODO Auto-generated method stub
+        
+    }
 }

@@ -19,7 +19,7 @@ package net.floodlightcontroller.test;
 
 import junit.framework.TestCase;
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.packet.Ethernet;
 
@@ -56,8 +56,8 @@ public class FloodlightTestCase extends TestCase {
             OFPacketIn pi = (OFPacketIn)m;
             Ethernet eth = new Ethernet();
             eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
-            IFloodlightProvider.bcStore.put(bc, 
-                    IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
+            IFloodlightProviderService.bcStore.put(bc, 
+                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                     eth);
         }
         return bc;

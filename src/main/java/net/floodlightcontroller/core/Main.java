@@ -2,6 +2,7 @@ package net.floodlightcontroller.core;
 
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
+import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 
 /**
  * Host for the Floodlight main method
@@ -19,7 +20,9 @@ public class Main {
                 "org.restlet.ext.slf4j.Slf4jLoggerFacade");
         
         FloodlightModuleLoader fml = new FloodlightModuleLoader();
-        fml.loadModulesFromConfig();
+        IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig();
+        IFloodlightProviderService controller =
+                moduleContext.getServiceImpl(IFloodlightProviderService.class);
+        controller.run();
     }
-
 }

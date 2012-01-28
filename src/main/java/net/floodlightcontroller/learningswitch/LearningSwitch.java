@@ -35,12 +35,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounterService;
+import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFError;
@@ -62,8 +63,8 @@ import org.slf4j.LoggerFactory;
 
 public class LearningSwitch implements IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
-    protected IFloodlightProvider floodlightProvider;
-    protected CounterStore counterStore;
+    protected IFloodlightProviderService floodlightProvider;
+    protected ICounterStoreService counterStore;
 
     // flow-mod - for use in the cookie
     public static final int LEARNING_SWITCH_APP_ID = 1;
@@ -84,15 +85,15 @@ public class LearningSwitch implements IOFMessageListener {
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
-    public CounterStore getCounterStore() {
+    public ICounterStoreService getCounterStore() {
         return counterStore;
     }
     
-    public void setCounterStore(CounterStore counterStore) {
+    public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
     }
     
@@ -142,7 +143,7 @@ public class LearningSwitch implements IOFMessageListener {
             // flowmod is per switch. portid = -1
             String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
             try {
-                ICounterService counter = counterStore.getCounter(counterName);
+                ICounter counter = counterStore.getCounter(counterName);
                 if (counter == null) {
                     counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
                 }

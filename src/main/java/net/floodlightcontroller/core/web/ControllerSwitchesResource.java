@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.restlet.resource.Get;
@@ -37,7 +37,7 @@ public class ControllerSwitchesResource extends ServerResource {
     public List<Map<String, String>> retrieve() {
         List<Map<String, String>> switchIds = new ArrayList<Map<String, String>>();        
 
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();
+        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
 
         for (IOFSwitch s: switches.values()) {

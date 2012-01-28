@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -354,7 +354,7 @@ public class ControllerTest extends FloodlightTestCase {
         .setLengthU(OFPacketOut.MINIMUM_LENGTH+packetOut.getActionsLength()+testPacketSerialized.length);
 
         FloodlightContext cntx = new FloodlightContext();
-        IFloodlightProvider.bcStore.put(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD, (Ethernet) testPacket);
+        IFloodlightProviderService.bcStore.put(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, (Ethernet) testPacket);
 
 
         // Let's check the listeners.

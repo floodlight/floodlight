@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.openflow.protocol.OFFeaturesReply;
@@ -42,7 +42,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();
+        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
         
         HashMap<String,Object> result = new HashMap<String,Object>();
         List<OFStatistics> values = null;

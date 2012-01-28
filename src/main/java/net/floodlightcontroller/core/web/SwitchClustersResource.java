@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.openflow.util.HexString;
@@ -36,7 +36,7 @@ import org.restlet.resource.ServerResource;
 public class SwitchClustersResource extends ServerResource {
     @Get("json")
     public Map<String, List<String>> retrieve() {
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();
+        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
         Map<String, List<String>> switchClusterMap = new HashMap<String, List<String>>();
         for (Entry<Long, IOFSwitch> entry : floodlightProvider.getSwitches().entrySet()) {
             Long clusterDpid = entry.getValue().getSwitchClusterId();

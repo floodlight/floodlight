@@ -66,9 +66,9 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         switchMap.put(dpid, mockSwitch);
         mockFloodlightProvider.setSwitches(switchMap);
-        staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
+        //staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
         long timeSfpStart = System.currentTimeMillis();
-        staticFlowEntryPusher.startUp();
+        //staticFlowEntryPusher.startUp();
         
         // if someone calls getId(), return this dpid instead
         expect(mockSwitch.getId()).andReturn(dpid).anyTimes();

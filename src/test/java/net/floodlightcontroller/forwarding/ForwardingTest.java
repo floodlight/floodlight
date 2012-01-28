@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.Device;
@@ -42,7 +42,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
@@ -68,7 +68,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightContext cntx;
     protected IDeviceManagerService deviceManager;
-    protected IRoutingEngine routingEngine;
+    protected IRoutingEngineService routingEngine;
     protected Forwarding forwarding;
     protected ITopologyService topology;
     protected IOFSwitch sw1, sw2;
@@ -89,7 +89,7 @@ public class ForwardingTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         forwarding = getForwarding();
         deviceManager = createMock(IDeviceManagerService.class);
-        routingEngine = createMock(IRoutingEngine.class);
+        routingEngine = createMock(IRoutingEngineService.class);
         topology = createMock(ITopologyService.class);
         forwarding.setFloodlightProvider(mockFloodlightProvider);
         forwarding.setDeviceManager(deviceManager);
@@ -183,7 +183,7 @@ public class ForwardingTest extends FloodlightTestCase {
         expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK;
 
         // Add the packet to the context store
-        IFloodlightProvider.bcStore.put(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD, (Ethernet)testPacket);
+        IFloodlightProviderService.bcStore.put(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, (Ethernet)testPacket);
     }
 
     private Forwarding getForwarding() {

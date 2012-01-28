@@ -20,15 +20,15 @@ package net.floodlightcontroller.core.internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
 
 public class TerminationStorageExceptionHandler implements IStorageExceptionHandler {
     protected static Logger log = LoggerFactory.getLogger(TerminationStorageExceptionHandler.class);
 
-    private IFloodlightProvider floodlightProvider;
+    private IFloodlightProviderService floodlightProvider;
     
-    TerminationStorageExceptionHandler(IFloodlightProvider floodlightProvider) {
+    TerminationStorageExceptionHandler(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     

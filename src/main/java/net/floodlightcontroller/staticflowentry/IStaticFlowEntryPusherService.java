@@ -20,6 +20,7 @@ package net.floodlightcontroller.staticflowentry;
 import java.util.HashMap;
 import java.util.List;
 
+import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.openflow.protocol.OFFlowMod;
 
@@ -27,7 +28,7 @@ import org.openflow.protocol.OFFlowMod;
  * Represents the parts of the staticflowentry that are exposed as a service to other floodlight apps
  *
  */
-public interface IStaticFlowEntryPusherService {
+public interface IStaticFlowEntryPusherService extends IFloodlightService {
     /**
      * Pushes a flow-mod to this switch as a one-time push
      * 

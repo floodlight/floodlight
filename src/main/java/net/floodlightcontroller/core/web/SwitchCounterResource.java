@@ -25,9 +25,9 @@ import java.util.Map;
 import org.openflow.util.HexString;
 import org.restlet.resource.Get;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounterService;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterStoreService;
 
 /**
  * Get counters for a particular switch 
@@ -36,7 +36,7 @@ import net.floodlightcontroller.counter.ICounterService;
 public class SwitchCounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();
+        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
         HashMap<String,Object> model = new HashMap<String,Object>();
         
         String switchID = (String) getRequestAttributes().get("switchId");
@@ -63,12 +63,12 @@ public class SwitchCounterResource extends CounterResourceBase {
         try {
             counterName = URLDecoder.decode(counterName, "UTF-8");
             fullCounterName = 
-                switchID + CounterStore.TitleDelimitor + counterName;
+                switchID + ICounterStoreService.TitleDelimitor + counterName;
         } catch (UnsupportedEncodingException e) {
             //Just leave counterTitle undecoded if there is an issue - fail silently
         }
 
-        ICounterService counter = this.counterStore.getCounter(fullCounterName);
+        ICounter counter = this.counterStore.getCounter(fullCounterName);
         Map<String, Long> sample = new HashMap<String, Long> ();
         if (counter != null) {
             sample.put(counter.getCounterDate().toString(), 

@@ -32,7 +32,7 @@ import java.util.Date;
  * @author Kanzhe
  *
  */
-public class SimpleCounter implements ICounterService {
+public class SimpleCounter implements ICounter {
 
   protected CounterValue counter;
   protected Date samplingTime;
@@ -44,7 +44,7 @@ public class SimpleCounter implements ICounterService {
    * @param startDate
    * @return
    */
-  public static ICounterService createCounter(Date startDate, CounterValue.CounterType type) {
+  public static ICounter createCounter(Date startDate, CounterValue.CounterType type) {
     SimpleCounter cc = new SimpleCounter(startDate, type);
     return cc;
     

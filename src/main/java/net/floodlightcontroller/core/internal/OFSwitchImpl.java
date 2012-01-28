@@ -30,7 +30,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.util.TimedCache;
@@ -62,7 +62,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected static Logger log = LoggerFactory.getLogger(OFSwitchImpl.class);
 
     protected ConcurrentMap<Object, Object> attributes;
-    protected IFloodlightProvider floodlightProvider;
+    protected IFloodlightProviderService floodlightProvider;
     protected Date connectedSince;
     protected OFFeaturesReply featuresReply;
     protected String stringId;
@@ -273,7 +273,7 @@ public class OFSwitchImpl implements IOFSwitch {
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 

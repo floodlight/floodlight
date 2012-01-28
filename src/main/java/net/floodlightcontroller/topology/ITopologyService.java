@@ -86,6 +86,9 @@ public interface ITopologyService extends IFloodlightService {
      */
     public Map<IOFSwitch, Set<LinkTuple>> getSwitchLinks();
     
-    // gets called in startup method
-    public void addTopologyListener(ITopologyListener listener);
+    /**
+     * Adds a listener to listen for ITopologyService messages
+     * @param listener The listener that wants the notifications
+     */
+    public void addListener(ITopologyListener listener);
 }

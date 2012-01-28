@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +40,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
@@ -85,12 +90,7 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
-        IOFSwitchListener, ITopologyListener {  
-    protected static Logger log = 
-        LoggerFactory.getLogger(DeviceManagerImpl.class);
-
-    protected IFloodlightProvider floodlightProvider;
-    
+        IOFSwitchListener, ITopologyListener, IFloodlightModule {      
     /**
      * Class to maintain all the device manager maps which consists of four
      * main maps. 
@@ -497,8 +497,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Now add this updated device to the maps, which will replace
             // the old copy
             updateMaps(dCopy);
-            log.debug("Device 1 {}", d);
-            log.debug("Device 2 {}", dCopy);
+            if (log.isDebugEnabled()) {
+                log.debug("Device 1 {}", d);
+                log.debug("Device 2 {}", dCopy);
+            }
             removeAttachmentPointFromStorage(d, dap);
             d = null; // to catch if anyone is using this reference
             return true;
@@ -540,12 +542,17 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         return devMgrMaps;
     }
 
+    protected static Logger log = 
+            LoggerFactory.getLogger(DeviceManagerImpl.class);
+
     protected Set<IDeviceManagerAware> deviceManagerAware;
+    protected LinkedList<Update> updates;
     protected ReentrantReadWriteLock lock;
     protected volatile boolean shuttingDown = false;
 
+    // Our dependencies
+    protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
-    protected LinkedList<Update> updates;
     protected IStorageSourceService storageSource;
 
     protected Runnable deviceAgingTimer;
@@ -625,23 +632,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
         this.evHistDevMgrPktIn =
                 new EventHistory<OFMatch>("Pakcet-In");
-    }
-
-    public void startUp() {
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
-        deviceUpdateTask = new SingletonTask(ses, new DeviceUpdateWorker());
-
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
-        floodlightProvider.addOFSwitchListener(this);
-
-        /*
-         * Device and storage aging.
-         */
-        enableDeviceAgingTimer();
-
-        // Read all our device state (MACs, IPs, attachment points) from storage
-        readAllDeviceStateFromStorage();
     }
 
     public void shutDown() {
@@ -778,8 +768,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         Long dlAddr = Ethernet.toLong(match.getDataLayerSource());
         Short vlan = match.getDataLayerVirtualLan();
         if (vlan < 0) vlan = null;
-        Ethernet eth = IFloodlightProvider.bcStore.get(
-                                cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(
+                                cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         Device device = devMgrMaps.getDeviceByDataLayerAddr(dlAddr);
         Date currentDate = new Date(); // TODO,
@@ -1068,7 +1058,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 
@@ -1196,29 +1186,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     public void removedLink(IOFSwitch src, short srcPort, IOFSwitch dst, 
                                                                 short dstPort)
     {
+        // no-op
     }
-
-    /**
-     * @param deviceManagerAware the deviceManagerAware to set
-     */
-    public void setDeviceManagerAware(Set<IDeviceManagerAware> 
-                                                        deviceManagerAware) {
-        this.deviceManagerAware = deviceManagerAware;
-    }
-
-    public void setStorageSource(IStorageSourceService storageSource) {
-        this.storageSource = storageSource;
-        storageSource.createTable(DEVICE_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(
-                        DEVICE_TABLE_NAME, MAC_COLUMN_NAME);
-        storageSource.createTable(DEVICE_ATTACHMENT_POINT_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(
-                        DEVICE_ATTACHMENT_POINT_TABLE_NAME, ID_COLUMN_NAME);
-        storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(
-                        DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
-    }
-
+    
     /**
      * Process device manager aware updates.  Call without any lock held
      */
@@ -1953,5 +1923,98 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
     private void evHistPktIn(OFMatch packetIn) {
         evHistDevMgrPktIn.put(packetIn, EvAction.PKT_IN);
+    }
+
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IDeviceManagerService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IDeviceManagerService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IStorageSourceService.class);
+        l.add(ITopologyService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        // Wire up all our dependencies
+        floodlightProvider = 
+                context.getServiceImpl(IFloodlightProviderService.class);
+        topology =
+                context.getServiceImpl(ITopologyService.class);
+        storageSource =
+                context.getServiceImpl(IStorageSourceService.class);
+        
+        // We create this here because there is no ordering guarantee
+        this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // This is our 'constructor'
+        
+        // Create our data structures
+        this.devMgrMaps = new DevMgrMaps();
+        this.lock = new ReentrantReadWriteLock();
+        this.updates = new LinkedList<Update>();
+        this.evHistDevMgrAttachPt = 
+                new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
+        this.evHistDevMgrPktIn =
+                new EventHistory<OFMatch>("Pakcet-In");
+        
+        // Register to get updates from topology
+        topology.addListener(this);
+        
+        // Create our database tables
+        storageSource.createTable(DEVICE_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(
+                        DEVICE_TABLE_NAME, MAC_COLUMN_NAME);
+        storageSource.createTable(DEVICE_ATTACHMENT_POINT_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(
+                        DEVICE_ATTACHMENT_POINT_TABLE_NAME, ID_COLUMN_NAME);
+        storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(
+                        DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
+        
+        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        deviceUpdateTask = new SingletonTask(ses, new DeviceUpdateWorker());
+        
+        // Register for the OpenFlow messages we want
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
+        // Register for switch events
+        floodlightProvider.addOFSwitchListener(this);
+         // Device and storage aging.
+        enableDeviceAgingTimer();
+        // Read all our device state (MACs, IPs, attachment points) from storage
+        readAllDeviceStateFromStorage();
+    }
+
+    @Override
+    public void addListener(IDeviceManagerAware listener) {
+        deviceManagerAware.add(listener);
     }
 }

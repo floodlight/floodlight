@@ -68,7 +68,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager = new DeviceManagerImpl();
         deviceManager.setFloodlightProvider(mockFloodlightProvider);
         deviceManager.setStorageSource(new MemoryStorageSource());
-        deviceManager.startUp();
+        //deviceManager.startUp();
         
         // Build our test packet
         this.testPacket = new Ethernet()

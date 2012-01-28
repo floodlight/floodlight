@@ -20,17 +20,27 @@ package net.floodlightcontroller.forwarding;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
@@ -45,13 +55,13 @@ import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Forwarding extends ForwardingBase {
+public class Forwarding extends ForwardingBase implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     @Override
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProvider.bcStore.get(cntx, 
-                                                       IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
+                                                       IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         if (eth.isBroadcast() || eth.isMulticast()) {
             // For now we treat multicast as broadcast
             doFlood(sw, pi, cntx);
@@ -146,8 +156,8 @@ public class Forwarding extends ForwardingBase {
                         Route route = routingEngine.getRoute(srcSw.getId(), dstSw.getId());
                         if ((route != null) || validLocalHop(srcDap.getSwitchPort(), dstDap.getSwitchPort())) {
                             int bufferId = OFPacketOut.BUFFER_ID_NONE;
-                            if (log.isTraceEnabled()) {
-                                log.trace("pushRoute match={} route={} destination={}:{}",
+                            if (log.isDebugEnabled()) {
+                                log.debug("pushRoute match={} route={} destination={}:{}",
                                           new Object[] {match, route, dstDap.getSwitchPort().getSw(),
                                           dstDap.getSwitchPort().getPort()});
                             }
@@ -243,5 +253,50 @@ public class Forwarding extends ForwardingBase {
     private boolean validLocalHop(SwitchPortTuple srcTuple, SwitchPortTuple dstTuple) {
         return srcTuple.getSw().getId() == dstTuple.getSw().getId() &&
                srcTuple.getPort() != dstTuple.getPort();
+    }
+
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getServices() {
+        // We don't export any services
+        return null;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        // We don't have any services
+        return null;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IDeviceManagerService.class);
+        l.add(IRoutingEngineService.class);
+        l.add(ITopologyService.class);
+        l.add(ICounterStoreService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
+        this.setDeviceManager(context.getServiceImpl(IDeviceManagerService.class));
+        this.setRoutingEngine(context.getServiceImpl(IRoutingEngineService.class));
+        this.setTopology(context.getServiceImpl(ITopologyService.class));
+        this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        if (log.isDebugEnabled()) {
+            log.debug("Starting " + this.getClass().getCanonicalName());
+        }
+        
+        super.startUp();
     }
 }

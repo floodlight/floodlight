@@ -26,7 +26,7 @@ import java.util.concurrent.TimeoutException;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -42,7 +42,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 public abstract class OFMessageFuture<T,V> implements Future<V>,
         IOFSwitchFilter, IOFSwitchListener {
 
-    protected IFloodlightProvider floodlightProvider;
+    protected IFloodlightProviderService floodlightProvider;
     protected volatile boolean canceled;
     protected CountDownLatch latch;
     protected OFType responseType;
@@ -51,12 +51,12 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
     protected Runnable timeoutTimer;
     protected int transactionId;
 
-    public OFMessageFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
+    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
             OFType responseType, int transactionId) {
         this(floodlightProvider, sw, responseType, transactionId, 60, TimeUnit.SECONDS);
     }
 
-    public OFMessageFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
+    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
             OFType responseType, int transactionId, long timeout, TimeUnit unit) {
         this.floodlightProvider = floodlightProvider;
         this.canceled = false;

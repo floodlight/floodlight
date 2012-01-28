@@ -1,6 +1,7 @@
 package net.floodlightcontroller.core.module;
 
 import java.util.Collection;
+import java.util.Map;
 
 import net.floodlightcontroller.core.IFloodlightService;
 
@@ -27,22 +28,32 @@ public interface IFloodlightModule {
 	
 	public Collection<Class<? extends IFloodlightService>> getServices();
 	
-	public Collection<IFloodlightService> getServiceImpls();
+	/**
+	 * Instantiate (as needed) and return objects that implement each
+	 * of the services exported by this module.  The map returned maps
+	 * the implemented service to the object.  The object could be the
+	 * same object or different objects for different exported services.
+	 * @return The map from service interface class to service implementation
+	 */
+	public Map<Class<? extends IFloodlightService>,
+	           IFloodlightService> getServiceImpls();
 	
 	/**
 	 * Get a list of Modules that this module depends on.  The module system
-	 * will ensure that each these dependencies is resolved before the subsequent calls to init().
-	 * 
-	 * @return
+	 * will ensure that each these dependencies is resolved before the 
+	 * subsequent calls to init().
+	 * @return The Collection of IFloodlightServices that this module depnds
+	 *         on.
 	 */
 	
-	public Collection<? extends IFloodlightService> getDependencies();
+	public Collection<Class<? extends IFloodlightService>> getDependencies();
 	
 	/**
 	 * This is a hook for each module to do its <em>internal</em> initialization, 
 	 * e.g., call setService(context.getService("Service"))
 	 * 
-	 * All module dependencies are resolved when this is called, but not every module is initialized.
+	 * All module dependencies are resolved when this is called, but not every module 
+	 * is initialized.
 	 * 
 	 * @param context
 	 * @throws FloodlightModuleException

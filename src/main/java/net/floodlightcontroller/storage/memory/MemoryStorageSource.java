@@ -17,8 +17,12 @@
 
 package net.floodlightcontroller.storage.memory;
 
+import net.floodlightcontroller.core.IFloodlightService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.perfmon.PktinProcessingTime;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.SynchronousExecutorService;
 
 import java.util.ArrayList;
@@ -33,12 +37,7 @@ import net.floodlightcontroller.storage.StorageException;
 public class MemoryStorageSource extends NoSqlStorageSource {
     
     private Map<String, MemoryTable> tableMap = new HashMap<String,MemoryTable>();
-    
     PktinProcessingTime pktinProcessingTime;
-    
-    public MemoryStorageSource() {
-        super(new SynchronousExecutorService(), null);
-    }
     
     synchronized private MemoryTable getTable(String tableName, boolean create) {
         MemoryTable table = tableMap.get(tableName);
@@ -176,5 +175,43 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     public void setPktinProcessingTime(
             PktinProcessingTime pktinProcessingTime) {
         this.pktinProcessingTime = pktinProcessingTime;
+    }
+
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStorageSourceService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>,
+               IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                            IFloodlightService>();
+        m.put(IStorageSourceService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+        // we don't have any depedencies
+        return null;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        // no-op
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        executorService = new SynchronousExecutorService();
     }
 }

@@ -33,7 +33,7 @@ import org.openflow.protocol.factory.BasicFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IFloodlightProvider extends IFloodlightService {
+public interface IFloodlightProviderService extends IFloodlightService {
 
     /**
      * A value stored in the floodlight context containing a parsed packet
@@ -133,4 +133,9 @@ public interface IFloodlightProvider extends IFloodlightService {
      * @return an OpenFlow message factory
      */
     public BasicFactory getOFMessageFactory();
+
+    /**
+     * Run the main I/O loop of the Controller.
+     */
+    public void run();
 }

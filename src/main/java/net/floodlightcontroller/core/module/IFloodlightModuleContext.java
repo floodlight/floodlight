@@ -3,11 +3,12 @@ package net.floodlightcontroller.core.module;
 import net.floodlightcontroller.core.IFloodlightService;
 	
 public interface IFloodlightModuleContext {	
-	//TODO FIX THIS COMMENT
-	/**
-	 * Retrieves a casted version of a module from the registry.
-	 * @return The module casted to the correct type
-	 */
-	public IFloodlightService getService(
-			Class<? extends IFloodlightService> service);
+    /**
+     * Retrieves a casted version of a module from the registry.
+     * @param name The IFloodlightService object type
+     * @return The IFloodlightService
+     * @throws FloodlightModuleException If the module was not found 
+     * or a ClassCastException was encountered.
+     */
+    public <T extends IFloodlightService> T getServiceImpl(Class<T> service);
 }
