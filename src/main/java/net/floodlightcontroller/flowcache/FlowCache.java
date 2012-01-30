@@ -3,11 +3,9 @@
  */
 package net.floodlightcontroller.flowcache;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
+
 
 /**
  * @author subrata
@@ -15,7 +13,21 @@ import org.openflow.protocol.OFMatch;
  */
 public class FlowCache {
 
-    private int hitCnt;
+    protected int     hitCnt;
+    protected boolean flowCacheServiceOn;
+
+    // Constructor
+    public FlowCache() {
+        flowCacheServiceOn = false;
+    }
+
+    public boolean isFlowCacheServiceOn() {
+        return flowCacheServiceOn;
+    }
+
+    public void setFlowCacheServiceOn(boolean flowCacheServiceOn) {
+        this.flowCacheServiceOn = flowCacheServiceOn;
+    }
 
     public int getHitCnt() {
         return hitCnt;
@@ -30,5 +42,14 @@ public class FlowCache {
     public boolean addFlow(String string, OFFlowMod fm) {
         hitCnt++;
         return true;
+    }
+
+    public void startUp() {
+        // Service is off by default
+        flowCacheServiceOn = false;
+    }
+
+    public void shutDown() {
+        flowCacheServiceOn = false;
     }
 }

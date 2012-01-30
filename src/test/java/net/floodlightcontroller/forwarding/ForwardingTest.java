@@ -48,6 +48,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopology;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -95,6 +96,8 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
+        FlowCache flowCache = new FlowCache();
+        forwarding.setFlowCacheMgr(flowCache);
 
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
@@ -221,7 +224,6 @@ public class ForwardingTest extends FloodlightTestCase {
             .setCookie(2L << 52)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
         OFFlowMod fm2 = fm1.clone();
-        fm1.setFlags((short)1); // flow-mod remove flag set only on src switch
         ((OFActionOutput)fm2.getActions().get(0)).setPort((short) 3);
 
         sw1.write(capture(wc1), capture(bc1));
@@ -272,7 +274,6 @@ public class ForwardingTest extends FloodlightTestCase {
             .setActions(actions)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(2L << 52)
-            .setFlags((short)1)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
         // Record expected packet-outs/flow-mods

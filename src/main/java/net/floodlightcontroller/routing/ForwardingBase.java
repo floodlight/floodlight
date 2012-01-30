@@ -232,10 +232,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         fm.setBufferId(bufferId);
         fm.setMatch(wildcard(match, sw, wildcard_hints));
         fm.getMatch().setInputPort(srcSwPort.getPort());
-        // Set the flag to send flow-mod removal notifications only for the 
+        // Set the flag to request flow-mod removal notifications only for the 
         // source switch. The removal message is used to maintain the flow
         // cache. Don't set the flag for ARP messages
-        if (match.getDataLayerType() != Ethernet.TYPE_ARP) {
+        if ((flowCacheMgr.isFlowCacheServiceOn()) &&
+            (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
             fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
         }
 
@@ -253,7 +254,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         } catch (IOException e) {
             log.error("Failure writing flow mod", e);
         }
-        
+
         return srcSwitchIncluded;
     }
 
