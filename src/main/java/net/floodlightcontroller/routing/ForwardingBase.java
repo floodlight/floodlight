@@ -33,6 +33,7 @@ import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingEngine;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -64,6 +65,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     protected IDeviceManager deviceManager;
     protected IRoutingEngine routingEngine;
     protected ITopology topology;
+    protected FlowCache flowCacheMgr;
     protected CounterStore counterStore;
     
     // flow-mod - for use in the cookie
@@ -191,7 +193,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                                                  ((OFActionOutput)fm.getActions().get(0)).getPort() });
                     }
                     sw.write(fm, cntx);
-                    
+
                     // Push the packet out the source switch
                     if (sw.getId() == srcSwitch.getId()) {
                         pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);
@@ -224,20 +226,26 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 }
             }
         }
-        
+     
         // set the original match for the first switch, and buffer id
         fm.setMatch(match);
         fm.setBufferId(bufferId);
         fm.setMatch(wildcard(match, sw, wildcard_hints));
         fm.getMatch().setInputPort(srcSwPort.getPort());
-        
+        // Set the flag to send flow-mod removal notifications only for the 
+        // source switch. The removal message is used to maintain the flow
+        // cache. Don't set the flag for ARP messages
+        if (match.getDataLayerType() != Ethernet.TYPE_ARP) {
+            fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+        }
+
         updateCounterStore(sw, fm);
         try {
             log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
             sw.write(fm, cntx);
-            
+
             if (sw.getId() == srcSwitch.getId()) {
                 pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);
                 srcSwitchIncluded = true;
@@ -352,20 +360,28 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     public void setDeviceManager(IDeviceManager deviceManager) {
         this.deviceManager = deviceManager;
     }
-    
+
     /**
      * @param topology the topology to set
      */
     public void setTopology(ITopology topology) {
         this.topology = topology;
     }
-    
+
     public CounterStore getCounterStore() {
         return counterStore;
     }
-    
+
     public void setCounterStore(CounterStore counterStore) {
         this.counterStore = counterStore;
+    }
+
+    public FlowCache getFlowCacheMgr() {
+        return flowCacheMgr;
+    }
+
+    public void setFlowCacheMgr(FlowCache flowCacheMgr) {
+        this.flowCacheMgr = flowCacheMgr;
     }
 
     @Override

@@ -221,6 +221,7 @@ public class ForwardingTest extends FloodlightTestCase {
             .setCookie(2L << 52)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
         OFFlowMod fm2 = fm1.clone();
+        fm1.setFlags((short)1); // flow-mod remove flag set only on src switch
         ((OFActionOutput)fm2.getActions().get(0)).setPort((short) 3);
 
         sw1.write(capture(wc1), capture(bc1));
@@ -248,7 +249,7 @@ public class ForwardingTest extends FloodlightTestCase {
         
         OFMessage m = wc2.getValue();
         assert (m instanceof OFFlowMod);
-        assertTrue(m.equals(fm2));        
+        assertTrue(m.equals(fm2));
     }
 
     @Test
@@ -271,6 +272,7 @@ public class ForwardingTest extends FloodlightTestCase {
             .setActions(actions)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(2L << 52)
+            .setFlags((short)1)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
         // Record expected packet-outs/flow-mods
