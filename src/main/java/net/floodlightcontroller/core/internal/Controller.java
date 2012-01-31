@@ -46,16 +46,19 @@ import java.nio.channels.ClosedChannelException;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFController;
+import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.IRestApiService;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
-import net.floodlightcontroller.core.web.JacksonCustomConverter;
 import net.floodlightcontroller.core.web.RestletRoutable;
 import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
@@ -65,15 +68,12 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.storage.web.StorageWebRoutable;
-import net.floodlightcontroller.topology.web.TopologyWebRouteable;
-
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -139,7 +139,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Controller
     extends Application
-    implements IFloodlightProviderService, IOFController {
+    implements IFloodlightProviderService, IRestApiService, IOFController {
     
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
     
@@ -156,16 +156,16 @@ public class Controller
             Executors.newScheduledThreadPool(5);
     
     protected IStorageSourceService storageSource;
-    //protected IOFMessageFilterManagerService messageFilterManager;
-    protected PktinProcessingTime pktinProcTime;
+    protected IOFMessageFilterManagerService messageFilterManager;
+    protected IPktInProcessingTimeService pktinProcTime;
     protected long ptWarningThresholdInNano;
     
     protected List<RestletRoutable> restlets;
-
+    protected Context context;
+    
     // Configuration options
-    protected int restPort;
-    protected int openFlowPort;
-    protected String moduleFile;
+    protected int restPort = 8080;
+    protected int openFlowPort = 6633;
 
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
@@ -206,22 +206,10 @@ public class Controller
             this.added = added;
         }
     }
-
+    
     public Controller() {
-        this(new CmdLineSettings());
-    }
-
-    public Controller(CmdLineSettings settings) {
-        this.messageListeners =
-            new ConcurrentHashMap<OFType, 
-                                  ListenerDispatcher<OFType, 
-                                                     IOFMessageListener>>();
-        this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
-        this.updates = new LinkedBlockingQueue<Update>();
-        this.restlets = new ArrayList<RestletRoutable>();
-        this.restPort = settings.getRestPort();
-        this.openFlowPort = settings.getOpenFlowPort();
-        this.moduleFile = settings.getModuleFile();
+        super(new Context());
+        this.context = getContext();
     }
     
     // ***************
@@ -234,6 +222,14 @@ public class Controller
     
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
+    }
+    
+    public void setMessageFilterManagerService(IOFMessageFilterManagerService mfm) {
+        this.messageFilterManager = mfm;
+    }
+    
+    public void setPktInProcessingService(IPktInProcessingTimeService pits) {
+        this.pktinProcTime = pits;
     }
     
     // **********************
@@ -539,20 +535,6 @@ public class Controller
                             processSwitchDescReply();
                         }
                         break;
-                    /*
-                     * "Trivial" server to test raw low-level throughput
-                    case PACKET_IN:
-                        OFPacketIn pi = (OFPacketIn)m;
-    
-                        OFFlowMod fm = 
-                                (OFFlowMod)factory.getMessage(OFType.FLOW_MOD);
-                        OFMatch match = new OFMatch();
-                        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
-                        fm.setBufferId(pi.getBufferId());
-                        fm.setMatch(match);
-                        sw.write(fm, null);
-                        break; 
-                    */
                     case PORT_STATUS:
                         boolean swadded = 
                             state.hsState.equals(HandshakeState.READY);
@@ -780,16 +762,6 @@ public class Controller
                                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                                 eth);
                     }
-                    
-                    // Print the packet-in for debugging purposes at this point
-                    // The context would have the necessary information for
-                    // the OFMessageFilterManager's getDataToString to work
-                    // for packet-ins.
-                    //if (log.isDebugEnabled()) {
-                    //    String str = messageFilterManager.getDataAsString(sw, m, bc);
-                    //    log.trace("{}", str);
-                    //}
-
 
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
@@ -824,8 +796,8 @@ public class Controller
                 long processingTime = System.nanoTime() - startTime;
                 if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
                     log.warn("Time to process packet-in: {} us", processingTime/1000.0);
-                    //if (eth != null)
-                    //    log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
+                    if (eth != null)
+                        log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
                 }
         }
     }
@@ -1055,10 +1027,10 @@ public class Controller
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
                                       FloodlightContext bc) {
-        //if (log.isDebugEnabled()) {
-        //    String str = messageFilterManager.getDataAsString(sw, m, bc);
-        //    log.trace("{}", str);
-        //}
+        if (log.isDebugEnabled()) {
+            String str = messageFilterManager.getDataAsString(sw, m, bc);
+            log.trace("{}", str);
+        }
 
         List<IOFMessageListener> listeners = null;
         if (messageListeners.containsKey(m.getType())) {
@@ -1100,9 +1072,6 @@ public class Controller
 
     @Override
     public Restlet createInboundRoot() {
-        Context context = getContext();
-        initRestContext(context);
-        
         Router baseRouter = new Router(context);
         baseRouter.setDefaultMatchingMode(Template.MODE_STARTS_WITH);
         for (RestletRoutable rr : restlets) {
@@ -1126,6 +1095,22 @@ public class Controller
         slashFilter.setNext(baseRouter);
         
         return slashFilter;
+    }
+    
+    // ***************
+    // IRestApiService
+    // ***************
+    
+    @Override
+    public void addRestApi(RestletRoutable routeable,
+                           Class<? extends IFloodlightService> service,
+                           IFloodlightModule module) {
+        if (log.isDebugEnabled()) {
+            log.debug("Adding REST API for service " + service.getCanonicalName());
+        }
+        restlets.add(routeable);
+        context.getAttributes().put(service.getCanonicalName(),
+                                    module);
     }
     
     // **************
@@ -1363,33 +1348,15 @@ public class Controller
      * new components
      */
     public void init() {
-        counterStore = new CounterStore();
-        pktinProcTime = new PktinProcessingTime();
-        
-        restlets.add(new CoreWebRoutable());
-        restlets.add(new StorageWebRoutable());
-        restlets.add(new TopologyWebRouteable());
-        JacksonCustomConverter.replaceConverter();        
-    }
-    
-    /**
-     * Initialize the rest context
-     */
-    protected void initRestContext(Context context) {
-        /*
-        context.getAttributes().put("floodlightProvider", this);
-        context.getAttributes().put("counterStore", counterStore);
-        context.getAttributes().put("storageSource", storageSource);
-        context.getAttributes().put("deviceManager", deviceManager);
-        context.getAttributes().put("messageFilterManager",
-                                    messageFilterManager);
-        context.getAttributes().put("pktinProcessingTime", pktinProcTime);
-        if (staticFlowEntryPusher != null) {
-            context.getAttributes().put("staticFlowEntryPusher", 
-                                        staticFlowEntryPusher);
-        }
-        context.getAttributes().put("topology", topology);
-        */
+        // These data structures are initialized here because other
+        // module's startUp() might be called before ours
+        this.messageListeners =
+                new ConcurrentHashMap<OFType, 
+                                      ListenerDispatcher<OFType, 
+                                                         IOFMessageListener>>();
+        this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+        this.restlets = new ArrayList<RestletRoutable>();
+        this.context = getContext();
     }
     
     /**
@@ -1397,6 +1364,15 @@ public class Controller
      */
     public void startupComponents() {
         log.debug("Doing controller internal setup");
+        
+        // Our internal data structures
+        this.updates = new LinkedBlockingQueue<Update>();
+    
+        // Add the core REST API
+        restlets.add(new CoreWebRoutable());
+        context.getAttributes().put(
+                 this.getClass().getCanonicalName(), this);
+                
         // Set floodlight to terminate on a storage exception
         IStorageExceptionHandler handler = 
                 new TerminationStorageExceptionHandler(this);
@@ -1427,7 +1403,9 @@ public class Controller
         }
         log.info("Connected to storage source");
         
-        switches = new ConcurrentHashMap<Long, IOFSwitch>();
+        
+        // Init our data structures
+        this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.factory = new BasicFactory();
         
         // Processing Time Warning Threshold
@@ -1438,7 +1416,7 @@ public class Controller
                  ptWarningThresholdInNano/1000000);
         }
         
-        log.debug("Starting DebugServer");
+        // Start our debug server
         this.debugserver_start();
     }
     
@@ -1446,6 +1424,7 @@ public class Controller
      * Start debug server, put global state as local variables for the jython shell
      */
     protected void debugserver_start() {
+        log.debug("Starting DebugServer");
         Map<String, Object> locals = new HashMap<String, Object>();
         locals.put("controller", this);
         //locals.put("deviceManager", this.deviceManager);
@@ -1461,29 +1440,10 @@ public class Controller
         Server debug_server = new Server(6655, locals);
         debug_server.start();
 	}
-
-    /**
-     * Main function entry point; override init() for adding modules
-     * @param args Command line arguments
-     */
-    /*
-    public static void main(String args[]) throws Exception {
-        System.setProperty("org.restlet.engine.loggerFacadeClass", 
-                           "org.restlet.ext.slf4j.Slf4jLoggerFacade");
-
-        CmdLineSettings settings = new CmdLineSettings();
-        CmdLineParser parser = new CmdLineParser(settings);
-        try {
-            parser.parseArgument(args);
-        } catch (CmdLineException e) {
-            parser.printUsage(System.out);
-            System.exit(1);
-        }
-
-        //Controller controller = new Controller(settings);
-        //controller.init();
-        //controller.startupComponents();
-        //controller.run();
+    
+    @Override
+    public void setCmdLineOptions(CmdLineSettings settings) {
+        this.restPort = settings.getRestPort();
+        this.openFlowPort = settings.getOpenFlowPort();
     }
-    */
 }

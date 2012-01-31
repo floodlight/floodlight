@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import net.floodlightcontroller.core.IFloodlightService;
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 
 public interface IStorageSourceService extends IFloodlightService {
 
@@ -295,5 +295,5 @@ public interface IStorageSourceService extends IFloodlightService {
      */
     public void notifyListeners(List<StorageSourceNotification> notifications);
 
-    public void setPktinProcessingTime(PktinProcessingTime pktinProcessingTime);
+    public void setPktinProcessingTime(IPktInProcessingTimeService pktinProcessingTime);
 }

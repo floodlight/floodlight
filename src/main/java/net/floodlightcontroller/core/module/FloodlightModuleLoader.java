@@ -87,10 +87,8 @@ public class FloodlightModuleLoader {
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightModule>();
 	    
-	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.core.CoreModule");
 	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.forwarding.Forwarding");
 	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher");
-	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.core.OFMessageFilterManager");
 	    
 	    initModules(moduleSet);
 	    startupModules(moduleSet);

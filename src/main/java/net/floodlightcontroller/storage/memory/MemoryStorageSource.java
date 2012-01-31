@@ -20,7 +20,7 @@ package net.floodlightcontroller.storage.memory;
 import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.SynchronousExecutorService;
@@ -37,7 +37,7 @@ import net.floodlightcontroller.storage.StorageException;
 public class MemoryStorageSource extends NoSqlStorageSource {
     
     private Map<String, MemoryTable> tableMap = new HashMap<String,MemoryTable>();
-    PktinProcessingTime pktinProcessingTime;
+    IPktInProcessingTimeService pktinProcessingTime;
     
     synchronized private MemoryTable getTable(String tableName, boolean create) {
         MemoryTable table = tableMap.get(tableName);
@@ -173,7 +173,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     }
     
     public void setPktinProcessingTime(
-            PktinProcessingTime pktinProcessingTime) {
+            IPktInProcessingTimeService pktinProcessingTime) {
         this.pktinProcessingTime = pktinProcessingTime;
     }
 

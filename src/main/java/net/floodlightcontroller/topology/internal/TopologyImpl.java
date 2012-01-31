@@ -40,6 +40,7 @@ import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.IRestApiService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -61,6 +62,7 @@ import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.ClusterDFS;
 
 import org.openflow.protocol.OFMessage;
@@ -125,6 +127,7 @@ public class TopologyImpl
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IRoutingEngineService routingEngine;
+    protected IRestApiService restApi;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -1373,6 +1376,7 @@ public class TopologyImpl
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
         l.add(IRoutingEngineService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -1382,6 +1386,7 @@ public class TopologyImpl
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         routingEngine = context.getServiceImpl(IRoutingEngineService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
         
         // We create this here because there is no ordering guarantee
         this.topologyAware = new HashSet<ITopologyListener>();
@@ -1477,5 +1482,8 @@ public class TopologyImpl
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         // Register for switch updates
         floodlightProvider.addOFSwitchListener(this);
+        
+        // init our rest api
+        restApi.addRestApi(new TopologyWebRoutable(), ITopologyService.class, this);
     }
 }

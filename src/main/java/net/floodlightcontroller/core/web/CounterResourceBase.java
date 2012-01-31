@@ -29,6 +29,7 @@ public class CounterResourceBase extends ServerResource {
     protected void doInit() throws ResourceException {
         super.doInit();
         counterStore = 
-            (ICounterStoreService)getContext().getAttributes().get("counterStore");
+            (ICounterStoreService)getContext().getAttributes().
+                get(ICounterStoreService.class.getCanonicalName());
     }
 }

@@ -12,7 +12,8 @@ import org.restlet.resource.ServerResource;
 public class LinksResource extends ServerResource {
     @Get("json")
     public Set<LinkTuple> retrieve() {
-        ITopologyService topo = (ITopologyService)getContext().getAttributes().get("topology");
+        ITopologyService topo = (ITopologyService)getContext().getAttributes().
+                get(ITopologyService.class.getCanonicalName());
         Set <LinkTuple> links = new HashSet<LinkTuple>();
         if (topo != null) {
             for (Set<LinkTuple> linkSet : topo.getSwitchLinks().values()) {

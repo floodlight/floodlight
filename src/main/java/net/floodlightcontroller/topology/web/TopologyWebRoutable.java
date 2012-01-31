@@ -7,7 +7,7 @@ import org.restlet.routing.Router;
 import net.floodlightcontroller.core.web.RestletRoutable;
 import net.floodlightcontroller.core.web.SwitchClustersResource;
 
-public class TopologyWebRouteable implements RestletRoutable {
+public class TopologyWebRoutable implements RestletRoutable {
     /**
      * Create the Restlet router and bind to the proper resources.
      */

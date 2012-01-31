@@ -571,24 +571,14 @@ public class OFMessageFilterManager
     @Override
     public void init(FloodlightModuleContext context) 
             throws FloodlightModuleException {
-        if (log.isDebugEnabled()) {
-            log.debug("Init " + this.getClass().getCanonicalName());
-        }
-
-        
+        this.floodlightProvider = 
+                context.getServiceImpl(IFloodlightProviderService.class);
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
         // This is our 'constructor'
-        if (log.isDebugEnabled()) {
-            log.debug("Starting " + this.getClass().getCanonicalName());
-        }
-        this.floodlightProvider = 
-                context.getServiceImpl(IFloodlightProviderService.class);
-        if (this.floodlightProvider == null) {
-            System.out.println("FLOODLIGHTPROVDIER IS NUL!!!!!");
-        }
+        
         filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
         filterTimeoutMap = new ConcurrentHashMap<String, Long>();
         serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));

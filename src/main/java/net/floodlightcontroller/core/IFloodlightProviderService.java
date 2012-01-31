@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
+import net.floodlightcontroller.core.internal.CmdLineSettings;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
@@ -138,4 +139,9 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * Run the main I/O loop of the Controller.
      */
     public void run();
+    
+    /**
+     * Sets the command line settings
+     */
+    public void setCmdLineOptions(CmdLineSettings settings);
 }

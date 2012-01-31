@@ -3,6 +3,7 @@
  */
 package net.floodlightcontroller.core.web;
 
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.EventHistoryAttachmentPoint;
 import net.floodlightcontroller.util.EventHistory;
@@ -35,7 +36,8 @@ public class EventHistoryAttachmentPointResource extends ServerResource {
         String evHistCount = (String)getRequestAttributes().get("count");
 
         DeviceManagerImpl deviceManager = 
-           (DeviceManagerImpl)getContext().getAttributes().get("deviceManager");
+           (DeviceManagerImpl)getContext().getAttributes().
+               get(IDeviceManagerService.class.getCanonicalName());
 
         return new EventHistory<EventHistoryAttachmentPoint>(deviceManager.evHistDevMgrAttachPt,
                 Integer.parseInt(evHistCount));

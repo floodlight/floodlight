@@ -76,12 +76,13 @@ public class PacketTraceResource extends ServerResource {
     @Post("json")
     public PacketTraceOutput packettrace(FilterParameters fp) {
         
-        ConcurrentHashMap <String,String> filter = new  ConcurrentHashMap<String,String> ();
+        ConcurrentHashMap <String,String> filter = new ConcurrentHashMap<String,String> ();
         String sid = null;
         PacketTraceOutput output = new PacketTraceOutput();
         OFMessageFilterManager manager = 
                 (OFMessageFilterManager)getContext()
-                    .getAttributes().get("messageFilterManager");
+                    .getAttributes().
+                        get(OFMessageFilterManager.class.getCanonicalName());
 
         if (manager == null) {
             sid = null;
