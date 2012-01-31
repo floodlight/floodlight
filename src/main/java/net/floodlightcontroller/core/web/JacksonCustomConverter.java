@@ -95,7 +95,7 @@ public class JacksonCustomConverter extends JacksonConverter {
         jr.setObjectMapper(jsonObjectMapper);
         return jr;
     }
-    
+
     /**
      * Replace the jackson converter with this one
      * @param converterClass

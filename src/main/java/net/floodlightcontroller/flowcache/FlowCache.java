@@ -13,8 +13,8 @@ import org.openflow.protocol.OFMatch;
  */
 public class FlowCache {
 
-    protected int     hitCnt;
-    protected boolean flowCacheServiceOn;
+    public int     hitCnt;
+    public boolean flowCacheServiceOn;
 
     // Constructor
     public FlowCache() {
