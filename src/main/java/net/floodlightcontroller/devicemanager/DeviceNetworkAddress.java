@@ -22,6 +22,7 @@ import java.util.Date;
 public class DeviceNetworkAddress {
     private Integer networkAddress;
     private Date lastSeen;
+    private long lastUnicastArpRequestTime;
     private Date lastSeenInStorage;
     private Date lastWrittenToStorage;
     private long expire;
@@ -35,6 +36,7 @@ public class DeviceNetworkAddress {
     public DeviceNetworkAddress(Integer networkAddress, Date lastSeen) {
         this.networkAddress = networkAddress;
         this.lastSeen = lastSeen;
+        this.lastUnicastArpRequestTime = -1;
         this.lastSeenInStorage = null;
         this.lastWrittenToStorage = null;
     }
@@ -52,6 +54,8 @@ public class DeviceNetworkAddress {
     
     public void setLastSeen(Date lastSeen) {
         this.lastSeen = lastSeen;
+        //whenever the lastSeen is set, clear the lastUnicastArpRequestTime
+        this.lastUnicastArpRequestTime = -1;
     }
     
     public void lastSeenWrittenToStorage(Date lastWrittenDate) {
@@ -125,5 +129,13 @@ public class DeviceNetworkAddress {
 
     public Date getLastWrittenToStorage() {
         return lastWrittenToStorage;
+    }
+
+    public long getLastUnicastArpRequestTime() {
+        return lastUnicastArpRequestTime;
+    }
+
+    public void setLastUnicastArpRequestTime(long lastUnicastArpRequestTime) {
+        this.lastUnicastArpRequestTime = lastUnicastArpRequestTime;
     }
 }
