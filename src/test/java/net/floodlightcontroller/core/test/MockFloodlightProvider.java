@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
+import net.floodlightcontroller.core.internal.CmdLineSettings;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
@@ -193,5 +194,15 @@ public class MockFloodlightProvider implements IFloodlightProviderService {
     @Override
     public BasicFactory getOFMessageFactory() {
         return factory;
+    }
+
+    @Override
+    public void run() {
+        // no-op
+    }
+
+    @Override
+    public void setCmdLineOptions(CmdLineSettings settings) {
+        // no-op
     }
 }

@@ -42,7 +42,9 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         
         HashMap<String,Object> result = new HashMap<String,Object>();
         List<OFStatistics> values = null;

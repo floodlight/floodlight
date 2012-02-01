@@ -34,12 +34,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
@@ -615,7 +615,7 @@ public class StaticFlowEntryPusher
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getServices() {
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IStaticFlowEntryPusherService.class);
@@ -635,7 +635,7 @@ public class StaticFlowEntryPusher
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);

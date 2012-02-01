@@ -36,7 +36,9 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 public class SwitchCounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
         
         String switchID = (String) getRequestAttributes().get("switchId");

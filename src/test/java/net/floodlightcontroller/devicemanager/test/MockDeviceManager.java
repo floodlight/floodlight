@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.devicemanager.Device;
+import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Ethernet;
 
@@ -91,5 +92,11 @@ public class MockDeviceManager implements IDeviceManagerService {
             devices.add(it.next().getValue());
         }
         return devices;
+    }
+
+    @Override
+    public void addListener(IDeviceManagerAware listener) {
+        // TODO Auto-generated method stub
+        
     }
 }

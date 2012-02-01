@@ -81,7 +81,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected Date currentDate;
     
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
         // Mock context

@@ -8,11 +8,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFMessageListener.FlListenerID;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -433,7 +433,7 @@ public class PktInProcessingTime
     // IFloodlightModule methods
     
     @Override
-    public Collection<Class<? extends IFloodlightService>> getServices() {
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IPktInProcessingTimeService.class);
@@ -453,7 +453,7 @@ public class PktInProcessingTime
     }
     
     @Override
-    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         // We don't have any dependencies
         return null;
     }

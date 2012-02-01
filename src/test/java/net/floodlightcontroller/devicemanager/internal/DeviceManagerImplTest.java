@@ -61,13 +61,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     DeviceManagerImpl deviceManager;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         deviceManager.setFloodlightProvider(mockFloodlightProvider);
-        deviceManager.setStorageSource(new MemoryStorageSource());
+        deviceManager.storageSource = new MemoryStorageSource();
+        deviceManager.startUp(null);
         //deviceManager.startUp();
         
         // Build our test packet

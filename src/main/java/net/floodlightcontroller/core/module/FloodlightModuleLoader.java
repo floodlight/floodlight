@@ -9,7 +9,6 @@ import java.util.Map.Entry;
 import java.util.ServiceLoader;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,55 +22,61 @@ public class FloodlightModuleLoader {
     protected static Logger logger = 
             LoggerFactory.getLogger(FloodlightModuleLoader.class);
 
-    protected FloodlightModuleContext floodlightModuleContext;
-    protected Map<Class<? extends IFloodlightService>,
+    protected static Map<Class<? extends IFloodlightService>,
                   Collection<IFloodlightModule>> serviceMap;
-    protected Map<IFloodlightModule,
+    protected static Map<IFloodlightModule,
                   Collection<Class<? extends 
                                    IFloodlightService>>> moduleServiceMap;
-	protected Map<String, IFloodlightModule> moduleNameMap;
+    protected static Map<String, IFloodlightModule> moduleNameMap;
+    protected static Object lock = new Object();
+    
+    protected FloodlightModuleContext floodlightModuleContext;
 	
 	public FloodlightModuleLoader() {
 	    floodlightModuleContext = new FloodlightModuleContext();
-		serviceMap = 
-		        new HashMap<Class<? extends IFloodlightService>,
-                            Collection<IFloodlightModule>>();
-		moduleServiceMap = 
-		        new HashMap<IFloodlightModule,
-                            Collection<Class<? extends 
-                                       IFloodlightService>>>();
-		moduleNameMap = new HashMap<String, IFloodlightModule>();
 	}
 	
 	/**
 	 * Finds all IFloodlightModule(s) in the classpath.
 	 */
-	protected void findAllModules() throws FloodlightModuleException {
-	    // Get all the current modules in the classpath
-        ServiceLoader<IFloodlightModule> moduleLoader
-            = ServiceLoader.load(IFloodlightModule.class);
-	    // Iterate for each module, iterate through and add it's services
-	    for (IFloodlightModule m : moduleLoader) {
-	        if (logger.isDebugEnabled()) {
-	            logger.debug("Found module " + m.getClass().getName());
-	        }
+	protected static void findAllModules() throws FloodlightModuleException {
+	    synchronized (lock) {
+	        if (serviceMap != null) return;
+	        serviceMap = 
+	                new HashMap<Class<? extends IFloodlightService>,
+	                            Collection<IFloodlightModule>>();
+	        moduleServiceMap = 
+	                new HashMap<IFloodlightModule,
+	                            Collection<Class<? extends 
+	                                       IFloodlightService>>>();
+	        moduleNameMap = new HashMap<String, IFloodlightModule>();
+	        
+	        // Get all the current modules in the classpath
+	        ServiceLoader<IFloodlightModule> moduleLoader
+	        = ServiceLoader.load(IFloodlightModule.class);
+	        // Iterate for each module, iterate through and add it's services
+	        for (IFloodlightModule m : moduleLoader) {
+	            if (logger.isDebugEnabled()) {
+	                logger.debug("Found module " + m.getClass().getName());
+	            }
 
-	        // Set up moduleNameMap
-	        moduleNameMap.put(m.getClass().getCanonicalName(), m);
+	            // Set up moduleNameMap
+	            moduleNameMap.put(m.getClass().getCanonicalName(), m);
 
-	        // Set up serviceMap
-	        Collection<Class<? extends IFloodlightService>> servs =
-	                m.getServices();
-	        if (servs != null) {
-	            moduleServiceMap.put(m, servs);
-	            for (Class<? extends IFloodlightService> s : servs) {
-	                Collection<IFloodlightModule> mods = 
-	                        serviceMap.get(s);
-	                if (mods == null) {
-	                    mods = new ArrayList<IFloodlightModule>();
-	                    serviceMap.put(s, mods);
+	            // Set up serviceMap
+	            Collection<Class<? extends IFloodlightService>> servs =
+	                    m.getModuleServices();
+	            if (servs != null) {
+	                moduleServiceMap.put(m, servs);
+	                for (Class<? extends IFloodlightService> s : servs) {
+	                    Collection<IFloodlightModule> mods = 
+	                            serviceMap.get(s);
+	                    if (mods == null) {
+	                        mods = new ArrayList<IFloodlightModule>();
+	                        serviceMap.put(s, mods);
+	                    }
+	                    mods.add(m);
 	                }
-	                mods.add(m);
 	            }
 	        }
 	    }
@@ -95,6 +100,32 @@ public class FloodlightModuleLoader {
 	    
 	    return floodlightModuleContext;
 	}
+	
+	/**
+	 * Loads modules (and their dependencies) specified in the list
+	 * @param mList The array of fully qualified module names
+	 * @return The ModuleContext containing all the loaded modules
+	 * @throws FloodlightModuleException
+	 */
+	public IFloodlightModuleContext loadModulesFromList(String[] mList) 
+            throws FloodlightModuleException {
+        logger.debug("Starting module loader");
+        findAllModules();
+        
+        Set<IFloodlightModule> moduleSet = new HashSet<IFloodlightModule>();
+        Map<Class<? extends IFloodlightService>, IFloodlightModule> moduleMap =
+                new HashMap<Class<? extends IFloodlightService>,
+                            IFloodlightModule>();
+        
+        for (String s : mList) {
+            calculateModuleDeps(moduleMap, moduleSet, s);
+        }
+        
+        initModules(moduleSet);
+        startupModules(moduleSet);
+        
+        return floodlightModuleContext;
+    }
 	
 	/**
 	 * Add a module to the set of modules to load and register its services
@@ -138,7 +169,7 @@ public class FloodlightModuleLoader {
         addModule(moduleMap, moduleSet, module);
         
         Collection<Class<? extends IFloodlightService>> deps = 
-                module.getDependencies();
+                module.getModuleDependencies();
 
         if (deps != null) {
             for (Class<? extends IFloodlightService> c : deps) {

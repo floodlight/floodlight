@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
 import net.floodlightcontroller.core.internal.CmdLineSettings;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;

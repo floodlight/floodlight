@@ -36,7 +36,9 @@ import org.restlet.resource.ServerResource;
 public class SwitchClustersResource extends ServerResource {
     @Get("json")
     public Map<String, List<String>> retrieve() {
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         Map<String, List<String>> switchClusterMap = new HashMap<String, List<String>>();
         for (Entry<Long, IOFSwitch> entry : floodlightProvider.getSwitches().entrySet()) {
             Long clusterDpid = entry.getValue().getSwitchClusterId();

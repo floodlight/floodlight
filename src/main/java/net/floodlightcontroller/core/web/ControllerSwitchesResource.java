@@ -35,9 +35,10 @@ import org.restlet.resource.ServerResource;
 public class ControllerSwitchesResource extends ServerResource {
     @Get("json")
     public List<Map<String, String>> retrieve() {
-        List<Map<String, String>> switchIds = new ArrayList<Map<String, String>>();        
-
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        List<Map<String, String>> switchIds = new ArrayList<Map<String, String>>();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
 
         for (IOFSwitch s: switches.values()) {

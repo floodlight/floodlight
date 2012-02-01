@@ -25,7 +25,7 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.List;
 
-import net.floodlightcontroller.core.IFloodlightService;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
  * Used to interact with DeviceManager implementations

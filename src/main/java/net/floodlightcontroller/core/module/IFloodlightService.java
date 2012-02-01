@@ -1,4 +1,4 @@
-package net.floodlightcontroller.core;
+package net.floodlightcontroller.core.module;
 
 /**
  * This is the base interface for any IFloodlightModule package that provides 

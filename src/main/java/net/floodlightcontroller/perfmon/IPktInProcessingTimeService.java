@@ -1,6 +1,6 @@
 package net.floodlightcontroller.perfmon;
 
-import net.floodlightcontroller.core.IFloodlightService;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.perfmon.PktInProcessingTime.CircularTimeBucketSet;
 import net.floodlightcontroller.perfmon.PktInProcessingTime.PerfMonConfigs;
 

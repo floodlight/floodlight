@@ -41,13 +41,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
@@ -1928,7 +1928,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     // IFloodlightModule methods
     
     @Override
-    public Collection<Class<? extends IFloodlightService>> getServices() {
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IDeviceManagerService.class);
@@ -1948,7 +1948,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
@@ -1985,8 +1985,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         this.evHistDevMgrPktIn =
                 new EventHistory<OFMatch>("Pakcet-In");
         
-        // Register to get updates from topology
-        topology.addListener(this);
+        if (topology != null) {
+            // Register to get updates from topology
+            topology.addListener(this);
+        }
         
         // Create our database tables
         storageSource.createTable(DEVICE_TABLE_NAME, null);

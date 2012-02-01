@@ -3,7 +3,6 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightService;
 
 /**
  * Defines an interface for loadable Floodlight modules.
@@ -26,7 +25,7 @@ public interface IFloodlightModule {
 	 * @return
 	 */
 	
-	public Collection<Class<? extends IFloodlightService>> getServices();
+	public Collection<Class<? extends IFloodlightService>> getModuleServices();
 	
 	/**
 	 * Instantiate (as needed) and return objects that implement each
@@ -46,7 +45,7 @@ public interface IFloodlightModule {
 	 *         on.
 	 */
 	
-	public Collection<Class<? extends IFloodlightService>> getDependencies();
+	public Collection<Class<? extends IFloodlightService>> getModuleDependencies();
 	
 	/**
 	 * This is a hook for each module to do its <em>internal</em> initialization, 

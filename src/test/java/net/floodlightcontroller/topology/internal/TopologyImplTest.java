@@ -35,10 +35,13 @@ import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPhysicalPort;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 
@@ -60,17 +63,20 @@ public class TopologyImplTest extends FloodlightTestCase {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
+        FloodlightModuleContext cntx = new FloodlightModuleContext();
         topology = new TopologyImpl();
-        topology.setFloodlightProvider(getMockFloodlightProvider());
-        topology.setStorageSource(new MemoryStorageSource());
+        topology.floodlightProvider = getMockFloodlightProvider();
+        topology.storageSource = new MemoryStorageSource();
         RoutingImpl routingEngine = new RoutingImpl();
-        topology.setRoutingEngine(routingEngine);
-        HashSet<ITopologyListener> topologyAware = new HashSet<ITopologyListener>();
-        topologyAware.add(routingEngine);
-        topology.setTopologyAware(topologyAware);
-        topology.startUp();
+        topology.routingEngine = routingEngine;
+        topology.topologyAware = new HashSet<ITopologyListener>();
+        cntx.addService(IRoutingEngineService.class, routingEngine);
+        cntx.addService(ITopologyService.class, topology);
+        routingEngine.init(cntx);
+        routingEngine.startUp(cntx); // Doesn't use context
+        topology.startUp(cntx); //Topology doens't use the context here
     }
 
     @Test

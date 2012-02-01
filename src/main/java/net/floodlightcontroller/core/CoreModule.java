@@ -9,22 +9,22 @@ import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.web.JacksonCustomConverter;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 
 public class CoreModule implements IFloodlightModule {
     Controller controller;
     
     @Override
-    public Collection<Class<? extends IFloodlightService>> getServices() {
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> services =
                 new ArrayList<Class<? extends IFloodlightService>>(2);
         services.add(IFloodlightProviderService.class);
         services.add(ICounterStoreService.class);
-        services.add(IRestApiService.class);
         return services;
     }
 
@@ -41,17 +41,17 @@ public class CoreModule implements IFloodlightModule {
                             IFloodlightService>();
         m.put(IFloodlightProviderService.class, controller);
         m.put(ICounterStoreService.class, counterStore);
-        m.put(IRestApiService.class, controller);
         return m;
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> dependencies =
-            new ArrayList<Class<? extends IFloodlightService>>(1);
+            new ArrayList<Class<? extends IFloodlightService>>(4);
         dependencies.add(IStorageSourceService.class);
         dependencies.add(IOFMessageFilterManagerService.class);
         dependencies.add(IPktInProcessingTimeService.class);
+        dependencies.add(IRestApiService.class);
         return dependencies;
     }
 
@@ -64,13 +64,14 @@ public class CoreModule implements IFloodlightModule {
        controller.setCounterStore(
            context.getServiceImpl(ICounterStoreService.class));
        controller.setMessageFilterManagerService(
-           context.getServiceImpl(IOFMessageFilterManagerService.class));                                     
+           context.getServiceImpl(IOFMessageFilterManagerService.class));         
+       controller.setRestApiService(
+           context.getServiceImpl(IRestApiService.class));
        controller.init();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
         controller.startupComponents();
-        JacksonCustomConverter.replaceConverter();
     }
 }

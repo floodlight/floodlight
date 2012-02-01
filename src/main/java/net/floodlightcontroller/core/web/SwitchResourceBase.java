@@ -66,7 +66,9 @@ public class SwitchResourceBase extends ServerResource {
     }
     
     protected List<OFStatistics> getSwitchStatistics(long switchId, OFStatisticsType statType) {
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         
         IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
         Future<List<OFStatistics>> future;
@@ -132,7 +134,9 @@ public class SwitchResourceBase extends ServerResource {
      * @return A list of switch table entries
      */
     protected List<Map<String, Object>> getSwitchTableJson(long switchId) {
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
 
         IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
         List<Map<String, Object>> switchTableJson = null;

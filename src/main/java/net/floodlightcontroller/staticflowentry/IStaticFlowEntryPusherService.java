@@ -20,8 +20,9 @@ package net.floodlightcontroller.staticflowentry;
 import java.util.HashMap;
 import java.util.List;
 
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
+
 import org.openflow.protocol.OFFlowMod;
 
 /**

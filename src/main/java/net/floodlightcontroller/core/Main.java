@@ -7,6 +7,7 @@ import net.floodlightcontroller.core.internal.CmdLineSettings;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.module.IFloodlightModuleContext;
+import net.floodlightcontroller.restserver.IRestApiService;
 
 /**
  * Host for the Floodlight main method
@@ -34,6 +35,8 @@ public class Main {
         
         FloodlightModuleLoader fml = new FloodlightModuleLoader();
         IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig();
+        IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
+        restApi.run();
         IFloodlightProviderService controller =
                 moduleContext.getServiceImpl(IFloodlightProviderService.class);
         controller.setCmdLineOptions(settings);

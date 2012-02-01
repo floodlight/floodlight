@@ -3,7 +3,7 @@ package net.floodlightcontroller.counter;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightService;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 
 public interface ICounterStoreService extends IFloodlightService {

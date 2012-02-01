@@ -24,7 +24,7 @@ import org.junit.Before;
 public class MemoryStorageTest extends StorageTest {
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         storageSource = new MemoryStorageSource();
         super.setUp();
     }

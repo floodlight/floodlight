@@ -64,7 +64,7 @@ public class FloodlightTestCase extends TestCase {
     }
     
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
     }
  

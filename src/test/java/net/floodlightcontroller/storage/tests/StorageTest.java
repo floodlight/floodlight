@@ -139,7 +139,7 @@ public abstract class StorageTest extends FloodlightTestCase {
         }
     }
     
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
         IPktInProcessingTimeService pktinProcessingTime = new PktInProcessingTime();
         storageSource.setPktinProcessingTime(pktinProcessingTime);

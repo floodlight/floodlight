@@ -80,7 +80,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             return model;
         }
         
-        IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();        
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());        
         Long[] switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.length);
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
@@ -167,7 +169,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         }
         
         public void run() {
-            IFloodlightProviderService floodlightProvider = (IFloodlightProviderService)getApplication();        
+            IFloodlightProviderService floodlightProvider = 
+                    (IFloodlightProviderService)getContext().getAttributes().
+                        get(IFloodlightProviderService.class.getCanonicalName());      
 
             if ((requestType == REQUESTTYPE.OFSTATS) && (statType != null)) {
                 switchReply = getSwitchStatistics(switchId, statType);

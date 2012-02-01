@@ -17,8 +17,8 @@
 
 package net.floodlightcontroller.routing;
 
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Route;
 
 /**

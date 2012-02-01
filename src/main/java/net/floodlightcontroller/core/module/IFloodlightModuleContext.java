@@ -1,6 +1,7 @@
 package net.floodlightcontroller.core.module;
 
-import net.floodlightcontroller.core.IFloodlightService;
+import java.util.Collection;
+
 	
 public interface IFloodlightModuleContext {	
     /**
@@ -11,4 +12,10 @@ public interface IFloodlightModuleContext {
      * or a ClassCastException was encountered.
      */
     public <T extends IFloodlightService> T getServiceImpl(Class<T> service);
+    
+    /**
+     * Returns all loaded services
+     * @return A collection of service classes that have been loaded
+     */
+    public Collection<Class<? extends IFloodlightService>> getAllServices();
 }

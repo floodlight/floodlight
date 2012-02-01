@@ -43,7 +43,8 @@ public class StorageNotifyResource extends ServerResource {
                     new TypeReference<List<StorageSourceNotification>>(){});
         
         IStorageSourceService storageSource = 
-            (IStorageSourceService)getContext().getAttributes().get("storageSource");
+            (IStorageSourceService)getContext().getAttributes().
+                get(IStorageSourceService.class.getCanonicalName());
         storageSource.notifyListeners(notifications);
         
         HashMap<String, Object> model = new HashMap<String,Object>();

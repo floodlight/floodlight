@@ -27,9 +27,10 @@ import org.openflow.util.HexString;
 public class StaticFlowEntryPusherTest extends FloodlightTestCase {
     String flowMod1, flowMod2;
     static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
+    StaticFlowEntryPusher staticFlowEntryPusher;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
         flowMod1 = "{\"switch\": \"00:00:00:00:00:00:00:01\", " +
                    "\"name\": \"flow-mod-1\", " +
@@ -46,11 +47,15 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
                    "\"ingress-port\": \"2\"," +
                    "\"active\": \"true\", " +
                    "\"actions\": \"output=3\"}";
-    }
+
+        staticFlowEntryPusher = new StaticFlowEntryPusher();
+        staticFlowEntryPusher.floodlightProvider = 
+                getMockFloodlightProvider();
+        staticFlowEntryPusher.startUp(null);
+}
     
     @Test
     public void testAddAndRemoveEntries() throws Exception {
-        StaticFlowEntryPusher staticFlowEntryPusher = new StaticFlowEntryPusher();
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         long dpid = HexString.toLong(TestSwitch1DPID);
         Capture<OFMessage> writeCapture = new Capture<OFMessage>(CaptureType.ALL);

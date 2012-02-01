@@ -36,19 +36,19 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.IRestApiService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -1350,7 +1350,7 @@ public class TopologyImpl
     // IFloodlightModule classes
     
     @Override
-    public Collection<Class<? extends IFloodlightService>> getServices() {
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ITopologyService.class);
@@ -1370,7 +1370,7 @@ public class TopologyImpl
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
@@ -1484,6 +1484,10 @@ public class TopologyImpl
         floodlightProvider.addOFSwitchListener(this);
         
         // init our rest api
-        restApi.addRestApi(new TopologyWebRoutable(), ITopologyService.class, this);
+        if (restApi != null) {
+            restApi.addRestletRoutable(new TopologyWebRoutable());
+        } else {
+            log.error("Could not instantiate REST API");
+        }
     }
 }

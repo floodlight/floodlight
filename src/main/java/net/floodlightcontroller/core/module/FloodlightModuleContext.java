@@ -1,8 +1,8 @@
 package net.floodlightcontroller.core.module;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import net.floodlightcontroller.core.IFloodlightService;
 
 /**
  * The service registry for an IFloodlightProvider.
@@ -38,4 +38,8 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 		return (T)s;
 	}  
 
+	@Override
+	public Collection<Class<? extends IFloodlightService>> getAllServices() {
+	    return serviceMap.keySet();
+	}
  }

@@ -26,8 +26,8 @@ package net.floodlightcontroller.topology;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
  *

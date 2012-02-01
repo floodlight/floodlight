@@ -7,3 +7,4 @@ net.floodlightcontroller.forwarding.Forwarding
 net.floodlightcontroller.core.OFMessageFilterManager
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
 net.floodlightcontroller.perfmon.PktInProcessingTime
+net.floodlightcontroller.restserver.RestApiServer
