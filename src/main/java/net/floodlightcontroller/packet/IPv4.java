@@ -369,7 +369,10 @@ public class IPv4 extends BasePacket {
         this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         this.payload.setParent(this);
 
-        if (this.totalLength != length) this.isTruncated = true;
+        if (this.totalLength != length)
+            this.isTruncated = true;
+        else
+            this.isTruncated = false;
 
         return this;
     }
