@@ -21,6 +21,7 @@ import java.util.Arrays;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.U16;
+import org.openflow.util.U32;
 import org.openflow.util.U8;
 
 /**
@@ -200,5 +201,11 @@ public class OFPacketIn extends OFMessage {
             return false;
         }
         return true;
+    }
+
+    public String toString() {
+        String myStr = super.toString();
+        return "packetIn" +
+            ":bufferId=" + U32.f(this.bufferId) + myStr;
     }
 }
