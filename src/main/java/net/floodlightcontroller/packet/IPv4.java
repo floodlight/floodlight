@@ -57,12 +57,15 @@ public class IPv4 extends BasePacket {
     protected int destinationAddress;
     protected byte[] options;
 
+    protected boolean isTruncated;
+
     /**
      * Default constructor that sets the version to 4.
      */
     public IPv4() {
         super();
         this.version = 4;
+        isTruncated = false;
     }
 
     /**
@@ -114,6 +117,14 @@ public class IPv4 extends BasePacket {
      */
     public short getIdentification() {
         return identification;
+    }
+
+    public boolean isTruncated() {
+        return isTruncated;
+    }
+
+    public void setTruncated(boolean isTruncated) {
+        this.isTruncated = isTruncated;
     }
 
     /**
@@ -357,6 +368,9 @@ public class IPv4 extends BasePacket {
         }
         this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         this.payload.setParent(this);
+
+        if (this.totalLength != length) this.isTruncated = true;
+
         return this;
     }
 
