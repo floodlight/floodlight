@@ -770,16 +770,6 @@ public class Controller
                                 eth);
                     }
                     
-                    // Print the packet-in for debugging purposes at this point
-                    // The context would have the necessary information for
-                    // the OFMessageFilterManager's getDataToString to work
-                    // for packet-ins.
-                    if (log.isDebugEnabled()) {
-                        String str = messageFilterManager.getDataAsString(sw, m, bc);
-                        log.debug("{}", str);
-                    }
-
-
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
                     // monitoring is turned on
