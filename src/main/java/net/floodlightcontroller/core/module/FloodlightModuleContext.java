@@ -36,7 +36,7 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	public <T extends IFloodlightService> T getServiceImpl(Class<T> service) {
 	    IFloodlightService s = serviceMap.get(service);
 		return (T)s;
-	}  
+	}
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getAllServices() {

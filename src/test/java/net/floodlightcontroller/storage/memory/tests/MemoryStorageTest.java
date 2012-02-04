@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.storage.memory.tests;
 
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.storage.tests.StorageTest;
 import org.junit.Before;
@@ -26,6 +27,7 @@ public class MemoryStorageTest extends StorageTest {
     @Before
     public void setUp() throws Exception {
         storageSource = new MemoryStorageSource();
+        ((IFloodlightModule)storageSource).startUp(null);
         super.setUp();
     }
 }

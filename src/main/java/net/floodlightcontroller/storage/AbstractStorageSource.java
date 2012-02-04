@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 
 import org.slf4j.Logger;
@@ -327,11 +326,5 @@ public abstract class AbstractStorageSource
     public void notifyListeners(List<StorageSourceNotification> notifications) {
         for (StorageSourceNotification notification : notifications)
             notifyListeners(notification);
-    }
-    
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // TODO Auto-generated method stub
-        
     }
 }

@@ -34,8 +34,6 @@ import org.openflow.protocol.OFType;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class FloodlightTestCase extends TestCase {
-
-
     protected MockFloodlightProvider mockFloodlightProvider;
 
     public MockFloodlightProvider getMockFloodlightProvider() {

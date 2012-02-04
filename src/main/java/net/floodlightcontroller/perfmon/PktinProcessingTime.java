@@ -49,7 +49,7 @@ public class PktInProcessingTime
      * 
      */   
 
-    protected static  Logger  logger = 
+    protected static Logger logger = 
         LoggerFactory.getLogger(PktInProcessingTime.class);    
 
     /***
@@ -95,7 +95,7 @@ public class PktInProcessingTime
         }
     }
 
-    protected PerfMonConfigs  perfMonCfgs;
+    protected PerfMonConfigs perfMonCfgs;
     // Maintains the time when the last packet was processed
     protected long lastPktTime_ns; 
     protected long curBucketStartTime;

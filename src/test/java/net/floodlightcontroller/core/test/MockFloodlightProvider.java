@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core.test;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,10 @@ import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.internal.CmdLineSettings;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
@@ -44,7 +49,7 @@ import org.openflow.protocol.factory.BasicFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class MockFloodlightProvider implements IFloodlightProviderService {
+public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
     protected Map<OFType, List<IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
     protected Map<Long, IOFSwitch> switches;
@@ -204,5 +209,40 @@ public class MockFloodlightProvider implements IFloodlightProviderService {
     @Override
     public void setCmdLineOptions(CmdLineSettings settings) {
         // no-op
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>>
+            getModuleDependencies() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public
+            void
+            init(FloodlightModuleContext context)
+                                                 throws FloodlightModuleException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // TODO Auto-generated method stub
+        
     }
 }
