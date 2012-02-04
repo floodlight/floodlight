@@ -131,7 +131,9 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
-        this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        if (bc != null) {
+            this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        }
         this.channel.write(m);
     }
     

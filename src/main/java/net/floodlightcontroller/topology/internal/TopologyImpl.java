@@ -1392,7 +1392,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
         storageSource.updateRowAsync(LINK_TABLE_NAME, id, rowValues);
     }
-    
+
     /**
      * Removes a link from storage using an asynchronous call.
      * @param lt The LinkTuple to delete.
@@ -1401,13 +1401,31 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
     }
-    
+
     /**
      * @param topologyAware the topologyAware to set
      */
     public void setTopologyAware(Set<ITopologyAware> topologyAware) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware = topologyAware;
+    }
+
+    /**
+     * Register a topology aware component
+     * @param topoAwareComponent
+     */
+    public void addTopologyAware(ITopologyAware topoAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.topologyAware.add(topoAwareComponent);
+    }
+    
+    /**
+     * Deregister a topology aware component
+     * @param topoAwareComponent
+     */
+    public void removeTopologyAware(ITopologyAware topoAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.topologyAware.remove(topoAwareComponent);
     }
 
     /**

@@ -234,10 +234,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         fm.getMatch().setInputPort(srcSwPort.getPort());
         // Set the flag to request flow-mod removal notifications only for the 
         // source switch. The removal message is used to maintain the flow
-        // cache. Don't set the flag for ARP messages
+        // cache. Don't set the flag for ARP messages - TODO generalize check
         if ((flowCacheMgr.isFlowCacheServiceOn()) &&
             (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
             fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+            match.setWildcards(fm.getMatch().getWildcards());
         }
 
         updateCounterStore(sw, fm);
@@ -245,12 +246,16 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
+            log.info("Flow mod sent: Wildcard={} match={}",
+                    Integer.toHexString(fm.getMatch().getWildcards()),
+                    fm.getMatch().toString());
             sw.write(fm, cntx);
 
             if (sw.getId() == srcSwitch.getId()) {
                 pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);
                 srcSwitchIncluded = true;
             }
+            match = fm.getMatch();
         } catch (IOException e) {
             log.error("Failure writing flow mod", e);
         }
@@ -266,6 +271,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     }
 
     public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, short outport, FloodlightContext cntx) {
+        
+        if (pi == null) {
+            return;
+        }
+        
         if (log.isDebugEnabled()) {
             log.debug("PacketOut srcSwitch={} match={} pi={}", new Object[] {sw, match, pi});
         }
