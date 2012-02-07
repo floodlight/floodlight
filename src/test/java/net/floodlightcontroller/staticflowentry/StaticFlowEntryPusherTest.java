@@ -67,6 +67,7 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         switchMap.put(dpid, mockSwitch);
         mockFloodlightProvider.setSwitches(switchMap);
         staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
+        staticFlowEntryPusher.setFlowPushTimeSeconds(2); // speed up push timer for faster testing
         long timeSfpStart = System.currentTimeMillis();
         staticFlowEntryPusher.startUp();
         
