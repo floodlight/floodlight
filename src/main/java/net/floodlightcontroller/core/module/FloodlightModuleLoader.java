@@ -1,14 +1,20 @@
 package net.floodlightcontroller.core.module;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+
+import net.floodlightcontroller.core.internal.CmdLineSettings;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +58,9 @@ public class FloodlightModuleLoader {
 	        moduleNameMap = new HashMap<String, IFloodlightModule>();
 	        
 	        // Get all the current modules in the classpath
+	        ClassLoader cl = Thread.currentThread().getContextClassLoader(); //new SecureClassLoader();
 	        ServiceLoader<IFloodlightModule> moduleLoader
-	        = ServiceLoader.load(IFloodlightModule.class);
+	            = ServiceLoader.load(IFloodlightModule.class, cl);
 	        // Iterate for each module, iterate through and add it's services
 	        for (IFloodlightModule m : moduleLoader) {
 	            if (logger.isDebugEnabled()) {
@@ -82,23 +89,38 @@ public class FloodlightModuleLoader {
 	    }
 	}
 	
-	public IFloodlightModuleContext loadModulesFromConfig() 
+	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
-	    logger.debug("Starting module loader");
-	    findAllModules();
+	    Properties prop = new Properties();
 	    
-	    Set<IFloodlightModule> moduleSet = new HashSet<IFloodlightModule>();
-	    Map<Class<? extends IFloodlightService>, IFloodlightModule> moduleMap =
-                new HashMap<Class<? extends IFloodlightService>,
-                            IFloodlightModule>();
-	    
-	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.forwarding.Forwarding");
-	    calculateModuleDeps(moduleMap, moduleSet, "net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher");
-	    
-	    initModules(moduleSet);
-	    startupModules(moduleSet);
-	    
-	    return floodlightModuleContext;
+	    // Load defaults if no properties file exists
+	    if (fName == null) {
+	        logger.debug("No module file specified, using defaults");
+	        String[] mList = new String[2];
+	        mList[0] = "net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher";
+	        mList[1] = "net.floodlightcontroller.forwarding.Forwarding";
+	        return loadModulesFromList(mList);
+	    } else {
+            try {
+                if (fName == CmdLineSettings.DEFAULT_CONFIG_FILE) {
+                    logger.debug("Loading default module file " + fName);
+                    InputStream is = this.getClass().getClassLoader().getResourceAsStream(fName);
+                    if (is == null) {
+                        logger.error("Could not find default properties file!");
+                        System.exit(1);
+                    }
+                    prop.load(is);
+                } else {
+                    logger.debug("Loading modules from file " + fName);
+                    prop.load(new FileInputStream(fName));
+                }
+            } catch (IOException ex) {
+                logger.debug("Properties file " + fName + " not found!");
+                ex.printStackTrace();
+                System.exit(1);
+            }
+            return loadModulesFromList(prop.getProperty("floodlight.modules").split(","));
+	    }
 	}
 	
 	/**
@@ -187,7 +209,7 @@ public class FloodlightModuleLoader {
                                             mod.getClass().getCanonicalName());
                     } else {
                         throw new FloodlightModuleException("ERROR! Found more " + 
-                                "than one IFloodlightModule that provides " + 
+                                "than one (" + mods.size() + ") IFloodlightModules that provides " + 
                                 "service " + c.toString() + 
                                 ". Please resolve this in the config");
                     }
