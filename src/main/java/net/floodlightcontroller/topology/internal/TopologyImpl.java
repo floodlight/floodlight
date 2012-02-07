@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -18,7 +18,9 @@
 package net.floodlightcontroller.topology.internal;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -43,6 +46,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.routing.BroadcastTree;
@@ -52,6 +56,7 @@ import net.floodlightcontroller.storage.IStorageSource;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.BroadcastDomain;
 import net.floodlightcontroller.topology.ITopology;
 import net.floodlightcontroller.topology.ITopologyAware;
 import net.floodlightcontroller.topology.LinkInfo;
@@ -80,7 +85,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class sends out LLDP messages containing the sending switch's datapath
- * id as well as the outgoing port number.  Received LLrescDP messages that 
+ * id as well as the outgoing port number.  Received LLrescDP messages that
  * match a known switch cause a new LinkTuple to be created according to the
  * invariant rules listed below.  This new LinkTuple is also passed to routing
  * if it exists to trigger updates.
@@ -91,17 +96,17 @@ import org.slf4j.LoggerFactory;
  * Invariants:
  *  -portLinks and switchLinks will not contain empty Sets outside of
  *   critical sections
- *  -portLinks contains LinkTuples where one of the src or dst 
+ *  -portLinks contains LinkTuples where one of the src or dst
  *   SwitchPortTuple matches the map key
- *  -switchLinks contains LinkTuples where one of the src or dst 
+ *  -switchLinks contains LinkTuples where one of the src or dst
  *   SwitchPortTuple's id matches the switch id
- *  -Each LinkTuple will be indexed into switchLinks for both 
+ *  -Each LinkTuple will be indexed into switchLinks for both
  *   src.id and dst.id, and portLinks for each src and dst
  *  -The updates queue is only added to from within a held write lock
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class TopologyImpl implements IOFMessageListener, IOFSwitchListener, 
+public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                                             IStorageSourceListener, ITopology {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
@@ -119,6 +124,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     private static final String SWITCH_TABLE_NAME = "controller_switch";
     private static final String SWITCH_CORE_SWITCH = "core_switch";
 
+    //
+    private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
+    // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
+    private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
+
+
     protected IFloodlightProvider floodlightProvider;
     protected IStorageSource storageSource;
     protected IRoutingEngine routingEngine;
@@ -129,12 +140,20 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected Map<LinkTuple, LinkInfo> links;
     protected int lldpFrequency = 15 * 1000; // sending frequency
     protected int lldpTimeout = 35 * 1000; // timeout
+    LLDPTLV controllerTLV;
     protected ReentrantReadWriteLock lock;
 
     /**
      * Map from a id:port to the set of links containing it as an endpoint
      */
     protected Map<SwitchPortTuple, Set<LinkTuple>> portLinks;
+
+    /**
+     * Set of link tuples over which multicast LLDPs are received
+     * and unicast LLDPs are not received.
+     */
+    protected Map<SwitchPortTuple, Set<LinkTuple>> portBroadcastDomainLinks;
+
     SingletonTask loopDetectTask;
 
     protected volatile boolean shuttingDown = false;
@@ -149,8 +168,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
     protected Set<SwitchCluster> clusters;
+    protected Set<BroadcastDomain> broadcastDomains;
+    protected Map<SwitchPortTuple, BroadcastDomain> portGroupMap;
+    protected Map<IOFSwitch, BroadcastDomain> switchGroupMap;
 
-    public static enum UpdateOperation {ADD, UPDATE, REMOVE, 
+
+    public static enum UpdateOperation {ADD, UPDATE, REMOVE,
                                         SWITCH_UPDATED, CLUSTER_MERGED};
 
     public int getLldpFrequency() {
@@ -187,7 +210,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         public UpdateOperation operation;
 
         public Update(IOFSwitch src, short srcPort, int srcPortState,
-                      IOFSwitch dst, short dstPort, int dstPortState, 
+                      IOFSwitch dst, short dstPort, int dstPortState,
                       UpdateOperation operation) {
             this.src = src;
             this.srcPort = srcPort;
@@ -198,7 +221,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             this.operation = operation;
         }
 
-        public Update(LinkTuple lt, int srcPortState, 
+        public Update(LinkTuple lt, int srcPortState,
                       int dstPortState, UpdateOperation operation) {
             this(lt.getSrc().getSw(), lt.getSrc().getPort(),
                  srcPortState, lt.getDst().getSw(), lt.getDst().getPort(),
@@ -222,14 +245,16 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         this.updates = new LinkedBlockingQueue<Update>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
-        this.evHistTopologySwitch = 
+        this.evHistTopologySwitch =
             new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
-        this.evHistTopologyLink = 
+        this.evHistTopologyLink =
             new EventHistory<EventHistoryTopologyLink>("Topology: Link");
-        this.evHistTopologyCluster = 
+        this.evHistTopologyCluster =
             new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
 
+        setControllerTLV();
     }
 
     private void doUpdatesThread() throws InterruptedException {
@@ -245,19 +270,19 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     }
                     switch (update.operation) {
                         case ADD:
-                            ta.addedLink(update.src, update.srcPort, 
+                            ta.addedLink(update.src, update.srcPort,
                                     update.srcPortState,
-                                    update.dst, update.dstPort, 
+                                    update.dst, update.dstPort,
                                     update.dstPortState);
                             break;
                         case UPDATE:
-                            ta.updatedLink(update.src, update.srcPort, 
+                            ta.updatedLink(update.src, update.srcPort,
                                     update.srcPortState,
-                                    update.dst, update.dstPort, 
+                                    update.dst, update.dstPort,
                                     update.dstPortState);
                             break;
                         case REMOVE:
-                            ta.removedLink(update.src, update.srcPort, 
+                            ta.removedLink(update.src, update.srcPort,
                                     update.dst, update.dstPort);
                             break;
                         case SWITCH_UPDATED:
@@ -287,19 +312,19 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     sendLLDPs();
 
                     if (!shuttingDown) {
-                        ScheduledExecutorService ses = 
+                        ScheduledExecutorService ses =
                             floodlightProvider.getScheduledExecutor();
-                                    ses.schedule(this, lldpFrequency, 
+                                    ses.schedule(this, lldpFrequency,
                                                         TimeUnit.MILLISECONDS);
                     }
                 } catch (StorageException e) {
-                    log.error("Storage exception in LLDP send timer; " + 
+                    log.error("Storage exception in LLDP send timer; " +
                               "terminating process", e);
                     floodlightProvider.terminate();
                 } catch (Exception e) {
                     log.error("Exception in LLDP send timer", e);
                 }
-            }   
+            }
         };
         ses.schedule(lldpSendTimer, 1000, TimeUnit.MILLISECONDS);
 
@@ -310,12 +335,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 try {
                     timeoutLinks();
                     if (!shuttingDown) {
-                        ScheduledExecutorService ses = 
+                        ScheduledExecutorService ses =
                             floodlightProvider.getScheduledExecutor();
                         ses.schedule(this, lldpTimeout, TimeUnit.MILLISECONDS);
                     }
                 } catch (StorageException e) {
-                    log.error("Storage exception in link timer; " + 
+                    log.error("Storage exception in link timer; " +
                               "terminating process", e);
                     floodlightProvider.terminate();
                 } catch (Exception e) {
@@ -333,7 +358,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                         doUpdatesThread();
                     } catch (InterruptedException e) {
                         return;
-                    } 
+                    }
                 }
             }}, "Topology Updates");
         updatesThread.start();
@@ -362,7 +387,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected void detectLoop() {
         // No need to detect loop if routingEngine is not available.
         if (routingEngine == null) return;
-        
+
         if (clusters == null) {
             return;
         }
@@ -378,14 +403,14 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             lock.writeLock().unlock();
         }
     }
-    
+
     protected void detectLoopInCluster(BroadcastTree clusterTree, SwitchCluster cluster) {
         if (cluster == null) {
             log.debug("detectLoopInCluster, Empty cluster");
             return;
         }
         if (clusterTree == null) {
-            log.debug("detectLoopInCluster, Empty broadcast tree rooted from {}", 
+            log.debug("detectLoopInCluster, Empty broadcast tree rooted from {}",
                       HexString.toHexString(cluster.getId()));
             return;
         }
@@ -407,22 +432,22 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 Long nextDstNode = treeNodes.get(dstNode.getSw().getId());
                 // The link is blocked if neither (src, dst) nor (dst, src)
                 // pair is in the broadcast treeNodes.
-                if ((nextSrcNode != null && 
+                if ((nextSrcNode != null &&
                      nextSrcNode.longValue() == dstNode.getSw().getId()) ||
-                    (nextDstNode != null && 
+                    (nextDstNode != null &&
                      nextDstNode.longValue() == srcNode.getSw().getId())) {
                     if (log.isDebugEnabled()) {
-                        log.debug("detectLoopInCluster, root={}, mark " + 
-                                  "link {} broadcast state to FORWARD", 
+                        log.debug("detectLoopInCluster, root={}, mark " +
+                                  "link {} broadcast state to FORWARD",
                                   HexString.toHexString(cluster.getId()),
                                   linktp);
                     }
                     linkInfo.setBroadcastState(LinkInfo.PortBroadcastState.PBS_FORWARD);
                 } else {
                     if (log.isDebugEnabled()) {
-                        log.debug("detectLoopInCluster, root={}, mark " + 
-                                  "link {} broadcast state to BLOCK", 
-                                  HexString.toHexString(cluster.getId()), 
+                        log.debug("detectLoopInCluster, root={}, mark " +
+                                  "link {} broadcast state to BLOCK",
+                                  HexString.toHexString(cluster.getId()),
                                   linktp);
                     }
                     linkInfo.setBroadcastState(LinkInfo.PortBroadcastState.PBS_BLOCK);
@@ -432,7 +457,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
     }
 
-    protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port) {
+    protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, String dstMacAddress) {
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -441,7 +466,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
         Ethernet ethernet = new Ethernet()
             .setSourceMACAddress(new byte[6])
-            .setDestinationMACAddress("01:80:c2:00:00:00")
+            .setDestinationMACAddress(dstMacAddress)
             .setEtherType(Ethernet.TYPE_LLDP);
         // using "nearest customer bridge" MAC address for broadest possible propagation
         // through provider and TPMR bridges (see IEEE 802.1AB-2009 and 802.1Q-2011),
@@ -459,6 +484,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         byte[] dpidTLVValue = new byte[] {0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) 12).setValue(dpidTLVValue);
         lldp.getOptionalTLVList().add(dpidTLV);
+
+        // Add the controller identifier to the TLV value.
+        lldp.getOptionalTLVList().add(controllerTLV);
 
         byte[] dpidArray = new byte[8];
         ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
@@ -515,14 +543,17 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         if (sw == null) return;
 
         OFPhysicalPort port = sw.getPort(swt.getPort());
-        if (port != null)
-            sendLLDPs(sw, port);
+        if (port != null) {
+            sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
+            sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
+        }
     }
 
     protected void sendLLDPs(IOFSwitch sw) {
         if (sw.getEnabledPorts() != null) {
             for (OFPhysicalPort port : sw.getEnabledPorts()) {
-                sendLLDPs(sw, port);
+                sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
+                sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
             }
         }
     }
@@ -537,6 +568,39 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
     }
 
+    protected void setControllerTLV() {
+        //Setting the controllerTLVValue based on current nano time,
+        //controller's IP address, and the network interface object hash
+        //the corresponding IP address.
+
+        final int prime = 7867;
+        InetAddress localIPAddress = null;
+        NetworkInterface localInterface = null;
+
+        byte[] controllerTLVValue = new byte[] {0, 0, 0, 0, 0, 0, 0, 0};  // 8 byte value.
+        ByteBuffer bb = ByteBuffer.allocate(10);
+
+        try{
+            localIPAddress = java.net.InetAddress.getLocalHost();
+            localInterface = NetworkInterface.getByInetAddress(localIPAddress);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Long result = System.nanoTime();
+        if (localIPAddress != null)
+            result = result * prime + IPv4.toIPv4Address(localIPAddress.getHostAddress());
+        if (localInterface != null)
+            result = result * prime + localInterface.hashCode();
+        bb.putLong(result);
+
+
+        bb.rewind();
+        bb.get(controllerTLVValue, 0, 8);
+
+        this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) 8).setValue(controllerTLVValue);
+    }
+
     @Override
     public String getName() {
         return "topology";
@@ -546,7 +610,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public int getId() {
         return FlListenerID.TOPOLOGYIMPL;
     }
-    
+
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
@@ -555,12 +619,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             case PORT_STATUS:
                 return this.handlePortStatus(sw, (OFPortStatus) msg);
         }
-        
+
         log.error("Received an unexpected message {} from switch {}", msg, sw);
         return Command.CONTINUE;
     }
 
-    private Command handleLldp(LLDP lldp, IOFSwitch sw, OFPacketIn pi) {
+    private Command handleLldp(LLDP lldp, IOFSwitch sw, OFPacketIn pi, boolean isStandard, FloodlightContext cntx) {
         // If this is a malformed LLDP, or not from us, exit
         if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3)
             return Command.CONTINUE;
@@ -569,6 +633,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         portBB.position(1);
         Short remotePort = portBB.getShort();
         IOFSwitch remoteSwitch = null;
+        boolean myLLDP = false;
 
         // Verify this LLDP packet matches what we're looking for
         for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
@@ -577,8 +642,35 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     lldptlv.getValue()[2] == (byte)0xe1 && lldptlv.getValue()[3] == 0x0) {
                 ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
                 remoteSwitch = floodlightProvider.getSwitches().get(dpidBB.getLong(4));
-                break;
             }
+            if (lldptlv.getType() == 12 && lldptlv.getLength() == 8 &&
+                    lldptlv.getValue()[0] == controllerTLV.getValue()[0] &&
+                    lldptlv.getValue()[1] == controllerTLV.getValue()[1] &&
+                    lldptlv.getValue()[2] == controllerTLV.getValue()[2] &&
+                    lldptlv.getValue()[3] == controllerTLV.getValue()[3] &&
+                    lldptlv.getValue()[4] == controllerTLV.getValue()[4] &&
+                    lldptlv.getValue()[5] == controllerTLV.getValue()[5] &&
+                    lldptlv.getValue()[6] == controllerTLV.getValue()[6] &&
+                    lldptlv.getValue()[7] == controllerTLV.getValue()[7]){
+                ByteBuffer.wrap(lldptlv.getValue());
+                myLLDP = true;
+            }
+        }
+
+        if (myLLDP == false) {
+            // This is not the LLDP sent by this controller.
+            // If the LLDP message has multicast bit set, then we need to broadcast
+            // the packet as a regular packet.
+            Ethernet eth = IFloodlightProvider.bcStore.get(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+            if (eth.isMulticast()) {
+                if (log.isTraceEnabled())
+                    log.trace("Received a multicast LLDP packet from a different controller, allowing the packet to follow normal processing chain.");
+                return Command.CONTINUE;
+            }
+            if (log.isTraceEnabled()) {
+                log.trace("Received a unicast LLDP packet from a different controller, stop processing the packet here.");
+            }
+            return Command.STOP;
         }
 
         if (remoteSwitch == null) {
@@ -589,7 +681,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             }
             return Command.STOP;
         }
-        
+
         if (!remoteSwitch.portEnabled(remotePort)) {
             log.info("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
             return Command.STOP;
@@ -607,58 +699,71 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // Store the time of update to this link, and push it out to routingEngine
         LinkTuple lt = new LinkTuple(new SwitchPortTuple(remoteSwitch, remotePort),
                 new SwitchPortTuple(sw, pi.getInPort()));
-        addOrUpdateLink(lt, srcPortState, dstPortState);
+
+
+        Integer srcPortStateObj = Integer.valueOf(srcPortState);
+        Integer dstPortStateObj = Integer.valueOf(dstPortState);
+        Long unicastValidTime = null;
+        Long multicastValidTime = null;
+
+        if (isStandard)
+            unicastValidTime = System.currentTimeMillis();
+        else
+            multicastValidTime = System.currentTimeMillis();
+
+        LinkInfo newLinkInfo =
+                new LinkInfo(unicastValidTime, multicastValidTime, srcPortStateObj, dstPortStateObj);
+
+        addOrUpdateLink(lt, newLinkInfo);
 
         // Consume this message
         return Command.STOP;
     }
-    
+
     private Command handleBpdu(BPDU bpdu, IOFSwitch sw, OFPacketIn pi) {
         // TODO - handle STP here
         return Command.STOP;
     }
-    
-    protected Command handlePacketIn(IOFSwitch sw, OFPacketIn pi, 
+
+    protected Command handlePacketIn(IOFSwitch sw, OFPacketIn pi,
                                      FloodlightContext cntx) {
-        Ethernet eth = 
-            IFloodlightProvider.bcStore.get(cntx, 
+        Ethernet eth =
+            IFloodlightProvider.bcStore.get(cntx,
                                         IFloodlightProvider.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getPayload() instanceof LLDP)
-            return handleLldp((LLDP) eth.getPayload(), sw, pi);
-        
+        if (eth.getPayload() instanceof LLDP)  {
+            String dstMacString = HexString.toHexString(eth.getDestinationMACAddress());
+            if (dstMacString.equals(LLDP_STANDARD_DST_MAC_STRING)) {
+                return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
+            } else {
+                return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
+            }
+        }
+
         if (eth.getPayload() instanceof BPDU)
             return handleBpdu((BPDU) eth.getPayload(), sw, pi);
-        
+
         return Command.CONTINUE;
     }
 
-    protected void addOrUpdateLink(LinkTuple lt, int srcPortState, 
-                                                            int dstPortState) {
+    protected void addOrUpdateLink(LinkTuple lt, LinkInfo newLinkInfo) {
         lock.writeLock().lock();
         try {
-            Integer srcPortStateObj = Integer.valueOf(srcPortState);
-            Integer dstPortStateObj = Integer.valueOf(dstPortState);
-            
-            Long validTime = System.currentTimeMillis();
-            
-            LinkInfo newLinkInfo = 
-                    new LinkInfo(validTime, srcPortStateObj, dstPortStateObj);
             LinkInfo oldLinkInfo = links.put(lt, newLinkInfo);
-            
+
             UpdateOperation updateOperation = null;
             boolean linkChanged = false;
-            
+
             if (oldLinkInfo == null) {
                 // index it by switch source
                 if (!switchLinks.containsKey(lt.getSrc().getSw()))
-                    switchLinks.put(lt.getSrc().getSw(), 
+                    switchLinks.put(lt.getSrc().getSw(),
                                                     new HashSet<LinkTuple>());
                 switchLinks.get(lt.getSrc().getSw()).add(lt);
 
                 // index it by switch dest
                 if (!switchLinks.containsKey(lt.getDst().getSw()))
-                    switchLinks.put(lt.getDst().getSw(), 
+                    switchLinks.put(lt.getDst().getSw(),
                                                     new HashSet<LinkTuple>());
                 switchLinks.get(lt.getDst().getSw()).add(lt);
 
@@ -671,39 +776,70 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     portLinks.put(lt.getDst(), new HashSet<LinkTuple>());
                 portLinks.get(lt.getDst()).add(lt);
 
+                // Add to portNOFLinks if the unicast valid time is null
+                if (newLinkInfo.getUnicastValidTime() == null)
+                    addLinkToBroadcastDomain(lt);
+
                 writeLink(lt, newLinkInfo);
                 updateOperation = UpdateOperation.ADD;
                 linkChanged = true;
 
                 log.info("Added link {}", lt);
                 // Add to event history
-                evHistTopoLink(lt.getSrc().getSw().getId(), 
-                                lt.getDst().getSw().getId(), 
+                evHistTopoLink(lt.getSrc().getSw().getId(),
+                                lt.getDst().getSw().getId(),
                                 lt.getSrc().getPort(),
                                 lt.getDst().getPort(),
-                                srcPortState, dstPortState,
+                                newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
                                 EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
-                // Only update the port states if they've changed
-                if (srcPortState == oldLinkInfo.getSrcPortState().intValue())
-                    srcPortStateObj = null;
-                if (dstPortState == oldLinkInfo.getDstPortState().intValue())
-                    dstPortStateObj = null;
+                // Since the link info is already there, we need to
+                // update the right fields.
+                if (newLinkInfo.getUnicastValidTime() == null) {
+                    // This is due to a multicast LLDP, so copy the old unicast
+                    // value.
+                    if (oldLinkInfo.getUnicastValidTime() != null) {
+                        newLinkInfo.setUnicastValidTime(oldLinkInfo.getUnicastValidTime());
+                    }
+                } else if (newLinkInfo.getMulticastValidTime() == null) {
+                    // This is due to a unicast LLDP, so copy the old multicast
+                    // value.
+                    if (oldLinkInfo.getMulticastValidTime() != null) {
+                        newLinkInfo.setMulticastValidTime(oldLinkInfo.getMulticastValidTime());
+                    }
+                }
 
-                // Check if either of the port states changed to see if we need 
-                // to send an update and recompute the clusters below.
-                linkChanged = (srcPortStateObj != null) || 
-                                                    (dstPortStateObj != null);
+                Long oldTime = oldLinkInfo.getUnicastValidTime();
+                Long newTime = newLinkInfo.getUnicastValidTime();
+                // the link has changed its state between openflow and non-openflow
+                // if the unicastValidTimes are null or not null
+                if (oldTime != null & newTime == null) {
+                    // openflow -> non-openflow transition
+                    // we need to add the link tuple to the portNOFLinks
+                    addLinkToBroadcastDomain(lt);
+                    linkChanged = true;
+                } else if (oldTime == null & newTime != null) {
+                    // non-openflow -> openflow transition
+                    // we need to remove the link from the portNOFLinks
+                    removeLinkFromBroadcastDomain(lt);
+                    linkChanged = true;
+                }
+
+                // Only update the port states if they've changed
+                if (newLinkInfo.getSrcPortState().intValue() != oldLinkInfo.getSrcPortState().intValue() ||
+                        newLinkInfo.getDstPortState().intValue() != oldLinkInfo.getDstPortState().intValue())
+                    linkChanged = true;
+
                 if (!linkChanged) {
                     // Keep the same broadcast state
                     newLinkInfo.setBroadcastState(
                                             oldLinkInfo.getBroadcastState());
                 }
 
-                // Write changes to storage. This will always write the updated 
-                // valid time, plus the port states if they've changed (i.e. if 
+                // Write changes to storage. This will always write the updated
+                // valid time, plus the port states if they've changed (i.e. if
                 // they weren't set to null in the previous block of code.
-                writeLinkInfo(lt, validTime, srcPortStateObj, dstPortStateObj);
+                writeLinkInfo(lt, newLinkInfo);
 
                 if (linkChanged) {
                     updateOperation = UpdateOperation.UPDATE;
@@ -712,18 +848,18 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     }
                     log.info("Updated link {}", lt);
                     // Add to event history
-                    evHistTopoLink(lt.getSrc().getSw().getId(), 
-                                    lt.getDst().getSw().getId(), 
+                    evHistTopoLink(lt.getSrc().getSw().getId(),
+                                    lt.getDst().getSw().getId(),
                                     lt.getSrc().getPort(),
                                     lt.getDst().getPort(),
-                                    srcPortState, dstPortState,
-                                    EvAction.LINK_PORT_STATE_UPDATED, 
+                                    newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
+                                    EvAction.LINK_PORT_STATE_UPDATED,
                                     "LLDP Recvd");
                 }
             }
 
             if (linkChanged) {
-                updates.add(new Update(lt, srcPortState, dstPortState, updateOperation));
+                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), updateOperation));
                 updateClusters();
             }
         } finally {
@@ -759,18 +895,20 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 if (this.portLinks.get(lt.getDst()).isEmpty())
                     this.portLinks.remove(lt.getDst());
 
+                removeLinkFromBroadcastDomain(lt);
+
                 this.links.remove(lt);
                 updates.add(new Update(lt, 0, 0, UpdateOperation.REMOVE));
 
                 // Update Event History
-                evHistTopoLink(lt.getSrc().getSw().getId(), 
-                        lt.getDst().getSw().getId(), 
+                evHistTopoLink(lt.getSrc().getSw().getId(),
+                        lt.getDst().getSw().getId(),
                         lt.getSrc().getPort(),
                         lt.getDst().getPort(),
                         0, 0, // Port states
                         EvAction.LINK_DELETED, reason);
                 removeLink(lt);
-                
+
 
                 if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
@@ -780,7 +918,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             lock.writeLock().unlock();
         }
     }
-    
+
     /**
      * Handles an OFPortStatus message from a switch. We will add or
      * delete LinkTupes as well re-compute the topology if needed.
@@ -790,7 +928,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      */
     protected Command handlePortStatus(IOFSwitch sw, OFPortStatus ps) {
         if (log.isDebugEnabled()) {
-            log.debug("handlePortStatus: Switch {} port #{} reason {}; " + 
+            log.debug("handlePortStatus: Switch {} port #{} reason {}; " +
                       "config is {} state is {}",
                       new Object[] {sw.getStringId(),
                                     ps.getDesc().getPortNumber(),
@@ -799,7 +937,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                                     ps.getDesc().getState()});
         }
 
-        SwitchPortTuple tuple = 
+        SwitchPortTuple tuple =
                         new SwitchPortTuple(sw, ps.getDesc().getPortNumber());
         boolean link_deleted  = false;
 
@@ -807,10 +945,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         try {
             boolean topologyChanged = false;
 
-            // if ps is a delete, or a modify where the port is down or 
+            // if ps is a delete, or a modify where the port is down or
             // configured down
             if ((byte)OFPortReason.OFPPR_DELETE.ordinal() == ps.getReason() ||
-                ((byte)OFPortReason.OFPPR_MODIFY.ordinal() == 
+                ((byte)OFPortReason.OFPPR_MODIFY.ordinal() ==
                                 ps.getReason() && !portEnabled(ps.getDesc()))) {
 
                 List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
@@ -827,9 +965,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     topologyChanged = true;
                     link_deleted    = true;
                 }
-            } else if (ps.getReason() == 
+            } else if (ps.getReason() ==
                                     (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
-                // If ps is a port modification and the port state has changed 
+                // If ps is a port modification and the port state has changed
                 // that affects links in the topology
                 if (this.portLinks.containsKey(tuple)) {
                     for (LinkTuple link: this.portLinks.get(tuple)) {
@@ -837,27 +975,26 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                         assert(linkInfo != null);
                         Integer updatedSrcPortState = null;
                         Integer updatedDstPortState = null;
-                        if (link.getSrc().equals(tuple) && 
-                                (linkInfo.getSrcPortState() != 
+                        if (link.getSrc().equals(tuple) &&
+                                (linkInfo.getSrcPortState() !=
                                                     ps.getDesc().getState())) {
                             updatedSrcPortState = ps.getDesc().getState();
                             linkInfo.setSrcPortState(updatedSrcPortState);
                         }
-                        if (link.getDst().equals(tuple) && 
-                                (linkInfo.getDstPortState() != 
+                        if (link.getDst().equals(tuple) &&
+                                (linkInfo.getDstPortState() !=
                                                     ps.getDesc().getState())) {
                             updatedDstPortState = ps.getDesc().getState();
                             linkInfo.setDstPortState(updatedDstPortState);
                         }
-                        if ((updatedSrcPortState != null) || 
+                        if ((updatedSrcPortState != null) ||
                                                 (updatedDstPortState != null)) {
-                            writeLinkInfo(link, null, updatedSrcPortState, 
-                                                        updatedDstPortState);
+                            writeLinkInfo(link, linkInfo);
                             topologyChanged = true;
                         }
                     }
                 }
-            } 
+            }
 
             if (topologyChanged) {
                 updateClusters();
@@ -873,9 +1010,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         } finally {
             lock.writeLock().unlock();
         }
-        
+
         if (!link_deleted) {
-            // Send LLDP right away when port state is changed for faster 
+            // Send LLDP right away when port state is changed for faster
             // cluster-merge. If it is a link delete then there is not need
             // to send the LLDPs right away and instead we wait for the LLDPs
             // to be sent on the timer as it is normally done
@@ -929,21 +1066,47 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected void timeoutLinks() {
         List<LinkTuple> eraseList = new ArrayList<LinkTuple>();
         Long curTime = System.currentTimeMillis();
+        boolean linkChanged = false;
 
         // reentrant required here because deleteLink also write locks
         lock.writeLock().lock();
         try {
-            Iterator<Entry<LinkTuple, LinkInfo>> it = 
+            Iterator<Entry<LinkTuple, LinkInfo>> it =
                                             this.links.entrySet().iterator();
             while (it.hasNext()) {
                 Entry<LinkTuple, LinkInfo> entry = it.next();
-                if (entry.getValue().getValidTime() + 
-                                                this.lldpTimeout < curTime) {
+                LinkTuple lt = entry.getKey();
+                Long uTime = entry.getValue().getUnicastValidTime();
+                Long mTime = entry.getValue().getMulticastValidTime();
+
+                // Timeout the unicast and multicast LLDP valid times
+                // independently.
+                if ((uTime != null) && (uTime + this.lldpTimeout < curTime)){
+                    entry.getValue().setUnicastValidTime(null);
+                    uTime = null;
+                    if (mTime != null)
+                        addLinkToBroadcastDomain(lt);
+                    // Note that even if mTime becomes null later on,
+                    // the link would be deleted, which would trigger updateClusters().
+                    linkChanged = true;
+                }
+                if ((mTime != null) && (mTime + this.lldpTimeout < curTime)) {
+                    entry.getValue().setMulticastValidTime(null);
+                    mTime = null;
+                    // if uTime is not null, then link will remain as openflow
+                    // link. If uTime is null, it will be deleted.  So, we
+                    // don't care about linkChanged flag here.
+                    removeLinkFromBroadcastDomain(lt);
+                }
+                // Add to the erase list only if both the unicast and multicast
+                // times are null.
+                if (uTime == null && mTime == null){
                     eraseList.add(entry.getKey());
                 }
             }
-            
-            if (eraseList.size() > 0) {
+
+            // if any link was deleted or any link was changed.
+            if ((eraseList.size() > 0) || linkChanged) {
                 deleteLinks(eraseList, "LLDP timeout");
                 updateClusters();
             }
@@ -951,7 +1114,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             lock.writeLock().unlock();
         }
     }
-    
+
     private boolean portEnabled(OFPhysicalPort port) {
         if (port == null)
             return false;
@@ -992,13 +1155,18 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         try {
             // If it is a core switch, then return true
             if (idPort.getSw().hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH))
-                result = true;            
+                result = true;
 
             else {
+                if (portBroadcastDomainLinks.get(idPort) != null) {
+                    // There is at least one link here, so declare as not internal.
+                    return false;
+                }
+
                 Set<LinkTuple> ltSet = this.portLinks.get(idPort);
                 // The assumption is there could be at most two links for this
-                // switch port: one incoming and one outgoing to the same 
-                // other switch.  So, verifying one of these two links is 
+                // switch port: one incoming and one outgoing to the same
+                // other switch.  So, verifying one of these two links is
                 // sufficient.
                 if (ltSet != null) {
                     for(LinkTuple lt: ltSet) {
@@ -1021,7 +1189,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         if (links == null) {
             return null;
         }
-        
+
         LinkTuple retLink = null;
         for (LinkTuple link : links) {
             if (log.isTraceEnabled()) {
@@ -1040,11 +1208,15 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             linkInfo = this.links.get(retLink);
         } else {
             log.debug("getLinkInfo: No link out of {} links is from port {}, "+
-                    "isSrcPort {}", 
+                    "isSrcPort {}",
                     new Object[] {links.size(), idPort, isSrcPort});
         }
 
         return linkInfo;
+    }
+
+    public Map<SwitchPortTuple, Set<LinkTuple>> getPortBroadcastDomainLinks() {
+        return portBroadcastDomainLinks;
     }
 
     @Override
@@ -1066,28 +1238,120 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return linkInfo.linkStpBlocked();
     }
 
-    /**
-     * @author Srinivasan Ramasubramanian
-     * 
-     * This function divides the network into clusters. Every cluster is 
-     * a strongly connected component. The network may contain unidirectional 
-     * links.  The function calls dfsTraverse for performing depth first 
-     * search and cluster formation. 
-     * 
-     * The computation of strongly connected components is based on
-     * Tarjan's algorithm.  For more details, please see the Wikipedia
-     * link below.
-     * 
-     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
-     */
     protected void updateClusters() {
-        // NOTE: This function assumes that the caller has already acquired
-        // a write lock on the "lock" data member.
-
         if (!lock.isWriteLockedByCurrentThread()) {
             log.error("Expected lock in updateClusters()");
             return;
         }
+
+        updateOpenFlowClusters();
+        updateBroadcastDomains();
+    }
+
+    protected void addLinkToBroadcastDomain(LinkTuple lt) {
+        if (!portBroadcastDomainLinks.containsKey(lt.getSrc()))
+            portBroadcastDomainLinks.put(lt.getSrc(), new HashSet<LinkTuple>());
+        portBroadcastDomainLinks.get(lt.getSrc()).add(lt);
+
+        if (!portBroadcastDomainLinks.containsKey(lt.getDst()))
+            portBroadcastDomainLinks.put(lt.getDst(), new HashSet<LinkTuple>());
+        portBroadcastDomainLinks.get(lt.getDst()).add(lt);
+    }
+
+    protected void removeLinkFromBroadcastDomain(LinkTuple lt) {
+
+        if (portBroadcastDomainLinks.containsKey(lt.getSrc())) {
+            portBroadcastDomainLinks.get(lt.getSrc()).remove(lt);
+            if (portBroadcastDomainLinks.get(lt.getSrc()).isEmpty())
+                portBroadcastDomainLinks.remove(lt.getSrc());
+        }
+
+        if (portBroadcastDomainLinks.containsKey(lt.getDst())) {
+            portBroadcastDomainLinks.get(lt.getDst()).remove(lt);
+            if (portBroadcastDomainLinks.get(lt.getDst()).isEmpty())
+                portBroadcastDomainLinks.remove(lt.getDst());
+        }
+    }
+
+    /**
+     * @author Srinivasan Ramasubramanian
+     *
+     * This function computes the link aggregation groups.
+     * Switch ports that connect to  non-openflow domains are
+     * grouped together based on whether there's a broadcast
+     * leak from one to another or not.  We will currently
+     * ignore directionality of the links from the switch ports.
+     *
+     * Assuming link tuple as undirected, the goal is to simply
+     * compute connected components.
+     */
+    protected void updateBroadcastDomains() {
+        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks =  getPortBroadcastDomainLinks();
+        Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
+        Set<BroadcastDomain> bdSets = new HashSet<BroadcastDomain>();
+
+        // Do a breadth first search to get all the connected components
+        for(SwitchPortTuple swt: pbdLinks.keySet()) {
+            if (visitedSwt.contains(swt)) continue;
+
+            // create an array list and add the first switch port.
+            Queue<SwitchPortTuple> queue = new LinkedBlockingQueue<SwitchPortTuple>();
+            BroadcastDomain bd = new BroadcastDomain();
+            visitedSwt.contains(swt);
+            queue.add(swt);
+            bd.add(swt);
+            while(queue.peek() != null) {
+                SwitchPortTuple currSwt = queue.remove();
+
+                for(LinkTuple lt: pbdLinks.get(currSwt)) {
+                    SwitchPortTuple otherSwt;
+                    if (lt.getSrc().equals(currSwt))
+                        otherSwt = lt.getDst();
+                    else otherSwt = lt.getSrc();
+
+                    if (visitedSwt.contains(otherSwt) == false) {
+                        queue.add(otherSwt);
+                        visitedSwt.add(otherSwt);
+                        bd.add(otherSwt);
+                    }
+                }
+            }
+
+            // Add this broadcast domain to the set of broadcast domains.
+            bdSets.add(bd);
+        }
+
+        //Replace the current broadcast domains in the topology.
+        broadcastDomains = bdSets;
+
+        if (bdSets.isEmpty()) {
+            if (log.isTraceEnabled()) {
+                log.trace("No broadcast domains exist.");
+            }
+        } else {
+            log.warn("Broadcast domains found in the network.  There could be potential looping issues.");
+            log.warn("{}", broadcastDomains.toString());
+        }
+    }
+
+    /**
+     * @author Srinivasan Ramasubramanian
+     *
+     * This function divides the network into clusters. Every cluster is
+     * a strongly connected component. The network may contain unidirectional
+     * links.  The function calls dfsTraverse for performing depth first
+     * search and cluster formation.
+     *
+     * The computation of strongly connected components is based on
+     * Tarjan's algorithm.  For more details, please see the Wikipedia
+     * link below.
+     *
+     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+     */
+    protected void updateOpenFlowClusters() {
+        // NOTE: This function assumes that the caller has already acquired
+        // a write lock on the "lock" data member.
+
         if (log.isTraceEnabled()) {
             log.trace("Computing topology cluster info");
         }
@@ -1124,21 +1388,21 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     /**
      * @author Srinivasan Ramasubramanian
-     * 
+     *
      * This algorithm computes the depth first search (DFS) travesral of the
-     * switches in the network, computes the lowpoint, and creates clusters 
+     * switches in the network, computes the lowpoint, and creates clusters
      * (of strongly connected components).
-     * 
+     *
      * The computation of strongly connected components is based on
      * Tarjan's algorithm.  For more details, please see the Wikipedia
      * link below.
-     * 
+     *
      * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
-     * 
-     * The initialization of lowpoint and the check condition for when a 
+     *
+     * The initialization of lowpoint and the check condition for when a
      * cluster should be formed is modified as we do not remove switches that
      * are already part of a cluster.
-     * 
+     *
      * @param parentIndex: DFS index of the parent node
      * @param currIndex: DFS index to be assigned to a newly visited node
      * @param currSw: Object for the current switch
@@ -1148,9 +1412,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * @param clusters: Set of already formed clusters
      * @return long: DSF index to be used when a new node is visited
      */
-    protected long dfsTraverse (long parentIndex, long currIndex, 
-            IOFSwitch currSw, Map<Long, IOFSwitch> switches, 
-            Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet, 
+    protected long dfsTraverse (long parentIndex, long currIndex,
+            IOFSwitch currSw, Map<Long, IOFSwitch> switches,
+            Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet,
             Set <SwitchCluster> clusters) {
 
         //Get the DFS object corresponding to the current switch
@@ -1180,7 +1444,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
                 if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
                     // could be a potential lowpoint
-                    if (dstDFS.getDfsIndex() < currDFS.getLowpoint()) 
+                    if (dstDFS.getDfsIndex() < currDFS.getLowpoint())
                         currDFS.setLowpoint(dstDFS.getDfsIndex());
 
                 } else if (!dstDFS.isVisited()) {
@@ -1189,10 +1453,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                             switches, dfsList, currSet, clusters);
 
                     // update lowpoint after the visit
-                    if (dstDFS.getLowpoint() < currDFS.getLowpoint()) 
+                    if (dstDFS.getLowpoint() < currDFS.getLowpoint())
                         currDFS.setLowpoint(dstDFS.getLowpoint());
-                } 
-                // else, it is a node already visited with a higher 
+                }
+                // else, it is a node already visited with a higher
                 // dfs index, just ignore.
             }
         }
@@ -1202,7 +1466,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
         // Cluster computation.
         // If the node's lowpoint is greater than its parent's DFS index,
-        // we need to form a new cluster with all the switches in the 
+        // we need to form a new cluster with all the switches in the
         // currSet.
         if (currDFS.getLowpoint() > currDFS.getParentDFSIndex()) {
             // The cluster thus far forms a strongly connected component.
@@ -1277,53 +1541,54 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return srcDpid + "-" + lt.getSrc().getPort() + "-" +
             dstDpid + "-" + lt.getDst().getPort();
     }
-    
+
     /**
      * Writes a LinkTuple and corresponding LinkInfo to storage
      * @param lt The LinkTuple to write
      * @param linkInfo The LinkInfo to write
      */
     void writeLink(LinkTuple lt, LinkInfo linkInfo) {
-        Map<String, Object> rowValues = new HashMap<String, Object>();
-        
-        String id = getLinkId(lt);
-        rowValues.put(LINK_ID, id);
-        String srcDpid = lt.getSrc().getSw().getStringId();
-        rowValues.put(LINK_SRC_SWITCH, srcDpid);
-        rowValues.put(LINK_SRC_PORT, lt.getSrc().getPort());
-        if (linkInfo.isBroadcastBlocked()) {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, srcPortState Blocked", 
-                          lt, linkInfo);
+        if (linkInfo.getUnicastValidTime() != null) {
+            Map<String, Object> rowValues = new HashMap<String, Object>();
+            String id = getLinkId(lt);
+            rowValues.put(LINK_ID, id);
+            String srcDpid = lt.getSrc().getSw().getStringId();
+            rowValues.put(LINK_SRC_SWITCH, srcDpid);
+            rowValues.put(LINK_SRC_PORT, lt.getSrc().getPort());
+            if (linkInfo.isBroadcastBlocked()) {
+                if (log.isTraceEnabled()) {
+                    log.trace("writeLink, link {}, info {}, srcPortState Blocked",
+                              lt, linkInfo);
+                }
+                rowValues.put(LINK_SRC_PORT_STATE,
+                              OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
+            } else {
+                log.trace("writeLink, link {}, info {}, srcPortState {}",
+                          new Object[]{ lt, linkInfo, linkInfo.getSrcPortState() });
+                rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
             }
-            rowValues.put(LINK_SRC_PORT_STATE, 
-                          OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-        } else {
-            log.trace("writeLink, link {}, info {}, srcPortState {}", 
-                    new Object[]{ lt, linkInfo, linkInfo.getSrcPortState() });
-            rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
+            String dstDpid = lt.getDst().getSw().getStringId();
+            rowValues.put(LINK_DST_SWITCH, dstDpid);
+            rowValues.put(LINK_DST_PORT, lt.getDst().getPort());
+            if (linkInfo.isBroadcastBlocked()) {
+                if (log.isTraceEnabled()) {
+                    log.trace("writeLink, link {}, info {}, dstPortState Blocked",
+                              lt, linkInfo);
+                }
+                rowValues.put(LINK_DST_PORT_STATE,
+                              OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
+            } else {
+                if (log.isTraceEnabled()) {
+                    log.trace("writeLink, link {}, info {}, dstPortState {}",
+                              new Object[]{ lt, linkInfo,
+                                            linkInfo.getDstPortState() });
+                }
+                rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
+            }
+            rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
+
+            storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
         }
-        String dstDpid = lt.getDst().getSw().getStringId();
-        rowValues.put(LINK_DST_SWITCH, dstDpid);
-        rowValues.put(LINK_DST_PORT, lt.getDst().getPort());
-        if (linkInfo.isBroadcastBlocked()) {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, dstPortState Blocked",
-                          lt, linkInfo);
-            }
-            rowValues.put(LINK_DST_PORT_STATE, 
-                          OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-        } else {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, dstPortState {}", 
-                          new Object[]{ lt, linkInfo,
-                                        linkInfo.getDstPortState() });
-            }
-            rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
-        }
-        rowValues.put(LINK_VALID_TIME, linkInfo.getValidTime());
-        
-        storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
     }
 
     public Long readLinkValidTime(LinkTuple lt) {
@@ -1350,47 +1615,48 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return validTime;
     }
 
-    public void writeLinkInfo(LinkTuple lt, Long validTime, 
-                              Integer srcPortState, Integer dstPortState) {
-        Map<String, Object> rowValues = new HashMap<String, Object>();
-        String id = getLinkId(lt);
-        rowValues.put(LINK_ID, id);
-        LinkInfo linkInfo = links.get(lt);
-        if (validTime != null)
-            rowValues.put(LINK_VALID_TIME, validTime);
-        if (srcPortState != null) {
-            if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
-                if (log.isTraceEnabled()) {
-                    log.trace("writeLinkInfo, link {}, info {}, srcPortState Blocked",
-                              lt, linkInfo);
+    public void writeLinkInfo(LinkTuple lt, LinkInfo linkInfo) {
+        if (linkInfo.getUnicastValidTime() != null) {
+            Map<String, Object> rowValues = new HashMap<String, Object>();
+            String id = getLinkId(lt);
+            rowValues.put(LINK_ID, id);
+            //LinkInfo linkInfo = links.get(lt);
+            if (linkInfo.getUnicastValidTime() != null)
+                rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
+            if (linkInfo.getSrcPortState() != null) {
+                if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("writeLinkInfo, link {}, info {}, srcPortState Blocked",
+                                  lt, linkInfo);
+                    }
+                    rowValues.put(LINK_SRC_PORT_STATE,
+                                  OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
+                } else {
+                    if (log.isTraceEnabled()) {
+                        log.trace("writeLinkInfo, link {}, info {}",
+                                  new Object[]{ lt, linkInfo});
+                    }
+                    rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
                 }
-                rowValues.put(LINK_SRC_PORT_STATE, 
-                              OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-            } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("writeLinkInfo, link {}, info {}, srcPortState {}", 
-                              new Object[]{ lt, linkInfo, srcPortState });
-                }
-                rowValues.put(LINK_SRC_PORT_STATE, srcPortState);
             }
-        }
-        if (dstPortState != null) {
-            if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
-                if (log.isTraceEnabled()) {
-                    log.trace("writeLinkInfo, link {}, info {}, dstPortState Blocked",
-                              lt, linkInfo);
+            if (linkInfo.getDstPortState() != null) {
+                if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("writeLinkInfo, link {}, info {}, dstPortState Blocked",
+                                  lt, linkInfo);
+                    }
+                    rowValues.put(LINK_DST_PORT_STATE,
+                                  OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
+                } else {
+                    if (log.isTraceEnabled()) {
+                        log.trace("writeLinkInfo, link {}, info {}",
+                                  new Object[]{ lt, linkInfo});
+                    }
+                    rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
                 }
-                rowValues.put(LINK_DST_PORT_STATE,
-                              OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-            } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("writeLinkInfo, link {}, info {}, sdstPortState {}", 
-                              new Object[]{ lt, linkInfo, dstPortState });
-                }
-                rowValues.put(LINK_DST_PORT_STATE, dstPortState);
             }
+            storageSource.updateRowAsync(LINK_TABLE_NAME, id, rowValues);
         }
-        storageSource.updateRowAsync(LINK_TABLE_NAME, id, rowValues);
     }
 
     /**
@@ -1418,7 +1684,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware.add(topoAwareComponent);
     }
-    
+
     /**
      * Deregister a topology aware component
      * @param topoAwareComponent
@@ -1454,7 +1720,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
     }
-    
+
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         return false;
@@ -1496,7 +1762,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     updated_switches.add(sw);
                 }
             } else {
-                log.debug("Update for switch which has no entry in switch " + 
+                log.debug("Update for switch which has no entry in switch " +
                           "list (dpid={}), a delete action.", (String)key);
             }
         }
@@ -1565,7 +1831,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         }
         evTopoLink.srcSwDpid = srcDpid;
         evTopoLink.dstSwDpid = dstDpid;
-        evTopoLink.srcSwport = srcPort; 
+        evTopoLink.srcSwport = srcPort;
         evTopoLink.dstSwport = dstPort;
         evTopoLink.srcPortState = srcPortState;
         evTopoLink.dstPortState = dstPortState;
@@ -1573,7 +1839,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
     }
 
-    public void evHistTopoCluster(long dpid, long clusterIdOld, 
+    public void evHistTopoCluster(long dpid, long clusterIdOld,
                     long clusterIdNew, EvAction action, String reason) {
         if (evTopoCluster == null) {
             evTopoCluster = new EventHistoryTopologyCluster();
