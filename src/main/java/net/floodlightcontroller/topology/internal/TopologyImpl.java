@@ -1420,7 +1420,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         //Get the DFS object corresponding to the current switch
         ClusterDFS currDFS = dfsList.get(currSw);
         // Get all the links corresponding to this switch
-        Set<LinkTuple> links = switchLinks.get(currSw);
+        Set<LinkTuple> ltSet = switchLinks.get(currSw);
 
         //Assign the DFS object with right values.
         currDFS.setVisited(true);
@@ -1429,15 +1429,19 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         currIndex++;
 
         // Traverse the graph through every outgoing link.
-        if (links != null) {
-            for(LinkTuple lt: links) {
+        if (ltSet != null) {
+            for(LinkTuple lt: ltSet) {
                 IOFSwitch dstSw = lt.getDst().getSw();
+                LinkInfo info = links.get(lt);
 
                 // ignore incoming links.
                 if (dstSw == currSw) continue;
 
                 // ignore outgoing links if it is blocked.
                 if (linkStpBlocked(lt)) continue;
+
+                // ignore this link if it is in broadcast domain
+                if (info.getUnicastValidTime() == null) continue;
 
                 // Get the DFS object corresponding to the dstSw
                 ClusterDFS dstDFS = dfsList.get(dstSw);
