@@ -461,7 +461,7 @@ public class PktInProcessingTime
     @Override
     public void init(FloodlightModuleContext context)
                                              throws FloodlightModuleException {
-        // no-op
+        perfMonCfgs = new PerfMonConfigs();
     }
     
     @Override
@@ -469,7 +469,6 @@ public class PktInProcessingTime
         // Our 'constructor'
         FlListenerID.populateCompNames();
         setNumComponents(BB_LAST_LISTENER_ID + 1);
-        perfMonCfgs = new PerfMonConfigs();
         ctbs = new CircularTimeBucketSet(getNumComponents());
         ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
         ctb.startTime_ms = System.currentTimeMillis();

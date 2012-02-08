@@ -4,12 +4,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Queue;
 import java.util.ServiceLoader;
 import java.util.Set;
 
@@ -20,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO fill this in
+ * Finds all Floodlight modules in the class path and loads/starts them.
  * @author alexreimers
  *
  */
@@ -43,9 +46,12 @@ public class FloodlightModuleLoader {
 	}
 	
 	/**
-	 * Finds all IFloodlightModule(s) in the classpath.
+	 * Finds all IFloodlightModule(s) in the classpath. It creates 3 Maps.
+	 * serviceMap -> Maps a service to a module
+	 * moduleServiceMap -> Maps a module to all the services it provides
+	 * moduleNameMap -> Maps the string name to the module
 	 */
-	protected static void findAllModules() throws FloodlightModuleException {
+	protected static void findAllModules() {
 	    synchronized (lock) {
 	        if (serviceMap != null) return;
 	        serviceMap = 
@@ -58,7 +64,7 @@ public class FloodlightModuleLoader {
 	        moduleNameMap = new HashMap<String, IFloodlightModule>();
 	        
 	        // Get all the current modules in the classpath
-	        ClassLoader cl = Thread.currentThread().getContextClassLoader(); //new SecureClassLoader();
+	        ClassLoader cl = Thread.currentThread().getContextClassLoader();
 	        ServiceLoader<IFloodlightModule> moduleLoader
 	            = ServiceLoader.load(IFloodlightModule.class, cl);
 	        // Iterate for each module, iterate through and add it's services
@@ -89,6 +95,12 @@ public class FloodlightModuleLoader {
 	    }
 	}
 	
+	/**
+	 * Loads
+	 * @param fName
+	 * @return
+	 * @throws FloodlightModuleException
+	 */
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
 	    Properties prop = new Properties();
@@ -139,8 +151,66 @@ public class FloodlightModuleLoader {
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightModule>();
         
-        for (String s : mList) {
-            calculateModuleDeps(moduleMap, moduleSet, s);
+        //for (String s : mList) {
+        //    calculateModuleDeps(moduleMap, moduleSet, s);
+        //}
+
+        HashSet<String> configMods = new HashSet<String>();
+        configMods.addAll(Arrays.asList(mList));
+        Queue<String> moduleQ = new LinkedList<String>();
+        // Add the explicitly configured modules to the q
+        moduleQ.addAll(configMods);
+        Set<String> modsVisited = new HashSet<String>();
+        
+        while (!moduleQ.isEmpty()) {
+            String moduleName = moduleQ.remove();
+            if (modsVisited.contains(moduleName))
+                continue;
+            modsVisited.add(moduleName);
+            IFloodlightModule module = moduleNameMap.get(moduleName);
+            if (module == null) {
+                throw new FloodlightModuleException("Module " + 
+                        moduleName + " not found");
+            }
+            // Add the module to be loaded
+            addModule(moduleMap, moduleSet, module);
+            // Add it's dep's to the queue
+            Collection<Class<? extends IFloodlightService>> deps = 
+                    module.getModuleDependencies();
+            if (deps != null) {
+                for (Class<? extends IFloodlightService> c : deps) {
+                    IFloodlightModule m = moduleMap.get(c);
+                    if (m == null) {
+                        Collection<IFloodlightModule> mods = serviceMap.get(c);
+                        // Make sure only one module is loaded
+                        if ((mods == null) || (mods.size() == 0)) {
+                            System.out.println(serviceMap.keySet());
+                            throw new FloodlightModuleException("ERROR! Could not " +
+                                    "find an IFloodlightModule that provides service " +
+                                    c.toString());
+                        } else if (mods.size() == 1) {
+                            IFloodlightModule mod = mods.iterator().next();
+                            if (!modsVisited.contains(mod.getClass().getCanonicalName()))
+                                moduleQ.add(mod.getClass().getCanonicalName());
+                        } else {
+                            boolean found = false;
+                            for (IFloodlightModule moduleDep : mods) {
+                                if (configMods.contains(moduleDep.getClass().getCanonicalName())) {
+                                    // Module will be loaded, we can continue
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                throw new FloodlightModuleException("ERROR! Found more " + 
+                                        "than one (" + mods.size() + ") IFloodlightModules that provides " + 
+                                        "service " + c.toString() + 
+                                        ". Please resolve this in the config");
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         initModules(moduleSet);
@@ -169,59 +239,11 @@ public class FloodlightModuleLoader {
             moduleSet.add(module);
         }
 	}
-	
-	/**
-	 * Add a module and all its transitive dependencies
-	 * @param moduleMap the module map
-	 * @param moduleSet the module set
-	 * @param moduleName the module name
-	 * @throws FloodlightModuleException
-	 */
-    protected void calculateModuleDeps(Map<Class<? extends IFloodlightService>, 
-                                           IFloodlightModule> moduleMap,
-                                       Set<IFloodlightModule> moduleSet,
-                                       String moduleName) throws FloodlightModuleException {
-
-        IFloodlightModule module = moduleNameMap.get(moduleName);
-        if (module == null) {
-            throw new FloodlightModuleException("Module " + 
-                    moduleName + " not found");
-        }
-
-        addModule(moduleMap, moduleSet, module);
-        
-        Collection<Class<? extends IFloodlightService>> deps = 
-                module.getModuleDependencies();
-
-        if (deps != null) {
-            for (Class<? extends IFloodlightService> c : deps) {
-                IFloodlightModule m = moduleMap.get(c);
-                if (m == null) {
-                    Collection<IFloodlightModule> mods = serviceMap.get(c);
-                    // Make sure only one module is loaded
-                    if ((mods == null) || (mods.size() == 0)) {
-                        throw new FloodlightModuleException("ERROR! Could not " +
-                                "find an IFloodlightModule that provides service " +
-                                c.toString());
-                    } else if (mods.size() == 1) {
-                        IFloodlightModule mod = mods.iterator().next();
-                        calculateModuleDeps(moduleMap, moduleSet,
-                                            mod.getClass().getCanonicalName());
-                    } else {
-                        throw new FloodlightModuleException("ERROR! Found more " + 
-                                "than one (" + mods.size() + ") IFloodlightModules that provides " + 
-                                "service " + c.toString() + 
-                                ". Please resolve this in the config");
-                    }
-                }
-            }
-        } 
-    }
 
     /**
      * Allocate service implementations and then init all the modules
-     * @param moduleMap
-     * @throws FloodlightModuleException
+     * @param moduleSet The set of modules to call their init function on
+     * @throws FloodlightModuleException If a module can not properly be loaded
      */
     protected void initModules(Set<IFloodlightModule> moduleSet) 
                                            throws FloodlightModuleException {
@@ -244,6 +266,7 @@ public class FloodlightModuleLoader {
                 }
             }
         }
+        
         for (IFloodlightModule module : moduleSet) {
             // init the module
             if (logger.isDebugEnabled()) {
