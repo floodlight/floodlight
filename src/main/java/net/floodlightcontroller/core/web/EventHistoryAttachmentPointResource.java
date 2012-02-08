@@ -33,11 +33,18 @@ public class EventHistoryAttachmentPointResource extends ServerResource {
 
         // Get the event history count. Last <count> events would be returned
         String evHistCount = (String)getRequestAttributes().get("count");
+        int    count = EventHistory.EV_HISTORY_DEFAULT_SIZE;
+        try {
+            count = Integer.parseInt(evHistCount);
+        }
+        catch(NumberFormatException nFE) {
+            // Invalid input for event count - use default value
+        }
 
         DeviceManagerImpl deviceManager = 
            (DeviceManagerImpl)getContext().getAttributes().get("deviceManager");
 
-        return new EventHistory<EventHistoryAttachmentPoint>(deviceManager.evHistDevMgrAttachPt,
-                Integer.parseInt(evHistCount));
+        return new EventHistory<EventHistoryAttachmentPoint>(
+                deviceManager.evHistDevMgrAttachPt, count);
     }
 }

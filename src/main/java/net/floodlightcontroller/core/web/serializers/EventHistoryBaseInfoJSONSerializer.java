@@ -18,7 +18,8 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import net.floodlightcontroller.util.EventHistoryBaseInfo;
 
@@ -67,14 +68,15 @@ public class EventHistoryBaseInfoJSONSerializer extends
     public String convertNanoSecondsToStr(long nanoSeconds) {
         long millisecs    = nanoSeconds / 1000000;
         int  remaining_ns = (int)(nanoSeconds % 1000000000);
-        Timestamp ts      = new Timestamp(millisecs);
-        ts.setNanos(remaining_ns);
-        // Show up to microseconds resolution
-        // length of "2012-01-09 14:54:45.067253" is 26
-        String timeStr = ts.toString();
-        while (timeStr.length() < 26) {
-            timeStr = timeStr.concat("0");
+        int  remaining_us = remaining_ns / 1000;
+        // Show up to microseconds resolution as "2012-01-09 14:54:45.067253"
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String timeStr = df.format(new Date(millisecs));
+        String usStr = Integer.toString(remaining_us);
+        while (usStr.length() < 6) {
+            usStr = "0".concat(usStr);
         }
+        timeStr = timeStr + "." + usStr;
         return timeStr;
     }
 }
