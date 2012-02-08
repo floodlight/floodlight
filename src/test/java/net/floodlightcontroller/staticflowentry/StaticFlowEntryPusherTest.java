@@ -50,12 +50,16 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
     
     @Test
     public void testAddAndRemoveEntries() throws Exception {
-        StaticFlowEntryPusher staticFlowEntryPusher = new StaticFlowEntryPusher();
+        StaticFlowEntryPusher staticFlowEntryPusher = 
+                new StaticFlowEntryPusher();
+        staticFlowEntryPusher.setFlowPushTime(200);
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         long dpid = HexString.toLong(TestSwitch1DPID);
         Capture<OFMessage> writeCapture = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<FloodlightContext> contextCapture = new Capture<FloodlightContext>(CaptureType.ALL);
-        Capture<List<OFMessage>> writeCaptureList = new Capture<List<OFMessage>>(CaptureType.ALL);
+        Capture<FloodlightContext> contextCapture = 
+                new Capture<FloodlightContext>(CaptureType.ALL);
+        Capture<List<OFMessage>> writeCaptureList = 
+                new Capture<List<OFMessage>>(CaptureType.ALL);
         
         mockSwitch.write(capture(writeCapture), capture(contextCapture));
         expectLastCall().anyTimes();
@@ -67,8 +71,6 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         switchMap.put(dpid, mockSwitch);
         mockFloodlightProvider.setSwitches(switchMap);
         staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
-        staticFlowEntryPusher.setFlowPushTimeSeconds(2); // speed up push timer for faster testing
-        long timeSfpStart = System.currentTimeMillis();
         staticFlowEntryPusher.startUp();
         
         // if someone calls getId(), return this dpid instead
@@ -86,21 +88,26 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         
         // Verify that the switch has gotten some flow_mods
         assertEquals(true, writeCapture.getValues().size() == 2);
-        
-        long timeNow = System.currentTimeMillis();
-        // Sleep just long enough for static flow pusher to re-push entires
-        long timeNeededToSleep = (staticFlowEntryPusher.getFlowPushTimeSeconds() * 1000) - (timeNow - timeSfpStart);
-        if (timeNeededToSleep > 0)
-            Thread.sleep(timeNeededToSleep);
+
+        int count = 5;
+        while (count >= 0) {
+            Thread.sleep(staticFlowEntryPusher.getFlowPushTime());
+
+            if (writeCapture.getValues().size() >= 4)
+                break;
+
+            count -= 1;
+        }
+        int newsize = writeCapture.getValues().size();
         // Make sure the entries were pushed again
-        assertEquals(true, writeCapture.getValues().size() == 4);
+        assertTrue(newsize >= 4);
         
         // Remove entries
         staticFlowEntryPusher.removeEntry(flowMod1);
         staticFlowEntryPusher.removeEntry(flowMod2);
         
-        Thread.sleep(staticFlowEntryPusher.getFlowPushTimeSeconds() * 1000);
+        Thread.sleep(staticFlowEntryPusher.getFlowPushTime());
         // Make sure the entries were NOT pushed again
-        assertEquals(true, writeCapture.getValues().size() == 4);
+        assertEquals(newsize, writeCapture.getValues().size());
     }
 }
