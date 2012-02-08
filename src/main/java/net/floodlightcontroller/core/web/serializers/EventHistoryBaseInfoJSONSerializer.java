@@ -18,8 +18,7 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.sql.Timestamp;
 
 import net.floodlightcontroller.util.EventHistoryBaseInfo;
 
@@ -47,8 +46,12 @@ public class EventHistoryBaseInfoJSONSerializer extends
                     throws IOException, JsonProcessingException {
         jGen.writeStartObject();
         jGen.writeNumberField("Idx",    base_info.getIdx());
-        jGen.writeStringField("Time",
-                            convertNanoSecondsToStr(base_info.getTime_ns()));
+        Timestamp ts = new Timestamp(base_info.getTime_ms());
+        String tsStr = ts.toString();
+        while (tsStr.length() < 23) {
+            tsStr = tsStr.concat("0");
+        }
+        jGen.writeStringField("Time", tsStr);
         jGen.writeStringField("State",  base_info.getState().name());
         String acStr = base_info.getAction().name().toLowerCase();
         // Capitalize the first letter
@@ -63,20 +66,5 @@ public class EventHistoryBaseInfoJSONSerializer extends
     @Override
     public Class<EventHistoryBaseInfo> handledType() {
         return EventHistoryBaseInfo.class;
-    }
-
-    public String convertNanoSecondsToStr(long nanoSeconds) {
-        long millisecs    = nanoSeconds / 1000000;
-        int  remaining_ns = (int)(nanoSeconds % 1000000000);
-        int  remaining_us = remaining_ns / 1000;
-        // Show up to microseconds resolution as "2012-01-09 14:54:45.067253"
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String timeStr = df.format(new Date(millisecs));
-        String usStr = Integer.toString(remaining_us);
-        while (usStr.length() < 6) {
-            usStr = "0".concat(usStr);
-        }
-        timeStr = timeStr + "." + usStr;
-        return timeStr;
     }
 }
