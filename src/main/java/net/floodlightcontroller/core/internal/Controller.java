@@ -327,7 +327,9 @@ public class Controller
                     processOFMessage((OFMessage)e.getMessage());
                 }
             } catch (Exception ex) {
-                Channels.fireExceptionCaught(ctx, ex);
+            	// We are the last handler in the stream, so run the exception
+            	// through the channel again by passing in ctx.getChannel().
+                Channels.fireExceptionCaught(ctx.getChannel(), ex);
             }
         }
         
@@ -557,8 +559,6 @@ public class Controller
                         handleMessage(sw, m, null);
                         break;
                 }
-            } catch (Exception e) {
-                log.warn("Exeption in handling OF message {}", e);
             }
             finally {
                 sw.processMessageLock().unlock();
@@ -1206,8 +1206,6 @@ public class Controller
                 }
             }
             switchResultSet.save();
-        } catch (Exception e) {
-            log.error("Error updating switch info {}", e);
         }
         finally {
             if (switchResultSet != null)
