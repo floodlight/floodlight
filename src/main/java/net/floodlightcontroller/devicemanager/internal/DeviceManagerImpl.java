@@ -57,6 +57,7 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.topology.ITopology;
@@ -85,7 +86,7 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
-        IOFSwitchListener, ITopologyAware {  
+        IOFSwitchListener, ITopologyAware, IStorageSourceListener {  
     protected static Logger log = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -113,6 +114,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         // The Integer below is the hashCode of the device
         private Map<SwitchPortTuple, Map<Integer, Device>> switchPortDeviceMap;
         private Map<Long, List<PendingAttachmentPoint>> switchUnresolvedAPMap;
+        private Map<String, String> portChannelMap;
 
         public Map<Long, Device> getDataLayerAddressDeviceMap() {
             return dataLayerAddressDeviceMap;
@@ -146,6 +148,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 new ConcurrentHashMap<SwitchPortTuple, Map<Integer, Device>>();
             switchUnresolvedAPMap = 
                 new ConcurrentHashMap<Long, List<PendingAttachmentPoint>>();
+            portChannelMap =
+            	new ConcurrentHashMap<String, String>();
         }
 
         // ***********
@@ -385,6 +389,13 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             return switchDeviceMap.containsKey(sw);
         }
 
+        /**
+         * Reinitialize portChannelMap upon config change
+         */
+        protected void clearPortChannelMap() {
+        	portChannelMap.clear();
+        }
+        
         // ***************************************
         // Add operations on the device attributes
         // ***************************************
@@ -534,6 +545,37 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             }
             papl.add(pap);
         }
+        
+        /**
+         * Add switch-port to port_channel mapping to portChannelMap
+         * @param switch_id
+         * @param port_no
+         * @param port_channel
+         */
+        protected void addPortToPortChannel(String switch_id,
+        		Integer port_no, String port_channel) {
+        	String swPort = switch_id + port_no;
+        	portChannelMap.put(swPort, port_channel);
+        }
+        
+        /**
+         * Check if two ports belong to the same port channel
+         * @param swPort1
+         * @param swPort2
+         * @return
+         */
+        protected boolean inSamePortChannel(SwitchPortTuple swPort1,
+        		                            SwitchPortTuple swPort2) {
+        	String key = swPort1.getSw().getStringId() + swPort1.getPort();
+        	String portChannel1 = portChannelMap.get(swPort1.toString());
+        	if (portChannel1 == null)
+        	    return false;
+        	key = swPort2.getSw().getStringId() + swPort2.getPort();
+        	String portChannel2 = portChannelMap.get(key);
+        	if (portChannel2 == null)
+        		return false;
+        	return portChannel1.equals(portChannel2);
+        }
     } // End of DevMgrMap class definition
 
     private DevMgrMaps devMgrMaps;
@@ -545,6 +587,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     protected Set<IDeviceManagerAware> deviceManagerAware;
     protected ReentrantReadWriteLock lock;
     protected volatile boolean shuttingDown = false;
+    protected volatile boolean portChannelConfigChanged = false;
 
     protected ITopology topology;
     protected LinkedList<Update> updates;
@@ -565,6 +608,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                             "controller_hostattachmentpoint";
     private static final String DEVICE_NETWORK_ADDRESS_TABLE_NAME = 
                                             "controller_hostnetworkaddress";
+    private static final String PORT_CHANNEL_TABLE_NAME = "controller_portchannel";
+    
     // Column names for the host table
     private static final String MAC_COLUMN_NAME       = "mac"; 
     private static final String VLAN_COLUMN_NAME      = "vlan"; 
@@ -578,6 +623,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     private static final String AP_STATUS_COLUMN_NAME = "status";
     // Column names for the network address table
     private static final String NETWORK_ADDRESS_COLUMN_NAME = "ip";
+    // Column names for the port channel table
+    private static final String PORT_CHANNEL_COLUMN_NAME = "port_channel";
+    private static final String PC_SWITCH_COLUMN_NAME = "switch";
+    private static final String PC_PORT_COLUMN_NAME = "port";
 
     protected enum UpdateType {
         ADDED, REMOVED, MOVED, ADDRESS_ADDED, ADDRESS_REMOVED, VLAN_CHANGED
@@ -636,7 +685,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFSwitchListener(this);
-
+        storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
+        
         /*
          * Device and storage aging.
          */
@@ -644,6 +694,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
         // Read all our device state (MACs, IPs, attachment points) from storage
         readAllDeviceStateFromStorage();
+        readPortChannelConfigFromStorage();
     }
 
     public void shutDown() {
@@ -1000,25 +1051,29 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
         // If curAttachmentPoint exists, we mark it a conflict and may block it.
         if (curAttachmentPoint != null) {
-            curAttachmentPoint.setConflict(currentDate);
             device.removeAttachmentPoint(curAttachmentPoint);
             device.addOldAttachmentPoint(curAttachmentPoint);
-            if (curAttachmentPoint.isFlapping()) {
-                curAttachmentPoint.setBlocked(true);
-                evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
-                                        EvAction.BLOCKED, "Conflict");
-                writeAttachmentPointToStorage(device, curAttachmentPoint, 
-                                                                currentDate);
-                log.warn(
-                    "Device {}: flapping between {} and {}, block the latter",
-                    new Object[] {device, swPort, 
-                                        curAttachmentPoint.getSwitchPort()});
-            } else {
-                removeAttachmentPointFromStorage(device, curAttachmentPoint);
-                evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
-                        EvAction.REMOVED, "Conflict");
+            // If two ports are in the same port-channel, we don't treat it
+            // as conflict, but will forward based on the last seen switch-port
+            if (!devMgrMaps.inSamePortChannel(swPort,
+            	    curAttachmentPoint.getSwitchPort())) {
+            	curAttachmentPoint.setConflict(currentDate);
+	        if (curAttachmentPoint.isFlapping()) {
+	            curAttachmentPoint.setBlocked(true);
+	            evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(),
+	                             EvAction.BLOCKED, "Conflict");
+	            writeAttachmentPointToStorage(device, curAttachmentPoint, 
+	                                                            currentDate);
+	            log.warn(
+	                "Device {}: flapping between {} and {}, block the latter",
+	                new Object[] {device, swPort, 
+	                              curAttachmentPoint.getSwitchPort()});
+	        } else {
+	            removeAttachmentPointFromStorage(device, curAttachmentPoint);
+                    evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
+                                     EvAction.REMOVED, "Conflict");
+	        }
             }
-
             updateMoved(device, curAttachmentPoint.getSwitchPort(), 
                                                             attachmentPoint);
 
@@ -1222,6 +1277,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
+        storageSource.createTable(PORT_CHANNEL_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(
+                        PORT_CHANNEL_TABLE_NAME, ID_COLUMN_NAME);
     }
 
     /**
@@ -1504,6 +1562,24 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     // Storage Read Methods
     // ********************
 
+    public boolean readPortChannelConfigFromStorage() {
+    	try {
+	    	IResultSet pcResultSet = storageSource.executeQuery(
+	    			PORT_CHANNEL_TABLE_NAME, null, null, null);
+	    	
+	    	while (pcResultSet.next()) {
+	    		String port_channel = pcResultSet.getString(PORT_CHANNEL_COLUMN_NAME);
+	    		String switch_id = pcResultSet.getString(PC_SWITCH_COLUMN_NAME);
+	    		Integer port_no = pcResultSet.getInt(PC_PORT_COLUMN_NAME);
+	    		devMgrMaps.addPortToPortChannel(switch_id, port_no, port_channel);
+	    	}
+	    	return true;
+    	} catch (StorageException e) {
+    		log.error("Error reading port-channel data from storage {}", e);
+    		return false;
+    	}
+    }
+    
     public boolean readAllDeviceStateFromStorage() {
         Date currentDate = new Date();
         try {
@@ -1514,7 +1590,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             return true;
         }
         catch (StorageException e) {
-            log.error("Error reading device data from storage", e);
+            log.error("Error reading device data from storage {}", e);
             return false;
         }
     }
@@ -1636,6 +1712,23 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
         // Remove the device
         storageSource.deleteRow(DEVICE_TABLE_NAME, deviceId);
+    }
+    
+    /**
+     * IStorageSource listeners.
+     * Need to optimize if we support a large number of port-channel entries.
+     */
+
+    @Override
+    public void rowsModified(String tableName, Set<Object> rowKeys) {
+    	portChannelConfigChanged = true;
+        deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
+    	portChannelConfigChanged = true;
+    	deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);          
     }
 
     // ********************
@@ -1856,6 +1949,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     protected class DeviceUpdateWorker implements Runnable {
         @Override
         public void run() {
+        	boolean updatePortChannel = portChannelConfigChanged;
+        	portChannelConfigChanged = false;
+        	
+        	if (updatePortChannel) {
+        		devMgrMaps.clearPortChannelMap();
+        		readPortChannelConfigFromStorage();
+        	}
+        	
             try { 
                 log.debug("DeviceUpdateWorker: cleaning up attachment points");
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
@@ -1871,7 +1972,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                     dCopy.getOldAttachmentPoints()) {
                                     // Don't remove conflict attachment points 
                                     // with recent activities
-                                    if (dap.isInConflict())
+                                    if (dap.isInConflict() && !updatePortChannel)
                                         continue;
                                     // Delete from memory after storage, 
                                     // otherwise an exception will
