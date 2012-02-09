@@ -572,6 +572,8 @@ public class Controller
                         handleMessage(sw, m, null);
                         break;
                 }
+            } catch (Exception e) {
+                log.warn("Exeption in handling OF message {}", e);
             }
             finally {
                 sw.processMessageLock().unlock();
@@ -1219,6 +1221,8 @@ public class Controller
                 }
             }
             switchResultSet.save();
+        } catch (Exception e) {
+            log.error("Error updating switch info {}", e);
         }
         finally {
             if (switchResultSet != null)
