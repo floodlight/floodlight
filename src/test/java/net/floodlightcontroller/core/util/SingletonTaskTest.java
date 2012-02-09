@@ -280,7 +280,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) >= TimeUnit.NANOSECONDS.convert(90, TimeUnit.MILLISECONDS));
         assertTrue("Check that time passed appropriately: " + (time - start),
-                (time - start) <= TimeUnit.NANOSECONDS.convert(120, TimeUnit.MILLISECONDS));
+                (time - start) <= TimeUnit.NANOSECONDS.convert(130, TimeUnit.MILLISECONDS));
         
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
