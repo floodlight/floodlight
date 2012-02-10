@@ -19,6 +19,7 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
@@ -35,6 +36,7 @@ import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.storage.IStorageSource;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopology;
@@ -59,6 +61,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private OFPacketIn thirdPacketIn;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
+    IStorageSource storageSource;
     
     @Before
     public void setUp() {
@@ -66,8 +69,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
+        storageSource = new MemoryStorageSource();
         deviceManager.setFloodlightProvider(mockFloodlightProvider);
-        deviceManager.setStorageSource(new MemoryStorageSource());
+        deviceManager.setStorageSource(storageSource);
         deviceManager.startUp();
         
         // Build our test packet
@@ -391,5 +395,88 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
+    }
+    
+    private static final Map<String, Object> pcPort1;
+    static {
+    	pcPort1 = new HashMap<String, Object>();
+    	pcPort1.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
+    	pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, 1);
+    	pcPort1.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
+    	pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|1");
+    }
+    
+    private static final Map<String, Object> pcPort2;
+    static {
+    	pcPort2 = new HashMap<String, Object>();
+    	pcPort2.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
+    	pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, 2);
+    	pcPort2.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
+    	pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|2");
+    }
+    
+    private void setupPortChannel() {
+        
+        storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort1);
+        storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort2);
+        deviceManager.readPortChannelConfigFromStorage();
+    }
+    
+    private void teardownPortChannel() {
+        storageSource.deleteRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME,
+                pcPort1.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
+        storageSource.deleteRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME,
+                pcPort2.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
+        deviceManager.readPortChannelConfigFromStorage();
+    }
+    
+    /**
+     * The same test as testAttachmentPointFlapping except for port-channel
+     * @throws Exception
+     */
+    @Test
+    public void testPortChannel() throws Exception {
+    	
+        setupPortChannel();
+        byte[] dataLayerSource = ((Ethernet)this.testPacket).getSourceMACAddress();
+
+        // Mock up our expected behavior
+        IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        expect(mockSwitch.getId()).andReturn(1L).anyTimes();
+        expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        ITopology mockTopology = createMock(ITopology.class);
+        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
+                           .andReturn(false).atLeastOnce();
+        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))
+                           .andReturn(false).atLeastOnce();
+        deviceManager.setTopology(mockTopology);
+
+        // Start recording the replay on the mocks
+        replay(mockSwitch, mockTopology);
+
+        // Get the listener and trigger the packet in
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn);
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)1));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)1));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
+
+        Device device = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
+        
+        // Verify the replay matched our expectations
+        verify(mockSwitch, mockTopology);
+
+        // Verify the device
+        assertEquals(device.getAttachmentPoints().size(), 1);
+        assertEquals(device.getOldAttachmentPoints().size(), 1);
+        for (DeviceAttachmentPoint ap : device.getOldAttachmentPoints()) {
+            assertFalse(ap.isBlocked());
+        }
+        
+        // Reset the device cache
+        deviceManager.clearAllDeviceStateFromMemory();
+        
+        teardownPortChannel();
     }
 }
