@@ -1272,18 +1272,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     /**
-     * @param deviceManagerAware the deviceManagerAware to set
-     */
-    public void setDeviceManagerAware(Set<IDeviceManagerAware> 
-                                                        deviceManagerAware) {
-        this.deviceManagerAware = deviceManagerAware;
-    }
-
-    public void setStorageSource(IStorageSource storageSource) {
-        this.storageSource = storageSource;
-    }
-
-    /**
      * Process device manager aware updates.  Call without any lock held
      */
     protected void processUpdates() {
@@ -2139,7 +2127,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
-        
+        storageSource.createTable(PORT_CHANNEL_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(
+                        PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
         storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
 
         ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();

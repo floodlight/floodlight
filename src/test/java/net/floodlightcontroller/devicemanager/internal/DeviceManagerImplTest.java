@@ -36,7 +36,7 @@ import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -61,7 +61,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private OFPacketIn thirdPacketIn;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
-    IStorageSource storageSource;
+    IStorageSourceService storageSource;
     
     @Before
     public void setUp() throws Exception {
@@ -70,7 +70,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         deviceManager.setFloodlightProvider(mockFloodlightProvider);
-        deviceManager.storageSource = new MemoryStorageSource();
+        storageSource = new MemoryStorageSource();
+        deviceManager.storageSource = storageSource;
         deviceManager.startUp(null);
         
         // Build our test packet
@@ -415,7 +416,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     }
     
     private void setupPortChannel() {
-        
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort1);
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort2);
         deviceManager.readPortChannelConfigFromStorage();
@@ -443,7 +443,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))
