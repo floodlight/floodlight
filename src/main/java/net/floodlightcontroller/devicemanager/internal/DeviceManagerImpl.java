@@ -203,6 +203,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             }
         }
 
+        private void delFromIpv4AddressDeviceMap(Integer ip, Device d) {
+        	ipv4AddressDeviceMap.remove(ip);
+        }
+        
         private void updateSwitchDeviceMap(Device d) {
             // Find all the attachment points of this device
             // Then find all the switches from the attachment points
@@ -410,6 +414,26 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             }
         }
 
+        /**
+         * Delete a network address from a device
+         * @param dlAddr The link layer address of the device
+         * @param nwAddr the new network layer address
+         */
+        protected void delNwAddrByDataLayerAddr(long dlAddr,
+        									int nwAddr) {
+        	Device d = getDeviceByDataLayerAddr(dlAddr);
+            if (d == null) return;
+            Device dCopy = new Device(d);
+            DeviceNetworkAddress na = dCopy.getNetworkAddress(nwAddr);
+            
+            if (na != null) {
+            	delFromIpv4AddressDeviceMap(nwAddr, d);
+                dCopy.removeNetworkAddress(na);
+                updateMaps(dCopy);
+            }
+            d = null; // to catch if anyone is using this reference
+        }
+        
         /**
          * Add a device attachment point to the device with the given
          * link-layer address
@@ -1652,7 +1676,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
 
             if (address.getLastSeen().before(agedBoundary)) {
-                device.removeNetworkAddress(address.getNetworkAddress());
+            	devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
+            			address.getNetworkAddress().intValue());
             }
         }
     }
@@ -1668,7 +1693,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             }
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
-                device.removeAttachmentPoint(ap.getSwitchPort());
+                devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
                 evHistAttachmtPt(device, ap.getSwitchPort(), EvAction.REMOVED,
                         "Aged");
             }
