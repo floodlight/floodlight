@@ -591,7 +591,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         protected boolean inSamePortChannel(SwitchPortTuple swPort1,
                                         SwitchPortTuple swPort2) {
             String key = swPort1.getSw().getStringId() + swPort1.getPort();
-            String portChannel1 = portChannelMap.get(swPort1.toString());
+            String portChannel1 = portChannelMap.get(key);
             if (portChannel1 == null)
                 return false;
             key = swPort2.getSw().getStringId() + swPort2.getPort();
@@ -632,7 +632,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                             "controller_hostattachmentpoint";
     private static final String DEVICE_NETWORK_ADDRESS_TABLE_NAME = 
                                             "controller_hostnetworkaddress";
-    private static final String PORT_CHANNEL_TABLE_NAME = "controller_portchannel";
+    protected static final String PORT_CHANNEL_TABLE_NAME = "controller_portchannel";
     
     // Column names for the host table
     private static final String MAC_COLUMN_NAME       = "mac"; 
@@ -648,9 +648,10 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     // Column names for the network address table
     private static final String NETWORK_ADDRESS_COLUMN_NAME = "ip";
     // Column names for the port channel table
-    private static final String PORT_CHANNEL_COLUMN_NAME = "port_channel";
-    private static final String PC_SWITCH_COLUMN_NAME = "switch";
-    private static final String PC_PORT_COLUMN_NAME = "port";
+    protected static final String PC_ID_COLUMN_NAME = "id";
+    protected static final String PORT_CHANNEL_COLUMN_NAME = "port_channel";
+    protected static final String PC_SWITCH_COLUMN_NAME = "switch";
+    protected static final String PC_PORT_COLUMN_NAME = "port";
 
     protected enum UpdateType {
         ADDED, REMOVED, MOVED, ADDRESS_ADDED, ADDRESS_REMOVED, VLAN_CHANGED
@@ -1303,7 +1304,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                         DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
         storageSource.createTable(PORT_CHANNEL_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
-                        PORT_CHANNEL_TABLE_NAME, ID_COLUMN_NAME);
+                        PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
     }
 
     /**
@@ -1587,6 +1588,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     // ********************
 
     public boolean readPortChannelConfigFromStorage() {
+	devMgrMaps.clearPortChannelMap();
+
         try {
             IResultSet pcResultSet = storageSource.executeQuery(
             PORT_CHANNEL_TABLE_NAME, null, null, null);
@@ -1978,10 +1981,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             portChannelConfigChanged = false;
             
             if (updatePortChannel) {
-                devMgrMaps.clearPortChannelMap();
                 readPortChannelConfigFromStorage();
             }
-            
+
             try { 
                 log.debug("DeviceUpdateWorker: cleaning up attachment points");
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
