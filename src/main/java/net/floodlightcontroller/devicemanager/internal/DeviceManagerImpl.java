@@ -200,7 +200,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         }
 
         private void delFromIpv4AddressDeviceMap(Integer ip, Device d) {
-        	ipv4AddressDeviceMap.remove(ip);
+            ipv4AddressDeviceMap.remove(ip);
         }
         
         private void updateSwitchDeviceMap(Device d) {
@@ -414,14 +414,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @param nwAddr the new network layer address
          */
         protected void delNwAddrByDataLayerAddr(long dlAddr,
-        									int nwAddr) {
-        	Device d = getDeviceByDataLayerAddr(dlAddr);
+                                                int nwAddr) {
+            Device d = getDeviceByDataLayerAddr(dlAddr);
             if (d == null) return;
             Device dCopy = new Device(d);
             DeviceNetworkAddress na = dCopy.getNetworkAddress(nwAddr);
             
             if (na != null) {
-            	delFromIpv4AddressDeviceMap(nwAddr, d);
+                delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
                 updateMaps(dCopy);
             }
@@ -1625,8 +1625,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
 
             if (address.getLastSeen().before(agedBoundary)) {
-            	devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
-            			address.getNetworkAddress().intValue());
+                devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
+                    address.getNetworkAddress().intValue());
             }
         }
     }
