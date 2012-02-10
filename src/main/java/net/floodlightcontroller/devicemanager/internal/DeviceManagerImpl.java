@@ -149,7 +149,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             switchUnresolvedAPMap = 
                 new ConcurrentHashMap<Long, List<PendingAttachmentPoint>>();
             portChannelMap =
-            	new ConcurrentHashMap<String, String>();
+                new ConcurrentHashMap<String, String>();
         }
 
         // ***********
@@ -208,7 +208,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         }
 
         private void delFromIpv4AddressDeviceMap(Integer ip, Device d) {
-        	ipv4AddressDeviceMap.remove(ip);
+            ipv4AddressDeviceMap.remove(ip);
         }
         
         private void updateSwitchDeviceMap(Device d) {
@@ -397,7 +397,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * Reinitialize portChannelMap upon config change
          */
         protected void clearPortChannelMap() {
-        	portChannelMap.clear();
+            portChannelMap.clear();
         }
         
         // ***************************************
@@ -431,14 +431,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @param nwAddr the new network layer address
          */
         protected void delNwAddrByDataLayerAddr(long dlAddr,
-        									int nwAddr) {
-        	Device d = getDeviceByDataLayerAddr(dlAddr);
+                                                int nwAddr) {
+            Device d = getDeviceByDataLayerAddr(dlAddr);
             if (d == null) return;
             Device dCopy = new Device(d);
             DeviceNetworkAddress na = dCopy.getNetworkAddress(nwAddr);
             
             if (na != null) {
-            	delFromIpv4AddressDeviceMap(nwAddr, d);
+                delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
                 updateMaps(dCopy);
             }
@@ -577,9 +577,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @param port_channel
          */
         protected void addPortToPortChannel(String switch_id,
-        		Integer port_no, String port_channel) {
-        	String swPort = switch_id + port_no;
-        	portChannelMap.put(swPort, port_channel);
+                            Integer port_no, String port_channel) {
+            String swPort = switch_id + port_no;
+            portChannelMap.put(swPort, port_channel);
         }
         
         /**
@@ -589,16 +589,16 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
          * @return
          */
         protected boolean inSamePortChannel(SwitchPortTuple swPort1,
-        		                            SwitchPortTuple swPort2) {
-        	String key = swPort1.getSw().getStringId() + swPort1.getPort();
-        	String portChannel1 = portChannelMap.get(swPort1.toString());
-        	if (portChannel1 == null)
-        	    return false;
-        	key = swPort2.getSw().getStringId() + swPort2.getPort();
-        	String portChannel2 = portChannelMap.get(key);
-        	if (portChannel2 == null)
-        		return false;
-        	return portChannel1.equals(portChannel2);
+                                        SwitchPortTuple swPort2) {
+            String key = swPort1.getSw().getStringId() + swPort1.getPort();
+            String portChannel1 = portChannelMap.get(swPort1.toString());
+            if (portChannel1 == null)
+                return false;
+            key = swPort2.getSw().getStringId() + swPort2.getPort();
+            String portChannel2 = portChannelMap.get(key);
+            if (portChannel2 == null)
+                return false;
+            return portChannel1.equals(portChannel2);
         }
     } // End of DevMgrMap class definition
 
@@ -1080,23 +1080,23 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             // If two ports are in the same port-channel, we don't treat it
             // as conflict, but will forward based on the last seen switch-port
             if (!devMgrMaps.inSamePortChannel(swPort,
-            	    curAttachmentPoint.getSwitchPort())) {
-            	curAttachmentPoint.setConflict(currentDate);
-	        if (curAttachmentPoint.isFlapping()) {
-	            curAttachmentPoint.setBlocked(true);
-	            evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(),
-	                             EvAction.BLOCKED, "Conflict");
-	            writeAttachmentPointToStorage(device, curAttachmentPoint, 
-	                                                            currentDate);
-	            log.warn(
-	                "Device {}: flapping between {} and {}, block the latter",
-	                new Object[] {device, swPort, 
-	                              curAttachmentPoint.getSwitchPort()});
-	        } else {
-	            removeAttachmentPointFromStorage(device, curAttachmentPoint);
+                    curAttachmentPoint.getSwitchPort())) {
+                curAttachmentPoint.setConflict(currentDate);
+                if (curAttachmentPoint.isFlapping()) {
+                    curAttachmentPoint.setBlocked(true);
+                    evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(),
+                            EvAction.BLOCKED, "Conflict");
+                    writeAttachmentPointToStorage(device, curAttachmentPoint, 
+                                                currentDate);
+                    log.warn(
+                        "Device {}: flapping between {} and {}, block the latter",
+                        new Object[] {device, swPort, 
+                        curAttachmentPoint.getSwitchPort()});
+                } else {
+                    removeAttachmentPointFromStorage(device, curAttachmentPoint);
                     evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
                                      EvAction.REMOVED, "Conflict");
-	        }
+                }
             }
             updateMoved(device, curAttachmentPoint.getSwitchPort(), 
                                                             attachmentPoint);
@@ -1555,9 +1555,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         String networkAddressId = deviceId + "-" + networkAddressString;
 
         if (networkAddress.getNetworkAddress() == 0) {
-        	log.error("Zero network address for device {}\n {}",
-        			   device, Thread.currentThread().getStackTrace());
-        	return;
+            log.error("Zero network address for device {}\n {}",
+                device, Thread.currentThread().getStackTrace());
+            return;
         }
         
         Map<String, Object> rowValues = new HashMap<String, Object>();
@@ -1587,21 +1587,21 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     // ********************
 
     public boolean readPortChannelConfigFromStorage() {
-    	try {
-	    	IResultSet pcResultSet = storageSource.executeQuery(
-	    			PORT_CHANNEL_TABLE_NAME, null, null, null);
-	    	
-	    	while (pcResultSet.next()) {
-	    		String port_channel = pcResultSet.getString(PORT_CHANNEL_COLUMN_NAME);
-	    		String switch_id = pcResultSet.getString(PC_SWITCH_COLUMN_NAME);
-	    		Integer port_no = pcResultSet.getInt(PC_PORT_COLUMN_NAME);
-	    		devMgrMaps.addPortToPortChannel(switch_id, port_no, port_channel);
-	    	}
-	    	return true;
-    	} catch (StorageException e) {
-    		log.error("Error reading port-channel data from storage {}", e);
-    		return false;
-    	}
+        try {
+            IResultSet pcResultSet = storageSource.executeQuery(
+            PORT_CHANNEL_TABLE_NAME, null, null, null);
+        
+            while (pcResultSet.next()) {
+                String port_channel = pcResultSet.getString(PORT_CHANNEL_COLUMN_NAME);
+                String switch_id = pcResultSet.getString(PC_SWITCH_COLUMN_NAME);
+                Integer port_no = pcResultSet.getInt(PC_PORT_COLUMN_NAME);
+                devMgrMaps.addPortToPortChannel(switch_id, port_no, port_channel);
+            }
+            return true;
+        } catch (StorageException e) {
+            log.error("Error reading port-channel data from storage {}", e);
+            return false;
+        }
     }
     
     public boolean readAllDeviceStateFromStorage() {
@@ -1745,14 +1745,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
-    	portChannelConfigChanged = true;
+        portChannelConfigChanged = true;
         deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);
     }
 
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-    	portChannelConfigChanged = true;
-    	deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);          
+        portChannelConfigChanged = true;
+        deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);          
     }
 
     // ********************
@@ -1772,8 +1772,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
 
             if (address.getLastSeen().before(agedBoundary)) {
-            	devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
-            			address.getNetworkAddress().intValue());
+                devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
+                        address.getNetworkAddress().intValue());
             }
         }
     }
@@ -1974,14 +1974,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     protected class DeviceUpdateWorker implements Runnable {
         @Override
         public void run() {
-        	boolean updatePortChannel = portChannelConfigChanged;
-        	portChannelConfigChanged = false;
-        	
-        	if (updatePortChannel) {
-        		devMgrMaps.clearPortChannelMap();
-        		readPortChannelConfigFromStorage();
-        	}
-        	
+            boolean updatePortChannel = portChannelConfigChanged;
+            portChannelConfigChanged = false;
+            
+            if (updatePortChannel) {
+                devMgrMaps.clearPortChannelMap();
+                readPortChannelConfigFromStorage();
+            }
+            
             try { 
                 log.debug("DeviceUpdateWorker: cleaning up attachment points");
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
