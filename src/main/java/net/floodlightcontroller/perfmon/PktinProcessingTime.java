@@ -143,14 +143,14 @@ public class PktinProcessingTime  {
     }
     
     /***
-     * 30 buckets each holding 10s of processing time data, a total
-     * of 30*10s = 5mins of processing time data is maintained
+     * 720buckets each holding 10s of processing time data, a total
+     * of 720*10s = 2hrs of processing time data is maintained
      */
     protected static final long ONE_BUCKET_DURATION_SECONDS_LONG = 10;// seconds
     protected static final int  ONE_BUCKET_DURATION_SECONDS_INT  = 10;// seconds 
     protected static final long ONE_BUCKET_DURATION_NANOSECONDS = 
                                 ONE_BUCKET_DURATION_SECONDS_LONG * 1000000000;
-    protected static final int  BUCKET_SET_SIZE = 30;
+    protected static final int  BUCKET_SET_SIZE = 720;
     protected static final int  TOT_PROC_TIME_WARN_THRESHOLD_US =  5000;  // ms
     protected static final int  TOT_PROC_TIME_ALERT_THRESHOLD_US = 10000; // ms, TBD, alert not in logger    
     
