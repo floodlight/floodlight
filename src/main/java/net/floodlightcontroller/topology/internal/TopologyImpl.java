@@ -1717,7 +1717,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     }
 
     /**
-     * @param storageSource the storage source to use for persisting link info
+     * @param routingEngine the storage source to use for persisting link info
      */
     public void setRoutingEngine(IRoutingEngine routingEngine) {
         this.routingEngine = routingEngine;
