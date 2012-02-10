@@ -342,7 +342,9 @@ public class Controller
                     processOFMessage((OFMessage)e.getMessage());
                 }
             } catch (Exception ex) {
-                Channels.fireExceptionCaught(ctx, ex);
+            	// We are the last handler in the stream, so run the exception
+            	// through the channel again by passing in ctx.getChannel().
+                Channels.fireExceptionCaught(ctx.getChannel(), ex);
             }
         }
         

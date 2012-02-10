@@ -68,7 +68,7 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
     protected ArrayList<String> flowmodList;
     protected ArrayList<IOFSwitch> activeSwitches;
     protected HashMap<Long, HashMap<String, OFFlowMod>> flowmods;
-    protected int pushEntriesFrequency = 25; // seconds
+    protected int pushEntriesFrequency = 25000; // milliseconds
     protected Runnable pushEntriesTimer;
 
     public StaticFlowEntryPusher() {
@@ -92,17 +92,17 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
     
     /**
      * Gets the static flow entry push interval
-     * @return The push interval in seconds
+     * @return The push interval in milliseconds
      */
-    public int getFlowPushTimeSeconds() {
+    public int getFlowPushTime() {
         return pushEntriesFrequency;
     }
     
     /**
      * Sets the static flow entry push interval
-     * @param s The interval in seconds to set
+     * @param s The interval in milliseconds to set
      */
-    public void setFlowPushTimeSeconds(int s) {
+    public void setFlowPushTime(int s) {
         pushEntriesFrequency = s;
     }
 
@@ -615,12 +615,14 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
                     ScheduledExecutorService ses = 
                         floodlightProvider.getScheduledExecutor();
                     ses.schedule(this, 
-                                pushEntriesFrequency, TimeUnit.SECONDS);
+                                pushEntriesFrequency, TimeUnit.MILLISECONDS);
                 }
             }
         };
-        // Initially push entries in 1 second
-        floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 1, TimeUnit.SECONDS);
+        // Initially push entries 
+        floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 
+                                                           pushEntriesFrequency, 
+                                                           TimeUnit.MILLISECONDS);
     }
 
     /**

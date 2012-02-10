@@ -152,7 +152,7 @@ public class EventHistory<T> {
         int idx = NextIdx();
         Event evH = events.get(idx);
         evH.base_info.state = EvState.BEING_MODIFIED;
-        evH.base_info.time_ns = System.nanoTime();
+        evH.base_info.time_ms = System.currentTimeMillis();
         evH.base_info.action = action;
         T temp = evH.info;
         evH.info = t;

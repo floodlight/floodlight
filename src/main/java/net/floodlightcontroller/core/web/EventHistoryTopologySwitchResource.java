@@ -18,12 +18,18 @@ public class EventHistoryTopologySwitchResource extends ServerResource {
 
         // Get the event history count. Last <count> events would be returned
         String evHistCount = (String)getRequestAttributes().get("count");
+        int    count = EventHistory.EV_HISTORY_DEFAULT_SIZE;
+        try {
+            count = Integer.parseInt(evHistCount);
+        }
+        catch(NumberFormatException nFE) {
+            // Invalid input for event count - use default value
+        }
 
         TopologyImpl topoManager =
            (TopologyImpl)getContext().getAttributes().get("topology");
 
         return new EventHistory<EventHistoryTopologySwitch>(
-                topoManager.evHistTopologySwitch,
-                Integer.parseInt(evHistCount));
+                                topoManager.evHistTopologySwitch, count);
     }
 }

@@ -48,7 +48,15 @@ public class OFMatchTest extends TestCase {
         TestCase.assertEquals(correct.getNetworkSourceMaskLen(), tester
                 .getNetworkSourceMaskLen());
         TestCase.assertEquals(correct, tester);
-    }
+        
+        // 0xVlan
+        correct = new OFMatch();
+        correct.setDataLayerVirtualLan((short)65535);
+        correct.setWildcards(~OFMatch.OFPFW_DL_VLAN);
+        tester = new OFMatch();
+        tester.fromString("dl_vlan=0xffff");
+        TestCase.assertEquals(correct, tester);
+        }
 
     public void testToString() {
         OFMatch match = new OFMatch();

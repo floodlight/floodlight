@@ -1,8 +1,6 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
+*    Copyright 2011, Big Switch Networks, Inc.*    Originally created by David Erickson, Stanford University
+**    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
 *
@@ -25,7 +23,16 @@ public class LinkInfo {
         PBS_FORWARD,
     };
 
-    protected Long validTime;
+    /**
+     * The term unicastValidTime may be slightly misleading here.
+     * The standard LLDP destination MAC address that is currently
+     * used is also a multicast address, however since this address
+     * is specified in the standard, we expect all switches to
+     * absorb this packet, thus making the standard LLDP packet
+     * traverse only one link.
+     */
+    protected Long unicastValidTime;
+    protected Long multicastValidTime;
 
     /** The port states stored here are topology's last knowledge of
      * the state of the port. This mostly mirrors the state
@@ -46,8 +53,12 @@ public class LinkInfo {
      */
     protected PortBroadcastState bcState;
 
-    public LinkInfo(Long validTime, Integer srcPortState, Integer dstPortState) {
-        this.validTime = validTime;
+    public LinkInfo(Long unicastValidTime,
+                    Long broadcastValidTime,
+                    Integer srcPortState,
+                    Integer dstPortState) {
+        this.unicastValidTime = unicastValidTime;
+        this.multicastValidTime = broadcastValidTime;
         this.srcPortState = srcPortState;
         this.dstPortState = dstPortState;
         if (linkStpBlocked()) {
@@ -73,12 +84,20 @@ public class LinkInfo {
         this.bcState = bcState;
     }
 
-    public Long getValidTime() {
-        return validTime;
+    public Long getUnicastValidTime() {
+        return unicastValidTime;
     }
 
-    public void setValidTime(Long validTime) {
-        this.validTime = validTime;
+    public void setUnicastValidTime(Long unicastValidTime) {
+        this.unicastValidTime = unicastValidTime;
+    }
+
+    public Long getMulticastValidTime() {
+        return multicastValidTime;
+    }
+
+    public void setMulticastValidTime(Long multicastValidTime) {
+        this.multicastValidTime = multicastValidTime;
     }
 
     public Integer getSrcPortState() {
@@ -104,8 +123,9 @@ public class LinkInfo {
     public int hashCode() {
         final int prime = 5557;
         int result = 1;
-        result = prime * result + ((validTime == null) ? 0 : validTime.hashCode());
-        result = prime * result + ((srcPortState == null) ? 0 : validTime.hashCode());
+        result = prime * result + ((unicastValidTime == null) ? 0 : unicastValidTime.hashCode());
+        result = prime * result + ((multicastValidTime == null) ? 0 : multicastValidTime.hashCode());
+        result = prime * result + ((srcPortState == null) ? 0 : unicastValidTime.hashCode());
         result = prime * result + ((dstPortState == null) ? 0 : dstPortState.hashCode());
         result = prime * result + ((bcState == null) ? 0 : bcState.hashCode());
         return result;
@@ -123,10 +143,17 @@ public class LinkInfo {
         if (!(obj instanceof LinkInfo))
             return false;
         LinkInfo other = (LinkInfo) obj;
-        if (validTime == null) {
-            if (other.validTime != null)
+
+        if (unicastValidTime == null) {
+            if (other.unicastValidTime != null)
                 return false;
-        } else if (!validTime.equals(other.validTime))
+        } else if (!unicastValidTime.equals(other.unicastValidTime))
+            return false;
+
+        if (multicastValidTime == null) {
+            if (other.multicastValidTime != null)
+                return false;
+        } else if (!multicastValidTime.equals(other.multicastValidTime))
             return false;
 
         if (srcPortState == null) {
@@ -155,7 +182,8 @@ public class LinkInfo {
      */
     @Override
     public String toString() {
-        return "LinkInfo [validTime=" + ((validTime == null) ? "null" : validTime)
+        return "LinkInfo [unicastValidTime=" + ((unicastValidTime == null) ? "null" : unicastValidTime)
+                + "multicastValidTime=" + ((multicastValidTime == null) ? "null" : multicastValidTime)
                 + ", srcPortState=" + ((srcPortState == null) ? "null" : srcPortState)
                 + ", dstPortState=" + ((dstPortState == null) ? "null" : srcPortState)
                 + ", bcState=" + ((bcState == null) ? "null" : bcState) + "]";

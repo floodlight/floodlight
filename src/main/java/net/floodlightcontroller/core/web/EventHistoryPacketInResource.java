@@ -22,12 +22,18 @@ public class EventHistoryPacketInResource extends ServerResource {
         EventHistory<OFMatch> ofm = null;
         // Get the count (number of latest events requested), zero means all
         String evHistCount = (String)getRequestAttributes().get("count");
+        int    count = EventHistory.EV_HISTORY_DEFAULT_SIZE;
+        try {
+            count = Integer.parseInt(evHistCount);
+        }
+        catch(NumberFormatException nFE) {
+            // Invalid input for event count - use default value
+        }
 
         DeviceManagerImpl deviceManager = 
            (DeviceManagerImpl)getContext().getAttributes().get("deviceManager");
 
-        ofm =  new EventHistory<OFMatch>(deviceManager.evHistDevMgrPktIn,
-                                            Integer.parseInt(evHistCount));
+        ofm =  new EventHistory<OFMatch>(deviceManager.evHistDevMgrPktIn,count);
         return ofm;
     }
 
