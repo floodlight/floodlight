@@ -35,6 +35,7 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -296,7 +297,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         if (log.isDebugEnabled()) {
             log.debug("Starting " + this.getClass().getCanonicalName());
         }
-        
+        this.flowCacheMgr = new FlowCache();
         super.startUp();
     }
 }

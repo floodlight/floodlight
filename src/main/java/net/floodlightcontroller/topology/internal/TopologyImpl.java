@@ -1187,7 +1187,7 @@ public class TopologyImpl
      * compute connected components.
      */
     protected void updateBroadcastDomains() {
-        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks =  getPortBroadcastDomainLinks();
+        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks = getPortBroadcastDomainLinks();
         Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
         Set<BroadcastDomain> bdSets = new HashSet<BroadcastDomain>();
 
@@ -1698,8 +1698,15 @@ public class TopologyImpl
         this.updates = new LinkedBlockingQueue<Update>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
-        
+        this.evHistTopologySwitch =
+            new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
+        this.evHistTopologyLink =
+            new EventHistory<EventHistoryTopologyLink>("Topology: Link");
+        this.evHistTopologyCluster =
+            new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
+            
         // Create our storage tables
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);

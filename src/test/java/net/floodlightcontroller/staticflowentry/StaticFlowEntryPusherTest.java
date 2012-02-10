@@ -51,12 +51,13 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         staticFlowEntryPusher = new StaticFlowEntryPusher();
         staticFlowEntryPusher.floodlightProvider = 
                 getMockFloodlightProvider();
+        staticFlowEntryPusher.setFlowPushTime(200);
         staticFlowEntryPusher.startUp(null);
     }
     
     @Test
     public void testAddAndRemoveEntries() throws Exception {
-        staticFlowEntryPusher.setFlowPushTime(200);
+        
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         long dpid = HexString.toLong(TestSwitch1DPID);
         Capture<OFMessage> writeCapture = new Capture<OFMessage>(CaptureType.ALL);
@@ -74,8 +75,6 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         switchMap.put(dpid, mockSwitch);
         mockFloodlightProvider.setSwitches(switchMap);
-        long timeSfpStart = System.currentTimeMillis();
-        
         // if someone calls getId(), return this dpid instead
         expect(mockSwitch.getId()).andReturn(dpid).anyTimes();
         replay(mockSwitch);
@@ -96,8 +95,9 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         while (count >= 0) {
             Thread.sleep(staticFlowEntryPusher.getFlowPushTime());
 
-            if (writeCapture.getValues().size() >= 4)
+            if (writeCapture.getValues().size() >= 4) {
                 break;
+            }
 
             count -= 1;
         }
