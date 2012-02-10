@@ -865,7 +865,11 @@ public class OFMatch implements Cloneable, Serializable {
                     this.dataLayerType = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_TYPE;
             } else if (values[0].equals(STR_DL_VLAN)) {
-                this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
+            	if (values[1].startsWith("0x"))
+            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(
+            				values[1].replaceFirst("0x", ""),16));
+            	else
+            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_VLAN;
             } else if (values[0].equals(STR_DL_VLAN_PCP)) {
                 this.dataLayerVirtualLanPriorityCodePoint = U8.t(Short

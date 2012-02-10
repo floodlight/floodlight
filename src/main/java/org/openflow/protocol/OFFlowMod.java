@@ -40,6 +40,11 @@ public class OFFlowMod extends OFMessage implements OFActionFactoryAware, Clonea
     public static final short OFPFC_DELETE=3;               /* Delete all matching flows. */
     public static final short OFPFC_DELETE_STRICT =4;       /* Strictly match wildcards and priority. */
 
+    // Open Flow Flow Mod Flags. Use "or" operation to set multiple flags
+    public static final short OFPFF_SEND_FLOW_REM = 0x1; // 1 << 0
+    public static final short OFPFF_CHECK_OVERLAP = 0x2; // 1 << 1
+    public static final short OFPFF_EMERG         = 0x4; // 1 << 2
+
     protected OFActionFactory actionFactory;
     protected OFMatch match;
     protected long cookie;

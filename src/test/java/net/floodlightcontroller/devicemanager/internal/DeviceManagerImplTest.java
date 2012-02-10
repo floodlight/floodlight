@@ -336,7 +336,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn);
         
-        Thread.sleep(3000);
+        Thread.sleep(100);
         
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn);

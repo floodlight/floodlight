@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.topology.internal.TopologyImpl;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
 /**
  * This class represents a cluster of OpenFlow switches.
@@ -31,10 +33,12 @@ import net.floodlightcontroller.core.IOFSwitch;
 public class SwitchCluster {
     private Long id; // the lowest DPID of any switches in this island
     private Set<IOFSwitch> switches;
+    private TopologyImpl topology;
     
-    public SwitchCluster() {
+    public SwitchCluster(TopologyImpl topologyMgr) {
         switches = new HashSet<IOFSwitch>();
         id = null; // invalid
+        topology = topologyMgr;
     }
     
     public Long getId() {
@@ -44,12 +48,26 @@ public class SwitchCluster {
     public void add(IOFSwitch s) {
         switches.add(s);
         if (id == null || s.getId() < id) {
+            topology.evHistTopoCluster(s.getId(), // dpid
+                    (id==null)?0:id,   // old cluster id
+                    s.getId(), // new cluster id
+                    EvAction.CLUSTER_ID_CHANGED_FOR_CLUSTER, 
+                    "Switch Added");
             id = s.getId();
             for (IOFSwitch sw : switches) {
-                sw.setSwitchClusterId(id);
+                if (sw.getSwitchClusterId() != id) {
+                    sw.setSwitchClusterId(id);
+                }
             }
         } else {
-            s.setSwitchClusterId(id);
+            Long swClusterId = s.getSwitchClusterId();
+            if (swClusterId != id) {
+                topology.evHistTopoCluster(s.getId(),
+                        swClusterId==null?0:swClusterId, id==null?0:id,
+                        EvAction.CLUSTER_ID_CHANGED_FOR_A_SWITCH,
+                        "Switch Added");
+                s.setSwitchClusterId(id);
+            }
         }
     }
     
@@ -57,6 +75,7 @@ public class SwitchCluster {
         if (switches.contains(s)) {
             switches.remove(s);
             if (s.getId() == id) {
+                long oldId = id;
                 // Find the next lowest id
                 long id = Long.MAX_VALUE;
                 for (IOFSwitch sw : switches) {
@@ -64,10 +83,19 @@ public class SwitchCluster {
                         id = sw.getId();
                     }
                 }
+                // Cluster ID changed for oldId to id
+                topology.evHistTopoCluster(s.getId(),
+                        oldId, id, 
+                        EvAction.CLUSTER_ID_CHANGED_FOR_CLUSTER,
+                        "Switch Removed");
+                // Now update the cluster id of the switches
+                for (IOFSwitch sw : switches) {
+                    sw.setSwitchClusterId(id);
+                } 
             }
         }
     }
-    
+
     public Set<IOFSwitch> getSwitches() {
         return switches;
     }

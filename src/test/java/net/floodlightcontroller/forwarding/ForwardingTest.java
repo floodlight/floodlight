@@ -48,6 +48,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -95,6 +96,8 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
+        FlowCache flowCache = new FlowCache();
+        forwarding.setFlowCacheMgr(flowCache);
 
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
@@ -248,7 +251,7 @@ public class ForwardingTest extends FloodlightTestCase {
         
         OFMessage m = wc2.getValue();
         assert (m instanceof OFFlowMod);
-        assertTrue(m.equals(fm2));        
+        assertTrue(m.equals(fm2));
     }
 
     @Test

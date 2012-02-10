@@ -131,7 +131,9 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
-        this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        if (bc != null) {
+            this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        }
         this.channel.write(m);
     }
     
@@ -365,12 +367,21 @@ public class OFSwitchImpl implements IOFSwitch {
         return timedCache;
 	}
 
-    @Override
+    /**
+     * Return a lock that need to be held while processing a message. Multiple threads
+     * can hold this lock. 
+     * @return 
+     */
     public Lock processMessageLock() {
         return lock.readLock();
     }
 
-    @Override
+    /**
+     * Return a lock that needs to be held while the switch is removed asynchronously, i.e.,
+     * the removing is not triggered by events on this switch's channel.
+     * Mutex with processMessageLock
+     * @return
+     */
     public Lock asyncRemoveSwitchLock() {
         return lock.writeLock();
     }

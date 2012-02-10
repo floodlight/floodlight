@@ -60,6 +60,10 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
+import net.floodlightcontroller.flowcache.FlowCache;
+import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -143,11 +147,13 @@ public class Controller
     protected IStorageSourceService storageSource;
     protected IOFMessageFilterManagerService messageFilterManager;
     protected IPktInProcessingTimeService pktinProcTime;
-    protected long ptWarningThresholdInNano;
+    protected FlowCache flowCacheManager;
     
     // Configuration options
     protected int openFlowPort = 6633;
-
+    protected long ptWarningThresholdInNano;
+    protected int workerThreads;
+    
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -211,7 +217,7 @@ public class Controller
     public void setRestApiService(IRestApiService restApi) {
         this.restApi = restApi;
     }
-    
+
     // **********************
     // ChannelUpstreamHandler
     // **********************
@@ -314,7 +320,9 @@ public class Controller
                     processOFMessage((OFMessage)e.getMessage());
                 }
             } catch (Exception ex) {
-                Channels.fireExceptionCaught(ctx, ex);
+            	// We are the last handler in the stream, so run the exception
+            	// through the channel again by passing in ctx.getChannel().
+                Channels.fireExceptionCaught(ctx.getChannel(), ex);
             }
         }
         
@@ -742,7 +750,7 @@ public class Controller
                                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                                 eth);
                     }
-
+                    
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
                     // monitoring is turned on
@@ -837,7 +845,7 @@ public class Controller
     protected void addSwitch(IOFSwitch sw) {
         // TODO: is it save to modify the HashMap without holding 
         // the old switch's lock
-        IOFSwitch oldSw = this.switches.put(sw.getId(), sw);
+        OFSwitchImpl oldSw = (OFSwitchImpl) this.switches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
             log.info("New add switch for pre-existing switch {}", sw);
@@ -1208,10 +1216,7 @@ public class Controller
      */
     public void run() {
         try {            
-            final ServerBootstrap bootstrap = new ServerBootstrap(
-                    new NioServerSocketChannelFactory(
-                            Executors.newCachedThreadPool(),
-                            Executors.newCachedThreadPool()));
+           final ServerBootstrap bootstrap = createServerBootStrap(workerThreads);
 
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
@@ -1255,10 +1260,23 @@ public class Controller
             }
         }
     }
-    
+
+    private ServerBootstrap createServerBootStrap(int threads) {
+        if (threads == 0) {
+            return new ServerBootstrap(
+                    new NioServerSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool()));
+        } else {
+            return new ServerBootstrap(
+                    new NioServerSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool(), threads));
+        }
+    }
+
     /**
-     * Initialize all of the controller's components; override me for
-     * new components
+     * Initialize internal datastructures
      */
     public void init() {
         // These data structures are initialized here because other
@@ -1275,7 +1293,7 @@ public class Controller
      */
     public void startupComponents() {
         log.debug("Doing controller internal setup");
-        
+       
         // Our internal data structures
         this.updates = new LinkedBlockingQueue<Update>();
         this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
@@ -1321,9 +1339,6 @@ public class Controller
             log.info("Packet processing time threshold for warning set to {} ms.",
                  ptWarningThresholdInNano/1000000);
         }
-        
-        // Start our debug server
-        this.debugserver_start();
     }
     
     /**

@@ -46,8 +46,12 @@ public class EventHistoryBaseInfoJSONSerializer extends
                     throws IOException, JsonProcessingException {
         jGen.writeStartObject();
         jGen.writeNumberField("Idx",    base_info.getIdx());
-        jGen.writeStringField("Time",
-                            convertNanoSecondsToStr(base_info.getTime_ns()));
+        Timestamp ts = new Timestamp(base_info.getTime_ms());
+        String tsStr = ts.toString();
+        while (tsStr.length() < 23) {
+            tsStr = tsStr.concat("0");
+        }
+        jGen.writeStringField("Time", tsStr);
         jGen.writeStringField("State",  base_info.getState().name());
         String acStr = base_info.getAction().name().toLowerCase();
         // Capitalize the first letter
@@ -62,19 +66,5 @@ public class EventHistoryBaseInfoJSONSerializer extends
     @Override
     public Class<EventHistoryBaseInfo> handledType() {
         return EventHistoryBaseInfo.class;
-    }
-
-    public String convertNanoSecondsToStr(long nanoSeconds) {
-        long millisecs    = nanoSeconds / 1000000;
-        int  remaining_ns = (int)(nanoSeconds % 1000000000);
-        Timestamp ts      = new Timestamp(millisecs);
-        ts.setNanos(remaining_ns);
-        // Show up to microseconds resolution
-        // length of "2012-01-09 14:54:45.067253" is 26
-        String timeStr = ts.toString();
-        while (timeStr.length() < 26) {
-            timeStr = timeStr.concat("0");
-        }
-        return timeStr;
     }
 }
