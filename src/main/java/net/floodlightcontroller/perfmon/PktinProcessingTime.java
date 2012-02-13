@@ -40,7 +40,7 @@ public class PktinProcessingTime  {
      */   
 
     protected static  Logger  logger = 
-        LoggerFactory.getLogger(PktinProcessingTime.class);    
+        LoggerFactory.getLogger(PktinProcessingTime.class);
 
     /***
      * procTimeMonitoringState: true if monitoring is on, default is false
@@ -92,7 +92,8 @@ public class PktinProcessingTime  {
     // Time bucket created once and reused as needed
     public CumulativeTimeBucket  ctb;   // Current time bucket being filled
     public CircularTimeBucketSet ctbs;  // Set of all time buckets
-    private int numComponents;
+    private int numComponents;          // Numbert of components being monitored
+    private int numBuckets;             // number of time buckets, each 10s long
 
 
     public Long getLastPktTime_ns() {
@@ -132,25 +133,33 @@ public class PktinProcessingTime  {
         this.numComponents = numComponents;
     }
 
+    public int getNumBuckets() {
+        return numBuckets;
+    }
+    public void setNumBuckets(int numBuckets) {
+        this.numBuckets = numBuckets;
+    }
+    // Constructor
     public PktinProcessingTime() {
         FlListenerID.populateCompNames();
         setNumComponents(BB_LAST_LISTENER_ID + 1);
         perfMonCfgs = new PerfMonConfigs();
-        ctbs = new CircularTimeBucketSet(getNumComponents());
+        numBuckets = BUCKET_SET_SIZE;
+        ctbs = new CircularTimeBucketSet(getNumComponents(), numBuckets);
         ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
         ctb.startTime_ms = System.currentTimeMillis();
         ctb.startTime_ns = System.nanoTime();
     }
 
     /***
-     * 30 buckets each holding 10s of processing time data, a total
+     * BUCKET_SET_SIZE buckets each holding 10s of processing time data, a total
      * of 30*10s = 5mins of processing time data is maintained
      */
     protected static final long ONE_BUCKET_DURATION_SECONDS_LONG = 10;// seconds
     protected static final int  ONE_BUCKET_DURATION_SECONDS_INT  = 10;// seconds 
     protected static final long ONE_BUCKET_DURATION_NANOSECONDS  =
                                 ONE_BUCKET_DURATION_SECONDS_LONG * 1000000000;
-    protected static final int  BUCKET_SET_SIZE = 30;
+    protected static final int  BUCKET_SET_SIZE = 360; // 1hr (=1*60*60/10)
     protected static final int  TOT_PROC_TIME_WARN_THRESHOLD_US  =  5000;  // ms
     protected static final int  TOT_PROC_TIME_ALERT_THRESHOLD_US = 10000;
                                 // ms, TBD, alert not in logger
@@ -317,9 +326,9 @@ public class PktinProcessingTime  {
             return  (int) Math.sqrt((double)temp);
         }
 
-        public CircularTimeBucketSet(int numComps) {
-            timeBucketSet   = new CumulativeTimeBucket[BUCKET_SET_SIZE];
-            for (int idx= 0; idx < BUCKET_SET_SIZE; idx++) {
+        public CircularTimeBucketSet(int numComps, int numBuckets) {
+            timeBucketSet   = new CumulativeTimeBucket[numBuckets];
+            for (int idx= 0; idx < numBuckets; idx++) {
                 timeBucketSet[idx] = new CumulativeTimeBucket(numComps);
                 timeBucketSet[idx].setBucketNo(idx);
             }
@@ -354,7 +363,7 @@ public class PktinProcessingTime  {
             ctb.duration_s = ONE_BUCKET_DURATION_SECONDS_INT;
 
             // Move to the new bucket
-            if (curBucketIdx >= BUCKET_SET_SIZE-1) {
+            if (curBucketIdx >= numBuckets-1) {
                 curBucketIdx = 0; 
                 allBucketsValid = true;
             } else {

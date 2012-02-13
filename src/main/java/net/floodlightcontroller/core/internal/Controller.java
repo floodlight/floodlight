@@ -1456,7 +1456,8 @@ public class Controller
         // call this explicitly because it does setup
         this.setStorageSource(storageSource);        
         
-        HashSet<ITopologyAware> topologyAware = new HashSet<ITopologyAware>();
+        
+        ArrayList<ITopologyAware> topologyAware = new ArrayList<ITopologyAware>();
         topologyAware.add(deviceManager);
         topologyAware.add(routingEngine);
         topology.setTopologyAware(topologyAware);

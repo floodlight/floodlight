@@ -87,7 +87,7 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         staticFlowEntryPusher.addEntry(flowMod2);
         
         // Verify that the switch has gotten some flow_mods
-        assertEquals(true, writeCapture.getValues().size() == 2);
+        assertEquals(writeCapture.getValues().size(), 2);
 
         int count = 5;
         while (count >= 0) {

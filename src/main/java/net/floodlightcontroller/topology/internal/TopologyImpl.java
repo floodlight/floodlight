@@ -162,7 +162,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Map from switch id to a set of all links with it as an endpoint
      */
     protected Map<IOFSwitch, Set<LinkTuple>> switchLinks;
-    protected Set<ITopologyAware> topologyAware;
+    /* topology aware components are called in the order they were added to the
+     * the array */
+    protected ArrayList<ITopologyAware> topologyAware;
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
@@ -261,7 +263,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         do {
             Update update = updates.take();
             if (topologyAware != null) {
-                for (ITopologyAware ta : topologyAware) {
+                for (ITopologyAware ta : topologyAware) { // order maintained
                     if (log.isDebugEnabled()) {
                         log.debug("Dispatching topology update {} {} {} {} {}",
                                   new Object[]{update.operation,
@@ -665,7 +667,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             if (eth.isMulticast()) {
                 if (log.isTraceEnabled())
                     log.trace("Received a multicast LLDP packet from a different controller, allowing the packet to follow normal processing chain.");
-                return Command.CONTINUE;
+                return Command.STOP;
             }
             if (log.isTraceEnabled()) {
                 log.trace("Received a unicast LLDP packet from a different controller, stop processing the packet here.");
@@ -1675,7 +1677,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     /**
      * @param topologyAware the topologyAware to set
      */
-    public void setTopologyAware(Set<ITopologyAware> topologyAware) {
+    public void setTopologyAware(ArrayList<ITopologyAware> topologyAware) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware = topologyAware;
     }
