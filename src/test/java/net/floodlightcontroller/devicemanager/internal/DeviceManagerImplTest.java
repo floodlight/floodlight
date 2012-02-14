@@ -47,6 +47,7 @@ import org.junit.Test;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.openflow.protocol.OFPhysicalPort;
 
 /**
  *
@@ -356,6 +357,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     
     @Test
     public void testAttachmentPointFlapping() throws Exception {
+    	OFPhysicalPort port1 = new OFPhysicalPort();
+    	OFPhysicalPort port2 = new OFPhysicalPort();
+        port1.setName("port1");
+        port2.setName("port2");
         
         byte[] dataLayerSource = ((Ethernet)this.testPacket).getSourceMACAddress();
 
@@ -364,6 +369,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
         ITopology mockTopology = createMock(ITopology.class);
+        expect(mockSwitch.getPort((short)1)).andReturn(port1).anyTimes();
+        expect(mockSwitch.getPort((short)2)).andReturn(port2).anyTimes();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))
@@ -401,18 +408,18 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     static {
     	pcPort1 = new HashMap<String, Object>();
     	pcPort1.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, 1);
+    	pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port1");
     	pcPort1.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|1");
+    	pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port1");
     }
     
     private static final Map<String, Object> pcPort2;
     static {
     	pcPort2 = new HashMap<String, Object>();
     	pcPort2.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, 2);
+    	pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port2");
     	pcPort2.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|2");
+    	pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port2");
     }
     
     private void setupPortChannel() {
@@ -436,12 +443,18 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
      */
     @Test
     public void testPortChannel() throws Exception {
-    	
+    	OFPhysicalPort port1 = new OFPhysicalPort();
+    	OFPhysicalPort port2 = new OFPhysicalPort();
+        port1.setName("port1");
+        port2.setName("port2");
+
         setupPortChannel();
         byte[] dataLayerSource = ((Ethernet)this.testPacket).getSourceMACAddress();
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        expect(mockSwitch.getPort((short)1)).andReturn(port1).anyTimes();
+        expect(mockSwitch.getPort((short)2)).andReturn(port2).anyTimes();
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
         ITopology mockTopology = createMock(ITopology.class);
