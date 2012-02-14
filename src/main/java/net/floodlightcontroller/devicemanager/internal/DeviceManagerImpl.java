@@ -1608,11 +1608,15 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         storageSource.deleteRow(DEVICE_TABLE_NAME, deviceId);
     }
 
-    // ********************
-    // Device aging methods
-    // ********************    
+    /**
+     * Remove aged network address from device
+     *    
+     * @param device
+     * @param currentDate
+     * @return the new device object since the device is immutable
+     */
 
-    private void removeAgedNetworkAddresses(Device device, Date currentDate) {
+    private Device removeAgedNetworkAddresses(Device device, Date currentDate) {
         Collection<DeviceNetworkAddress> addresses = 
                                                 device.getNetworkAddresses();
 
@@ -1630,9 +1634,18 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 removeNetworkAddressFromStorage(device, address);
             }
         }
+        
+        return devMgrMaps.getDeviceByDataLayerAddr(device.getDataLayerAddressAsLong());
     }
 
-    private void removeAgedAttachmentPoints(Device device, Date currentDate) {
+    /**
+     * Remove aged device attachment point
+     * 
+     * @param device
+     * @param currentDate
+     * @return the new device object since the device is immutable
+     */
+    private Device removeAgedAttachmentPoints(Device device, Date currentDate) {
         Collection<DeviceAttachmentPoint> aps = device.getAttachmentPoints();
 
         for (DeviceAttachmentPoint ap : aps) {
@@ -1647,6 +1660,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 removeAttachmentPointFromStorage(device, ap);
             }
         }
+        
+        return devMgrMaps.getDeviceByDataLayerAddr(device.getDataLayerAddressAsLong());
     }
 
     /**
@@ -1658,8 +1673,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
         Collection<Device> deviceColl = devMgrMaps.getDevices();
         for (Device device: deviceColl) {
-            removeAgedNetworkAddresses(device, currentDate);
-            removeAgedAttachmentPoints(device, currentDate);
+            device = removeAgedNetworkAddresses(device, currentDate);
+            device = removeAgedAttachmentPoints(device, currentDate);
 
             if ((device.getAttachmentPoints().size() == 0) &&
                 (device.getNetworkAddresses().size() == 0) &&
