@@ -430,6 +430,10 @@ public class PktInProcessingTime
         }
     }
 
+    public PktInProcessingTime() {
+        perfMonCfgs = new PerfMonConfigs();
+    }
+    
     // IFloodlightModule methods
     
     @Override
@@ -461,7 +465,7 @@ public class PktInProcessingTime
     @Override
     public void init(FloodlightModuleContext context)
                                              throws FloodlightModuleException {
-        perfMonCfgs = new PerfMonConfigs();
+        // no-op
     }
     
     @Override
