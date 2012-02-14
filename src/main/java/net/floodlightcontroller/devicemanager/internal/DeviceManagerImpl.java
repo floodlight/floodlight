@@ -1781,7 +1781,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 
             if (address.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
-                        address.getNetworkAddress().intValue());
+                    address.getNetworkAddress().intValue());
+                removeNetworkAddressFromStorage(device, address);
             }
         }
     }
@@ -1800,6 +1801,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
                 evHistAttachmtPt(device, ap.getSwitchPort(), EvAction.REMOVED,
                         "Aged");
+                removeAttachmentPointFromStorage(device, ap);
             }
         }
     }
