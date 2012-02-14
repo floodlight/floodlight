@@ -1627,6 +1627,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             if (address.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
                     address.getNetworkAddress().intValue());
+                removeNetworkAddressFromStorage(device, address);
             }
         }
     }
@@ -1643,6 +1644,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
+                removeAttachmentPointFromStorage(device, ap);
             }
         }
     }
