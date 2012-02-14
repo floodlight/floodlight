@@ -170,7 +170,9 @@ public class TopologyImpl
      * Map from switch id to a set of all links with it as an endpoint
      */
     protected Map<IOFSwitch, Set<LinkTuple>> switchLinks;
-    protected Set<ITopologyListener> topologyAware;
+    /* topology aware components are called in the order they were added to the
+     * the array */
+    protected ArrayList<ITopologyListener> topologyAware;
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
@@ -252,7 +254,7 @@ public class TopologyImpl
         do {
             Update update = updates.take();
             if (topologyAware != null) {
-                for (ITopologyListener ta : topologyAware) {
+                for (ITopologyListener ta : topologyAware) { // order maintained
                     if (log.isDebugEnabled()) {
                         log.debug("Dispatching topology update {} {} {} {} {}",
                                   new Object[]{update.operation,
@@ -574,7 +576,7 @@ public class TopologyImpl
             if (eth.isMulticast()) {
                 if (log.isTraceEnabled())
                     log.trace("Received a multicast LLDP packet from a different controller, allowing the packet to follow normal processing chain.");
-                return Command.CONTINUE;
+                return Command.STOP;
             }
             if (log.isTraceEnabled()) {
                 log.trace("Received a unicast LLDP packet from a different controller, stop processing the packet here.");
@@ -1577,6 +1579,47 @@ public class TopologyImpl
     public void addListener(ITopologyListener listener) {
         topologyAware.add(listener);
     }
+    
+    /**
+     * Register a topology aware component
+     * @param topoAwareComponent
+     */
+    public void addTopologyAware(ITopologyListener topoAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.topologyAware.add(topoAwareComponent);
+    }
+
+    /**
+     * Deregister a topology aware component
+     * @param topoAwareComponent
+     */
+    public void removeTopologyAware(ITopologyListener topoAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.topologyAware.remove(topoAwareComponent);
+    }
+
+    /**
+     * Sets the IStorageSource to use for ITology
+     * @param storageSource the storage source to use
+     */
+    public void setStorageSource(IStorageSourceService storageSource) {
+        this.storageSource = storageSource;
+    }
+
+    /**
+     * Gets the storage source for this ITopology
+     * @return The IStorageSource ITopology is writing to
+     */
+    public IStorageSourceService getStorageSource() {
+        return storageSource;
+    }
+
+    /**
+     * @param routingEngine the storage source to use for persisting link info
+     */
+    public void setRoutingEngine(IRoutingEngineService routingEngine) {
+        this.routingEngine = routingEngine;
+    }
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
@@ -1686,7 +1729,7 @@ public class TopologyImpl
         restApi = context.getServiceImpl(IRestApiService.class);
         
         // We create this here because there is no ordering guarantee
-        this.topologyAware = new HashSet<ITopologyListener>();
+        this.topologyAware = new ArrayList<ITopologyListener>();
     }
 
     @Override

@@ -54,7 +54,6 @@ import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
-import net.floodlightcontroller.core.web.CoreWebRoutable;
 import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
@@ -67,7 +66,6 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
@@ -1295,14 +1293,6 @@ public class Controller
         this.updates = new LinkedBlockingQueue<Update>();
         this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.factory = new BasicFactory();
-        
-        // Add the core REST API
-        restApi.addRestletRoutable(new CoreWebRoutable());
-                
-        // Set floodlight to terminate on a storage exception
-        IStorageExceptionHandler handler = 
-                new TerminationStorageExceptionHandler(this);
-        storageSource.setExceptionHandler(handler);
         
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);

@@ -206,8 +206,8 @@ public class RoutingImpl
             network_updated = true;
         }
 
+        Link srcLink = new Link(srcPort, dstPort, dstId);
         if (added) {
-            Link srcLink = new Link(srcPort, dstPort, dstId);
             if (src.containsKey(srcPort)) {
                 log.debug("update: unexpected link add request - srcPort in use src, link: {}, {}", srcId, src.get(srcPort));
             }
@@ -217,9 +217,9 @@ public class RoutingImpl
         }
         else {
             // Only remove if that link actually exists.
-            if (src.containsKey(srcPort) && src.get(srcPort).getDst().equals(dstId)) {
+            if (src.containsKey(srcLink)) {
                 log.debug("update: removed link: {}, {}", srcId, srcPort);
-                src.remove(srcPort);
+                src.remove(srcLink);
                 network_updated = true;
             }
             else {
