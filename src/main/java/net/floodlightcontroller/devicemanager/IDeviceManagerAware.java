@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.devicemanager.internal.Device;
 
 /**
  * Implementors of this interface can receive updates from DeviceManager about

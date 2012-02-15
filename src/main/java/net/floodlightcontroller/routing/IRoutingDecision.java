@@ -21,7 +21,7 @@ import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.FloodlightContextStore;
-import net.floodlightcontroller.devicemanager.Device;
+import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 public interface IRoutingDecision {

@@ -1,5 +1,5 @@
 /**
-*    Copyright 2011,2012, Big Switch Networks, Inc. 
+*    Copyright 2011,2012 Big Switch Networks, Inc. 
 *    Originally created by David Erickson, Stanford University
 * 
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,10 +18,12 @@
 package net.floodlightcontroller.devicemanager;
 
 /**
- * Device manager allows interacting with devices on the network.  Note
- * that under normal circumstances, {@link Device} objects should be retrieved
- * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
+ * Represents an independent device on the network.  A device consists of a 
+ * set of entities, and all the information known about a given device comes
+ * only from merging all associated entities for that device.
+ * @author readams
+ *
  */
-public interface IDeviceManager {
+public interface IDevice {
 
 }

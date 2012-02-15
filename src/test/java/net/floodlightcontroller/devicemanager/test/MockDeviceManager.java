@@ -25,8 +25,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.Ethernet;
 
 public class MockDeviceManager implements IDeviceManager {

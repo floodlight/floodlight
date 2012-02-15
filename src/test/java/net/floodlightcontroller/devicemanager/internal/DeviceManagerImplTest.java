@@ -29,7 +29,6 @@ import static org.easymock.EasyMock.verify;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
-import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
