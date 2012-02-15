@@ -18,6 +18,8 @@
 package net.floodlightcontroller.storage;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +30,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.storage.web.StorageWebRoutable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +60,9 @@ public abstract class AbstractStorageSource
     private Map<String, Set<IStorageSourceListener>> listeners =
         new ConcurrentHashMap<String, Set<IStorageSourceListener>>();
 
+    // Our dependencies
+    IRestApiService restApi = null;
+    
     abstract class StorageCallable<V> implements Callable<V> {
         public V call() {
             try {
@@ -326,5 +336,46 @@ public abstract class AbstractStorageSource
     public void notifyListeners(List<StorageSourceNotification> notifications) {
         for (StorageSourceNotification notification : notifications)
             notifyListeners(notification);
+    }
+    
+    // IFloodlightModule
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStorageSourceService.class);
+        return l;
+    }
+    
+    @Override
+    public Map<Class<? extends IFloodlightService>,
+               IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                            IFloodlightService>();
+        m.put(IStorageSourceService.class, this);
+        return m;
+    }
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IRestApiService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        restApi =
+           context.getServiceImpl(IRestApiService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        restApi.addRestletRoutable(new StorageWebRoutable());
     }
 }

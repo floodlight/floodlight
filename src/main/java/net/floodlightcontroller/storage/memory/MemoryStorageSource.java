@@ -18,7 +18,6 @@
 package net.floodlightcontroller.storage.memory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
@@ -178,37 +177,6 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     }
 
     // IFloodlightModule methods
-    
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IStorageSourceService.class);
-        return l;
-    }
-
-    @Override
-    public Map<Class<? extends IFloodlightService>,
-               IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
-                new HashMap<Class<? extends IFloodlightService>,
-                            IFloodlightService>();
-        m.put(IStorageSourceService.class, this);
-        return m;
-    }
-
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        // we don't have any depedencies
-        return null;
-    }
-
-    @Override
-    public void init(FloodlightModuleContext context)
-            throws FloodlightModuleException {
-        // no-op
-    }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
