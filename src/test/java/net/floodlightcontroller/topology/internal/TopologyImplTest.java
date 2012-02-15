@@ -67,7 +67,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         topology.setStorageSource(new MemoryStorageSource());
         RoutingImpl routingEngine = new RoutingImpl();
         topology.setRoutingEngine(routingEngine);
-        HashSet<ITopologyAware> topologyAware = new HashSet<ITopologyAware>();
+        ArrayList<ITopologyAware> topologyAware = new ArrayList<ITopologyAware>();
         topologyAware.add(routingEngine);
         topology.setTopologyAware(topologyAware);
         topology.startUp();

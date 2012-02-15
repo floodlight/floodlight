@@ -120,7 +120,7 @@ public class SwitchResourceBase extends ServerResource {
         }
         return values;
     }
-    
+
     protected List<OFStatistics> getSwitchStatistics(String switchId, OFStatisticsType statType) {
         return getSwitchStatistics(HexString.toLong(switchId), statType);
     }
