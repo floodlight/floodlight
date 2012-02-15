@@ -54,6 +54,7 @@ import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
+import net.floodlightcontroller.core.web.CoreWebRoutable;
 import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
@@ -1326,6 +1327,9 @@ public class Controller
             log.info("Packet processing time threshold for warning set to {} ms.",
                  ptWarningThresholdInNano/1000000);
         }
+        
+        // Add our REST API
+        restApi.addRestletRoutable(new CoreWebRoutable());
     }
     
     /**
