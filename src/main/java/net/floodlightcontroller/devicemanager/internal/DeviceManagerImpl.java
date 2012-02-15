@@ -1054,8 +1054,6 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             	curAttachmentPoint.setConflict(currentDate);
 	        if (curAttachmentPoint.isFlapping()) {
 	            curAttachmentPoint.setBlocked(true);
-	            evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(),
-	                             EvAction.BLOCKED, "Conflict");
 	            writeAttachmentPointToStorage(device, curAttachmentPoint, 
 	                                                            currentDate);
 	            log.warn(
@@ -1064,8 +1062,6 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
 	                              curAttachmentPoint.getSwitchPort()});
 	        } else {
 	            removeAttachmentPointFromStorage(device, curAttachmentPoint);
-                    evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
-                                     EvAction.REMOVED, "Conflict");
 	        }
             }
             updateMoved(device, curAttachmentPoint.getSwitchPort(), 
