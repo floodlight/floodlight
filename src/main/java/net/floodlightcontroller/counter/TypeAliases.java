@@ -1,4 +1,4 @@
-package net.floodlightcontroller.core.internal;
+package net.floodlightcontroller.counter;
 
 import java.util.HashMap;
 import java.util.Map;

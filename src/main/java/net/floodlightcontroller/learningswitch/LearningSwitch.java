@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
 import net.floodlightcontroller.counter.ICounter;
@@ -134,25 +135,6 @@ public class LearningSwitch implements IOFMessageListener {
     public Short getFromPortMap(IOFSwitch sw, Long mac, Short vlan) {
         return sw.getFromPortMap(mac, vlan);
     }
-
-    private void updateCounterStore(IOFSwitch sw, OFFlowMod flowMod) {
-        if (counterStore != null) {
-            String packetName = flowMod.getType().toClass().getName();
-            packetName = packetName.substring(packetName.lastIndexOf('.')+1);
-            // flowmod is per switch. portid = -1
-            String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
-            try {
-                ICounter counter = counterStore.getCounter(counterName);
-                if (counter == null) {
-                    counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
-                }
-                counter.increment();
-            }
-            catch (IllegalArgumentException e) {
-                log.error("Invalid Counter, " + counterName);
-            }
-        }
-    }
     
     private void writeFlowMod(IOFSwitch sw, short command, int bufferId,
             OFMatch match, short outPort) {
@@ -203,7 +185,7 @@ public class LearningSwitch implements IOFMessageListener {
 
         log.trace("{} {} flow mod {}", new Object[]{ sw, (command == OFFlowMod.OFPFC_DELETE) ? "deleting" : "adding", flowMod });
 
-        updateCounterStore(sw, flowMod);
+        counterStore.updatePktOutFMCounterStore(sw, flowMod);
         
         // and write it out
         try {
@@ -251,6 +233,7 @@ public class LearningSwitch implements IOFMessageListener {
             
         // and write it out
         try {
+        	counterStore.updatePktOutFMCounterStore(sw, packetOutMessage);
             sw.write(packetOutMessage, null);
         } catch (IOException e) {
             log.error("Failed to write {} to switch {}: {}", new Object[]{ packetOutMessage, sw, e });

@@ -27,8 +27,6 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
@@ -109,24 +107,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         return Command.CONTINUE;
     }
 
-    private void updateCounterStore(IOFSwitch sw, OFFlowMod flowMod) {
-        if (counterStore != null) {
-            String packetName = flowMod.getType().toClass().getName();
-            packetName = packetName.substring(packetName.lastIndexOf('.')+1);
-            // flowmod is per switch. portid = -1
-            String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
-            try {
-                ICounter counter = counterStore.getCounter(counterName);
-                if (counter == null) {
-                    counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
-                }
-                counter.increment();
-            }
-            catch (IllegalArgumentException e) {
-                log.error("Invalid Counter, " + counterName);
-            }
-        }
-    }
+
     
     /**
      * Push routes from back to front
@@ -186,7 +167,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 fm.setMatch(wildcard(match, sw, wildcard_hints));
                 fm.getMatch().setInputPort(link.getInPort());
                 try {
-                    updateCounterStore(sw, fm);
+                    counterStore.updatePktOutFMCounterStore(sw, fm);
                     log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
                               new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), ((OFActionOutput)fm.getActions().get(0)).getPort() });
                     sw.write(fm, cntx);
@@ -230,8 +211,8 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         fm.setMatch(wildcard(match, sw, wildcard_hints));
         fm.getMatch().setInputPort(srcSwPort.getPort());
         
-        updateCounterStore(sw, fm);
         try {
+        	counterStore.updatePktOutFMCounterStore(sw, fm);
             log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
@@ -284,6 +265,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         po.setLength(poLength);
         
         try {
+        	counterStore.updatePktOutFMCounterStore(sw, po);
             sw.write(po, cntx);
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
