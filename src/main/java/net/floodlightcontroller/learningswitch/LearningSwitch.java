@@ -38,10 +38,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFError;
