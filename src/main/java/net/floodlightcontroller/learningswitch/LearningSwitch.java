@@ -125,25 +125,6 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
     public Short getFromPortMap(IOFSwitch sw, Long mac, Short vlan) {
         return sw.getFromPortMap(mac, vlan);
     }
-
-    private void updateCounterStore(IOFSwitch sw, OFFlowMod flowMod) {
-        if (counterStore != null) {
-            String packetName = flowMod.getType().toClass().getName();
-            packetName = packetName.substring(packetName.lastIndexOf('.')+1);
-            // flowmod is per switch. portid = -1
-            String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
-            try {
-                ICounter counter = counterStore.getCounter(counterName);
-                if (counter == null) {
-                    counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
-                }
-                counter.increment();
-            }
-            catch (IllegalArgumentException e) {
-                log.error("Invalid Counter, " + counterName);
-            }
-        }
-    }
     
     private void writeFlowMod(IOFSwitch sw, short command, int bufferId,
             OFMatch match, short outPort) {
@@ -197,7 +178,7 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
                       new Object[]{ sw, (command == OFFlowMod.OFPFC_DELETE) ? "deleting" : "adding", flowMod });
         }
 
-        updateCounterStore(sw, flowMod);
+        counterStore.updatePktOutFMCounterStore(sw, flowMod);
         
         // and write it out
         try {
@@ -245,6 +226,7 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
             
         // and write it out
         try {
+        	counterStore.updatePktOutFMCounterStore(sw, packetOutMessage);
             sw.write(packetOutMessage, null);
         } catch (IOException e) {
             log.error("Failed to write {} to switch {}: {}", new Object[]{ packetOutMessage, sw, e });
