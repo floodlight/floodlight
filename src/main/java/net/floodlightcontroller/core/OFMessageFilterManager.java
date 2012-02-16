@@ -513,8 +513,10 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(pktOut.getInPort());
                 sb.append("\nactions_len: ");
                 sb.append(pktOut.getActionsLength());
-                sb.append("\nactions: ");
-                sb.append(pktOut.getActions().toString());
+                if (pktOut.getActions() != null) {
+                    sb.append("\nactions: ");
+                    sb.append(pktOut.getActions().toString());
+                }
                 break;
 
             case FLOW_MOD:
@@ -544,8 +546,10 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(fm.getBufferId());
                 sb.append(" flg: ");
                 sb.append(fm.getFlags());
-                sb.append("\nactions: ");
-                sb.append(fm.getActions().toString());
+                if (fm.getActions() != null) {
+                    sb.append("\nactions: ");
+                    sb.append(fm.getActions().toString());
+                }
                 break;
 
             default:
