@@ -29,6 +29,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,7 +219,15 @@ public class RoutingImpl
         else {
             // Only remove if that link actually exists.
             if (src.containsKey(srcLink)) {
-                log.debug("update: removed link: {}, {}", srcId, srcPort);
+                if (log.isDebugEnabled()) {
+                    String temp = HexString.toHexString(srcId).concat("/");
+                    temp = temp.concat(Integer.toString(srcPort));
+                    temp = temp.concat("-->");
+                    temp = temp.concat(HexString.toHexString(dstId));
+                    temp = temp.concat("/");
+                    temp = temp.concat(Integer.toString(dstPort));
+                    log.debug("update: removed link: {}", temp);
+                }
                 src.remove(srcLink);
                 network_updated = true;
             }

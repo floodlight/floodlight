@@ -577,8 +577,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
          * @param port_channel
          */
         protected void addPortToPortChannel(String switch_id,
-                            Integer port_no, String port_channel) {
-            String swPort = switch_id + port_no;
+                            String port_name, String port_channel) {
+            String swPort = switch_id + port_name;
             portChannelMap.put(swPort, port_channel);
         }
         
@@ -590,11 +590,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
          */
         protected boolean inSamePortChannel(SwitchPortTuple swPort1,
                                         SwitchPortTuple swPort2) {
-            String key = swPort1.getSw().getStringId() + swPort1.getPort();
+            IOFSwitch sw = swPort1.getSw();
+            String portName = sw.getPort(swPort1.getPort()).getName();
+            String key = sw.getStringId() + portName;
             String portChannel1 = portChannelMap.get(key);
             if (portChannel1 == null)
                 return false;
-            key = swPort2.getSw().getStringId() + swPort2.getPort();
+
+            sw = swPort2.getSw();
+            portName = sw.getPort(swPort2.getPort()).getName();
+            key = sw.getStringId() + portName;
             String portChannel2 = portChannelMap.get(key);
             if (portChannel2 == null)
                 return false;
@@ -637,7 +642,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                             "controller_hostattachmentpoint";
     private static final String DEVICE_NETWORK_ADDRESS_TABLE_NAME = 
                                             "controller_hostnetworkaddress";
-    protected static final String PORT_CHANNEL_TABLE_NAME = "controller_portchannel";
+    protected static final String PORT_CHANNEL_TABLE_NAME = "controller_portchannelconfig";
     
     // Column names for the host table
     private static final String MAC_COLUMN_NAME       = "mac"; 
@@ -654,7 +659,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     private static final String NETWORK_ADDRESS_COLUMN_NAME = "ip";
     // Column names for the port channel table
     protected static final String PC_ID_COLUMN_NAME = "id";
-    protected static final String PORT_CHANNEL_COLUMN_NAME = "port_channel";
+    protected static final String PORT_CHANNEL_COLUMN_NAME = "port_channel_id";
     protected static final String PC_SWITCH_COLUMN_NAME = "switch";
     protected static final String PC_PORT_COLUMN_NAME = "port";
 
@@ -1561,8 +1566,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             while (pcResultSet.next()) {
                 String port_channel = pcResultSet.getString(PORT_CHANNEL_COLUMN_NAME);
                 String switch_id = pcResultSet.getString(PC_SWITCH_COLUMN_NAME);
-                Integer port_no = pcResultSet.getInt(PC_PORT_COLUMN_NAME);
-                devMgrMaps.addPortToPortChannel(switch_id, port_no, port_channel);
+                String port_name = pcResultSet.getString(PC_PORT_COLUMN_NAME);
+                devMgrMaps.addPortToPortChannel(switch_id, port_name, port_channel);
             }
             return true;
         } catch (StorageException e) {
@@ -1722,11 +1727,15 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         deviceUpdateTask.reschedule(5, TimeUnit.SECONDS);          
     }
 
-    // ********************
-    // Device aging methods
-    // ********************    
+    /**
+     * Remove aged network address from device
+     *    
+     * @param device
+     * @param currentDate
+     * @return the new device object since the device is immutable
+     */
 
-    private void removeAgedNetworkAddresses(Device device, Date currentDate) {
+    private Device removeAgedNetworkAddresses(Device device, Date currentDate) {
         Collection<DeviceNetworkAddress> addresses = 
                                                 device.getNetworkAddresses();
 
@@ -1740,12 +1749,22 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
             if (address.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
-                        address.getNetworkAddress().intValue());
+                    address.getNetworkAddress().intValue());
+                removeNetworkAddressFromStorage(device, address);
             }
         }
+        
+        return devMgrMaps.getDeviceByDataLayerAddr(device.getDataLayerAddressAsLong());
     }
 
-    private void removeAgedAttachmentPoints(Device device, Date currentDate) {
+    /**
+     * Remove aged device attachment point
+     * 
+     * @param device
+     * @param currentDate
+     * @return the new device object since the device is immutable
+     */
+    private Device removeAgedAttachmentPoints(Device device, Date currentDate) {
         Collection<DeviceAttachmentPoint> aps = device.getAttachmentPoints();
 
         for (DeviceAttachmentPoint ap : aps) {
@@ -1759,8 +1778,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
                 evHistAttachmtPt(device, ap.getSwitchPort(), EvAction.REMOVED,
                         "Aged");
+                removeAttachmentPointFromStorage(device, ap);
             }
         }
+        
+        return devMgrMaps.getDeviceByDataLayerAddr(device.getDataLayerAddressAsLong());
     }
 
     /**
@@ -1772,8 +1794,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
         Collection<Device> deviceColl = devMgrMaps.getDevices();
         for (Device device: deviceColl) {
-            removeAgedNetworkAddresses(device, currentDate);
-            removeAgedAttachmentPoints(device, currentDate);
+            device = removeAgedNetworkAddresses(device, currentDate);
+            device = removeAgedAttachmentPoints(device, currentDate);
 
             if ((device.getAttachmentPoints().size() == 0) &&
                 (device.getNetworkAddresses().size() == 0) &&

@@ -67,13 +67,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             // For now we treat multicast as broadcast
             doFlood(sw, pi, cntx);
         } else {
-            doForwardFlow(sw, pi, cntx);
+            doForwardFlow(sw, pi, cntx, false);
         }
         
         return Command.CONTINUE;
     }
     
-    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {    
+    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
+                FloodlightContext cntx, boolean reqeustFlowRemovedNotifn) {    
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
 
@@ -164,7 +165,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             }
                             pushRoute(route, match, 0,
                                       srcDap.getSwitchPort(), dstDap.getSwitchPort(), bufferId,
-                                      sw, pi, cntx);
+                                      sw, pi, cntx, reqeustFlowRemovedNotifn);
                         }
                     }
                     iSrcDaps++;
@@ -297,7 +298,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         if (log.isDebugEnabled()) {
             log.debug("Starting " + this.getClass().getCanonicalName());
         }
-        this.flowCacheMgr = new FlowCache();
         super.startUp();
     }
 }

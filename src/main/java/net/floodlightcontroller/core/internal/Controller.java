@@ -60,7 +60,6 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -143,7 +142,6 @@ public class Controller
     protected IStorageSourceService storageSource;
     protected IOFMessageFilterManagerService messageFilterManager;
     protected IPktInProcessingTimeService pktinProcTime;
-    protected FlowCache flowCacheManager;
     
     // Configuration options
     protected int openFlowPort = 6633;
@@ -1292,7 +1290,6 @@ public class Controller
      */
     public void startupComponents() {
         log.debug("Doing controller internal setup");
-
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);
         storageSource.createTable(SWITCH_TABLE_NAME, null);
@@ -1325,7 +1322,7 @@ public class Controller
             log.info("Packet processing time threshold for warning set to {} ms.",
                  ptWarningThresholdInNano/1000000);
         }
-        
+       
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
     }

@@ -34,7 +34,6 @@ import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -67,8 +66,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     protected IRoutingEngineService routingEngine;
     protected ITopologyService topology;
     protected ICounterStoreService counterStore;
-    protected FlowCache flowCacheMgr;
-
+   
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed by a global APP_ID class
 
@@ -141,10 +139,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
             SwitchPortTuple srcSwPort,
             SwitchPortTuple dstSwPort, int bufferId,
-            IOFSwitch srcSwitch, OFPacketIn pi, FloodlightContext cntx) {
+            IOFSwitch srcSwitch, OFPacketIn pi, FloodlightContext cntx,
+            boolean reqeustFlowRemovedNotifn) {
         long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
         return pushRoute(route, match, wildcard_hints, srcSwPort, dstSwPort, 
-                bufferId, srcSwitch, pi, cookie, cntx);
+                bufferId, srcSwitch, pi, cookie, cntx, reqeustFlowRemovedNotifn);
     }
     
     /**
@@ -161,7 +160,8 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                           SwitchPortTuple srcSwPort,
                           SwitchPortTuple dstSwPort, int bufferId,
                           IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
-                          FloodlightContext cntx) {
+                          FloodlightContext cntx,
+                          boolean reqeustFlowRemovedNotifn) {
         
         boolean srcSwitchIncluded = false;
         OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
@@ -233,7 +233,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         // Set the flag to request flow-mod removal notifications only for the 
         // source switch. The removal message is used to maintain the flow
         // cache. Don't set the flag for ARP messages - TODO generalize check
-        if ((flowCacheMgr.isFlowCacheServiceOn()) &&
+        if ((reqeustFlowRemovedNotifn) &&
             (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
             fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
             match.setWildcards(fm.getMatch().getWildcards());
@@ -383,14 +383,6 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
-    }
-
-    public FlowCache getFlowCacheMgr() {
-        return flowCacheMgr;
-    }
-
-    public void setFlowCacheMgr(FlowCache flowCacheMgr) {
-        this.flowCacheMgr = flowCacheMgr;
     }
 
     @Override
