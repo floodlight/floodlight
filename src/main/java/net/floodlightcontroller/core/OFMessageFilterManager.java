@@ -555,7 +555,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 sb.append(" flg: ");
                 sb.append(fm.getFlags());
                 sb.append("\nactions: ");
-                sb.append(fm.getActions().toString());
+                if (fm.getActions() != null)
+                    sb.append(fm.getActions().toString());
                 break;
 
             default:
