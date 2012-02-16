@@ -170,11 +170,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
     protected Set<SwitchCluster> clusters;
-    protected Set<BroadcastDomain> broadcastDomains;
+    protected Map<Long, BroadcastDomain> broadcastDomainMap;
     protected Map<SwitchPortTuple, BroadcastDomain> switchPortBroadcastDomainMap;
 
     protected boolean isTopologyValid = false;
-
 
     public static enum UpdateOperation {ADD, UPDATE, REMOVE,
                                         SWITCH_UPDATED, CLUSTER_MERGED};
@@ -1301,7 +1300,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected void updateBroadcastDomains() {
         Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks =  getPortBroadcastDomainLinks();
         Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
-        Set<BroadcastDomain> bdSets = new HashSet<BroadcastDomain>();
+        Map<Long, BroadcastDomain> bdMap = new HashMap<Long, BroadcastDomain>();
         Map<SwitchPortTuple, BroadcastDomain> spbdMap = new HashMap<SwitchPortTuple, BroadcastDomain>();
 
         // Do a breadth first search to get all the connected components
@@ -1311,6 +1310,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             // create an array list and add the first switch port.
             Queue<SwitchPortTuple> queue = new LinkedBlockingQueue<SwitchPortTuple>();
             BroadcastDomain bd = new BroadcastDomain();
+            bd.setId(bdMap.size()+1);
+
+            // add the broadcast domain to the broadcast domain map
+            bdMap.put(new Long(bdMap.size()+1), bd);
+
             visitedSwt.contains(swt);
             queue.add(swt);
             bd.add(swt);
@@ -1332,21 +1336,23 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 }
             }
 
-            // Add this broadcast domain to the set of broadcast domains.
-            bdSets.add(bd);
+
         }
 
         //Replace the current broadcast domains in the topology.
-        broadcastDomains = bdSets;
+        broadcastDomainMap = bdMap;
         switchPortBroadcastDomainMap = spbdMap;
 
-        if (bdSets.isEmpty()) {
+        if (bdMap.isEmpty()) {
             if (log.isTraceEnabled()) {
                 log.trace("No broadcast domains exist.");
             }
         } else {
-            log.warn("Broadcast domains found in the network.  There could be potential looping issues.");
-            log.warn("{}", broadcastDomains.toString());
+            log.warn("Broadcast domains found in the network.");
+            for(Long l: bdMap.keySet()) {
+                BroadcastDomain bd = bdMap.get(l);
+                log.warn(bd.toString());
+            }
         }
     }
 
