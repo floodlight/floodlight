@@ -48,7 +48,6 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopology;
 import net.floodlightcontroller.topology.SwitchPortTuple;
-import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -96,8 +95,6 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
-        FlowCache flowCache = new FlowCache();
-        forwarding.setFlowCacheMgr(flowCache);
 
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
