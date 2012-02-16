@@ -18,10 +18,8 @@
 package net.floodlightcontroller.storage.memory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
-import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.SynchronousExecutorService;
 
 import java.util.ArrayList;

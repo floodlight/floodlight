@@ -1282,6 +1282,9 @@ public class Controller
                                       ListenerDispatcher<OFType, 
                                                          IOFMessageListener>>();
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+        this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
+        this.updates = new LinkedBlockingQueue<Update>();
+        this.factory = new BasicFactory();
     }
     
     /**
@@ -1289,12 +1292,7 @@ public class Controller
      */
     public void startupComponents() {
         log.debug("Doing controller internal setup");
-       
-        // Our internal data structures
-        this.updates = new LinkedBlockingQueue<Update>();
-        this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
-        this.factory = new BasicFactory();
-        
+
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);
         storageSource.createTable(SWITCH_TABLE_NAME, null);
@@ -1335,6 +1333,7 @@ public class Controller
     /**
      * Start debug server, put global state as local variables for the jython shell
      */
+    // TODO - make this a module
     protected void debugserver_start() {
         log.debug("Starting DebugServer");
         Map<String, Object> locals = new HashMap<String, Object>();
