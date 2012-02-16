@@ -35,7 +35,6 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
-import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
