@@ -40,7 +40,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
         MemoryTable table = tableMap.get(tableName);
         if (table == null) {
             if (!create)
-                throw new StorageException("Table does not exist");
+                throw new StorageException("Table " + tableName + " does not exist");
             table = new MemoryTable(tableName);
             tableMap.put(tableName, table);
         }
@@ -178,6 +178,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
 
     @Override
     public void startUp(FloodlightModuleContext context) {
+        super.startUp(context);
         executorService = new SynchronousExecutorService();
     }
 }
