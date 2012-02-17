@@ -140,7 +140,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     }
     
     @Override
-    protected void updateRows(String tableName, List<Map<String,Object>> updateRowList) {
+    protected void updateRowsImpl(String tableName, List<Map<String,Object>> updateRowList) {
         MemoryTable table = getTable(tableName, false);
         String primaryKeyName = getTablePrimaryKeyName(tableName);
         synchronized (table) {
@@ -159,7 +159,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     }
     
     @Override
-    protected void deleteRows(String tableName, Set<Object> rowKeys) {
+    protected void deleteRowsImpl(String tableName, Set<Object> rowKeys) {
         MemoryTable table = getTable(tableName, false);
         synchronized (table) {
             for (Object rowKey : rowKeys) {
@@ -170,6 +170,7 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     
     @Override
     public void createTable(String tableName, Set<String> indexedColumnNames) {
+        super.createTable(tableName, indexedColumnNames);
         getTable(tableName, true);
     }
     

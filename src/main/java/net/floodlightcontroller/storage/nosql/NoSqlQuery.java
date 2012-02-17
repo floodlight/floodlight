@@ -46,7 +46,8 @@ public class NoSqlQuery implements IQuery {
         parameterMap.put(name, (Comparable<?>)value);
     }
 
-    String getTableName() {
+    @Override
+    public String getTableName() {
         return tableName;
     }
     

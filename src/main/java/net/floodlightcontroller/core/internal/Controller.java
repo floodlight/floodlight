@@ -1277,11 +1277,14 @@ public class Controller
     protected void init() {
         topology = new TopologyImpl();
         deviceManager = new DeviceManagerImpl();
-        storageSource = new MemoryStorageSource();
+        MemoryStorageSource memoryStorageSource = new MemoryStorageSource();
+        storageSource = memoryStorageSource;
         learningSwitch = new LearningSwitch();
         counterStore = new CounterStore();
         messageFilterManager = new OFMessageFilterManager();
         pktinProcTime = new PktinProcessingTime();
+        
+        memoryStorageSource.setCounterStore(counterStore);
         
         topology.setFloodlightProvider(this);
         topology.setStorageSource(storageSource);

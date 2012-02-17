@@ -43,6 +43,7 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/counter/categories/{switchId}/{counterName}/{layer}/json", SwitchCounterCategoriesResource.class);
         router.attach("/memory/json", ControllerMemoryResource.class);
         router.attach("/staticflowentrypusher/json", StaticFlowEntryPusherResource.class);
+        router.attach("/storage/tables/json", StorageSourceTablesResource.class);
         return router;
     }
 }
