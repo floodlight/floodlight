@@ -17,7 +17,7 @@
 
 package net.floodlightcontroller.devicemanager;
 
-import java.util.Collection;
+import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
 import net.floodlightcontroller.devicemanager.internal.Device;
@@ -30,20 +30,24 @@ import net.floodlightcontroller.devicemanager.internal.Device;
  * for that entity class. A field is effectively wildcarded by not including 
  * it in the list of key fields returned by {@link IEntityClassifier} and/or 
  * {@link IEntityClass}.
+ * 
+ * Note that if you're not using static objects, you'll need to override
+ * {@link Object#equals(Object)} and {@link Object#hashCode()}.
+ * 
  * @author readams
  *
  */
 public interface IEntityClass {
     /**
-     * Return the list of key fields for this entity class.  Entities 
+     * Return the set of key fields for this entity class.  Entities 
      * belonging to this class that differ in fields not included in 
      * this collection will be considered the same device.  The key 
      * fields for an entity class must not change unless associated 
      * with a flush of that entity class.
      * 
-     * @return a collection containing the fields that should not
+     * @return a set containing the fields that should not
      * be wildcarded.  May be null to indicate that all fields are key fields.
      */
-    Collection<EntityField> getKeyFields();
+    Set<EntityField> getKeyFields();
 }
 

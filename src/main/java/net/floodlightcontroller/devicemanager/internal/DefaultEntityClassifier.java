@@ -17,8 +17,9 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
@@ -29,21 +30,27 @@ import net.floodlightcontroller.devicemanager.IEntityClassifier;
  * @author readams
  */
 public class DefaultEntityClassifier implements IEntityClassifier {
-    protected static Collection<EntityField> keyFields;
+    /**
+     * A default fixed entity class
+     */
+    protected static class DefaultEntityClass implements IEntityClass {
+        @Override
+        public Set<EntityField> getKeyFields() {
+            return keyFields;
+        }
+    }
+    
+    protected static Set<EntityField> keyFields;
     static {
-        keyFields = new ArrayList<EntityField>(2);
+        keyFields = new HashSet<EntityField>(2);
         keyFields.add(EntityField.MAC);
         keyFields.add(EntityField.VLAN);
     }
-    protected static IEntityClass entityClass = new IEntityClass() {
-        @Override
-        public Collection<EntityField> getKeyFields() {
-            return keyFields;
-        }
-    };
+    protected static IEntityClass entityClass = new DefaultEntityClass();
+    
     protected static Collection<IEntityClass> entityClasses;
     static {
-        entityClasses = new ArrayList<IEntityClass>(1);
+        entityClasses = new HashSet<IEntityClass>(1);
         entityClasses.add(entityClass);
     }
 
@@ -65,7 +72,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
 
     @Override
-    public Collection<EntityField> getKeyFields() {
+    public Set<EntityField> getKeyFields() {
         return keyFields;
     }
 }

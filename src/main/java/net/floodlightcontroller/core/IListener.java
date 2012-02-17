@@ -17,7 +17,13 @@
 
 package net.floodlightcontroller.core;
 
-
+/**
+ * Interface for implementing an event listener with support for ordering 
+ * based on prerequisites and postrequisites.
+ * @author readams
+ *
+ * @param <T> The event type
+ */
 public interface IListener<T> {
     /**
      * The name assigned to this listener

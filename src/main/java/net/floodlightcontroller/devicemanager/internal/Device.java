@@ -18,39 +18,193 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.TreeSet;
+
+import org.openflow.util.HexString;
+
 import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 
 /**
  * Concrete implementation of {@link IDevice}
  * @author readams
  */
-public class Device {
+public class Device implements IDevice {
+    protected Long deviceKey;
+    
     protected Entity[] entities;
+    protected IEntityClass[] entityClasses;
+    
+    protected String macAddressString;
+    
+    // ************
+    // Constructors
+    // ************
     
     /**
      * Create a device from a set of entities
-     * @param entities the entities that make up the device
+     * @param the unique identifier for this device object
+     * @param entity the initial entity for the device
+     * @param entityClasses the entity classes associated with the entity
      */
-    public Device(Entity... entities) {
-        this.entities = entities;
+    public Device(Long deviceKey,
+                  Entity entity, 
+                  Collection<IEntityClass> entityClasses) {
+        this.deviceKey = deviceKey;
+        this.entities = new Entity[] {entity};
+        this.macAddressString = 
+                HexString.toHexString(entity.getMacAddress(), 6);
+        this.entityClasses = 
+                entityClasses.toArray(new IEntityClass[entityClasses.size()]);
+        Arrays.sort(this.entities);
     }
 
     /**
      * Create a device consisting of all entities from another device plus
      * the additional entities specified.
      * @param device the old device 
-     * @param entities the new entities to add
+     * @param entity the new entity to add to the device
+     * @param entityClasses the entity classes associated with the entity
      */
-    public Device(Device device, Entity... entities) {
-        this.entities = new Entity[device.entities.length + entities.length];
-        int i = 0;
-        for (; i < device.entities.length; i++) {
+    public Device(Device device,
+                  Entity entity,
+                  Collection<IEntityClass> entityClasses) {
+        this.deviceKey = device.deviceKey;
+        this.macAddressString = device.macAddressString;
+
+        this.entities = new Entity[device.entities.length + 1];
+        for (int i = 0; i < device.entities.length; i++) {
             this.entities[i] = device.entities[i];
         }
-        for (int j = 0; j < entities.length; j++, i++) {
-            this.entities[i] = entities[j];
+        this.entities[this.entities.length-1] = entity;
+        Arrays.sort(this.entities);
+        
+        if (entityClasses != null &&
+            entityClasses.size() > this.entityClasses.length) {
+            IEntityClass[] classes = new IEntityClass[entityClasses.size()];
+            this.entityClasses = 
+                    entityClasses.toArray(classes);
+        } else {
+            // same actual array, not a copy
+            this.entityClasses = device.entityClasses;
         }
     }
+
+    // *******
+    // IDevice
+    // *******
+    
+    @Override
+    public Long getDeviceKey() {
+        return deviceKey;
+    }
+    
+    @Override
+    public long getMACAddress() {
+        // we assume only one MAC per device for now.
+        return entities[0].getMacAddress();
+    }
+
+    @Override
+    public String getMACAddressString() {
+        return macAddressString;
+    }
+
+    @Override
+    public Short[] getVlanId() {
+        if (entities.length == 1)
+            return new Short[]{ entities[0].getVlan() };
+
+        TreeSet<Short> vals = new TreeSet<Short>();
+        for (Entity e : entities) {
+            vals.add(e.getVlan());
+        }
+        return vals.toArray(new Short[vals.size()]);
+    }
+
+    @Override
+    public Integer[] getIPv4Addresses() {
+        Integer addr;
+        if (entities.length == 1 &&
+            (addr = entities[0].getIpv4Address()) != null)
+            return new Integer[]{ addr };
+
+        TreeSet<Integer> vals = new TreeSet<Integer>();
+        for (Entity e : entities) {
+            if (e.getIpv4Address() != null)
+                vals.add(e.getIpv4Address());
+        }
+        return vals.toArray(new Integer[vals.size()]);
+    }
+
+    @Override
+    public SwitchPort[] getAttachmentPoints() {
+        if (entities.length == 1)
+            return new SwitchPort[]{new SwitchPort(entities[0].
+                                                   getSwitchDPID(), 
+                                                   entities[0].
+                                                   getSwitchPort()) };
+
+        HashSet<SwitchPort> vals = new HashSet<SwitchPort>();
+        for (Entity e : entities) {
+            SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
+                                           e.getSwitchPort());
+            vals.add(sp);
+        }
+        return vals.toArray(new SwitchPort[vals.size()]);
+    }
+
+    @Override
+    public Date getLastSeen() {
+        Date d = entities[0].getLastSeenTimestamp();
+        for (int i = 1; i < entities.length; i++) {
+            if (entities[i].getLastSeenTimestamp().compareTo(d) < 0)
+                d = entities[i].getLastSeenTimestamp();
+        }
+        return d;
+    }
+    
+    // ***************
+    // Getters/Setters
+    // ***************
+
+
+    public IEntityClass[] getEntityClasses() {
+        return entityClasses;
+    }
+
+    public void setEntityClasses(IEntityClass[] entityClasses) {
+        this.entityClasses = entityClasses;
+    }
+
+    public Entity[] getEntities() {
+        return entities;
+    }
+
+    // ***************
+    // Utility Methods
+    // ***************
+    
+    /**
+     * Check whether the device contains the specified entity
+     * @param entity the entity to search for
+     * @return true if the entity is in the device, or false otherwise
+     */
+    public boolean containsEntity(Entity entity) {
+        for (Entity e : entities) {
+            if (e.equals(entity))
+                return true;
+        }
+        return false;
+    }
+    
+    // ******
+    // Object
+    // ******
 
     @Override
     public int hashCode() {

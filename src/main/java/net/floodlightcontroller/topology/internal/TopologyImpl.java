@@ -1137,14 +1137,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
-
-    /**
-     * Checks to see if a SwitchPortTuple is internal. A SwitchPortTuple is
-     * defined as internal if the switch is a core switch if only switches that
-     * are in the same SwitchCluster are connected to it.
-     * @param idPort The SwitchPortTuple to check
-     * @return True if it is internal, false otherwise
-     */
+    
+    @Override
+    public boolean isInternal(IOFSwitch sw, short port) {
+        return isInternal(new SwitchPortTuple(sw, port));
+    }
+    
     @Override
     public boolean isInternal(SwitchPortTuple idPort) {
         lock.readLock().lock();

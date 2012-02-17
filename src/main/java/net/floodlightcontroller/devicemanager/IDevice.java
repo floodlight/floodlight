@@ -17,13 +17,55 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import java.util.Date;
+
 /**
  * Represents an independent device on the network.  A device consists of a 
  * set of entities, and all the information known about a given device comes
  * only from merging all associated entities for that device.
  * @author readams
- *
  */
 public interface IDevice {
+    /**
+     * Get the primary key for this device.
+     * @return the primary key
+     */
+    public Long getDeviceKey();
+    
+    /**
+     * Get the MAC address of the device as a Long value.
+     * @return the MAC address for the device
+     */
+    public long getMACAddress();
 
+    /**
+     * Get the MAC address of the device as a String value.
+     * @return the MAC address for the device
+     */
+    public String getMACAddressString();
+    
+    /**
+     * Get all VLAN IDs for the device.  The array returned can have
+     * null entries representing untagged packets.
+     * @return an array containing all unique VLAN IDs for the device.
+     */
+    public Short[] getVlanId();
+    
+    /**
+     * Get all IPv4 addresses associated with the device.
+     * @return an array containing the unique IPv4 addresses for the device.
+     */
+    public Integer[] getIPv4Addresses();
+    
+    /**
+     * Get all attachment points associated with the device.
+     * @return an array containing all unique attachment points for the device
+     */
+    public SwitchPort[] getAttachmentPoints();
+    
+    /**
+     * Get the most recent timestamp for this device
+     * @return the last seen timestamp
+     */
+    public Date getLastSeen();
 }

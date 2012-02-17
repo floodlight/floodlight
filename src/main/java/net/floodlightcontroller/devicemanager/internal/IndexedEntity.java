@@ -37,29 +37,32 @@ public class IndexedEntity {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
-                        + ((entity.macAddress == null) 
-                            ? 0 
-                            : entity.macAddress.hashCode());
+                        + (int)(entity.macAddress);
+                    break;
                 case IP:
                     hashCode = prime * hashCode
                         + ((entity.ipv4Address == null) 
                             ? 0 
                             : entity.ipv4Address.hashCode());
+                    break;
                 case SWITCH:
                     hashCode = prime * hashCode
                         + ((entity.switchDPID == null) 
                             ? 0 
                             : entity.switchDPID.hashCode());
+                    break;
                 case PORT:
                     hashCode = prime * hashCode
                         + ((entity.switchPort == null) 
                             ? 0 
                             : entity.switchPort.hashCode());
+                    break;
                 case VLAN:
                     hashCode = prime * hashCode 
                         + ((entity.vlan == null) 
                             ? 0 
                             : entity.vlan.hashCode());
+                    break;
             }
         }
         return hashCode;
@@ -75,30 +78,33 @@ public class IndexedEntity {
         for (EntityField f : keyFields) {
             switch (f) {
                 case MAC:
-                    if (entity.macAddress == null) {
-                        if (other.entity.macAddress != null) return false;
-                    } else if (!entity.macAddress.
-                            equals(other.entity.macAddress)) return false;
+                    if (entity.macAddress != other.entity.macAddress)
+                        return false;
+                    break;
                 case IP:
                     if (entity.ipv4Address == null) {
                         if (other.entity.ipv4Address != null) return false;
                     } else if (!entity.ipv4Address.
                             equals(other.entity.ipv4Address)) return false;
+                    break;
                 case SWITCH:
                     if (entity.switchDPID == null) {
                         if (other.entity.switchDPID != null) return false;
                     } else if (!entity.switchDPID.
                             equals(other.entity.switchDPID)) return false;
+                    break;
                 case PORT:
                     if (entity.switchPort == null) {
                         if (other.entity.switchPort != null) return false;
                     } else if (!entity.switchPort.
                             equals(other.entity.switchPort)) return false;
+                    break;
                 case VLAN:
                     if (entity.vlan == null) {
                         if (other.entity.vlan != null) return false;
                     } else if (!entity.vlan.
                             equals(other.entity.vlan)) return false;
+                    break;
             }
         }
         

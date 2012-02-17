@@ -17,11 +17,72 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import java.util.Collection;
+
+import net.floodlightcontroller.core.FloodlightContextStore;
+
 /**
  * Device manager allows interacting with devices on the network.  Note
  * that under normal circumstances, {@link Device} objects should be retrieved
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
 public interface IDeviceManager {
+    /**
+     * The source device for the current packet-in, if applicable.
+     */
+    public static final String CONTEXT_SRC_DEVICE = 
+            "com.bigswitch.floodlight.devicemanager.srcDevice"; 
 
+    /**
+     * The destination device for the current packet-in, if applicable.
+     */
+    public static final String CONTEXT_DST_DEVICE = 
+            "com.bigswitch.floodlight.devicemanager.dstDevice"; 
+
+    /**
+     * A FloodlightContextStore object that can be used to interact with the 
+     * FloodlightContext information created by BVS manager.
+     */
+    public static final FloodlightContextStore<IDevice> fcStore = 
+        new FloodlightContextStore<IDevice>();
+    
+    /**
+     * Set the entity classifier for the device manager to use to
+     * differentiate devices on the network.  If no classifier is set,
+     * the {@link DefaultEntityClassifer} will be used.  This should be 
+     * registered in the application initialization phase before startup.
+     * @param classifier the classifier to set.
+     */
+    public void setEntityClassifier(IEntityClassifier classifier);
+    
+    /**
+     * Flush and/or reclassify all entities in a class
+     *
+     * @param entityClass the class to flush.  If null, flush all classes
+     * @param reclassify if true, begin an asynchronous task to reclassify the
+     * flushed entities
+     */
+    public void flushEntityCache(IEntityClass entityClass, boolean reclassify);
+    
+    /**
+     * Search for a device using entity fields.  Only the key fields as
+     * defined by the {@link IEntityClassifier} will be important in this
+     * search.
+     * @param macAddress The MAC address
+     * @param ipv4Address the ipv4 address
+     * @param vlan the VLAN
+     * @param switchDPID the switch DPID
+     * @param switchPort the switch port
+     * @return an {@link IDevice} or null if no device is found.
+     * @see IDeviceManager#setEntityClassifier(IEntityClassifier)
+     */
+    public IDevice findDevice(long macAddress, Integer ipv4Address,
+                              Short vlan, Long switchDPID,
+                              Integer switchPort);
+    
+    /**
+     * Get an unmodifiable collection view over all devices currently known.
+     * @return the collection of all devices
+     */
+    public Collection<? extends IDevice> getAllDevices();
 }

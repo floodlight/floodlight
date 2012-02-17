@@ -34,13 +34,23 @@ import net.floodlightcontroller.core.IOFSwitch;
  */
 public interface ITopology {
     /**
-     * Query to determine if the specified switch id and port tuple are
+     * Query to determine if the specified switch id and port are
      * connected to another switch or not.  If so, this means the link
      * is passing LLDPs properly between two OpenFlow switches.
-     * @param idPort
-     * @return
+     * @param idPort the {@link SwitchPortTuple} to check
+     * @return true if the link is internal
      */
     public boolean isInternal(SwitchPortTuple idPort);
+    
+    /**
+     * Query to determine if the specified switch id and port are
+     * connected to another switch or not.  If so, this means the link
+     * is passing LLDPs properly between two OpenFlow switches.
+     * @param sw the switch to check
+     * @param port the port to check
+     * @return true if the link is internal
+     */
+    public boolean isInternal(IOFSwitch sw, short port);
 
     /**
      * Get the link that either sources from the port or terminates

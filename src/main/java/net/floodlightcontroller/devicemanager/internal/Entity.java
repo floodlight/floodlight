@@ -19,7 +19,7 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Date;
 
-import net.floodlightcontroller.util.MACAddress;
+import org.openflow.util.HexString;
 
 /**
  * An entity on the network is a visible trace of a device that corresponds
@@ -35,11 +35,11 @@ import net.floodlightcontroller.util.MACAddress;
  * @author readams
  *
  */
-public class Entity {
+public class Entity implements Comparable<Entity> {
      /**
      * The MAC address associated with this entity
      */
-    protected MACAddress macAddress;
+    protected long macAddress;
     
     /**
      * The IP address associated with this entity, or null if no IP learned
@@ -77,14 +77,14 @@ public class Entity {
      * Create a new entity
      * 
      * @param macAddress
-     * @param ipv4Address
      * @param vlan
+     * @param ipv4Address
      * @param switchDPID
      * @param switchPort
      * @param lastSeenTimestamp
      */
-    public Entity(MACAddress macAddress, Integer ipv4Address, 
-                  Short vlan, Long switchDPID, Integer switchPort, 
+    public Entity(long macAddress, Short vlan, 
+                  Integer ipv4Address, Long switchDPID, Integer switchPort, 
                   Date lastSeenTimestamp) {
         super();
         this.macAddress = macAddress;
@@ -99,7 +99,7 @@ public class Entity {
     // Getters/Setters
     // ***************
 
-    public MACAddress getMacAddress() {
+    public long getMacAddress() {
         return macAddress;
     }
 
@@ -133,8 +133,7 @@ public class Entity {
         int result = 1;
         result = prime * result
                  + ((ipv4Address == null) ? 0 : ipv4Address.hashCode());
-        result = prime * result
-                 + ((macAddress == null) ? 0 : macAddress.hashCode());
+        result = prime * result + (int) (macAddress ^ (macAddress >>> 32));
         result = prime * result
                  + ((switchDPID == null) ? 0 : switchDPID.hashCode());
         result = prime * result
@@ -152,9 +151,7 @@ public class Entity {
         if (ipv4Address == null) {
             if (other.ipv4Address != null) return false;
         } else if (!ipv4Address.equals(other.ipv4Address)) return false;
-        if (macAddress == null) {
-            if (other.macAddress != null) return false;
-        } else if (!macAddress.equals(other.macAddress)) return false;
+        if (macAddress != other.macAddress) return false;
         if (switchDPID == null) {
             if (other.switchDPID != null) return false;
         } else if (!switchDPID.equals(other.switchDPID)) return false;
@@ -169,9 +166,49 @@ public class Entity {
 
     @Override
     public String toString() {
-        return "Entity [macAddress=" + macAddress + ", ipv4Address="
+        return "Entity [macAddress=" + HexString.toHexString(macAddress)
+               + ", ipv4Address="
                + ipv4Address + ", vlan=" + vlan + ", switchDPID="
                + switchDPID + ", switchPort=" + switchPort + "]";
+    }
+
+    @Override
+    public int compareTo(Entity o) {
+        if (macAddress < o.macAddress) return -1;
+        if (macAddress > o.macAddress) return 1;
+
+        int r;
+        if (ipv4Address == null)
+            r = o.ipv4Address == null ? -1 : 0;
+        else if (o.ipv4Address == null)
+            r = 1;
+        else
+            r = ipv4Address.compareTo(o.ipv4Address);
+        if (r != 0) return r;
+
+        if (vlan == null)
+            r = o.vlan == null ? -1 : 0;
+        else if (o.vlan == null)
+            r = 1;
+        else
+            r = vlan.compareTo(o.vlan);
+        if (r != 0) return r;
+
+        if (switchDPID == null)
+            r = o.switchDPID == null ? -1 : 0;
+        else if (o.switchDPID == null)
+            r = 1;
+        else
+            r = switchDPID.compareTo(o.switchDPID);
+        if (r != 0) return r;
+
+        if (switchPort == null)
+            r = o.switchPort == null ? -1 : 0;
+        else if (o.switchPort == null)
+            r = 1;
+        else
+            r = switchPort.compareTo(o.switchPort);
+        return r;
     }
     
 }
