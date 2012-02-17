@@ -369,20 +369,16 @@ public class RoutingImpl
     public void init(FloodlightModuleContext context)
                                              throws FloodlightModuleException {
         topology = context.getServiceImpl(ITopologyService.class);
-    }
-
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // Our 'constructor'
         lock = new ReentrantReadWriteLock();
         network = new HashMap<Long, HashMap<Link, Link>>();
         nexthoplinkmaps = new HashMap<Long, HashMap<Long, Link>>();
         nexthopnodemaps = new HashMap<Long, HashMap<Long, Long>>();
         pathcache = new LRUHashMap<RouteId, Route>(PATH_CACHE_SIZE);
-        
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
         // Register to get updates from topology
         topology.addListener(this);
-        
-        log.info("Initialized Dijkstra RouterImpl");
     }
 }

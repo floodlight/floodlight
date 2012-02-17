@@ -1761,13 +1761,6 @@ public class TopologyImpl
         
         // We create this here because there is no ordering guarantee
         this.topologyAware = new ArrayList<ITopologyListener>();
-    }
-
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // Our 'constructor'
-        
-        // Setup our data structures
         this.lock = new ReentrantReadWriteLock();
         this.updates = new LinkedBlockingQueue<Update>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
@@ -1780,7 +1773,10 @@ public class TopologyImpl
             new EventHistory<EventHistoryTopologyLink>("Topology: Link");
         this.evHistTopologyCluster =
             new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
-            
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
         // Create our storage tables
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
@@ -1792,7 +1788,6 @@ public class TopologyImpl
         } catch (StorageException ex) {
             log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
         }
-        
         
         ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
 

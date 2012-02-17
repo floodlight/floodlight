@@ -148,10 +148,11 @@ public class RestApiServer
         // This has to be done here since we don't know what order the
         // startUp methods will be called
         this.restlets = new ArrayList<RestletRoutable>();
+        this.fmlContext = context;
     }
 
     @Override
-    public void startUp(FloodlightModuleContext fmlContext) {
-        this.fmlContext = fmlContext;
+    public void startUp(FloodlightModuleContext Context) {
+        // no-op
     }
 }

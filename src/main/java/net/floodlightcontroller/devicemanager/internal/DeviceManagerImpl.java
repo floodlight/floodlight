@@ -703,17 +703,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         }
     }
     
-    public DeviceManagerImpl() {
-        // TODO - Alex - move this
-        this.devMgrMaps = new DevMgrMaps();
-        this.lock = new ReentrantReadWriteLock();
-        this.updates = new LinkedList<Update>();
-        this.evHistDevMgrAttachPt = 
-                new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
-        this.evHistDevMgrPktIn =
-                new EventHistory<OFMatch>("Pakcet-In");
-    }
-    
     public void shutDown() {
         shuttingDown = true;
         floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
@@ -2119,24 +2108,25 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         
         // We create this here because there is no ordering guarantee
         this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
+        this.updates = new LinkedList<Update>();
+        this.devMgrMaps = new DevMgrMaps();
+        this.lock = new ReentrantReadWriteLock();
+        
+        this.evHistDevMgrAttachPt = 
+                new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
+        this.evHistDevMgrPktIn =
+                new EventHistory<OFMatch>("Pakcet-In");
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
         // This is our 'constructor'
-        
-        // Create our data structures
-        this.devMgrMaps = new DevMgrMaps();
-        this.lock = new ReentrantReadWriteLock();
-        this.updates = new LinkedList<Update>();
-        this.evHistDevMgrAttachPt = 
-                new EventHistory<EventHistoryAttachmentPoint>("Attachment-Point");
-        this.evHistDevMgrPktIn =
-                new EventHistory<OFMatch>("Pakcet-In");
-        
+
         if (topology != null) {
             // Register to get updates from topology
             topology.addListener(this);
+        } else {
+            log.error("Could add not toplogy listener");
         }
         
         // Create our database tables

@@ -150,10 +150,6 @@ public class FloodlightModuleLoader {
         Map<Class<? extends IFloodlightService>, IFloodlightModule> moduleMap =
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightModule>();
-        
-        //for (String s : mList) {
-        //    calculateModuleDeps(moduleMap, moduleSet, s);
-        //}
 
         HashSet<String> configMods = new HashSet<String>();
         configMods.addAll(Arrays.asList(mList));
