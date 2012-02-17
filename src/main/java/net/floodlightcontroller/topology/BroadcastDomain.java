@@ -15,14 +15,24 @@ import net.floodlightcontroller.core.IOFSwitch;
  *
  */
 public class BroadcastDomain {
+    private Long id;
     private Set<Long> clusterIds;
     private Map<Long, Set<Long>> clusterSwitchMap;
     private Map<Long, Set<Short>> switchPortMap;
 
     public BroadcastDomain() {
+        id = null;
         clusterIds = new HashSet<Long>();
         clusterSwitchMap = new HashMap<Long,Set<Long>>();
         switchPortMap = new HashMap<Long, Set<Short>>();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = new Long(id);
     }
 
     public Set<Long> getClustersIds() {

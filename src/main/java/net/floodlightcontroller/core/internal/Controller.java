@@ -65,7 +65,6 @@ import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
-import net.floodlightcontroller.flowcache.FlowCache;
 import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
@@ -174,7 +173,6 @@ public class Controller
     protected Forwarding forwarding;
     protected OFMessageFilterManager messageFilterManager;
     protected PktinProcessingTime pktinProcTime;
-    protected FlowCache flowCacheManager;
     private StaticFlowEntryPusher staticFlowEntryPusher;
     protected long ptWarningThresholdInNano;
     
@@ -1439,7 +1437,6 @@ public class Controller
         counterStore = new CounterStore();
         pktinProcTime = new PktinProcessingTime();
         routingEngine = new RoutingImpl();
-        flowCacheManager = new FlowCache();
         initStorageSource();
         
         topology.setFloodlightProvider(this);
@@ -1482,7 +1479,9 @@ public class Controller
     }
     
     protected void initStorageSource() {
-        storageSource = new MemoryStorageSource();
+        MemoryStorageSource memoryStorageSource = new MemoryStorageSource();
+        memoryStorageSource.setCounterStore(counterStore);
+        storageSource = memoryStorageSource;
     }
     
     protected void initMessageFilterManager() {
@@ -1502,7 +1501,6 @@ public class Controller
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
-        forwarding.setFlowCacheMgr(flowCacheManager);
     }
     
     /**

@@ -170,10 +170,14 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
     protected Set<SwitchCluster> clusters;
-    protected Set<BroadcastDomain> broadcastDomains;
-    protected Map<SwitchPortTuple, BroadcastDomain> portGroupMap;
-    protected Map<IOFSwitch, BroadcastDomain> switchGroupMap;
 
+    protected Map<Long, BroadcastDomain> broadcastDomainMap;
+    protected Map<SwitchPortTuple, BroadcastDomain> switchPortBroadcastDomainMap;
+
+    //This map provides the ids of broadcast domains connected to a switch cluster
+    protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
+
+    protected boolean isTopologyValid = false;
 
     public static enum UpdateOperation {ADD, UPDATE, REMOVE,
                                         SWITCH_UPDATED, CLUSTER_MERGED};
@@ -546,16 +550,16 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
         OFPhysicalPort port = sw.getPort(swt.getPort());
         if (port != null) {
-            sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
             sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
+            sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
         }
     }
 
     protected void sendLLDPs(IOFSwitch sw) {
         if (sw.getEnabledPorts() != null) {
             for (OFPhysicalPort port : sw.getEnabledPorts()) {
-                sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
                 sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
+                sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
             }
         }
     }
@@ -1238,14 +1242,24 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         return linkInfo.linkStpBlocked();
     }
 
+    /**
+     * This function clusters and broadcast domains based on the links and switches
+     * identified thus far.  The function will set isTopologyValid flag to be true
+     * if the computation is successful, otherwise it will be set to false.
+     *
+     * TODO We may want to recompute updateOpenFlow clusters until it returns true.
+     */
     protected void updateClusters() {
         if (!lock.isWriteLockedByCurrentThread()) {
             log.error("Expected lock in updateClusters()");
             return;
         }
 
-        updateOpenFlowClusters();
-        updateBroadcastDomains();
+        isTopologyValid = false;
+        if (updateOpenFlowClusters()) {
+            updateBroadcastDomains();
+            isTopologyValid = true;
+        }
     }
 
     protected void addLinkToBroadcastDomain(LinkTuple lt) {
@@ -1288,7 +1302,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected void updateBroadcastDomains() {
         Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks =  getPortBroadcastDomainLinks();
         Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
-        Set<BroadcastDomain> bdSets = new HashSet<BroadcastDomain>();
+        Map<Long, BroadcastDomain> bdMap = new HashMap<Long, BroadcastDomain>();
+        Map<SwitchPortTuple, BroadcastDomain> spbdMap = new HashMap<SwitchPortTuple, BroadcastDomain>();
+        Map<Long, Set<Long>> scbdMap = new HashMap<Long, Set<Long>>();
 
         // Do a breadth first search to get all the connected components
         for(SwitchPortTuple swt: pbdLinks.keySet()) {
@@ -1297,6 +1313,11 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             // create an array list and add the first switch port.
             Queue<SwitchPortTuple> queue = new LinkedBlockingQueue<SwitchPortTuple>();
             BroadcastDomain bd = new BroadcastDomain();
+            bd.setId(bdMap.size()+1);
+
+            // add the broadcast domain to the broadcast domain map
+            bdMap.put(new Long(bdMap.size()+1), bd);
+
             visitedSwt.contains(swt);
             queue.add(swt);
             bd.add(swt);
@@ -1313,24 +1334,33 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                         queue.add(otherSwt);
                         visitedSwt.add(otherSwt);
                         bd.add(otherSwt);
+                        spbdMap.put(otherSwt, bd);
+                        if (scbdMap.get(otherSwt.getSw().getSwitchClusterId()) == null) {
+                            scbdMap.put(otherSwt.getSw().getSwitchClusterId(), new HashSet<Long>());
+                        }
+                        scbdMap.get(otherSwt.getSw().getSwitchClusterId()).add(bd.getId());
                     }
                 }
             }
 
-            // Add this broadcast domain to the set of broadcast domains.
-            bdSets.add(bd);
+
         }
 
         //Replace the current broadcast domains in the topology.
-        broadcastDomains = bdSets;
+        broadcastDomainMap = bdMap;
+        switchPortBroadcastDomainMap = spbdMap;
+        switchClusterBroadcastDomainMap = scbdMap;
 
-        if (bdSets.isEmpty()) {
+        if (bdMap.isEmpty()) {
             if (log.isTraceEnabled()) {
                 log.trace("No broadcast domains exist.");
             }
         } else {
-            log.warn("Broadcast domains found in the network.  There could be potential looping issues.");
-            log.warn("{}", broadcastDomains.toString());
+            log.warn("Broadcast domains found in the network.");
+            for(Long l: bdMap.keySet()) {
+                BroadcastDomain bd = bdMap.get(l);
+                log.warn(bd.toString());
+            }
         }
     }
 
@@ -1348,7 +1378,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      *
      * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
      */
-    protected void updateOpenFlowClusters() {
+    protected boolean updateOpenFlowClusters() {
         // NOTE: This function assumes that the caller has already acquired
         // a write lock on the "lock" data member.
 
@@ -1378,12 +1408,13 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 if (cdfs == null) {
                     log.error("Do DFS object for key found.");
                 }else if (!cdfs.isVisited()) {
-                    this.dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters);
+                    if (this.dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters) < 0) return false;
                 }
             }
         }
 
         updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
+        return true;
     }
 
     /**
@@ -1402,6 +1433,10 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * The initialization of lowpoint and the check condition for when a
      * cluster should be formed is modified as we do not remove switches that
      * are already part of a cluster.
+     *
+     * A return value of -1 indicates that dfsTraverse failed somewhere in the middle
+     * of computation.  This could happen when a switch is removed during the cluster
+     * computation procedure.
      *
      * @param parentIndex: DFS index of the parent node
      * @param currIndex: DFS index to be assigned to a newly visited node
@@ -1434,6 +1469,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 IOFSwitch dstSw = lt.getDst().getSw();
                 LinkInfo info = links.get(lt);
 
+                if (dstSw == null) return -1;
+
                 // ignore incoming links.
                 if (dstSw == currSw) continue;
 
@@ -1446,6 +1483,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                 // Get the DFS object corresponding to the dstSw
                 ClusterDFS dstDFS = dfsList.get(dstSw);
 
+                if (dstDFS == null) return -1;
+
                 if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
                     // could be a potential lowpoint
                     if (dstDFS.getDfsIndex() < currDFS.getLowpoint())
@@ -1455,6 +1494,8 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
                     // make a DFS visit
                     currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
                             switches, dfsList, currSet, clusters);
+
+                    if (currIndex < 0) return -1;
 
                     // update lowpoint after the visit
                     if (dstDFS.getLowpoint() < currDFS.getLowpoint())
