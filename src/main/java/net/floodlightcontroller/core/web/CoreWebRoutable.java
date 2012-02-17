@@ -54,6 +54,7 @@ public class CoreWebRoutable implements RestletRoutable {
                 EventHistoryTopologyLinkResource.class);
         router.attach("/event-history/topology-cluster/{count}/json",
                 EventHistoryTopologyClusterResource.class);
+        router.attach("/storage/tables/json", StorageSourceTablesResource.class);
         return router;
     }
 }

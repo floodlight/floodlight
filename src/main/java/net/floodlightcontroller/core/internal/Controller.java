@@ -1479,7 +1479,9 @@ public class Controller
     }
     
     protected void initStorageSource() {
-        storageSource = new MemoryStorageSource();
+        MemoryStorageSource memoryStorageSource = new MemoryStorageSource();
+        memoryStorageSource.setCounterStore(counterStore);
+        storageSource = memoryStorageSource;
     }
     
     protected void initMessageFilterManager() {
