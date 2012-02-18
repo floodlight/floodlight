@@ -96,8 +96,6 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
-        FlowCache flowCache = new FlowCache();
-        forwarding.setFlowCacheMgr(flowCache);
         forwarding.setCounterStore(new CounterStore());
 
         // Mock switches
