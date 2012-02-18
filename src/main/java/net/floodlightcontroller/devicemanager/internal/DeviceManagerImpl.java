@@ -326,29 +326,33 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             // Find the device matching the destination from the entity
             // classes of the source.
             Entity dstEntity = getDestEntityFromPacket(eth);
-            Device dstDevice = findDeviceByEntity(dstEntity);
-            if (dstDevice == null) {
-                // This can only happen if we have attachment point
-                // key fields since attachment point information isn't
-                // available for destination devices.
-                /*
-                ArrayList<Device> candidates = new ArrayList<Device>();
-                for (IEntityClass clazz : srcDevice.getEntityClasses()) {
-                    Device c = findDeviceInClassByEntity(clazz, dstEntity);
-                    if (c != null)
-                        candidates.add(c);
+            if (dstEntity != null) {
+                Device dstDevice = findDeviceByEntity(dstEntity);
+
+                if (dstDevice == null) {
+                    // This can only happen if we have attachment point
+                    // key fields since attachment point information isn't
+                    // available for destination devices.
+                    /*
+                    ArrayList<Device> candidates = new ArrayList<Device>();
+                    for (IEntityClass clazz : srcDevice.getEntityClasses()) {
+                        Device c = findDeviceInClassByEntity(clazz, dstEntity);
+                        if (c != null)
+                            candidates.add(c);
+                    }
+                    if (candidates.size() == 1) {
+                        dstDevice = candidates.get(0);
+                    } else if (candidates.size() > 1) {
+                        // ambiguous device.  A higher-order component will 
+                        // need to deal with it by assigning priority
+                        // XXX - TODO
+                    }
+                    */
+
                 }
-                if (candidates.size() == 1) {
-                    dstDevice = candidates.get(0);
-                } else if (candidates.size() > 1) {
-                    // ambiguous device.  A higher-order component will need
-                    // to deal with it by assigning priority
-                    // XXX - TODO
-                }
-                */
+                if (dstDevice != null)
+                    fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             }
-            if (dstDevice != null)
-                fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             
             return Command.CONTINUE;
 
