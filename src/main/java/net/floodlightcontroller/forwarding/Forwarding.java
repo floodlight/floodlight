@@ -20,13 +20,16 @@ package net.floodlightcontroller.forwarding;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
-import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -63,25 +66,29 @@ public class Forwarding extends ForwardingBase {
     }
     
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
-                FloodlightContext cntx, boolean reqeustFlowRemovedNotifn) {    
+                                 FloodlightContext cntx,
+                                 boolean requestFlowRemovedNotifn) {    
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
 
         // Check if we have the location of the destination
-        Device dstDevice = deviceManager.getDeviceByDataLayerAddress(match.getDataLayerDestination());
+        IDevice dstDevice = 
+                IDeviceManager.fcStore.get(cntx, 
+                                           IDeviceManager.CONTEXT_DST_DEVICE);
         
         if (dstDevice != null) {
-            Device srcDevice = deviceManager.getDeviceByDataLayerAddress(match.getDataLayerSource());
+            IDevice srcDevice =
+                    IDeviceManager.fcStore.
+                        get(cntx, IDeviceManager.CONTEXT_SRC_DEVICE);
             Long srcIsland = sw.getSwitchClusterId();
             
             if (srcDevice == null) {
-                log.error("No device entry found for source device {}", 
-                          HexString.toHexString(dstDevice.getDataLayerAddress()));
+                log.error("No device entry found for source device");
                 return;
             }
             if (srcIsland == null) {
-                log.error("No openflow island found for source device {}", 
-                          HexString.toHexString(dstDevice.getDataLayerAddress()));
+                log.error("No openflow island found for source {}/{}", 
+                          HexString.toHexString(sw.getId()), pi.getInPort());
                 return;
             }
                                                 
@@ -89,34 +96,36 @@ public class Forwarding extends ForwardingBase {
             // Validate that the source and destination are not on the same switchport
             boolean on_same_island = false;
             boolean on_same_if = false;
-            for (DeviceAttachmentPoint dstDap : dstDevice.getAttachmentPoints()) {
-                SwitchPortTuple dstTuple = dstDap.getSwitchPort();
-                if ((dstTuple != null) && (dstTuple.getSw() != null)) {
-                    Long dstIsland = dstTuple.getSw().getSwitchClusterId();
-                    if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
-                        on_same_island = true;
-                        if ((sw.getId() == dstTuple.getSw().getId()) &&
-                            (pi.getInPort() == dstTuple.getPort().shortValue())) {
-                            on_same_if = true;
-                        }
-                        break;
+            for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
+                long dstSwDpid = dstDap.getSwitchDPID();
+                IOFSwitch dstSw = 
+                        floodlightProvider.getSwitches().get(dstSwDpid);
+                if (dstSw == null)
+                    continue;
+                Long dstIsland = dstSw.getSwitchClusterId();
+                if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
+                    on_same_island = true;
+                    if ((sw.getId() == dstSwDpid) &&
+                        (pi.getInPort() == dstDap.getPort())) {
+                        on_same_if = true;
                     }
+                    break;
                 }
             }
             
             if (!on_same_island) {
                 // Flood since we don't know the dst device
-                if (log.isDebugEnabled()) {
-                    log.debug("No first hop island found for destination device {}, Action = flooding",
-                              dstDevice.getDataLayerAddress());
+                if (log.isTraceEnabled()) {
+                    log.trace("No first hop island found for destination " + 
+                              "device {}, Action = flooding", dstDevice);
                 }
                 doFlood(sw, pi, cntx);
                 return;
             }            
             
             if (on_same_if) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Both source and destination are on the same switch/port {}/{}, Action = NOP", 
+                if (log.isTraceEnabled()) {
+                    log.trace("Both source and destination are on the same switch/port {}/{}, Action = NOP", 
                               sw.toString(), pi.getInPort());
                 }
                 return;
@@ -124,16 +133,19 @@ public class Forwarding extends ForwardingBase {
 
             // Install all the routes where both src and dst have attachment points
             // Since the lists are stored in sorted order we can traverse the attachment points in O(m+n) time
-            DeviceAttachmentPoint[] srcDaps = 
-                srcDevice.getAttachmentPointsSorted(DeviceAttachmentPoint.clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
-            DeviceAttachmentPoint[] dstDaps = 
-                dstDevice.getAttachmentPointsSorted(DeviceAttachmentPoint.clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
+            SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
+            Arrays.sort(srcDaps, clusterIdComparator);
+            SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();
+            Arrays.sort(dstDaps, clusterIdComparator);
+
             int iSrcDaps = 0, iDstDaps = 0;
+            Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
+            
             while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
-                DeviceAttachmentPoint srcDap = srcDaps[iSrcDaps];
-                DeviceAttachmentPoint dstDap = dstDaps[iDstDaps];
-                IOFSwitch srcSw = srcDap.getSwitchPort().getSw();
-                IOFSwitch dstSw = dstDap.getSwitchPort().getSw();
+                SwitchPort srcDap = srcDaps[iSrcDaps];
+                SwitchPort dstDap = dstDaps[iDstDaps];
+                IOFSwitch srcSw = switches.get(srcDap.getSwitchDPID());
+                IOFSwitch dstSw = switches.get(dstDap.getSwitchDPID());
                 Long srcCluster = null;
                 Long dstCluster = null;
                 if ((srcSw != null) && (dstSw != null)) {
@@ -143,18 +155,23 @@ public class Forwarding extends ForwardingBase {
                 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
-                    if (!srcDap.equals(dstDap) && (srcCluster != null) && (dstCluster != null)) {
-                        Route route = routingEngine.getRoute(srcSw.getId(), dstSw.getId());
-                        if ((route != null) || validLocalHop(srcDap.getSwitchPort(), dstDap.getSwitchPort())) {
+                    if (!srcDap.equals(dstDap) && 
+                        (srcCluster != null) && 
+                        (dstCluster != null)) {
+                        Route route = routingEngine.getRoute(srcSw.getId(), 
+                                                             dstSw.getId());
+                        if ((route != null) || validLocalHop(srcDap, dstDap)) {
                             int bufferId = OFPacketOut.BUFFER_ID_NONE;
                             if (log.isTraceEnabled()) {
-                                log.trace("pushRoute match={} route={} destination={}:{}",
-                                          new Object[] {match, route, dstDap.getSwitchPort().getSw(),
-                                          dstDap.getSwitchPort().getPort()});
+                                log.trace("pushRoute match={} route={} " + 
+                                          "destination={}:{}",
+                                          new Object[] {match, route, 
+                                                        dstDap.getSwitchDPID(),
+                                                        dstDap.getPort()});
                             }
-                            pushRoute(route, match, 0,
-                                      srcDap.getSwitchPort(), dstDap.getSwitchPort(), bufferId,
-                                      sw, pi, cntx, reqeustFlowRemovedNotifn);
+                            pushRoute(route, match, 0, srcDap, dstDap,
+                                      bufferId, sw, pi, cntx, 
+                                      requestFlowRemovedNotifn);
                         }
                     }
                     iSrcDaps++;
@@ -241,8 +258,8 @@ public class Forwarding extends ForwardingBase {
         return match.clone().setWildcards(wildcards);
     }
 
-    private boolean validLocalHop(SwitchPortTuple srcTuple, SwitchPortTuple dstTuple) {
-        return srcTuple.getSw().getId() == dstTuple.getSw().getId() &&
+    private boolean validLocalHop(SwitchPort srcTuple, SwitchPort dstTuple) {
+        return srcTuple.getSwitchDPID() == dstTuple.getSwitchDPID() &&
                srcTuple.getPort() != dstTuple.getPort();
     }
 }

@@ -44,10 +44,6 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/staticflowentrypusher/json", StaticFlowEntryPusherResource.class);
         router.attach("/packettrace/json", PacketTraceResource.class);
         // Get the last {count} events from the event histories
-        router.attach("/event-history/attachment-point/{count}/json",
-                EventHistoryAttachmentPointResource.class);
-        router.attach("/event-history/packet-in/{count}/json",
-                EventHistoryPacketInResource.class);
         router.attach("/event-history/topology-switch/{count}/json",
                 EventHistoryTopologySwitchResource.class);
         router.attach("/event-history/topology-link/{count}/json",

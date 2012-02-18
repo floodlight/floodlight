@@ -1463,7 +1463,7 @@ public class Controller
         HashSet<IDeviceManagerAware> dmAware = 
             new HashSet<IDeviceManagerAware>();
         dmAware.add(forwarding);
-        deviceManager.setDeviceManagerAware(dmAware);
+        //deviceManager.setDeviceManagerAware(dmAware);
         
         restlets.add(new CoreWebRoutable());
         restlets.add(new StorageWebRoutable());

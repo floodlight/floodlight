@@ -17,17 +17,16 @@
 
 package net.floodlightcontroller.devicemanager.test;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
-
+import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.internal.Device;
-import net.floodlightcontroller.packet.Ethernet;
 
 public class MockDeviceManager implements IDeviceManager {
     protected Map<Long, Device> devices;
@@ -36,60 +35,42 @@ public class MockDeviceManager implements IDeviceManager {
         devices = new HashMap<Long, Device>();
     }
     
-    @Override
-    public Device getDeviceByDataLayerAddress(byte[] address) {
-        return devices.get(Ethernet.toLong(address));
-    }
-    
-    @Override
-    public Device getDeviceByDataLayerAddress(long address) {       
-        return devices.get(new Long(address));
-    }
-
-    @Override
-    public Device getDeviceByIPv4Address(Integer address) {
-        Iterator<Entry<Long, Device>> it = devices.entrySet().iterator();
-        while (it.hasNext()) {
-            Device d = it.next().getValue();
-            if (null != d && null != d.getNetworkAddress(address))
-                return d;
-        }
-        return null;
-    }
-
-    @Override
-    public void invalidateDeviceAPsByIPv4Address(Integer address) {
-        Iterator<Entry<Long, Device>> it = devices.entrySet().iterator();
-        while (it.hasNext()) {
-            Device d = it.next().getValue();
-            if (null != d && null != d.getNetworkAddress(address))
-                d.getAttachmentPoints().clear();
-        }
-    }
-    
     public void addDevices(List<Device> devices) {
         ListIterator<Device> lit = devices.listIterator();
         while (lit.hasNext()) {
-            Device d = lit.next();
-            this.devices.put(d.getDataLayerAddressAsLong(), d);
+            addDevice(lit.next());
         }
     }
 
     public void addDevice(Device device) {
-        this.devices.put(device.getDataLayerAddressAsLong(), device);
+        this.devices.put(device.getMACAddress(), device);
     }
 
     public void clearDevices() {
         this.devices.clear();
     }
-    
+
     @Override
-    public List<Device> getDevices() {
-        List<Device> devices = new ArrayList<Device>();
-        Iterator<Entry<Long, Device>> it = this.devices.entrySet().iterator();
-        while (it.hasNext()) {
-            devices.add(it.next().getValue());
-        }
-        return devices;
+    public void setEntityClassifier(IEntityClassifier classifier) {
+        
+    }
+
+    @Override
+    public void flushEntityCache(IEntityClass entityClass, 
+                                 boolean reclassify) {
+        
+    }
+
+    @Override
+    public IDevice findDevice(long macAddress, Integer ipv4Address, 
+                              Short vlan, Long switchDPID,
+                              Integer switchPort) {
+        return null;
+    }
+
+    @Override
+    public Collection<? extends IDevice> getAllDevices() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

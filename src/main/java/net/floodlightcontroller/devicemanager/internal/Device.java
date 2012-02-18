@@ -116,8 +116,13 @@ public class Device implements IDevice {
 
     @Override
     public Short[] getVlanId() {
-        if (entities.length == 1)
-            return new Short[]{ entities[0].getVlan() };
+        if (entities.length == 1) {
+            if (entities[0].getVlan() != null) {
+                return new Short[]{ entities[0].getVlan() };
+            } else {
+                return new Short[0];
+            }
+        }
 
         TreeSet<Short> vals = new TreeSet<Short>();
         for (Entity e : entities) {
@@ -128,10 +133,13 @@ public class Device implements IDevice {
 
     @Override
     public Integer[] getIPv4Addresses() {
-        Integer addr;
-        if (entities.length == 1 &&
-            (addr = entities[0].getIpv4Address()) != null)
-            return new Integer[]{ addr };
+        if (entities.length == 1) {
+            if (entities[0].getIpv4Address() != null) {
+                return new Integer[]{ entities[0].getIpv4Address() };
+            } else {
+                return new Integer[0];
+            }
+        }
 
         TreeSet<Integer> vals = new TreeSet<Integer>();
         for (Entity e : entities) {
@@ -143,17 +151,25 @@ public class Device implements IDevice {
 
     @Override
     public SwitchPort[] getAttachmentPoints() {
-        if (entities.length == 1)
-            return new SwitchPort[]{new SwitchPort(entities[0].
-                                                   getSwitchDPID(), 
-                                                   entities[0].
-                                                   getSwitchPort()) };
+        if (entities.length == 1) {
+            if (entities[0].getSwitchDPID() != null &&
+                entities[0].getSwitchPort() != null) {
+                SwitchPort sp = new SwitchPort(entities[0].getSwitchDPID(), 
+                                               entities[0].getSwitchPort());
+                return new SwitchPort[] { sp };
+            } else {
+                return new SwitchPort[0];
+            }
+        }
 
         HashSet<SwitchPort> vals = new HashSet<SwitchPort>();
         for (Entity e : entities) {
-            SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
-                                           e.getSwitchPort());
-            vals.add(sp);
+            if (e.getSwitchDPID() != null &&
+                e.getSwitchPort() != null) {
+                SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
+                                               e.getSwitchPort());
+                vals.add(sp);
+            }
         }
         return vals.toArray(new SwitchPort[vals.size()]);
     }
@@ -175,10 +191,6 @@ public class Device implements IDevice {
 
     public IEntityClass[] getEntityClasses() {
         return entityClasses;
-    }
-
-    public void setEntityClasses(IEntityClass[] entityClasses) {
-        this.entityClasses = entityClasses;
     }
 
     public Entity[] getEntities() {

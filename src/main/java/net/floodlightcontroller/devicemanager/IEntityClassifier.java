@@ -55,6 +55,23 @@ public interface IEntityClassifier {
    Collection<IEntityClass> classifyEntity(Entity entity);
 
    /**
+    * Return the most general list of fields that should be used as key 
+    * fields.  If devices differ in any fields not listed here, they can
+    * never be considered a different device by any {@link IEntityClass} 
+    * returned by {@link IEntityClassifier#classifyEntity}.  The key fields
+    * for an entity classifier must not change unless associated with a 
+    * flush of all entity state.  The list of key fields must be the union
+    * of all key fields that could be returned by
+    * {@link IEntityClass#getKeyFields()}.
+    * 
+    * @return a set containing the fields that should not be
+    * wildcarded.  May be null to indicate that all fields are key fields.
+    * @see {@link IEntityClass#getKeyFields()}
+    * @see {@link IEntityClassifier#classifyEntity}
+    */
+   Set<EntityField> getKeyFields();
+
+   /**
     * Reclassify the given entity into a class.  When reclassifying entities,
     * it can be helpful to take into account the current classification either
     * as an optimization or to allow flushing any cached state tied to the key
@@ -86,21 +103,5 @@ public interface IEntityClassifier {
     */
    void deviceUpdate(Device oldDevice, Collection<Device> newDevices);
 
-   /**
-    * Return the most general list of fields that should be used as key 
-    * fields.  If devices differ in any fields not listed here, they can
-    * never be considered a different device by any {@link IEntityClass} 
-    * returned by {@link IEntityClassifier#classifyEntity}.  The key fields
-    * for an entity classifier must not change unless associated with a 
-    * flush of all entity state.  The list of key fields must be the union
-    * of all key fields that could be returned by
-    * {@link IEntityClass#getKeyFields()}.
-    * 
-    * @return a set containing the fields that should not be
-    * wildcarded.  May be null to indicate that all fields are key fields.
-    * @see {@link IEntityClass#getKeyFields()}
-    * @see {@link IEntityClassifier#classifyEntity}
-    */
-   Set<EntityField> getKeyFields();
 }
 

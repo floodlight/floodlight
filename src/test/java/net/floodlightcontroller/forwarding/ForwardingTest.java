@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.forwarding;
 
-import static org.easymock.EasyMock.aryEq;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
@@ -36,7 +35,9 @@ import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.devicemanager.internal.Entity;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -47,7 +48,6 @@ import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopology;
-import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -72,7 +72,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected Forwarding forwarding;
     protected ITopology topology;
     protected IOFSwitch sw1, sw2;
-    protected Device srcDevice, dstDevice;
+    protected Device srcDevice, dstDevice1, dstDevice2;
     protected OFPacketIn packetIn;
     protected OFPacketOut packetOut;
     protected IPacket testPacket;
@@ -104,11 +104,16 @@ public class ForwardingTest extends FloodlightTestCase {
         sw2 = EasyMock.createNiceMock(IOFSwitch.class);  
         expect(sw2.getId()).andReturn(2L).anyTimes();
         expect(sw2.getSwitchClusterId()).andReturn(1L).anyTimes();
-
+        
         //fastWilcards mocked as this constant
-        int fastWildcards = OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC
-        | OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_NW_SRC_ALL | OFMatch.OFPFW_NW_DST_ALL
-        | OFMatch.OFPFW_NW_TOS;
+        int fastWildcards = 
+                OFMatch.OFPFW_IN_PORT | 
+                OFMatch.OFPFW_NW_PROTO | 
+                OFMatch.OFPFW_TP_SRC | 
+                OFMatch.OFPFW_TP_DST | 
+                OFMatch.OFPFW_NW_SRC_ALL | 
+                OFMatch.OFPFW_NW_DST_ALL |
+                OFMatch.OFPFW_NW_TOS;
 
         expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
@@ -139,35 +144,55 @@ public class ForwardingTest extends FloodlightTestCase {
 
         // Build src and dest devices
         byte[] dataLayerSource = ((Ethernet)testPacket).getSourceMACAddress();
-        byte[] dataLayerDest = ((Ethernet)testPacket).getDestinationMACAddress();
-        int networkSource = ((IPv4)((Ethernet)testPacket).getPayload()).getSourceAddress();
-        int networkDest = ((IPv4)((Ethernet)testPacket).getPayload()).getDestinationAddress();
+        byte[] dataLayerDest = 
+                ((Ethernet)testPacket).getDestinationMACAddress();
+        int networkSource =
+                ((IPv4)((Ethernet)testPacket).getPayload()).
+                    getSourceAddress();
+        int networkDest = 
+                ((IPv4)((Ethernet)testPacket).getPayload()).
+                    getDestinationAddress();
 
         currentDate = new Date();
-        srcDevice = new Device();
-        srcDevice.setDataLayerAddress(dataLayerSource);
-        srcDevice.addAttachmentPoint(new SwitchPortTuple(sw1, (short)1), currentDate);
-        srcDevice.addNetworkAddress(networkSource, currentDate);
-        dstDevice = new Device();
-        dstDevice.setDataLayerAddress(dataLayerDest);
-        dstDevice.addNetworkAddress(networkDest, currentDate);
-        // set dstDevice.addAttachmentPoint() based on test case
+        Entity e = new Entity(Ethernet.toLong(dataLayerSource),
+                              null,
+                              networkSource,
+                              1L,
+                              1,
+                              currentDate);
+        srcDevice = new Device(0L, e, DefaultEntityClassifier.entityClasses);
 
-        // Mock deviceManager
-        expect(deviceManager.getDeviceByDataLayerAddress(aryEq(Ethernet.toMACAddress("00:11:22:33:44:55")))).andReturn(dstDevice).anyTimes();
-        expect(deviceManager.getDeviceByDataLayerAddress(aryEq(Ethernet.toMACAddress("00:44:33:22:11:00")))).andReturn(srcDevice).anyTimes();
+        e = new Entity(Ethernet.toLong(dataLayerDest),
+                       null,
+                       networkDest,
+                       2L,
+                       3,
+                       currentDate);
+        dstDevice1 = new Device(1L, e, DefaultEntityClassifier.entityClasses);
+
+        e = new Entity(Ethernet.toLong(dataLayerDest),
+                       null,
+                       networkDest,
+                       1L,
+                       3,
+                       currentDate);
+        dstDevice2 = new Device(2L, e, DefaultEntityClassifier.entityClasses);
         
         // Mock Packet-in
         testPacketSerialized = testPacket.serialize();
-        packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-            .setBufferId(-1)
-            .setInPort((short) 1)
-            .setPacketData(testPacketSerialized)
-            .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) testPacketSerialized.length);
+        packetIn = 
+                ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
+                        getMessage(OFType.PACKET_IN))
+                        .setBufferId(-1)
+                        .setInPort((short) 1)
+                        .setPacketData(testPacketSerialized)
+                        .setReason(OFPacketInReason.NO_MATCH)
+                        .setTotalLength((short) testPacketSerialized.length);
 
         // Mock Packet-out
-        packetOut = (OFPacketOut) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
+        packetOut = 
+                (OFPacketOut) mockFloodlightProvider.getOFMessageFactory().
+                    getMessage(OFType.PACKET_OUT);
         packetOut.setBufferId(this.packetIn.getBufferId())
             .setInPort(this.packetIn.getInPort());
         List<OFAction> poactions = new ArrayList<OFAction>();
@@ -175,15 +200,25 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOut.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
             .setPacketData(testPacketSerialized)
-            .setLengthU(OFPacketOut.MINIMUM_LENGTH+packetOut.getActionsLength()+testPacketSerialized.length);
+            .setLengthU(OFPacketOut.MINIMUM_LENGTH+
+                        packetOut.getActionsLength()+
+                        testPacketSerialized.length);
 
         expected_wildcards = fastWildcards;
-        expected_wildcards &= ~OFMatch.OFPFW_IN_PORT & ~OFMatch.OFPFW_DL_VLAN &
-                     ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST;
-        expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK;
+        expected_wildcards &= ~OFMatch.OFPFW_IN_PORT & 
+                              ~OFMatch.OFPFW_DL_VLAN &
+                              ~OFMatch.OFPFW_DL_SRC & 
+                              ~OFMatch.OFPFW_DL_DST;
+        expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK & 
+                              ~OFMatch.OFPFW_NW_DST_MASK;
 
         // Add the packet to the context store
-        IFloodlightProvider.bcStore.put(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD, (Ethernet)testPacket);
+        IFloodlightProvider.bcStore.put(cntx, 
+                                        IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
+                                        (Ethernet)testPacket);
+        IDeviceManager.fcStore.put(cntx, 
+                                   IDeviceManager.CONTEXT_SRC_DEVICE,
+                                   srcDevice);
     }
 
     private Forwarding getForwarding() {
@@ -195,11 +230,16 @@ public class ForwardingTest extends FloodlightTestCase {
         
         Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
         Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<FloodlightContext> bc1 = new Capture<FloodlightContext>(CaptureType.ALL);
-        Capture<FloodlightContext> bc2 = new Capture<FloodlightContext>(CaptureType.ALL);
+        Capture<FloodlightContext> bc1 = 
+                new Capture<FloodlightContext>(CaptureType.ALL);
+        Capture<FloodlightContext> bc2 = 
+                new Capture<FloodlightContext>(CaptureType.ALL);
 
         // Set destination as sw2 and Mock route
-        dstDevice.addAttachmentPoint(new SwitchPortTuple(sw2, (short)3), currentDate);
+        IDeviceManager.fcStore.put(cntx, 
+                                   IDeviceManager.CONTEXT_DST_DEVICE, 
+                                   dstDevice1);
+
         Route route = new Route(1L, 2L);
         route.setPath(new ArrayList<Link>());
         route.getPath().add(new Link((short)3, (short)1, 2L));
@@ -212,7 +252,9 @@ public class ForwardingTest extends FloodlightTestCase {
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        OFFlowMod fm1 = (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+        OFFlowMod fm1 = 
+                (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().
+                    getMessage(OFType.FLOW_MOD);
         fm1.setIdleTimeout((short)5)
             .setMatch(match.clone()
                     .setWildcards(expected_wildcards))
@@ -254,7 +296,9 @@ public class ForwardingTest extends FloodlightTestCase {
     @Test
     public void testForwardSingleSwitchPath() throws Exception {        
         // Set destination as local and Mock route
-        dstDevice.addAttachmentPoint(new SwitchPortTuple(sw1, (short)3), currentDate);
+        IDeviceManager.fcStore.put(cntx, 
+                                   IDeviceManager.CONTEXT_DST_DEVICE, 
+                                   dstDevice2);
         expect(routingEngine.getRoute(1L, 1L)).andReturn(null).atLeastOnce();
         
         // Expected Flow-mods
@@ -264,14 +308,17 @@ public class ForwardingTest extends FloodlightTestCase {
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        OFFlowMod fm1 = (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+        OFFlowMod fm1 = 
+                (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().
+                    getMessage(OFType.FLOW_MOD);
         fm1.setIdleTimeout((short)5)
             .setMatch(match.clone()
                     .setWildcards(expected_wildcards))
             .setActions(actions)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(2L << 52)
-            .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
+            .setLengthU(OFFlowMod.MINIMUM_LENGTH +
+                        OFActionOutput.MINIMUM_LENGTH);
 
         // Record expected packet-outs/flow-mods
         sw1.write(fm1, cntx);

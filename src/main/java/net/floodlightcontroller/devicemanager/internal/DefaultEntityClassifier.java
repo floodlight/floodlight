@@ -48,7 +48,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
     protected static IEntityClass entityClass = new DefaultEntityClass();
     
-    protected static Collection<IEntityClass> entityClasses;
+    public static Collection<IEntityClass> entityClasses;
     static {
         entityClasses = new HashSet<IEntityClass>(1);
         entityClasses.add(entityClass);

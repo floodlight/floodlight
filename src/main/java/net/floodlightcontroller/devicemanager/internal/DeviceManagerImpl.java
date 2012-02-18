@@ -301,26 +301,54 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
         try {
-
-            if (topology.isInternal(sw, pi.getInPort()) ||
-                !isValidInputPort(pi.getInPort()))
-                return Command.CONTINUE;
-
             Ethernet eth = 
                     IFloodlightProvider.bcStore.
                     get(cntx,IFloodlightProvider.CONTEXT_PI_PAYLOAD);
 
-            Entity entity = getEntityFromPacket(eth, sw, pi.getInPort());
-            if (entity == null)
-                return Command.CONTINUE;
+            // Extract source entity information
+            Entity srcEntity = 
+                    getSourceEntityFromPacket(eth, sw, pi.getInPort());
+            if (srcEntity == null)
+                return Command.STOP;
             
             if (isGratArp(eth)) {
                 // XXX - TODO - Clear attachment points from other clusters
             }
             
-            Device d = learnDeviceByEntity(entity);
+            // Learn/lookup device information
+            Device srcDevice = learnDeviceByEntity(srcEntity);
+            if (srcDevice == null)
+                return Command.STOP;
             
-            fcStore.put(cntx, CONTEXT_SRC_DEVICE, d);
+            // Store the source device in the context
+            fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
+            
+            // Find the device matching the destination from the entity
+            // classes of the source.
+            Entity dstEntity = getDestEntityFromPacket(eth);
+            Device dstDevice = findDeviceByEntity(dstEntity);
+            if (dstDevice == null) {
+                // This can only happen if we have attachment point
+                // key fields since attachment point information isn't
+                // available for destination devices.
+                /*
+                ArrayList<Device> candidates = new ArrayList<Device>();
+                for (IEntityClass clazz : srcDevice.getEntityClasses()) {
+                    Device c = findDeviceInClassByEntity(clazz, dstEntity);
+                    if (c != null)
+                        candidates.add(c);
+                }
+                if (candidates.size() == 1) {
+                    dstDevice = candidates.get(0);
+                } else if (candidates.size() > 1) {
+                    // ambiguous device.  A higher-order component will need
+                    // to deal with it by assigning priority
+                    // XXX - TODO
+                }
+                */
+            }
+            if (dstDevice != null)
+                fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             
             return Command.CONTINUE;
 
@@ -384,24 +412,64 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * @param pi the original packetin
      * @return the entity from the packet
      */
-    private Entity getEntityFromPacket(Ethernet eth, 
-                                       IOFSwitch sw, 
-                                       int port) {
+    private Entity getSourceEntityFromPacket(Ethernet eth, 
+                                             IOFSwitch sw, 
+                                             int port) {
         byte[] dlAddrArr = eth.getSourceMACAddress();
         long dlAddr = Ethernet.toLong(dlAddrArr);
-        
+
         // Ignore broadcast/multicast source
         if ((dlAddrArr[0] & 0x1) != 0)
             return null;
-        
+
+        boolean learnap = true;
+        if (topology.isInternal(sw, (short)port) ||
+            !isValidInputPort((short)port)) {
+            // If this is an internal port or we otherwise don't want
+            // to learn on these ports.  In the future, we should
+            // handle this case by labeling flows with something that
+            // will give us the entity class.  For now, we'll do our
+            // best assuming attachment point information isn't used
+            // as a key field.
+            learnap = false;
+        }
+       
         short vlan = eth.getVlanID();
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
                           ((nwSrc != 0) ? nwSrc : null),
-                          sw.getId(),
-                          port,
+                          (learnap ? sw.getId() : null),
+                          (learnap ? port : null),
                           new Date());
+    }
+    
+    /**
+     * Get a (partial) entity for the destination from the packet. 
+     * @param eth
+     * @return
+     */
+    private Entity getDestEntityFromPacket(Ethernet eth) {
+        byte[] dlAddrArr = eth.getDestinationMACAddress();
+        long dlAddr = Ethernet.toLong(dlAddrArr);
+        short vlan = eth.getVlanID();
+        int nwDst = 0;
+
+        // Ignore broadcast/multicast destination
+        if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+
+        if (eth.getPayload() instanceof IPv4) {
+            IPv4 ipv4 = (IPv4) eth.getPayload();
+            nwDst = ipv4.getDestinationAddress();
+        }
+        
+        return new Entity(dlAddr,
+                          ((vlan >= 0) ? vlan : null),
+                          ((nwDst != 0) ? nwDst : null),
+                          null,
+                          null,
+                          null);
     }
 
     /**
@@ -416,7 +484,20 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             return null;
         return deviceMap.get(deviceKey);
     }
-    
+
+    /**
+     * Look up a {@link Device} within a particular entity class based on 
+     * the provided {@link Entity}.
+     * @param clazz the entity class to search for the entity
+     * @param entity the entity to search for
+     * @return The {@link Device} object if found
+     */
+    protected Device findDeviceInClassByEntity(IEntityClass clazz,
+                                               Entity entity) {
+        // XXX - TODO
+        throw new UnsupportedOperationException();
+    }
+ 
     /**
      * Look up a {@link Device} based on the provided {@link Entity}.  Also learns
      * based on the new entity, and will update existing devices as required. 

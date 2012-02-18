@@ -19,7 +19,9 @@ package net.floodlightcontroller.routing;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProvider;
@@ -32,6 +34,7 @@ import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManager;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingEngine;
@@ -69,7 +72,22 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed by a global APP_ID class
 
+    // Comparator for sorting by SwitchCluster
+    public Comparator<SwitchPort> clusterIdComparator =
+            new Comparator<SwitchPort>() {
+        @Override
+        public int compare(SwitchPort d1, SwitchPort d2) {
+            Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
+            IOFSwitch sw1 = switches.get(d1.getSwitchDPID());
+            IOFSwitch sw2 = switches.get(d2.getSwitchDPID());
 
+            Long d1ClusterId = sw1.getSwitchClusterId();
+            Long d2ClusterId = sw2.getSwitchClusterId();
+            
+            return d1ClusterId.compareTo(d2ClusterId);
+        }
+    };
+    
     public void startUp() {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
@@ -138,11 +156,15 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
      * @param bufferId BufferId of the original PacketIn
      * @return srcSwitchIincluded True if the source switch is included in this route
      */
-    public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
-            SwitchPortTuple srcSwPort,
-            SwitchPortTuple dstSwPort, int bufferId,
-            IOFSwitch srcSwitch, OFPacketIn pi, FloodlightContext cntx,
-            boolean reqeustFlowRemovedNotifn) {
+    public boolean pushRoute(Route route, OFMatch match, 
+                             Integer wildcard_hints,
+                             SwitchPort srcSwPort,
+                             SwitchPort dstSwPort,
+                             int bufferId,
+                             IOFSwitch srcSwitch, 
+                             OFPacketIn pi, 
+                             FloodlightContext cntx,
+                             boolean reqeustFlowRemovedNotifn) {
         long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
         return pushRoute(route, match, wildcard_hints, srcSwPort, dstSwPort, 
                 bufferId, srcSwitch, pi, cookie, cntx, reqeustFlowRemovedNotifn);
@@ -159,12 +181,12 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
      * @return srcSwitchIincluded True if the source switch is included in this route
      */
     public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
-                          SwitchPortTuple srcSwPort,
-                          SwitchPortTuple dstSwPort, int bufferId,
-                          IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
-                          FloodlightContext cntx,
-                          boolean reqeustFlowRemovedNotifn) {
-        
+                             SwitchPort srcSwPort,
+                             SwitchPort dstSwPort, int bufferId,
+                             IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
+                             FloodlightContext cntx,
+                             boolean reqeustFlowRemovedNotifn) {
+
         boolean srcSwitchIncluded = false;
         OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
         OFActionOutput action = new OFActionOutput();
@@ -177,8 +199,10 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             .setActions(actions)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
-        IOFSwitch sw = dstSwPort.getSw();
-        ((OFActionOutput)fm.getActions().get(0)).setPort(dstSwPort.getPort());
+        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
+        IOFSwitch sw = switches.get(dstSwPort.getSwitchDPID());
+        ((OFActionOutput)fm.getActions().get(0)).
+            setPort((short)dstSwPort.getPort());
 
         if (route != null) {
             for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
@@ -231,7 +255,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         fm.setMatch(match);
         fm.setBufferId(bufferId);
         fm.setMatch(wildcard(match, sw, wildcard_hints));
-        fm.getMatch().setInputPort(srcSwPort.getPort());
+        fm.getMatch().setInputPort((short)srcSwPort.getPort());
         // Set the flag to request flow-mod removal notifications only for the 
         // source switch. The removal message is used to maintain the flow
         // cache. Don't set the flag for ARP messages - TODO generalize check
@@ -402,7 +426,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             IOFSwitch sw, Short port) {
         // Build flow mod to delete based on destination mac == device mac
         OFMatch match = new OFMatch();
-        match.setDataLayerDestination(device.getDataLayerAddress());
+        match.setDataLayerDestination(Ethernet.toByteArray(device.getMACAddress()));
         match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
             .getMessage(OFType.FLOW_MOD))
