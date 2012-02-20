@@ -1688,10 +1688,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         String deviceId = device.getDlAddrString();
 
         // Remove all of the attachment points
-        storageSource.deleteRowsAsync(DEVICE_ATTACHMENT_POINT_TABLE_NAME,
+        storageSource.deleteMatchingRowsAsync(DEVICE_ATTACHMENT_POINT_TABLE_NAME,
                 new OperatorPredicate(DEVICE_COLUMN_NAME, 
                         OperatorPredicate.Operator.EQ, deviceId));
-        storageSource.deleteRowsAsync(DEVICE_NETWORK_ADDRESS_TABLE_NAME,
+        storageSource.deleteMatchingRowsAsync(DEVICE_NETWORK_ADDRESS_TABLE_NAME,
                 new OperatorPredicate(DEVICE_COLUMN_NAME, 
                         OperatorPredicate.Operator.EQ, deviceId));
 

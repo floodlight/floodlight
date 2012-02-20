@@ -178,8 +178,12 @@ public class TopologyImpl
 
     protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
     protected Set<SwitchCluster> clusters;
+
     protected Map<Long, BroadcastDomain> broadcastDomainMap;
     protected Map<SwitchPortTuple, BroadcastDomain> switchPortBroadcastDomainMap;
+
+    //This map provides the ids of broadcast domains connected to a switch cluster
+    protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
 
     protected boolean isTopologyValid = false;
 
@@ -1203,6 +1207,7 @@ public class TopologyImpl
         Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
         Map<Long, BroadcastDomain> bdMap = new HashMap<Long, BroadcastDomain>();
         Map<SwitchPortTuple, BroadcastDomain> spbdMap = new HashMap<SwitchPortTuple, BroadcastDomain>();
+        Map<Long, Set<Long>> scbdMap = new HashMap<Long, Set<Long>>();
 
         // Do a breadth first search to get all the connected components
         for(SwitchPortTuple swt: pbdLinks.keySet()) {
@@ -1233,6 +1238,10 @@ public class TopologyImpl
                         visitedSwt.add(otherSwt);
                         bd.add(otherSwt);
                         spbdMap.put(otherSwt, bd);
+                        if (scbdMap.get(otherSwt.getSw().getSwitchClusterId()) == null) {
+                            scbdMap.put(otherSwt.getSw().getSwitchClusterId(), new HashSet<Long>());
+                        }
+                        scbdMap.get(otherSwt.getSw().getSwitchClusterId()).add(bd.getId());
                     }
                 }
             }
@@ -1243,6 +1252,7 @@ public class TopologyImpl
         //Replace the current broadcast domains in the topology.
         broadcastDomainMap = bdMap;
         switchPortBroadcastDomainMap = spbdMap;
+        switchClusterBroadcastDomainMap = scbdMap;
 
         if (bdMap.isEmpty()) {
             if (log.isTraceEnabled()) {

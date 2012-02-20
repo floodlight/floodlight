@@ -28,14 +28,19 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
@@ -62,18 +67,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private OFPacketIn thirdPacketIn;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
-    IStorageSourceService storageSource;
+    MemoryStorageSource storageSource;
     
     @Before
     public void setUp() throws Exception {
         super.setUp();
 
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        RestApiServer restApi = new RestApiServer();
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
-        deviceManager.setFloodlightProvider(mockFloodlightProvider);
+        fmc.addService(IDeviceManagerService.class, deviceManager);
         storageSource = new MemoryStorageSource();
-        deviceManager.storageSource = storageSource;
-        deviceManager.startUp(null);
+        fmc.addService(IStorageSourceService.class, storageSource);
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IRestApiService.class, restApi);
+        restApi.init(fmc);
+        storageSource.init(fmc);
+        deviceManager.init(fmc);
+        storageSource.startUp(fmc);
+        deviceManager.startUp(fmc);
         
         // Build our test packet
         this.testPacket = new Ethernet()

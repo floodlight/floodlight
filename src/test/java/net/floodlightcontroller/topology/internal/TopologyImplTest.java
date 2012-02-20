@@ -33,10 +33,12 @@ import org.junit.Test;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPhysicalPort;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -66,16 +68,16 @@ public class TopologyImplTest extends FloodlightTestCase {
         super.setUp();
         FloodlightModuleContext cntx = new FloodlightModuleContext();
         topology = new TopologyImpl();
-        topology.floodlightProvider = getMockFloodlightProvider();
-        topology.storageSource = new MemoryStorageSource();
         RoutingImpl routingEngine = new RoutingImpl();
-        topology.routingEngine = routingEngine;
         topology.topologyAware = new ArrayList<ITopologyListener>();
         cntx.addService(IRoutingEngineService.class, routingEngine);
         cntx.addService(ITopologyService.class, topology);
+        cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
+        cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         routingEngine.init(cntx);
-        routingEngine.startUp(cntx); // Doesn't use context
-        topology.startUp(cntx); //Topology doens't use the context here
+        topology.init(cntx);
+        routingEngine.startUp(cntx);
+        topology.startUp(cntx);
     }
 
     @Test
@@ -825,6 +827,7 @@ public class TopologyImplTest extends FloodlightTestCase {
                 topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt) == false);
 
         assertTrue(topology.broadcastDomainMap.isEmpty());
+        assertTrue(topology.switchClusterBroadcastDomainMap.isEmpty());
         topology.timeoutLinks();
 
 
@@ -836,6 +839,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.isEmpty() == false);
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
 
 
         // Add a link info based on info that woudld be obtained from unicast LLDP
@@ -850,6 +854,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()) == null ||
                 topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt) == false);
         assertTrue(topology.broadcastDomainMap.size() == 0);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 0);
 
 
         // Expect to timeout the unicast Valid Time, but not the multicast Valid time
@@ -860,6 +865,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
 
 
         // Set the multicastValidTime to be old and see if that also times out.
@@ -871,6 +877,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()) == null ||
                 topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt) == false);
         assertTrue(topology.broadcastDomainMap.size() == 0);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 0);
 
         // Test again only with multicast LLDP
         info = new LinkInfo(null, System.currentTimeMillis() - 40000, 0, 0);
@@ -880,6 +887,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
 
         // Call timeout and check if link is no longer present.
         topology.timeoutLinks();
@@ -889,6 +897,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()) == null ||
                 topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt) == false);
         assertTrue(topology.broadcastDomainMap.size() == 0);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 0);
 
         // Start clean and see if loops are also added.
         lt = new LinkTuple(sw1, 1, sw1, 2);
@@ -897,6 +906,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
 
         // Start clean and see if loops are also added.
         lt = new LinkTuple(sw1, 1, sw1, 3);
@@ -905,6 +915,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
 
         // Start clean and see if loops are also added.
         lt = new LinkTuple(sw1, 4, sw1, 5);
@@ -913,6 +924,8 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 2);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.get(new Long(1)).size() == 2);
 
         // Start clean and see if loops are also added.
         lt = new LinkTuple(sw1, 3, sw1, 5);
@@ -921,6 +934,8 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.get(new Long(1)).size() == 1);
     }
 
 }

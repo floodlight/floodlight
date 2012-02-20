@@ -31,24 +31,26 @@ import java.util.Map;
 import java.util.Set;
 
 import net.floodlightcontroller.perfmon.PktInProcessingTime;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IRowMapper;
-import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.NullValueStorageException;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
+import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     
-    protected IStorageSourceService storageSource;
+    protected MemoryStorageSource storageSource;
+    protected RestApiServer restApi;
     
     protected String PERSON_TABLE_NAME = "Person";
     
@@ -336,19 +338,19 @@ public abstract class StorageTest extends FloodlightTestCase {
     }
     
     @Test
-    public void testDeleteRows() {
+    public void testDeleteMatchingRows() {
         Object[][] expectedResults = {
                 {"111-11-1111", "John", "Smith", 40, true},
                 {"777-77-7777", "Bjorn", "Borg", 55, true},
                 {"888-88-8888", "John", "McEnroe", 53, false}
         };
-        storageSource.deleteRows(PERSON_TABLE_NAME, new OperatorPredicate(PERSON_AGE, OperatorPredicate.Operator.LT, 40));
+        storageSource.deleteMatchingRows(PERSON_TABLE_NAME, new OperatorPredicate(PERSON_AGE, OperatorPredicate.Operator.LT, 40));
         
         // Now query again to verify that the rows were deleted
         IResultSet resultSet = storageSource.executeQuery(PERSON_TABLE_NAME, PERSON_COLUMN_LIST, null, new RowOrdering(PERSON_SSN));
         checkExpectedResults(resultSet, PERSON_COLUMN_LIST, expectedResults);
         
-        storageSource.deleteRows(PERSON_TABLE_NAME, null);
+        storageSource.deleteMatchingRows(PERSON_TABLE_NAME, null);
 
         // Now query again to verify that all rows were deleted
         resultSet = storageSource.executeQuery(PERSON_TABLE_NAME, PERSON_COLUMN_LIST, null, new RowOrdering(PERSON_SSN));
@@ -675,13 +677,13 @@ public abstract class StorageTest extends FloodlightTestCase {
     }
     
     @Test
-    public void testAsyncUpdateRows() {
+    public void testAsyncUpdateMatchingRows() {
         Map<String,Object> updateValues = new HashMap<String,Object>();
         updateValues.put(PERSON_FIRST_NAME, "Tennis");
         updateValues.put(PERSON_AGE, 60);
 
         IPredicate predicate = new OperatorPredicate(PERSON_SSN, OperatorPredicate.Operator.EQ, "777-77-7777");
-        Future<?> future = storageSource.updateRowsAsync(PERSON_TABLE_NAME, predicate, updateValues);
+        Future<?> future = storageSource.updateMatchingRowsAsync(PERSON_TABLE_NAME, predicate, updateValues);
         waitForFuture(future);
         try {
             IResultSet resultSet = storageSource.getRow(PERSON_TABLE_NAME, "777-77-7777");
@@ -708,8 +710,8 @@ public abstract class StorageTest extends FloodlightTestCase {
     }
     
     @Test
-    public void testAsyncDeleteRows() {
-        Future<?> future = storageSource.deleteRowsAsync(PERSON_TABLE_NAME, null);
+    public void testAsyncDeleteMatchingRows() {
+        Future<?> future = storageSource.deleteMatchingRowsAsync(PERSON_TABLE_NAME, null);
         waitForFuture(future);
         try {
             IResultSet resultSet = storageSource.executeQuery(PERSON_TABLE_NAME, null, null, new RowOrdering(PERSON_SSN));

@@ -28,6 +28,10 @@ import org.openflow.protocol.action.OFActionType;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
 import org.openflow.protocol.statistics.OFVendorStatistics;
+import org.openflow.protocol.vendor.OFByteArrayVendorData;
+import org.openflow.protocol.vendor.OFVendorData;
+import org.openflow.protocol.vendor.OFVendorDataType;
+import org.openflow.protocol.vendor.OFVendorId;
 
 
 /**
@@ -39,7 +43,7 @@ import org.openflow.protocol.statistics.OFVendorStatistics;
  *
  */
 public class BasicFactory implements OFMessageFactory, OFActionFactory,
-        OFStatisticsFactory {
+        OFStatisticsFactory, OFVendorDataFactory {
     @Override
     public OFMessage getMessage(OFType t) {
         return t.newInstance();
@@ -73,6 +77,9 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
             }
             if (ofm instanceof OFStatisticsFactoryAware) {
                 ((OFStatisticsFactoryAware)ofm).setStatisticsFactory(this);
+            }
+            if (ofm instanceof OFVendorDataFactoryAware) {
+                ((OFVendorDataFactoryAware)ofm).setVendorDataFactory(this);
             }
             ofm.readFrom(data);
             if (OFMessage.class.equals(ofm.getClass())) {
@@ -203,4 +210,42 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
         }
         return results; // empty; no statistics at all
     }
+
+
+    @Override
+    public OFVendorData getVendorData(OFVendorId vendorId,
+                                      OFVendorDataType vendorDataType) {
+        if (vendorDataType == null)
+            return null;
+        
+        return vendorDataType.newInstance();
+    }
+
+    /**
+     * Attempts to parse and return the OFVendorData contained in the given
+     * ChannelBuffer, beginning right after the vendor id.
+     * @param vendor the vendor id that was parsed from the OFVendor message.
+     * @param data the ChannelBuffer from which to parse the vendor data
+     * @param length the length to the end of the enclosing message.
+     * @return an OFVendorData instance
+     */
+    public OFVendorData parseVendorData(int vendor, ChannelBuffer data,
+            int length) {
+        OFVendorDataType vendorDataType = null;
+        OFVendorId vendorId = OFVendorId.lookupVendorId(vendor);
+        if (vendorId != null) {
+            data.markReaderIndex();
+            vendorDataType = vendorId.parseVendorDataType(data, length);
+            data.resetReaderIndex();
+        }
+        
+        OFVendorData vendorData = getVendorData(vendorId, vendorDataType);
+        if (vendorData == null)
+            vendorData = new OFByteArrayVendorData();
+
+        vendorData.readFrom(data, length);
+        
+        return vendorData;
+    }
+
 }

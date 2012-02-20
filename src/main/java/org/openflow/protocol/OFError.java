@@ -35,7 +35,27 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
     public static int MINIMUM_LENGTH = 12;
 
     public enum OFErrorType {
-        OFPET_HELLO_FAILED, OFPET_BAD_REQUEST, OFPET_BAD_ACTION, OFPET_FLOW_MOD_FAILED, OFPET_PORT_MOD_FAILED, OFPET_QUEUE_OP_FAILED
+        // OFPET_VENDOR_ERROR is an extension that was added in Open vSwitch and isn't
+        // in the OF 1.0 spec, but it was easier to add it here instead of adding
+        // generic support for extensible vendor-defined error messages. 
+        // It uses the random value 0xb0c2 to avoid conflicts with other possible new
+        // error types. Support for vendor-defined extended errors has been standardized
+        // in the OF 1.2 spec, so this workaround in only needed for 1.0.
+        OFPET_HELLO_FAILED, OFPET_BAD_REQUEST, OFPET_BAD_ACTION, OFPET_FLOW_MOD_FAILED, OFPET_PORT_MOD_FAILED, OFPET_QUEUE_OP_FAILED, OFPET_VENDOR_ERROR((short)0xb0c2);
+        
+        protected short value;
+        
+        private OFErrorType() {
+            this.value = (short) this.ordinal();
+        }
+        
+        private OFErrorType(short value) {
+            this.value = value;
+        }
+        
+        public short getValue() {
+            return value;
+        }
     }
 
     public enum OFHelloFailedCode {
@@ -64,6 +84,9 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
 
     protected short errorType;
     protected short errorCode;
+    protected int vendor;
+    protected int vendorErrorType;
+    protected short vendorErrorCode;
     protected OFMessageFactory factory;
     protected byte[] error;
     protected boolean errorIsAscii;
@@ -90,9 +113,16 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
     }
 
     public void setErrorType(OFErrorType type) {
-        this.errorType = (short) type.ordinal();
+        this.errorType = type.getValue();
     }
 
+    /**
+     * @return true if the error is an extended vendor error
+     */
+    public boolean isVendorError() {
+        return errorType == OFErrorType.OFPET_VENDOR_ERROR.getValue();
+    }
+    
     /**
      * @return the errorCode
      */
@@ -210,7 +240,7 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
         if (dataLength > 0) {
             this.error = new byte[dataLength];
             data.readBytes(this.error);
-            if (this.errorType == OFErrorType.OFPET_HELLO_FAILED.ordinal())
+            if (this.errorType == OFErrorType.OFPET_HELLO_FAILED.getValue())
                 this.errorIsAscii = true;
         }
     }

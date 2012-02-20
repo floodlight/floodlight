@@ -53,6 +53,11 @@ public interface IStorageSourceService extends IFloodlightService {
      */
     void createTable(String tableName, Set<String> indexedColumns);
     
+    /**
+     * @return the set of all tables that have been created via createTable
+     */
+    Set<String> getAllTableNames();
+    
     /** Create a query object representing the given query parameters. The query
      * object can be passed to executeQuery to actually perform the query and obtain
      * a result set.
@@ -103,13 +108,19 @@ public interface IStorageSourceService extends IFloodlightService {
             RowOrdering ordering, IRowMapper rowMapper);
     
     /** Insert a new row in the table with the given column data.
-     * The primary key for the row in the table is indicated with the special column
-     * name of "id". If there's no "id" values specified in the map of values, then
-     * a unique id will be automatically assigned to the row.
+     * If the primary key is the default value of "id" and is not specified in the
+     * then a unique id will be automatically assigned to the row.
      * @param tableName The name of the table to which to add the row
      * @param values The map of column names/values to add to the table.
      */
     void insertRow(String tableName, Map<String,Object> values);
+
+    /** Update or insert a list of rows in the table.
+     * The primary key must be included in the map of values for each row.
+     * @param tableName The table to update or insert into
+     * @param values The map of column names/values to update the rows
+     */
+    void updateRows(String tableName, List<Map<String,Object>> rows);
     
     /** Update the rows in the given table. Any rows matching the predicate
      * are updated with the column names/values specified in the values map.
@@ -118,7 +129,7 @@ public interface IStorageSourceService extends IFloodlightService {
      * @param predicate The predicate to use to select which rows to update
      * @param values The map of column names/values to update the rows.
      */
-    void updateRows(String tableName, IPredicate predicate, Map<String,Object> values);
+    void updateMatchingRows(String tableName, IPredicate predicate, Map<String,Object> values);
     
     /** Update or insert a row in the table with the given row key (primary
      * key) and column names/values. (If the values map contains the special
@@ -130,25 +141,32 @@ public interface IStorageSourceService extends IFloodlightService {
     void updateRow(String tableName, Object rowKey, Map<String,Object> values);
     
     /** Update or insert a row in the table with the given column data.
-     * The primary key is indicated with the special column name of "id".
+     * The primary key must be included in the map of values.
      * @param tableName The table to update or insert into
      * @param values The map of column names/values to update the rows
      */
     void updateRow(String tableName, Map<String,Object> values);
     
-    /** Delete the row with the given row ID (primary key).
+    /** Delete the row with the given primary key.
      * 
      * @param tableName The table from which to delete the row
      * @param rowKey The primary key of the row to delete.
      */
     void deleteRow(String tableName, Object rowKey);
 
+    /** Delete the rows with the given keys.
+     * 
+     * @param tableName The table from which to delete the rows
+     * @param rowKeys The set of primary keys of the rows to delete.
+     */
+    void deleteRows(String tableName, Set<Object> rowKeys);
+    
     /**
      * Delete the rows that match the predicate
      * @param tableName
      * @param predicate
      */
-    void deleteRows(String tableName, IPredicate predicate);
+    void deleteMatchingRows(String tableName, IPredicate predicate);
     
     /** Query for a row with the given ID (primary key).
      * 
@@ -187,6 +205,7 @@ public interface IStorageSourceService extends IFloodlightService {
     
     /**
      * Asynchronous variant of executeQuery
+     * 
      * @param tableName
      * @param columnNames
      * @param predicate
@@ -206,16 +225,23 @@ public interface IStorageSourceService extends IFloodlightService {
      * @return
      */
     public Future<?> insertRowAsync(final String tableName, final Map<String,Object> values);
-    
+
     /**
      * Asynchronous variant of updateRows
+     * @param tableName
+     * @param rows
+     */
+    public Future<?> updateRowsAsync(final String tableName, final List<Map<String,Object>> rows);
+
+    /**
+     * Asynchronous variant of updateMatchingRows
      * 
      * @param tableName
      * @param predicate
      * @param values
      * @return
      */
-    public Future<?> updateRowsAsync(final String tableName, final IPredicate predicate,
+    public Future<?> updateMatchingRowsAsync(final String tableName, final IPredicate predicate,
             final Map<String,Object> values);
 
     /**
@@ -246,7 +272,16 @@ public interface IStorageSourceService extends IFloodlightService {
      * @return
      */
     public Future<?> deleteRowAsync(final String tableName, final Object rowKey);
-    
+
+    /**
+     * Asynchronous version of deleteRows
+     * 
+     * @param tableName
+     * @param rowKeys
+     * @return
+     */
+    public Future<?> deleteRowsAsync(final String tableName, final Set<Object> rowKeys);
+
     /**
      * Asynchronous version of deleteRows
      * 
@@ -254,7 +289,7 @@ public interface IStorageSourceService extends IFloodlightService {
      * @param predicate
      * @return
      */
-    public Future<?> deleteRowsAsync(final String tableName, final IPredicate predicate);
+    public Future<?> deleteMatchingRowsAsync(final String tableName, final IPredicate predicate);
     
     /**
      * Asynchronous version of getRow
