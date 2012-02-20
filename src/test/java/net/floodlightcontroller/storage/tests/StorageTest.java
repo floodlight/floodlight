@@ -42,14 +42,14 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.NullValueStorageException;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
-import net.floodlightcontroller.storage.memory.MemoryStorageSource;
+import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     
-    protected MemoryStorageSource storageSource;
+    protected NoSqlStorageSource storageSource;
     protected RestApiServer restApi;
     
     protected String PERSON_TABLE_NAME = "Person";
