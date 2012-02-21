@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -50,7 +51,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     
     public static Collection<IEntityClass> entityClasses;
     static {
-        entityClasses = new HashSet<IEntityClass>(1);
+        entityClasses = new ArrayList<IEntityClass>(1);
         entityClasses.add(entityClass);
     }
 

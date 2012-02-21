@@ -36,7 +36,7 @@ import org.openflow.util.HexString;
  *
  */
 public class Entity implements Comparable<Entity> {
-     /**
+    /**
      * The MAC address associated with this entity
      */
     protected long macAddress;
@@ -68,6 +68,8 @@ public class Entity implements Comparable<Entity> {
      * The last time we observed this entity on the network
      */
     protected Date lastSeenTimestamp;
+
+    private int hashCode = 0;
 
     // ************
     // Constructors
@@ -129,17 +131,18 @@ public class Entity implements Comparable<Entity> {
 
     @Override
     public int hashCode() {
+        if (hashCode != 0) return hashCode;
         final int prime = 31;
-        int result = 1;
-        result = prime * result
+        hashCode = 1;
+        hashCode = prime * hashCode
                  + ((ipv4Address == null) ? 0 : ipv4Address.hashCode());
-        result = prime * result + (int) (macAddress ^ (macAddress >>> 32));
-        result = prime * result
+        hashCode = prime * hashCode + (int) (macAddress ^ (macAddress >>> 32));
+        hashCode = prime * hashCode
                  + ((switchDPID == null) ? 0 : switchDPID.hashCode());
-        result = prime * result
+        hashCode = prime * hashCode
                  + ((switchPort == null) ? 0 : switchPort.hashCode());
-        result = prime * result + ((vlan == null) ? 0 : vlan.hashCode());
-        return result;
+        hashCode = prime * hashCode + ((vlan == null) ? 0 : vlan.hashCode());
+        return hashCode;
     }
 
     @Override
@@ -148,6 +151,7 @@ public class Entity implements Comparable<Entity> {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         Entity other = (Entity) obj;
+        if (hashCode() != other.hashCode()) return false;
         if (ipv4Address == null) {
             if (other.ipv4Address != null) return false;
         } else if (!ipv4Address.equals(other.ipv4Address)) return false;
@@ -179,7 +183,7 @@ public class Entity implements Comparable<Entity> {
 
         int r;
         if (ipv4Address == null)
-            r = o.ipv4Address == null ? -1 : 0;
+            r = o.ipv4Address == null ? 0 : -1;
         else if (o.ipv4Address == null)
             r = 1;
         else
@@ -187,7 +191,7 @@ public class Entity implements Comparable<Entity> {
         if (r != 0) return r;
 
         if (vlan == null)
-            r = o.vlan == null ? -1 : 0;
+            r = o.vlan == null ? 0 : -1;
         else if (o.vlan == null)
             r = 1;
         else
@@ -195,7 +199,7 @@ public class Entity implements Comparable<Entity> {
         if (r != 0) return r;
 
         if (switchDPID == null)
-            r = o.switchDPID == null ? -1 : 0;
+            r = o.switchDPID == null ? 0 : -1;
         else if (o.switchDPID == null)
             r = 1;
         else
@@ -203,7 +207,7 @@ public class Entity implements Comparable<Entity> {
         if (r != 0) return r;
 
         if (switchPort == null)
-            r = o.switchPort == null ? -1 : 0;
+            r = o.switchPort == null ? 0 : -1;
         else if (o.switchPort == null)
             r = 1;
         else

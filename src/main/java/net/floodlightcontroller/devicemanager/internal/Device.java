@@ -84,7 +84,7 @@ public class Device implements IDevice {
         Arrays.sort(this.entities);
         
         if (entityClasses != null &&
-            entityClasses.size() > this.entityClasses.length) {
+            entityClasses.size() > device.entityClasses.length) {
             IEntityClass[] classes = new IEntityClass[entityClasses.size()];
             this.entityClasses = 
                     entityClasses.toArray(classes);
@@ -207,11 +207,7 @@ public class Device implements IDevice {
      * @return true if the entity is in the device, or false otherwise
      */
     public boolean containsEntity(Entity entity) {
-        for (Entity e : entities) {
-            if (e.equals(entity))
-                return true;
-        }
-        return false;
+        return (0 <= Arrays.binarySearch(entities, entity));
     }
     
     // ******

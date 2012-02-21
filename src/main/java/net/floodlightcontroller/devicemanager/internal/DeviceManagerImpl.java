@@ -91,19 +91,53 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * The primary key fields used in the primary index
      */
     protected Set<EntityField> primaryKeyFields;
+    protected EntityField[] primaryKeyFieldsArr;
     
     /**
-     * This map contains secondary indices for each of the configured {@ref IEntityClass} 
+     * This map contains state for each of the {@ref IEntityClass} 
      * that exist
      */
-    protected ConcurrentHashMap<IEntityClass, 
-                                ConcurrentHashMap<IndexedEntity, 
-                                                  Long>> classIndexMap;
+    protected ConcurrentHashMap<IEntityClass, ClassState> classStateMap;
 
     /**
      * The entity classifier currently in use
      */
     IEntityClassifier entityClassifier;
+    
+    /**
+     * Used to cache state about specific entity classes
+     */
+    protected class ClassState {
+        /**
+         * True if the key field set matches the primary key fields.
+         */
+        protected boolean keyFieldsMatchPrimary;
+        
+        /**
+         * An array version of the key fields
+         */
+        protected EntityField[] keyFieldsArr;
+        
+        /**
+         * The class index
+         */
+        protected ConcurrentHashMap<IndexedEntity, Long> classIndex;
+
+        /**
+         * Allocate a new {@link ClassState} object for the class
+         * @param clazz the class to use for the state
+         */
+        public ClassState(IEntityClass clazz) {
+            Set<EntityField> keyFields = clazz.getKeyFields();
+            keyFieldsMatchPrimary = primaryKeyFields.equals(keyFields);
+            keyFieldsArr = new EntityField[keyFields.size()];
+            keyFieldsArr = keyFields.toArray(keyFieldsArr);
+            if (!keyFieldsMatchPrimary)
+                classIndex = new ConcurrentHashMap<IndexedEntity, Long>();
+        }
+
+        
+    }
     
     // **************
     // IDeviceManager
@@ -113,6 +147,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
     public void setEntityClassifier(IEntityClassifier classifier) {
         entityClassifier = classifier;
         primaryKeyFields = classifier.getKeyFields();
+        primaryKeyFieldsArr = new EntityField[primaryKeyFields.size()];
+        primaryKeyFieldsArr = primaryKeyFields.toArray(primaryKeyFieldsArr);
     }
     
     @Override
@@ -270,10 +306,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         
         deviceMap = new ConcurrentHashMap<Long, Device>();
         primaryIndex = new ConcurrentHashMap<IndexedEntity, Long>();
-        classIndexMap = 
-                new ConcurrentHashMap<IEntityClass, 
-                                      ConcurrentHashMap<IndexedEntity, 
-                                                        Long>>();
+        classStateMap = 
+                new ConcurrentHashMap<IEntityClass, ClassState>();
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
@@ -482,7 +516,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * @return The {@link Device} object if found
      */
     protected Device findDeviceByEntity(Entity entity) {
-        IndexedEntity ie = new IndexedEntity(primaryKeyFields, entity);
+        IndexedEntity ie = new IndexedEntity(primaryKeyFieldsArr, entity);
         Long deviceKey = primaryIndex.get(ie);
         if (deviceKey == null)
             return null;
@@ -510,7 +544,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * @return The {@link Device} object if found
      */
     protected Device learnDeviceByEntity(Entity entity) {
-        IndexedEntity ie = new IndexedEntity(primaryKeyFields, entity);
+        IndexedEntity ie = new IndexedEntity(primaryKeyFieldsArr, entity);
         ArrayList<Long> deleteQueue = null;
         Device device = null;
         
@@ -523,6 +557,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             // exists in the primary entity index.
             Long deviceKey = primaryIndex.get(ie);
             Collection<IEntityClass> classes = null;
+            
             if (deviceKey == null) {
                 // If the entity does not exist in the primary entity index, 
                 // use the entity classifier for find the classes for the 
@@ -530,20 +565,20 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 // class entity indexes.
                 classes = entityClassifier.classifyEntity(entity);
                 for (IEntityClass clazz : classes) {
-                    // ensure that a class index exists for the class if
+                    // ensure that a class state exists for the class if
                     // needed
-                    ConcurrentHashMap<IndexedEntity, Long> classIndex;
+                    ClassState classState;
                     try {
-                        classIndex = getClassIndex(clazz);
+                        classState = getClassState(clazz);
                     } catch (ConcurrentModificationException e) {
                         continue;
                     }
                         
-                    if (classIndex != null) {
+                    if (classState.classIndex != null) {
                         IndexedEntity sie = 
-                                new IndexedEntity(clazz.getKeyFields(), 
+                                new IndexedEntity(classState.keyFieldsArr, 
                                                   entity);
-                        deviceKey = classIndex.get(sie);
+                        deviceKey = classState.classIndex.get(sie);
                     }
                 }
             }
@@ -574,6 +609,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                     deleteQueue.add(deviceKey);
                     continue;
                 }
+                break;
             }
             
             if (device.containsEntity(entity)) {
@@ -606,6 +642,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 if (!updateIndices(device, deviceKey)) {
                     continue;
                 }
+                break;
             }
         }
         
@@ -623,27 +660,18 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      * @param clazz the class for the index
      * @return
      */
-    private ConcurrentHashMap<IndexedEntity, 
-                              Long> getClassIndex(IEntityClass clazz) 
+    private ClassState getClassState(IEntityClass clazz) 
                                       throws ConcurrentModificationException {
-        ConcurrentHashMap<IndexedEntity, Long> classIndex =
-                classIndexMap.get(clazz);
-        if (classIndex != null) return classIndex;
+        ClassState classState = classStateMap.get(clazz);
+        if (classState != null) return classState;
         
-        if (primaryKeyFields.equals(clazz.getKeyFields())) {
-            return null;
-        }
-        
-        classIndex = 
-                new ConcurrentHashMap<IndexedEntity, Long>();
-        ConcurrentHashMap<IndexedEntity, Long> r = 
-                classIndexMap.putIfAbsent(clazz, 
-                                          classIndex);
+        classState = new ClassState(clazz);
+        ClassState r = classStateMap.putIfAbsent(clazz, classState);
         if (r != null) {
             // concurrent add; restart
             throw new ConcurrentModificationException();
         }
-        return classIndex;
+        return classState;
     }
     
     /**
@@ -655,22 +683,24 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
      */
     private boolean updateIndices(Device device, Long deviceKey) {
         if (!updateIndex(device, deviceKey, 
-                         primaryIndex, primaryKeyFields)) {
+                         primaryIndex, primaryKeyFieldsArr)) {
             return false;
         }
         for (IEntityClass clazz : device.getEntityClasses()) {
-            Set<EntityField> ef = clazz.getKeyFields();
-            if (primaryKeyFields.equals(ef))
-                continue;
-            ConcurrentHashMap<IndexedEntity, Long> classIndex;
+            ClassState classState;
             try {
-                classIndex = getClassIndex(clazz); 
+                classState = getClassState(clazz); 
             } catch (ConcurrentModificationException e) {
                 return false;
             }
-            if (classIndex != null &&
-                !updateIndex(device, deviceKey, classIndex, ef))
-                return false;
+
+            if (classState.classIndex != null) {
+                if (!updateIndex(device, 
+                                 deviceKey, 
+                                 classState.classIndex, 
+                                 classState.keyFieldsArr))
+                    return false;
+            }
         }
         // XXX - TODO handle indexed views into data
         return true;
@@ -690,11 +720,11 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                 Long deviceKey,
                                 ConcurrentHashMap<IndexedEntity, 
                                                   Long> index, 
-                                Set<EntityField> keyFields) {
+                                EntityField[] keyFields) {
         for (Entity e : device.entities) {
             IndexedEntity ie = new IndexedEntity(keyFields, e);
             Long ret = index.putIfAbsent(ie, deviceKey);
-            if (ret != null) {
+            if (ret != null && !ret.equals(deviceKey)) {
                 // If the return value is non-null, then fail the insert 
                 // (this implies that a device using this entity has 
                 // already been created in another thread).

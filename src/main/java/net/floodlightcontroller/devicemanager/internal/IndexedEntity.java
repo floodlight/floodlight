@@ -1,6 +1,5 @@
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.Collection;
 import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
 
 /**
@@ -10,9 +9,9 @@ import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
  * @author readams
  */
 public class IndexedEntity {
-    protected Collection<EntityField> keyFields;
+    protected EntityField[] keyFields;
     protected Entity entity;
-    protected int hashCode = 0;
+    private int hashCode = 0;
     
     /**
      * Create a new {@link IndexedEntity} for the given {@link Entity} using 
@@ -21,7 +20,7 @@ public class IndexedEntity {
      * {@link IndexedEntity#hashCode()} and {@link IndexedEntity#equals(Object)}
      * @param entity the entity to wrap
      */
-    public IndexedEntity(Collection<EntityField> keyFields, Entity entity) {
+    public IndexedEntity(EntityField[] keyFields, Entity entity) {
         super();
         this.keyFields = keyFields;
         this.entity = entity;
@@ -37,7 +36,8 @@ public class IndexedEntity {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
-                        + (int)(entity.macAddress);
+                        + (int) (entity.macAddress ^ 
+                                (entity.macAddress >>> 32));
                     break;
                 case IP:
                     hashCode = prime * hashCode
@@ -70,11 +70,11 @@ public class IndexedEntity {
     
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
+       if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         IndexedEntity other = (IndexedEntity) obj;
-        
+
         for (EntityField f : keyFields) {
             switch (f) {
                 case MAC:
