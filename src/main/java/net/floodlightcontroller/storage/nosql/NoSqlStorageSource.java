@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,6 @@ import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
 import net.floodlightcontroller.storage.StorageException;
@@ -523,11 +521,6 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     
     public NoSqlStorageSource() {
         super();
-    }
-    
-    public NoSqlStorageSource(ExecutorService executorService,
-            IStorageExceptionHandler exceptionHandler) {
-        super(executorService, exceptionHandler);
     }
     
     @Override

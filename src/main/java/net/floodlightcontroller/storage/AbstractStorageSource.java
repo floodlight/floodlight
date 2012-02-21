@@ -18,6 +18,8 @@
 package net.floodlightcontroller.storage;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,14 +29,23 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.CounterStore;
+import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.counter.CounterValue.CounterType;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.storage.web.StorageWebRoutable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.counter.ICounter;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.CounterValue.CounterType;
-
-public abstract class AbstractStorageSource implements IStorageSource {
+public abstract class AbstractStorageSource 
+    implements IStorageSourceService, IFloodlightModule {
     protected static Logger logger = LoggerFactory.getLogger(AbstractStorageSource.class);
 
     // Shared instance of the executor to use to execute the storage tasks.
@@ -52,13 +63,16 @@ public abstract class AbstractStorageSource implements IStorageSource {
     protected final static String STORAGE_DELETE_COUNTER_NAME = "StorageDelete";
     
     protected Set<String> allTableNames = new CopyOnWriteArraySet<String>();
-    protected CounterStore counterStore;
+    protected ICounterStoreService counterStore;
     protected ExecutorService executorService = defaultExecutorService;
     protected IStorageExceptionHandler exceptionHandler;
 
     private Map<String, Set<IStorageSourceListener>> listeners =
         new ConcurrentHashMap<String, Set<IStorageSourceListener>>();
 
+    // Our dependencies
+    protected IRestApiService restApi = null;
+    
     abstract class StorageCallable<V> implements Callable<V> {
         public V call() {
             try {
@@ -91,12 +105,6 @@ public abstract class AbstractStorageSource implements IStorageSource {
     
     public AbstractStorageSource() {
         this.executorService = defaultExecutorService;
-    }
-
-    public AbstractStorageSource(ExecutorService executorService,
-            IStorageExceptionHandler exceptionHandler) {
-        setExecutorService(executorService);
-        this.exceptionHandler = exceptionHandler;
     }
 
     public void setExecutorService(ExecutorService executorService) {
@@ -460,4 +468,47 @@ public abstract class AbstractStorageSource implements IStorageSource {
             notifyListeners(notification);
     }
     
+    // IFloodlightModule
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStorageSourceService.class);
+        return l;
+    }
+    
+    @Override
+    public Map<Class<? extends IFloodlightService>,
+               IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                            IFloodlightService>();
+        m.put(IStorageSourceService.class, this);
+        return m;
+    }
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IRestApiService.class);
+        l.add(ICounterStoreService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        restApi =
+           context.getServiceImpl(IRestApiService.class);
+        counterStore =
+            context.getServiceImpl(ICounterStoreService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        restApi.addRestletRoutable(new StorageWebRoutable());
+    }
 }

@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.types.MacVlanPair;
 
 import org.openflow.protocol.OFFeaturesReply;
@@ -80,7 +80,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             return model;
         }
         
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();        
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());        
         Long[] switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.length);
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
@@ -167,7 +169,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         }
         
         public void run() {
-            IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();        
+            IFloodlightProviderService floodlightProvider = 
+                    (IFloodlightProviderService)getContext().getAttributes().
+                        get(IFloodlightProviderService.class.getCanonicalName());      
 
             if ((requestType == REQUESTTYPE.OFSTATS) && (statType != null)) {
                 switchReply = getSwitchStatistics(switchId, statType);

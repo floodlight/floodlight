@@ -3,7 +3,16 @@
  */
 package net.floodlightcontroller.perfmon;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
 import net.floodlightcontroller.core.IOFMessageListener.FlListenerID;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +21,8 @@ import org.slf4j.LoggerFactory;
  * @author subrata
  *
  */
-public class PktinProcessingTime  {
+public class PktInProcessingTime
+    implements IFloodlightModule, IPktInProcessingTimeService  {
 
     /***
      * This class contains a set of buckets (called time buckets as the
@@ -40,7 +50,7 @@ public class PktinProcessingTime  {
      */   
 
     protected static  Logger  logger = 
-        LoggerFactory.getLogger(PktinProcessingTime.class);
+        LoggerFactory.getLogger(PktInProcessingTime.class);
 
     /***
      * procTimeMonitoringState: true if monitoring is on, default is false
@@ -85,7 +95,7 @@ public class PktinProcessingTime  {
         }
     }
 
-    protected PerfMonConfigs  perfMonCfgs;
+    protected PerfMonConfigs perfMonCfgs;
     // Maintains the time when the last packet was processed
     protected long lastPktTime_ns; 
     protected long curBucketStartTime;
@@ -96,39 +106,87 @@ public class PktinProcessingTime  {
     private int numBuckets;             // number of time buckets, each 10s long
 
 
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getLastPktTime_ns()
+     */
+    @Override
     public Long getLastPktTime_ns() {
         return lastPktTime_ns;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setLastPktTime_ns(java.lang.Long)
+     */
+    @Override
     public void setLastPktTime_ns(Long lastPktTime_ns) {
         this.lastPktTime_ns = lastPktTime_ns;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getCurBucketStartTime()
+     */
+    @Override
     public long getCurBucketStartTime() {
         return curBucketStartTime;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setCurBucketStartTime(long)
+     */
+    @Override
     public void setCurBucketStartTime(long curBucketStartTime) {
         this.curBucketStartTime = curBucketStartTime;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getCtb()
+     */
+    @Override
     public CumulativeTimeBucket getCtb() {
         return ctb;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setCtb(net.floodlightcontroller.perfmon.CumulativeTimeBucket)
+     */
+    @Override
     public void setCtb(CumulativeTimeBucket ctb) {
         this.ctb = ctb;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getCtbs()
+     */
+    @Override
     public CircularTimeBucketSet getCtbs() {
         return ctbs;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setCtbs(net.floodlightcontroller.perfmon.PktinProcessingTime.CircularTimeBucketSet)
+     */
+    @Override
     public void setCtbs(CircularTimeBucketSet ctbs) {
         this.ctbs = ctbs;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getPerfMonCfgs()
+     */
+    @Override
     public PerfMonConfigs getPerfMonCfgs() {
         return perfMonCfgs;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setPerfMonCfgs(net.floodlightcontroller.perfmon.PktinProcessingTime.PerfMonConfigs)
+     */
+    @Override
     public void setPerfMonCfgs(PerfMonConfigs perfMonCfgs) {
         this.perfMonCfgs = perfMonCfgs;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getNumComponents()
+     */
+    @Override
     public int getNumComponents() {
         return numComponents;
     }
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#setNumComponents(int)
+     */
+    @Override
     public void setNumComponents(int numComponents) {
         this.numComponents = numComponents;
     }
@@ -139,18 +197,7 @@ public class PktinProcessingTime  {
     public void setNumBuckets(int numBuckets) {
         this.numBuckets = numBuckets;
     }
-    // Constructor
-    public PktinProcessingTime() {
-        FlListenerID.populateCompNames();
-        setNumComponents(BB_LAST_LISTENER_ID + 1);
-        perfMonCfgs = new PerfMonConfigs();
-        numBuckets = BUCKET_SET_SIZE;
-        ctbs = new CircularTimeBucketSet(getNumComponents(), numBuckets);
-        ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
-        ctb.startTime_ms = System.currentTimeMillis();
-        ctb.startTime_ns = System.nanoTime();
-    }
-
+    
     /***
      * BUCKET_SET_SIZE buckets each holding 10s of processing time data, a total
      * of 30*10s = 5mins of processing time data is maintained
@@ -217,6 +264,10 @@ public class PktinProcessingTime  {
         }
     }
 
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getStartTimeOnePkt()
+     */
+    @Override
     public long getStartTimeOnePkt() {
         if (this.perfMonCfgs.procTimeMonitoringState) {
             long startTime_ns = System.nanoTime();
@@ -227,6 +278,10 @@ public class PktinProcessingTime  {
     }
 
     // Component refers to software component like forwarding
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getStartTimeOneComponent()
+     */
+    @Override
     public long getStartTimeOneComponent() {
         if (this.perfMonCfgs.procTimeMonitoringState) {
             return System.nanoTime();
@@ -234,6 +289,10 @@ public class PktinProcessingTime  {
         return 0L;
     }
 
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#updateCumulativeTimeOneComp(long, int)
+     */
+    @Override
     public void updateCumulativeTimeOneComp(
                                 long onePktOneCompProcTime_ns, int id) {
         if (this.perfMonCfgs.procTimeMonitoringState) {
@@ -253,6 +312,10 @@ public class PktinProcessingTime  {
         }
     }
 
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#updateCumulativeTimeTotal(long)
+     */
+    @Override
     public void updateCumulativeTimeTotal(long onePktStartTime_ns) {
         if (this.perfMonCfgs.procTimeMonitoringState) {
             // There is no api to get time in microseconds, milliseconds is 
@@ -373,5 +436,56 @@ public class PktinProcessingTime  {
             ctb = timeBucketSet[curBucketIdx];
             ctb.initializeCumulativeTimeBucket(ctb);
         }
+    }
+
+    public PktInProcessingTime() {
+        perfMonCfgs = new PerfMonConfigs();
+    }
+    
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IPktInProcessingTimeService.class);
+        return l;
+    }
+    
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IPktInProcessingTimeService.class, this);
+        return m;
+    }
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        // We don't have any dependencies
+        return null;
+    }
+    
+    @Override
+    public void init(FloodlightModuleContext context)
+                                             throws FloodlightModuleException {
+        // no-op
+    }
+    
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // Our 'constructor'
+        FlListenerID.populateCompNames();
+        setNumComponents(BB_LAST_LISTENER_ID + 1);
+        perfMonCfgs = new PerfMonConfigs();
+        numBuckets = BUCKET_SET_SIZE;
+        ctbs = new CircularTimeBucketSet(getNumComponents(), numBuckets);
+        ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
+        ctb.startTime_ms = System.currentTimeMillis();
+        ctb.startTime_ns = System.nanoTime();
     }
 }

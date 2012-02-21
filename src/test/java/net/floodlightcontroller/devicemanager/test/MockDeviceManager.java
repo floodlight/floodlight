@@ -23,12 +23,17 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 
-public class MockDeviceManager implements IDeviceManager {
+public class MockDeviceManager implements IFloodlightModule, IDeviceManagerService {
     protected Map<Long, Device> devices;
 
     public MockDeviceManager() {
@@ -72,5 +77,46 @@ public class MockDeviceManager implements IDeviceManager {
     public Collection<? extends IDevice> getAllDevices() {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void addListener(IDeviceManagerAware listener) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>>
+            getModuleDependencies() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public
+            void
+            init(FloodlightModuleContext context)
+                                                 throws FloodlightModuleException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // TODO Auto-generated method stub
+        
     }
 }

@@ -24,16 +24,22 @@ package net.floodlightcontroller.staticflowentry;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
@@ -51,7 +57,8 @@ import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchListener {
+public class StaticFlowEntryPusher 
+    implements IStaticFlowEntryPusherService, IOFSwitchListener, IFloodlightModule {
 
     // Utility data structure
     private class FlowModFields {
@@ -63,31 +70,17 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
     }
 
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
-    protected IFloodlightProvider floodlightProvider;
+    protected IFloodlightProviderService floodlightProvider;
 
     protected ArrayList<String> flowmodList;
     protected ArrayList<IOFSwitch> activeSwitches;
     protected HashMap<Long, HashMap<String, OFFlowMod>> flowmods;
     protected int pushEntriesFrequency = 25000; // milliseconds
     protected Runnable pushEntriesTimer;
-
-    public StaticFlowEntryPusher() {
-        flowmodList = new ArrayList<String>();
-        flowmods = new HashMap<Long, HashMap<String, OFFlowMod>>(); 
-        activeSwitches = new ArrayList<IOFSwitch>();
-    }
     
     @Override
     public String getName() {
         return "staticflowentry";
-    }
-
-    public IFloodlightProvider getFloodlightProvider() {
-        return floodlightProvider;
-    }
-
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
     }
     
     /**
@@ -604,7 +597,68 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
         return entryCookie;
     }
 
-    public void startUp() {
+    /**
+     * Pushes all entries associated with all switches (from the store)
+     */
+    protected void pushAllEntries() {
+        for (IOFSwitch sw : activeSwitches) {
+            for (OFFlowMod fm : getEntries(sw).values()) {
+                pushEntry(sw, fm);
+            }
+        }
+    }
+    
+    public void shutDown() {
+        log.info("shutdown");
+        pushEntriesTimer = null;
+        floodlightProvider.removeOFSwitchListener(this);
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStaticFlowEntryPusherService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IStaticFlowEntryPusherService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        // Wire up all our dependencies
+        floodlightProvider = 
+                context.getServiceImpl(IFloodlightProviderService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // This is our 'constructor'
+        if (log.isDebugEnabled()) {
+            log.debug("Starting " + this.getClass().getCanonicalName());
+        }
+        flowmodList = new ArrayList<String>();
+        flowmods = new HashMap<Long, HashMap<String, OFFlowMod>>(); 
+        activeSwitches = new ArrayList<IOFSwitch>();
         floodlightProvider.addOFSwitchListener(this);        
         pushEntriesTimer = new Runnable() {
             @Override
@@ -623,22 +677,5 @@ public class StaticFlowEntryPusher implements IStaticFlowEntryPusher, IOFSwitchL
         floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 
                                                            pushEntriesFrequency, 
                                                            TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Pushes all entries associated with all switches (from the store)
-     */
-    protected void pushAllEntries() {
-        for (IOFSwitch sw : activeSwitches) {
-            for (OFFlowMod fm : getEntries(sw).values()) {
-                pushEntry(sw, fm);
-            }
-        }
-    }
-    
-    public void shutDown() {
-        log.info("shutdown");
-        pushEntriesTimer = null;
-        floodlightProvider.removeOFSwitchListener(this);
     }
 }

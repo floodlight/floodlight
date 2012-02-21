@@ -20,8 +20,11 @@
  */
 package net.floodlightcontroller.routing.dijkstra;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -31,19 +34,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 
 /**
  * Floodlight component to find shortest paths based on dijkstra's algorithm
  *
  * @author Mandeep Dhami (mandeep.dhami@bigswitch.com)
  */
-public class RoutingImpl implements IRoutingEngine, ITopologyAware {
+public class RoutingImpl 
+    implements IRoutingEngineService, ITopologyListener, IFloodlightModule {
     
     public static final int MAX_LINK_WEIGHT = 1000;
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;
@@ -55,17 +64,7 @@ public class RoutingImpl implements IRoutingEngine, ITopologyAware {
     protected HashMap<Long, HashMap<Long, Link>> nexthoplinkmaps;
     protected HashMap<Long, HashMap<Long, Long>> nexthopnodemaps;
     protected LRUHashMap<RouteId, Route> pathcache;
-    
-    public RoutingImpl() {                
-        lock = new ReentrantReadWriteLock();
-
-        network = new HashMap<Long, HashMap<Link, Link>>();
-        nexthoplinkmaps = new HashMap<Long, HashMap<Long, Link>>();
-        nexthopnodemaps = new HashMap<Long, HashMap<Long, Long>>();
-        pathcache = new LRUHashMap<RouteId, Route>(PATH_CACHE_SIZE);
-        
-        log.info("Initialized Dijkstra RouterImpl");
-    }
+    protected ITopologyService topology;
    
     @Override
     public boolean routeExists(Long srcId, Long dstId) {
@@ -121,7 +120,9 @@ public class RoutingImpl implements IRoutingEngine, ITopologyAware {
         }
 
         lock.readLock().unlock();
-        log.debug("getRoute: {} -> {}", id, result);
+        if (log.isDebugEnabled()) {
+            log.debug("getRoute: {} -> {}", id, result);
+        }
         return result;
     }
 
@@ -152,7 +153,9 @@ public class RoutingImpl implements IRoutingEngine, ITopologyAware {
 
         Route result = null;
         if (path != null) result = new Route(id, path);
-        log.debug("buildroute: {}", result);
+        if (log.isDebugEnabled()) {
+            log.debug("buildroute: {}", result);
+        }
         return result;
     }
 
@@ -321,10 +324,7 @@ public class RoutingImpl implements IRoutingEngine, ITopologyAware {
         BroadcastTree ret = new BroadcastTree(nexthoplinks, nexthopnodes);
         return ret;
     }
-
-    public void startUp() {}
-    public void shutDown() {}
-
+    
     @Override
     public void clusterMerged() {
         // no-op
@@ -335,4 +335,50 @@ public class RoutingImpl implements IRoutingEngine, ITopologyAware {
         // Ignored by RoutingImpl
     }
 
+    // IFloodlightModule
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IRoutingEngineService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IRoutingEngineService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ITopologyService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+                                             throws FloodlightModuleException {
+        topology = context.getServiceImpl(ITopologyService.class);
+        lock = new ReentrantReadWriteLock();
+        network = new HashMap<Long, HashMap<Link, Link>>();
+        nexthoplinkmaps = new HashMap<Long, HashMap<Long, Link>>();
+        nexthopnodemaps = new HashMap<Long, HashMap<Long, Long>>();
+        pathcache = new LRUHashMap<RouteId, Route>(PATH_CACHE_SIZE);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // Register to get updates from topology
+        topology.addListener(this);
+    }
 }

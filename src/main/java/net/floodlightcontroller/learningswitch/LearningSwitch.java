@@ -35,12 +35,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
 import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFError;
@@ -62,8 +63,8 @@ import org.slf4j.LoggerFactory;
 
 public class LearningSwitch implements IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
-    protected IFloodlightProvider floodlightProvider;
-    protected CounterStore counterStore;
+    protected IFloodlightProviderService floodlightProvider;
+    protected ICounterStoreService counterStore;
 
     // flow-mod - for use in the cookie
     public static final int LEARNING_SWITCH_APP_ID = 1;
@@ -84,15 +85,15 @@ public class LearningSwitch implements IOFMessageListener {
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
-    public CounterStore getCounterStore() {
+    public ICounterStoreService getCounterStore() {
         return counterStore;
     }
     
-    public void setCounterStore(CounterStore counterStore) {
+    public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
     }
     
@@ -257,7 +258,7 @@ public class LearningSwitch implements IOFMessageListener {
         }
     }
     
-    private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi) {
+    private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
@@ -378,7 +379,7 @@ public class LearningSwitch implements IOFMessageListener {
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                return this.processPacketInMessage(sw, (OFPacketIn) msg);
+                return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
             case PORT_STATUS:
                 return this.processPortStatusMessage(sw, (OFPortStatus) msg);
             case FLOW_REMOVED:

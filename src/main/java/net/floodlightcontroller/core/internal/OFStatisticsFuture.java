@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.openflow.protocol.OFMessage;
@@ -40,13 +40,13 @@ public class OFStatisticsFuture extends
 
     protected volatile boolean finished;
 
-    public OFStatisticsFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
+    public OFStatisticsFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
             int transactionId) {
         super(floodlightProvider, sw, OFType.STATS_REPLY, transactionId);
         init();
     }
 
-    public OFStatisticsFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
+    public OFStatisticsFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
             int transactionId, long timeout, TimeUnit unit) {
         super(floodlightProvider, sw, OFType.STATS_REPLY, transactionId, timeout, unit);
         init();

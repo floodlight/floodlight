@@ -21,13 +21,15 @@ import java.util.HashMap;
 import java.util.List;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
+
 import org.openflow.protocol.OFFlowMod;
 
 /**
  * Represents the parts of the staticflowentry that are exposed as a service to other floodlight apps
  *
  */
-public interface IStaticFlowEntryPusher {
+public interface IStaticFlowEntryPusherService extends IFloodlightService {
     /**
      * Pushes a flow-mod to this switch as a one-time push
      * 

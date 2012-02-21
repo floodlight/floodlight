@@ -30,25 +30,27 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.perfmon.PktInProcessingTime;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IRowMapper;
-import net.floodlightcontroller.storage.IStorageSource;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.NullValueStorageException;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
+import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     
-    protected IStorageSource storageSource;
+    protected NoSqlStorageSource storageSource;
+    protected RestApiServer restApi;
     
     protected String PERSON_TABLE_NAME = "Person";
     
@@ -138,9 +140,10 @@ public abstract class StorageTest extends FloodlightTestCase {
         }
     }
     
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
-        PktinProcessingTime pktinProcessingTime = new PktinProcessingTime();
+        PktInProcessingTime pktinProcessingTime = new PktInProcessingTime();
+        pktinProcessingTime.startUp(null);
         storageSource.setPktinProcessingTime(pktinProcessingTime);
         Set<String> indexedColumnNames = new HashSet<String>();
         indexedColumnNames.add(PERSON_LAST_NAME);

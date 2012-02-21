@@ -24,6 +24,7 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,30 +40,36 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.BroadcastDomain;
-import net.floodlightcontroller.topology.ITopology;
-import net.floodlightcontroller.topology.ITopologyAware;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
 import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.ClusterDFS;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
@@ -106,8 +113,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
-                                            IStorageSourceListener, ITopology {
+public class TopologyImpl 
+        implements IOFMessageListener, IOFSwitchListener, 
+                   IStorageSourceListener, ITopologyService,
+                   IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
     // Names of table/fields for links in the storage API
@@ -124,15 +133,14 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     private static final String SWITCH_TABLE_NAME = "controller_switch";
     private static final String SWITCH_CORE_SWITCH = "core_switch";
 
-    //
+    protected IFloodlightProviderService floodlightProvider;
+    protected IStorageSourceService storageSource;
+    protected IRoutingEngineService routingEngine;
+    protected IRestApiService restApi;
+    
     private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
     private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
-
-
-    protected IFloodlightProvider floodlightProvider;
-    protected IStorageSource storageSource;
-    protected IRoutingEngine routingEngine;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -164,7 +172,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     protected Map<IOFSwitch, Set<LinkTuple>> switchLinks;
     /* topology aware components are called in the order they were added to the
      * the array */
-    protected ArrayList<ITopologyAware> topologyAware;
+    protected ArrayList<ITopologyListener> topologyAware;
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
@@ -245,29 +253,12 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             this.operation = operation;
         }
     }
-
-    public TopologyImpl() {
-        this.lock = new ReentrantReadWriteLock();
-        this.updates = new LinkedBlockingQueue<Update>();
-        this.links = new HashMap<LinkTuple, LinkInfo>();
-        this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
-        this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
-        this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
-        this.evHistTopologySwitch =
-            new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
-        this.evHistTopologyLink =
-            new EventHistory<EventHistoryTopologyLink>("Topology: Link");
-        this.evHistTopologyCluster =
-            new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
-
-        setControllerTLV();
-    }
-
+    
     private void doUpdatesThread() throws InterruptedException {
         do {
             Update update = updates.take();
             if (topologyAware != null) {
-                for (ITopologyAware ta : topologyAware) { // order maintained
+                for (ITopologyListener ta : topologyAware) { // order maintained
                     if (log.isDebugEnabled()) {
                         log.debug("Dispatching topology update {} {} {} {} {}",
                                   new Object[]{update.operation,
@@ -302,88 +293,6 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             }
         } while (updates.peek() != null);
         detectLoop();
-    }
-
-    public void startUp() {
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
-        floodlightProvider.addOFSwitchListener(this);
-
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
-
-        Runnable lldpSendTimer = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    sendLLDPs();
-
-                    if (!shuttingDown) {
-                        ScheduledExecutorService ses =
-                            floodlightProvider.getScheduledExecutor();
-                                    ses.schedule(this, lldpFrequency,
-                                                        TimeUnit.MILLISECONDS);
-                    }
-                } catch (StorageException e) {
-                    log.error("Storage exception in LLDP send timer; " +
-                              "terminating process", e);
-                    floodlightProvider.terminate();
-                } catch (Exception e) {
-                    log.error("Exception in LLDP send timer", e);
-                }
-            }
-        };
-        ses.schedule(lldpSendTimer, 1000, TimeUnit.MILLISECONDS);
-
-        Runnable timeoutLinksTimer = new Runnable() {
-            @Override
-            public void run() {
-                log.trace("Running timeoutLinksTimer");
-                try {
-                    timeoutLinks();
-                    if (!shuttingDown) {
-                        ScheduledExecutorService ses =
-                            floodlightProvider.getScheduledExecutor();
-                        ses.schedule(this, lldpTimeout, TimeUnit.MILLISECONDS);
-                    }
-                } catch (StorageException e) {
-                    log.error("Storage exception in link timer; " +
-                              "terminating process", e);
-                    floodlightProvider.terminate();
-                } catch (Exception e) {
-                    log.error("Exception in timeoutLinksTimer", e);
-                }
-            }
-        };
-        ses.schedule(timeoutLinksTimer, 1000, TimeUnit.MILLISECONDS);
-
-        updatesThread = new Thread(new Runnable () {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        doUpdatesThread();
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
-            }}, "Topology Updates");
-        updatesThread.start();
-
-        try {
-            storageSource.addListener(SWITCH_TABLE_NAME, this);
-        }
-        catch (StorageException ex) {
-            log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
-            // floodlightProvider.terminate();  // For now, log this error and continue
-        }
-    }
-
-    protected void shutDown() {
-        shuttingDown = true;
-        floodlightProvider.removeOFSwitchListener(this);
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.removeOFMessageListener(OFType.PORT_STATUS, this);
-        updatesThread.interrupt();
     }
 
     /**
@@ -611,7 +520,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     public String getName() {
         return "topology";
     }
-
+ 
     @Override
     public int getId() {
         return FlListenerID.TOPOLOGYIMPL;
@@ -667,7 +576,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
             // This is not the LLDP sent by this controller.
             // If the LLDP message has multicast bit set, then we need to broadcast
             // the packet as a regular packet.
-            Ethernet eth = IFloodlightProvider.bcStore.get(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+            Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
             if (eth.isMulticast()) {
                 if (log.isTraceEnabled())
                     log.trace("Received a multicast LLDP packet from a different controller, allowing the packet to follow normal processing chain.");
@@ -733,9 +642,9 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
 
     protected Command handlePacketIn(IOFSwitch sw, OFPacketIn pi,
                                      FloodlightContext cntx) {
-        Ethernet eth =
-            IFloodlightProvider.bcStore.get(cntx,
-                                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = 
+            IFloodlightProviderService.bcStore.get(cntx, 
+                                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         if (eth.getPayload() instanceof LLDP)  {
             String dstMacString = HexString.toHexString(eth.getDestinationMACAddress());
@@ -1138,7 +1047,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Sets the IFloodlightProvider for this TopologyImpl.
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
@@ -1300,7 +1209,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * compute connected components.
      */
     protected void updateBroadcastDomains() {
-        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks =  getPortBroadcastDomainLinks();
+        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks = getPortBroadcastDomainLinks();
         Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
         Map<Long, BroadcastDomain> bdMap = new HashMap<Long, BroadcastDomain>();
         Map<SwitchPortTuple, BroadcastDomain> spbdMap = new HashMap<SwitchPortTuple, BroadcastDomain>();
@@ -1712,20 +1621,17 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
     }
-
-    /**
-     * @param topologyAware the topologyAware to set
-     */
-    public void setTopologyAware(ArrayList<ITopologyAware> topologyAware) {
-        // TODO make this a copy on write set or lock it somehow
-        this.topologyAware = topologyAware;
+    
+    @Override
+    public void addListener(ITopologyListener listener) {
+        topologyAware.add(listener);
     }
-
+    
     /**
      * Register a topology aware component
      * @param topoAwareComponent
      */
-    public void addTopologyAware(ITopologyAware topoAwareComponent) {
+    public void addTopologyAware(ITopologyListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware.add(topoAwareComponent);
     }
@@ -1734,7 +1640,7 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Deregister a topology aware component
      * @param topoAwareComponent
      */
-    public void removeTopologyAware(ITopologyAware topoAwareComponent) {
+    public void removeTopologyAware(ITopologyListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware.remove(topoAwareComponent);
     }
@@ -1743,27 +1649,23 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
      * Sets the IStorageSource to use for ITology
      * @param storageSource the storage source to use
      */
-    public void setStorageSource(IStorageSource storageSource) {
+    public void setStorageSource(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
-        storageSource.createTable(LINK_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
     }
 
     /**
      * Gets the storage source for this ITopology
      * @return The IStorageSource ITopology is writing to
      */
-    public IStorageSource getStorageSource() {
+    public IStorageSourceService getStorageSource() {
         return storageSource;
     }
 
     /**
      * @param routingEngine the storage source to use for persisting link info
      */
-    public void setRoutingEngine(IRoutingEngine routingEngine) {
+    public void setRoutingEngine(IRoutingEngineService routingEngine) {
         this.routingEngine = routingEngine;
-        storageSource.createTable(LINK_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
     }
 
     @Override
@@ -1830,6 +1732,154 @@ public class TopologyImpl implements IOFMessageListener, IOFSwitchListener,
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // Ignore delete events, the switch delete will do the right thing on it's own
+    }
+
+    // IFloodlightModule classes
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ITopologyService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(ITopologyService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IStorageSourceService.class);
+        l.add(IRoutingEngineService.class);
+        l.add(IRestApiService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+                      throws FloodlightModuleException {
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        storageSource = context.getServiceImpl(IStorageSourceService.class);
+        routingEngine = context.getServiceImpl(IRoutingEngineService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
+        
+        // We create this here because there is no ordering guarantee
+        this.topologyAware = new ArrayList<ITopologyListener>();
+        this.lock = new ReentrantReadWriteLock();
+        this.updates = new LinkedBlockingQueue<Update>();
+        this.links = new HashMap<LinkTuple, LinkInfo>();
+        this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
+        this.evHistTopologySwitch =
+            new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
+        this.evHistTopologyLink =
+            new EventHistory<EventHistoryTopologyLink>("Topology: Link");
+        this.evHistTopologyCluster =
+            new EventHistory<EventHistoryTopologyCluster>("Topology: Cluster");
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // Create our storage tables
+        storageSource.createTable(LINK_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
+        storageSource.createTable(LINK_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
+        // Register for storage updates for the switch table
+        try {
+            storageSource.addListener(SWITCH_TABLE_NAME, this);
+        } catch (StorageException ex) {
+            log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
+        }
+        
+        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+
+        // Setup sending out LLDPs
+        Runnable lldpSendTimer = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    sendLLDPs();
+
+                    if (!shuttingDown) {
+                        ScheduledExecutorService ses = 
+                            floodlightProvider.getScheduledExecutor();
+                                    ses.schedule(this, lldpFrequency, 
+                                                        TimeUnit.MILLISECONDS);
+                    }
+                } catch (StorageException e) {
+                    log.error("Storage exception in LLDP send timer; " + 
+                              "terminating process", e);
+                    floodlightProvider.terminate();
+                } catch (Exception e) {
+                    log.error("Exception in LLDP send timer", e);
+                }
+            }   
+        };
+        ses.schedule(lldpSendTimer, 1000, TimeUnit.MILLISECONDS);
+
+        Runnable timeoutLinksTimer = new Runnable() {
+            @Override
+            public void run() {
+                log.trace("Running timeoutLinksTimer");
+                try {
+                    timeoutLinks();
+                    if (!shuttingDown) {
+                        ScheduledExecutorService ses = 
+                            floodlightProvider.getScheduledExecutor();
+                        ses.schedule(this, lldpTimeout, TimeUnit.MILLISECONDS);
+                    }
+                } catch (StorageException e) {
+                    log.error("Storage exception in link timer; " + 
+                              "terminating process", e);
+                    floodlightProvider.terminate();
+                } catch (Exception e) {
+                    log.error("Exception in timeoutLinksTimer", e);
+                }
+            }
+        };
+        ses.schedule(timeoutLinksTimer, 1000, TimeUnit.MILLISECONDS);
+
+        updatesThread = new Thread(new Runnable () {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        doUpdatesThread();
+                    } catch (InterruptedException e) {
+                        return;
+                    } 
+                }
+            }}, "Topology Updates");
+        updatesThread.start();
+        
+        // Register for the OpenFlow messages we want to receive
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
+        // Register for switch updates
+        floodlightProvider.addOFSwitchListener(this);
+        
+        // init our rest api
+        if (restApi != null) {
+            restApi.addRestletRoutable(new TopologyWebRoutable());
+        } else {
+            log.error("Could not instantiate REST API");
+        }
+
+        setControllerTLV();
     }
 
     // ****************************************************

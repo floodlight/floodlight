@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.web;
+package net.floodlightcontroller.restserver;
 
 import org.restlet.Context;
 import org.restlet.Restlet;

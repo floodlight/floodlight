@@ -28,6 +28,7 @@ public class StaticFlowEntryPusherResourceBase extends ServerResource {
     protected void doInit() throws ResourceException {
         super.doInit();
         staticFlowEntryPusher = 
-             (StaticFlowEntryPusher)getContext().getAttributes().get("staticFlowEntryPusher");
+             (StaticFlowEntryPusher)getContext().getAttributes().
+                 get(IStaticFlowEntryPusherService.class);
     }
 }

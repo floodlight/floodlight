@@ -19,7 +19,9 @@ package net.floodlightcontroller.core;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -49,10 +51,15 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packetstreamer.thrift.*;
 
-public class OFMessageFilterManager implements IOFMessageListener {
+public class OFMessageFilterManager 
+        implements IOFMessageListener, IFloodlightModule, IOFMessageFilterManagerService {
 
     /**
      * @author Srini
@@ -65,7 +72,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
     protected static TTransport transport = null;
     protected static PacketStreamer.Client packetClient = null;
 
-    protected IFloodlightProvider floodlightProvider = null;
+    protected IFloodlightProviderService floodlightProvider = null;
     // filter List is a key value pair.  Key is the session id, value is the filter rules.
     protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> filterMap = null;
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
@@ -89,13 +96,6 @@ public class OFMessageFilterManager implements IOFMessageListener {
          * FILTER_MATCH:       Filter is defined and the packet matches the filter
          */
         FILTER_NOT_DEFINED, FILTER_NO_MATCH, FILTER_MATCH
-    }
-
-    public void init (IFloodlightProvider bp) {
-        floodlightProvider = bp;
-        filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
-        filterTimeoutMap = new ConcurrentHashMap<String, Long>();
-        serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
     }
 
     protected String addFilter(ConcurrentHashMap<String,String> f, long delta) {
@@ -200,8 +200,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
         Ethernet eth = null;
 
         if (m.getType() == OFType.PACKET_IN) {
-            eth = IFloodlightProvider.bcStore.get(cntx, 
-                    IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+            eth = IFloodlightProviderService.bcStore.get(cntx, 
+                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         } else if (m.getType() == OFType.PACKET_OUT) {
             eth = new Ethernet();
             OFPacketOut p = (OFPacketOut) m;
@@ -254,30 +254,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         else 
             return matchedFilters;
     }
-
-
-    protected void startListening() {
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.PACKET_OUT, this);
-        floodlightProvider.addOFMessageListener(OFType.FLOW_MOD, this);
-    }
-
-    protected void stopListening() {
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_OUT, this);
-        floodlightProvider.removeOFMessageListener(OFType.FLOW_MOD, this);
-    }
-
-    public void startUp() {
-        startListening();
-        //connectToPSServer();
-    }
-
-    public void shutDown() {
-        stopListening();
-        disconnectFromPSServer();
-    }
-
+    
     public boolean connectToPSServer() {
         int numRetries = 0;
         if (transport != null && transport.isOpen()) {
@@ -464,6 +441,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         }
     }
 
+    @Override
     public String getDataAsString(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 
         Ethernet eth;
@@ -495,8 +473,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 // If the conext is not set by floodlight, then ignore.
                 if (cntx != null) {
                 // packet type  icmp, arp, etc.
-                    eth = IFloodlightProvider.bcStore.get(cntx,
-                            IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    eth = IFloodlightProviderService.bcStore.get(cntx,
+                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
                     if (eth != null)
                            sb.append(eth.toString());
                 }
@@ -528,8 +506,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
 
                 // If the conext is not set by floodlight, then ignore.
                 if (cntx != null) {
-                    eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    eth = IFloodlightProviderService.bcStore.get(cntx,
+                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
                     if (eth != null)
                         sb.append(eth.toString());
                 }
@@ -565,4 +543,53 @@ public class OFMessageFilterManager implements IOFMessageListener {
         return this.getDataAsString(sw, msg, cntx).getBytes();
     }
 
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IOFMessageFilterManagerService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IOFMessageFilterManagerService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context) 
+            throws FloodlightModuleException {
+        this.floodlightProvider = 
+                context.getServiceImpl(IFloodlightProviderService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // This is our 'constructor'
+        
+        filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
+        filterTimeoutMap = new ConcurrentHashMap<String, Long>();
+        serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
+        
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PACKET_OUT, this);
+        floodlightProvider.addOFMessageListener(OFType.FLOW_MOD, this);
+    }
 }

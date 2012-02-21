@@ -32,21 +32,26 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopology;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import static org.junit.Assert.*;
@@ -67,18 +72,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private byte[] testPacketSerialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
-    IStorageSource storageSource;
+    MemoryStorageSource storageSource;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        RestApiServer restApi = new RestApiServer();
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
+        fmc.addService(IDeviceManagerService.class, deviceManager);
         storageSource = new MemoryStorageSource();
-        deviceManager.setFloodlightProvider(mockFloodlightProvider);
-        deviceManager.setStorageSource(storageSource);
-        deviceManager.startUp();
+        fmc.addService(IStorageSourceService.class, storageSource);
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IRestApiService.class, restApi);
+        restApi.init(fmc);
+        storageSource.init(fmc);
+        deviceManager.init(fmc);
+        storageSource.startUp(fmc);
+        deviceManager.startUp(fmc);
         
         // Build our test packet
         this.testPacket = new Ethernet()
@@ -241,9 +254,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(mockSwitch, (short)1)).andReturn(false).anyTimes();
-        deviceManager.setTopology(mockTopology);
+        deviceManager.topology = mockTopology;
 
         Date currentDate = new Date();
         
@@ -304,7 +317,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fail();
     }
     
-    
     @Test
     public void testDeviceUpdateLastSeenToStorage() throws Exception {
         fail();
@@ -317,7 +329,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createNiceMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).atLeastOnce();
-        ITopology mockTopology = createNiceMock(ITopology.class);
+        ITopologyService mockTopology = createNiceMock(ITopologyService.class);
         //expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1))).andReturn(false);
         deviceManager.setTopology(mockTopology);
 
@@ -367,7 +379,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockSwitch.getPort((short)1)).andReturn(port1).anyTimes();
         expect(mockSwitch.getPort((short)2)).andReturn(port2).anyTimes();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
@@ -423,7 +435,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     }
     
     private void setupPortChannel() {
-        
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort1);
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort2);
         deviceManager.readPortChannelConfigFromStorage();
@@ -459,7 +470,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getPort((short)2)).andReturn(port2).anyTimes();
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopology mockTopology = createMock(ITopology.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))

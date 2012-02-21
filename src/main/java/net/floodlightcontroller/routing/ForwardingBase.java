@@ -1,19 +1,19 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
+ *    Copyright 2011, Big Switch Networks, Inc. 
+ *    Originally created by David Erickson, Stanford University
+ * 
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
 
 package net.floodlightcontroller.routing;
 
@@ -24,24 +24,25 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
 import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ITopology;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -58,151 +59,197 @@ import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ForwardingBase implements IOFMessageListener, IDeviceManagerAware {
-    protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
-    
-    public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT=5; // in seconds
+public abstract class ForwardingBase implements
+    IOFMessageListener,
+    IDeviceManagerAware {
+    protected static Logger log =
+            LoggerFactory.getLogger(ForwardingBase.class);
 
-    protected IFloodlightProvider floodlightProvider;
-    protected IDeviceManager deviceManager;
-    protected IRoutingEngine routingEngine;
-    protected ITopology topology;
-    protected CounterStore counterStore;
-    
+    public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 5; // in seconds
+
+    protected IFloodlightProviderService floodlightProvider;
+    protected IDeviceManagerService deviceManager;
+    protected IRoutingEngineService routingEngine;
+    protected ITopologyService topology;
+    protected ICounterStoreService counterStore;
+
     // flow-mod - for use in the cookie
-    public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed by a global APP_ID class
+    public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
+                                                   // by a global APP_ID class
 
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =
             new Comparator<SwitchPort>() {
-        @Override
-        public int compare(SwitchPort d1, SwitchPort d2) {
-            Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
-            IOFSwitch sw1 = switches.get(d1.getSwitchDPID());
-            IOFSwitch sw2 = switches.get(d2.getSwitchDPID());
+                @Override
+                public int compare(SwitchPort d1, SwitchPort d2) {
+                    Map<Long, IOFSwitch> switches =
+                            floodlightProvider.getSwitches();
+                    IOFSwitch sw1 = switches.get(d1.getSwitchDPID());
+                    IOFSwitch sw2 = switches.get(d2.getSwitchDPID());
 
-            Long d1ClusterId = sw1.getSwitchClusterId();
-            Long d2ClusterId = sw2.getSwitchClusterId();
-            
-            return d1ClusterId.compareTo(d2ClusterId);
-        }
-    };
-    
+                    Long d1ClusterId = sw1.getSwitchClusterId();
+                    Long d2ClusterId = sw2.getSwitchClusterId();
+
+                    return d1ClusterId.compareTo(d2ClusterId);
+                }
+            };
+
     public void startUp() {
+        deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-    }
-
-    public void shutDown() {
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
     }
 
     @Override
     public String getName() {
         return "forwarding";
     }
-    
+
     @Override
     public int getId() {
         return FlListenerID.FORWARDINGBASE;
     }
 
     /**
-      * All subclasses must define this function if they want any specific forwarding action
-     * @param sw Switch that the packet came in from
-     * @param pi The packet that came in
-     * @param decision Any decision made by a policy engine
+     * All subclasses must define this function if they want any specific
+     * forwarding action
+     * 
+     * @param sw
+     *            Switch that the packet came in from
+     * @param pi
+     *            The packet that came in
+     * @param decision
+     *            Any decision made by a policy engine
      */
-    public abstract Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx);
+    public abstract Command
+            processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
+                                   IRoutingDecision decision,
+                                   FloodlightContext cntx);
 
     @Override
-    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+    public Command receive(IOFSwitch sw, OFMessage msg,
+                           FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
                 IRoutingDecision decision = null;
-                if (cntx != null) decision = 
-                    IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); 
-                
-                return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
+                if (cntx != null)
+                                 decision =
+                                         IRoutingDecision.rtStore.get(cntx,
+                                                                      IRoutingDecision.CONTEXT_DECISION);
+
+                return this.processPacketInMessage(sw,
+                                                   (OFPacketIn) msg,
+                                                   decision,
+                                                   cntx);
         }
-        log.error("received an unexpected message {} from switch {}", msg, sw);
+        log.error("received an unexpected message {} from switch {}",
+                  msg,
+                  sw);
         return Command.CONTINUE;
     }
 
     private void updateCounterStore(IOFSwitch sw, OFFlowMod flowMod) {
         if (counterStore != null) {
             String packetName = flowMod.getType().toClass().getName();
-            packetName = packetName.substring(packetName.lastIndexOf('.')+1);
+            packetName =
+                    packetName.substring(packetName.lastIndexOf('.') + 1);
             // flowmod is per switch. portid = -1
-            String counterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
+            String counterName =
+                    CounterStore.createCounterName(sw.getStringId(),
+                                                   -1,
+                                                   packetName);
             try {
                 ICounter counter = counterStore.getCounter(counterName);
                 if (counter == null) {
-                    counter = counterStore.createCounter(counterName, CounterValue.CounterType.LONG);
+                    counter =
+                            counterStore.createCounter(counterName,
+                                                       CounterValue.CounterType.LONG);
                 }
                 counter.increment();
-            }
-            catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException e) {
                 log.error("Invalid Counter, " + counterName);
             }
         }
     }
-    
+
     /**
      * Push routes from back to front
-     * @param route Route to push
-     * @param match OpenFlow fields to match on
-     * @param srcSwPort Source switch port for the first hop
-     * @param dstSwPort Destination switch port for final hop
-     * @param bufferId BufferId of the original PacketIn
-     * @return srcSwitchIincluded True if the source switch is included in this route
+     * 
+     * @param route
+     *            Route to push
+     * @param match
+     *            OpenFlow fields to match on
+     * @param srcSwPort
+     *            Source switch port for the first hop
+     * @param dstSwPort
+     *            Destination switch port for final hop
+     * @param bufferId
+     *            BufferId of the original PacketIn
+     * @return srcSwitchIincluded True if the source switch is included in this
+     *         route
      */
-    public boolean pushRoute(Route route, OFMatch match, 
-                             Integer wildcard_hints,
-                             SwitchPort srcSwPort,
-                             SwitchPort dstSwPort,
-                             int bufferId,
-                             IOFSwitch srcSwitch, 
-                             OFPacketIn pi, 
+    public boolean pushRoute(Route route, OFMatch match,
+                             Integer wildcard_hints, SwitchPort srcSwPort,
+                             SwitchPort dstSwPort, int bufferId,
+                             IOFSwitch srcSwitch, OFPacketIn pi,
                              FloodlightContext cntx,
                              boolean reqeustFlowRemovedNotifn) {
         long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-        return pushRoute(route, match, wildcard_hints, srcSwPort, dstSwPort, 
-                bufferId, srcSwitch, pi, cookie, cntx, reqeustFlowRemovedNotifn);
+        return pushRoute(route,
+                         match,
+                         wildcard_hints,
+                         srcSwPort,
+                         dstSwPort,
+                         bufferId,
+                         srcSwitch,
+                         pi,
+                         cookie,
+                         cntx,
+                         reqeustFlowRemovedNotifn);
     }
-    
+
     /**
      * Push routes from back to front
-     * @param route Route to push
-     * @param match OpenFlow fields to match on
-     * @param srcSwPort Source switch port for the first hop
-     * @param dstSwPort Destination switch port for final hop
-     * @param bufferId BufferId of the original PacketIn
-     * @param cookie The cookie to set in each flow_mod
-     * @return srcSwitchIincluded True if the source switch is included in this route
+     * 
+     * @param route
+     *            Route to push
+     * @param match
+     *            OpenFlow fields to match on
+     * @param srcSwPort
+     *            Source switch port for the first hop
+     * @param dstSwPort
+     *            Destination switch port for final hop
+     * @param bufferId
+     *            BufferId of the original PacketIn
+     * @param cookie
+     *            The cookie to set in each flow_mod
+     * @return srcSwitchIincluded True if the source switch is included in this
+     *         route
      */
-    public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
-                             SwitchPort srcSwPort,
+    public boolean pushRoute(Route route, OFMatch match,
+                             Integer wildcard_hints, SwitchPort srcSwPort,
                              SwitchPort dstSwPort, int bufferId,
-                             IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
-                             FloodlightContext cntx,
+                             IOFSwitch srcSwitch, OFPacketIn pi,
+                             long cookie, FloodlightContext cntx,
                              boolean reqeustFlowRemovedNotifn) {
 
         boolean srcSwitchIncluded = false;
-        OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+        OFFlowMod fm =
+                (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                              .getMessage(OFType.FLOW_MOD);
         OFActionOutput action = new OFActionOutput();
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
-        fm.setIdleTimeout((short)5)
-            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
-            .setCookie(cookie)
-            .setMatch(match)
-            .setActions(actions)
-            .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
+        fm.setIdleTimeout((short) 5)
+          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+          .setCookie(cookie)
+          .setMatch(match)
+          .setActions(actions)
+          .setLengthU(OFFlowMod.MINIMUM_LENGTH
+                  + OFActionOutput.MINIMUM_LENGTH);
 
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         IOFSwitch sw = switches.get(dstSwPort.getSwitchDPID());
-        ((OFActionOutput)fm.getActions().get(0)).
-            setPort((short)dstSwPort.getPort());
+        ((OFActionOutput) fm.getActions().get(0)).setPort((short) dstSwPort.getPort());
 
         if (route != null) {
             for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
@@ -213,14 +260,22 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                     updateCounterStore(sw, fm);
                     if (log.isDebugEnabled()) {
                         log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
-                                  new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), 
-                                                 ((OFActionOutput)fm.getActions().get(0)).getPort() });
+                                  new Object[] {
+                                                routeIndx,
+                                                sw,
+                                                fm.getMatch().getInputPort(),
+                                                ((OFActionOutput) fm.getActions()
+                                                                    .get(0)).getPort() });
                     }
                     sw.write(fm, cntx);
 
                     // Push the packet out the source switch
                     if (sw.getId() == srcSwitch.getId()) {
-                        pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);
+                        pushPacket(srcSwitch,
+                                   match,
+                                   pi,
+                                   ((OFActionOutput) fm.getActions().get(0)).getPort(),
+                                   cntx);
                         srcSwitchIncluded = true;
                     }
                 } catch (IOException e) {
@@ -233,34 +288,43 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 }
 
                 // setup for the next loop iteration
-                ((OFActionOutput)fm.getActions().get(0)).setPort(link.getOutPort());
+                ((OFActionOutput) fm.getActions().get(0)).setPort(link.getOutPort());
                 if (routeIndx > 0) {
-                    sw = floodlightProvider.getSwitches().get(route.getPath().get(routeIndx-1).getDst());
+                    sw =
+                            floodlightProvider.getSwitches()
+                                              .get(route.getPath()
+                                                        .get(routeIndx - 1)
+                                                        .getDst());
                 } else {
-                    sw = floodlightProvider.getSwitches().get(route.getId().getSrc());
+                    sw =
+                            floodlightProvider.getSwitches()
+                                              .get(route.getId().getSrc());
                 }
                 if (sw == null) {
                     if (log.isWarnEnabled()) {
                         log.warn("Unable to push route, switch at DPID {} not available",
-                                (routeIndx > 0) ? HexString.toHexString(route.getPath()
-                                        .get(routeIndx - 1).getDst()) : HexString
-                                        .toHexString(route.getId().getSrc()));
+                                 (routeIndx > 0)
+                                         ? HexString.toHexString(route.getPath()
+                                                                      .get(routeIndx - 1)
+                                                                      .getDst())
+                                         : HexString.toHexString(route.getId()
+                                                                      .getSrc()));
                     }
                     return srcSwitchIncluded;
                 }
             }
         }
-     
+
         // set the original match for the first switch, and buffer id
         fm.setMatch(match);
         fm.setBufferId(bufferId);
         fm.setMatch(wildcard(match, sw, wildcard_hints));
-        fm.getMatch().setInputPort((short)srcSwPort.getPort());
-        // Set the flag to request flow-mod removal notifications only for the 
+        fm.getMatch().setInputPort((short) srcSwPort.getPort());
+        // Set the flag to request flow-mod removal notifications only for the
         // source switch. The removal message is used to maintain the flow
         // cache. Don't set the flag for ARP messages - TODO generalize check
-        if ((reqeustFlowRemovedNotifn) &&
-            (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
+        if ((reqeustFlowRemovedNotifn)
+                && (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
             fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
             match.setWildcards(fm.getMatch().getWildcards());
         }
@@ -268,15 +332,21 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         updateCounterStore(sw, fm);
         try {
             log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
-                      new Object[] { sw, fm.getMatch().getInputPort(), 
-                                    ((OFActionOutput)fm.getActions().get(0)).getPort() });
+                      new Object[] {
+                                    sw,
+                                    fm.getMatch().getInputPort(),
+                                    ((OFActionOutput) fm.getActions().get(0)).getPort() });
             log.info("Flow mod sent: Wildcard={} match={}",
-                    Integer.toHexString(fm.getMatch().getWildcards()),
-                    fm.getMatch().toString());
+                     Integer.toHexString(fm.getMatch().getWildcards()),
+                     fm.getMatch().toString());
             sw.write(fm, cntx);
 
             if (sw.getId() == srcSwitch.getId()) {
-                pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);
+                pushPacket(srcSwitch,
+                           match,
+                           pi,
+                           ((OFActionOutput) fm.getActions().get(0)).getPort(),
+                           cntx);
                 srcSwitchIncluded = true;
             }
             match = fm.getMatch();
@@ -287,37 +357,43 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         return srcSwitchIncluded;
     }
 
-    protected OFMatch wildcard(OFMatch match, IOFSwitch sw, Integer wildcard_hints) {
+    protected OFMatch wildcard(OFMatch match, IOFSwitch sw,
+                               Integer wildcard_hints) {
         if (wildcard_hints != null) {
             return match.clone().setWildcards(wildcard_hints.intValue());
         }
         return match.clone();
     }
 
-    public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, short outport, FloodlightContext cntx) {
-        
+    public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi,
+                           short outport, FloodlightContext cntx) {
+
         if (pi == null) {
             return;
         }
-        
+
         if (log.isDebugEnabled()) {
-            log.debug("PacketOut srcSwitch={} match={} pi={}", new Object[] {sw, match, pi});
+            log.debug("PacketOut srcSwitch={} match={} pi={}",
+                      new Object[] { sw, match, pi });
         }
-        
-        OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
+
+        OFPacketOut po =
+                (OFPacketOut) floodlightProvider.getOFMessageFactory()
+                                                .getMessage(OFType.PACKET_OUT);
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(new OFActionOutput(outport, (short) 0));
 
         po.setActions(actions)
-            .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
-        short poLength = (short)(po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
-        
+          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        short poLength =
+                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
+
         // set buffer_id, in_port
         po.setBufferId(pi.getBufferId());
         po.setInPort(pi.getInPort());
-        
+
         // set data - only if buffer_id == -1
         if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
@@ -326,7 +402,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         }
 
         po.setLength(poLength);
-        
+
         try {
             sw.write(po, cntx);
         } catch (IOException e) {
@@ -334,40 +410,44 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         }
     }
 
-    public static boolean blockHost(IFloodlightProvider floodlightProvider, 
-            SwitchPortTuple sw_tup, long host_mac, 
-            short hardTimeout) {
+    public static boolean
+            blockHost(IFloodlightProviderService floodlightProvider,
+                      SwitchPortTuple sw_tup, long host_mac,
+                      short hardTimeout) {
 
         if ((sw_tup == null) || sw_tup.getSw() == null) {
             return false;
         }
 
         IOFSwitch sw = sw_tup.getSw();
-        short inputPort = sw_tup.getPort().shortValue();    
+        short inputPort = sw_tup.getPort().shortValue();
         log.debug("blockHost sw={} port={} mac={}",
-                new Object[] { sw, sw_tup.getPort(), new Long(host_mac) });
+                  new Object[] { sw, sw_tup.getPort(), new Long(host_mac) });
 
         // Create flow-mod based on packet-in and src-switch
-        OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
+        OFFlowMod fm =
+                (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                              .getMessage(OFType.FLOW_MOD);
         OFMatch match = new OFMatch();
-        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to drop
+        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
+                                                            // drop
         match.setDataLayerSource(Ethernet.toByteArray(host_mac))
-            .setInputPort(inputPort)
-            .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_IN_PORT);
+             .setInputPort(inputPort)
+             .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
+                     & ~OFMatch.OFPFW_IN_PORT);
         fm.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
-            .setHardTimeout((short)hardTimeout)
-            .setIdleTimeout((short)5)
-            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
-            .setMatch(match)
-            .setActions(actions)
-            .setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
+          .setHardTimeout((short) hardTimeout)
+          .setIdleTimeout((short) 5)
+          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+          .setMatch(match)
+          .setActions(actions)
+          .setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
 
         try {
             log.debug("write drop flow-mod sw={} match={} flow-mod={}",
-                       new Object[] {sw, match, fm});
+                      new Object[] { sw, match, fm });
             sw.write(fm, null);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             log.error("Failure writing deny flow mod", e);
             return false;
         }
@@ -376,38 +456,44 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     }
 
     /**
-     * @param floodlightProvider the floodlightProvider to set
+     * @param floodlightProvider
+     *            the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public
+            void
+            setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 
     /**
-     * @param routingEngine the routingEngine to set
+     * @param routingEngine
+     *            the routingEngine to set
      */
-    public void setRoutingEngine(IRoutingEngine routingEngine) {
+    public void setRoutingEngine(IRoutingEngineService routingEngine) {
         this.routingEngine = routingEngine;
     }
 
     /**
-     * @param deviceManager the deviceManager to set
+     * @param deviceManager
+     *            the deviceManager to set
      */
-    public void setDeviceManager(IDeviceManager deviceManager) {
+    public void setDeviceManager(IDeviceManagerService deviceManager) {
         this.deviceManager = deviceManager;
     }
 
     /**
-     * @param topology the topology to set
+     * @param topology
+     *            the topology to set
      */
-    public void setTopology(ITopology topology) {
+    public void setTopology(ITopologyService topology) {
         this.topology = topology;
     }
 
-    public CounterStore getCounterStore() {
+    public ICounterStoreService getCounterStore() {
         return counterStore;
     }
 
-    public void setCounterStore(CounterStore counterStore) {
+    public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
     }
 
@@ -423,40 +509,41 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
     @Override
     public void deviceMoved(Device device, IOFSwitch oldSw, Short oldPort,
-            IOFSwitch sw, Short port) {
+                            IOFSwitch sw, Short port) {
         // Build flow mod to delete based on destination mac == device mac
         OFMatch match = new OFMatch();
         match.setDataLayerDestination(Ethernet.toByteArray(device.getMACAddress()));
         match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
-        OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
-            .getMessage(OFType.FLOW_MOD))
-            .setCommand(OFFlowMod.OFPFC_DELETE)
-            .setOutPort((short) OFPort.OFPP_NONE.getValue())
-            .setMatch(match)
-            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
+        OFMessage fm =
+                ((OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                               .getMessage(OFType.FLOW_MOD)).setCommand(OFFlowMod.OFPFC_DELETE)
+                                                                            .setOutPort((short) OFPort.OFPP_NONE.getValue())
+                                                                            .setMatch(match)
+                                                                            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
         // Flush to all switches
         for (IOFSwitch outSw : floodlightProvider.getSwitches().values()) {
             try {
                 outSw.write(fm, null);
             } catch (IOException e) {
-                log.error("Failure sending flow mod delete for moved device", e);
+                log.error("Failure sending flow mod delete for moved device",
+                          e);
             }
         }
     }
 
     @Override
     public void deviceNetworkAddressAdded(Device device,
-            DeviceNetworkAddress address) {
-        
+                                          DeviceNetworkAddress address) {
+
     }
 
     @Override
     public void deviceNetworkAddressRemoved(Device device,
-            DeviceNetworkAddress address) {
-        
+                                            DeviceNetworkAddress address) {
+
     }
-    
+
     @Override
     public void deviceVlanChanged(Device device) {
 
@@ -464,8 +551,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return (type.equals(OFType.PACKET_IN) &&
-                (name.equals("topology") || name.equals("devicemanager")));
+        return (type.equals(OFType.PACKET_IN) && (name.equals("topology") || name.equals("devicemanager")));
     }
 
     @Override

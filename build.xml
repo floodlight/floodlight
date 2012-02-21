@@ -27,10 +27,11 @@
     <property name="build-test" location="${target}/bin-test"/>
     <property name="test-output" location="${target}/test"/>
     <property name="source" location="src/main/java"/>
+	<property name="resources" location="src/main/resources/"/>
     <property name="source-test" location="src/test/java"/>
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
-    <property name="main-class" value="net.floodlightcontroller.core.internal.Controller"/>
+    <property name="main-class" value="net.floodlightcontroller.core.Main"/>
     <property name="packetstreamer-gen" location="${target}/gen-java" />
     <property name="packetstreamer-gen-build" location="${target}/gen-java-bin"/>
     <property name="packetstreamer-thrift-jar" location="${target}/lib/packetstreamer-thrift.jar"/>
@@ -102,6 +103,7 @@
 
     <target name="compile-tests" depends="compile-test"/>
     <target name="compile-test" depends="compile">
+    	<fileset dir="${resources}"/>
         <javac includeAntRuntime="false" debug="true" 
 	       srcdir="${source-test}"
 	       classpath="${build}"
@@ -159,6 +161,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
+        	<fileset dir="${resources}"/>
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
@@ -174,6 +177,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build-test}"/>
+        	<fileset dir="${resources}"/>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib-test"/>
             </zipgroupfileset>

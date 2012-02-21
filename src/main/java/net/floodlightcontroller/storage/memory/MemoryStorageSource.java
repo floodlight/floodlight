@@ -17,7 +17,8 @@
 
 package net.floodlightcontroller.storage.memory;
 
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.storage.SynchronousExecutorService;
 
@@ -33,18 +34,13 @@ import net.floodlightcontroller.storage.StorageException;
 public class MemoryStorageSource extends NoSqlStorageSource {
     
     private Map<String, MemoryTable> tableMap = new HashMap<String,MemoryTable>();
-    
-    PktinProcessingTime pktinProcessingTime;
-    
-    public MemoryStorageSource() {
-        super(new SynchronousExecutorService(), null);
-    }
+    IPktInProcessingTimeService pktinProcessingTime;
     
     synchronized private MemoryTable getTable(String tableName, boolean create) {
         MemoryTable table = tableMap.get(tableName);
         if (table == null) {
             if (!create)
-                throw new StorageException("Table does not exist");
+                throw new StorageException("Table " + tableName + " does not exist");
             table = new MemoryTable(tableName);
             tableMap.put(tableName, table);
         }
@@ -175,7 +171,15 @@ public class MemoryStorageSource extends NoSqlStorageSource {
     }
     
     public void setPktinProcessingTime(
-            PktinProcessingTime pktinProcessingTime) {
+            IPktInProcessingTimeService pktinProcessingTime) {
         this.pktinProcessingTime = pktinProcessingTime;
+    }
+
+    // IFloodlightModule methods
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        super.startUp(context);
+        executorService = new SynchronousExecutorService();
     }
 }

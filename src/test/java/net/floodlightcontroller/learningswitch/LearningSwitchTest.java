@@ -63,7 +63,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
     private LearningSwitch learningSwitch;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
         mockFloodlightProvider = getMockFloodlightProvider();

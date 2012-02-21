@@ -191,7 +191,7 @@ public class CumulativeTimeBucket {
         cumulativeTimeBkt.avgTotalProcTime_us = 0;
         cumulativeTimeBkt.sigmaTotalProcTime_us = 0;
         for (int idx = FlListenerID.FL_FIRST_LISTENER_ID; 
-                        idx <= PktinProcessingTime.BB_LAST_LISTENER_ID; idx++) {
+                        idx <= PktInProcessingTime.BB_LAST_LISTENER_ID; idx++) {
             OneComponentTime oct = cumulativeTimeBkt.tComps.oneComp[idx];
             oct.pktCnt = 0;
             oct.sumProcTime_us = 0;

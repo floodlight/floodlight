@@ -33,11 +33,16 @@ import org.junit.Test;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPhysicalPort;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 
@@ -59,17 +64,20 @@ public class TopologyImplTest extends FloodlightTestCase {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
+        FloodlightModuleContext cntx = new FloodlightModuleContext();
         topology = new TopologyImpl();
-        topology.setFloodlightProvider(getMockFloodlightProvider());
-        topology.setStorageSource(new MemoryStorageSource());
         RoutingImpl routingEngine = new RoutingImpl();
-        topology.setRoutingEngine(routingEngine);
-        ArrayList<ITopologyAware> topologyAware = new ArrayList<ITopologyAware>();
-        topologyAware.add(routingEngine);
-        topology.setTopologyAware(topologyAware);
-        topology.startUp();
+        topology.topologyAware = new ArrayList<ITopologyListener>();
+        cntx.addService(IRoutingEngineService.class, routingEngine);
+        cntx.addService(ITopologyService.class, topology);
+        cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
+        cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        routingEngine.init(cntx);
+        topology.init(cntx);
+        routingEngine.startUp(cntx);
+        topology.startUp(cntx);
     }
 
     @Test

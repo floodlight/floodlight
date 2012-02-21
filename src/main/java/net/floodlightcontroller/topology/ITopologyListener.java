@@ -24,7 +24,7 @@ import net.floodlightcontroller.core.IOFSwitch;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface ITopologyAware {
+public interface ITopologyListener {
     /**
      * @param srcSw the source switch
      * @param srcPort the source port from the source switch
@@ -56,9 +56,12 @@ public interface ITopologyAware {
             IOFSwitch dstSw, short dstPort);
     
     /**
-     * @param sw
+     * @param sw The IOFSwitch that has been updated
      */
     public void updatedSwitch(IOFSwitch sw);
     
+    /**
+     * Happens when the switch clusters are recomputed
+     */
     void clusterMerged();
 }

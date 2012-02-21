@@ -25,14 +25,16 @@ package net.floodlightcontroller.topology;
 
 import java.util.Map;
 import java.util.Set;
+
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
  *
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface ITopology {
+public interface ITopologyService extends IFloodlightService {
     /**
      * Query to determine if the specified switch id and port are
      * connected to another switch or not.  If so, this means the link
@@ -93,4 +95,10 @@ public interface ITopology {
      * as an endpoint.
      */
     public Map<IOFSwitch, Set<LinkTuple>> getSwitchLinks();
+    
+    /**
+     * Adds a listener to listen for ITopologyService messages
+     * @param listener The listener that wants the notifications
+     */
+    public void addListener(ITopologyListener listener);
 }

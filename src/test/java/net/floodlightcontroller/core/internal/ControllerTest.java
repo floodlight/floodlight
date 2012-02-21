@@ -29,11 +29,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleLoader;
+import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -66,11 +70,14 @@ public class ControllerTest extends FloodlightTestCase {
     private Controller controller;
 
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
-
-        controller = new Controller();
-        controller.init();
+        FloodlightModuleLoader fml = new FloodlightModuleLoader();
+        IFloodlightModuleContext moduleContext = fml.loadModulesFromList(
+            new String[]  {"net.floodlightcontroller.core.CoreModule"});
+        controller = 
+            (Controller) moduleContext.
+                getServiceImpl(IFloodlightProviderService.class);
     }
 
     public Controller getController() {
@@ -280,13 +287,16 @@ public class ControllerTest extends FloodlightTestCase {
 
     @Test
     public void testMessageFilterManager() throws Exception {
-
-        MockFloodlightProvider mbp = new MockFloodlightProvider();
+        FloodlightModuleContext fmCntx = new FloodlightModuleContext();
+        MockFloodlightProvider mfp = new MockFloodlightProvider();
+        OFMessageFilterManager mfm = new OFMessageFilterManager();
+        fmCntx.addService(IOFMessageFilterManagerService.class, mfm);
+        fmCntx.addService(IFloodlightProviderService.class, mfp);
         String sid = null;
 
-        OFMessageFilterManager mfm = new OFMessageFilterManager();
-        mfm.init(mbp);
-        mfm.startUp();
+        
+        mfm.init(fmCntx);
+        mfm.startUp(fmCntx);
 
         ConcurrentHashMap <String, String> filter;
         int i;
@@ -353,22 +363,22 @@ public class ControllerTest extends FloodlightTestCase {
         .setLengthU(OFPacketOut.MINIMUM_LENGTH+packetOut.getActionsLength()+testPacketSerialized.length);
 
         FloodlightContext cntx = new FloodlightContext();
-        IFloodlightProvider.bcStore.put(cntx, IFloodlightProvider.CONTEXT_PI_PAYLOAD, (Ethernet) testPacket);
+        IFloodlightProviderService.bcStore.put(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, (Ethernet) testPacket);
 
 
         // Let's check the listeners.
         List <IOFMessageListener> lm; 
 
         // Check to see if all the listeners are active.
-        lm = mbp.getListeners().get(OFType.PACKET_OUT);
+        lm = mfp.getListeners().get(OFType.PACKET_OUT);
         assertTrue(lm.size() == 1);
         assertTrue(lm.get(0).equals(mfm));
 
-        lm = mbp.getListeners().get(OFType.FLOW_MOD);
+        lm = mfp.getListeners().get(OFType.FLOW_MOD);
         assertTrue(lm.size() == 1);
         assertTrue(lm.get(0).equals(mfm));
 
-        lm = mbp.getListeners().get(OFType.PACKET_IN);
+        lm = mfp.getListeners().get(OFType.PACKET_IN);
         assertTrue(lm.size() == 1);
         assertTrue(lm.get(0).equals(mfm));
 

@@ -21,11 +21,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -46,43 +44,31 @@ import java.util.concurrent.TimeoutException;
 import java.nio.channels.ClosedChannelException;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFController;
+import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
-import net.floodlightcontroller.core.web.JacksonCustomConverter;
-import net.floodlightcontroller.core.web.RestletRoutable;
 import static net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
-import net.floodlightcontroller.forwarding.Forwarding;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
-import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
-import net.floodlightcontroller.perfmon.PktinProcessingTime;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageExceptionHandler;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.storage.memory.MemoryStorageSource;
-import net.floodlightcontroller.storage.web.StorageWebRoutable;
-import net.floodlightcontroller.topology.ITopologyAware;
-import net.floodlightcontroller.topology.internal.TopologyImpl;
-import net.floodlightcontroller.topology.web.TopologyWebRouteable;
-
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -100,8 +86,6 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.timeout.IdleStateAwareChannelUpstreamHandler;
 import org.jboss.netty.handler.timeout.IdleStateEvent;
 import org.jboss.netty.handler.timeout.ReadTimeoutException;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
 import org.openflow.protocol.OFEchoReply;
 import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFError.OFBadActionCode;
@@ -130,17 +114,6 @@ import org.openflow.protocol.factory.MessageParseException;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.openflow.util.U32;
-import org.restlet.Component;
-import org.restlet.Context;
-import org.restlet.Request;
-import org.restlet.Response;
-import org.restlet.Restlet;
-import org.restlet.data.Protocol;
-import org.restlet.data.Reference;
-import org.restlet.routing.Filter;
-import org.restlet.routing.Router;
-import org.restlet.routing.Template;
-import org.restlet.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,8 +122,7 @@ import org.slf4j.LoggerFactory;
  * The main controller class.  Handles all setup and network listeners
  */
 public class Controller
-    extends Application
-    implements IFloodlightProvider, IOFController {
+    implements IFloodlightProviderService, IOFController {
     
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
     
@@ -161,27 +133,22 @@ public class Controller
     protected ConcurrentHashMap<Long, IOFSwitch> switches;
     protected Set<IOFSwitchListener> switchListeners;
     protected BlockingQueue<Update> updates;
-    protected CounterStore counterStore;
+    protected ICounterStoreService counterStore;
+    protected IRestApiService restApi;
 
     protected ScheduledExecutorService executor = 
             Executors.newScheduledThreadPool(5);
     
-    protected IStorageSource storageSource;
-    protected TopologyImpl topology;
-    protected DeviceManagerImpl deviceManager;
-    protected RoutingImpl routingEngine;
-    protected Forwarding forwarding;
-    protected OFMessageFilterManager messageFilterManager;
-    protected PktinProcessingTime pktinProcTime;
-    private StaticFlowEntryPusher staticFlowEntryPusher;
-    protected long ptWarningThresholdInNano;
+    protected IStorageSourceService storageSource;
+    protected IOFMessageFilterManagerService messageFilterManager;
+    protected IPktInProcessingTimeService pktinProcTime;
     
-    protected List<RestletRoutable> restlets;
-
-    protected int restPort;
-    protected int openFlowPort;
+    // Configuration options
+    protected int openFlowPort = 6633;
+    protected long ptWarningThresholdInNano;
     protected int workerThreads;
-
+    
+    // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
     
@@ -220,24 +187,31 @@ public class Controller
             this.added = added;
         }
     }
-
-    public Controller() {
-        this(new CmdLineSettings());
-    }
-
-    public Controller(CmdLineSettings settings) {
-        this.messageListeners =
-            new ConcurrentHashMap<OFType, 
-                                  ListenerDispatcher<OFType, 
-                                                     IOFMessageListener>>();
-        this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
-        this.updates = new LinkedBlockingQueue<Update>();
-        this.restlets = new ArrayList<RestletRoutable>();
-        this.restPort = settings.getRestPort();
-        this.openFlowPort = settings.getOpenFlowPort();
-        this.workerThreads = settings.getWorkerThreads();
+    
+    // ***************
+    // Getters/Setters
+    // ***************
+    
+    public void setStorageSourceService(IStorageSourceService storageSource) {
+        this.storageSource = storageSource;
     }
     
+    public void setCounterStore(ICounterStoreService counterStore) {
+        this.counterStore = counterStore;
+    }
+    
+    public void setMessageFilterManagerService(IOFMessageFilterManagerService mfm) {
+        this.messageFilterManager = mfm;
+    }
+    
+    public void setPktInProcessingService(IPktInProcessingTimeService pits) {
+        this.pktinProcTime = pits;
+    }
+    
+    public void setRestApiService(IRestApiService restApi) {
+        this.restApi = restApi;
+    }
+
     // **********************
     // ChannelUpstreamHandler
     // **********************
@@ -543,20 +517,6 @@ public class Controller
                             processSwitchDescReply();
                         }
                         break;
-                    /*
-                     * "Trivial" server to test raw low-level throughput
-                    case PACKET_IN:
-                        OFPacketIn pi = (OFPacketIn)m;
-    
-                        OFFlowMod fm = 
-                                (OFFlowMod)factory.getMessage(OFType.FLOW_MOD);
-                        OFMatch match = new OFMatch();
-                        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
-                        fm.setBufferId(pi.getBufferId());
-                        fm.setMatch(match);
-                        sw.write(fm, null);
-                        break; 
-                    */
                     case PORT_STATUS:
                         boolean swadded = 
                             state.hsState.equals(HandshakeState.READY);
@@ -690,7 +650,7 @@ public class Controller
             portL3Counter.increment();
             switchL3Counter.increment();
             
-            if (etherType.compareTo(CounterStore.L3ET_IPV4) == 0) {
+            if (etherType.compareTo(ICounterStoreService.L3ET_IPV4) == 0) {
                 IPv4 ipV4 = (IPv4)eth.getPayload();
                 String l4Type = String.format("%02x", ipV4.getProtocol());
                 if (TypeAliases.l4TypeAliasMap != null && 
@@ -780,8 +740,8 @@ public class Controller
                         bc = bContext;
                     }
                     if (eth != null) {
-                        IFloodlightProvider.bcStore.put(bc, 
-                                IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
+                        IFloodlightProviderService.bcStore.put(bc, 
+                                IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                                 eth);
                     }
                     
@@ -1088,96 +1048,9 @@ public class Controller
         return "localhost";
     }
     
-    // ***********
-    // Application
-    // ***********
-
-    @Override
-    public Restlet createInboundRoot() {
-        Context context = getContext();
-        initRestContext(context);
-        
-        Router baseRouter = new Router(context);
-        baseRouter.setDefaultMatchingMode(Template.MODE_STARTS_WITH);
-        for (RestletRoutable rr : restlets) {
-            baseRouter.attach(rr.basePath(), rr.getRestlet(context));
-        }
-
-        Filter slashFilter = new Filter() {            
-            @Override
-            protected int beforeHandle(Request request, Response response) {
-                Reference ref = request.getResourceRef();
-                String originalPath = ref.getPath();
-                if (originalPath.contains("//"))
-                {
-                    String newPath = originalPath.replaceAll("/+", "/");
-                    ref.setPath(newPath);
-                }
-                return Filter.CONTINUE;
-            }
-
-        };
-        slashFilter.setNext(baseRouter);
-        
-        return slashFilter;
-    }
-    
     // **************
     // Initialization
     // **************
-    
-    /**
-     * Call after init() has run, but before this.run()
-     * @throws IOException
-     */
-    
-    protected void startUp() throws IOException {
-        // Connect to the storage source to update info about this controller
-        // node, and wait indefinitely if the storage source is unavailable;
-        // don't want switches to connect before we have a database
-        while (true) {
-            try {
-                updateControllerInfo();
-                break;
-            }
-            catch (StorageException e) {
-                log.info("Waiting for storage source");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                }
-            }
-        }
-        log.info("Connected to storage source");
-        
-        switches = new ConcurrentHashMap<Long, IOFSwitch>();
-        
-        this.factory = new BasicFactory();
-    }
-
-    protected void shutDown() {
-        try {
-            removeControllerInfo();
-        } catch (StorageException e) {
-        }
-        
-        log.info("Shutdown complete");
-    }
-
-    protected void setStorageSource(IStorageSource storageSource) {
-        this.storageSource = storageSource;
-        IStorageExceptionHandler handler = 
-                new TerminationStorageExceptionHandler(this);
-        storageSource.setExceptionHandler(handler);
-        storageSource.createTable(CONTROLLER_TABLE_NAME, null);
-        storageSource.createTable(SWITCH_TABLE_NAME, null);
-        storageSource.createTable(PORT_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
-                                             CONTROLLER_ID);
-        storageSource.setTablePrimaryKeyName(SWITCH_TABLE_NAME,
-                                             SWITCH_DATAPATH_ID);
-        storageSource.setTablePrimaryKeyName(PORT_TABLE_NAME, PORT_ID);
-    }
 
     protected void updateAllInactiveSwitchInfo() {
         String controllerId = getControllerId();
@@ -1241,17 +1114,6 @@ public class Controller
 //        controllerInfo.put(CONTROLLER_LAST_STARTUP, startupDate);
 //        controllerInfo.put(CONTROLLER_ACTIVE, Boolean.TRUE);
         storageSource.updateRow(CONTROLLER_TABLE_NAME, controllerInfo);
-    }
-    
-    protected void removeControllerInfo() {
-        // Update the controller info in the storage source to be inactive
-//        Map<String, Object> controllerInfo = new HashMap<String, Object>();
-//        String id = getControllerId();
-//        controllerInfo.put(CONTROLLER_ID, id);
-//        controllerInfo.put(CONTROLLER_ACTIVE, Boolean.FALSE);
-//        storageSource.updateRow(CONTROLLER_TABLE_NAME, controllerInfo);
-        
-        updateAllInactiveSwitchInfo();
     }
     
     protected void updateActiveSwitchInfo(IOFSwitch sw) {
@@ -1346,33 +1208,13 @@ public class Controller
      * Tell controller that we're ready to accept switches loop
      * @throws IOException 
      */
-    protected void run() {
+    public void run() {
         try {            
-            // Start listening for REST requests
-            final Component component = new Component();
-            component.getServers().add(Protocol.HTTP, restPort);
-            component.getDefaultHost().attach(this);
-            
-            component.start();
-
-            // Start listening for switch connections
-            //int threads = 
-            //       Runtime.getRuntime().availableProcessors() * 2 + 1;
-            //int threads = 1;
-            //long maxMem = Runtime.getRuntime().maxMemory() * 1 / 3;
-            //long memPerChannel = 2 * 1024 * 1024;
-
-            final ServerBootstrap bootstrap = createServerBootStrap(workerThreads);
+           final ServerBootstrap bootstrap = createServerBootStrap(workerThreads);
 
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
             bootstrap.setOption("child.tcpNoDelay", true);
-
-            //OrderedMemoryAwareThreadPoolExecutor pipelineExecutor =
-            //        new OrderedMemoryAwareThreadPoolExecutor(
-            //                threads, memPerChannel, maxMem,
-            //                1000, TimeUnit.SECONDS,
-            //                Executors.defaultThreadFactory());
 
             ChannelPipelineFactory pfact = 
                     new OpenflowPipelineFactory(this, null);
@@ -1428,170 +1270,87 @@ public class Controller
     }
 
     /**
-     * Initialize all of the controller's components; override me for
-     * new components
+     * Initialize internal datastructures
      */
-    protected void init() {
-        topology = new TopologyImpl();
-        deviceManager = new DeviceManagerImpl();
-        counterStore = new CounterStore();
-        pktinProcTime = new PktinProcessingTime();
-        routingEngine = new RoutingImpl();
-        initStorageSource();
-        
-        topology.setFloodlightProvider(this);
-        topology.setStorageSource(storageSource);
-         
-        deviceManager.setFloodlightProvider(this);
-        deviceManager.setStorageSource(storageSource);
-        deviceManager.setTopology(topology);
-        
-        initMessageFilterManager();
-        initStaticFlowPusher();
-        initForwarding();
-        
-        // call this explicitly because it does setup
-        this.setStorageSource(storageSource);        
-        
-        
-        ArrayList<ITopologyAware> topologyAware = new ArrayList<ITopologyAware>();
-        topologyAware.add(deviceManager);
-        topologyAware.add(routingEngine);
-        topology.setTopologyAware(topologyAware);
-        topology.setRoutingEngine(routingEngine);
-
-        HashSet<IDeviceManagerAware> dmAware = 
-            new HashSet<IDeviceManagerAware>();
-        dmAware.add(forwarding);
-        //deviceManager.setDeviceManagerAware(dmAware);
-        
-        restlets.add(new CoreWebRoutable());
-        restlets.add(new StorageWebRoutable());
-        restlets.add(new TopologyWebRouteable());
-        JacksonCustomConverter.replaceConverter();
-        
-        // Processing Time Warning Threshold
-        ptWarningThresholdInNano = Long.parseLong(System.getProperty("net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
-        if (ptWarningThresholdInNano > 0) {
-            log.info("Packet processing time threshold for warning set to {} ms.",
-                 ptWarningThresholdInNano/1000000);
-        }
-    }
-    
-    protected void initStorageSource() {
-        MemoryStorageSource memoryStorageSource = new MemoryStorageSource();
-        memoryStorageSource.setCounterStore(counterStore);
-        storageSource = memoryStorageSource;
-    }
-    
-    protected void initMessageFilterManager() {
-        messageFilterManager = new OFMessageFilterManager();
-        messageFilterManager.init(this);
-    }
-    
-    protected void initStaticFlowPusher() {
-        staticFlowEntryPusher = new StaticFlowEntryPusher();
-        staticFlowEntryPusher.setFloodlightProvider(this);
-    }
-    
-    protected void initForwarding() {
-        forwarding = new Forwarding();
-        forwarding.setFloodlightProvider(this);
-        forwarding.setCounterStore(counterStore);
-        forwarding.setDeviceManager(deviceManager);
-        forwarding.setRoutingEngine(routingEngine);
-        forwarding.setTopology(topology);
-    }
-    
-    /**
-     * Initialize the rest context
-     */
-    protected void initRestContext(Context context) {
-        context.getAttributes().put("floodlightProvider", this);
-        context.getAttributes().put("counterStore", counterStore);
-        context.getAttributes().put("storageSource", storageSource);
-        context.getAttributes().put("deviceManager", deviceManager);
-        context.getAttributes().put("messageFilterManager",
-                                    messageFilterManager);
-        context.getAttributes().put("pktinProcessingTime", pktinProcTime);
-        if (staticFlowEntryPusher != null) {
-            context.getAttributes().put("staticFlowEntryPusher", 
-                                        staticFlowEntryPusher);
-        }
-        context.getAttributes().put("topology", topology);
+    public void init() {
+        // These data structures are initialized here because other
+        // module's startUp() might be called before ours
+        this.messageListeners =
+                new ConcurrentHashMap<OFType, 
+                                      ListenerDispatcher<OFType, 
+                                                         IOFMessageListener>>();
+        this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+        this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
+        this.updates = new LinkedBlockingQueue<Update>();
+        this.factory = new BasicFactory();
     }
     
     /**
      * Startup all of the controller's components
      */
-    protected void startupComponents() {
-        // now, do our own init
-        try {
-            log.debug("Doing controller internal setup");
-            this.startUp();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void startupComponents() {
+        log.debug("Doing controller internal setup");
+        // Create the table names we use
+        storageSource.createTable(CONTROLLER_TABLE_NAME, null);
+        storageSource.createTable(SWITCH_TABLE_NAME, null);
+        storageSource.createTable(PORT_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
+                                             CONTROLLER_ID);
+        storageSource.setTablePrimaryKeyName(SWITCH_TABLE_NAME,
+                                             SWITCH_DATAPATH_ID);
+        storageSource.setTablePrimaryKeyName(PORT_TABLE_NAME, PORT_ID);
         
-        log.debug("Starting topology service");
-        topology.startUp();
-        log.debug("Starting deviceManager service");
-        deviceManager.startUp();
-        // no need to do storageSource.startUp()
-        log.debug("Starting counterStore service");
-        counterStore.startUp();
-        log.debug("Starting routingEngine service");
-        routingEngine.startUp();
-        log.debug("Starting forwarding service");
-        forwarding.startUp(); 
-        log.debug("Starting messageFilter service");
-        messageFilterManager.startUp();
-        log.debug("Starting staticFlowEntryPusher service");
-        staticFlowEntryPusher.startUp();
-        log.debug("Starting DebugServer");
-        this.debugserver_start();
+        while (true) {
+            try {
+                updateControllerInfo();
+                break;
+            }
+            catch (StorageException e) {
+                log.info("Waiting for storage source");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e1) {
+                }
+            }
+        }
+        log.info("Connected to storage source");
+                
+        // Processing Time Warning Threshold
+        ptWarningThresholdInNano = Long.parseLong(System.getProperty(
+             "net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
+        if (ptWarningThresholdInNano > 0) {
+            log.info("Packet processing time threshold for warning set to {} ms.",
+                 ptWarningThresholdInNano/1000000);
+        }
+       
+        // Add our REST API
+        restApi.addRestletRoutable(new CoreWebRoutable());
     }
     
     /**
      * Start debug server, put global state as local variables for the jython shell
      */
+    // TODO - make this a module
     protected void debugserver_start() {
+        log.debug("Starting DebugServer");
         Map<String, Object> locals = new HashMap<String, Object>();
         locals.put("controller", this);
-        locals.put("deviceManager", this.deviceManager);
-        locals.put("topology", this.topology);
-        locals.put("routingEngine", this.routingEngine);
-        locals.put("forwarding", this.forwarding);
-        locals.put("staticFlowEntryPusher", this.staticFlowEntryPusher);
+        //locals.put("deviceManager", this.deviceManager);
+        //locals.put("topology", this.topology);
+        //locals.put("routingEngine", this.routingEngine);
+        //locals.put("forwarding", this.forwarding);
+        //locals.put("staticFlowEntryPusher", this.staticFlowEntryPusher);
         locals.put("counterStore", this.counterStore);
         locals.put("storageSource", this.storageSource);
         locals.put("switches", this.switches);
-        locals.put("messageFilterManager", this.messageFilterManager);
+        //locals.put("messageFilterManager", this.messageFilterManager);
 
         Server debug_server = new Server(6655, locals);
         debug_server.start();
 	}
-
-    /**
-     * Main function entry point; override init() for adding modules
-     * @param args Command line arguments
-     */
-    public static void main(String args[]) throws Exception {
-        System.setProperty("org.restlet.engine.loggerFacadeClass", 
-                           "org.restlet.ext.slf4j.Slf4jLoggerFacade");
-
-        CmdLineSettings settings = new CmdLineSettings();
-        CmdLineParser parser = new CmdLineParser(settings);
-        try {
-            parser.parseArgument(args);
-        } catch (CmdLineException e) {
-            parser.printUsage(System.out);
-            System.exit(1);
-        }
-
-        Controller controller = new Controller(settings);
-        controller.init();
-        controller.startupComponents();
-        controller.run();
+    
+    @Override
+    public void setCmdLineOptions(CmdLineSettings settings) {
+        this.openFlowPort = settings.getOpenFlowPort();
     }
 }

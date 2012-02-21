@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 
@@ -43,12 +43,12 @@ import org.slf4j.LoggerFactory;
 public class Hub implements IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(Hub.class);
 
-    protected IFloodlightProvider floodlightProvider;
+    protected IFloodlightProviderService floodlightProvider;
 
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 

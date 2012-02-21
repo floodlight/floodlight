@@ -22,28 +22,35 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
+import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
-import net.floodlightcontroller.topology.ITopology;
-import net.floodlightcontroller.topology.ITopologyAware;
+import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPortStatus;
@@ -57,21 +64,23 @@ import org.slf4j.LoggerFactory;
  * within the network.
  * @author readams
  */
-public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
-        IOFSwitchListener, ITopologyAware, IStorageSourceListener {  
+public class DeviceManagerImpl implements 
+        IDeviceManagerService, IOFMessageListener,
+        IOFSwitchListener, ITopologyListener, 
+        IStorageSourceListener, IFloodlightModule {  
     protected static Logger logger = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
-    protected IFloodlightProvider floodlightProvider;
-    protected ITopology topology;
-    protected IStorageSource storageSource;
+    protected IFloodlightProviderService floodlightProvider;
+    protected ITopologyService topology;
+    protected IStorageSourceService storageSource;
     
     /**
      * This is the master device map that maps device IDs to {@link Device}
      * objects.
      */
     protected ConcurrentHashMap<Long, Device> deviceMap;
-    
+
     /**
      * Counter used to generate device keys
      */
@@ -135,9 +144,12 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             if (!keyFieldsMatchPrimary)
                 classIndex = new ConcurrentHashMap<IndexedEntity, Long>();
         }
-
-        
     }
+    
+    /**
+     * Device manager event listeners
+     */
+    protected Set<IDeviceManagerAware> deviceManagerAware;
     
     // **************
     // IDeviceManager
@@ -171,10 +183,14 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         return Collections.unmodifiableCollection(deviceMap.values());
     }
     
+    @Override
+    public void addListener(IDeviceManagerAware listener) {
+        deviceManagerAware.add(listener);
+    }
+    
     // ******************
     // IOFMessageListener
     // ******************
-
 
     @Override
     public String getName() {
@@ -280,27 +296,54 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         // TODO Auto-generated method stub
     }
 
-    // **************
-    // Initialization
-    // **************
-
-    public void setFloodlightProvider(IFloodlightProvider floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
+    // *****************
+    // IFloodlightModule
+    // *****************
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l =
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IDeviceManagerService.class);
+        return l;
     }
 
-    public void setStorageSource(IStorageSource storageSource) {
-        this.storageSource = storageSource;
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m =
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IDeviceManagerService.class, this);
+        return m;
     }
 
-    public void setTopology(ITopology topology) {
-        this.topology = topology;
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l =
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IStorageSourceService.class);
+        l.add(ITopologyService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext fmc) {
+        this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
+        
+        this.floodlightProvider = 
+                fmc.getServiceImpl(IFloodlightProviderService.class);
+        this.storageSource =
+                fmc.getServiceImpl(IStorageSourceService.class);
+        this.topology =
+                fmc.getServiceImpl(ITopologyService.class);
     }
     
-    public void init() {
-        
-    }
-
-    public void startUp() {
+    @Override
+    public void startUp(FloodlightModuleContext fmc) {
         if (entityClassifier == null)
             setEntityClassifier(new DefaultEntityClassifier());
         
@@ -309,8 +352,16 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         classStateMap = 
                 new ConcurrentHashMap<IEntityClass, ClassState>();
         
+        if (topology != null) {
+            // Register to get updates from topology
+            topology.addListener(this);
+        } else {
+            logger.error("Could add not toplogy listener");
+        }
+        
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
+        floodlightProvider.addOFSwitchListener(this);
         
         // XXX - TODO entity aging timer
     }
@@ -336,8 +387,8 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                                              FloodlightContext cntx) {
         try {
             Ethernet eth = 
-                    IFloodlightProvider.bcStore.
-                    get(cntx,IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+                    IFloodlightProviderService.bcStore.
+                    get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
             // Extract source entity information
             Entity srcEntity = 
@@ -734,5 +785,4 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         
         return true;
     }
-    
 }

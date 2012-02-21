@@ -27,9 +27,10 @@ import org.openflow.util.HexString;
 public class StaticFlowEntryPusherTest extends FloodlightTestCase {
     String flowMod1, flowMod2;
     static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
+    StaticFlowEntryPusher staticFlowEntryPusher;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
         flowMod1 = "{\"switch\": \"00:00:00:00:00:00:00:01\", " +
                    "\"name\": \"flow-mod-1\", " +
@@ -46,13 +47,17 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
                    "\"ingress-port\": \"2\"," +
                    "\"active\": \"true\", " +
                    "\"actions\": \"output=3\"}";
+
+        staticFlowEntryPusher = new StaticFlowEntryPusher();
+        staticFlowEntryPusher.floodlightProvider = 
+                getMockFloodlightProvider();
+        staticFlowEntryPusher.setFlowPushTime(200);
+        staticFlowEntryPusher.startUp(null);
     }
     
     @Test
     public void testAddAndRemoveEntries() throws Exception {
-        StaticFlowEntryPusher staticFlowEntryPusher = 
-                new StaticFlowEntryPusher();
-        staticFlowEntryPusher.setFlowPushTime(200);
+        
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         long dpid = HexString.toLong(TestSwitch1DPID);
         Capture<OFMessage> writeCapture = new Capture<OFMessage>(CaptureType.ALL);
@@ -70,9 +75,6 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         switchMap.put(dpid, mockSwitch);
         mockFloodlightProvider.setSwitches(switchMap);
-        staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
-        staticFlowEntryPusher.startUp();
-        
         // if someone calls getId(), return this dpid instead
         expect(mockSwitch.getId()).andReturn(dpid).anyTimes();
         replay(mockSwitch);
@@ -93,8 +95,9 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         while (count >= 0) {
             Thread.sleep(staticFlowEntryPusher.getFlowPushTime());
 
-            if (writeCapture.getValues().size() >= 4)
+            if (writeCapture.getValues().size() >= 4) {
                 break;
+            }
 
             count -= 1;
         }

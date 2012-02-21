@@ -31,23 +31,23 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
-import net.floodlightcontroller.devicemanager.IDeviceManager;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.Entity;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.routing.IRoutingEngine;
+import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopology;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -67,10 +67,10 @@ import org.openflow.protocol.action.OFActionOutput;
 public class ForwardingTest extends FloodlightTestCase {
     protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightContext cntx;
-    protected IDeviceManager deviceManager;
-    protected IRoutingEngine routingEngine;
+    protected IDeviceManagerService deviceManager;
+    protected IRoutingEngineService routingEngine;
     protected Forwarding forwarding;
-    protected ITopology topology;
+    protected ITopologyService topology;
     protected IOFSwitch sw1, sw2;
     protected Device srcDevice, dstDevice1, dstDevice2;
     protected OFPacketIn packetIn;
@@ -81,16 +81,16 @@ public class ForwardingTest extends FloodlightTestCase {
     protected Date currentDate;
     
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
         // Mock context
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
         forwarding = getForwarding();
-        deviceManager = createMock(IDeviceManager.class);
-        routingEngine = createMock(IRoutingEngine.class);
-        topology = createMock(ITopology.class);
+        deviceManager = createMock(IDeviceManagerService.class);
+        routingEngine = createMock(IRoutingEngineService.class);
+        topology = createMock(ITopologyService.class);
         forwarding.setFloodlightProvider(mockFloodlightProvider);
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
@@ -213,12 +213,14 @@ public class ForwardingTest extends FloodlightTestCase {
                               ~OFMatch.OFPFW_NW_DST_MASK;
 
         // Add the packet to the context store
-        IFloodlightProvider.bcStore.put(cntx, 
-                                        IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
-                                        (Ethernet)testPacket);
-        IDeviceManager.fcStore.put(cntx, 
-                                   IDeviceManager.CONTEXT_SRC_DEVICE,
-                                   srcDevice);
+        IFloodlightProviderService.bcStore.
+            put(cntx, 
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+                (Ethernet)testPacket);
+        IDeviceManagerService.fcStore.
+            put(cntx, 
+                IDeviceManagerService.CONTEXT_SRC_DEVICE,
+                srcDevice);
     }
 
     private Forwarding getForwarding() {
@@ -236,9 +238,10 @@ public class ForwardingTest extends FloodlightTestCase {
                 new Capture<FloodlightContext>(CaptureType.ALL);
 
         // Set destination as sw2 and Mock route
-        IDeviceManager.fcStore.put(cntx, 
-                                   IDeviceManager.CONTEXT_DST_DEVICE, 
-                                   dstDevice1);
+        IDeviceManagerService.fcStore.
+            put(cntx, 
+                IDeviceManagerService.CONTEXT_DST_DEVICE, 
+                dstDevice1);
 
         Route route = new Route(1L, 2L);
         route.setPath(new ArrayList<Link>());
@@ -296,9 +299,10 @@ public class ForwardingTest extends FloodlightTestCase {
     @Test
     public void testForwardSingleSwitchPath() throws Exception {        
         // Set destination as local and Mock route
-        IDeviceManager.fcStore.put(cntx, 
-                                   IDeviceManager.CONTEXT_DST_DEVICE, 
-                                   dstDevice2);
+        IDeviceManagerService.fcStore.
+            put(cntx, 
+                IDeviceManagerService.CONTEXT_DST_DEVICE, 
+                dstDevice2);
         expect(routingEngine.getRoute(1L, 1L)).andReturn(null).atLeastOnce();
         
         // Expected Flow-mods

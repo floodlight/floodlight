@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
+import net.floodlightcontroller.core.internal.CmdLineSettings;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
@@ -33,7 +35,7 @@ import org.openflow.protocol.factory.BasicFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IFloodlightProvider {
+public interface IFloodlightProviderService extends IFloodlightService {
 
     /**
      * A value stored in the floodlight context containing a parsed packet
@@ -133,4 +135,14 @@ public interface IFloodlightProvider {
      * @return an OpenFlow message factory
      */
     public BasicFactory getOFMessageFactory();
+
+    /**
+     * Run the main I/O loop of the Controller.
+     */
+    public void run();
+    
+    /**
+     * Sets the command line settings
+     */
+    public void setCmdLineOptions(CmdLineSettings settings);
 }

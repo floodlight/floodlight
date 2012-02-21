@@ -21,12 +21,14 @@ import java.util.Collection;
 
 import net.floodlightcontroller.core.FloodlightContextStore;
 
+import net.floodlightcontroller.core.module.IFloodlightService;
+
 /**
  * Device manager allows interacting with devices on the network.  Note
  * that under normal circumstances, {@link Device} objects should be retrieved
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
-public interface IDeviceManager {
+public interface IDeviceManagerService extends IFloodlightService {
     /**
      * The source device for the current packet-in, if applicable.
      */
@@ -45,7 +47,7 @@ public interface IDeviceManager {
      */
     public static final FloodlightContextStore<IDevice> fcStore = 
         new FloodlightContextStore<IDevice>();
-    
+
     /**
      * Set the entity classifier for the device manager to use to
      * differentiate devices on the network.  If no classifier is set,
@@ -54,7 +56,7 @@ public interface IDeviceManager {
      * @param classifier the classifier to set.
      */
     public void setEntityClassifier(IEntityClassifier classifier);
-    
+
     /**
      * Flush and/or reclassify all entities in a class
      *
@@ -63,7 +65,7 @@ public interface IDeviceManager {
      * flushed entities
      */
     public void flushEntityCache(IEntityClass entityClass, boolean reclassify);
-    
+
     /**
      * Search for a device using entity fields.  Only the key fields as
      * defined by the {@link IEntityClassifier} will be important in this
@@ -79,10 +81,16 @@ public interface IDeviceManager {
     public IDevice findDevice(long macAddress, Integer ipv4Address,
                               Short vlan, Long switchDPID,
                               Integer switchPort);
-    
+
     /**
      * Get an unmodifiable collection view over all devices currently known.
      * @return the collection of all devices
      */
     public Collection<? extends IDevice> getAllDevices();
+
+    /**
+     * Adds a listener to listen for IDeviceManagerServices notifications
+     * @param listener The listener that wants the notifications
+     */
+    public void addListener(IDeviceManagerAware listener);
 }
