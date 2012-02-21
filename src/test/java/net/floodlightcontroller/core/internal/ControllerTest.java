@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import net.floodlightcontroller.core.CoreModule;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
@@ -36,13 +37,19 @@ import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleLoader;
-import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.counter.CounterStore;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
+import net.floodlightcontroller.perfmon.PktInProcessingTime;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
+import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.jboss.netty.channel.Channel;
@@ -72,12 +79,26 @@ public class ControllerTest extends FloodlightTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        FloodlightModuleLoader fml = new FloodlightModuleLoader();
-        IFloodlightModuleContext moduleContext = fml.loadModulesFromList(
-            new String[]  {"net.floodlightcontroller.core.CoreModule"});
-        controller = 
-            (Controller) moduleContext.
-                getServiceImpl(IFloodlightProviderService.class);
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        CoreModule cm = new CoreModule();
+        controller = (Controller)cm.getServiceImpls().get(IFloodlightProviderService.class);
+        fmc.addService(IFloodlightProviderService.class, controller);
+        MemoryStorageSource memstorage = new MemoryStorageSource();
+        fmc.addService(IStorageSourceService.class, memstorage);
+        RestApiServer restApi = new RestApiServer();
+        fmc.addService(IRestApiService.class, restApi);
+        CounterStore cs = new CounterStore();
+        fmc.addService(ICounterStoreService.class, cs);
+        PktInProcessingTime ppt = new PktInProcessingTime();
+        fmc.addService(IPktInProcessingTimeService.class, ppt);
+        ppt.init(fmc);
+        restApi.init(fmc);
+        memstorage.init(fmc);
+        cm.init(fmc);
+        ppt.startUp(fmc);
+        restApi.startUp(fmc);
+        memstorage.startUp(fmc);
+        cm.startUp(fmc);
     }
 
     public Controller getController() {
