@@ -32,12 +32,18 @@ package net.floodlightcontroller.learningswitch;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
 import net.floodlightcontroller.counter.ICounter;
@@ -61,7 +67,7 @@ import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LearningSwitch implements IOFMessageListener {
+public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
     protected IFloodlightProviderService floodlightProvider;
     protected ICounterStoreService counterStore;
@@ -95,22 +101,6 @@ public class LearningSwitch implements IOFMessageListener {
     
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
-    }
-    
-    public void startUp() {
-        log.trace("Starting");
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        //floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
-        floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
-        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
-    }
-
-    public void shutDown() {
-        log.trace("Stopping");
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-        //floodlightProvider.removeOFMessageListener(OFType.PORT_STATUS, this);
-        floodlightProvider.removeOFMessageListener(OFType.FLOW_REMOVED, this);
-        floodlightProvider.removeOFMessageListener(OFType.ERROR, this);
     }
 
     @Override
@@ -202,7 +192,10 @@ public class LearningSwitch implements IOFMessageListener {
         flowMod.setActions(Arrays.asList((OFAction) new OFActionOutput(outPort, (short) 0xffff)));
         flowMod.setLength((short) (OFFlowMod.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH));
 
-        log.trace("{} {} flow mod {}", new Object[]{ sw, (command == OFFlowMod.OFPFC_DELETE) ? "deleting" : "adding", flowMod });
+        if (log.isTraceEnabled()) {
+            log.trace("{} {} flow mod {}", 
+                      new Object[]{ sw, (command == OFFlowMod.OFPFC_DELETE) ? "deleting" : "adding", flowMod });
+        }
 
         updateCounterStore(sw, flowMod);
         
@@ -328,7 +321,6 @@ public class LearningSwitch implements IOFMessageListener {
     private Command processPortStatusMessage(IOFSwitch sw, OFPortStatus portStatusMessage) {
         // FIXME This is really just an optimization, speeding up removal of flow
         // entries for a disabled port; think about whether it's really needed
-        log.info("learning switch got a port_status");
         OFPhysicalPort port = portStatusMessage.getDesc();
         log.info("received port status: " + portStatusMessage.getReason() + " for port " + port.getPortNumber());
         // LOOK! should be using the reason enums - but how?
@@ -348,7 +340,9 @@ public class LearningSwitch implements IOFMessageListener {
         if (flowRemovedMessage.getCookie() != LearningSwitch.LEARNING_SWITCH_COOKIE) {
             return Command.CONTINUE;
         }
-        log.trace("{} flow entry removed {}", sw, flowRemovedMessage);
+        if (log.isTraceEnabled()) {
+            log.trace("{} flow entry removed {}", sw, flowRemovedMessage);
+        }
         OFMatch match = flowRemovedMessage.getMatch();
         // When a flow entry expires, it means the device with the matching source
         // MAC address and VLAN either stopped sending packets or moved to a different
@@ -394,12 +388,54 @@ public class LearningSwitch implements IOFMessageListener {
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return (type == OFType.PACKET_IN && 
-                (name.equals("devicemanager") || name.equals("forwarding")));
+        // TODO - change this
+        return false;
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
         return false;
+    }
+
+    // IFloodlightModule
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        // We don't provide any services, return null
+        return null;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        // We don't provide any services, return null
+        return null;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>>
+            getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(ICounterStoreService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        floodlightProvider =
+                context.getServiceImpl(IFloodlightProviderService.class);
+        counterStore =
+                context.getServiceImpl(ICounterStoreService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        //floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
+        floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
+        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
 }
