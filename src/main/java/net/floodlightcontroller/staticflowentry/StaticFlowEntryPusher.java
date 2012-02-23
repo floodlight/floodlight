@@ -170,7 +170,9 @@ public class StaticFlowEntryPusher
      * 
      */
     public void addEntry(long dpid, String name, boolean active, OFFlowMod fm) {
-        log.debug("addEntry: add dpid: {}, name: {}", dpid, name);
+        if (log.isDebugEnabled()) {
+            log.debug("addEntry: add dpid: {}, name: {}", dpid, name);
+        }
         
         /*
          * For now, we do not add inactive flow-mods since they will need to be added again
