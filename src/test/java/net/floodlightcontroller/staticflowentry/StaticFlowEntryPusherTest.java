@@ -12,8 +12,12 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
@@ -48,11 +52,16 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
                    "\"active\": \"true\", " +
                    "\"actions\": \"output=3\"}";
 
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        RestApiServer restApi = new RestApiServer();
+        fmc.addService(IRestApiService.class, restApi);
         staticFlowEntryPusher = new StaticFlowEntryPusher();
-        staticFlowEntryPusher.floodlightProvider = 
-                getMockFloodlightProvider();
+        staticFlowEntryPusher.init(fmc);
+        restApi.init(fmc);
         staticFlowEntryPusher.setFlowPushTime(200);
-        staticFlowEntryPusher.startUp(null);
+        staticFlowEntryPusher.startUp(fmc);
+        restApi.startUp(fmc);
     }
     
     @Test

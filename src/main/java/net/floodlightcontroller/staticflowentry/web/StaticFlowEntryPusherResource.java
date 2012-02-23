@@ -15,26 +15,29 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.web;
+package net.floodlightcontroller.staticflowentry.web;
 
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.restlet.resource.ServerResource;
 
-import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
+import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 
-public class StaticFlowEntryPusherResource extends StaticFlowEntryPusherResourceBase {
-    protected static Logger log = LoggerFactory.getLogger(Controller.class);
-          
+public class StaticFlowEntryPusherResource extends ServerResource {
+    
     @Post
     public void store(String flowmod) {
-        ((StaticFlowEntryPusher)this.staticFlowEntryPusher).addEntry(flowmod);    
+        IStaticFlowEntryPusherService sfp =
+                (IStaticFlowEntryPusherService)getContext().getAttributes().
+                    get(IStaticFlowEntryPusherService.class.getCanonicalName());
+        sfp.addEntry(flowmod);
     }
     
     @Delete
     public void del(String flowmod) {
-        ((StaticFlowEntryPusher)this.staticFlowEntryPusher).removeEntry(flowmod);
+        IStaticFlowEntryPusherService sfp =
+                (IStaticFlowEntryPusherService)getContext().getAttributes().
+                    get(IStaticFlowEntryPusherService.class.getCanonicalName());
+        sfp.removeEntry(flowmod);
     }
 }
