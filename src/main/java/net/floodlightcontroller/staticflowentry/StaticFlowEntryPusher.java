@@ -40,6 +40,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryWebRoutable;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
@@ -71,6 +73,7 @@ public class StaticFlowEntryPusher
 
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
     protected IFloodlightProviderService floodlightProvider;
+    protected IRestApiService restApi;
 
     protected ArrayList<String> flowmodList;
     protected ArrayList<IOFSwitch> activeSwitches;
@@ -167,7 +170,9 @@ public class StaticFlowEntryPusher
      * 
      */
     public void addEntry(long dpid, String name, boolean active, OFFlowMod fm) {
-        log.debug("addEntry: add dpid: {}, name: {}", dpid, name);
+        if (log.isDebugEnabled()) {
+            log.debug("addEntry: add dpid: {}, name: {}", dpid, name);
+        }
         
         /*
          * For now, we do not add inactive flow-mods since they will need to be added again
@@ -639,6 +644,7 @@ public class StaticFlowEntryPusher
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -648,17 +654,15 @@ public class StaticFlowEntryPusher
         // Wire up all our dependencies
         floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
+        restApi =
+                context.getServiceImpl(IRestApiService.class);
+        flowmodList = new ArrayList<String>();
+        flowmods = new HashMap<Long, HashMap<String, OFFlowMod>>(); 
+        activeSwitches = new ArrayList<IOFSwitch>();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        // This is our 'constructor'
-        if (log.isDebugEnabled()) {
-            log.debug("Starting " + this.getClass().getCanonicalName());
-        }
-        flowmodList = new ArrayList<String>();
-        flowmods = new HashMap<Long, HashMap<String, OFFlowMod>>(); 
-        activeSwitches = new ArrayList<IOFSwitch>();
         floodlightProvider.addOFSwitchListener(this);        
         pushEntriesTimer = new Runnable() {
             @Override
@@ -677,5 +681,6 @@ public class StaticFlowEntryPusher
         floodlightProvider.getScheduledExecutor().schedule(pushEntriesTimer, 
                                                            pushEntriesFrequency, 
                                                            TimeUnit.MILLISECONDS);
+        restApi.addRestletRoutable(new StaticFlowEntryWebRoutable());
     }
 }
