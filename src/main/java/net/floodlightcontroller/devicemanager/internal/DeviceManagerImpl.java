@@ -170,12 +170,24 @@ public class DeviceManagerImpl implements
     }
 
     @Override
-    public IDevice findDevice(long macAddress, Integer ipv4Address, 
-                              Short vlan, Long switchDPID, 
+    public IDevice findDevice(long macAddress, Short vlan, 
+                              Integer ipv4Address, Long switchDPID, 
                               Integer switchPort) {
         return findDeviceByEntity(new Entity(macAddress, vlan, 
                                              ipv4Address, switchDPID, 
                                              switchPort, null));
+    }
+
+    @Override
+    public IDevice findDestDevice(IDevice source, long macAddress,
+                                  Short vlan, Integer ipv4Address) {
+        return findDestByEntity(source,
+                                new Entity(macAddress, 
+                                           vlan, 
+                                           ipv4Address, 
+                                           null, 
+                                           null,
+                                           null));
     }
 
     @Override
@@ -412,33 +424,12 @@ public class DeviceManagerImpl implements
             // classes of the source.
             Entity dstEntity = getDestEntityFromPacket(eth);
             if (dstEntity != null) {
-                Device dstDevice = findDeviceByEntity(dstEntity);
-
-                if (dstDevice == null) {
-                    // This can only happen if we have attachment point
-                    // key fields since attachment point information isn't
-                    // available for destination devices.
-                    /*
-                    ArrayList<Device> candidates = new ArrayList<Device>();
-                    for (IEntityClass clazz : srcDevice.getEntityClasses()) {
-                        Device c = findDeviceInClassByEntity(clazz, dstEntity);
-                        if (c != null)
-                            candidates.add(c);
-                    }
-                    if (candidates.size() == 1) {
-                        dstDevice = candidates.get(0);
-                    } else if (candidates.size() > 1) {
-                        // ambiguous device.  A higher-order component will 
-                        // need to deal with it by assigning priority
-                        // XXX - TODO
-                    }
-                    */
-
-                }
+                Device dstDevice = 
+                        findDestByEntity(srcDevice, dstEntity);
                 if (dstDevice != null)
                     fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             }
-            
+                
             return Command.CONTINUE;
 
         } finally {
@@ -572,6 +563,51 @@ public class DeviceManagerImpl implements
         if (deviceKey == null)
             return null;
         return deviceMap.get(deviceKey);
+    }
+    
+
+    /**
+     * Get a destination device using entity fields that corresponds with
+     * the given source device.  The source device is important since
+     * there could be ambiguity in the destination device without the
+     * attachment point information.
+     * @param source the source device.  The returned destination will be
+     * in the same entity class as the source.
+     * @param dstEntity the entity to look up
+     * @return an {@link Device} or null if no device is found.
+     */
+    protected Device findDestByEntity(IDevice source,
+                                      Entity dstEntity) {
+        Device dstDevice = findDeviceByEntity(dstEntity);
+
+        //if (dstDevice == null) {
+            // This could happen because:
+            // 1) no destination known, or a broadcast destination
+            // 2) if we have attachment point key fields since 
+            // attachment point information isn't available for
+            // destination devices.
+            // For the second case, we'll need to match up the 
+            // destination device with the class of the source 
+            // device.  
+            /*
+                ArrayList<Device> candidates = new ArrayList<Device>();
+                for (IEntityClass clazz : srcDevice.getEntityClasses()) {
+                    Device c = findDeviceInClassByEntity(clazz, dstEntity);
+                    if (c != null)
+                        candidates.add(c);
+                }
+                if (candidates.size() == 1) {
+                    dstDevice = candidates.get(0);
+                } else if (candidates.size() > 1) {
+                    // ambiguous device.  A higher-order component will 
+                    // need to deal with it by assigning priority
+                    // XXX - TODO
+                }
+             */
+
+        //}
+
+        return dstDevice;
     }
 
     /**

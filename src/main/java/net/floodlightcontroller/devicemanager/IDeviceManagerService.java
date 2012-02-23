@@ -71,16 +71,34 @@ public interface IDeviceManagerService extends IFloodlightService {
      * defined by the {@link IEntityClassifier} will be important in this
      * search.
      * @param macAddress The MAC address
-     * @param ipv4Address the ipv4 address
      * @param vlan the VLAN
+     * @param ipv4Address the ipv4 address
      * @param switchDPID the switch DPID
      * @param switchPort the switch port
      * @return an {@link IDevice} or null if no device is found.
      * @see IDeviceManager#setEntityClassifier(IEntityClassifier)
      */
-    public IDevice findDevice(long macAddress, Integer ipv4Address,
-                              Short vlan, Long switchDPID,
+    public IDevice findDevice(long macAddress, Short vlan,
+                              Integer ipv4Address, Long switchDPID,
                               Integer switchPort);
+    
+    /**
+     * Get a destination device using entity fields that corresponds with
+     * the given source device.  The source device is important since
+     * there could be ambiguity in the destination device without the
+     * attachment point information.
+     * @param source the source device.  The returned destination will be
+     * in the same entity class as the source.
+     * @param macAddress The MAC address for the destination
+     * @param vlan the VLAN if available
+     * @param ipv4Address The IP address if available.
+     * @return an {@link IDevice} or null if no device is found.
+     * @see IDeviceManagerService#findDevice(long, Short, Integer, Long, 
+     * Integer)
+     */
+    public IDevice findDestDevice(IDevice source,
+                                  long macAddress, Short vlan,
+                                  Integer ipv4Address);
 
     /**
      * Get an unmodifiable collection view over all devices currently known.

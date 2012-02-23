@@ -281,8 +281,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Verify the device
         Device rdevice = (Device)
-                deviceManager.findDevice(Ethernet.toLong(dataLayerSource), null,
-                                         (short)5, null, null);
+                deviceManager.findDevice(Ethernet.toLong(dataLayerSource), (short)5,
+                                         null, null, null);
         assertEquals(device, rdevice);
         assertEquals(new Short((short)5), rdevice.getVlanId()[0]);
         /*

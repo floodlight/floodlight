@@ -133,14 +133,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             
             if (on_same_if) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Both source and destination are on the same switch/port {}/{}, Action = NOP", 
+                    log.trace("Both source and destination are on the same " + 
+                              "switch/port {}/{}, Action = NOP", 
                               sw.toString(), pi.getInPort());
                 }
                 return;
             }
 
-            // Install all the routes where both src and dst have attachment points
-            // Since the lists are stored in sorted order we can traverse the attachment points in O(m+n) time
+            // Install all the routes where both src and dst have attachment
+            // points.  Since the lists are stored in sorted order we can 
+            // traverse the attachment points in O(m+n) time
             SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
             Arrays.sort(srcDaps, clusterIdComparator);
             SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();

@@ -71,4 +71,11 @@ public class SwitchPort {
         if (switchDPID != other.switchDPID) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "SwitchPort [switchDPID=" + switchDPID + ", port=" + port
+                + "]";
+    }
+    
 }
