@@ -31,11 +31,9 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.routing.ForwardingBase;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -48,13 +46,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class CounterStore implements ICounterStoreService {
-    public static final String CONTROLLER_NAME = "controller";
-	
     protected static Logger log = LoggerFactory.getLogger(CounterStore.class);
-    public final static String TitleDelimitor = "__";
-
-    /** L2 EtherType subCategories */
-    public final static String L3ET_IPV4 = "L3_IPv4";
 
     public enum NetworkLayer {
         L3, L4

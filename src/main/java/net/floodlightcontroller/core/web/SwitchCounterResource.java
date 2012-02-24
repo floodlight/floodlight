@@ -47,7 +47,7 @@ public class SwitchCounterResource extends CounterResourceBase {
         Long[] switchDpids;
         if (switchID.equalsIgnoreCase("all")) {
             switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
-            getOneSwitchCounterJson(model, CounterStore.CONTROLLER_NAME, counterName);
+            getOneSwitchCounterJson(model, ICounterStoreService.CONTROLLER_NAME, counterName);
             for (Long dpid : switchDpids) {
                 switchID = HexString.toHexString(dpid);
 
