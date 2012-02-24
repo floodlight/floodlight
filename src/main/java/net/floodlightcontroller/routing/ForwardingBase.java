@@ -126,26 +126,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             }
         }
     }
-    
-    /**
-     * Push routes from back to front
-     * @param route Route to push
-     * @param match OpenFlow fields to match on
-     * @param srcSwPort Source switch port for the first hop
-     * @param dstSwPort Destination switch port for final hop
-     * @param bufferId BufferId of the original PacketIn
-     * @return srcSwitchIincluded True if the source switch is included in this route
-     */
-    public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
-            SwitchPortTuple srcSwPort,
-            SwitchPortTuple dstSwPort, int bufferId,
-            IOFSwitch srcSwitch, OFPacketIn pi, FloodlightContext cntx,
-            boolean reqeustFlowRemovedNotifn) {
-        long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-        return pushRoute(route, match, wildcard_hints, srcSwPort, dstSwPort, 
-                bufferId, srcSwitch, pi, cookie, cntx, reqeustFlowRemovedNotifn);
-    }
-    
+
     /**
      * Push routes from back to front
      * @param route Route to push

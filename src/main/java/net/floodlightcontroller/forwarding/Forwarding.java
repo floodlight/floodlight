@@ -31,6 +31,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
@@ -162,9 +163,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                           new Object[] {match, route, dstDap.getSwitchPort().getSw(),
                                           dstDap.getSwitchPort().getPort()});
                             }
+                            long cookie = 
+                                    AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             pushRoute(route, match, 0,
                                       srcDap.getSwitchPort(), dstDap.getSwitchPort(), bufferId,
-                                      sw, pi, cntx, reqeustFlowRemovedNotifn);
+                                      sw, pi, cookie,
+                                      cntx, reqeustFlowRemovedNotifn);
                         }
                     }
                     iSrcDaps++;
