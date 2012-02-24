@@ -151,9 +151,9 @@ public class DeviceManagerImpl implements
      */
     protected Set<IDeviceManagerAware> deviceManagerAware;
     
-    // **************
-    // IDeviceManager
-    // **************
+    // *********************
+    // IDeviceManagerService
+    // *********************
 
     @Override
     public void setEntityClassifier(IEntityClassifier classifier) {
@@ -170,9 +170,16 @@ public class DeviceManagerImpl implements
     }
 
     @Override
+    public IDevice getDevice(Long deviceKey) {
+        return deviceMap.get(deviceKey);
+    }
+
+    @Override
     public IDevice findDevice(long macAddress, Short vlan, 
                               Integer ipv4Address, Long switchDPID, 
                               Integer switchPort) {
+        if (vlan != null && vlan.shortValue() < 0)
+            vlan = null;
         return findDeviceByEntity(new Entity(macAddress, vlan, 
                                              ipv4Address, switchDPID, 
                                              switchPort, null));
@@ -181,6 +188,8 @@ public class DeviceManagerImpl implements
     @Override
     public IDevice findDestDevice(IDevice source, long macAddress,
                                   Short vlan, Integer ipv4Address) {
+        if (vlan != null && vlan.shortValue() < 0)
+            vlan = null;
         return findDestByEntity(source,
                                 new Entity(macAddress, 
                                            vlan, 
@@ -703,13 +712,14 @@ public class DeviceManagerImpl implements
                 break;
             } else {
                 Device newDevice = new Device(device, entity, classes);
-                // XXX - TODO When adding an entity, any existing entities on the
-                // same OpenFlow switch cluster but a different attachment point
-                // should be removed. If an entity being removed contains an 
-                // IP address but the new entity does not contain that IP, 
-                // then a new entity should be added containing the IP 
-                // (including updating the entity caches), preserving the old 
-                // timestamp of the entity.
+                // XXX - TODO
+                // When adding an entity, any existing entities on the
+                // same OpenFlow switch cluster but a different attachment
+                // point should be removed. If an entity being removed 
+                // contains an IP address but the new entity does not contain
+                // that IP, then a new entity should be added containing the
+                // IP (including updating the entity caches), preserving the 
+                // old timestamp of the entity.
                 
                 // XXX - TODO Handle port channels
                 

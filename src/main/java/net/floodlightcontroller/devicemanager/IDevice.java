@@ -45,20 +45,20 @@ public interface IDevice {
     public String getMACAddressString();
     
     /**
-     * Get all VLAN IDs for the device.  The array returned can have
-     * null entries representing untagged packets.
+     * Get all unique VLAN IDs for the device.  If the device has untagged 
+     * entities, then the value -1 will be returned.
      * @return an array containing all unique VLAN IDs for the device.
      */
     public Short[] getVlanId();
     
     /**
-     * Get all IPv4 addresses associated with the device.
+     * Get all unique IPv4 addresses associated with the device.
      * @return an array containing the unique IPv4 addresses for the device.
      */
     public Integer[] getIPv4Addresses();
     
     /**
-     * Get all attachment points associated with the device.
+     * Get all unique attachment points associated with the device.
      * @return an array containing all unique attachment points for the device
      */
     public SwitchPort[] getAttachmentPoints();

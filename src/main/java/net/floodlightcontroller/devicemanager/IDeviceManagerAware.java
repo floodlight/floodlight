@@ -17,9 +17,6 @@
 
 package net.floodlightcontroller.devicemanager;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.devicemanager.internal.Device;
-
 /**
  * Implementors of this interface can receive updates from DeviceManager about
  * the state of devices under its control.
@@ -29,53 +26,36 @@ import net.floodlightcontroller.devicemanager.internal.Device;
 public interface IDeviceManagerAware {
     /**
      * Called when a new Device is found
-     * @param device
+     * @param device the device that changed
      */
-    public void deviceAdded(Device device);
+    public void deviceAdded(IDevice device);
 
     /**
      * Called when a Device is removed, this typically occurs when the port the
      * Device is attached to goes down, or the switch it is attached to is
      * removed.
-     * @param device
+     * @param device the device that changed
      */
-    public void deviceRemoved(Device device);
+    public void deviceRemoved(IDevice device);
 
     /**
      * Called when a Device has moved to a new location on the network. Note
      * that either the switch or the port or both has changed.
      *
-     * @param device the device
-     * @param oldSw the old switch
-     * @param oldPort the port on the old switch
-     * @param sw the current switch
-     * @param port the current port on the current switch
-     */
-    public void deviceMoved(Device device,
-                            IOFSwitch oldSw, Short oldPort,
-                            IOFSwitch sw, Short port);
-    
-    /**
-     * Called when a network address has been added to a device
-     * 
-     * @param device the device
-     * @param address the new network address
-     */
-    public void deviceNetworkAddressAdded(Device device, 
-                                          DeviceNetworkAddress address);
-
-    /**
-     * Called when a network address has been removed from a device
-     * 
-     * @param device the device
-     * @param address the old network address
-     */
-    public void deviceNetworkAddressRemoved(Device device,
-                                            DeviceNetworkAddress address);
-    
-    /**
-     * Called when the VLAN on the device changed
      * @param device the device that changed
      */
-    public void deviceVlanChanged(Device device);
+    public void deviceMoved(IDevice device);
+    
+    /**
+     * Called when a network address has been added or remove from a device
+     * 
+     * @param device the device that changed
+     */
+    public void deviceNetworkAddressChanged(IDevice device);
+    
+    /**
+     * Called when a VLAN tag for the device has been added or removed
+     * @param device the device that changed
+     */
+    public void deviceVlanChanged(IDevice device);
 }

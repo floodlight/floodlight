@@ -49,23 +49,13 @@ public interface IDeviceManagerService extends IFloodlightService {
         new FloodlightContextStore<IDevice>();
 
     /**
-     * Set the entity classifier for the device manager to use to
-     * differentiate devices on the network.  If no classifier is set,
-     * the {@link DefaultEntityClassifer} will be used.  This should be 
-     * registered in the application initialization phase before startup.
-     * @param classifier the classifier to set.
+     * Get the device with the given device key.
+     * @param deviceKey the key to search for
+     * @return the device associated with the key, or null if no such device
+     * @see IDevice#getDeviceKey()
      */
-    public void setEntityClassifier(IEntityClassifier classifier);
-
-    /**
-     * Flush and/or reclassify all entities in a class
-     *
-     * @param entityClass the class to flush.  If null, flush all classes
-     * @param reclassify if true, begin an asynchronous task to reclassify the
-     * flushed entities
-     */
-    public void flushEntityCache(IEntityClass entityClass, boolean reclassify);
-
+    public IDevice getDevice(Long deviceKey);
+    
     /**
      * Search for a device using entity fields.  Only the key fields as
      * defined by the {@link IEntityClassifier} will be important in this
@@ -111,4 +101,24 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param listener The listener that wants the notifications
      */
     public void addListener(IDeviceManagerAware listener);
+    
+    /**
+     * Set the entity classifier for the device manager to use to
+     * differentiate devices on the network.  If no classifier is set,
+     * the {@link DefaultEntityClassifer} will be used.  This should be 
+     * registered in the application initialization phase before startup.
+     * @param classifier the classifier to set.
+     */
+    public void setEntityClassifier(IEntityClassifier classifier);
+
+    /**
+     * Flush and/or reclassify all entities in a class
+     *
+     * @param entityClass the class to flush.  If null, flush all classes
+     * @param reclassify if true, begin an asynchronous task to reclassify the
+     * flushed entities
+     */
+    public void flushEntityCache(IEntityClass entityClass,
+                                 boolean reclassify);
+
 }

@@ -120,13 +120,16 @@ public class Device implements IDevice {
             if (entities[0].getVlan() != null) {
                 return new Short[]{ entities[0].getVlan() };
             } else {
-                return new Short[0];
+                return new Short[] { Short.valueOf((short)-1) };
             }
         }
 
         TreeSet<Short> vals = new TreeSet<Short>();
         for (Entity e : entities) {
-            vals.add(e.getVlan());
+            if (e.getVlan() == null)
+                vals.add((short)-1);
+            else
+                vals.add(e.getVlan());
         }
         return vals.toArray(new Short[vals.size()]);
     }

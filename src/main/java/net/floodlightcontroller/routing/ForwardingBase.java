@@ -32,11 +32,10 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.CounterValue;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
+import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -498,18 +497,17 @@ public abstract class ForwardingBase implements
     }
 
     @Override
-    public void deviceAdded(Device device) {
+    public void deviceAdded(IDevice device) {
         // NOOP
     }
 
     @Override
-    public void deviceRemoved(Device device) {
+    public void deviceRemoved(IDevice device) {
         // NOOP
     }
 
     @Override
-    public void deviceMoved(Device device, IOFSwitch oldSw, Short oldPort,
-                            IOFSwitch sw, Short port) {
+    public void deviceMoved(IDevice device) {
         // Build flow mod to delete based on destination mac == device mac
         OFMatch match = new OFMatch();
         match.setDataLayerDestination(Ethernet.toByteArray(device.getMACAddress()));
@@ -533,19 +531,12 @@ public abstract class ForwardingBase implements
     }
 
     @Override
-    public void deviceNetworkAddressAdded(Device device,
-                                          DeviceNetworkAddress address) {
+    public void deviceNetworkAddressChanged(IDevice device) {
 
     }
 
     @Override
-    public void deviceNetworkAddressRemoved(Device device,
-                                            DeviceNetworkAddress address) {
-
-    }
-
-    @Override
-    public void deviceVlanChanged(Device device) {
+    public void deviceVlanChanged(IDevice device) {
 
     }
 
