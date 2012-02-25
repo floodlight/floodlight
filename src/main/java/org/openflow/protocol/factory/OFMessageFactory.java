@@ -17,6 +17,8 @@
 
 package org.openflow.protocol.factory;
 
+import java.util.List;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
@@ -43,7 +45,7 @@ public interface OFMessageFactory {
      * @return a list of OFMessage instances
      * @throws MessageParseException 
      */
-    public OFMessage parseMessage(ChannelBuffer data) throws MessageParseException;
+    public List<OFMessage> parseMessage(ChannelBuffer data) throws MessageParseException;
 
     /**
      * Retrieves an OFActionFactory

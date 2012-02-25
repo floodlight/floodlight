@@ -320,4 +320,9 @@ public interface IOFSwitch {
     int sendStatsQuery(OFStatisticsRequest request, IOFMessageListener caller)
             throws IOException;
 
+    /**
+     * Flush all flows queued for this switch in the current thread.
+     * NOTE: The contract is limited to the current thread
+     */
+     public void flush();
 }

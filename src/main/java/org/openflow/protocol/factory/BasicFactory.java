@@ -50,7 +50,30 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
     }
 
     @Override
-    public OFMessage parseMessage(ChannelBuffer data) throws MessageParseException {
+    public List<OFMessage> parseMessage(ChannelBuffer data) throws MessageParseException {
+        List<OFMessage> msglist = new ArrayList<OFMessage>();
+        OFMessage msg = null;
+
+        while (data.readableBytes() >= OFMessage.MINIMUM_LENGTH) {
+            data.markReaderIndex();
+            msg = this.parseMessageOne(data);
+            if (msg == null) {
+                data.resetReaderIndex();
+                break;
+            }
+            else {
+                msglist.add(msg);
+            }
+        }
+
+        if (msglist.size() == 0) {
+            return null;
+        }
+        return msglist;
+
+    }
+
+    public OFMessage parseMessageOne(ChannelBuffer data) throws MessageParseException {
         try {
             OFMessage demux = new OFMessage();
             OFMessage ofm = null;

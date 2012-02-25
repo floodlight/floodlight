@@ -49,7 +49,7 @@ class OFChannelState {
 
     }
 
-    protected HandshakeState hsState = HandshakeState.START;
+    protected volatile HandshakeState hsState = HandshakeState.START;
     protected boolean hasGetConfigReply = false;
     protected boolean hasDescription = false;
 }

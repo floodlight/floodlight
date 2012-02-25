@@ -472,6 +472,7 @@ public class TopologyImpl
                 sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
             }
         }
+        sw.flush();
     }
 
     protected void sendLLDPs() {
