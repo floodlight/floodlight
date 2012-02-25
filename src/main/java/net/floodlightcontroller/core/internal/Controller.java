@@ -21,10 +21,12 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,6 +47,7 @@ import java.nio.channels.ClosedChannelException;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFController;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -127,6 +130,7 @@ public class Controller
                                                IOFMessageListener>> messageListeners;
     protected ConcurrentHashMap<Long, IOFSwitch> switches;
     protected Set<IOFSwitchListener> switchListeners;
+    protected Map<String, List<IInfoProvider>> providerMap;
     protected BlockingQueue<Update> updates;
     protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
@@ -1149,6 +1153,8 @@ public class Controller
         this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.updates = new LinkedBlockingQueue<Update>();
         this.factory = new BasicFactory();
+        this.providerMap = new HashMap<String, List<IInfoProvider>>();
+        
     }
     
     /**
@@ -1219,4 +1225,33 @@ public class Controller
     public void setCmdLineOptions(CmdLineSettings settings) {
         this.openFlowPort = settings.getOpenFlowPort();
     }
+
+	@Override
+	public void addInfoProvider(String type, IInfoProvider provider) {
+		if (!providerMap.containsKey(type)) {
+			providerMap.put(type, new ArrayList<IInfoProvider>());
+		}
+		providerMap.get(type).add(provider);
+	}
+
+	@Override
+	public void removeInfoProvider(String type, IInfoProvider provider) {
+		if (!providerMap.containsKey(type)) {
+			log.debug("Provider type {} doesn't exist.", type);
+			return;
+		}
+		
+		providerMap.get(type).remove(provider);
+	}
+	
+	public Map<String, Object> getControllerInfo(String type) {
+		if (!providerMap.containsKey(type)) return null;
+		
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		for (IInfoProvider provider : providerMap.get(type)) {
+			result.putAll(provider.getInfo(type));
+		}
+		
+		return result;
+	}
 }

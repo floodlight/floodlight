@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -91,7 +92,8 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
-        IOFSwitchListener, ITopologyListener, IFloodlightModule, IStorageSourceListener {      
+        IOFSwitchListener, ITopologyListener, IFloodlightModule, IStorageSourceListener,
+        IInfoProvider {      
     /**
      * Class to maintain all the device manager maps which consists of four
      * main maps. 
@@ -2152,6 +2154,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         // Register for switch events
         floodlightProvider.addOFSwitchListener(this);
+        floodlightProvider.addInfoProvider("summary", this);
          // Device and storage aging.
         enableDeviceAgingTimer();
         // Read all our device state (MACs, IPs, attachment points) from storage
@@ -2162,4 +2165,20 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     public void addListener(IDeviceManagerAware listener) {
         deviceManagerAware.add(listener);
     }
+
+	@Override
+	public Map<String, Object> getInfo(String type) {
+		if (!"summary".equals(type))
+			return null;
+		
+		Map<String, Object> info = new HashMap<String, Object>();
+		info.put("# hosts", devMgrMaps.dataLayerAddressDeviceMap.size());
+		info.put("# IP Addresses", devMgrMaps.ipv4AddressDeviceMap.size());
+		int num_aps = 0;
+		for (Map<Integer, Device> devAps : devMgrMaps.switchPortDeviceMap.values())
+			num_aps += devAps.size();
+		info.put("# attachment points", num_aps);
+		
+		return info;
+	}
 }
