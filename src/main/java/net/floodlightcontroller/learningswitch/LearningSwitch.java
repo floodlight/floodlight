@@ -87,6 +87,9 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
     
     // for managing our map sizes
     protected static final int MAX_MACS_PER_SWITCH  = 1000;    
+
+    // normally, setup reverse flow as well. Disable only for using cbench for comparison with NOX etc.
+    protected static final boolean LEARNING_SWITCH_REVERSE_FLOW = true;
     
     /**
      * @param floodlightProvider the floodlightProvider to set
@@ -298,7 +301,8 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
                     & ~OFMatch.OFPFW_DL_VLAN & ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST
                     & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK);
             this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, pi.getBufferId(), match, outPort);
-            this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, -1, match.clone()
+            if (LEARNING_SWITCH_REVERSE_FLOW) {
+                this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, -1, match.clone()
                     .setDataLayerSource(match.getDataLayerDestination())
                     .setDataLayerDestination(match.getDataLayerSource())
                     .setNetworkSource(match.getNetworkDestination())
@@ -307,6 +311,7 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
                     .setTransportDestination(match.getTransportSource())
                     .setInputPort(outPort),
                     match.getInputPort());
+            }
         }
         return Command.CONTINUE;
     }

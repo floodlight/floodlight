@@ -17,6 +17,8 @@
 
 package org.openflow.protocol;
 
+import java.util.List;
+
 import junit.framework.TestCase;
 
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -40,10 +42,11 @@ public class OFStatisticsRequestTest extends OFTestCase {
 
         OFMessageFactory factory = new BasicFactory();
         ChannelBuffer packetBuf = ChannelBuffers.wrappedBuffer(packet);
-        OFMessage msg = factory.parseMessage(packetBuf);
+        List<OFMessage> msg = factory.parseMessage(packetBuf);
         TestCase.assertNotNull(msg);
-        TestCase.assertTrue(msg instanceof OFStatisticsRequest);
-        OFStatisticsRequest sr = (OFStatisticsRequest) msg;
+        TestCase.assertEquals(msg.size(), 1);
+        TestCase.assertTrue(msg.get(0) instanceof OFStatisticsRequest);
+        OFStatisticsRequest sr = (OFStatisticsRequest) msg.get(0);
         TestCase.assertEquals(OFStatisticsType.FLOW, sr.getStatisticType());
         TestCase.assertEquals(1, sr.getStatistics().size());
         TestCase.assertTrue(sr.getStatistics().get(0) instanceof OFFlowStatisticsRequest);
@@ -63,10 +66,11 @@ public class OFStatisticsRequestTest extends OFTestCase {
 
         OFMessageFactory factory = new BasicFactory();
         ChannelBuffer packetBuf = ChannelBuffers.wrappedBuffer(packet);
-        OFMessage msg = factory.parseMessage(packetBuf);
+        List<OFMessage> msg = factory.parseMessage(packetBuf);
         TestCase.assertNotNull(msg);
-        TestCase.assertTrue(msg instanceof OFStatisticsRequest);
-        OFStatisticsRequest sr = (OFStatisticsRequest) msg;
+        TestCase.assertEquals(msg.size(), 1);
+        TestCase.assertTrue(msg.get(0) instanceof OFStatisticsRequest);
+        OFStatisticsRequest sr = (OFStatisticsRequest) msg.get(0);
         TestCase.assertEquals(OFStatisticsType.VENDOR, sr.getStatisticType());
         TestCase.assertEquals(1, sr.getStatistics().size());
         TestCase.assertTrue(sr.getStatistics().get(0) instanceof OFVendorStatistics);

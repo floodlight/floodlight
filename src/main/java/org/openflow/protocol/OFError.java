@@ -18,6 +18,8 @@
 package org.openflow.protocol;
 
 import java.util.Arrays;
+import java.util.List;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.openflow.protocol.factory.MessageParseException;
@@ -170,8 +172,11 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
         ChannelBuffer errorMsg = ChannelBuffers.wrappedBuffer(this.error);
         if (factory == null)
             throw new RuntimeException("MessageFactory not set");
-        OFMessage message = this.factory.parseMessage(errorMsg);
-        return message;
+
+        List<OFMessage> msglist = this.factory.parseMessage(errorMsg);
+        if (msglist == null)
+                return null;
+        return msglist.get(0);
     }
 
     /**

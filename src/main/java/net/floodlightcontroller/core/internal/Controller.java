@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -125,6 +127,7 @@ public class Controller
     implements IFloodlightProviderService, IOFController {
     
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
+    protected ICounterStoreService counterStore = null;
     
     protected BasicFactory factory;
     protected ConcurrentMap<OFType, 
@@ -133,7 +136,6 @@ public class Controller
     protected ConcurrentHashMap<Long, IOFSwitch> switches;
     protected Set<IOFSwitchListener> switchListeners;
     protected BlockingQueue<Update> updates;
-    protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
 
     protected ScheduledExecutorService executor = 
@@ -178,6 +180,11 @@ public class Controller
     protected static final String PORT_SUPPORTED_FEATURES = "supported_features";
     protected static final String PORT_PEER_FEATURES = "peer_features";
     
+    // Perf. related configuration
+    protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected static final int BATCH_MAX_SIZE = 100;
+    protected static final boolean ALWAYS_DECODE_ETH = true;
+
     protected class Update {
         public IOFSwitch sw;
         public boolean added;
@@ -249,7 +256,10 @@ public class Controller
             sw.setChannel(e.getChannel());
             sw.setFloodlightProvider(Controller.this);
             
-            e.getChannel().write(factory.getMessage(OFType.HELLO));
+            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+            msglist.add(factory.getMessage(OFType.HELLO));
+            e.getChannel().write(msglist);
+
         }
 
         @Override
@@ -301,22 +311,28 @@ public class Controller
         @Override
         public void channelIdle(ChannelHandlerContext ctx, IdleStateEvent e)
                 throws Exception {
-            // Can write to switch without holding processLock
-            OFMessage m = factory.getMessage(OFType.ECHO_REQUEST);
-            e.getChannel().write(m);
+            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+            msglist.add(factory.getMessage(OFType.ECHO_REQUEST));
+            e.getChannel().write(msglist);
         }
 
         @Override
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
                 throws Exception {
-            try {
-                if (e.getMessage() instanceof OFMessage) {
-                    processOFMessage((OFMessage)e.getMessage());
+            if (e.getMessage() instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<OFMessage> msglist = (List<OFMessage>)e.getMessage();
+
+                for (OFMessage ofm : msglist) {
+                    try {
+                        processOFMessage(ofm);
+                    }
+                    catch (Exception ex) {
+                        // We are the last handler in the stream, so run the exception
+                        // through the channel again by passing in ctx.getChannel().
+                        Channels.fireExceptionCaught(ctx.getChannel(), ex);
+                    }
                 }
-            } catch (Exception ex) {
-            	// We are the last handler in the stream, so run the exception
-            	// through the channel again by passing in ctx.getChannel().
-                Channels.fireExceptionCaught(ctx.getChannel(), ex);
             }
         }
         
@@ -568,6 +584,10 @@ public class Controller
     }
     
     protected void updateCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
+
+        if (counterStore == null)
+            return;
+
         OFPacketIn packet = (OFPacketIn)m;
         
         /* Extract the etherType and protocol field for IPv4 packet.
@@ -698,6 +718,43 @@ public class Controller
     }
     
     /**
+     * flcontext_cache - Keep a thread local stack of contexts
+     */
+	protected static final ThreadLocal<Stack<FloodlightContext>> flcontext_cache =
+		new ThreadLocal <Stack<FloodlightContext>> () {
+			@Override
+			protected Stack<FloodlightContext> initialValue() {
+				return new Stack<FloodlightContext>();
+			}
+		};
+
+	/**
+	 * flcontext_alloc - pop a context off the stack, if required create a new one
+	 * @return FloodlightContext
+	 */
+	protected static FloodlightContext flcontext_alloc() {
+		FloodlightContext flcontext = null;
+
+		if (flcontext_cache.get().empty()) {
+			flcontext = new FloodlightContext();
+		}
+		else {
+			flcontext = flcontext_cache.get().pop();
+		}
+
+		return flcontext;
+	}
+
+	/**
+	 * flcontext_free - Free the context to the current thread
+	 * @param flcontext
+	 */
+	protected void flcontext_free(FloodlightContext flcontext) {
+		flcontext.getStorage().clear();
+		flcontext_cache.get().push(flcontext);
+	}
+
+    /**
      * Handle replies to certain OFMessages, and pass others off to listeners
      * @param sw The switch for the message
      * @param m The message
@@ -709,16 +766,17 @@ public class Controller
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-        
         long startTime = System.nanoTime();
 
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
-                eth = new Ethernet();
-                eth.deserialize(pi.getPacketData(), 0,
-                                pi.getPacketData().length);
-                updateCounters(sw, m, eth);
+                if (Controller.ALWAYS_DECODE_ETH) {
+                    eth = new Ethernet();
+                    eth.deserialize(pi.getPacketData(), 0,
+                            pi.getPacketData().length);
+                    updateCounters(sw, m, eth);
+                }
 
                 // fall through to default case...
             default:
@@ -729,13 +787,13 @@ public class Controller
                             getOrderedListeners();
                 }
                         
+                FloodlightContext bc = null;
                 if (listeners != null) {
                     // Check if floodlight context is passed from the calling 
                     // function, if so use that floodlight context, otherwise 
                     // allocate one
-                    FloodlightContext bc;
                     if (bContext == null) {
-                        bc = new FloodlightContext();
+                        bc = flcontext_alloc();
                     } else {
                         bc = bContext;
                     }
@@ -774,6 +832,7 @@ public class Controller
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
                 }
+                if ((bContext == null) && (bc != null)) flcontext_free(bc);
                 
                 long processingTime = System.nanoTime() - startTime;
                 if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
@@ -1215,6 +1274,7 @@ public class Controller
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
             bootstrap.setOption("child.tcpNoDelay", true);
+            bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
 
             ChannelPipelineFactory pfact = 
                     new OpenflowPipelineFactory(this, null);

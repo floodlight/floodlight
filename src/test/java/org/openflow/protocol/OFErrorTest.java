@@ -17,6 +17,8 @@
 
 package org.openflow.protocol;
 
+import java.util.List;
+
 import junit.framework.TestCase;
 
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -75,11 +77,12 @@ public class OFErrorTest extends OFTestCase {
         OFMessageFactory factory = new BasicFactory();
         ChannelBuffer oferrorBuf = 
                 ChannelBuffers.wrappedBuffer(oferrorRaw);
-        OFMessage msg = factory.parseMessage(oferrorBuf);
+        List<OFMessage> msg = factory.parseMessage(oferrorBuf);
         TestCase.assertNotNull(msg);
-        TestCase.assertEquals(76, msg.getLengthU());
+        TestCase.assertEquals(msg.size(), 1);
+        TestCase.assertEquals(76, msg.get(0).getLengthU());
         ChannelBuffer out = ChannelBuffers.dynamicBuffer();
-        msg.writeTo(out);
+        msg.get(0).writeTo(out);
         TestCase.assertEquals(76, out.readableBytes());
     }
 }
