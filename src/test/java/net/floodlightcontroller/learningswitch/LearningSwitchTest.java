@@ -27,6 +27,7 @@ import java.util.Arrays;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -69,6 +70,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         learningSwitch = new LearningSwitch();
         learningSwitch.setFloodlightProvider(mockFloodlightProvider);
+        learningSwitch.setCounterStore(new CounterStore());
         mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
         
         // Build our test packet
@@ -139,6 +141,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
     @Test
     public void testFlood() throws Exception {
         LearningSwitch learningSwitch = getLearningSwitch();
+        
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
 
         // build our expected flooded packetOut
@@ -154,7 +157,8 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         mockSwitch.addToPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42, (short) 1);       
-        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42)).andReturn(null);        
+        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42)).andReturn(null); 
+        expect(mockSwitch.getStringId()).andReturn("00:11:22:33:44:55:66:77");
         //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
         expect(mockSwitch.getId()).andReturn(1L);
         mockSwitch.write(po, null);
@@ -225,6 +229,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         expect(mockSwitch.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer) (OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO
                 | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_NW_SRC_ALL
                 | OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_TOS));
+        expect(mockSwitch.getStringId()).andReturn("00:11:22:33:44:55:66:77").anyTimes();
         //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
         mockSwitch.write(fm1, null);
         //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
