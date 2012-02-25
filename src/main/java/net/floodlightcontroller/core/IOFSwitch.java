@@ -293,17 +293,31 @@ public interface IOFSwitch {
      * @return current value for name or null (if not present)
      */
     Object removeAttribute(String name);
-    
+
     /**
      * Clear all flowmods on this switch
      */
     public void clearAllFlowMods();
-    
+
     /**
      * Return a TimedHashMap associated with the switch
      * @param data
      * @return
      */
     public TimedCache<Long> getTimedCache();
+
+    /**
+     * Send a flow statistics request to the switch. This call returns after
+     * sending the stats. request to the switch.
+     * @param request flow statistics request message
+     * @param caller the caller of the API. receive() callback of this 
+     * caller would be called when the reply from the switch is received.
+     * @return the transaction id for the message sent to the switch. The 
+     * transaction id can be used to match the response with the request. Note
+     * that the transaction id is unique only within the scope of this switch.
+     * @throws IOException
+     */
+    int sendStatsQuery(OFStatisticsRequest request, IOFMessageListener caller)
+            throws IOException;
 
 }

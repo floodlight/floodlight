@@ -31,6 +31,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.util.TimedCache;
@@ -72,6 +73,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Long switchClusterId;
     protected Map<MacVlanPair,Short> macVlanToPortMap;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
+    protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected boolean connected;
     protected TimedCache<Long> timedCache;
     protected ReentrantReadWriteLock lock;
@@ -89,9 +91,10 @@ public class OFSwitchImpl implements IOFSwitch {
         this.switchClusterId = null;
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
+        this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.lock = new ReentrantReadWriteLock();
-        
+
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
@@ -248,6 +251,16 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    public int sendStatsQuery(OFStatisticsRequest request,
+                                IOFMessageListener caller) throws IOException {
+        int transId = getNextTransactionId();
+        request.setXid(transId);
+        this.iofMsgListenersMap.put(transId, caller);
+        this.channel.write(request);
+        return transId;
+    }
+
+    @Override
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
         request.setXid(getNextTransactionId());
         OFStatisticsFuture future = new OFStatisticsFuture(floodlightProvider, this, request.getXid());
@@ -264,14 +277,22 @@ public class OFSwitchImpl implements IOFSwitch {
             future.deliverFuture(this, reply);
             // The future will ultimately unregister itself and call
             // cancelStatisticsReply
+            return;
+        }
+        /* Transaction id was not found in statsFutureMap.check the other map */
+        IOFMessageListener caller = this.iofMsgListenersMap.get(reply.getXid());
+        if (caller != null) {
+            caller.receive(this, reply, null);
         }
     }
 
     @Override
     public void cancelStatisticsReply(int transactionId) {
-        this.statsFutureMap.remove(transactionId);
+        if (null ==  this.statsFutureMap.remove(transactionId)) {
+            this.iofMsgListenersMap.remove(transactionId);
+        }
     }
-    
+
     /**
      * @param floodlightProvider the floodlightProvider to set
      */

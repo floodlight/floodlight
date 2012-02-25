@@ -436,7 +436,7 @@ public class Controller
             // Delete all pre-existing flows
             sw.clearAllFlowMods();
         }
-        
+
         /**
          * Dispatch an Openflow message from a switch to the appropriate
          * handler.
