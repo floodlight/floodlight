@@ -142,15 +142,16 @@ public class OFSwitchImpl implements IOFSwitch {
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
         if (msg_buffer == null) {
-                msg_buffer = new ArrayList<OFMessage>();
-                msg_buffer_map.put(this, msg_buffer);
+            msg_buffer = new ArrayList<OFMessage>();
+            msg_buffer_map.put(this, msg_buffer);
         }
 
-        // handleOutgoingMessage is done at the time of flushing the buffer
+        this.floodlightProvider.handleOutgoingMessage(this, m, bc);
         msg_buffer.add(m);
+
         if ((msg_buffer.size() >= Controller.BATCH_MAX_SIZE) ||
             ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
-            this.write(msg_buffer, bc);
+            this.write(msg_buffer);
             msg_buffer.clear();
         }
     }
@@ -159,6 +160,10 @@ public class OFSwitchImpl implements IOFSwitch {
         for (OFMessage m : msglist) {
             this.floodlightProvider.handleOutgoingMessage(this, m, bc);
         }
+        this.write(msglist);
+    }
+
+    public void write(List<OFMessage> msglist) throws IOException {
         this.channel.write(msglist);
     }
     
@@ -388,6 +393,22 @@ public class OFSwitchImpl implements IOFSwitch {
 	public TimedCache<Long> getTimedCache() {
         return timedCache;
 	}
+
+    public static void flush_all() {
+        Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
+        for (OFSwitchImpl sw : msg_buffer_map.keySet()) {
+            List<OFMessage> msglist = msg_buffer_map.get(sw);
+            if (msglist.size() > 0) {
+                try {
+                    sw.write(msglist);
+                } catch (IOException e) {
+                    // TODO: log exception
+                    e.printStackTrace();
+                }
+                msglist.clear();
+            }
+        }
+    }
 
     /**
      * Return a lock that need to be held while processing a message. Multiple threads

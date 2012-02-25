@@ -333,6 +333,9 @@ public class Controller
                         Channels.fireExceptionCaught(ctx.getChannel(), ex);
                     }
                 }
+
+                // Flush all flow-mods/packet-out generated from this "train"
+                OFSwitchImpl.flush_all();
             }
         }
         
