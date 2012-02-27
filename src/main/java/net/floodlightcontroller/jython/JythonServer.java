@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
  * @author mandeepdhami
  *
  */
-public class Server extends Thread {
-    protected static Logger log = LoggerFactory.getLogger(Server.class);
+public class JythonServer extends Thread {
+    protected static Logger log = LoggerFactory.getLogger(JythonServer.class);
 
 	int port;
 	Map<String, Object> locals;
@@ -25,13 +25,13 @@ public class Server extends Thread {
 	 * @param port_ Port to use for jython server
 	 * @param locals_ Locals to add to the interpreters top level name space
 	 */
-	public Server(int port_, Map<String, Object> locals_) {
+	public JythonServer(int port_, Map<String, Object> locals_) {
 		this.port = port_ ;
 		this.locals = locals_;
 		if (this.locals == null) {
 			this.locals = new HashMap<String, Object>();
 		}
-		this.locals.put("log", Server.log);
+		this.locals.put("log", JythonServer.log);
 		this.setName("debugserver");
 	}
 
@@ -46,7 +46,7 @@ public class Server extends Thread {
             p.set(name, this.locals.get(name));
         }
 
-        URL jarUrl = Server.class.getProtectionDomain().getCodeSource().getLocation();
+        URL jarUrl = JythonServer.class.getProtectionDomain().getCodeSource().getLocation();
         String jarPath = jarUrl.getPath();
         if (jarUrl.getProtocol().equals("file")) {
             // If URL is of type file, assume that we are in dev env and set path to python dir.
