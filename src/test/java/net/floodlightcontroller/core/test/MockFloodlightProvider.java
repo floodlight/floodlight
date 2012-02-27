@@ -28,6 +28,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
@@ -245,4 +246,22 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         // TODO Auto-generated method stub
         
     }
+
+	@Override
+	public void addInfoProvider(String type, IInfoProvider provider) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void removeInfoProvider(String type, IInfoProvider provider) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public Map<String, Object> getControllerInfo(String type) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

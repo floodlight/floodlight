@@ -37,6 +37,7 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.Entity;
+import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -95,6 +96,7 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
         forwarding.setTopology(topology);
+        forwarding.setCounterStore(new CounterStore());
 
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);

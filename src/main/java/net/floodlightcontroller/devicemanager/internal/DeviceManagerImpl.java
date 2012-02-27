@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -67,7 +68,8 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements 
         IDeviceManagerService, IOFMessageListener,
         IOFSwitchListener, ITopologyListener, 
-        IStorageSourceListener, IFloodlightModule {  
+        IStorageSourceListener, IFloodlightModule,
+        IInfoProvider {  
     protected static Logger logger = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -831,4 +833,14 @@ public class DeviceManagerImpl implements
         
         return true;
     }
+
+	@Override
+	public Map<String, Object> getInfo(String type) {
+		if (!"summary".equals(type))
+			return null;
+		
+		Map<String, Object> info = new HashMap<String, Object>();
+		info.put("# hosts", deviceMap.size());
+		return info;
+	}
 }

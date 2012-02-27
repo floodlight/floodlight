@@ -21,10 +21,12 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,6 +47,7 @@ import java.nio.channels.ClosedChannelException;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFController;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -55,14 +58,9 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
-import static net.floodlightcontroller.counter.CounterValue.CounterType;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounter;
-import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -132,6 +130,7 @@ public class Controller
                                                IOFMessageListener>> messageListeners;
     protected ConcurrentHashMap<Long, IOFSwitch> switches;
     protected Set<IOFSwitchListener> switchListeners;
+    protected Map<String, List<IInfoProvider>> providerMap;
     protected BlockingQueue<Update> updates;
     protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
@@ -177,6 +176,7 @@ public class Controller
     protected static final String PORT_ADVERTISED_FEATURES = "advertised_features";
     protected static final String PORT_SUPPORTED_FEATURES = "supported_features";
     protected static final String PORT_PEER_FEATURES = "peer_features";
+    
     
     protected class Update {
         public IOFSwitch sw;
@@ -314,8 +314,8 @@ public class Controller
                     processOFMessage((OFMessage)e.getMessage());
                 }
             } catch (Exception ex) {
-            	// We are the last handler in the stream, so run the exception
-            	// through the channel again by passing in ctx.getChannel().
+                // We are the last handler in the stream, so run the exception
+                // through the channel again by passing in ctx.getChannel().
                 Channels.fireExceptionCaught(ctx.getChannel(), ex);
             }
         }
@@ -436,7 +436,7 @@ public class Controller
             // Delete all pre-existing flows
             sw.clearAllFlowMods();
         }
-        
+
         /**
          * Dispatch an Openflow message from a switch to the appropriate
          * handler.
@@ -567,136 +567,6 @@ public class Controller
         }
     }
     
-    protected void updateCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        OFPacketIn packet = (OFPacketIn)m;
-        
-        /* Extract the etherType and protocol field for IPv4 packet.
-         */
-        String etherType = String.format("%04x", eth.getEtherType());
-        
-        /*
-         * Valid EtherType must be greater than or equal to 0x0600
-         * It is V1 Ethernet Frame if EtherType < 0x0600
-         */
-        if (eth.getEtherType() < 0x0600) {
-            etherType = "0599";
-        }
-
-        if (TypeAliases.l3TypeAliasMap != null && 
-            TypeAliases.l3TypeAliasMap.containsKey(etherType)) {
-            etherType = TypeAliases.l3TypeAliasMap.get(etherType);
-        } else {
-            etherType = "L3_" + etherType;
-        }
-        String switchIdHex = sw.getStringId();
-   
-        String packetName = m.getType().toClass().getName();
-        packetName = packetName.substring(packetName.lastIndexOf('.')+1); 
-        
-        // Construct both port and switch counter for the packet_in
-        String portCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               packet.getInPort(),
-                                               packetName);
-        String switchCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               -1,
-                                               packetName);
-        
-        String portL3CategoryCounterName = 
-                CounterStore.createCounterName(switchIdHex, 
-                                               packet.getInPort(),
-                                               packetName, 
-                                               etherType, 
-                                               NetworkLayer.L3);
-        String switchL3CategoryCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               -1, 
-                                               packetName, 
-                                               etherType, 
-                                               NetworkLayer.L3);
-        
-        try {
-            ICounter portCounter = 
-                    counterStore.getCounter(portCounterName);
-            if (portCounter == null) {
-                portCounter = 
-                        counterStore.createCounter(portCounterName, 
-                                                   CounterType.LONG);
-            }
-            ICounter switchCounter = 
-                    counterStore.getCounter(switchCounterName);
-            if (switchCounter == null) {
-                switchCounter = 
-                        counterStore.createCounter(switchCounterName, 
-                                                   CounterType.LONG);
-            }
-            ICounter portL3Counter = 
-                    counterStore.getCounter(portL3CategoryCounterName);
-            if (portL3Counter == null) {
-                portL3Counter = 
-                        counterStore.createCounter(portL3CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            ICounter switchL3Counter = 
-                    counterStore.getCounter(switchL3CategoryCounterName);
-            if (switchL3Counter == null) {
-                switchL3Counter = 
-                        counterStore.createCounter(switchL3CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            portCounter.increment();
-            switchCounter.increment();
-            portL3Counter.increment();
-            switchL3Counter.increment();
-            
-            if (etherType.compareTo(ICounterStoreService.L3ET_IPV4) == 0) {
-                IPv4 ipV4 = (IPv4)eth.getPayload();
-                String l4Type = String.format("%02x", ipV4.getProtocol());
-                if (TypeAliases.l4TypeAliasMap != null && 
-                    TypeAliases.l4TypeAliasMap.containsKey(l4Type)) {
-                    l4Type = "L4_" + TypeAliases.l4TypeAliasMap.get(l4Type);
-                } else {
-                    l4Type = "L4_" + l4Type;
-                }
-                String portL4CategoryCounterName =
-                        CounterStore.createCounterName(switchIdHex, 
-                                                       packet.getInPort(), 
-                                                       packetName, 
-                                                       l4Type, 
-                                                       NetworkLayer.L4);
-                String switchL4CategoryCounterName = 
-                        CounterStore.createCounterName(switchIdHex, 
-                                                       -1, 
-                                                       packetName, 
-                                                       l4Type, 
-                                                       NetworkLayer.L4);
-                
-                ICounter portL4Counter = 
-                        counterStore.getCounter(portL4CategoryCounterName);
-                if (portL4Counter == null) {
-                    portL4Counter = 
-                            counterStore.createCounter(portL4CategoryCounterName, 
-                                                       CounterType.LONG);
-                }
-                ICounter switchL4Counter = 
-                        counterStore.getCounter(switchL4CategoryCounterName);
-                if (switchL4Counter == null) {
-                    switchL4Counter = 
-                            counterStore.createCounter(switchL4CategoryCounterName, 
-                                                       CounterType.LONG);
-                }
-                portL4Counter.increment();
-                switchL4Counter.increment();
-            }
-
-        }
-        catch (IllegalArgumentException e) {
-            log.error("Invalid Counter, " + portCounterName + 
-                      " or " + switchCounterName);
-        }
-    }
-    
     /**
      * Handle replies to certain OFMessages, and pass others off to listeners
      * @param sw The switch for the message
@@ -718,7 +588,7 @@ public class Controller
                 eth = new Ethernet();
                 eth.deserialize(pi.getPacketData(), 0,
                                 pi.getPacketData().length);
-                updateCounters(sw, m, eth);
+                counterStore.updatePacketInCounters(sw, m, eth);
 
                 // fall through to default case...
             default:
@@ -1283,6 +1153,8 @@ public class Controller
         this.switches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.updates = new LinkedBlockingQueue<Update>();
         this.factory = new BasicFactory();
+        this.providerMap = new HashMap<String, List<IInfoProvider>>();
+        
     }
     
     /**
@@ -1353,4 +1225,33 @@ public class Controller
     public void setCmdLineOptions(CmdLineSettings settings) {
         this.openFlowPort = settings.getOpenFlowPort();
     }
+
+	@Override
+	public void addInfoProvider(String type, IInfoProvider provider) {
+		if (!providerMap.containsKey(type)) {
+			providerMap.put(type, new ArrayList<IInfoProvider>());
+		}
+		providerMap.get(type).add(provider);
+	}
+
+	@Override
+	public void removeInfoProvider(String type, IInfoProvider provider) {
+		if (!providerMap.containsKey(type)) {
+			log.debug("Provider type {} doesn't exist.", type);
+			return;
+		}
+		
+		providerMap.get(type).remove(provider);
+	}
+	
+	public Map<String, Object> getControllerInfo(String type) {
+		if (!providerMap.containsKey(type)) return null;
+		
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		for (IInfoProvider provider : providerMap.get(type)) {
+			result.putAll(provider.getInfo(type));
+		}
+		
+		return result;
+	}
 }

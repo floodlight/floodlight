@@ -145,4 +145,27 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * Sets the command line settings
      */
     public void setCmdLineOptions(CmdLineSettings settings);
+    
+
+    /**
+     * Add an info provider of a particular type
+     * @param type
+     * @param provider
+     */
+    public void addInfoProvider(String type, IInfoProvider provider);
+
+   /**
+    * Remove an info provider of a particular type
+    * @param type
+    * @param provider
+    */
+   public void removeInfoProvider(String type, IInfoProvider provider);
+   
+   /**
+    * Return information of a particular type (for rest services)
+    * @param type
+    * @return
+    */
+   public Map<String, Object> getControllerInfo(String type);
+
 }

@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -116,7 +117,7 @@ import org.slf4j.LoggerFactory;
 public class TopologyImpl 
         implements IOFMessageListener, IOFSwitchListener, 
                    IStorageSourceListener, ITopologyService,
-                   IFloodlightModule {
+                   IFloodlightModule, IInfoProvider {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
     // Names of table/fields for links in the storage API
@@ -1871,6 +1872,7 @@ public class TopologyImpl
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         // Register for switch updates
         floodlightProvider.addOFSwitchListener(this);
+        floodlightProvider.addInfoProvider("summary", this);
         
         // init our rest api
         if (restApi != null) {
@@ -1945,4 +1947,20 @@ public class TopologyImpl
         evTopoCluster.reason       = reason;
         evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
     }
+
+	@Override
+	public Map<String, Object> getInfo(String type) {
+		if (!"summary".equals(type)) return null;
+		
+		Map<String, Object> info = new HashMap<String, Object>();
+		info.put("# switch clusters", clusters.size());
+		info.put("# switches", switchClusterMap.size());
+		
+		int num_links = 0;
+		for (Set<LinkTuple> links : switchLinks.values())
+			num_links += links.size();
+		info.put("# inter-switch links", num_links);
+		
+		return info;
+	}
 }
