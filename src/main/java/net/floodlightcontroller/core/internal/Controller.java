@@ -60,7 +60,6 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
 import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.jython.Server;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -1326,28 +1325,6 @@ public class Controller
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
     }
-    
-    /**
-     * Start debug server, put global state as local variables for the jython shell
-     */
-    // TODO - make this a module
-    protected void debugserver_start() {
-        log.debug("Starting DebugServer");
-        Map<String, Object> locals = new HashMap<String, Object>();
-        locals.put("controller", this);
-        //locals.put("deviceManager", this.deviceManager);
-        //locals.put("topology", this.topology);
-        //locals.put("routingEngine", this.routingEngine);
-        //locals.put("forwarding", this.forwarding);
-        //locals.put("staticFlowEntryPusher", this.staticFlowEntryPusher);
-        locals.put("counterStore", this.counterStore);
-        locals.put("storageSource", this.storageSource);
-        locals.put("switches", this.switches);
-        //locals.put("messageFilterManager", this.messageFilterManager);
-
-        Server debug_server = new Server(6655, locals);
-        debug_server.start();
-	}
     
     @Override
     public void setCmdLineOptions(CmdLineSettings settings) {

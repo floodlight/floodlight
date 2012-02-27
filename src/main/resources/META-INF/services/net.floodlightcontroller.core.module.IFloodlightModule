@@ -10,3 +10,4 @@ net.floodlightcontroller.perfmon.PktInProcessingTime
 net.floodlightcontroller.restserver.RestApiServer
 net.floodlightcontroller.learningswitch.LearningSwitch
 net.floodlightcontroller.hub.Hub
+net.floodlightcontroller.jython.JythonDebugInterface
