@@ -98,13 +98,14 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         staticFlowEntryPusher.addEntry(flowMod2);
         
         // Verify that the switch has gotten some flow_mods
-        assertEquals(writeCapture.getValues().size(), 2);
+        int oldsize = writeCapture.getValues().size();
+        assertTrue(oldsize >= 2);
 
         int count = 5;
         while (count >= 0) {
             Thread.sleep(staticFlowEntryPusher.getFlowPushTime());
 
-            if (writeCapture.getValues().size() >= 4) {
+            if (writeCapture.getValues().size() >= (2 + oldsize)) {
                 break;
             }
 
@@ -112,7 +113,7 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         }
         int newsize = writeCapture.getValues().size();
         // Make sure the entries were pushed again
-        assertTrue(newsize >= 4);
+        assertTrue(newsize >= (2+oldsize));
         
         // Remove entries
         staticFlowEntryPusher.removeEntry(flowMod1);
