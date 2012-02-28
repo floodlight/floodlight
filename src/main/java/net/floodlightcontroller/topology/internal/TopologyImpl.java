@@ -1953,7 +1953,7 @@ public class TopologyImpl
 		int num_links = 0;
 		for (Set<LinkTuple> links : switchLinks.values())
 			num_links += links.size();
-		info.put("# inter-switch links", num_links);
+		info.put("# inter-switch links", num_links / 2);
 		
 		return info;
 	}
