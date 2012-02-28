@@ -279,7 +279,9 @@ public class OFSwitchImpl implements IOFSwitch {
         int transId = getNextTransactionId();
         request.setXid(transId);
         this.iofMsgListenersMap.put(transId, caller);
-        this.channel.write(request);
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(request);
+        this.channel.write(msglist);
         return transId;
     }
 
@@ -294,7 +296,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.channel.write(msglist);
         return future;
     }
-    
+
     @Override
     public void deliverStatisticsReply(OFMessage reply) {
         OFStatisticsFuture future = this.statsFutureMap.get(reply.getXid());
