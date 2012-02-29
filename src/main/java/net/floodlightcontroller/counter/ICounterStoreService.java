@@ -14,6 +14,12 @@ public interface ICounterStoreService extends IFloodlightService {
 
 	public final static String CONTROLLER_NAME = "controller";
     public final static String TitleDelimitor = "__";
+
+    /** Broadcast and multicast */
+    public final static String BROADCAST = "broadcast";
+    public final static String MULTICAST = "multicast";
+    public final static String UNICAST = "unicast";
+    
     /** L2 EtherType subCategories */
     public final static String L3ET_IPV4 = "L3_IPv4";
 
