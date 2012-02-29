@@ -10,7 +10,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -22,9 +21,8 @@ public class CoreModule implements IFloodlightModule {
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> services =
-                new ArrayList<Class<? extends IFloodlightService>>(2);
+                new ArrayList<Class<? extends IFloodlightService>>(1);
         services.add(IFloodlightProviderService.class);
-        services.add(ICounterStoreService.class);
         return services;
     }
 
@@ -32,26 +30,24 @@ public class CoreModule implements IFloodlightModule {
     public Map<Class<? extends IFloodlightService>,
                IFloodlightService> getServiceImpls() {
         controller = new Controller();
-        ICounterStoreService counterStore = new CounterStore();
-        controller.setCounterStore(counterStore);
         
         Map<Class<? extends IFloodlightService>,
             IFloodlightService> m = 
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightService>();
         m.put(IFloodlightProviderService.class, controller);
-        m.put(ICounterStoreService.class, counterStore);
         return m;
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> dependencies =
-            new ArrayList<Class<? extends IFloodlightService>>(4);
+            new ArrayList<Class<? extends IFloodlightService>>(5);
         dependencies.add(IStorageSourceService.class);
         dependencies.add(IOFMessageFilterManagerService.class);
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
+        dependencies.add(ICounterStoreService.class);
         return dependencies;
     }
 
