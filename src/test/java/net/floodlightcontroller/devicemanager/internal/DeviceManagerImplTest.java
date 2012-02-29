@@ -36,9 +36,9 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
-import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.ARP;
@@ -120,18 +120,18 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
             .setTotalLength((short) this.testPacketSerialized.length);
     }
     
-    static HashSet<EntityField> testKeyFields;
+    static HashSet<IDeviceManagerService.DeviceField> testKeyFields;
     static {
-        testKeyFields = new HashSet<EntityField>();
-        testKeyFields.add(EntityField.MAC);
-        testKeyFields.add(EntityField.VLAN);
-        testKeyFields.add(EntityField.SWITCH);
-        testKeyFields.add(EntityField.PORT);
+        testKeyFields = new HashSet<IDeviceManagerService.DeviceField>();
+        testKeyFields.add(IDeviceManagerService.DeviceField.MAC);
+        testKeyFields.add(IDeviceManagerService.DeviceField.VLAN);
+        testKeyFields.add(IDeviceManagerService.DeviceField.SWITCH);
+        testKeyFields.add(IDeviceManagerService.DeviceField.PORT);
     }
     
     public static class TestEntityClass implements IEntityClass {
         @Override
-        public Set<EntityField> getKeyFields() {
+        public Set<IDeviceManagerService.DeviceField> getKeyFields() {
             return testKeyFields;
         }
     }
@@ -151,7 +151,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
 
         @Override
-        public Set<EntityField> getKeyFields() {
+        public Set<IDeviceManagerService.DeviceField> getKeyFields() {
             return testKeyFields;
         }
         

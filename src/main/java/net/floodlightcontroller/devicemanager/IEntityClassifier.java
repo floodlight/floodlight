@@ -32,11 +32,7 @@ import net.floodlightcontroller.devicemanager.internal.Entity;
  * @author readams
  */
 public interface IEntityClassifier {
-    enum EntityField {
-        MAC, IP, VLAN, SWITCH, PORT
-   }
-
-   /**
+    /**
     * Classify the given entity into a set of classes.  It is important
     * that the key fields returned by {@link IEntityClassifier#getKeyFields()}
     * be sufficient for classifying entities.  That is, if two entities are
@@ -69,7 +65,7 @@ public interface IEntityClassifier {
     * @see {@link IEntityClass#getKeyFields()}
     * @see {@link IEntityClassifier#classifyEntity}
     */
-   Set<EntityField> getKeyFields();
+   Set<IDeviceManagerService.DeviceField> getKeyFields();
 
    /**
     * Reclassify the given entity into a class.  When reclassifying entities,

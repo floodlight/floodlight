@@ -1,6 +1,6 @@
 package net.floodlightcontroller.devicemanager.internal;
 
-import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 
 /**
  * This is a thin wrapper around {@link Entity} that allows overriding
@@ -9,7 +9,7 @@ import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
  * @author readams
  */
 public class IndexedEntity {
-    protected EntityField[] keyFields;
+    protected IDeviceManagerService.DeviceField[] keyFields;
     protected Entity entity;
     private int hashCode = 0;
     
@@ -20,7 +20,7 @@ public class IndexedEntity {
      * {@link IndexedEntity#hashCode()} and {@link IndexedEntity#equals(Object)}
      * @param entity the entity to wrap
      */
-    public IndexedEntity(EntityField[] keyFields, Entity entity) {
+    public IndexedEntity(IDeviceManagerService.DeviceField[] keyFields, Entity entity) {
         super();
         this.keyFields = keyFields;
         this.entity = entity;
@@ -32,7 +32,7 @@ public class IndexedEntity {
 
         final int prime = 31;
         hashCode = 1;
-        for (EntityField f : keyFields) {
+        for (IDeviceManagerService.DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
@@ -75,7 +75,7 @@ public class IndexedEntity {
         if (getClass() != obj.getClass()) return false;
         IndexedEntity other = (IndexedEntity) obj;
 
-        for (EntityField f : keyFields) {
+        for (IDeviceManagerService.DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
                     if (entity.macAddress != other.entity.macAddress)

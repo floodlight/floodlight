@@ -192,8 +192,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
     
     @Override
-    public boolean injectOfMessage(IOFSwitch sw, OFMessage msg, FloodlightContext bContext) {        
-        dispatchMessage(sw, msg);        
+    public boolean injectOfMessage(IOFSwitch sw, OFMessage msg, 
+                                   FloodlightContext bContext) {        
+        dispatchMessage(sw, msg, bContext);     
         return true;
     }
     

@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 import net.floodlightcontroller.core.FloodlightContextStore;
 
@@ -29,6 +30,14 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
 public interface IDeviceManagerService extends IFloodlightService {
+    /**
+     * Fields used in devices for indexes and querying
+     * @see IDeviceManagerService#addIndex
+     */
+    enum DeviceField {
+        MAC, IP, VLAN, SWITCH, PORT
+    }
+
     /**
      * The source device for the current packet-in, if applicable.
      */
@@ -50,6 +59,7 @@ public interface IDeviceManagerService extends IFloodlightService {
 
     /**
      * Get the device with the given device key.
+     * 
      * @param deviceKey the key to search for
      * @return the device associated with the key, or null if no such device
      * @see IDevice#getDeviceKey()
@@ -57,9 +67,10 @@ public interface IDeviceManagerService extends IFloodlightService {
     public IDevice getDevice(Long deviceKey);
     
     /**
-     * Search for a device using entity fields.  Only the key fields as
-     * defined by the {@link IEntityClassifier} will be important in this
-     * search.
+     * Search for a device using exactly matching the provided device fields.
+     * Only the key fields as defined by the {@link IEntityClassifier} will
+     * be important in this search.
+     * 
      * @param macAddress The MAC address
      * @param vlan the VLAN
      * @param ipv4Address the ipv4 address
@@ -77,6 +88,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * the given source device.  The source device is important since
      * there could be ambiguity in the destination device without the
      * attachment point information.
+     * 
      * @param source the source device.  The returned destination will be
      * in the same entity class as the source.
      * @param macAddress The MAC address for the destination
@@ -97,7 +109,74 @@ public interface IDeviceManagerService extends IFloodlightService {
     public Collection<? extends IDevice> getAllDevices();
 
     /**
+     * Create an index over a set of fields.  This allows efficient lookup
+     * of devices when querying using the indexed set of specified fields.
+     * The index must be registered before any device learning takes place,
+     * or it may be incomplete.  It's OK if this is called multiple times with
+     * the same fields; only one index will be created for each unique set of 
+     * fields.
+     * 
+     * @param perClass set to true if the index should be maintained for each
+     * entity class separately.
+     * @param unique set to true if only the set of fields specified should be
+     * unique.  If multiple devices would match the field, the devices will be
+     * updated so that only one will match. 
+     * @param fields the set of fields on which to index
+     */
+    public void addIndex(boolean perClass,
+                         boolean unique,
+                         DeviceField... fields);
+    
+    /**
+     * Find devices that match the provided query.  Any fields that are
+     * null will not be included in the query.  If there is an index for 
+     * the query, then it will be performed efficiently using the index.
+     * Otherwise, there will be a full scan of the device list.
+     * 
+     * @param macAddress The MAC address
+     * @param vlan the VLAN
+     * @param ipv4Address the ipv4 address
+     * @param switchDPID the switch DPID
+     * @param switchPort the switch port
+     * @return an iterator over a set of devices matching the query
+     * @see IDeviceManagerService#queryClassDevices(IEntityClass, Long, 
+     * Short, Integer, Long, Integer)
+     */
+    public Iterator<? extends IDevice> queryDevices(Long macAddress,
+                                                    Short vlan,
+                                                    Integer ipv4Address, 
+                                                    Long switchDPID,
+                                                    Integer switchPort);
+
+    /**
+     * Find devices that match the provided query.  Only the index for
+     * the class of the specified reference device will be searched.  
+     * Any fields that are null will not be included in the query.  If
+     * there is an index for the query, then it will be performed
+     * efficiently using the index. Otherwise, there will be a full scan
+     * of the device list.
+     * 
+     * @param reference The reference device to refer to when finding
+     * entity classes.
+     * @param macAddress The MAC address
+     * @param vlan the VLAN
+     * @param ipv4Address the ipv4 address
+     * @param switchDPID the switch DPID
+     * @param switchPort the switch port
+    * @return an iterator over a set of devices matching the query
+     * @see IDeviceManagerService#queryClassDevices(Long, 
+     * Short, Integer, Long, Integer)
+     */
+    public Iterator<? extends IDevice> queryClassDevices(IDevice reference,
+                                                         Long macAddress,
+                                                         Short vlan,
+                                                         Integer ipv4Address, 
+                                                         Long switchDPID,
+                                                         Integer switchPort);
+    
+    /**
      * Adds a listener to listen for IDeviceManagerServices notifications
+     * 
      * @param listener The listener that wants the notifications
      */
     public void addListener(IDeviceManagerAware listener);
@@ -107,6 +186,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * differentiate devices on the network.  If no classifier is set,
      * the {@link DefaultEntityClassifer} will be used.  This should be 
      * registered in the application initialization phase before startup.
+     * 
      * @param classifier the classifier to set.
      */
     public void setEntityClassifier(IEntityClassifier classifier);
@@ -120,5 +200,4 @@ public interface IDeviceManagerService extends IFloodlightService {
      */
     public void flushEntityCache(IEntityClass entityClass,
                                  boolean reclassify);
-
 }

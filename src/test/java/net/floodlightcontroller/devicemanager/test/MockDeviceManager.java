@@ -21,6 +21,10 @@ public class MockDeviceManager extends DeviceManagerImpl {
     public IDevice learnEntity(long macAddress, Short vlan, 
                                Integer ipv4Address, Long switchDPID, 
                                Integer switchPort) {
+        if (vlan != null && vlan.shortValue() <= 0)
+            vlan = null;
+        if (ipv4Address != null && ipv4Address == 0)
+            ipv4Address = null;
         return learnDeviceByEntity(new Entity(macAddress, vlan, 
                                               ipv4Address, switchDPID, 
                                               switchPort, null));

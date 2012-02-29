@@ -68,4 +68,12 @@ public interface IDevice {
      * @return the last seen timestamp
      */
     public Date getLastSeen();
+    
+    /**
+     * Get the entity classes for the device.
+     * @return the entity classes
+     * @see IEntityClassifier
+     * @see IDeviceManagerService#setEntityClassifier(IEntityClassifier)
+     */
+    public IEntityClass[] getEntityClasses();
 }

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 
@@ -36,16 +37,16 @@ public class DefaultEntityClassifier implements IEntityClassifier {
      */
     protected static class DefaultEntityClass implements IEntityClass {
         @Override
-        public Set<EntityField> getKeyFields() {
+        public Set<IDeviceManagerService.DeviceField> getKeyFields() {
             return keyFields;
         }
     }
     
-    protected static Set<EntityField> keyFields;
+    protected static Set<IDeviceManagerService.DeviceField> keyFields;
     static {
-        keyFields = new HashSet<EntityField>(2);
-        keyFields.add(EntityField.MAC);
-        keyFields.add(EntityField.VLAN);
+        keyFields = new HashSet<IDeviceManagerService.DeviceField>(2);
+        keyFields.add(IDeviceManagerService.DeviceField.MAC);
+        keyFields.add(IDeviceManagerService.DeviceField.VLAN);
     }
     protected static IEntityClass entityClass = new DefaultEntityClass();
     
@@ -73,7 +74,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
 
     @Override
-    public Set<EntityField> getKeyFields() {
+    public Set<IDeviceManagerService.DeviceField> getKeyFields() {
         return keyFields;
     }
 }

@@ -24,6 +24,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +42,6 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
-import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
@@ -78,6 +78,11 @@ public class DeviceManagerImpl implements
     protected IStorageSourceService storageSource;
     
     /**
+     * Device manager event listeners
+     */
+    protected Set<IDeviceManagerAware> deviceManagerAware;
+    
+    /**
      * This is the master device map that maps device IDs to {@link Device}
      * objects.
      */
@@ -100,9 +105,15 @@ public class DeviceManagerImpl implements
     
     /**
      * The primary key fields used in the primary index
+     * @see DeviceManagerImpl#primaryKeyFieldsArr
      */
-    protected Set<EntityField> primaryKeyFields;
-    protected EntityField[] primaryKeyFieldsArr;
+    protected Set<IDeviceManagerService.DeviceField> primaryKeyFields;
+    
+    /**
+     * A serialization of the primary key fields set.
+     * @see DeviceManagerImpl#primaryKeyFields
+     */
+    protected IDeviceManagerService.DeviceField[] primaryKeyFieldsArr;
     
     /**
      * This map contains state for each of the {@ref IEntityClass} 
@@ -127,7 +138,7 @@ public class DeviceManagerImpl implements
         /**
          * An array version of the key fields
          */
-        protected EntityField[] keyFieldsArr;
+        protected IDeviceManagerService.DeviceField[] keyFieldsArr;
         
         /**
          * The class index
@@ -139,37 +150,18 @@ public class DeviceManagerImpl implements
          * @param clazz the class to use for the state
          */
         public ClassState(IEntityClass clazz) {
-            Set<EntityField> keyFields = clazz.getKeyFields();
+            Set<IDeviceManagerService.DeviceField> keyFields = clazz.getKeyFields();
             keyFieldsMatchPrimary = primaryKeyFields.equals(keyFields);
-            keyFieldsArr = new EntityField[keyFields.size()];
+            keyFieldsArr = new IDeviceManagerService.DeviceField[keyFields.size()];
             keyFieldsArr = keyFields.toArray(keyFieldsArr);
             if (!keyFieldsMatchPrimary)
                 classIndex = new ConcurrentHashMap<IndexedEntity, Long>();
         }
     }
     
-    /**
-     * Device manager event listeners
-     */
-    protected Set<IDeviceManagerAware> deviceManagerAware;
-    
     // *********************
     // IDeviceManagerService
     // *********************
-
-    @Override
-    public void setEntityClassifier(IEntityClassifier classifier) {
-        entityClassifier = classifier;
-        primaryKeyFields = classifier.getKeyFields();
-        primaryKeyFieldsArr = new EntityField[primaryKeyFields.size()];
-        primaryKeyFieldsArr = primaryKeyFields.toArray(primaryKeyFieldsArr);
-    }
-    
-    @Override
-    public void flushEntityCache(IEntityClass entityClass, 
-                                 boolean reclassify) {
-        // TODO Auto-generated method stub
-    }
 
     @Override
     public IDevice getDevice(Long deviceKey) {
@@ -180,8 +172,10 @@ public class DeviceManagerImpl implements
     public IDevice findDevice(long macAddress, Short vlan, 
                               Integer ipv4Address, Long switchDPID, 
                               Integer switchPort) {
-        if (vlan != null && vlan.shortValue() < 0)
+        if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
+        if (ipv4Address != null && ipv4Address == 0)
+            ipv4Address = null;
         return findDeviceByEntity(new Entity(macAddress, vlan, 
                                              ipv4Address, switchDPID, 
                                              switchPort, null));
@@ -190,8 +184,10 @@ public class DeviceManagerImpl implements
     @Override
     public IDevice findDestDevice(IDevice source, long macAddress,
                                   Short vlan, Integer ipv4Address) {
-        if (vlan != null && vlan.shortValue() < 0)
+        if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
+        if (ipv4Address != null && ipv4Address == 0)
+            ipv4Address = null;
         return findDestByEntity(source,
                                 new Entity(macAddress, 
                                            vlan, 
@@ -205,12 +201,69 @@ public class DeviceManagerImpl implements
     public Collection<? extends IDevice> getAllDevices() {
         return Collections.unmodifiableCollection(deviceMap.values());
     }
+
+    @Override
+    public void addIndex(boolean perClass, boolean unique,
+                         DeviceField... fields) {
+        // TODO Auto-generated method stub
+        
+    }
     
+    @Override
+    public Iterator<? extends IDevice> queryDevices(Long macAddress,
+                                                    Short vlan, 
+                                                    Integer ipv4Address,
+                                                    Long switchDPID,
+                                                    Integer switchPort) {
+        // XXX - TODO ... umm, should probably actually have indices :-)
+        DeviceIterator di = 
+                new DeviceIterator(deviceMap.values().iterator(),
+                                   null,
+                                   macAddress,
+                                   vlan,
+                                   ipv4Address, 
+                                   switchDPID, 
+                                   switchPort);
+        return di;
+    }
+
+    @Override
+    public Iterator<? extends IDevice> queryClassDevices(IDevice reference,
+                                                         Long macAddress,
+                                                         Short vlan,
+                                                         Integer ipv4Address,
+                                                         Long switchDPID,
+                                                         Integer switchPort) {
+        // XXX - TODO ... umm, should probably actually have indices :-)
+        DeviceIterator di = new DeviceIterator(deviceMap.values().iterator(),
+                                               reference.getEntityClasses(),
+                                               macAddress,
+                                               vlan, 
+                                               ipv4Address, 
+                                               switchDPID, 
+                                               switchPort);
+        return di;
+    }
+
     @Override
     public void addListener(IDeviceManagerAware listener) {
         deviceManagerAware.add(listener);
     }
+
+    @Override
+    public void setEntityClassifier(IEntityClassifier classifier) {
+        entityClassifier = classifier;
+        primaryKeyFields = classifier.getKeyFields();
+        primaryKeyFieldsArr = new IDeviceManagerService.DeviceField[primaryKeyFields.size()];
+        primaryKeyFieldsArr = primaryKeyFields.toArray(primaryKeyFieldsArr);
+    }
     
+    @Override
+    public void flushEntityCache(IEntityClass entityClass, 
+                                 boolean reclassify) {
+        // TODO Auto-generated method stub
+    }
+
     // ******************
     // IOFMessageListener
     // ******************
@@ -227,13 +280,11 @@ public class DeviceManagerImpl implements
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        // TODO Auto-generated method stub
-        return false;
+        return (type == OFType.PACKET_IN && name.equals("topology"));
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        // TODO Auto-generated method stub
         return false;
     }
     
@@ -419,6 +470,8 @@ public class DeviceManagerImpl implements
             if (srcEntity == null)
                 return Command.STOP;
             
+            // XXX - TODO - If it's a broadcast DHCP request we should also
+            // clear other clusters
             if (isGratArp(eth)) {
                 // XXX - TODO - Clear attachment points from other clusters
             }
@@ -819,7 +872,7 @@ public class DeviceManagerImpl implements
                                 Long deviceKey,
                                 ConcurrentHashMap<IndexedEntity, 
                                                   Long> index, 
-                                EntityField[] keyFields) {
+                                IDeviceManagerService.DeviceField[] keyFields) {
         for (Entity e : device.entities) {
             IndexedEntity ie = new IndexedEntity(keyFields, e);
             Long ret = index.putIfAbsent(ie, deviceKey);

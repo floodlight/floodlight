@@ -19,7 +19,7 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.Set;
 
-import net.floodlightcontroller.devicemanager.IEntityClassifier.EntityField;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.internal.Device;
 
 /**
@@ -48,6 +48,6 @@ public interface IEntityClass {
      * @return a set containing the fields that should not
      * be wildcarded.  May be null to indicate that all fields are key fields.
      */
-    Set<EntityField> getKeyFields();
+    Set<DeviceField> getKeyFields();
 }
 
