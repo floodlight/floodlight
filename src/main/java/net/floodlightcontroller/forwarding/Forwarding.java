@@ -45,6 +45,7 @@ import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
+import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
@@ -95,7 +96,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                           HexString.toHexString(dstDevice.getDataLayerAddress()));
                 return;
             }
-                                                
+
             // Validate that we have a destination known on the same island
             // Validate that the source and destination are not on the same switchport
             boolean on_same_island = false;
@@ -151,7 +152,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     srcCluster = srcSw.getSwitchClusterId();
                     dstCluster = dstSw.getSwitchClusterId();
                 }
-                
+
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
                     if (!srcDap.equals(dstDap) && (srcCluster != null) && (dstCluster != null)) {
@@ -167,8 +168,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             pushRoute(route, match, 0,
                                       srcDap.getSwitchPort(), dstDap.getSwitchPort(), bufferId,
-                                      sw, pi, cookie,
-                                      cntx, reqeustFlowRemovedNotifn);
+                                      sw, pi, cookie, cntx, 
+                                      reqeustFlowRemovedNotifn, false,
+                                      OFFlowMod.OFPFC_ADD);
                         }
                     }
                     iSrcDaps++;

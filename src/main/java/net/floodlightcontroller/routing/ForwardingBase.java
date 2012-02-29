@@ -113,6 +113,13 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
      * @param dstSwPort Destination switch port for final hop
      * @param bufferId BufferId of the original PacketIn
      * @param cookie The cookie to set in each flow_mod
+     * @param cntx The floodlight context
+     * @param reqeustFlowRemovedNotifn if set to true then the switch would
+     * send a flow mod removal notification when the flow mod expires
+     * @param doFlush if set to true then the flow mod would be immediately
+     *        written to the switch
+     * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
+     *        OFFlowMod.OFPFC_MODIFY etc.
      * @return srcSwitchIincluded True if the source switch is included in this route
      */
     public boolean pushRoute(Route route, OFMatch match, Integer wildcard_hints,
@@ -120,8 +127,10 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                           SwitchPortTuple dstSwPort, int bufferId,
                           IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
                           FloodlightContext cntx,
-                          boolean reqeustFlowRemovedNotifn) {
-        
+                          boolean reqeustFlowRemovedNotifn,
+                          boolean doFlush,
+                          short   flowModCommand) {
+
         boolean srcSwitchIncluded = false;
         OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
         OFActionOutput action = new OFActionOutput();
@@ -130,6 +139,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         fm.setIdleTimeout((short)5)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(cookie)
+            .setCommand(flowModCommand)
             .setMatch(match)
             .setActions(actions)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
@@ -150,6 +160,9 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                                                  ((OFActionOutput)fm.getActions().get(0)).getPort() });
                     }
                     sw.write(fm, cntx);
+                    if (doFlush) {
+                        sw.flush();
+                    }
 
                     // Push the packet out the source switch
                     if (sw.getId() == srcSwitch.getId()) {
@@ -207,6 +220,9 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                     Integer.toHexString(fm.getMatch().getWildcards()),
                     fm.getMatch().toString());
             sw.write(fm, cntx);
+            if (doFlush) {
+                sw.flush();
+            }
 
             if (sw.getId() == srcSwitch.getId()) {
                 pushPacket(srcSwitch, match, pi, ((OFActionOutput)fm.getActions().get(0)).getPort(), cntx);

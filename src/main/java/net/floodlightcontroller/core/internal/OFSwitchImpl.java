@@ -274,15 +274,19 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public int sendStatsQuery(OFStatisticsRequest request,
+    public int getXid() {
+        return getNextTransactionId();
+    }
+
+    @Override
+    public void sendStatsQuery(OFStatisticsRequest request, int xid,
                                 IOFMessageListener caller) throws IOException {
-        int transId = getNextTransactionId();
-        request.setXid(transId);
-        this.iofMsgListenersMap.put(transId, caller);
+        request.setXid(xid);
+        this.iofMsgListenersMap.put(xid, caller);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
         this.channel.write(msglist);
-        return transId;
+        return;
     }
 
     @Override
