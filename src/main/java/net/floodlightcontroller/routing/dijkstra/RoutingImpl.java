@@ -102,11 +102,6 @@ public class RoutingImpl
     }
 
     @Override
-    public Route getRoute(IOFSwitch src, IOFSwitch dst) {
-        return getRoute(src.getId(), dst.getId());
-    }
-
-    @Override
     public Route getRoute(Long srcId, Long dstId) {
         lock.readLock().lock();
 

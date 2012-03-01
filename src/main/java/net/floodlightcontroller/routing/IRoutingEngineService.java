@@ -27,7 +27,6 @@ import net.floodlightcontroller.routing.Route;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public interface IRoutingEngineService extends IFloodlightService {
-    public Route getRoute(IOFSwitch src, IOFSwitch dst);
 
     public Route getRoute(Long srcDpid, Long dstDpid);
 
