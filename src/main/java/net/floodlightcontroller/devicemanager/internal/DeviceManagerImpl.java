@@ -1476,7 +1476,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         String switchId = switchPort.getSw().getStringId();
         Short port = switchPort.getPort();
         String attachmentPointId = 
-                            deviceId + "-" + switchId + "-" + port.toString();
+                            deviceId + "|" + switchId + "|" + port.toString();
 
         Map<String, Object> rowValues = new HashMap<String, Object>();
         rowValues.put(ID_COLUMN_NAME, attachmentPointId);
@@ -1506,7 +1506,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             String switchId = switchPort.getSw().getStringId();
             Short port = switchPort.getPort();
             String attachmentPointId = 
-                            deviceId + "-" + switchId + "-" + port.toString();
+                            deviceId + "|" + switchId + "|" + port.toString();
             storageSource.deleteRowAsync(
                         DEVICE_ATTACHMENT_POINT_TABLE_NAME, attachmentPointId);
         } catch (NullPointerException e) {
@@ -1522,7 +1522,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         String deviceId = device.getDlAddrString();
         String networkAddressString = IPv4.fromIPv4Address(
                                             networkAddress.getNetworkAddress());
-        String networkAddressId = deviceId + "-" + networkAddressString;
+        String networkAddressId = deviceId + "|" + networkAddressString;
 
         if (networkAddress.getNetworkAddress() == 0) {
             log.error("Zero network address for device {}\n {}",
@@ -1547,7 +1547,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         String deviceId = device.getDlAddrString();
         String networkAddressString = IPv4.fromIPv4Address(
                                             networkAddress.getNetworkAddress());
-        String networkAddressId = deviceId + "-" + networkAddressString;
+        String networkAddressId = deviceId + "|" + networkAddressString;
         storageSource.deleteRowAsync(DEVICE_NETWORK_ADDRESS_TABLE_NAME, 
                                                             networkAddressId);
     }

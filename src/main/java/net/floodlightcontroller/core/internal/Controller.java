@@ -1099,7 +1099,7 @@ public class Controller
         String datapathIdString = sw.getStringId();
         Map<String, Object> portInfo = new HashMap<String, Object>();
         int portNumber = U16.f(port.getPortNumber());
-        String id = datapathIdString + ":" + portNumber;
+        String id = datapathIdString + "|" + portNumber;
         portInfo.put(PORT_ID, id);
         portInfo.put(PORT_SWITCH, datapathIdString);
         portInfo.put(PORT_NUMBER, portNumber);
@@ -1125,7 +1125,7 @@ public class Controller
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
         String datapathIdString = sw.getStringId();
-        String id = datapathIdString + ":" + portNumber;
+        String id = datapathIdString + "|" + portNumber;
         storageSource.deleteRowAsync(PORT_TABLE_NAME, id);
     }
 
