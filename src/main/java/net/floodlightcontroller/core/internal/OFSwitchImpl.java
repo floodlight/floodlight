@@ -20,6 +20,7 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,6 +80,13 @@ public class OFSwitchImpl implements IOFSwitch {
     protected ReentrantReadWriteLock lock;
     
     public static IOFSwitchFeatures switchFeatures;
+    protected static final ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>> local_msg_buffer =
+            new ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>>() {
+            @Override
+            protected Map<OFSwitchImpl,List<OFMessage>> initialValue() {
+                return new HashMap<OFSwitchImpl,List<OFMessage>>();
+            }
+    };
     
     // for managing our map sizes
     protected static final int MAX_MACS_PER_SWITCH  = 1000;
@@ -134,17 +142,32 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
-        if (bc != null) {
-            this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
+        List<OFMessage> msg_buffer = msg_buffer_map.get(this);
+        if (msg_buffer == null) {
+            msg_buffer = new ArrayList<OFMessage>();
+            msg_buffer_map.put(this, msg_buffer);
         }
-        this.channel.write(m);
+
+        this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        msg_buffer.add(m);
+
+        if ((msg_buffer.size() >= Controller.BATCH_MAX_SIZE) ||
+            ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
+            this.write(msg_buffer);
+            msg_buffer.clear();
+        }
     }
-    
+
     public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
             this.floodlightProvider.handleOutgoingMessage(this, m, bc);
-            this.channel.write(m);
         }
+        this.write(msglist);
+    }
+
+    public void write(List<OFMessage> msglist) throws IOException {
+        this.channel.write(msglist);
     }
     
     public void disconnectOutputStream() {
@@ -251,13 +274,19 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public int sendStatsQuery(OFStatisticsRequest request,
+    public int getXid() {
+        return getNextTransactionId();
+    }
+
+    @Override
+    public void sendStatsQuery(OFStatisticsRequest request, int xid,
                                 IOFMessageListener caller) throws IOException {
-        int transId = getNextTransactionId();
-        request.setXid(transId);
-        this.iofMsgListenersMap.put(transId, caller);
-        this.channel.write(request);
-        return transId;
+        request.setXid(xid);
+        this.iofMsgListenersMap.put(xid, caller);
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(request);
+        this.channel.write(msglist);
+        return;
     }
 
     @Override
@@ -266,10 +295,12 @@ public class OFSwitchImpl implements IOFSwitch {
         OFStatisticsFuture future = new OFStatisticsFuture(floodlightProvider, this, request.getXid());
         this.statsFutureMap.put(request.getXid(), future);
         this.floodlightProvider.addOFSwitchListener(future);
-        this.channel.write(request);
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(request);
+        this.channel.write(msglist);
         return future;
     }
-    
+
     @Override
     public void deliverStatisticsReply(OFMessage reply) {
         OFStatisticsFuture future = this.statsFutureMap.get(reply.getXid());
@@ -377,7 +408,9 @@ public class OFSwitchImpl implements IOFSwitch {
             .setOutPort(OFPort.OFPP_NONE)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
         try {
-            channel.write(fm);
+            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+            msglist.add(fm);
+            channel.write(msglist);
         } catch (Exception e) {
             log.error("Failed to clear all flows on switch {} - {}", this, e);
         }
@@ -387,6 +420,28 @@ public class OFSwitchImpl implements IOFSwitch {
 	public TimedCache<Long> getTimedCache() {
         return timedCache;
 	}
+
+    @Override
+    public void flush() {
+        Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
+        List<OFMessage> msglist = msg_buffer_map.get(this);
+        if (msglist.size() > 0) {
+            try {
+                this.write(msglist);
+            } catch (IOException e) {
+                // TODO: log exception
+                e.printStackTrace();
+            }
+            msglist.clear();
+        }
+    }
+
+    public static void flush_all() {
+        Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
+        for (OFSwitchImpl sw : msg_buffer_map.keySet()) {
+            sw.flush();
+        }
+    }
 
     /**
      * Return a lock that need to be held while processing a message. Multiple threads

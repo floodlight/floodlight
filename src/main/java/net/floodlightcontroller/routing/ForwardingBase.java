@@ -145,64 +145,30 @@ public abstract class ForwardingBase implements
 
     /**
      * Push routes from back to front
-     * 
-     * @param route
-     *            Route to push
-     * @param match
-     *            OpenFlow fields to match on
-     * @param srcSwPort
-     *            Source switch port for the first hop
-     * @param dstSwPort
-     *            Destination switch port for final hop
-     * @param bufferId
-     *            BufferId of the original PacketIn
-     * @return srcSwitchIincluded True if the source switch is included in this
-     *         route
+     * @param route Route to push
+     * @param match OpenFlow fields to match on
+     * @param srcSwPort Source switch port for the first hop
+     * @param dstSwPort Destination switch port for final hop
+     * @param bufferId BufferId of the original PacketIn
+     * @param cookie The cookie to set in each flow_mod
+     * @param cntx The floodlight context
+     * @param reqeustFlowRemovedNotifn if set to true then the switch would
+     * send a flow mod removal notification when the flow mod expires
+     * @param doFlush if set to true then the flow mod would be immediately
+     *        written to the switch
+     * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
+     *        OFFlowMod.OFPFC_MODIFY etc.
+     * @return srcSwitchIincluded True if the source switch is included in this route
      */
-    public boolean pushRoute(Route route, OFMatch match,
-                             Integer wildcard_hints, SwitchPort srcSwPort,
+    public boolean pushRoute(Route route, OFMatch match, 
+                             Integer wildcard_hints,
+                             SwitchPort srcSwPort,
                              SwitchPort dstSwPort, int bufferId,
-                             IOFSwitch srcSwitch, OFPacketIn pi,
+                             IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
                              FloodlightContext cntx,
-                             boolean reqeustFlowRemovedNotifn) {
-        long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-        return pushRoute(route,
-                         match,
-                         wildcard_hints,
-                         srcSwPort,
-                         dstSwPort,
-                         bufferId,
-                         srcSwitch,
-                         pi,
-                         cookie,
-                         cntx,
-                         reqeustFlowRemovedNotifn);
-    }
-
-    /**
-     * Push routes from back to front
-     * 
-     * @param route
-     *            Route to push
-     * @param match
-     *            OpenFlow fields to match on
-     * @param srcSwPort
-     *            Source switch port for the first hop
-     * @param dstSwPort
-     *            Destination switch port for final hop
-     * @param bufferId
-     *            BufferId of the original PacketIn
-     * @param cookie
-     *            The cookie to set in each flow_mod
-     * @return srcSwitchIincluded True if the source switch is included in this
-     *         route
-     */
-    public boolean pushRoute(Route route, OFMatch match,
-                             Integer wildcard_hints, SwitchPort srcSwPort,
-                             SwitchPort dstSwPort, int bufferId,
-                             IOFSwitch srcSwitch, OFPacketIn pi,
-                             long cookie, FloodlightContext cntx,
-                             boolean reqeustFlowRemovedNotifn) {
+                             boolean reqeustFlowRemovedNotifn,
+                             boolean doFlush,
+                             short   flowModCommand) {
 
         boolean srcSwitchIncluded = false;
         OFFlowMod fm =
@@ -211,17 +177,18 @@ public abstract class ForwardingBase implements
         OFActionOutput action = new OFActionOutput();
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
-        fm.setIdleTimeout((short) 5)
-          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
-          .setCookie(cookie)
-          .setMatch(match)
-          .setActions(actions)
-          .setLengthU(OFFlowMod.MINIMUM_LENGTH
-                  + OFActionOutput.MINIMUM_LENGTH);
+        fm.setIdleTimeout((short)5)
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+            .setCookie(cookie)
+            .setCommand(flowModCommand)
+            .setMatch(match)
+            .setActions(actions)
+            .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         IOFSwitch sw = switches.get(dstSwPort.getSwitchDPID());
-        ((OFActionOutput) fm.getActions().get(0)).setPort((short) dstSwPort.getPort());
+        ((OFActionOutput)fm.getActions().get(0)).
+            setPort((short)dstSwPort.getPort());
 
         if (route != null) {
             for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
@@ -240,6 +207,9 @@ public abstract class ForwardingBase implements
                                                                     .get(0)).getPort() });
                     }
                     sw.write(fm, cntx);
+                    if (doFlush) {
+                        sw.flush();
+                    }
 
                     // Push the packet out the source switch
                     if (sw.getId() == srcSwitch.getId()) {
@@ -312,6 +282,9 @@ public abstract class ForwardingBase implements
                      Integer.toHexString(fm.getMatch().getWildcards()),
                      fm.getMatch().toString());
             sw.write(fm, cntx);
+            if (doFlush) {
+                sw.flush();
+            }
 
             if (sw.getId() == srcSwitch.getId()) {
                 pushPacket(srcSwitch,

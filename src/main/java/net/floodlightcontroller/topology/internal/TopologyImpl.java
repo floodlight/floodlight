@@ -352,16 +352,16 @@ public class TopologyImpl
                      nextSrcNode.longValue() == dstNode.getSw().getId()) ||
                     (nextDstNode != null &&
                      nextDstNode.longValue() == srcNode.getSw().getId())) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("detectLoopInCluster, root={}, mark " +
+                    if (log.isTraceEnabled()) {
+                        log.trace("detectLoopInCluster, root={}, mark " +
                                   "link {} broadcast state to FORWARD",
                                   HexString.toHexString(cluster.getId()),
                                   linktp);
                     }
                     linkInfo.setBroadcastState(LinkInfo.PortBroadcastState.PBS_FORWARD);
                 } else {
-                    if (log.isDebugEnabled()) {
-                        log.debug("detectLoopInCluster, root={}, mark " +
+                    if (log.isTraceEnabled()) {
+                        log.trace("detectLoopInCluster, root={}, mark " +
                                   "link {} broadcast state to BLOCK",
                                   HexString.toHexString(cluster.getId()),
                                   linktp);
@@ -472,6 +472,7 @@ public class TopologyImpl
                 sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
             }
         }
+        sw.flush();
     }
 
     protected void sendLLDPs() {
@@ -1959,7 +1960,7 @@ public class TopologyImpl
 		int num_links = 0;
 		for (Set<LinkTuple> links : switchLinks.values())
 			num_links += links.size();
-		info.put("# inter-switch links", num_links);
+		info.put("# inter-switch links", num_links / 2);
 		
 		return info;
 	}

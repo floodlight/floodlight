@@ -143,6 +143,7 @@ public class StaticFlowEntryPusher
         
         try {
             sw.write(fm, null);
+            sw.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }

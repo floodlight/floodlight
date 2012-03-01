@@ -310,6 +310,7 @@ public interface IOFSwitch {
      * Send a flow statistics request to the switch. This call returns after
      * sending the stats. request to the switch.
      * @param request flow statistics request message
+     * @param xid transaction id, must be obtained by using the getXid() API.
      * @param caller the caller of the API. receive() callback of this 
      * caller would be called when the reply from the switch is received.
      * @return the transaction id for the message sent to the switch. The 
@@ -317,7 +318,21 @@ public interface IOFSwitch {
      * that the transaction id is unique only within the scope of this switch.
      * @throws IOException
      */
-    int sendStatsQuery(OFStatisticsRequest request, IOFMessageListener caller)
-            throws IOException;
+    public void sendStatsQuery(OFStatisticsRequest request, int xid,
+                            IOFMessageListener caller) throws IOException;
 
+    /**
+     * Flush all flows queued for this switch in the current thread.
+     * NOTE: The contract is limited to the current thread
+     */
+     public void flush();
+
+     /**
+      * Get transaction id. for using in a message to be sent to the switch.
+      * The caller can use the transaction id as a key to maintain some
+      * meta data that can be retrieved based on the same message id. that
+      * would be returned in the response from the switch.
+      * @return transaction id to be passed in the sendStatsQuery() API.
+      */
+     public int getXid();
 }

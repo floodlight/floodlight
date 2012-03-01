@@ -79,6 +79,8 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         expectLastCall().anyTimes();
         mockSwitch.write(capture(writeCaptureList), capture(contextCapture));
         expectLastCall().anyTimes();
+        mockSwitch.flush();
+        expectLastCall().anyTimes();
         
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();

@@ -35,6 +35,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -45,6 +46,7 @@ import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
+import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
@@ -99,7 +101,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                           HexString.toHexString(sw.getId()), pi.getInPort());
                 return;
             }
-                                                
+
             // Validate that we have a destination known on the same island
             // Validate that the source and destination are not on the same switchport
             boolean on_same_island = false;
@@ -162,7 +164,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     srcCluster = srcSw.getSwitchClusterId();
                     dstCluster = dstSw.getSwitchClusterId();
                 }
-                
+
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
                     if (!srcDap.equals(dstDap) && 
@@ -179,9 +181,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                                         dstDap.getSwitchDPID(),
                                                         dstDap.getPort()});
                             }
-                            pushRoute(route, match, 0, srcDap, dstDap,
-                                      bufferId, sw, pi, cntx, 
-                                      requestFlowRemovedNotifn);
+                            long cookie = 
+                                    AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+                            pushRoute(route, match, 0,
+                                      srcDap, dstDap, bufferId,
+                                      sw, pi, cookie, cntx, 
+                                      requestFlowRemovedNotifn, false,
+                                      OFFlowMod.OFPFC_ADD);
                         }
                     }
                     iSrcDaps++;
