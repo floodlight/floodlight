@@ -21,7 +21,9 @@
 package net.floodlightcontroller.counter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +33,10 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -45,7 +51,7 @@ import org.slf4j.LoggerFactory;
  * @author kyle
  *
  */
-public class CounterStore implements ICounterStoreService {
+public class CounterStore implements IFloodlightModule, ICounterStoreService {
     protected static Logger log = LoggerFactory.getLogger(CounterStore.class);
 
     public enum NetworkLayer {
@@ -432,4 +438,39 @@ public class CounterStore implements ICounterStoreService {
         return ret;
     }
 
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> services =
+                new ArrayList<Class<? extends IFloodlightService>>(1);
+        services.add(ICounterStoreService.class);
+        return services;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        m.put(ICounterStoreService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        // no-op, no dependencies
+        return null;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+                                 throws FloodlightModuleException {
+        // no-op for now
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // no-op for now
+    }
 }

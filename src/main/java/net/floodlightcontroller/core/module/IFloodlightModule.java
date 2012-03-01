@@ -71,7 +71,4 @@ public interface IFloodlightModule {
 	 */
 	
 	void startUp(FloodlightModuleContext context); 
-	
-	// TODO add getName() getId()
-	
 }
