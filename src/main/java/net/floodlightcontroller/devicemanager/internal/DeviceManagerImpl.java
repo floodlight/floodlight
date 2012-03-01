@@ -325,43 +325,18 @@ public class DeviceManagerImpl implements
         
     }
 
-    // **************
-    // ITopologyAware
-    // **************
+    // *****************
+    // ITopologyListener
+    // *****************
     
-    @Override
-    public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-                          IOFSwitch dstSw, short dstPort, int dstPortState) {
-        // Nothing to do
-    }
-
-    @Override
-    public void updatedLink(IOFSwitch srcSw, short srcPort,
-                            int srcPortState, IOFSwitch dstSw,
-                            short dstPort, int dstPortState) {
-        // TODO Auto-generated method stub
-    }
-
-    @Override
-    public void removedLink(IOFSwitch srcSw, short srcPort, IOFSwitch dstSw,
-                            short dstPort) {
-        // TODO Auto-generated method stub
-    }
-
     @Override
     public void clusterMerged() {
         // TODO Auto-generated method stub
     }
-
+    
     // *****************
     // IOFSwitchListener
     // *****************
-    
-    @Override
-    public void updatedSwitch(IOFSwitch sw) {
-        // TODO Auto-generated method stub
-    }
-
 
     @Override
     public void addedSwitch(IOFSwitch sw) {
@@ -501,8 +476,7 @@ public class DeviceManagerImpl implements
 
         } finally {
             processUpdates();
-        }
-        
+        }        
     }
     
     private void processUpdates() {
@@ -1002,4 +976,5 @@ public class DeviceManagerImpl implements
 		info.put("# hosts", deviceMap.size());
 		return info;
 	}
+
 }

@@ -96,9 +96,9 @@ public class FloodlightModuleLoader {
 	}
 	
 	/**
-	 * Loads
-	 * @param fName
-	 * @return
+	 * Loads the modules from a specified configuration file.
+	 * @param fName The configuration file path
+	 * @return An IFloodlightModuleContext with all the modules to be started
 	 * @throws FloodlightModuleException
 	 */
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 

@@ -59,7 +59,7 @@ public class StaticFlowEntryPusherTest extends FloodlightTestCase {
         staticFlowEntryPusher = new StaticFlowEntryPusher();
         staticFlowEntryPusher.init(fmc);
         restApi.init(fmc);
-        staticFlowEntryPusher.setFlowPushTime(200);
+        staticFlowEntryPusher.setFlowPushTime(500);
         staticFlowEntryPusher.startUp(fmc);
         restApi.startUp(fmc);
     }

@@ -42,7 +42,7 @@ import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
@@ -301,7 +301,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         l.add(IFloodlightProviderService.class);
         l.add(IDeviceManagerService.class);
         l.add(IRoutingEngineService.class);
-        l.add(ITopologyService.class);
+        l.add(ILinkDiscoveryService.class);
         l.add(ICounterStoreService.class);
         return l;
     }
@@ -311,7 +311,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
         this.setDeviceManager(context.getServiceImpl(IDeviceManagerService.class));
         this.setRoutingEngine(context.getServiceImpl(IRoutingEngineService.class));
-        this.setTopology(context.getServiceImpl(ITopologyService.class));
+        this.setTopology(context.getServiceImpl(ILinkDiscoveryService.class));
         this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));
     }
 

@@ -43,8 +43,9 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
+import net.floodlightcontroller.topology.ILinkDiscoveryListener;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.ITopologyService;
 
 /**
  * Floodlight component to find shortest paths based on dijkstra's algorithm
@@ -52,7 +53,7 @@ import net.floodlightcontroller.topology.ITopologyService;
  * @author Mandeep Dhami (mandeep.dhami@bigswitch.com)
  */
 public class RoutingImpl 
-    implements IRoutingEngineService, ITopologyListener, IFloodlightModule {
+    implements IRoutingEngineService, ILinkDiscoveryListener, ITopologyListener, IFloodlightModule {
     
     public static final int MAX_LINK_WEIGHT = 1000;
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;
@@ -64,7 +65,7 @@ public class RoutingImpl
     protected HashMap<Long, HashMap<Long, Link>> nexthoplinkmaps;
     protected HashMap<Long, HashMap<Long, Long>> nexthopnodemaps;
     protected LRUHashMap<RouteId, Route> pathcache;
-    protected ITopologyService topology;
+    protected ILinkDiscoveryService topology;
    
     @Override
     public boolean routeExists(Long srcId, Long dstId) {
@@ -99,11 +100,6 @@ public class RoutingImpl
         nexthoplinkmaps.clear();
         nexthopnodemaps.clear();
         lock.writeLock().unlock();
-    }
-
-    @Override
-    public Route getRoute(IOFSwitch src, IOFSwitch dst) {
-        return getRoute(src.getId(), dst.getId());
     }
 
     @Override
@@ -361,14 +357,14 @@ public class RoutingImpl
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(ITopologyService.class);
+        l.add(ILinkDiscoveryService.class);
         return l;
     }
 
     @Override
     public void init(FloodlightModuleContext context)
                                              throws FloodlightModuleException {
-        topology = context.getServiceImpl(ITopologyService.class);
+        topology = context.getServiceImpl(ILinkDiscoveryService.class);
         lock = new ReentrantReadWriteLock();
         network = new HashMap<Long, HashMap<Link, Link>>();
         nexthoplinkmaps = new HashMap<Long, HashMap<Long, Link>>();

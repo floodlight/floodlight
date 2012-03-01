@@ -21,7 +21,9 @@
 package net.floodlightcontroller.counter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +33,10 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -45,11 +51,11 @@ import org.slf4j.LoggerFactory;
  * @author kyle
  *
  */
-public class CounterStore implements ICounterStoreService {
+public class CounterStore implements IFloodlightModule, ICounterStoreService {
     protected static Logger log = LoggerFactory.getLogger(CounterStore.class);
 
     public enum NetworkLayer {
-        L3, L4
+        L2, L3, L4
     }
 
     protected class CounterEntry {
@@ -111,8 +117,34 @@ public class CounterStore implements ICounterStoreService {
                                            packetName, 
                                            etherType, 
                                            NetworkLayer.L3);
+
+        String l2Type = null;
+        if (eth.isBroadcast()) {
+        	l2Type = BROADCAST;
+        } else if (eth.isMulticast()) {
+        	l2Type = MULTICAST;
+        } else {
+        	l2Type = UNICAST;
+        }
         
-        // Construct both port and switch counter for the packet_in
+        // Construct both port and switch L3 counter for the packet_in
+    	String controllerL2CategoryCounterName = CounterStore.createCounterName(CONTROLLER_NAME, 
+                -1,
+                packetName, 
+                l2Type, 
+                NetworkLayer.L2);
+    	String switchL2CategoryCounterName = CounterStore.createCounterName(switchIdHex, 
+                -1, 
+                packetName, 
+                l2Type, 
+                NetworkLayer.L2);
+    	String portL2CategoryCounterName = CounterStore.createCounterName(switchIdHex, 
+                packet.getInPort(),
+                packetName, 
+                l2Type, 
+                NetworkLayer.L2);
+        
+        // Construct both port and switch L3 counter for the packet_in
         String portCounterName =
                 CounterStore.createCounterName(switchIdHex, 
                                                packet.getInPort(),
@@ -135,45 +167,68 @@ public class CounterStore implements ICounterStoreService {
                                                etherType, 
                                                NetworkLayer.L3);
         
-        try {
+        try {        	
+        	// Controller counters
         	ICounter controllerCounter = getCounter(controllerCounterName);
             if (controllerCounter == null) {
             	controllerCounter = createCounter(controllerCounterName, 
                                                CounterType.LONG);
             }
+            controllerCounter.increment();
             ICounter portCounter = getCounter(portCounterName);
             if (portCounter == null) {
                 portCounter = createCounter(portCounterName, 
                                                    CounterType.LONG);
             }
+            portCounter.increment();
             ICounter switchCounter = getCounter(switchCounterName);
             if (switchCounter == null) {
                 switchCounter = createCounter(switchCounterName, 
                                                    CounterType.LONG);
             }
+            switchCounter.increment();
 
+            // L2 counters
+            ICounter controllerL2Counter = getCounter(controllerL2CategoryCounterName);
+            if (controllerL2Counter == null) {
+            	controllerL2Counter = createCounter(controllerL2CategoryCounterName,
+                                               CounterType.LONG);
+            }
+            controllerL2Counter.increment();
+            ICounter switchL2Counter = getCounter(switchL2CategoryCounterName);
+            if (switchL2Counter == null) {
+            	switchL2Counter = createCounter(switchL2CategoryCounterName,
+                                                   CounterType.LONG);
+            }
+            switchL2Counter.increment();
+            ICounter portL2Counter = getCounter(portL2CategoryCounterName);
+            if (portL2Counter == null) {
+            	portL2Counter = createCounter(portL2CategoryCounterName,
+                                                   CounterType.LONG);
+            }
+            portL2Counter.increment();
+            
+            // L3 counters
             ICounter controllerL3Counter = getCounter(controllerL3CategoryCounterName);
             if (controllerL3Counter == null) {
             	controllerL3Counter = createCounter(controllerL3CategoryCounterName,
                                                CounterType.LONG);
             }
+            controllerL3Counter.increment();
             ICounter portL3Counter = getCounter(portL3CategoryCounterName);
             if (portL3Counter == null) {
                 portL3Counter = createCounter(portL3CategoryCounterName,
                                                    CounterType.LONG);
             }
+            portL3Counter.increment();
             ICounter switchL3Counter = getCounter(switchL3CategoryCounterName);
             if (switchL3Counter == null) {
                 switchL3Counter = createCounter(switchL3CategoryCounterName,
                                                    CounterType.LONG);
             }
-            controllerCounter.increment();
-            portCounter.increment();
-            switchCounter.increment();
-            controllerL3Counter.increment();
-            portL3Counter.increment();
             switchL3Counter.increment();
             
+            // L4 counters
             if (etherType.compareTo(CounterStore.L3ET_IPV4) == 0) {
                 IPv4 ipV4 = (IPv4)eth.getPayload();
                 String l4Type = String.format("%02x", ipV4.getProtocol());
@@ -206,18 +261,18 @@ public class CounterStore implements ICounterStoreService {
                 	controllerL4Counter = createCounter(controllerL4CategoryCounterName, 
                                                    CounterType.LONG);
                 }
+                controllerL4Counter.increment();
                 ICounter portL4Counter = getCounter(portL4CategoryCounterName);
                 if (portL4Counter == null) {
                     portL4Counter = createCounter(portL4CategoryCounterName, 
                                                        CounterType.LONG);
                 }
+                portL4Counter.increment();
                 ICounter switchL4Counter = getCounter(switchL4CategoryCounterName);
                 if (switchL4Counter == null) {
                     switchL4Counter = createCounter(switchL4CategoryCounterName, 
                                                        CounterType.LONG);
                 }
-                controllerL4Counter.increment();
-                portL4Counter.increment();
                 switchL4Counter.increment();
             }
         }
@@ -383,4 +438,39 @@ public class CounterStore implements ICounterStoreService {
         return ret;
     }
 
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> services =
+                new ArrayList<Class<? extends IFloodlightService>>(1);
+        services.add(ICounterStoreService.class);
+        return services;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        m.put(ICounterStoreService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        // no-op, no dependencies
+        return null;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+                                 throws FloodlightModuleException {
+        // no-op for now
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // no-op for now
+    }
 }
