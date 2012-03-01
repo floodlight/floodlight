@@ -632,7 +632,11 @@ public class Controller
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-        long startTime = System.nanoTime();
+        long startTime = 0;
+        
+        if (pktinProcTime.isEnabled()) {
+            startTime = System.nanoTime();
+        }
 
         switch (m.getType()) {
             case PACKET_IN:
@@ -700,11 +704,13 @@ public class Controller
                 }
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
                 
-                long processingTime = System.nanoTime() - startTime;
-                if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
-                    log.warn("Time to process packet-in: {} us", processingTime/1000.0);
-                    if (eth != null)
-                        log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
+                if (pktinProcTime.isEnabled()) {
+                    long processingTime = System.nanoTime() - startTime;
+                    if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
+                        log.warn("Time to process packet-in: {} us", processingTime/1000.0);
+                        if (eth != null)
+                            log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
+                    }
                 }
         }
     }

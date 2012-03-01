@@ -92,4 +92,9 @@ public class NullPktInProcessingTime
     public void updateCumulativeTimeTotal(long onePktStartTime_ns) {
         // no-op
     }
+
+    @Override
+    public boolean isEnabled() {
+        return false;
+    }
 }
