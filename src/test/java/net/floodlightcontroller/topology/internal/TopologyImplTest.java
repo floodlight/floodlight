@@ -41,8 +41,9 @@ import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.topology.ILinkDiscoveryListener;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 
@@ -70,8 +71,9 @@ public class TopologyImplTest extends FloodlightTestCase {
         topology = new TopologyImpl();
         RoutingImpl routingEngine = new RoutingImpl();
         topology.topologyAware = new ArrayList<ITopologyListener>();
+        topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         cntx.addService(IRoutingEngineService.class, routingEngine);
-        cntx.addService(ITopologyService.class, topology);
+        cntx.addService(ILinkDiscoveryService.class, topology);
         cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         routingEngine.init(cntx);

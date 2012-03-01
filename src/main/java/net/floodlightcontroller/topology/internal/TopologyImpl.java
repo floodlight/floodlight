@@ -63,9 +63,11 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
+import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.BroadcastDomain;
+import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 import net.floodlightcontroller.topology.SwitchCluster;
@@ -114,9 +116,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class TopologyImpl 
+public class TopologyImpl
         implements IOFMessageListener, IOFSwitchListener, 
-                   IStorageSourceListener, ITopologyService,
+                   IStorageSourceListener, ILinkDiscoveryService, ITopologyService,
                    IFloodlightModule, IInfoProvider {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
@@ -173,6 +175,7 @@ public class TopologyImpl
     protected Map<IOFSwitch, Set<LinkTuple>> switchLinks;
     /* topology aware components are called in the order they were added to the
      * the array */
+    protected ArrayList<ILinkDiscoveryListener> linkDiscoveryAware;
     protected ArrayList<ITopologyListener> topologyAware;
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
@@ -258,37 +261,43 @@ public class TopologyImpl
     private void doUpdatesThread() throws InterruptedException {
         do {
             Update update = updates.take();
-            if (topologyAware != null) {
-                for (ITopologyListener ta : topologyAware) { // order maintained
-                    if (log.isDebugEnabled()) {
-                        log.debug("Dispatching topology update {} {} {} {} {}",
-                                  new Object[]{update.operation,
-                                               update.src, update.srcPort,
-                                               update.dst, update.dstPort});
+
+            if (update.operation == UpdateOperation.CLUSTER_MERGED) {
+                if (topologyAware != null) {
+                    for (ITopologyListener ta : topologyAware) { // order maintained
+                        ta.clusterMerged();
                     }
-                    switch (update.operation) {
-                        case ADD:
-                            ta.addedLink(update.src, update.srcPort,
-                                    update.srcPortState,
-                                    update.dst, update.dstPort,
-                                    update.dstPortState);
-                            break;
-                        case UPDATE:
-                            ta.updatedLink(update.src, update.srcPort,
-                                    update.srcPortState,
-                                    update.dst, update.dstPort,
-                                    update.dstPortState);
-                            break;
-                        case REMOVE:
-                            ta.removedLink(update.src, update.srcPort,
-                                    update.dst, update.dstPort);
-                            break;
-                        case SWITCH_UPDATED:
-                            ta.updatedSwitch(update.src);
-                            break;
-                        case CLUSTER_MERGED:
-                            ta.clusterMerged();
-                            break;
+                } 
+            }else {
+                if (topologyAware != null) {
+                    for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                        if (log.isDebugEnabled()) {
+                            log.debug("Dispatching topology update {} {} {} {} {}",
+                                      new Object[]{update.operation,
+                                                   update.src, update.srcPort,
+                                                   update.dst, update.dstPort});
+                        }
+                        switch (update.operation) {
+                            case ADD:
+                                lda.addedLink(update.src, update.srcPort,
+                                              update.srcPortState,
+                                              update.dst, update.dstPort,
+                                              update.dstPortState);
+                                break;
+                            case UPDATE:
+                                lda.updatedLink(update.src, update.srcPort,
+                                                update.srcPortState,
+                                                update.dst, update.dstPort,
+                                                update.dstPortState);
+                                break;
+                            case REMOVE:
+                                lda.removedLink(update.src, update.srcPort,
+                                                update.dst, update.dstPort);
+                                break;
+                            case SWITCH_UPDATED:
+                                lda.updatedSwitch(update.src);
+                                break;
+                        }
                     }
                 }
             }
@@ -1619,6 +1628,11 @@ public class TopologyImpl
     }
     
     @Override
+    public void addListener(ILinkDiscoveryListener listener) {
+        linkDiscoveryAware.add(listener);
+    }
+    
+    @Override
     public void addListener(ITopologyListener listener) {
         topologyAware.add(listener);
     }
@@ -1627,16 +1641,16 @@ public class TopologyImpl
      * Register a topology aware component
      * @param topoAwareComponent
      */
-    public void addTopologyAware(ITopologyListener topoAwareComponent) {
+    public void addTopologyAware(ILinkDiscoveryListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
-        this.topologyAware.add(topoAwareComponent);
+        this.linkDiscoveryAware.add(topoAwareComponent);
     }
 
     /**
      * Deregister a topology aware component
      * @param topoAwareComponent
      */
-    public void removeTopologyAware(ITopologyListener topoAwareComponent) {
+    public void removeTopologyAware(ILinkDiscoveryListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware.remove(topoAwareComponent);
     }
@@ -1736,6 +1750,7 @@ public class TopologyImpl
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ILinkDiscoveryService.class);
         l.add(ITopologyService.class);
         return l;
     }
@@ -1748,7 +1763,9 @@ public class TopologyImpl
             new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
         // We are the class that implements the service
+        m.put(ILinkDiscoveryService.class, this);
         m.put(ITopologyService.class, this);
+        
         return m;
     }
 
@@ -1773,6 +1790,7 @@ public class TopologyImpl
         
         // We create this here because there is no ordering guarantee
         this.topologyAware = new ArrayList<ITopologyListener>();
+        this.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         this.lock = new ReentrantReadWriteLock();
         this.updates = new LinkedBlockingQueue<Update>();
         this.links = new HashMap<LinkTuple, LinkInfo>();

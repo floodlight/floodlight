@@ -47,7 +47,7 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.forwarding.Forwarding;
 
@@ -71,7 +71,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected IDeviceManagerService deviceManager;
     protected IRoutingEngineService routingEngine;
     protected Forwarding forwarding;
-    protected ITopologyService topology;
+    protected ILinkDiscoveryService topology;
     protected IOFSwitch sw1, sw2;
     protected Device srcDevice, dstDevice;
     protected OFPacketIn packetIn;
@@ -91,7 +91,7 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding = getForwarding();
         deviceManager = createMock(IDeviceManagerService.class);
         routingEngine = createMock(IRoutingEngineService.class);
-        topology = createMock(ITopologyService.class);
+        topology = createMock(ILinkDiscoveryService.class);
         forwarding.setFloodlightProvider(mockFloodlightProvider);
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);

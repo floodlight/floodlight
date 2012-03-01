@@ -66,8 +66,9 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
+import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
@@ -92,7 +93,7 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
-        IOFSwitchListener, ITopologyListener, IFloodlightModule, IStorageSourceListener,
+        IOFSwitchListener, ILinkDiscoveryListener, IFloodlightModule, IStorageSourceListener,
         IInfoProvider {      
     /**
      * Class to maintain all the device manager maps which consists of four
@@ -626,6 +627,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
     // Our dependencies
     protected IFloodlightProviderService floodlightProvider;
+    protected ILinkDiscoveryService linkDiscovery;
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
 
@@ -1145,6 +1147,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      */
     public void setTopology(ITopologyService topology) {
         this.topology = topology;
+    }
+    
+    /**
+     * @param topology the topology to set
+     */
+    public void setLinkDiscovery(ILinkDiscoveryService linkDiscovery) {
+        this.linkDiscovery = linkDiscovery;
     }
 
     @Override
@@ -2092,8 +2101,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
-        l.add(IStorageSourceService.class);
         l.add(ITopologyService.class);
+        l.add(ILinkDiscoveryService.class);
+        l.add(IStorageSourceService.class);
         return l;
     }
 
@@ -2105,6 +2115,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 context.getServiceImpl(IFloodlightProviderService.class);
         topology =
                 context.getServiceImpl(ITopologyService.class);
+        linkDiscovery = 
+                context.getServiceImpl(ILinkDiscoveryService.class);
         storageSource =
                 context.getServiceImpl(IStorageSourceService.class);
         
@@ -2124,9 +2136,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     public void startUp(FloodlightModuleContext context) {
         // This is our 'constructor'
 
-        if (topology != null) {
+        if (linkDiscovery != null) {
             // Register to get updates from topology
-            topology.addListener(this);
+            linkDiscovery.addListener(this);
         } else {
             log.error("Could add not toplogy listener");
         }

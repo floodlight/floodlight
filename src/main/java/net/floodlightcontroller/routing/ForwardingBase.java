@@ -36,7 +36,7 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -61,7 +61,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceManagerService deviceManager;
     protected IRoutingEngineService routingEngine;
-    protected ITopologyService topology;
+    protected ILinkDiscoveryService topology;
     protected ICounterStoreService counterStore;
    
     // flow-mod - for use in the cookie
@@ -349,7 +349,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     /**
      * @param topology the topology to set
      */
-    public void setTopology(ITopologyService topology) {
+    public void setTopology(ILinkDiscoveryService topology) {
         this.topology = topology;
     }
     
