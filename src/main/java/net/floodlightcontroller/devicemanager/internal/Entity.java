@@ -88,7 +88,6 @@ public class Entity implements Comparable<Entity> {
     public Entity(long macAddress, Short vlan, 
                   Integer ipv4Address, Long switchDPID, Integer switchPort, 
                   Date lastSeenTimestamp) {
-        super();
         this.macAddress = macAddress;
         this.ipv4Address = ipv4Address;
         this.vlan = vlan;

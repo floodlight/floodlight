@@ -20,8 +20,8 @@ package net.floodlightcontroller.devicemanager.internal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -52,6 +52,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.ITopologyListener;
+
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPortStatus;
@@ -150,9 +151,11 @@ public class DeviceManagerImpl implements
          * @param clazz the class to use for the state
          */
         public ClassState(IEntityClass clazz) {
-            Set<IDeviceManagerService.DeviceField> keyFields = clazz.getKeyFields();
+            Set<IDeviceManagerService.DeviceField> keyFields = 
+                    clazz.getKeyFields();
             keyFieldsMatchPrimary = primaryKeyFields.equals(keyFields);
-            keyFieldsArr = new IDeviceManagerService.DeviceField[keyFields.size()];
+            keyFieldsArr = 
+                    new IDeviceManagerService.DeviceField[keyFields.size()];
             keyFieldsArr = keyFields.toArray(keyFieldsArr);
             if (!keyFieldsMatchPrimary)
                 classIndex = new ConcurrentHashMap<IndexedEntity, Long>();
@@ -254,7 +257,8 @@ public class DeviceManagerImpl implements
     public void setEntityClassifier(IEntityClassifier classifier) {
         entityClassifier = classifier;
         primaryKeyFields = classifier.getKeyFields();
-        primaryKeyFieldsArr = new IDeviceManagerService.DeviceField[primaryKeyFields.size()];
+        primaryKeyFieldsArr = 
+                new IDeviceManagerService.DeviceField[primaryKeyFields.size()];
         primaryKeyFieldsArr = primaryKeyFields.toArray(primaryKeyFieldsArr);
     }
     
@@ -470,9 +474,8 @@ public class DeviceManagerImpl implements
             if (srcEntity == null)
                 return Command.STOP;
             
-            // XXX - TODO - If it's a broadcast DHCP request we should also
-            // clear other clusters
-            if (isGratArp(eth)) {
+            if (isGratArp(eth) ||
+                isBroadcastDHCPReq(eth)) {
                 // XXX - TODO - Clear attachment points from other clusters
             }
             
@@ -525,6 +528,10 @@ public class DeviceManagerImpl implements
             }
         }
         return false;
+    }
+    
+    private boolean isBroadcastDHCPReq(Ethernet eth) {
+        return ((eth.getPayload() instanceof DHCP) && (eth.isBroadcast()));
     }
 
     private int getSrcNwAddr(Ethernet eth, long dlAddr) {
@@ -688,8 +695,9 @@ public class DeviceManagerImpl implements
     }
  
     /**
-     * Look up a {@link Device} based on the provided {@link Entity}.  Also learns
-     * based on the new entity, and will update existing devices as required. 
+     * Look up a {@link Device} based on the provided {@link Entity}.  Also
+     * learns based on the new entity, and will update existing devices as 
+     * required. 
      * 
      * @param entity the {@link Entity}
      * @return The {@link Device} object if found
@@ -716,14 +724,7 @@ public class DeviceManagerImpl implements
                 // class entity indexes.
                 classes = entityClassifier.classifyEntity(entity);
                 for (IEntityClass clazz : classes) {
-                    // ensure that a class state exists for the class if
-                    // needed
-                    ClassState classState;
-                    try {
-                        classState = getClassState(clazz);
-                    } catch (ConcurrentModificationException e) {
-                        continue;
-                    }
+                    ClassState classState = getClassState(clazz);
                         
                     if (classState.classIndex != null) {
                         IndexedEntity sie = 
@@ -738,7 +739,6 @@ public class DeviceManagerImpl implements
                 // update the entity timestamp, then use resulting device 
                 // key to look up the device in the device map, and
                 // use the referenced Device below.
-                entity.setLastSeenTimestamp(new Date());
                 device = deviceMap.get(deviceKey);
                 if (device == null)
                     continue;
@@ -764,23 +764,51 @@ public class DeviceManagerImpl implements
             }
             
             if (device.containsEntity(entity)) {
+                // XXX - TODO - Update entity timestamp
                 break;
             } else {
-                Device newDevice = new Device(device, entity, classes);
-                // XXX - TODO
                 // When adding an entity, any existing entities on the
                 // same OpenFlow switch cluster but a different attachment
                 // point should be removed. If an entity being removed 
-                // contains an IP address but the new entity does not contain
-                // that IP, then a new entity should be added containing the
-                // IP (including updating the entity caches), preserving the 
+                // contains non-key fields that the new entity does not contain, 
+                // then a new entity should be added containing the
+                // field (including updating the entity caches), preserving the 
                 // old timestamp of the entity.
+
+                Entity[] entities = device.getEntities();
+                ArrayList<Entity> newEntities = null;
+                ArrayList<Entity> removedEntities = null;
+                // iterate backwards since we want indices for removed entities
+                // to update in reverse order
+                for (int i = entities.length - 1; i >= 0; i--) {
+                    // XXX - TODO Handle port channels                    
+                    // XXX - TODO Handle broadcast domains
+                    // XXX - TODO Prevent flapping of entities
+                    // XXX - TODO Handle unique indices
+
+                    Long edpid = entities[i].getSwitchDPID();
+                    Long cdpid = entity.getSwitchDPID();
+                    
+                    // Remove attachment points in the same cluster 
+                    if (edpid != null && cdpid != null &&
+                        topology != null && 
+                        topology.inSameCluster(edpid, cdpid)) {
+                        removedEntities = 
+                                updateEntityList(removedEntities, entities[i]);
+
+                        Entity shim = makeShimEntity(entity, entities[i], 
+                                                     device.getEntityClasses());
+                        newEntities = updateEntityList(newEntities, shim);
+                        continue;
+                    }
+                    
+                    newEntities = updateEntityList(newEntities, entities[i]);
+                }
+                newEntities = updateEntityList(newEntities, entity);
+                removeEntities(removedEntities, device.getEntityClasses());
                 
-                // XXX - TODO Handle port channels
-                
-                // XXX - TODO Handle broadcast domains
-                
-                // XXX - TODO Prevent flapping of entities
+                Device newDevice = new Device(device,
+                                              newEntities, classes);
                 
                 boolean res = deviceMap.replace(deviceKey, device, newDevice);
                 // If replace returns false, restart the process from the 
@@ -807,21 +835,85 @@ public class DeviceManagerImpl implements
     }
     
     /**
+     * If there's information that would be lost about a device because
+     * we're removing an old entity, construct a "shim" entity to provide
+     * that information
+     * @param newentity the entity being added
+     * @param rementity the entity that's being removed
+     * @param classes the entity classes
+     * @return the entity, or null if no entity needed
+     */
+    private Entity makeShimEntity(Entity newentity, Entity rementity,
+                                  IEntityClass[] classes) {
+        Set<DeviceField> nonkey = null;
+    
+        for (IEntityClass clazz : classes) {
+            if (nonkey == null)
+                nonkey = EnumSet.complementOf(clazz.getKeyFields());
+            else
+                nonkey.removeAll(clazz.getKeyFields());
+        }
+
+        Integer ipv4Address = null;
+        Short vlan = null;
+
+        for (DeviceField f : nonkey) {
+            switch (f) {
+                case IPV4:
+                    if (rementity.getIpv4Address() != null &&
+                        !rementity.getIpv4Address()
+                        .equals(newentity.getIpv4Address()))
+                        ipv4Address = rementity.getIpv4Address();
+                    break;
+                case VLAN:
+                    if (rementity.getVlan() != null &&
+                        !rementity.getVlan()
+                        .equals(newentity.getVlan()))
+                        vlan = rementity.getVlan();
+                    break;
+                case MAC:
+                case PORT:
+                case SWITCH:
+                    break;
+                default:
+                    logger.warn("Unexpected device field {}", f);
+            }
+        }
+        
+        Entity shim = null;        
+        if (ipv4Address != null || vlan != null) {
+            shim = new Entity(rementity.getMacAddress(), vlan, 
+                              ipv4Address, null, null, 
+                              rementity.getLastSeenTimestamp());
+        }
+        return shim;
+    }
+    
+    private ArrayList<Entity> updateEntityList(ArrayList<Entity> list,
+                                               Entity entity) {
+        if (entity == null) return list;
+        if (list == null)
+            list = new ArrayList<Entity>();
+        list.add(entity);
+        
+        return list;
+    }
+    
+    /**
      * Get the secondary index for a class.  Will return null if the 
      * secondary index was created concurrently in another thread. 
      * @param clazz the class for the index
      * @return
      */
-    private ClassState getClassState(IEntityClass clazz) 
-                                      throws ConcurrentModificationException {
+    private ClassState getClassState(IEntityClass clazz) {
         ClassState classState = classStateMap.get(clazz);
         if (classState != null) return classState;
         
         classState = new ClassState(clazz);
         ClassState r = classStateMap.putIfAbsent(clazz, classState);
         if (r != null) {
-            // concurrent add; restart
-            throw new ConcurrentModificationException();
+            // concurrent add
+            return r;
         }
         return classState;
     }
@@ -839,12 +931,7 @@ public class DeviceManagerImpl implements
             return false;
         }
         for (IEntityClass clazz : device.getEntityClasses()) {
-            ClassState classState;
-            try {
-                classState = getClassState(clazz); 
-            } catch (ConcurrentModificationException e) {
-                return false;
-            }
+            ClassState classState = getClassState(clazz); 
 
             if (classState.classIndex != null) {
                 if (!updateIndex(device, 
@@ -856,7 +943,26 @@ public class DeviceManagerImpl implements
         }
         // XXX - TODO handle indexed views into data
         return true;
-    }                     
+    }
+    
+    private void removeEntities(ArrayList<Entity> removed, 
+                                IEntityClass[] classes) {
+        if (removed == null) return;
+        for (Entity rem : removed) {
+            IndexedEntity ie = new IndexedEntity(primaryKeyFieldsArr, rem);
+            primaryIndex.remove(ie);
+            
+            for (IEntityClass clazz : classes) {
+                ClassState classState = getClassState(clazz);
+                ie = new IndexedEntity(classState.keyFieldsArr, rem);
+
+                if (classState.classIndex != null) {
+                    classState.classIndex.remove(ie);
+                }
+            }
+        }
+        // XXX - TODO handle indexed views into data
+    }
     
     /**
      * Attempt to update an index with the entities in the provided
@@ -872,7 +978,7 @@ public class DeviceManagerImpl implements
                                 Long deviceKey,
                                 ConcurrentHashMap<IndexedEntity, 
                                                   Long> index, 
-                                IDeviceManagerService.DeviceField[] keyFields) {
+                                DeviceField[] keyFields) {
         for (Entity e : device.entities) {
             IndexedEntity ie = new IndexedEntity(keyFields, e);
             Long ret = index.putIfAbsent(ie, deviceKey);

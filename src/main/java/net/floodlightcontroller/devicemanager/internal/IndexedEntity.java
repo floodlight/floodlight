@@ -39,7 +39,7 @@ public class IndexedEntity {
                         + (int) (entity.macAddress ^ 
                                 (entity.macAddress >>> 32));
                     break;
-                case IP:
+                case IPV4:
                     hashCode = prime * hashCode
                         + ((entity.ipv4Address == null) 
                             ? 0 
@@ -81,7 +81,7 @@ public class IndexedEntity {
                     if (entity.macAddress != other.entity.macAddress)
                         return false;
                     break;
-                case IP:
+                case IPV4:
                     if (entity.ipv4Address == null) {
                         if (other.entity.ipv4Address != null) return false;
                     } else if (!entity.ipv4Address.

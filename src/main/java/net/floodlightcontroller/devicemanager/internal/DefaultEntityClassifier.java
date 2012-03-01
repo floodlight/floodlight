@@ -19,10 +19,10 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.EnumSet;
 
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 
@@ -37,16 +37,14 @@ public class DefaultEntityClassifier implements IEntityClassifier {
      */
     protected static class DefaultEntityClass implements IEntityClass {
         @Override
-        public Set<IDeviceManagerService.DeviceField> getKeyFields() {
+        public EnumSet<IDeviceManagerService.DeviceField> getKeyFields() {
             return keyFields;
         }
     }
     
-    protected static Set<IDeviceManagerService.DeviceField> keyFields;
+    protected static EnumSet<DeviceField> keyFields;
     static {
-        keyFields = new HashSet<IDeviceManagerService.DeviceField>(2);
-        keyFields.add(IDeviceManagerService.DeviceField.MAC);
-        keyFields.add(IDeviceManagerService.DeviceField.VLAN);
+        keyFields = EnumSet.of(DeviceField.MAC, DeviceField.VLAN);
     }
     protected static IEntityClass entityClass = new DefaultEntityClass();
     
@@ -74,7 +72,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
 
     @Override
-    public Set<IDeviceManagerService.DeviceField> getKeyFields() {
+    public EnumSet<DeviceField> getKeyFields() {
         return keyFields;
     }
 }

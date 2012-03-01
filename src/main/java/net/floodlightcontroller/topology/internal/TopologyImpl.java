@@ -1459,16 +1459,18 @@ public class TopologyImpl
         return switchClusterMap.get(sw);
     }
 
-    /**
-     * Checks if two IOFSwitches are in the same SwitchCluster
-     * @return True if they are in the same cluster, false otherwise
-     */
-    public boolean inSameCluster(IOFSwitch switch1, IOFSwitch switch2) {
+    @Override
+    public boolean inSameCluster(Long switch1, Long switch2) {
+        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
+        IOFSwitch sw1 = switches.get(switch1);
+        IOFSwitch sw2 = switches.get(switch2);
+        if (sw1 == null || sw2 == null) return false;
+
         if (switchClusterMap != null) {
             lock.readLock().lock();
             try {
-                SwitchCluster cluster1 = switchClusterMap.get(switch1);
-                SwitchCluster cluster2 = switchClusterMap.get(switch2);
+                SwitchCluster cluster1 = switchClusterMap.get(sw1);
+                SwitchCluster cluster2 = switchClusterMap.get(sw2);
                 return (cluster1 != null) && (cluster1 == cluster2);
             }
             finally {

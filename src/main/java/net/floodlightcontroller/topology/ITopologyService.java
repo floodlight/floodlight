@@ -84,11 +84,11 @@ public interface ITopologyService extends IFloodlightService {
     
     /**
      * Queries whether two switches are in the same cluster.
-     * @param switch1
-     * @param switch2
+     * @param switch1 the DPID of the first switch
+     * @param switch2 the DPID of the second switch
      * @return true if the switches are in the same cluster
      */
-    public boolean inSameCluster(IOFSwitch switch1, IOFSwitch switch2);
+    public boolean inSameCluster(Long switch1, Long switch2);
     
     /**
      * Returns an unmodifiable map from switch id to a set of all links with it 

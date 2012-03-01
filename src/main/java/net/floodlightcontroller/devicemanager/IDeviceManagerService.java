@@ -35,7 +35,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @see IDeviceManagerService#addIndex
      */
     enum DeviceField {
-        MAC, IP, VLAN, SWITCH, PORT
+        MAC, IPV4, VLAN, SWITCH, PORT
     }
 
     /**

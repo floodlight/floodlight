@@ -47,7 +47,7 @@ public class Device implements IDevice {
     
     /**
      * Create a device from a set of entities
-     * @param the unique identifier for this device object
+     * @param deviceKey the unique identifier for this device object
      * @param entity the initial entity for the device
      * @param entityClasses the entity classes associated with the entity
      */
@@ -64,24 +64,21 @@ public class Device implements IDevice {
     }
 
     /**
-     * Create a device consisting of all entities from another device plus
-     * the additional entities specified.
-     * @param device the old device 
-     * @param entity the new entity to add to the device
-     * @param entityClasses the entity classes associated with the entity
+     * Construct a new device with the given key and containing the provided
+     * entities and entity classes
+     * @param device the old device object
+     * @param entities the entities for the device
+     * @param entityClasses the entity classes associated with the entities
      */
     public Device(Device device,
-                  Entity entity,
+                  Collection<Entity> entities,
                   Collection<IEntityClass> entityClasses) {
-        this.deviceKey = device.deviceKey;
-        this.macAddressString = device.macAddressString;
-
-        this.entities = new Entity[device.entities.length + 1];
-        for (int i = 0; i < device.entities.length; i++) {
-            this.entities[i] = device.entities[i];
-        }
-        this.entities[this.entities.length-1] = entity;
+        this.deviceKey = device.getDeviceKey();
+        this.entities = entities.toArray(new Entity[entities.size()]);
         Arrays.sort(this.entities);
+
+        this.macAddressString = 
+                HexString.toHexString(this.entities[0].getMacAddress(), 6);
         
         if (entityClasses != null &&
             entityClasses.size() > device.entityClasses.length) {

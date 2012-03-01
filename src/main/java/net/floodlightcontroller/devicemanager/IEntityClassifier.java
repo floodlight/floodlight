@@ -37,7 +37,9 @@ public interface IEntityClassifier {
     * that the key fields returned by {@link IEntityClassifier#getKeyFields()}
     * be sufficient for classifying entities.  That is, if two entities are
     * identical except for a field that is not a key field, they must be
-    * assigned the same class.
+    * assigned the same class.  Furthermore, entity classification must be
+    * transitive: For all entities x, y, z, if x and y belong to a class c, and 
+    * y and z belong class c, then x and z must belong to class c.
     * 
     * <p>Note further that you must take steps to ensure you always return
     * classes in some consistent ordering.  This could be achieved by sorting
