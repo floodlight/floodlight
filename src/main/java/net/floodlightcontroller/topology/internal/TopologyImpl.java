@@ -1636,21 +1636,40 @@ public class TopologyImpl
     public void addListener(ITopologyListener listener) {
         topologyAware.add(listener);
     }
+
+    /**
+     * Register a link discovery aware component
+     * @param linkDiscoveryAwareComponent
+     */
+    public void addLinkDiscoveryAware(ILinkDiscoveryListener linkDiscoveryAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.linkDiscoveryAware.add(linkDiscoveryAwareComponent);
+    }
+
+    /**
+     * Deregister a link discovery aware component
+     * @param linkDiscoveryAwareComponent
+     */
+    public void removeLinkDiscoveryAware(ILinkDiscoveryListener linkDiscoveryAwareComponent) {
+        // TODO make this a copy on write set or lock it somehow
+        this.linkDiscoveryAware.remove(linkDiscoveryAwareComponent);
+    }
+    
     
     /**
      * Register a topology aware component
      * @param topoAwareComponent
      */
-    public void addTopologyAware(ILinkDiscoveryListener topoAwareComponent) {
+    public void addTopologyAware(ITopologyListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
-        this.linkDiscoveryAware.add(topoAwareComponent);
+        this.topologyAware.add(topoAwareComponent);
     }
 
     /**
      * Deregister a topology aware component
      * @param topoAwareComponent
      */
-    public void removeTopologyAware(ILinkDiscoveryListener topoAwareComponent) {
+    public void removeTopologyAware(ITopologyListener topoAwareComponent) {
         // TODO make this a copy on write set or lock it somehow
         this.topologyAware.remove(topoAwareComponent);
     }
