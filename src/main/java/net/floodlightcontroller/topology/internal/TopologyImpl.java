@@ -1315,7 +1315,7 @@ public class TopologyImpl
         }
 
         // Initialize all the new structures.
-        switchClusterMap = new HashMap<Long, SwitchCluster>();
+        switchClusterMap.clear();
         clusters = new HashSet<SwitchCluster>();
         Map<Long, IOFSwitch>  switches = floodlightProvider.getSwitches();
         Map<IOFSwitch, ClusterDFS> dfsList = new HashMap<IOFSwitch, ClusterDFS>();
@@ -1460,6 +1460,7 @@ public class TopologyImpl
     }
 
     public long getSwitchClusterId(long switchId) {
+        if (switchClusterMap == null) return switchId;
         if (switchClusterMap.containsKey(switchId))
             return switchClusterMap.get(switchId).getId();
         return switchId;
@@ -1834,6 +1835,7 @@ public class TopologyImpl
         this.updates = new LinkedBlockingQueue<Update>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.switchClusterMap = new HashMap<Long, SwitchCluster>();
         this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
         this.evHistTopologySwitch =
