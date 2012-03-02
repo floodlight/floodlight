@@ -37,7 +37,8 @@ public class CoreWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/module/list/json", ModuleLoaderResource.class);
+        router.attach("/module/all/json", ModuleLoaderResource.class);
+        router.attach("/module/loaded/json", LoadedModuleLoaderResource.class);
         router.attach("/switch/all/{statType}/json", AllSwitchStatisticsResource.class);
         router.attach("/switch/{switchId}/{statType}/json", SwitchStatisticsResource.class);
         router.attach("/controller/switches/json", ControllerSwitchesResource.class);

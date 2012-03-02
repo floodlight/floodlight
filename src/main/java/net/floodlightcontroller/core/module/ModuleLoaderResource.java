@@ -3,7 +3,6 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,7 +17,11 @@ public class ModuleLoaderResource extends ServerResource {
             LoggerFactory.getLogger(ModuleLoaderResource.class);
         
         @Get("json")
-        public Map<String, Object> retrieve() {    
+        public Map<String, Object> retrieve() {
+        	return retrieveInternal(false);
+        }
+        
+        public Map<String, Object> retrieveInternal(boolean loadedOnly) {    
             Map<String, Object> model = new HashMap<String, Object>();
 
             Set<String> loadedModules = new HashSet<String>();
@@ -42,13 +45,26 @@ public class ModuleLoaderResource extends ServerResource {
             			module.getModuleDependencies();
             	if ( deps == null)
                 	deps = new HashSet<Class<? extends IFloodlightService>>();
-                moduleInfo.put("depends", deps);
+            	Map<String,Object> depsMap = new HashMap<String, Object> ();
+            	for (Class<? extends IFloodlightService> service : deps) {
+            		Object serviceImpl = getContext().getAttributes().get(service.getCanonicalName());
+            		if (serviceImpl != null)
+            			depsMap.put(service.getCanonicalName(), serviceImpl.getClass().getCanonicalName());
+            		else
+            			depsMap.put(service.getCanonicalName(), "<unresolved>");
+
+            	}
+                moduleInfo.put("depends", depsMap);
             	
                 Collection<Class<? extends IFloodlightService>> provides = 
                 		module.getModuleServices();
             	if ( provides == null)
                 	provides = new HashSet<Class<? extends IFloodlightService>>();
-            	moduleInfo.put("provides", provides);            		
+            	Map<String,Object> providesMap = new HashMap<String,Object>();
+            	for (Class<? extends IFloodlightService> service : provides) {
+            		providesMap.put(service.getCanonicalName(), module.getServiceImpls().get(service).getClass().getCanonicalName());
+            	}
+            	moduleInfo.put("provides", providesMap);            		
 
         		moduleInfo.put("loaded", false);	// not loaded, by default
 
@@ -66,8 +82,8 @@ public class ModuleLoaderResource extends ServerResource {
             		}
             	}
 
-            	
-            	model.put(moduleName, moduleInfo);
+            	if ((Boolean)moduleInfo.get("loaded")|| !loadedOnly )
+            		model.put(moduleName, moduleInfo);
             }            
             return model;
         }      
