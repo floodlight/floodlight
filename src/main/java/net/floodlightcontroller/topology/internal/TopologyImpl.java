@@ -63,6 +63,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.ILinkDiscovery;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.BroadcastDomain;
@@ -225,10 +226,12 @@ public class TopologyImpl
         public IOFSwitch dst;
         public short dstPort;
         public int dstPortState;
+        public ILinkDiscovery.LinkType type;
         public UpdateOperation operation;
 
         public Update(IOFSwitch src, short srcPort, int srcPortState,
                       IOFSwitch dst, short dstPort, int dstPortState,
+                      ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
             this.srcPort = srcPort;
@@ -240,10 +243,10 @@ public class TopologyImpl
         }
 
         public Update(LinkTuple lt, int srcPortState,
-                      int dstPortState, UpdateOperation operation) {
+                      int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
             this(lt.getSrc().getSw(), lt.getSrc().getPort(),
                  srcPortState, lt.getDst().getSw(), lt.getDst().getPort(),
-                 dstPortState, operation);
+                 dstPortState, type, operation);
         }
 
         // For updtedSwitch(sw)
@@ -282,13 +285,15 @@ public class TopologyImpl
                                 lda.addedLink(update.src, update.srcPort,
                                               update.srcPortState,
                                               update.dst, update.dstPort,
-                                              update.dstPortState);
+                                              update.dstPortState,
+                                              update.type);
                                 break;
                             case UPDATE:
                                 lda.updatedLink(update.src, update.srcPort,
                                                 update.srcPortState,
                                                 update.dst, update.dstPort,
-                                                update.dstPortState);
+                                                update.dstPortState,
+                                                update.type);
                                 break;
                             case REMOVE:
                                 lda.removedLink(update.src, update.srcPort,
@@ -685,6 +690,15 @@ public class TopologyImpl
         return Command.CONTINUE;
     }
 
+    protected ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info) {
+        if (info.getUnicastValidTime() != null) {
+            return ILinkDiscovery.LinkType.DIRECT_LINK;
+        } else if (info.getMulticastValidTime()  != null) {
+            return ILinkDiscovery.LinkType.MULTIHOP_LINK;
+        }
+        return ILinkDiscovery.LinkType.INVALID_LINK;
+    }
+    
     protected void addOrUpdateLink(LinkTuple lt, LinkInfo newLinkInfo) {
         lock.writeLock().lock();
         try {
@@ -798,7 +812,7 @@ public class TopologyImpl
             }
 
             if (linkChanged) {
-                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), updateOperation));
+                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), getLinkType(lt, newLinkInfo), updateOperation));
                 updateClusters();
             }
         } finally {
@@ -837,7 +851,7 @@ public class TopologyImpl
                 removeLinkFromBroadcastDomain(lt);
 
                 this.links.remove(lt);
-                updates.add(new Update(lt, 0, 0, UpdateOperation.REMOVE));
+                updates.add(new Update(lt, 0, 0, null, UpdateOperation.REMOVE));
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc().getSw().getId(),

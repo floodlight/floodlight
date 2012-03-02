@@ -43,6 +43,7 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
+import net.floodlightcontroller.topology.ILinkDiscovery;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -157,14 +158,14 @@ public class RoutingImpl
 
     @Override
     public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState)
+            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
-        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState);
+        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
     }
     
     @Override
     public void updatedLink(IOFSwitch src, short srcPort, int srcPortState,
-            IOFSwitch dst, short dstPort, int dstPortState)
+            IOFSwitch dst, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         boolean added = (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
             ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));

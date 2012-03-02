@@ -33,7 +33,7 @@ public interface ILinkDiscoveryListener {
      * @param dstPort
      */
     public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState);
+            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type);
     
     /**
      * @param srcSw the source switch
@@ -44,7 +44,7 @@ public interface ILinkDiscoveryListener {
      * @param dstPortState
      */
     public void updatedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState);
+            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type);
 
     /**
      * @param srcSw

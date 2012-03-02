@@ -66,6 +66,7 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.ILinkDiscovery;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -1244,14 +1245,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
     @Override
     public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState)
+            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
-        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState);
+        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
     }
 
     @Override
     public void updatedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState)
+            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         if (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != 
                     OFPortState.OFPPS_STP_BLOCK.getValue()) &&
