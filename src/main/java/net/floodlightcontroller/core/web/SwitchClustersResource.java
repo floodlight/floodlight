@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.topology.ITopologyService;
 
 import org.openflow.util.HexString;
 import org.restlet.resource.Get;
@@ -39,9 +40,13 @@ public class SwitchClustersResource extends ServerResource {
         IFloodlightProviderService floodlightProvider = 
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
+        ITopologyService topology = 
+                (ITopologyService)getContext().getAttributes().
+                    get(ITopologyService.class.getCanonicalName());
+        
         Map<String, List<String>> switchClusterMap = new HashMap<String, List<String>>();
         for (Entry<Long, IOFSwitch> entry : floodlightProvider.getSwitches().entrySet()) {
-            Long clusterDpid = entry.getValue().getSwitchClusterId();
+            Long clusterDpid = topology.getSwitchClusterId(entry.getValue().getId());
             List<String> switchesInCluster = switchClusterMap.get(HexString.toHexString(clusterDpid));
             if (switchesInCluster != null) {
                 switchesInCluster.add(HexString.toHexString(entry.getKey()));              

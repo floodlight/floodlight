@@ -47,9 +47,9 @@ public class BroadcastDomain {
         return switchPortMap.get(sw.getId());
     }
 
-    public void add(SwitchPortTuple spt) {
+    public void add(SwitchPortTuple spt, long clusterId) {
         // Add the switch to the set
-        Long cid = spt.getSw().getSwitchClusterId();
+        Long cid = clusterId;
         clusterIds.add(cid);
         Set<Long> switchIds = clusterSwitchMap.get(cid);
         if (switchIds == null) {

@@ -180,7 +180,7 @@ public class TopologyImpl
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
-    protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
+    protected Map<Long, SwitchCluster> switchClusterMap;
     protected Set<SwitchCluster> clusters;
 
     protected Map<Long, BroadcastDomain> broadcastDomainMap;
@@ -210,7 +210,7 @@ public class TopologyImpl
         return shuttingDown;
     }
 
-    public Map<IOFSwitch, SwitchCluster> getSwitchClusterMap() {
+    public Map<Long, SwitchCluster> getSwitchClusterMap() {
         return switchClusterMap;
     }
 
@@ -309,6 +309,19 @@ public class TopologyImpl
      *  Detect loops in the openflow clusters and construct spanning trees
      *  for broadcast
      */
+    public boolean isIncomingBroadcastAllowedOnSwitchPort(IOFSwitch sw, short portId) {
+        SwitchPortTuple srcSwTuple = new SwitchPortTuple(sw, portId);
+        LinkInfo linkInfo = getLinkInfo(srcSwTuple, false);
+        if (log.isTraceEnabled()) {
+            log.trace("srcSwitchTuple={}, link={}",
+                      new Object[] {srcSwTuple, linkInfo});
+        }
+        if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
+            return false;
+        }
+        return true;
+    }
+
     protected void detectLoop() {
         // No need to detect loop if routingEngine is not available.
         if (routingEngine == null) return;
@@ -1088,8 +1101,8 @@ public class TopologyImpl
                 // sufficient.
                 if (ltSet != null) {
                     for(LinkTuple lt: ltSet) {
-                        Long c1 = lt.getSrc().getSw().getSwitchClusterId();
-                        Long c2 = lt.getDst().getSw().getSwitchClusterId();
+                        Long c1 = getSwitchClusterId(lt.getSrc().getSw().getId());
+                        Long c2 = getSwitchClusterId(lt.getDst().getSw().getId());
                         result = c1.equals(c2);
                         break;
                     }
@@ -1234,7 +1247,7 @@ public class TopologyImpl
 
             visitedSwt.contains(swt);
             queue.add(swt);
-            bd.add(swt);
+            bd.add(swt, getSwitchClusterId(swt.getSw().getId()));
             while(queue.peek() != null) {
                 SwitchPortTuple currSwt = queue.remove();
 
@@ -1245,14 +1258,15 @@ public class TopologyImpl
                     else otherSwt = lt.getSrc();
 
                     if (visitedSwt.contains(otherSwt) == false) {
+                        long clusterId = getSwitchClusterId(otherSwt.getSw().getId());
                         queue.add(otherSwt);
                         visitedSwt.add(otherSwt);
-                        bd.add(otherSwt);
+                        bd.add(otherSwt, clusterId);
                         spbdMap.put(otherSwt, bd);
-                        if (scbdMap.get(otherSwt.getSw().getSwitchClusterId()) == null) {
-                            scbdMap.put(otherSwt.getSw().getSwitchClusterId(), new HashSet<Long>());
+                        if (scbdMap.get(clusterId) == null) {
+                            scbdMap.put(clusterId, new HashSet<Long>());
                         }
-                        scbdMap.get(otherSwt.getSw().getSwitchClusterId()).add(bd.getId());
+                        scbdMap.get(clusterId).add(bd.getId());
                     }
                 }
             }
@@ -1301,7 +1315,7 @@ public class TopologyImpl
         }
 
         // Initialize all the new structures.
-        switchClusterMap = new HashMap<IOFSwitch, SwitchCluster>();
+        switchClusterMap = new HashMap<Long, SwitchCluster>();
         clusters = new HashSet<SwitchCluster>();
         Map<Long, IOFSwitch>  switches = floodlightProvider.getSwitches();
         Map<IOFSwitch, ClusterDFS> dfsList = new HashMap<IOFSwitch, ClusterDFS>();
@@ -1434,7 +1448,7 @@ public class TopologyImpl
             SwitchCluster sc = new SwitchCluster(this);
             for(IOFSwitch sw: currSet){
                 sc.add(sw);
-                switchClusterMap.put(sw, sc);
+                switchClusterMap.put(sw.getId(), sc);
             }
             // delete all the nodes in the current set.
             currSet.clear();
@@ -1445,8 +1459,14 @@ public class TopologyImpl
         return currIndex;
     }
 
+    public long getSwitchClusterId(long switchId) {
+        if (switchClusterMap.containsKey(switchId))
+            return switchClusterMap.get(switchId).getId();
+        return switchId;
+    }
+
     public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw) {
-        SwitchCluster cluster = switchClusterMap.get(sw);
+        SwitchCluster cluster = switchClusterMap.get(sw.getId());
         if (cluster == null){
             return null;
         }
@@ -1459,7 +1479,7 @@ public class TopologyImpl
      * @return The SwitchCluster that it is part of
      */
     public SwitchCluster getSwitchCluster(IOFSwitch sw) {
-        return switchClusterMap.get(sw);
+        return switchClusterMap.get(sw.getId());
     }
 
     /**
@@ -1470,8 +1490,8 @@ public class TopologyImpl
         if (switchClusterMap != null) {
             lock.readLock().lock();
             try {
-                SwitchCluster cluster1 = switchClusterMap.get(switch1);
-                SwitchCluster cluster2 = switchClusterMap.get(switch2);
+                SwitchCluster cluster1 = switchClusterMap.get(switch1.getId());
+                SwitchCluster cluster2 = switchClusterMap.get(switch2.getId());
                 return (cluster1 != null) && (cluster1 == cluster2);
             }
             finally {
@@ -1980,19 +2000,19 @@ public class TopologyImpl
         evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
     }
 
-	@Override
-	public Map<String, Object> getInfo(String type) {
-		if (!"summary".equals(type)) return null;
-		
-		Map<String, Object> info = new HashMap<String, Object>();
-		info.put("# switch clusters", clusters.size());
-		info.put("# switches", switchClusterMap.size());
-		
-		int num_links = 0;
-		for (Set<LinkTuple> links : switchLinks.values())
-			num_links += links.size();
-		info.put("# inter-switch links", num_links / 2);
-		
-		return info;
-	}
+    @Override
+    public Map<String, Object> getInfo(String type) {
+        if (!"summary".equals(type)) return null;
+
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.put("# switch clusters", clusters.size());
+        info.put("# switches", switchClusterMap.size());
+
+        int num_links = 0;
+        for (Set<LinkTuple> links : switchLinks.values())
+            num_links += links.size();
+        info.put("# inter-switch links", num_links / 2);
+
+        return info;
+    }
 }

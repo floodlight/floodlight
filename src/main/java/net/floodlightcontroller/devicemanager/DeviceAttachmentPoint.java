@@ -16,8 +16,6 @@
 **/
 
 package net.floodlightcontroller.devicemanager;
-
-import java.util.Comparator;
 import java.util.Date;
 
 import net.floodlightcontroller.topology.SwitchPortTuple;
@@ -37,16 +35,6 @@ public class DeviceAttachmentPoint {
     private static int conflictThreshold = 300;  // roughly 3 changes in 1 minute
     
     private static long LAST_SEEN_STORAGE_UPDATE_INTERVAL = 1000 * 60 * 5; // 5 minutes
-    
-    // Comparator for sorting by SwitchCluster
-    public static Comparator<DeviceAttachmentPoint> clusterIdComparator = new Comparator<DeviceAttachmentPoint>() {
-        @Override
-        public int compare(DeviceAttachmentPoint d1, DeviceAttachmentPoint d2) {
-            Long d1ClusterId = d1.getSwitchPort().getSw().getSwitchClusterId();
-            Long d2ClusterId = d2.getSwitchPort().getSw().getSwitchClusterId();
-            return d1ClusterId.compareTo(d2ClusterId);
-        }
-    };
         
     public static void setStorageUpdateInterval(int intervalInMs) {
         LAST_SEEN_STORAGE_UPDATE_INTERVAL = intervalInMs;
@@ -191,9 +179,5 @@ public class DeviceAttachmentPoint {
 
     public static int getConflictThreshold() {
         return conflictThreshold;
-    }
-
-    public static Comparator<DeviceAttachmentPoint> getClusterIdComparator() {
-        return clusterIdComparator;
     }
 }

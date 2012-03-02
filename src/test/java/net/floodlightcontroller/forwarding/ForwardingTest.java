@@ -47,7 +47,7 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.forwarding.Forwarding;
 
@@ -71,7 +71,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected IDeviceManagerService deviceManager;
     protected IRoutingEngineService routingEngine;
     protected Forwarding forwarding;
-    protected ILinkDiscoveryService topology;
+    protected ITopologyService topology;
     protected IOFSwitch sw1, sw2;
     protected Device srcDevice, dstDevice;
     protected OFPacketIn packetIn;
@@ -91,7 +91,7 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding = getForwarding();
         deviceManager = createMock(IDeviceManagerService.class);
         routingEngine = createMock(IRoutingEngineService.class);
-        topology = createMock(ILinkDiscoveryService.class);
+        topology = createMock(ITopologyService.class);
         forwarding.setFloodlightProvider(mockFloodlightProvider);
         forwarding.setDeviceManager(deviceManager);
         forwarding.setRoutingEngine(routingEngine);
@@ -101,11 +101,11 @@ public class ForwardingTest extends FloodlightTestCase {
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(1L).anyTimes();
-        expect(sw1.getSwitchClusterId()).andReturn(1L).anyTimes();
+        expect(topology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
 
         sw2 = EasyMock.createNiceMock(IOFSwitch.class);  
         expect(sw2.getId()).andReturn(2L).anyTimes();
-        expect(sw2.getSwitchClusterId()).andReturn(1L).anyTimes();
+        expect(topology.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
 
         //fastWilcards mocked as this constant
         int fastWildcards = OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC
@@ -229,10 +229,9 @@ public class ForwardingTest extends FloodlightTestCase {
         expectLastCall().anyTimes(); 
         sw2.write(capture(wc2), capture(bc2));
         expectLastCall().anyTimes(); 
-        
 
         // Reset mocks, trigger the packet in, and validate results
-        replay(sw1, sw2, deviceManager, routingEngine);
+        replay(sw1, sw2, deviceManager, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2,deviceManager, routingEngine);
         
@@ -280,7 +279,7 @@ public class ForwardingTest extends FloodlightTestCase {
         sw1.write(packetOut, cntx);
 
         // Reset mocks, trigger the packet in, and validate results
-        replay(sw1, sw2, deviceManager, routingEngine);
+        replay(sw1, sw2, deviceManager, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, deviceManager, routingEngine);
     }
@@ -292,7 +291,8 @@ public class ForwardingTest extends FloodlightTestCase {
         // expect no Flow-mod or packet out
                 
         // Reset mocks, trigger the packet in, and validate results
-        replay(sw1, sw2, deviceManager, routingEngine);
+        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(sw1, (short)1)).andReturn(true).anyTimes();
+        replay(sw1, sw2, deviceManager, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2,deviceManager, routingEngine);
     }

@@ -53,21 +53,8 @@ public class SwitchCluster {
                     s.getId(), // new cluster id
                     EvAction.CLUSTER_ID_CHANGED_FOR_CLUSTER, 
                     "Switch Added");
+
             id = s.getId();
-            for (IOFSwitch sw : switches) {
-                if (sw.getSwitchClusterId() != id) {
-                    sw.setSwitchClusterId(id);
-                }
-            }
-        } else {
-            Long swClusterId = s.getSwitchClusterId();
-            if (swClusterId != id) {
-                topology.evHistTopoCluster(s.getId(),
-                        swClusterId==null?0:swClusterId, id==null?0:id,
-                        EvAction.CLUSTER_ID_CHANGED_FOR_A_SWITCH,
-                        "Switch Added");
-                s.setSwitchClusterId(id);
-            }
         }
     }
     
@@ -88,10 +75,6 @@ public class SwitchCluster {
                         oldId, id, 
                         EvAction.CLUSTER_ID_CHANGED_FOR_CLUSTER,
                         "Switch Removed");
-                // Now update the cluster id of the switches
-                for (IOFSwitch sw : switches) {
-                    sw.setSwitchClusterId(id);
-                } 
             }
         }
     }

@@ -44,6 +44,7 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
 
@@ -74,6 +75,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         cntx.addService(IRoutingEngineService.class, routingEngine);
         cntx.addService(ILinkDiscoveryService.class, topology);
+        cntx.addService(ITopologyService.class, topology);
         cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         routingEngine.init(cntx);
@@ -288,7 +290,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
-            switches[i].setSwitchClusterId((long)i+1);
+            //switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
@@ -514,7 +516,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         IOFSwitch[] switches = new IOFSwitch[6];
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
-            switches[i].setSwitchClusterId((long)i+1);
+            //switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
@@ -591,7 +593,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         IOFSwitch[] switches = new IOFSwitch[10];
         for (int i = 0; i < 10; i++) {
             switches[i] = createMockSwitch((long)i+1);
-            switches[i].setSwitchClusterId((long)i+1);
+            //switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
@@ -677,7 +679,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         IOFSwitch[] switches = new IOFSwitch[6];
         for (int i = 0; i < 6; i++) {
             switches[i] = createMockSwitch((long)i+1);
-            switches[i].setSwitchClusterId((long)i+1);
+            //switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
@@ -763,7 +765,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         for (int i = 0; i < 3; i++) {
             switches[i] = createMockSwitch((long)i+1);
-            switches[i].setSwitchClusterId((long)i+1);
+            //switches[i].setSwitchClusterId((long)i+1);
             replay(switches[i]);
             switchMap.put(new Long(switches[i].getId()), switches[i]);
         }
@@ -776,7 +778,7 @@ public class TopologyImplTest extends FloodlightTestCase {
                 { 2, 1, 0, 3, 1, 0},
         };
         createLinks(topology, switches, linkInfoArray0);
-        
+
         int expectedClusters0[][] = {
                 {1},
                 {2,3},
@@ -784,7 +786,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         verifyClusters(topology, switches, expectedClusters0);
         assertTrue(topology.getSwitchCluster(switches[0]).getId() == 1);        
         assertTrue(topology.getSwitchCluster(switches[2]).getId() == 2);        
-        
+
         /* Test 0 */
         int linkInfoArray1[][] = {
                 // SrcSw#, SrcPort#, SrcPortState, DstSw#, DstPort#, DstPortState
@@ -805,8 +807,8 @@ public class TopologyImplTest extends FloodlightTestCase {
         TopologyImpl topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
-        expect(sw1.getSwitchClusterId()).andReturn(1L).anyTimes();
-        expect(sw2.getSwitchClusterId()).andReturn(1L).anyTimes();
+        //expect(topology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
+        //expect(topology.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
         replay(sw1, sw2);
         LinkTuple lt = new LinkTuple(sw1, 1, sw2, 1);
         LinkInfo info;
@@ -841,7 +843,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.isEmpty() == false);
         assertTrue(topology.broadcastDomainMap.size() == 1);
-        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 2);
 
 
         // Add a link info based on info that woudld be obtained from unicast LLDP
@@ -867,7 +869,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
-        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 2);
 
 
         // Set the multicastValidTime to be old and see if that also times out.
@@ -889,7 +891,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
         assertTrue(topology.broadcastDomainMap.size() == 1);
-        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 1);
+        assertTrue(topology.switchClusterBroadcastDomainMap.size() == 2);
 
         // Call timeout and check if link is no longer present.
         topology.timeoutLinks();

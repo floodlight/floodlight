@@ -19,6 +19,7 @@ package net.floodlightcontroller.routing;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -28,6 +29,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.Device;
+import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
@@ -36,7 +38,7 @@ import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -61,7 +63,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceManagerService deviceManager;
     protected IRoutingEngineService routingEngine;
-    protected ILinkDiscoveryService topology;
+    protected ITopologyService topology;
     protected ICounterStoreService counterStore;
    
     // flow-mod - for use in the cookie
@@ -83,6 +85,16 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         return FlListenerID.FORWARDINGBASE;
     }
 
+    // Comparator for sorting by SwitchCluster
+    public Comparator<DeviceAttachmentPoint> clusterIdComparator = new Comparator<DeviceAttachmentPoint>() {
+        @Override
+        public int compare(DeviceAttachmentPoint d1, DeviceAttachmentPoint d2) {
+            Long d1ClusterId = topology.getSwitchClusterId(d1.getSwitchPort().getSw().getId());
+            Long d2ClusterId = topology.getSwitchClusterId(d2.getSwitchPort().getSw().getId());
+            return d1ClusterId.compareTo(d2ClusterId);
+        }
+    };
+    
     /**
       * All subclasses must define this function if they want any specific forwarding action
      * @param sw Switch that the packet came in from
@@ -349,7 +361,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     /**
      * @param topology the topology to set
      */
-    public void setTopology(ILinkDiscoveryService topology) {
+    public void setTopology(ITopologyService topology) {
         this.topology = topology;
     }
     

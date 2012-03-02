@@ -41,8 +41,7 @@ import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingEngineService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
-import net.floodlightcontroller.topology.LinkInfo;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -84,7 +83,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         
         if (dstDevice != null) {
             Device srcDevice = deviceManager.getDeviceByDataLayerAddress(match.getDataLayerSource());
-            Long srcIsland = sw.getSwitchClusterId();
+            Long srcIsland = topology.getSwitchClusterId(sw.getId());
             
             if (srcDevice == null) {
                 log.error("No device entry found for source device {}", 
@@ -104,7 +103,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             for (DeviceAttachmentPoint dstDap : dstDevice.getAttachmentPoints()) {
                 SwitchPortTuple dstTuple = dstDap.getSwitchPort();
                 if ((dstTuple != null) && (dstTuple.getSw() != null)) {
-                    Long dstIsland = dstTuple.getSw().getSwitchClusterId();
+                    Long dstIsland = topology.getSwitchClusterId(dstTuple.getSw().getId());
                     if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                         on_same_island = true;
                         if ((sw.getId() == dstTuple.getSw().getId()) &&
@@ -137,9 +136,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             // Install all the routes where both src and dst have attachment points
             // Since the lists are stored in sorted order we can traverse the attachment points in O(m+n) time
             DeviceAttachmentPoint[] srcDaps = 
-                srcDevice.getAttachmentPointsSorted(DeviceAttachmentPoint.clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
+                srcDevice.getAttachmentPointsSorted(clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
             DeviceAttachmentPoint[] dstDaps = 
-                dstDevice.getAttachmentPointsSorted(DeviceAttachmentPoint.clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
+                dstDevice.getAttachmentPointsSorted(clusterIdComparator).toArray(new DeviceAttachmentPoint[0]);
+
             int iSrcDaps = 0, iDstDaps = 0;
             while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
                 DeviceAttachmentPoint srcDap = srcDaps[iSrcDaps];
@@ -149,8 +149,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 Long srcCluster = null;
                 Long dstCluster = null;
                 if ((srcSw != null) && (dstSw != null)) {
-                    srcCluster = srcSw.getSwitchClusterId();
-                    dstCluster = dstSw.getSwitchClusterId();
+                    srcCluster = topology.getSwitchClusterId(srcSw.getId());
+                    dstCluster = topology.getSwitchClusterId(dstSw.getId());
                 }
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
@@ -194,22 +194,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param decision The Forwarding decision
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
-    protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {               
-        SwitchPortTuple srcSwTuple = new SwitchPortTuple(sw, pi.getInPort());
-        LinkInfo linkInfo = topology.getLinkInfo(srcSwTuple, false);
-        if (log.isTraceEnabled()) {
-            log.trace("doFlood pi={} srcSwitchTuple={}, link={}",
-                      new Object[] { pi, srcSwTuple, linkInfo});
+    protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+        SwitchPortTuple srcSwTuple =  new SwitchPortTuple(sw, pi.getInPort());
+        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw,pi.getInPort()) == false) {
+            if (log.isTraceEnabled()) {
+                log.trace("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
+                         "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple});
+            }
         }
 
-        if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
-            if (log.isDebugEnabled()) {
-                log.debug("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
-                         "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple, linkInfo});
-            }
-            return;
-        }
-        
         // Set Action to flood
         OFPacketOut po = 
             (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
@@ -284,7 +277,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         l.add(IFloodlightProviderService.class);
         l.add(IDeviceManagerService.class);
         l.add(IRoutingEngineService.class);
-        l.add(ILinkDiscoveryService.class);
+        l.add(ITopologyService.class);
         l.add(ICounterStoreService.class);
         return l;
     }
@@ -294,7 +287,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
         this.setDeviceManager(context.getServiceImpl(IDeviceManagerService.class));
         this.setRoutingEngine(context.getServiceImpl(IRoutingEngineService.class));
-        this.setTopology(context.getServiceImpl(ILinkDiscoveryService.class));
+        this.setTopology(context.getServiceImpl(ITopologyService.class));
         this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));
     }
 

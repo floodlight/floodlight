@@ -1407,8 +1407,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         for (DeviceAttachmentPoint dap : d.getAttachmentPoints()) {
             if (DeviceAttachmentPoint.isNotNull(dap) &&
                             !topology.isInternal(dap.getSwitchPort())) {
-                long clusterId = 
-                            dap.getSwitchPort().getSw().getSwitchClusterId();
+                long clusterId = topology.getSwitchClusterId(
+                            dap.getSwitchPort().getSw().getId());
                 if (map.containsKey(clusterId)) {
                     // We compare to see which one is newer, move attachment 
                     // point to "old" list.

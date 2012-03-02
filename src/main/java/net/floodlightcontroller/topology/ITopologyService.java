@@ -14,6 +14,8 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public boolean isInternal(SwitchPortTuple idPort);
+
+    public long getSwitchClusterId(long switchId);
     
     /**
      * Retrieves a set of all the switches in the same cluster as sw.
@@ -36,4 +38,6 @@ public interface ITopologyService extends IFloodlightService  {
 
     
     public void addListener(ITopologyListener listener);
+    
+    public boolean isIncomingBroadcastAllowedOnSwitchPort(IOFSwitch sw, short portId);
 }
