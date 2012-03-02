@@ -425,7 +425,7 @@ public class OFSwitchImpl implements IOFSwitch {
     public void flush() {
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
-        if (msglist.size() > 0) {
+        if ((msglist != null) && (msglist.size() > 0)) {
             try {
                 this.write(msglist);
             } catch (IOException e) {
