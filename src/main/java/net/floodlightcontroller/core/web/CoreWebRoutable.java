@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.core.web;
 
+import net.floodlightcontroller.core.module.ModuleLoaderResource;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
 import org.restlet.Context;
@@ -36,6 +37,7 @@ public class CoreWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
+        router.attach("/module/list/json", ModuleLoaderResource.class);
         router.attach("/switch/all/{statType}/json", AllSwitchStatisticsResource.class);
         router.attach("/switch/{switchId}/{statType}/json", SwitchStatisticsResource.class);
         router.attach("/controller/switches/json", ControllerSwitchesResource.class);
