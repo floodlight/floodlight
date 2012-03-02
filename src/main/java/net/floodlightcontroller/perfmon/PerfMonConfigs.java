@@ -3,8 +3,6 @@ package net.floodlightcontroller.perfmon;
 public class PerfMonConfigs {
     /***
      * procTimeMonitoringState: true if monitoring is on, default is false
-     * this variable is controller using a cli under the controller node
-     * (config-controller)> [no] performance-monitor processing-time
      */
     protected boolean procTimeMonitoringState;
     // overall per-component performance monitoring knob; off by default

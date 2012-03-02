@@ -62,7 +62,10 @@ public class PktInProcessingTime
     private int numComponents;          // Numbert of components being monitored
     private int numBuckets;             // number of time buckets, each 10s long
 
-
+    @Override
+    public boolean isEnabled() {
+        return perfMonCfgs.isProcTimeMonitoringState();
+    }
 
     public Long getLastPktTime_ns() {
         return lastPktTime_ns;

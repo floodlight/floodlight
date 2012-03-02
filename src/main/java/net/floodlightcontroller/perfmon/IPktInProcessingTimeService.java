@@ -6,6 +6,8 @@ import net.floodlightcontroller.perfmon.PerfMonConfigs;
 
 public interface IPktInProcessingTimeService extends IFloodlightService {
 
+    public boolean isEnabled();
+    
     public CircularTimeBucketSet getCtbs();
 
     public PerfMonConfigs getPerfMonCfgs();
