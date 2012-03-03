@@ -193,7 +193,7 @@ public class TopologyImpl
     protected boolean isTopologyValid = false;
 
     public static enum UpdateOperation {ADD, UPDATE, REMOVE,
-                                        SWITCH_UPDATED, CLUSTER_MERGED};
+                                        SWITCH_UPDATED, TOPOLOGY_CHANGED};
 
     public int getLldpFrequency() {
         return lldpFrequency;
@@ -265,10 +265,10 @@ public class TopologyImpl
         do {
             Update update = updates.take();
 
-            if (update.operation == UpdateOperation.CLUSTER_MERGED) {
+            if (update.operation == UpdateOperation.TOPOLOGY_CHANGED) {
                 if (topologyAware != null) {
                     for (ITopologyListener ta : topologyAware) { // order maintained
-                        ta.clusterMerged();
+                        ta.toplogyChanged();
                     }
                 } 
             }else {
@@ -1355,7 +1355,7 @@ public class TopologyImpl
             }
         }
 
-        updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
+        updates.add(new Update(UpdateOperation.TOPOLOGY_CHANGED));
         return true;
     }
 

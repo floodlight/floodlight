@@ -4,5 +4,5 @@ public interface ITopologyListener {
     /**
      * Happens when the switch clusters are recomputed
      */
-    void clusterMerged();
+    void toplogyChanged();
 }

@@ -323,7 +323,7 @@ public class RoutingImpl
     }
     
     @Override
-    public void clusterMerged() {
+    public void toplogyChanged() {
         // no-op
     }
 
