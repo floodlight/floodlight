@@ -204,7 +204,7 @@ public class ForwardingTest extends FloodlightTestCase {
         dstDevice.addAttachmentPoint(new SwitchPortTuple(sw2, (short)3), currentDate);
         Route route = new Route(1L, 2L);
         route.setPath(new ArrayList<Link>());
-        route.getPath().add(new Link((short)3, (short)1, 2L));
+        route.getPath().add(new Link(1L, (short)3, 2L, (short)1));
         expect(routingEngine.getRoute(1L, 2L)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods

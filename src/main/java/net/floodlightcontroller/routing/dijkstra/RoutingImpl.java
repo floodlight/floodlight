@@ -204,7 +204,7 @@ public class RoutingImpl
             network_updated = true;
         }
 
-        Link srcLink = new Link(srcPort, dstPort, dstId);
+        Link srcLink = new Link(srcId, srcPort, dstId, dstPort);
         if (added) {
             if (src.containsKey(srcPort)) {
                 log.debug("update: unexpected link add request - srcPort in use src, link: {}, {}", srcId, src.get(srcPort));

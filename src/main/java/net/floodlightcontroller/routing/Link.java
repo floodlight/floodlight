@@ -19,85 +19,42 @@ package net.floodlightcontroller.routing;
 
 import org.openflow.util.HexString;
 
-/**
- * Represents a link between two datapaths. It is assumed that
- * Links will generally be held in a list, and that the first datapath's
- * id will be held in a different structure.
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
- */
 public class Link {
-    /**
-     * Outgoing port number of the current datapath the link connects to
-     */
-    protected Short outPort;
+    private long src;
+    private short srcPort;
+    private long dst;
+    private short dstPort;
 
-    /**
-     * Destination datapath id
-     */
-    protected Long dst;
-
-    /**
-     * Incoming port number on the dst datapath the link connects to
-     */
-    protected Short inPort;
-
-    public Link(Short outPort, Short inPort, Long dst) {
-        super();
-        this.outPort = outPort;
-        this.inPort = inPort;
-        this.dst = dst;
+    public Link(long srcId, short srcPort, long dstId, short dstPort) {
+        this.src = srcId;
+        this.srcPort = srcPort;
+        this.dst = dstId;
+        this.dstPort = dstPort;
     }
 
-    /**
-     * @return the port number of the switch this link begins on
-     */
-    public Short getOutPort() {
-        return outPort;
+    public long getSrc() {
+        return src;
     }
 
-    /**
-     * @param outPort the outPort to set
-     */
-    public void setOutPort(Short outPort) {
-        this.outPort = outPort;
+    public short getSrcPort() {
+        return srcPort;
     }
 
-    /**
-     * @return the switch id of the destination switch on this link
-     */
-    public Long getDst() {
+    public long getDst() {
         return dst;
     }
-
-    /**
-     * @param dst the dst to set
-     */
-    public void setDst(Long dst) {
-        this.dst = dst;
-    }
-
-    /**
-     * @return the port number of the destination switch on this link
-     */
-    public Short getInPort() {
-        return inPort;
-    }
-
-    /**
-     * @param inPort the inPort to set
-     */
-    public void setInPort(Short inPort) {
-        this.inPort = inPort;
+    public short getDstPort() {
+        return dstPort;
     }
 
     @Override
     public int hashCode() {
-        final int prime = 3203;
+        final int prime = 31;
         int result = 1;
-        result = prime * result + ((dst == null) ? 0 : dst.hashCode());
-        result = prime * result + ((inPort == null) ? 0 : inPort.hashCode());
-        result = prime * result + ((outPort == null) ? 0 : outPort.hashCode());
+        result = prime * result + (int) (dst ^ (dst >>> 32));
+        result = prime * result + dstPort;
+        result = prime * result + (int) (src ^ (src >>> 32));
+        result = prime * result + srcPort;
         return result;
     }
 
@@ -110,30 +67,27 @@ public class Link {
         if (getClass() != obj.getClass())
             return false;
         Link other = (Link) obj;
-        if (dst == null) {
-            if (other.dst != null)
-                return false;
-        } else if (!dst.equals(other.dst))
+        if (dst != other.dst)
             return false;
-        if (inPort == null) {
-            if (other.inPort != null)
-                return false;
-        } else if (!inPort.equals(other.inPort))
+        if (dstPort != other.dstPort)
             return false;
-        if (outPort == null) {
-            if (other.outPort != null)
-                return false;
-        } else if (!outPort.equals(other.outPort))
+        if (src != other.src)
+            return false;
+        if (srcPort != other.srcPort)
             return false;
         return true;
     }
 
+
     @Override
     public String toString() {
-        return "Link [outPort="
-                + ((outPort == null) ? "null" : (0xffff & outPort))
+        return "Link [src=" + HexString.toHexString(this.src) 
+                + " outPort="
+                + srcPort
+                + ", dst=" + HexString.toHexString(this.dst)
                 + ", inPort="
-                + ((inPort == null) ? "null" : (0xffff & inPort))
-                + ", dst=" + HexString.toHexString(this.dst) + "]";
+                + dstPort
+                + "]";
     }
 }
+

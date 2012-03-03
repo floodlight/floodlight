@@ -163,7 +163,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
                 Link link = route.getPath().get(routeIndx);
                 fm.setMatch(wildcard(match, sw, wildcard_hints));
-                fm.getMatch().setInputPort(link.getInPort());
+                fm.getMatch().setInputPort(link.getDstPort());
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
                     if (log.isDebugEnabled()) {
@@ -191,7 +191,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 }
 
                 // setup for the next loop iteration
-                ((OFActionOutput)fm.getActions().get(0)).setPort(link.getOutPort());
+                ((OFActionOutput)fm.getActions().get(0)).setPort(link.getSrcPort());
                 if (routeIndx > 0) {
                     sw = floodlightProvider.getSwitches().get(route.getPath().get(routeIndx-1).getDst());
                 } else {
