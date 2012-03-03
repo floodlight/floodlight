@@ -827,7 +827,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // Create attachment point/update network address if required
         SwitchPortTuple switchPort = new SwitchPortTuple(sw, pi.getInPort());
         // Don't learn from internal port or invalid port
-        if (topology.isInternal(switchPort) || 
+        if (topology.isInternal(switchPort.getSw().getId(), switchPort.getPort()) || 
                 !isValidInputPort(switchPort.getPort())) {
             processUpdates();
             return Command.CONTINUE;
@@ -1024,7 +1024,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             IOFSwitch existingSwitch = 
                             existingAttachmentPoint.getSwitchPort().getSw();
             if ((newSwitch == existingSwitch) || ((topology != null) &&
-                    topology.inSameCluster(newSwitch, existingSwitch))) {
+                    topology.inSameCluster(newSwitch.getId(), existingSwitch.getId()))) {
                 curAttachmentPoint = existingAttachmentPoint;
                 break;
             }
@@ -1407,7 +1407,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // Get only the latest DAPs into a map
         for (DeviceAttachmentPoint dap : d.getAttachmentPoints()) {
             if (DeviceAttachmentPoint.isNotNull(dap) &&
-                            !topology.isInternal(dap.getSwitchPort())) {
+                            !topology.isInternal(dap.getSwitchPort().getSw().getId(), dap.getSwitchPort().getPort())) {
                 long clusterId = topology.getSwitchClusterId(
                             dap.getSwitchPort().getSw().getId());
                 if (map.containsKey(clusterId)) {

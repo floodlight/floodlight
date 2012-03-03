@@ -291,7 +291,7 @@ public class ForwardingTest extends FloodlightTestCase {
         // expect no Flow-mod or packet out
                 
         // Reset mocks, trigger the packet in, and validate results
-        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(sw1, (short)1)).andReturn(true).anyTimes();
+        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(1L, (short)1)).andReturn(true).anyTimes();
         replay(sw1, sw2, deviceManager, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2,deviceManager, routingEngine);

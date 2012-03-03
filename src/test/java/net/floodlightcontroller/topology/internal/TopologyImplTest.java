@@ -221,7 +221,7 @@ public class TopologyImplTest extends FloodlightTestCase {
     
     private void verifyClusters(TopologyImpl topology, IOFSwitch[] switches, int[][] clusters) {
         // Keep track of which switches we've already checked for cluster membership
-        List<IOFSwitch> verifiedSwitches = new ArrayList<IOFSwitch>();
+        List<Long> verifiedSwitches = new ArrayList<Long>();
         
         // Make sure the expected cluster arrays are sorted so we can
         // use binarySearch to test for membership
@@ -230,7 +230,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         
         for (int i = 0; i < switches.length; i++) {
             IOFSwitch sw = switches[i];
-            if (!verifiedSwitches.contains(sw)) {
+            if (!verifiedSwitches.contains(sw.getId())) {
                 long id = sw.getId();
                 int[] expectedCluster = null;
                 
@@ -241,12 +241,11 @@ public class TopologyImplTest extends FloodlightTestCase {
                     }
                 }
                 if (expectedCluster != null) {
-                    Set<IOFSwitch> cluster = topology.getSwitchesInCluster(sw);
+                    Set<Long> cluster = topology.getSwitchesInCluster(sw.getId());
                     assertEquals(expectedCluster.length, cluster.size());
-                    for (IOFSwitch sw2: cluster) {
-                        long id2 = sw2.getId();
+                    for (long id2: cluster) {
                         assertTrue(Arrays.binarySearch(expectedCluster, (int)id2) >= 0);
-                        verifiedSwitches.add(sw2);
+                        verifiedSwitches.add(id2);
                     }
                 }
             }

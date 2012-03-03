@@ -314,7 +314,8 @@ public class TopologyImpl
      *  Detect loops in the openflow clusters and construct spanning trees
      *  for broadcast
      */
-    public boolean isIncomingBroadcastAllowedOnSwitchPort(IOFSwitch sw, short portId) {
+    public boolean isIncomingBroadcastAllowedOnSwitchPort(long switchId, short portId) {
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
         SwitchPortTuple srcSwTuple = new SwitchPortTuple(sw, portId);
         LinkInfo linkInfo = getLinkInfo(srcSwTuple, false);
         if (log.isTraceEnabled()) {
@@ -358,7 +359,8 @@ public class TopologyImpl
             return;
         }
         HashMap<Long, Long> treeNodes = clusterTree.getNodes();
-        for (IOFSwitch sw : cluster.getSwitches()) {
+        for (long switchId : cluster.getSwitches()) {
+            IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
             if (!switchLinks.containsKey(sw)) {
                 continue;
             }
@@ -1089,10 +1091,11 @@ public class TopologyImpl
      * @return True if it is internal, false otherwise
      */
     @Override
-    public boolean isInternal(SwitchPortTuple idPort) {
+    public boolean isInternal(long switchId, short portId) {
         lock.readLock().lock();
         boolean result = false;
-
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
+        SwitchPortTuple idPort = new SwitchPortTuple(sw, portId);
         // A SwitchPortTuple is internal if the switch is a core switch
         // or the current switch and the switch connected on the switch
         // port tuple are in the same cluster.
@@ -1461,7 +1464,7 @@ public class TopologyImpl
             // set to the switch cluster.
             SwitchCluster sc = new SwitchCluster(this);
             for(IOFSwitch sw: currSet){
-                sc.add(sw);
+                sc.add(sw.getId());
                 switchClusterMap.put(sw.getId(), sc);
             }
             // delete all the nodes in the current set.
@@ -1480,8 +1483,8 @@ public class TopologyImpl
         return switchId;
     }
 
-    public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw) {
-        SwitchCluster cluster = switchClusterMap.get(sw.getId());
+    public Set<Long> getSwitchesInCluster(long sw) {
+        SwitchCluster cluster = switchClusterMap.get(sw);
         if (cluster == null){
             return null;
         }
@@ -1501,12 +1504,12 @@ public class TopologyImpl
      * Checks if two IOFSwitches are in the same SwitchCluster
      * @return True if they are in the same cluster, false otherwise
      */
-    public boolean inSameCluster(IOFSwitch switch1, IOFSwitch switch2) {
+    public boolean inSameCluster(long switch1, long switch2) {
         if (switchClusterMap != null) {
             lock.readLock().lock();
             try {
-                SwitchCluster cluster1 = switchClusterMap.get(switch1.getId());
-                SwitchCluster cluster2 = switchClusterMap.get(switch2.getId());
+                SwitchCluster cluster1 = switchClusterMap.get(switch1);
+                SwitchCluster cluster2 = switchClusterMap.get(switch2);
                 return (cluster1 != null) && (cluster1 == cluster2);
             }
             finally {

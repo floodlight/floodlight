@@ -196,7 +196,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         SwitchPortTuple srcSwTuple =  new SwitchPortTuple(sw, pi.getInPort());
-        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw,pi.getInPort()) == false) {
+        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw.getId(),pi.getInPort()) == false) {
             if (log.isTraceEnabled()) {
                 log.trace("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
                          "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple});
