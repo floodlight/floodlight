@@ -131,7 +131,8 @@ public class FloodlightModuleLoader {
                 ex.printStackTrace();
                 System.exit(1);
             }
-            return loadModulesFromList(prop.getProperty("floodlight.modules").split(","));
+            String props = prop.getProperty("floodlight.modules").replaceAll("\\s", "");
+            return loadModulesFromList(props.split(","));
 	    }
 	}
 	
