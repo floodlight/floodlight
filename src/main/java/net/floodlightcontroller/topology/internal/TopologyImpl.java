@@ -220,17 +220,17 @@ public class TopologyImpl
     }
 
     protected class Update {
-        public IOFSwitch src;
+        public long src;
         public short srcPort;
         public int srcPortState;
-        public IOFSwitch dst;
+        public long dst;
         public short dstPort;
         public int dstPortState;
         public ILinkDiscovery.LinkType type;
         public UpdateOperation operation;
 
-        public Update(IOFSwitch src, short srcPort, int srcPortState,
-                      IOFSwitch dst, short dstPort, int dstPortState,
+        public Update(long src, short srcPort, int srcPortState,
+                      long dst, short dstPort, int dstPortState,
                       ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
@@ -244,15 +244,15 @@ public class TopologyImpl
 
         public Update(LinkTuple lt, int srcPortState,
                       int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
-            this(lt.getSrc().getSw(), lt.getSrc().getPort(),
-                 srcPortState, lt.getDst().getSw(), lt.getDst().getPort(),
+            this(lt.getSrc().getSw().getId(), lt.getSrc().getPort(),
+                 srcPortState, lt.getDst().getSw().getId(), lt.getDst().getPort(),
                  dstPortState, type, operation);
         }
 
         // For updtedSwitch(sw)
         public Update(IOFSwitch sw) {
             this.operation = UpdateOperation.SWITCH_UPDATED;
-            this.src = sw;
+            this.src = sw.getId();
         }
 
         // Should only be used for CLUSTER_MERGED operations

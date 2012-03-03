@@ -33,7 +33,6 @@ import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -157,25 +156,25 @@ public class RoutingImpl
     }
 
     @Override
-    public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
+    public void addedLink(long srcSw, short srcPort, int srcPortState,
+            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
     }
     
     @Override
-    public void updatedLink(IOFSwitch src, short srcPort, int srcPortState,
-            IOFSwitch dst, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
+    public void updatedLink(long src, short srcPort, int srcPortState,
+            long dst, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         boolean added = (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
             ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));
-        update(src.getId(), srcPort, dst.getId(), dstPort, added);
+        update(src, srcPort, dst, dstPort, added);
     }
     
     @Override
-    public void removedLink(IOFSwitch src, short srcPort, IOFSwitch dst, short dstPort)
+    public void removedLink(long src, short srcPort, long dst, short dstPort)
     {
-        update(src.getId(), srcPort, dst.getId(), dstPort, false);
+        update(src, srcPort, dst, dstPort, false);
     }    
     
     @Override
@@ -328,7 +327,7 @@ public class RoutingImpl
     }
 
     @Override
-    public void updatedSwitch(IOFSwitch sw) {
+    public void updatedSwitch(long sw) {
         // Ignored by RoutingImpl
     }
 

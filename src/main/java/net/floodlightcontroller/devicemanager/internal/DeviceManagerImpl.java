@@ -1244,15 +1244,15 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     @Override
-    public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
+    public void addedLink(long srcSw, short srcPort, int srcPortState,
+            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
     }
 
     @Override
-    public void updatedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
+    public void updatedLink(long srcSw, short srcPort, int srcPortState,
+            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         if (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != 
                     OFPortState.OFPPS_STP_BLOCK.getValue()) &&
@@ -1260,7 +1260,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     OFPortState.OFPPS_STP_BLOCK.getValue())) {
             // Remove all devices living on this switch:port now that it is 
             // internal
-            SwitchPortTuple switchPort = new SwitchPortTuple(dstSw, dstPort);
+            SwitchPortTuple switchPort = new SwitchPortTuple(floodlightProvider.getSwitches().get(dstSw), dstPort);
             lock.writeLock().lock();
             try {
                 devMgrMaps.removeSwPort(switchPort);
@@ -1271,7 +1271,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     @Override
-    public void removedLink(IOFSwitch src, short srcPort, IOFSwitch dst, 
+    public void removedLink(long src, short srcPort, long dst, 
                                                                 short dstPort)
     {
         // no-op
@@ -2018,7 +2018,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     @Override
-    public void updatedSwitch(IOFSwitch sw) {
+    public void updatedSwitch(long swId) {
+        IOFSwitch sw = floodlightProvider.getSwitches().get(swId);
         if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
             removedSwitch(sw);
         }
