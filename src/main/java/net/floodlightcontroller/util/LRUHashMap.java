@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.routing.dijkstra;
+package net.floodlightcontroller.util;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

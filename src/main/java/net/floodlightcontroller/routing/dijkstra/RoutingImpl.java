@@ -46,6 +46,7 @@ import net.floodlightcontroller.topology.ILinkDiscovery;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.util.LRUHashMap;
 
 /**
  * Floodlight component to find shortest paths based on dijkstra's algorithm
