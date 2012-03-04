@@ -22,9 +22,9 @@ import net.floodlightcontroller.routing.Route;
 
 public interface IRoutingService extends IFloodlightService {
 
-    public Route getRoute(Long srcDpid, Long dstDpid);
+    public Route getRoute(long src, long dst);
 
     public boolean routeExists(long src, long dst);
 
-    public BroadcastTree getBroadcastTreeForCluster(long clusterId);
+    public BroadcastTree getBroadcastTreeForCluster(long cluster);
 }

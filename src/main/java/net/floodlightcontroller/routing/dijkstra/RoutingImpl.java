@@ -103,7 +103,7 @@ public class RoutingImpl
     }
 
     @Override
-    public Route getRoute(Long srcId, Long dstId) {
+    public Route getRoute(long srcId, long dstId) {
         lock.readLock().lock();
 
         RouteId id = new RouteId(srcId, dstId);
