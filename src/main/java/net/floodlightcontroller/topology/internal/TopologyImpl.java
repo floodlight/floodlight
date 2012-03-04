@@ -239,6 +239,7 @@ public class TopologyImpl
             this.dst = dst;
             this.dstPort = dstPort;
             this.dstPortState = dstPortState;
+            this.type = type;
             this.operation = operation;
         }
 
