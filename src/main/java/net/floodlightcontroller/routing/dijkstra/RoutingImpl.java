@@ -38,7 +38,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
@@ -54,7 +54,7 @@ import net.floodlightcontroller.util.LRUHashMap;
  * @author Mandeep Dhami (mandeep.dhami@bigswitch.com)
  */
 public class RoutingImpl 
-    implements IRoutingEngineService, ILinkDiscoveryListener, ITopologyListener, IFloodlightModule {
+    implements IRoutingService, ILinkDiscoveryListener, ITopologyListener, IFloodlightModule {
     
     public static final int MAX_LINK_WEIGHT = 1000;
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;
@@ -64,42 +64,41 @@ public class RoutingImpl
     protected ReentrantReadWriteLock lock;
     protected HashMap<Long, HashMap<Link, Link>> network;
     protected HashMap<Long, HashMap<Long, Link>> nexthoplinkmaps;
-    protected HashMap<Long, HashMap<Long, Long>> nexthopnodemaps;
     protected LRUHashMap<RouteId, Route> pathcache;
     protected ILinkDiscoveryService topology;
    
     @Override
-    public boolean routeExists(Long srcId, Long dstId) {
+    public boolean routeExists(long srcId, long dstId) {
         // self route check
-        if (srcId.equals(dstId))
+        if (srcId == dstId)
             return true;
 
         // Check if next hop exists
         lock.readLock().lock();
-        HashMap<Long, Long> nexthopnodes = nexthopnodemaps.get(srcId);
-        boolean exists = (nexthopnodes!=null) && (nexthopnodes.get(dstId)!=null);
+        HashMap<Long, Link> nexthoplinks = nexthoplinkmaps.get(srcId);
+        boolean exists = (nexthoplinks!=null) && (nexthoplinks.get(dstId)!=null);
         lock.readLock().unlock();
 
         return exists;
     }
 
     @Override
-    public BroadcastTree getBCTree(Long rootNode) {
-        HashMap<Long, Link> links = nexthoplinkmaps.get(rootNode);
-        HashMap<Long, Long> nodes = nexthopnodemaps.get(rootNode);
-        if (links == null || nodes == null) {
+    public BroadcastTree getBroadcastTreeForCluster(long clusterId) {
+        // We calculate clusterId to be the DPID of the switch
+        // in that cluster.  We use the clusterId as the switchid to 
+        // get the broadcast tree.
+        HashMap<Long, Link> links = nexthoplinkmaps.get(clusterId);
+        if (links == null) {
             return null;
         }
-        return new BroadcastTree(links, nodes);
+        return new BroadcastTree(links, null);
     }
-    
-    @Override
+
     public void clear() {
         lock.writeLock().lock();
         network.clear();
         pathcache.clear();
         nexthoplinkmaps.clear();
-        nexthopnodemaps.clear();
         lock.writeLock().unlock();
     }
 
@@ -126,7 +125,6 @@ public class RoutingImpl
     private Route buildroute(RouteId id, Long srcId, Long dstId) {
         LinkedList<Link> path = null;
         HashMap<Long, Link> nexthoplinks = nexthoplinkmaps.get(srcId);
-        HashMap<Long, Long> nexthopnodes = nexthopnodemaps.get(srcId);
         
         if (!network.containsKey(srcId)) {
             // This is a switch that is not connected to any other switch
@@ -136,14 +134,13 @@ public class RoutingImpl
             // The only possible non-null path for this case is
             // if srcId equals dstId --- and that too is an 'empty' path []
             if (srcId.equals(dstId)) path = new LinkedList<Link>();
-        } else if ((nexthoplinks!=null) && (nexthoplinks.get(dstId)!=null) &&
-                 (nexthopnodes!=null) && (nexthopnodes.get(dstId)!=null)) {
+        } else if ((nexthoplinks!=null) && (nexthoplinks.get(dstId)!=null)) {
             // A valid path exits, calculate it
             path = new LinkedList<Link>();
             while (!srcId.equals(dstId)) {
                 Link l = nexthoplinks.get(dstId);
                 path.addFirst(l);
-                dstId = nexthopnodes.get(dstId);
+                dstId = l.getSrc();
             }
         }
         // else, no path exists, and path equals null
@@ -177,13 +174,7 @@ public class RoutingImpl
     {
         update(src, srcPort, dst, dstPort, false);
     }    
-    
-    @Override
-    public void update(Long srcId, Integer srcPort, Long dstId, Integer dstPort, boolean added) {
-        update(srcId, srcPort.shortValue(), dstId, dstPort.shortValue(), added);
-    }
 
-    @Override
     public void update(Long srcId, Short srcPort, Long dstId, Short dstPort, boolean added) {
         lock.writeLock().lock();
         boolean network_updated = false;
@@ -248,12 +239,10 @@ public class RoutingImpl
     private void recalculate() {
         pathcache.clear();
         nexthoplinkmaps.clear();
-        nexthopnodemaps.clear();
         
         for (Long node : network.keySet()) {
             BroadcastTree nexthop = dijkstra(node);
             nexthoplinkmaps.put(node, nexthop.getLinks());
-            nexthopnodemaps.put(node, nexthop.getNodes());            
         }
         return;
     }
@@ -318,7 +307,7 @@ public class RoutingImpl
             }
         }
         
-        BroadcastTree ret = new BroadcastTree(nexthoplinks, nexthopnodes);
+        BroadcastTree ret = new BroadcastTree(nexthoplinks, null);
         return ret;
     }
     
@@ -338,7 +327,7 @@ public class RoutingImpl
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IRoutingEngineService.class);
+        l.add(IRoutingService.class);
         return l;
     }
 
@@ -350,7 +339,7 @@ public class RoutingImpl
             new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
         // We are the class that implements the service
-        m.put(IRoutingEngineService.class, this);
+        m.put(IRoutingService.class, this);
         return m;
     }
 
@@ -369,7 +358,6 @@ public class RoutingImpl
         lock = new ReentrantReadWriteLock();
         network = new HashMap<Long, HashMap<Link, Link>>();
         nexthoplinkmaps = new HashMap<Long, HashMap<Long, Link>>();
-        nexthopnodemaps = new HashMap<Long, HashMap<Long, Long>>();
         pathcache = new LRUHashMap<RouteId, Route>(PATH_CACHE_SIZE);
     }
 

@@ -34,7 +34,7 @@ import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -62,7 +62,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceManagerService deviceManager;
-    protected IRoutingEngineService routingEngine;
+    protected IRoutingService routingEngine;
     protected ITopologyService topology;
     protected ICounterStoreService counterStore;
    
@@ -347,7 +347,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     /**
      * @param routingEngine the routingEngine to set
      */
-    public void setRoutingEngine(IRoutingEngineService routingEngine) {
+    public void setRoutingEngine(IRoutingService routingEngine) {
         this.routingEngine = routingEngine;
     }
 

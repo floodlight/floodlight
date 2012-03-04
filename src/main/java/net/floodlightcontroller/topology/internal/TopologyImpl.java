@@ -57,7 +57,8 @@ import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
@@ -139,7 +140,7 @@ public class TopologyImpl
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
-    protected IRoutingEngineService routingEngine;
+    protected IRoutingService routingEngine;
     protected IRestApiService restApi;
     
     private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
@@ -341,7 +342,7 @@ public class TopologyImpl
         try {
             for (SwitchCluster cluster: clusters) {
                 long clusterId = cluster.getId().longValue();
-                BroadcastTree clusterTree = routingEngine.getBCTree(clusterId);
+                BroadcastTree clusterTree = routingEngine.getBroadcastTreeForCluster(clusterId);
                 detectLoopInCluster(clusterTree, cluster);
             }
         } finally {
@@ -359,7 +360,7 @@ public class TopologyImpl
                       HexString.toHexString(cluster.getId()));
             return;
         }
-        HashMap<Long, Long> treeNodes = clusterTree.getNodes();
+        HashMap<Long, Link> treeLinks = clusterTree.getLinks();
         for (long switchId : cluster.getSwitches()) {
             IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
             if (!switchLinks.containsKey(sw)) {
@@ -374,8 +375,14 @@ public class TopologyImpl
                 }
                 LinkInfo linkInfo = links.get(linktp);
 
-                Long nextSrcNode = treeNodes.get(srcNode.getSw().getId());
-                Long nextDstNode = treeNodes.get(dstNode.getSw().getId());
+                Long nextSrcNode = null;
+                if (treeLinks.get(srcNode.getSw().getId()) != null)
+                    nextSrcNode = treeLinks.get(srcNode.getSw().getId()).getSrc();
+
+                Long nextDstNode = null;
+                if (treeLinks.get(dstNode.getSw().getId()) != null)
+                    nextDstNode = treeLinks.get(dstNode.getSw().getId()).getSrc();
+
                 // The link is blocked if neither (src, dst) nor (dst, src)
                 // pair is in the broadcast treeNodes.
                 if ((nextSrcNode != null &&
@@ -1732,7 +1739,7 @@ public class TopologyImpl
     /**
      * @param routingEngine the storage source to use for persisting link info
      */
-    public void setRoutingEngine(IRoutingEngineService routingEngine) {
+    public void setRoutingEngine(IRoutingService routingEngine) {
         this.routingEngine = routingEngine;
     }
 
@@ -1833,7 +1840,7 @@ public class TopologyImpl
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
-        l.add(IRoutingEngineService.class);
+        l.add(IRoutingService.class);
         l.add(IRestApiService.class);
         return l;
     }
@@ -1843,7 +1850,7 @@ public class TopologyImpl
                       throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
-        routingEngine = context.getServiceImpl(IRoutingEngineService.class);
+        routingEngine = context.getServiceImpl(IRoutingService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         
         // We create this here because there is no ordering guarantee

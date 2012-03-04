@@ -36,7 +36,7 @@ import org.openflow.protocol.OFPhysicalPort;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.dijkstra.RoutingImpl;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
@@ -73,7 +73,7 @@ public class TopologyImplTest extends FloodlightTestCase {
         RoutingImpl routingEngine = new RoutingImpl();
         topology.topologyAware = new ArrayList<ITopologyListener>();
         topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
-        cntx.addService(IRoutingEngineService.class, routingEngine);
+        cntx.addService(IRoutingService.class, routingEngine);
         cntx.addService(ILinkDiscoveryService.class, topology);
         cntx.addService(ITopologyService.class, topology);
         cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
