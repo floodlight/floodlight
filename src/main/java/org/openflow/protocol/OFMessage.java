@@ -17,9 +17,18 @@
 
 package org.openflow.protocol;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.packet.Ethernet;
+
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.openflow.util.U32;
 import org.openflow.util.U8;
@@ -220,5 +229,106 @@ public class OFMessage {
             return false;
         }
         return true;
+    }
+    
+    public static String getDataAsString(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+
+        Ethernet eth;
+        StringBuffer sb =  new StringBuffer("");
+
+        DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss.SSS");
+        Date date = new Date();
+
+        sb.append(dateFormat.format(date));
+        sb.append("      ");
+
+        switch (msg.getType()) {
+            case PACKET_IN:
+                OFPacketIn pktIn = (OFPacketIn) msg;
+                sb.append("packet_in          [ ");
+                sb.append(sw.getStringId());
+                sb.append(" -> Controller");
+                sb.append(" ]");
+
+                sb.append("\ntotal length: ");
+                sb.append(pktIn.getTotalLength());
+                sb.append("\nin_port: ");
+                sb.append(pktIn.getInPort());
+                sb.append("\ndata_length: ");
+                sb.append(pktIn.getTotalLength() - OFPacketIn.MINIMUM_LENGTH);
+                sb.append("\nbuffer: ");
+                sb.append(pktIn.getBufferId());
+
+                // If the conext is not set by floodlight, then ignore.
+                if (cntx != null) {
+                // packet type  icmp, arp, etc.
+                    eth = IFloodlightProviderService.bcStore.get(cntx,
+                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+                    if (eth != null)
+                           sb.append(eth.toString());
+                }
+                break;
+
+            case PACKET_OUT:
+                OFPacketOut pktOut = (OFPacketOut) msg;
+                sb.append("packet_out         [ ");
+                sb.append("Controller -> ");
+                sb.append(HexString.toHexString(sw.getId()));
+                sb.append(" ]");
+
+                sb.append("\nin_port: ");
+                sb.append(pktOut.getInPort());
+                sb.append("\nactions_len: ");
+                sb.append(pktOut.getActionsLength());
+                if (pktOut.getActions() != null) {
+                    sb.append("\nactions: ");
+                    sb.append(pktOut.getActions().toString());
+                }
+                break;
+
+            case FLOW_MOD:
+                OFFlowMod fm = (OFFlowMod) msg;
+                sb.append("flow_mod           [ ");
+                sb.append("Controller -> ");
+                sb.append(HexString.toHexString(sw.getId()));
+                sb.append(" ]");
+
+                // If the conext is not set by floodlight, then ignore.
+                if (cntx != null) {
+                    eth = IFloodlightProviderService.bcStore.get(cntx,
+                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+                    if (eth != null)
+                        sb.append(eth.toString());
+                }
+
+                sb.append("\nADD: cookie: ");
+                sb.append(fm.getCookie());
+                sb.append(" idle: ");
+                sb.append(fm.getIdleTimeout());
+                sb.append(" hard: ");
+                sb.append(fm.getHardTimeout());
+                sb.append(" pri: ");
+                sb.append(fm.getPriority());
+                sb.append(" buf: ");
+                sb.append(fm.getBufferId());
+                sb.append(" flg: ");
+                sb.append(fm.getFlags());
+                if (fm.getActions() != null) {
+                    sb.append("\nactions: ");
+                    sb.append(fm.getActions().toString());
+                }
+                break;
+
+            default:
+                sb.append("[Unknown Packet]");
+        }
+
+        sb.append("\n\n");
+        return sb.toString();
+
+    }
+
+    public static byte[] getData(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        return OFMessage.getDataAsString(sw, msg, cntx).getBytes();
     }
 }

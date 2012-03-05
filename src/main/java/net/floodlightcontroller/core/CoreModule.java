@@ -42,9 +42,8 @@ public class CoreModule implements IFloodlightModule {
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> dependencies =
-            new ArrayList<Class<? extends IFloodlightService>>(5);
+            new ArrayList<Class<? extends IFloodlightService>>(4);
         dependencies.add(IStorageSourceService.class);
-        dependencies.add(IOFMessageFilterManagerService.class);
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
         dependencies.add(ICounterStoreService.class);
@@ -59,8 +58,6 @@ public class CoreModule implements IFloodlightModule {
            context.getServiceImpl(IPktInProcessingTimeService.class));
        controller.setCounterStore(
            context.getServiceImpl(ICounterStoreService.class));
-       controller.setMessageFilterManagerService(
-           context.getServiceImpl(IOFMessageFilterManagerService.class));         
        controller.setRestApiService(
            context.getServiceImpl(IRestApiService.class));
        controller.init();
