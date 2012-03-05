@@ -2,7 +2,7 @@ net.floodlightcontroller.core.CoreModule
 net.floodlightcontroller.storage.memory.MemoryStorageSource
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.topology.internal.TopologyImpl
-net.floodlightcontroller.routing.dijkstra.RoutingImpl
+net.floodlightcontroller.topologymanager.TopologyManager
 net.floodlightcontroller.forwarding.Forwarding
 net.floodlightcontroller.core.OFMessageFilterManager
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
