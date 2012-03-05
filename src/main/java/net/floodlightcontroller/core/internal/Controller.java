@@ -50,7 +50,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFController;
-import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -139,7 +138,6 @@ public class Controller
             Executors.newScheduledThreadPool(5);
     
     protected IStorageSourceService storageSource;
-    protected IOFMessageFilterManagerService messageFilterManager;
     protected IPktInProcessingTimeService pktinProcTime;
     
     // Configuration options
@@ -202,10 +200,6 @@ public class Controller
     
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
-    }
-    
-    public void setMessageFilterManagerService(IOFMessageFilterManagerService mfm) {
-        this.messageFilterManager = mfm;
     }
     
     public void setPktInProcessingService(IPktInProcessingTimeService pits) {
@@ -709,7 +703,7 @@ public class Controller
                     if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
                         log.warn("Time to process packet-in: {} us", processingTime/1000.0);
                         if (eth != null)
-                            log.warn("{}", messageFilterManager.getDataAsString(sw, m, bContext));
+                            log.warn("{}", OFMessage.getDataAsString(sw, m, bContext));
                     }
                 }
         }
@@ -941,7 +935,7 @@ public class Controller
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
                                       FloodlightContext bc) {
         if (log.isDebugEnabled()) {
-            String str = messageFilterManager.getDataAsString(sw, m, bc);
+            String str = OFMessage.getDataAsString(sw, m, bc);
             log.trace("{}", str);
         }
 
