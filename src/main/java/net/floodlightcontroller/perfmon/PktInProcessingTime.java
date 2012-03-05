@@ -52,7 +52,8 @@ public class PktInProcessingTime
     protected static  Logger  logger = 
         LoggerFactory.getLogger(PktInProcessingTime.class);
 
-    protected PerfMonConfigs perfMonCfgs;
+    // Turn on or off
+    protected boolean isEnabled;
     // Maintains the time when the last packet was processed
     protected long lastPktTime_ns; 
     protected long curBucketStartTime;
@@ -64,31 +65,11 @@ public class PktInProcessingTime
 
     @Override
     public boolean isEnabled() {
-        return perfMonCfgs.isProcTimeMonitoringState();
+        return isEnabled;
     }
-
-    public Long getLastPktTime_ns() {
-        return lastPktTime_ns;
-    }
-
-    public void setLastPktTime_ns(Long lastPktTime_ns) {
-        this.lastPktTime_ns = lastPktTime_ns;
-    }
-
-    public long getCurBucketStartTime() {
-        return curBucketStartTime;
-    }
-
-    public void setCurBucketStartTime(long curBucketStartTime) {
-        this.curBucketStartTime = curBucketStartTime;
-    }
-
-    public CumulativeTimeBucket getCtb() {
-        return ctb;
-    }
-
-    public void setCtb(CumulativeTimeBucket ctb) {
-        this.ctb = ctb;
+    
+    public void setEnabled(boolean enabled) {
+        isEnabled = enabled;
     }
     
     /* (non-Javadoc)
@@ -97,36 +78,6 @@ public class PktInProcessingTime
     @Override
     public CircularTimeBucketSet getCtbs() {
         return ctbs;
-    }
-
-    public void setCtbs(CircularTimeBucketSet ctbs) {
-        this.ctbs = ctbs;
-    }
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getPerfMonCfgs()
-     */
-    @Override
-    public PerfMonConfigs getPerfMonCfgs() {
-        return perfMonCfgs;
-    }
-
-    public void setPerfMonCfgs(PerfMonConfigs perfMonCfgs) {
-        this.perfMonCfgs = perfMonCfgs;
-    }
-
-    public int getNumComponents() {
-        return numComponents;
-    }
-
-    public void setNumComponents(int numComponents) {
-        this.numComponents = numComponents;
-    }
-
-    public int getNumBuckets() {
-        return numBuckets;
-    }
-    public void setNumBuckets(int numBuckets) {
-        this.numBuckets = numBuckets;
     }
     
     /***
@@ -199,7 +150,7 @@ public class PktInProcessingTime
      */
     @Override
     public long getStartTimeOnePkt() {
-        if (this.perfMonCfgs.procTimeMonitoringState) {
+        if (this.isEnabled) {
             long startTime_ns = System.nanoTime();
             checkAndStartNextBucket(startTime_ns);
             return startTime_ns;
@@ -213,7 +164,7 @@ public class PktInProcessingTime
      */
     @Override
     public long getStartTimeOneComponent() {
-        if (this.perfMonCfgs.procTimeMonitoringState) {
+        if (this.isEnabled) {
             return System.nanoTime();
         }
         return 0L;
@@ -225,7 +176,7 @@ public class PktInProcessingTime
     @Override
     public void updateCumulativeTimeOneComp(
                                 long onePktOneCompProcTime_ns, int id) {
-        if (this.perfMonCfgs.procTimeMonitoringState) {
+        if (this.isEnabled) {
             int onePktOneCompProcTime_us = 
                 (int)((System.nanoTime() - onePktOneCompProcTime_ns) / 1000);
             OneComponentTime t_temp = this.ctb.tComps.oneComp[id];
@@ -247,7 +198,7 @@ public class PktInProcessingTime
      */
     @Override
     public void updateCumulativeTimeTotal(long onePktStartTime_ns) {
-        if (this.perfMonCfgs.procTimeMonitoringState) {
+        if (this.isEnabled) {
             // There is no api to get time in microseconds, milliseconds is 
             // too coarse hence we have to use nanoseconds and then divide by 
             // 1000 to get microseconds
@@ -269,12 +220,6 @@ public class PktInProcessingTime
             }
         }
 
-    }
-
-    
-
-    public PktInProcessingTime() {
-        perfMonCfgs = new PerfMonConfigs();
     }
     
     // IFloodlightModule methods
@@ -315,10 +260,9 @@ public class PktInProcessingTime
     public void startUp(FloodlightModuleContext context) {
         // Our 'constructor'
         FlListenerID.populateCompNames();
-        setNumComponents(BB_LAST_LISTENER_ID + 1);
-        perfMonCfgs = new PerfMonConfigs();
+        numComponents = BB_LAST_LISTENER_ID + 1;
         numBuckets = BUCKET_SET_SIZE;
-        ctbs = new CircularTimeBucketSet(getNumComponents(), numBuckets);
+        ctbs = new CircularTimeBucketSet(numComponents, numBuckets);
         ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
         ctb.startTime_ms = System.currentTimeMillis();
         ctb.startTime_ns = System.nanoTime();

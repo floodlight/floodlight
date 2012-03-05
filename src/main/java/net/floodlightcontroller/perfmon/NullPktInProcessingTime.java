@@ -10,7 +10,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.perfmon.CircularTimeBucketSet;
-import net.floodlightcontroller.perfmon.PerfMonConfigs;
 
 /**
  * An IPktInProcessingTimeService implementation that does nothing.
@@ -23,7 +22,6 @@ public class NullPktInProcessingTime
     implements IFloodlightModule, IPktInProcessingTimeService {
 
     private CircularTimeBucketSet emptyBucket;
-    private PerfMonConfigs emptyConfig;
     
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = 
@@ -54,7 +52,6 @@ public class NullPktInProcessingTime
     public void init(FloodlightModuleContext context)
                              throws FloodlightModuleException {
         emptyBucket = new CircularTimeBucketSet(0, 0);
-        emptyConfig = new PerfMonConfigs();
     }
 
     @Override
@@ -65,11 +62,6 @@ public class NullPktInProcessingTime
     @Override
     public CircularTimeBucketSet getCtbs() {
         return emptyBucket;
-    }
-
-    @Override
-    public PerfMonConfigs getPerfMonCfgs() {
-        return emptyConfig;
     }
 
     @Override
