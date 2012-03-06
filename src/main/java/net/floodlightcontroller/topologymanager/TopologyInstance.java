@@ -82,10 +82,10 @@ public class TopologyInstance {
         // Step 1: Compute clusters ignoring broadcast domain links
         // Create nodes for clusters in the higher level topology
         identifyClusters();
-        
+
         // Step 1.1: Add links to clusters
         addLinksToClusters();
-        
+
         // Step 2. Compute shortest path trees in each cluster for 
         // unicast routing.  The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
@@ -131,7 +131,7 @@ public class TopologyInstance {
             }
         }
     }
-    
+
     /**
      * @author Srinivasan Ramasubramanian
      *
@@ -326,7 +326,7 @@ public class TopologyInstance {
         }
     }
 
-    private BroadcastTree dijkstra(Cluster c, Long dst, Map<Link, Integer> linkCost) {
+    protected BroadcastTree dijkstra(Cluster c, Long dst, Map<Link, Integer> linkCost) {
         HashMap<Long, Link> nexthoplinks = new HashMap<Long, Link>();
         HashMap<Long, Long> nexthopnodes = new HashMap<Long, Long>();
         HashMap<Long, Integer> cost = new HashMap<Long, Integer>();
@@ -380,23 +380,23 @@ public class TopologyInstance {
         }
     }
 
-    protected void calculateBroadcastNodePortsInClusters() {
-        clusterBroadcastTrees.clear();
-        // Make every tunnel link have a weight that's more than the
-        // number of switches in the network.
-        Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
-        int tunnel_weight = switchPorts.size() + 1;
-
-        for(NodePortTuple npt: tunnelPorts) {
-            for(Link link: switchPortLinks.get(npt)) {
-                if (link == null) return;
-                linkCost.put(link, tunnel_weight);
-            }
+    protected void calculateBroadcastTreeInClusters() {
+        for(Cluster c: clusters) {
+            // c.id is the smallest node that's in the cluster
+            BroadcastTree tree = destinationRootedTrees.get(c.id);
+            clusterBroadcastTrees.put(c.id, tree);
         }
+    }
+
+    protected void calculateBroadcastNodePortsInClusters() {
+
+        clusterBroadcastTrees.clear();
+
+        calculateBroadcastTreeInClusters();
 
         for(Cluster c: clusters) {
             // c.id is the smallest node that's in the cluster
-            BroadcastTree tree = dijkstra(c, c.id, linkCost);
+            BroadcastTree tree = clusterBroadcastTrees.get(c.id);
             clusterBroadcastTrees.put(c.id, tree);
             //log.info("Broadcast Tree {}", tree);
 
@@ -412,7 +412,6 @@ public class TopologyInstance {
                 nptSet.add(npt2);
             }
             clusterBroadcastNodePorts.put(c.id, nptSet);
-            //log.info("Broadcast ports in cluster {}: {}", new Long(c.id), nptSet);
         }
     }
 
@@ -540,7 +539,7 @@ public class TopologyInstance {
         long clusterId = getSwitchClusterId(sw);
         return clusterBroadcastNodePorts.get(clusterId);
     }
-    
+
     public Set<Long> getSwitches() {
         return switches;
     }
