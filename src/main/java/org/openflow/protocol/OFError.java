@@ -42,7 +42,7 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
         // generic support for extensible vendor-defined error messages. 
         // It uses the random value 0xb0c2 to avoid conflicts with other possible new
         // error types. Support for vendor-defined extended errors has been standardized
-        // in the OF 1.2 spec, so this workaround in only needed for 1.0.
+        // in the OF 1.2 spec, so this workaround is only needed for 1.0.
         OFPET_HELLO_FAILED, OFPET_BAD_REQUEST, OFPET_BAD_ACTION, OFPET_FLOW_MOD_FAILED, OFPET_PORT_MOD_FAILED, OFPET_QUEUE_OP_FAILED, OFPET_VENDOR_ERROR((short)0xb0c2);
         
         protected short value;
@@ -164,6 +164,22 @@ public class OFError extends OFMessage implements OFMessageFactoryAware {
         this.errorCode = (short) code.ordinal();
     }
 
+    public int getVendorErrorType() {
+        return vendorErrorType;
+    }
+    
+    public void setVendorErrorType(int vendorErrorType) {
+        this.vendorErrorType = vendorErrorType;
+    }
+    
+    public short getVendorErrorCode() {
+        return vendorErrorCode;
+    }
+    
+    public void setVendorErrorCode(short vendorErrorCode) {
+        this.vendorErrorCode = vendorErrorCode;
+    }
+    
     public OFMessage getOffendingMsg() throws MessageParseException {
         // should only have one message embedded; if more than one, just
         // grab first

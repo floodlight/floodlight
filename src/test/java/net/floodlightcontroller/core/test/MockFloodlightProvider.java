@@ -227,6 +227,15 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     @Override
+    public Role getRole() {
+        return null;
+    }
+    
+    @Override
+    public void setRole(Role role) {
+    }
+    
+    @Override
     public
             void
             init(FloodlightModuleContext context)

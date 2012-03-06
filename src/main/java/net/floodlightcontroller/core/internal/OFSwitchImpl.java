@@ -33,6 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.util.TimedCache;
@@ -76,8 +77,9 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected boolean connected;
+    protected Role role;
     protected TimedCache<Long> timedCache;
-    protected ReentrantReadWriteLock lock;
+    protected ReentrantReadWriteLock listenerLock;
     
     public static IOFSwitchFeatures switchFeatures;
     protected static final ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>> local_msg_buffer =
@@ -100,9 +102,9 @@ public class OFSwitchImpl implements IOFSwitch {
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
+        this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
-        this.lock = new ReentrantReadWriteLock();
-
+        this.listenerLock = new ReentrantReadWriteLock();
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
@@ -161,6 +163,19 @@ public class OFSwitchImpl implements IOFSwitch {
 
     public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
+            if (role == Role.SLAVE) {
+                switch (m.getType()) {
+                    case PACKET_OUT:
+                    case FLOW_MOD:
+                    case PORT_MOD:
+                        log.warn("Sending OF message that modifies switch state while in the slave role: {}", m.getType().name());
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // FIXME: Debugging code should be disabled!!!
+            // log.debug("Sending message type {} with xid {}", new Object[] {m.getType(), m.getXid()});
             this.floodlightProvider.handleOutgoingMessage(this, m, bc);
         }
         this.write(msglist);
@@ -391,6 +406,21 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     @Override
+    public synchronized Role getRole() {
+        return role;
+    }
+    
+    @Override
+    public synchronized void setRole(Role role) {
+        this.role = role;
+    }
+    
+    @Override
+    public synchronized boolean isActive() {
+        return (role != Role.SLAVE);
+    }
+    
+    @Override
     public void setSwitchProperties(OFDescriptionStatistics description) {
         if (switchFeatures != null) {
             switchFeatures.setFromDescription(this, description);
@@ -444,21 +474,23 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     /**
-     * Return a lock that need to be held while processing a message. Multiple threads
-     * can hold this lock. 
+     * Return a read lock that must be held while calling the listeners for
+     * messages from the switch. Holding the read lock prevents the active
+     * switch list from being modified out from under the listeners.
      * @return 
      */
-    public Lock processMessageLock() {
-        return lock.readLock();
+    public Lock getListenerReadLock() {
+        return listenerLock.readLock();
     }
 
     /**
-     * Return a lock that needs to be held while the switch is removed asynchronously, i.e.,
-     * the removing is not triggered by events on this switch's channel.
-     * Mutex with processMessageLock
+     * Return a write lock that must be held when the controllers modifies the
+     * list of active switches. This is to ensure that the active switch list
+     * doesn't change out from under the listeners as they are handling a
+     * message from the switch.
      * @return
      */
-    public Lock asyncRemoveSwitchLock() {
-        return lock.writeLock();
+    public Lock getListenerWriteLock() {
+        return listenerLock.writeLock();
     }
 }
