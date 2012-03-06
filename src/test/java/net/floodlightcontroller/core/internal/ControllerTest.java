@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.CoreModule;
+import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
@@ -80,7 +80,7 @@ public class ControllerTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        CoreModule cm = new CoreModule();
+        FloodlightProvider cm = new FloodlightProvider();
         controller = (Controller)cm.getServiceImpls().get(IFloodlightProviderService.class);
         fmc.addService(IFloodlightProviderService.class, controller);
         MemoryStorageSource memstorage = new MemoryStorageSource();

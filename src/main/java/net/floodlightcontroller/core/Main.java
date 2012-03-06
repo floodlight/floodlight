@@ -36,10 +36,9 @@ public class Main {
         FloodlightModuleLoader fml = new FloodlightModuleLoader();
         IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
         IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
-        restApi.run(settings.getRestPort());
+        restApi.run();
         IFloodlightProviderService controller =
                 moduleContext.getServiceImpl(IFloodlightProviderService.class);
-        controller.setCmdLineOptions(settings);
         controller.run();
     }
 }

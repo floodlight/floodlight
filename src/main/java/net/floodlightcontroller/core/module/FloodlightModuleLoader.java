@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -111,7 +112,7 @@ public class FloodlightModuleLoader {
 	        String[] mList = new String[2];
 	        mList[0] = "net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher";
 	        mList[1] = "net.floodlightcontroller.forwarding.Forwarding";
-	        return loadModulesFromList(mList);
+	        return loadModulesFromList(mList, prop);
 	    } else {
             try {
                 if (fName == CmdLineSettings.DEFAULT_CONFIG_FILE) {
@@ -132,7 +133,8 @@ public class FloodlightModuleLoader {
                 System.exit(1);
             }
             String props = prop.getProperty("floodlight.modules").replaceAll("\\s", "");
-            return loadModulesFromList(props.split(","));
+            
+            return loadModulesFromList(props.split(","), prop);
 	    }
 	}
 	
@@ -142,7 +144,7 @@ public class FloodlightModuleLoader {
 	 * @return The ModuleContext containing all the loaded modules
 	 * @throws FloodlightModuleException
 	 */
-	public IFloodlightModuleContext loadModulesFromList(String[] mList) 
+	public IFloodlightModuleContext loadModulesFromList(String[] mList, Properties prop) 
             throws FloodlightModuleException {
         logger.debug("Starting module loader");
         findAllModules();
@@ -210,6 +212,7 @@ public class FloodlightModuleLoader {
             }
         }
         
+        parseConfigParameters(prop);
         initModules(moduleSet);
         startupModules(moduleSet);
         
@@ -285,6 +288,36 @@ public class FloodlightModuleLoader {
                              m.getClass().getCanonicalName());
             }
             m.startUp(floodlightModuleContext);
+        }
+    }
+    
+    /**
+     * Parses configuration parameters for each module
+     * @param prop The properties file to use
+     */
+    protected void parseConfigParameters(Properties prop) {
+        Enumeration<?> e = prop.propertyNames();
+        while (e.hasMoreElements()) {
+            String key = (String) e.nextElement();
+            String configValue = null;
+            int lastPeriod = key.lastIndexOf(".");
+            String moduleName = key.substring(0, lastPeriod);
+            String configKey = key.substring(lastPeriod + 1);
+            // Check to see if it's overridden on the command line
+            String systemKey = System.getProperty(key);
+            if (systemKey != null) {
+                configValue = systemKey;
+            } else {
+                configValue = prop.getProperty(key);
+            }
+            
+            IFloodlightModule mod = moduleNameMap.get(moduleName);
+            if (mod == null) {
+                logger.warn("Module {} not found. Not adding configuration option {} = {}", 
+                            new Object[]{moduleName, configKey, configValue});
+            } else {
+                floodlightModuleContext.addConfigParam(mod, configKey, configValue);
+            }
         }
     }
 }

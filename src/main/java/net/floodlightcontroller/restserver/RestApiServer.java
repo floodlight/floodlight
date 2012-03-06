@@ -31,6 +31,7 @@ public class RestApiServer
     protected static Logger logger = LoggerFactory.getLogger(RestApiServer.class);
     protected List<RestletRoutable> restlets;
     protected FloodlightModuleContext fmlContext;
+    protected int restPort = 8080;
     
     // ***********
     // Application
@@ -107,7 +108,7 @@ public class RestApiServer
     }
     
     @Override
-    public void run(int restPort) {
+    public void run() {
         RestApplication restApp = new RestApplication();
         restApp.run(fmlContext, restPort);
     }
@@ -148,6 +149,14 @@ public class RestApiServer
         // startUp methods will be called
         this.restlets = new ArrayList<RestletRoutable>();
         this.fmlContext = context;
+        
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        String port = configOptions.get("port");
+        if (port != null) {
+            restPort = Integer.parseInt(port);
+        }
+        logger.info("REST port set to {}", restPort);
     }
 
     @Override

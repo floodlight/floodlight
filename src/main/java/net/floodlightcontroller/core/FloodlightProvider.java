@@ -15,7 +15,7 @@ import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 
-public class CoreModule implements IFloodlightModule {
+public class FloodlightProvider implements IFloodlightModule {
     Controller controller;
     
     @Override
@@ -60,7 +60,7 @@ public class CoreModule implements IFloodlightModule {
            context.getServiceImpl(ICounterStoreService.class));
        controller.setRestApiService(
            context.getServiceImpl(IRestApiService.class));
-       controller.init();
+       controller.init(context.getConfigParams(this));
     }
 
     @Override
