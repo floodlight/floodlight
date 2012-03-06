@@ -21,6 +21,7 @@ public class Main {
      * @throws FloodlightModuleException 
      */
     public static void main(String[] args) throws FloodlightModuleException {
+        // Setup logger
         System.setProperty("org.restlet.engine.loggerFacadeClass", 
                 "org.restlet.ext.slf4j.Slf4jLoggerFacade");
         
@@ -33,12 +34,16 @@ public class Main {
             System.exit(1);
         }
         
+        // Load modules
         FloodlightModuleLoader fml = new FloodlightModuleLoader();
         IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
+        // Run REST server
         IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
         restApi.run();
+        // Run the main floodlight module
         IFloodlightProviderService controller =
                 moduleContext.getServiceImpl(IFloodlightProviderService.class);
+        // This call blocks, it has to be the last line in the main
         controller.run();
     }
 }

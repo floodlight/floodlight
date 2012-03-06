@@ -3,6 +3,7 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The service registry for an IFloodlightProvider.
@@ -60,10 +61,18 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	 */
 	public void addConfigParam(IFloodlightModule mod, String key, String value) {
 	    Map<String, String> moduleParams = configParams.get(mod.getClass());
-	    if (moduleParams == null) {
-	        moduleParams = new HashMap<String, String>();
+	    moduleParams.put(key, value);
+	}
+	
+	/**
+	 * We initialize empty configuration maps for each module to be loaded.
+	 * This way each module doens't have to null check their map.
+	 * @param moduleSet The modules to initialize maps for
+	 */
+	public void createConfigMaps(Set<IFloodlightModule> moduleSet) {
+	    for (IFloodlightModule mod : moduleSet) {
+	        Map<String, String> moduleParams = new HashMap<String, String>();
 	        configParams.put(mod.getClass(), moduleParams);
 	    }
-	    moduleParams.put(key, value);
 	}
  }
