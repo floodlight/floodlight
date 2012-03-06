@@ -34,7 +34,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
-import net.floodlightcontroller.core.internal.CmdLineSettings;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -204,11 +203,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void run() {
-        // no-op
-    }
-
-    @Override
-    public void setCmdLineOptions(CmdLineSettings settings) {
         // no-op
     }
 
