@@ -300,10 +300,16 @@ public interface IOFSwitch {
     public void clearAllFlowMods();
     
     /**
-     * Return a TimedHashMap associated with the switch
+     * Update broadcast cache
      * @param data
+     * @return true if there is a cache hit
+     *         false if there is no cache hit.
+     */
+    public boolean updateBroadcastCache(Long entry, Short port);
+    
+    /**
+     * Get the portBroadcastCacheHits
      * @return
      */
-    public TimedCache<Long> getTimedCache();
-
+    public Map<Short, Long> getPortBroadcastHits();
 }

@@ -74,6 +74,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected boolean connected;
     protected TimedCache<Long> timedCache;
+    protected ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
     protected ReentrantReadWriteLock lock;
     
     public static IOFSwitchFeatures switchFeatures;
@@ -90,6 +91,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
+        this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, Long>();
         this.lock = new ReentrantReadWriteLock();
         
         // Defaults properties for an ideal switch
@@ -361,10 +363,23 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-	public TimedCache<Long> getTimedCache() {
-        return timedCache;
+	public boolean updateBroadcastCache(Long entry, Short port) {
+        if (timedCache.update(entry)) {
+        	Long count = portBroadcastCacheHitMap.putIfAbsent(port, new Long(1));
+        	if (count != null) {
+        		count++;
+        	}
+        	return true;
+        } else {
+        	return false;
+        }
 	}
 
+    @Override
+    public Map<Short, Long> getPortBroadcastHits() {
+    	return this.portBroadcastCacheHitMap;
+    }
+    
     /**
      * Return a lock that need to be held while processing a message. Multiple threads
      * can hold this lock. 
