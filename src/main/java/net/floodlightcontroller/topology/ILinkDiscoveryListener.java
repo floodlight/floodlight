@@ -17,13 +17,6 @@
 
 package net.floodlightcontroller.topology;
 
-import net.floodlightcontroller.core.IOFSwitch;
-
-/**
- *
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
- */
 public interface ILinkDiscoveryListener {
     /**
      * @param srcSw the source switch
@@ -32,8 +25,8 @@ public interface ILinkDiscoveryListener {
      * @param dstSw
      * @param dstPort
      */
-    public void addedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState);
+    public void addedLink(long srcSw, short srcPort, int srcPortState,
+            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type);
     
     /**
      * @param srcSw the source switch
@@ -43,8 +36,8 @@ public interface ILinkDiscoveryListener {
      * @param dstPort
      * @param dstPortState
      */
-    public void updatedLink(IOFSwitch srcSw, short srcPort, int srcPortState,
-            IOFSwitch dstSw, short dstPort, int dstPortState);
+    public void updatedLink(long srcSw, short srcPort, int srcPortState,
+            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type);
 
     /**
      * @param srcSw
@@ -52,11 +45,11 @@ public interface ILinkDiscoveryListener {
      * @param dstSw
      * @param dstPort
      */
-    public void removedLink(IOFSwitch srcSw, short srcPort,
-            IOFSwitch dstSw, short dstPort);
+    public void removedLink(long srcSw, short srcPort,
+            long dstSw, short dstPort);
     
     /**
      * @param sw The IOFSwitch that has been updated
      */
-    public void updatedSwitch(IOFSwitch sw);
+    public void updatedSwitch(long sw);
 }

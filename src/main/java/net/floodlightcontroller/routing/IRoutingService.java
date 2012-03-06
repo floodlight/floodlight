@@ -15,24 +15,16 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.routing.dijkstra;
+package net.floodlightcontroller.routing;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.Route;
 
-public class LRUHashMap<K, V> extends LinkedHashMap<K, V> {
-    
-    private static final long serialVersionUID = 1L;
-    
-    private final int capacity;
-    public LRUHashMap(int capacity)
-    {
-        super(capacity+1, 0.75f, true);
-        this.capacity = capacity;
-    }
-    
-    protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
-       return size() > capacity;
-    }
+public interface IRoutingService extends IFloodlightService {
 
+    public Route getRoute(long src, long dst);
+
+    public boolean routeExists(long src, long dst);
+
+    public BroadcastTree getBroadcastTreeForCluster(long cluster);
 }

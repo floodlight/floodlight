@@ -25,7 +25,7 @@ import java.util.List;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class Route implements Cloneable, Comparable<Route> {
+public class Route implements Comparable<Route> {
     protected RouteId id;
     protected List<Link> path;
 
@@ -47,28 +47,32 @@ public class Route implements Cloneable, Comparable<Route> {
      * @param srcDpid
      * @param objects
      */
-    public Route(Long srcDpid, Object... routeElements) {
+    public Route(Long srcId, Object... routeElements) {
         super();
         this.path = new ArrayList<Link>();
         if (routeElements.length % 3 > 0)
             throw new RuntimeException("routeElements must be a multiple of 3");
-        Short outPort, inPort;
+        long s; 
+        Short srcPort, dstPort;
 
+        s = srcId;
         for (int i = 0; i < routeElements.length; i += 3) {
             if (routeElements[i] instanceof Short)
-                outPort = (Short) routeElements[i];
+                srcPort = (Short) routeElements[i];
             else
-                outPort = ((Integer)routeElements[i]).shortValue();
+                srcPort = ((Integer)routeElements[i]).shortValue();
 
             if (routeElements[i+1] instanceof Short)
-                inPort = (Short) routeElements[i+1];
+                dstPort = (Short) routeElements[i+1];
             else
-                inPort = ((Integer)routeElements[i+1]).shortValue();
+                dstPort = ((Integer)routeElements[i+1]).shortValue();
 
-            this.path.add(new Link(outPort, inPort, (Long) routeElements[i + 2]));
+            this.path.add(new Link(s, srcPort, ((Long) routeElements[i + 2]), dstPort));
+            
+            s = (Long) routeElements[i + 2];
         }
-        this.id = new RouteId(srcDpid, (this.path.size() == 0) ? srcDpid
-                : this.path.get(this.path.size() - 1).dst);
+        this.id = new RouteId(srcId, (this.path.size() == 0) ? srcId
+                : this.path.get(this.path.size() - 1).getDst());
     }
 
     /**
@@ -133,15 +137,6 @@ public class Route implements Cloneable, Comparable<Route> {
     @Override
     public String toString() {
         return "Route [id=" + id + ", path=" + path + "]";
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        Route clone = (Route) super.clone();
-        clone.setId((RouteId) this.id.clone());
-        clone.path = (List<Link>) ((ArrayList<Link>)this.path).clone();
-        return clone;
     }
 
     /**

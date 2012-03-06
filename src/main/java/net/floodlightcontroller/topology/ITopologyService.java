@@ -2,7 +2,6 @@ package net.floodlightcontroller.topology;
 
 import java.util.Set;
 
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 public interface ITopologyService extends IFloodlightService  {
@@ -10,20 +9,13 @@ public interface ITopologyService extends IFloodlightService  {
      * Query to determine if the specified switch id and port are
      * connected to another switch or not.  If so, this means the link
      * is passing LLDPs properly between two OpenFlow switches.
-     * @param idPort the {@link SwitchPortTuple} to check
-     * @return true if the link is internal
+     * @param switchid
+     * @param port
+     * @return
      */
-    public boolean isInternal(SwitchPortTuple idPort);
-    
-    /**
-     * Query to determine if the specified switch id and port are
-     * connected to another switch or not.  If so, this means the link
-     * is passing LLDPs properly between two OpenFlow switches.
-     * @param sw the switch to check
-     * @param port the port to check
-     * @return true if the link is internal
-     */
-    public boolean isInternal(IOFSwitch sw, short port);
+    public boolean isInternal(long switchid, short port);
+
+    public long getSwitchClusterId(long switchId);
     
     /**
      * Retrieves a set of all the switches in the same cluster as sw.
@@ -34,7 +26,7 @@ public interface ITopologyService extends IFloodlightService  {
      * @param sw The switch whose cluster we're obtaining
      * @return Set of switches in the cluster
      */
-    public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw);
+    public Set<Long> getSwitchesInCluster(long switchId);
     
     /**
      * Queries whether two switches are in the same cluster.
@@ -45,4 +37,6 @@ public interface ITopologyService extends IFloodlightService  {
     public boolean inSameCluster(Long switch1, Long switch2);
     
     public void addListener(ITopologyListener listener);
+    
+    public boolean isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId);
 }

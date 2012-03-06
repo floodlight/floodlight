@@ -30,7 +30,6 @@ public class RestApiServer
     implements IFloodlightModule, IRestApiService {
     protected static Logger logger = LoggerFactory.getLogger(RestApiServer.class);
     protected List<RestletRoutable> restlets;
-    protected int restPort = 8080;
     protected FloodlightModuleContext fmlContext;
     
     // ***********
@@ -72,7 +71,7 @@ public class RestApiServer
             return slashFilter;
         }
         
-        public void run(FloodlightModuleContext fmlContext) {
+        public void run(FloodlightModuleContext fmlContext, int restPort) {
             // Add everything in the module context to the rest
             for (Class<? extends IFloodlightService> s : fmlContext.getAllServices()) {
                 context.getAttributes().put(s.getCanonicalName(), 
@@ -108,9 +107,9 @@ public class RestApiServer
     }
     
     @Override
-    public void run() {
+    public void run(int restPort) {
         RestApplication restApp = new RestApplication();
-        restApp.run(fmlContext);
+        restApp.run(fmlContext, restPort);
     }
     
     // *****************

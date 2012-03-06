@@ -41,17 +41,10 @@ public class LinkInfo {
      * IOFSwitch port state will already have been updated with the
      * new port state, so topology needs to keep its own copy so that
      * it can determine if the port state has changed and therefore
-     * requires the new state to be written to storage and the clusters
-     * recomputed.
+     * requires the new state to be written to storage.
      */
     protected Integer srcPortState;
     protected Integer dstPortState;
-
-    /** If STP is not enabled in the natice switches or the STP state is
-     * not known to the controller, controller constructs a broadcast tree
-     * and blocks the links that may cause loop in an OF cluster.
-     */
-    protected PortBroadcastState bcState;
 
     public LinkInfo(Long unicastValidTime,
                     Long broadcastValidTime,
@@ -61,27 +54,11 @@ public class LinkInfo {
         this.multicastValidTime = broadcastValidTime;
         this.srcPortState = srcPortState;
         this.dstPortState = dstPortState;
-        if (linkStpBlocked()) {
-            this.bcState = PortBroadcastState.PBS_BLOCK;
-        } else {
-            this.bcState = PortBroadcastState.PBS_FORWARD;
-        }
     }
 
     public boolean linkStpBlocked() {
         return ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue()) ||
             ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue());
-    }
-
-    public boolean isBroadcastBlocked() {
-        return (linkStpBlocked() || (bcState == PortBroadcastState.PBS_BLOCK));
-    }
-    public PortBroadcastState getBroadcastState() {
-        return bcState;
-    }
-
-    public void setBroadcastState(PortBroadcastState bcState) {
-        this.bcState = bcState;
     }
 
     public Long getUnicastValidTime() {
@@ -127,7 +104,6 @@ public class LinkInfo {
         result = prime * result + ((multicastValidTime == null) ? 0 : multicastValidTime.hashCode());
         result = prime * result + ((srcPortState == null) ? 0 : unicastValidTime.hashCode());
         result = prime * result + ((dstPortState == null) ? 0 : dstPortState.hashCode());
-        result = prime * result + ((bcState == null) ? 0 : bcState.hashCode());
         return result;
     }
 
@@ -168,12 +144,6 @@ public class LinkInfo {
         } else if (!dstPortState.equals(other.dstPortState))
             return false;
 
-        if (bcState == null) {
-            if (other.bcState != null)
-                return false;
-        } else if (!bcState.equals(other.bcState))
-            return false;
-
         return true;
     }
 
@@ -186,6 +156,6 @@ public class LinkInfo {
                 + "multicastValidTime=" + ((multicastValidTime == null) ? "null" : multicastValidTime)
                 + ", srcPortState=" + ((srcPortState == null) ? "null" : srcPortState)
                 + ", dstPortState=" + ((dstPortState == null) ? "null" : srcPortState)
-                + ", bcState=" + ((bcState == null) ? "null" : bcState) + "]";
+                + "]";
     }
 }

@@ -16,48 +16,52 @@
 **/
 
 package net.floodlightcontroller.routing;
-
 import java.util.HashMap;
 
-public class BroadcastTree {
+import net.floodlightcontroller.routing.Link;
 
-    // Map of a node to the link in the tree
-    protected HashMap<Long, Link> links_;
-    // Map of node to its parent in the tree
-    protected HashMap<Long, Long> nodes_;
-    
+import org.openflow.util.HexString;
+
+public class BroadcastTree {
+    protected HashMap<Long, Link> links;
+    protected HashMap<Long, Integer> costs;
+
     public BroadcastTree() {
-        links_ = new HashMap<Long, Link>();
-        nodes_ = new HashMap<Long, Long>();
+        links = new HashMap<Long, Link>();
+        costs = new HashMap<Long, Integer>();
     }
-    
-    public BroadcastTree(HashMap<Long, Link> links, HashMap<Long, Long> nodes) {
-        setLinks(links, nodes);
+
+    public BroadcastTree(HashMap<Long, Link> links, HashMap<Long, Integer> costs) {
+        this.links = links;
+        this.costs = costs;
     }
-    
+
     public Link getTreeLink(long node) {
-        return links_.get(node);
+        return links.get(node);
     }
-    
+
+    public int getCost(long node) {
+        if (costs.get(node) == null) return -1;
+        return (costs.get(node));
+    }
+
     public HashMap<Long, Link> getLinks() {
-        return links_;
+        return links;
     }
-    
-    public Long getParentNode(long node) {
-        return nodes_.get(node);
+
+    public void addTreeLink(long myNode, Link link) {
+        links.put(myNode, link);
     }
-    
-    public HashMap<Long, Long> getNodes() {
-        return nodes_;
+
+    public String toString() {
+        StringBuffer sb = new StringBuffer();
+        for(long n: links.keySet()) {
+            sb.append("[" + HexString.toHexString(n) + ": cost=" + costs.get(n) + ", " + links.get(n) + "]");
+        }
+        return sb.toString();
     }
-    
-    public void setLinks(HashMap<Long, Link> links, HashMap<Long, Long> nodes) {
-        links_ = links;
-        nodes_ = nodes;
-    }
-    
-    public void addTreeLink(long parentNode, long myNode, Link link) {
-        links_.put(myNode, link);
-        nodes_.put(myNode, parentNode);
+
+    public HashMap<Long, Integer> getCosts() {
+        return costs;
     }
 }

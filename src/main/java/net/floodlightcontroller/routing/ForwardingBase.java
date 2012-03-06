@@ -34,11 +34,11 @@ import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -65,8 +65,8 @@ public abstract class ForwardingBase implements
 
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceManagerService deviceManager;
-    protected IRoutingEngineService routingEngine;
-    protected ILinkDiscoveryService topology;
+    protected IRoutingService routingEngine;
+    protected ITopologyService topology;
     protected ICounterStoreService counterStore;
 
     // flow-mod - for use in the cookie
@@ -78,14 +78,10 @@ public abstract class ForwardingBase implements
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    Map<Long, IOFSwitch> switches =
-                            floodlightProvider.getSwitches();
-                    IOFSwitch sw1 = switches.get(d1.getSwitchDPID());
-                    IOFSwitch sw2 = switches.get(d2.getSwitchDPID());
-
-                    Long d1ClusterId = sw1.getSwitchClusterId();
-                    Long d2ClusterId = sw2.getSwitchClusterId();
-
+                    Long d1ClusterId = 
+                            topology.getSwitchClusterId(d1.getSwitchDPID());
+                    Long d2ClusterId = 
+                            topology.getSwitchClusterId(d2.getSwitchDPID());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -104,7 +100,7 @@ public abstract class ForwardingBase implements
     public int getId() {
         return FlListenerID.FORWARDINGBASE;
     }
-
+    
     /**
      * All subclasses must define this function if they want any specific
      * forwarding action
@@ -194,7 +190,7 @@ public abstract class ForwardingBase implements
             for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
                 Link link = route.getPath().get(routeIndx);
                 fm.setMatch(wildcard(match, sw, wildcard_hints));
-                fm.getMatch().setInputPort(link.getInPort());
+                fm.getMatch().setInputPort(link.getDstPort());
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
                     if (log.isDebugEnabled()) {
@@ -230,7 +226,7 @@ public abstract class ForwardingBase implements
                 }
 
                 // setup for the next loop iteration
-                ((OFActionOutput) fm.getActions().get(0)).setPort(link.getOutPort());
+                ((OFActionOutput)fm.getActions().get(0)).setPort(link.getSrcPort());
                 if (routeIndx > 0) {
                     sw =
                             floodlightProvider.getSwitches()
@@ -415,7 +411,7 @@ public abstract class ForwardingBase implements
      * @param routingEngine
      *            the routingEngine to set
      */
-    public void setRoutingEngine(IRoutingEngineService routingEngine) {
+    public void setRoutingEngine(IRoutingService routingEngine) {
         this.routingEngine = routingEngine;
     }
 
@@ -431,7 +427,7 @@ public abstract class ForwardingBase implements
      * @param topology
      *            the topology to set
      */
-    public void setTopology(ILinkDiscoveryService topology) {
+    public void setTopology(ITopologyService topology) {
         this.topology = topology;
     }
 

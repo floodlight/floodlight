@@ -2,13 +2,12 @@ package net.floodlightcontroller.perfmon;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.perfmon.CircularTimeBucketSet;
-import net.floodlightcontroller.perfmon.PerfMonConfigs;
 
 public interface IPktInProcessingTimeService extends IFloodlightService {
 
+    public boolean isEnabled();
+    
     public CircularTimeBucketSet getCtbs();
-
-    public PerfMonConfigs getPerfMonCfgs();
 
     public long getStartTimeOnePkt();
 

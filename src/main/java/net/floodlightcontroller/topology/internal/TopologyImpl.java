@@ -31,7 +31,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -56,24 +55,20 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.topology.ILinkDiscovery;
 import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ILinkDiscoveryListener;
-import net.floodlightcontroller.topology.BroadcastDomain;
 import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.LinkInfo;
 import net.floodlightcontroller.topology.LinkTuple;
-import net.floodlightcontroller.topology.SwitchCluster;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
-import net.floodlightcontroller.util.ClusterDFS;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
 
@@ -118,7 +113,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TopologyImpl
         implements IOFMessageListener, IOFSwitchListener, 
-                   IStorageSourceListener, ILinkDiscoveryService, ITopologyService,
+                   IStorageSourceListener, ILinkDiscoveryService,
                    IFloodlightModule, IInfoProvider {
     protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
 
@@ -138,7 +133,7 @@ public class TopologyImpl
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
-    protected IRoutingEngineService routingEngine;
+    protected IRoutingService routingEngine;
     protected IRestApiService restApi;
     
     private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
@@ -180,19 +175,13 @@ public class TopologyImpl
     protected BlockingQueue<Update> updates;
     protected Thread updatesThread;
 
-    protected Map<IOFSwitch, SwitchCluster> switchClusterMap;
-    protected Set<SwitchCluster> clusters;
-
-    protected Map<Long, BroadcastDomain> broadcastDomainMap;
-    protected Map<SwitchPortTuple, BroadcastDomain> switchPortBroadcastDomainMap;
-
     //This map provides the ids of broadcast domains connected to a switch cluster
     protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
 
     protected boolean isTopologyValid = false;
 
     public static enum UpdateOperation {ADD, UPDATE, REMOVE,
-                                        SWITCH_UPDATED, CLUSTER_MERGED};
+                                        SWITCH_UPDATED, TOPOLOGY_CHANGED};
 
     public int getLldpFrequency() {
         return lldpFrequency;
@@ -210,25 +199,19 @@ public class TopologyImpl
         return shuttingDown;
     }
 
-    public Map<IOFSwitch, SwitchCluster> getSwitchClusterMap() {
-        return switchClusterMap;
-    }
-
-    public Set<SwitchCluster> getClusters() {
-        return clusters;
-    }
-
     protected class Update {
-        public IOFSwitch src;
+        public long src;
         public short srcPort;
         public int srcPortState;
-        public IOFSwitch dst;
+        public long dst;
         public short dstPort;
         public int dstPortState;
+        public ILinkDiscovery.LinkType type;
         public UpdateOperation operation;
 
-        public Update(IOFSwitch src, short srcPort, int srcPortState,
-                      IOFSwitch dst, short dstPort, int dstPortState,
+        public Update(long src, short srcPort, int srcPortState,
+                      long dst, short dstPort, int dstPortState,
+                      ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
             this.srcPort = srcPort;
@@ -236,20 +219,21 @@ public class TopologyImpl
             this.dst = dst;
             this.dstPort = dstPort;
             this.dstPortState = dstPortState;
+            this.type = type;
             this.operation = operation;
         }
 
         public Update(LinkTuple lt, int srcPortState,
-                      int dstPortState, UpdateOperation operation) {
-            this(lt.getSrc().getSw(), lt.getSrc().getPort(),
-                 srcPortState, lt.getDst().getSw(), lt.getDst().getPort(),
-                 dstPortState, operation);
+                      int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
+            this(lt.getSrc().getSw().getId(), lt.getSrc().getPort(),
+                 srcPortState, lt.getDst().getSw().getId(), lt.getDst().getPort(),
+                 dstPortState, type, operation);
         }
 
         // For updtedSwitch(sw)
         public Update(IOFSwitch sw) {
             this.operation = UpdateOperation.SWITCH_UPDATED;
-            this.src = sw;
+            this.src = sw.getId();
         }
 
         // Should only be used for CLUSTER_MERGED operations
@@ -262,10 +246,10 @@ public class TopologyImpl
         do {
             Update update = updates.take();
 
-            if (update.operation == UpdateOperation.CLUSTER_MERGED) {
+            if (update.operation == UpdateOperation.TOPOLOGY_CHANGED) {
                 if (topologyAware != null) {
                     for (ITopologyListener ta : topologyAware) { // order maintained
-                        ta.clusterMerged();
+                        ta.toplogyChanged();
                     }
                 } 
             }else {
@@ -282,13 +266,15 @@ public class TopologyImpl
                                 lda.addedLink(update.src, update.srcPort,
                                               update.srcPortState,
                                               update.dst, update.dstPort,
-                                              update.dstPortState);
+                                              update.dstPortState,
+                                              update.type);
                                 break;
                             case UPDATE:
                                 lda.updatedLink(update.src, update.srcPort,
                                                 update.srcPortState,
                                                 update.dst, update.dstPort,
-                                                update.dstPortState);
+                                                update.dstPortState,
+                                                update.type);
                                 break;
                             case REMOVE:
                                 lda.removedLink(update.src, update.srcPort,
@@ -302,84 +288,6 @@ public class TopologyImpl
                 }
             }
         } while (updates.peek() != null);
-        detectLoop();
-    }
-
-    /**
-     *  Detect loops in the openflow clusters and construct spanning trees
-     *  for broadcast
-     */
-    protected void detectLoop() {
-        // No need to detect loop if routingEngine is not available.
-        if (routingEngine == null) return;
-
-        if (clusters == null) {
-            return;
-        }
-
-        lock.writeLock().lock();
-        try {
-            for (SwitchCluster cluster: clusters) {
-                long clusterId = cluster.getId().longValue();
-                BroadcastTree clusterTree = routingEngine.getBCTree(clusterId);
-                detectLoopInCluster(clusterTree, cluster);
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    protected void detectLoopInCluster(BroadcastTree clusterTree, SwitchCluster cluster) {
-        if (cluster == null) {
-            log.debug("detectLoopInCluster, Empty cluster");
-            return;
-        }
-        if (clusterTree == null) {
-            log.debug("detectLoopInCluster, Empty broadcast tree rooted from {}",
-                      HexString.toHexString(cluster.getId()));
-            return;
-        }
-        HashMap<Long, Long> treeNodes = clusterTree.getNodes();
-        for (IOFSwitch sw : cluster.getSwitches()) {
-            if (!switchLinks.containsKey(sw)) {
-                continue;
-            }
-            for (LinkTuple linktp : switchLinks.get(sw)) {
-                SwitchPortTuple srcNode = linktp.getSrc();
-                SwitchPortTuple dstNode = linktp.getDst();
-
-                if (srcNode == null || dstNode == null) {
-                    continue;
-                }
-                LinkInfo linkInfo = links.get(linktp);
-
-                Long nextSrcNode = treeNodes.get(srcNode.getSw().getId());
-                Long nextDstNode = treeNodes.get(dstNode.getSw().getId());
-                // The link is blocked if neither (src, dst) nor (dst, src)
-                // pair is in the broadcast treeNodes.
-                if ((nextSrcNode != null &&
-                     nextSrcNode.longValue() == dstNode.getSw().getId()) ||
-                    (nextDstNode != null &&
-                     nextDstNode.longValue() == srcNode.getSw().getId())) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("detectLoopInCluster, root={}, mark " +
-                                  "link {} broadcast state to FORWARD",
-                                  HexString.toHexString(cluster.getId()),
-                                  linktp);
-                    }
-                    linkInfo.setBroadcastState(LinkInfo.PortBroadcastState.PBS_FORWARD);
-                } else {
-                    if (log.isTraceEnabled()) {
-                        log.trace("detectLoopInCluster, root={}, mark " +
-                                  "link {} broadcast state to BLOCK",
-                                  HexString.toHexString(cluster.getId()),
-                                  linktp);
-                    }
-                    linkInfo.setBroadcastState(LinkInfo.PortBroadcastState.PBS_BLOCK);
-                }
-                writeLink(linktp, linkInfo);
-            }
-        }
     }
 
     protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, String dstMacAddress) {
@@ -672,6 +580,15 @@ public class TopologyImpl
         return Command.CONTINUE;
     }
 
+    protected ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info) {
+        if (info.getUnicastValidTime() != null) {
+            return ILinkDiscovery.LinkType.DIRECT_LINK;
+        } else if (info.getMulticastValidTime()  != null) {
+            return ILinkDiscovery.LinkType.MULTIHOP_LINK;
+        }
+        return ILinkDiscovery.LinkType.INVALID_LINK;
+    }
+    
     protected void addOrUpdateLink(LinkTuple lt, LinkInfo newLinkInfo) {
         lock.writeLock().lock();
         try {
@@ -756,12 +673,6 @@ public class TopologyImpl
                         newLinkInfo.getDstPortState().intValue() != oldLinkInfo.getDstPortState().intValue())
                     linkChanged = true;
 
-                if (!linkChanged) {
-                    // Keep the same broadcast state
-                    newLinkInfo.setBroadcastState(
-                                            oldLinkInfo.getBroadcastState());
-                }
-
                 // Write changes to storage. This will always write the updated
                 // valid time, plus the port states if they've changed (i.e. if
                 // they weren't set to null in the previous block of code.
@@ -785,8 +696,8 @@ public class TopologyImpl
             }
 
             if (linkChanged) {
-                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), updateOperation));
-                updateClusters();
+                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), getLinkType(lt, newLinkInfo), updateOperation));
+                //updateClusters();
             }
         } finally {
             lock.writeLock().unlock();
@@ -824,7 +735,7 @@ public class TopologyImpl
                 removeLinkFromBroadcastDomain(lt);
 
                 this.links.remove(lt);
-                updates.add(new Update(lt, 0, 0, UpdateOperation.REMOVE));
+                updates.add(new Update(lt, 0, 0, null, UpdateOperation.REMOVE));
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc().getSw().getId(),
@@ -923,7 +834,7 @@ public class TopologyImpl
             }
 
             if (topologyChanged) {
-                updateClusters();
+                //updateClusters();
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("handlePortStatus: Switch {} port #{} reason {};"+
@@ -977,7 +888,7 @@ public class TopologyImpl
                 // add all tuples with an endpoint on this switch to erase list
                 eraseList.addAll(switchLinks.get(sw));
                 deleteLinks(eraseList, "Switch Removed");
-                updateClusters();
+                //updateClusters();
             }
         } finally {
             lock.writeLock().unlock();
@@ -1034,7 +945,7 @@ public class TopologyImpl
             // if any link was deleted or any link was changed.
             if ((eraseList.size() > 0) || linkChanged) {
                 deleteLinks(eraseList, "LLDP timeout");
-                updateClusters();
+                //updateClusters();
             }
         } finally {
             lock.writeLock().unlock();
@@ -1052,59 +963,6 @@ public class TopologyImpl
         //if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue())
         //    return false;
         return true;
-    }
-
-    /**
-     * Sets the IFloodlightProvider for this TopologyImpl.
-     * @param floodlightProvider the floodlightProvider to set
-     */
-    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
-    }
-    
-    @Override
-    public boolean isInternal(IOFSwitch sw, short port) {
-        return isInternal(new SwitchPortTuple(sw, port));
-    }
-    
-    @Override
-    public boolean isInternal(SwitchPortTuple idPort) {
-        lock.readLock().lock();
-        boolean result = false;
-
-        // A SwitchPortTuple is internal if the switch is a core switch
-        // or the current switch and the switch connected on the switch
-        // port tuple are in the same cluster.
-
-        try {
-            // If it is a core switch, then return true
-            if (idPort.getSw().hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH))
-                result = true;
-
-            else {
-                if (portBroadcastDomainLinks.get(idPort) != null) {
-                    // There is at least one link here, so declare as not internal.
-                    return false;
-                }
-
-                Set<LinkTuple> ltSet = this.portLinks.get(idPort);
-                // The assumption is there could be at most two links for this
-                // switch port: one incoming and one outgoing to the same
-                // other switch.  So, verifying one of these two links is
-                // sufficient.
-                if (ltSet != null) {
-                    for(LinkTuple lt: ltSet) {
-                        Long c1 = lt.getSrc().getSw().getSwitchClusterId();
-                        Long c2 = lt.getDst().getSw().getSwitchClusterId();
-                        result = c1.equals(c2);
-                        break;
-                    }
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-        return result;
     }
 
     @Override
@@ -1155,33 +1013,6 @@ public class TopologyImpl
         return result;
     }
 
-    private boolean linkStpBlocked(LinkTuple tuple) {
-        LinkInfo linkInfo = links.get(tuple);
-        if (linkInfo == null)
-            return false;
-        return linkInfo.linkStpBlocked();
-    }
-
-    /**
-     * This function clusters and broadcast domains based on the links and switches
-     * identified thus far.  The function will set isTopologyValid flag to be true
-     * if the computation is successful, otherwise it will be set to false.
-     *
-     * TODO We may want to recompute updateOpenFlow clusters until it returns true.
-     */
-    protected void updateClusters() {
-        if (!lock.isWriteLockedByCurrentThread()) {
-            log.error("Expected lock in updateClusters()");
-            return;
-        }
-
-        isTopologyValid = false;
-        if (updateOpenFlowClusters()) {
-            updateBroadcastDomains();
-            isTopologyValid = true;
-        }
-    }
-
     protected void addLinkToBroadcastDomain(LinkTuple lt) {
         if (!portBroadcastDomainLinks.containsKey(lt.getSrc()))
             portBroadcastDomainLinks.put(lt.getSrc(), new HashSet<LinkTuple>());
@@ -1205,288 +1036,6 @@ public class TopologyImpl
             if (portBroadcastDomainLinks.get(lt.getDst()).isEmpty())
                 portBroadcastDomainLinks.remove(lt.getDst());
         }
-    }
-
-    /**
-     * @author Srinivasan Ramasubramanian
-     *
-     * This function computes the link aggregation groups.
-     * Switch ports that connect to  non-openflow domains are
-     * grouped together based on whether there's a broadcast
-     * leak from one to another or not.  We will currently
-     * ignore directionality of the links from the switch ports.
-     *
-     * Assuming link tuple as undirected, the goal is to simply
-     * compute connected components.
-     */
-    protected void updateBroadcastDomains() {
-        Map<SwitchPortTuple, Set<LinkTuple>> pbdLinks = getPortBroadcastDomainLinks();
-        Set<SwitchPortTuple> visitedSwt = new HashSet<SwitchPortTuple>();
-        Map<Long, BroadcastDomain> bdMap = new HashMap<Long, BroadcastDomain>();
-        Map<SwitchPortTuple, BroadcastDomain> spbdMap = new HashMap<SwitchPortTuple, BroadcastDomain>();
-        Map<Long, Set<Long>> scbdMap = new HashMap<Long, Set<Long>>();
-
-        // Do a breadth first search to get all the connected components
-        for(SwitchPortTuple swt: pbdLinks.keySet()) {
-            if (visitedSwt.contains(swt)) continue;
-
-            // create an array list and add the first switch port.
-            Queue<SwitchPortTuple> queue = new LinkedBlockingQueue<SwitchPortTuple>();
-            BroadcastDomain bd = new BroadcastDomain();
-            bd.setId(bdMap.size()+1);
-
-            // add the broadcast domain to the broadcast domain map
-            bdMap.put(new Long(bdMap.size()+1), bd);
-
-            visitedSwt.contains(swt);
-            queue.add(swt);
-            bd.add(swt);
-            while(queue.peek() != null) {
-                SwitchPortTuple currSwt = queue.remove();
-
-                for(LinkTuple lt: pbdLinks.get(currSwt)) {
-                    SwitchPortTuple otherSwt;
-                    if (lt.getSrc().equals(currSwt))
-                        otherSwt = lt.getDst();
-                    else otherSwt = lt.getSrc();
-
-                    if (visitedSwt.contains(otherSwt) == false) {
-                        queue.add(otherSwt);
-                        visitedSwt.add(otherSwt);
-                        bd.add(otherSwt);
-                        spbdMap.put(otherSwt, bd);
-                        if (scbdMap.get(otherSwt.getSw().getSwitchClusterId()) == null) {
-                            scbdMap.put(otherSwt.getSw().getSwitchClusterId(), new HashSet<Long>());
-                        }
-                        scbdMap.get(otherSwt.getSw().getSwitchClusterId()).add(bd.getId());
-                    }
-                }
-            }
-
-
-        }
-
-        //Replace the current broadcast domains in the topology.
-        broadcastDomainMap = bdMap;
-        switchPortBroadcastDomainMap = spbdMap;
-        switchClusterBroadcastDomainMap = scbdMap;
-
-        if (bdMap.isEmpty()) {
-            if (log.isTraceEnabled()) {
-                log.trace("No broadcast domains exist.");
-            }
-        } else {
-            log.warn("Broadcast domains found in the network.");
-            for(Long l: bdMap.keySet()) {
-                BroadcastDomain bd = bdMap.get(l);
-                log.warn(bd.toString());
-            }
-        }
-    }
-
-    /**
-     * @author Srinivasan Ramasubramanian
-     *
-     * This function divides the network into clusters. Every cluster is
-     * a strongly connected component. The network may contain unidirectional
-     * links.  The function calls dfsTraverse for performing depth first
-     * search and cluster formation.
-     *
-     * The computation of strongly connected components is based on
-     * Tarjan's algorithm.  For more details, please see the Wikipedia
-     * link below.
-     *
-     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
-     */
-    protected boolean updateOpenFlowClusters() {
-        // NOTE: This function assumes that the caller has already acquired
-        // a write lock on the "lock" data member.
-
-        if (log.isTraceEnabled()) {
-            log.trace("Computing topology cluster info");
-        }
-
-        // Initialize all the new structures.
-        switchClusterMap = new HashMap<IOFSwitch, SwitchCluster>();
-        clusters = new HashSet<SwitchCluster>();
-        Map<Long, IOFSwitch>  switches = floodlightProvider.getSwitches();
-        Map<IOFSwitch, ClusterDFS> dfsList = new HashMap<IOFSwitch, ClusterDFS>();
-
-        if (switches.keySet() != null) {
-            for (Long key: switches.keySet()) {
-                IOFSwitch sw = switches.get(key);
-                ClusterDFS cdfs = new ClusterDFS();
-                dfsList.put(sw, cdfs);
-            }
-
-            // Get a set of switch keys in a set
-            Set<IOFSwitch> currSet = new HashSet<IOFSwitch>();
-
-            for (Long key: switches.keySet()) {
-                IOFSwitch sw = switches.get(key);
-                ClusterDFS cdfs = dfsList.get(sw);
-                if (cdfs == null) {
-                    log.error("Do DFS object for key found.");
-                }else if (!cdfs.isVisited()) {
-                    if (this.dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters) < 0) return false;
-                }
-            }
-        }
-
-        updates.add(new Update(UpdateOperation.CLUSTER_MERGED));
-        return true;
-    }
-
-    /**
-     * @author Srinivasan Ramasubramanian
-     *
-     * This algorithm computes the depth first search (DFS) travesral of the
-     * switches in the network, computes the lowpoint, and creates clusters
-     * (of strongly connected components).
-     *
-     * The computation of strongly connected components is based on
-     * Tarjan's algorithm.  For more details, please see the Wikipedia
-     * link below.
-     *
-     * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
-     *
-     * The initialization of lowpoint and the check condition for when a
-     * cluster should be formed is modified as we do not remove switches that
-     * are already part of a cluster.
-     *
-     * A return value of -1 indicates that dfsTraverse failed somewhere in the middle
-     * of computation.  This could happen when a switch is removed during the cluster
-     * computation procedure.
-     *
-     * @param parentIndex: DFS index of the parent node
-     * @param currIndex: DFS index to be assigned to a newly visited node
-     * @param currSw: Object for the current switch
-     * @param switches: HashMap of switches in the network.
-     * @param dfsList: HashMap of DFS data structure for each switch
-     * @param currSet: Set of nodes in the current cluster in formation
-     * @param clusters: Set of already formed clusters
-     * @return long: DSF index to be used when a new node is visited
-     */
-    protected long dfsTraverse (long parentIndex, long currIndex,
-            IOFSwitch currSw, Map<Long, IOFSwitch> switches,
-            Map<IOFSwitch, ClusterDFS> dfsList, Set <IOFSwitch> currSet,
-            Set <SwitchCluster> clusters) {
-
-        //Get the DFS object corresponding to the current switch
-        ClusterDFS currDFS = dfsList.get(currSw);
-        // Get all the links corresponding to this switch
-        Set<LinkTuple> ltSet = switchLinks.get(currSw);
-
-        //Assign the DFS object with right values.
-        currDFS.setVisited(true);
-        currDFS.setDfsIndex(currIndex);
-        currDFS.setParentDFSIndex(parentIndex);
-        currIndex++;
-
-        // Traverse the graph through every outgoing link.
-        if (ltSet != null) {
-            for(LinkTuple lt: ltSet) {
-                IOFSwitch dstSw = lt.getDst().getSw();
-                LinkInfo info = links.get(lt);
-
-                if (dstSw == null) return -1;
-
-                // ignore incoming links.
-                if (dstSw == currSw) continue;
-
-                // ignore outgoing links if it is blocked.
-                if (linkStpBlocked(lt)) continue;
-
-                // ignore this link if it is in broadcast domain
-                if (info.getUnicastValidTime() == null) continue;
-
-                // Get the DFS object corresponding to the dstSw
-                ClusterDFS dstDFS = dfsList.get(dstSw);
-
-                if (dstDFS == null) return -1;
-
-                if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
-                    // could be a potential lowpoint
-                    if (dstDFS.getDfsIndex() < currDFS.getLowpoint())
-                        currDFS.setLowpoint(dstDFS.getDfsIndex());
-
-                } else if (!dstDFS.isVisited()) {
-                    // make a DFS visit
-                    currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                            switches, dfsList, currSet, clusters);
-
-                    if (currIndex < 0) return -1;
-
-                    // update lowpoint after the visit
-                    if (dstDFS.getLowpoint() < currDFS.getLowpoint())
-                        currDFS.setLowpoint(dstDFS.getLowpoint());
-                }
-                // else, it is a node already visited with a higher
-                // dfs index, just ignore.
-            }
-        }
-
-        // Add current node to currSet.
-        currSet.add(currSw);
-
-        // Cluster computation.
-        // If the node's lowpoint is greater than its parent's DFS index,
-        // we need to form a new cluster with all the switches in the
-        // currSet.
-        if (currDFS.getLowpoint() > currDFS.getParentDFSIndex()) {
-            // The cluster thus far forms a strongly connected component.
-            // create a new switch cluster and the switches in the current
-            // set to the switch cluster.
-            SwitchCluster sc = new SwitchCluster(this);
-            for(IOFSwitch sw: currSet){
-                sc.add(sw);
-                switchClusterMap.put(sw, sc);
-            }
-            // delete all the nodes in the current set.
-            currSet.clear();
-            // add the newly formed switch clusters to the cluster set.
-            clusters.add(sc);
-        }
-
-        return currIndex;
-    }
-
-    public Set<IOFSwitch> getSwitchesInCluster(IOFSwitch sw) {
-        SwitchCluster cluster = switchClusterMap.get(sw);
-        if (cluster == null){
-            return null;
-        }
-        return cluster.getSwitches();
-    }
-
-    /**
-     * Returns the SwitchCluster that contains the switch.
-     * @param sw The IOFSwitch to get
-     * @return The SwitchCluster that it is part of
-     */
-    public SwitchCluster getSwitchCluster(IOFSwitch sw) {
-        return switchClusterMap.get(sw);
-    }
-
-    @Override
-    public boolean inSameCluster(Long switch1, Long switch2) {
-        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
-        IOFSwitch sw1 = switches.get(switch1);
-        IOFSwitch sw2 = switches.get(switch2);
-        if (sw1 == null || sw2 == null) return false;
-
-        if (switchClusterMap != null) {
-            lock.readLock().lock();
-            try {
-                SwitchCluster cluster1 = switchClusterMap.get(sw1);
-                SwitchCluster cluster2 = switchClusterMap.get(sw2);
-                return (cluster1 != null) && (cluster1 == cluster2);
-            }
-            finally {
-                lock.readLock().unlock();
-            }
-        }
-        return false;
     }
 
     // STORAGE METHODS
@@ -1522,7 +1071,7 @@ public class TopologyImpl
             String srcDpid = lt.getSrc().getSw().getStringId();
             rowValues.put(LINK_SRC_SWITCH, srcDpid);
             rowValues.put(LINK_SRC_PORT, lt.getSrc().getPort());
-            if (linkInfo.isBroadcastBlocked()) {
+            if (linkInfo.linkStpBlocked()) {
                 if (log.isTraceEnabled()) {
                     log.trace("writeLink, link {}, info {}, srcPortState Blocked",
                               lt, linkInfo);
@@ -1537,7 +1086,7 @@ public class TopologyImpl
             String dstDpid = lt.getDst().getSw().getStringId();
             rowValues.put(LINK_DST_SWITCH, dstDpid);
             rowValues.put(LINK_DST_PORT, lt.getDst().getPort());
-            if (linkInfo.isBroadcastBlocked()) {
+            if (linkInfo.linkStpBlocked()) {
                 if (log.isTraceEnabled()) {
                     log.trace("writeLink, link {}, info {}, dstPortState Blocked",
                               lt, linkInfo);
@@ -1591,7 +1140,7 @@ public class TopologyImpl
             if (linkInfo.getUnicastValidTime() != null)
                 rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
             if (linkInfo.getSrcPortState() != null) {
-                if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
+                if (linkInfo != null && linkInfo.linkStpBlocked()) {
                     if (log.isTraceEnabled()) {
                         log.trace("writeLinkInfo, link {}, info {}, srcPortState Blocked",
                                   lt, linkInfo);
@@ -1607,7 +1156,7 @@ public class TopologyImpl
                 }
             }
             if (linkInfo.getDstPortState() != null) {
-                if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
+                if (linkInfo != null && linkInfo.linkStpBlocked()) {
                     if (log.isTraceEnabled()) {
                         log.trace("writeLinkInfo, link {}, info {}, dstPortState Blocked",
                                   lt, linkInfo);
@@ -1640,7 +1189,7 @@ public class TopologyImpl
         linkDiscoveryAware.add(listener);
     }
     
-    @Override
+//    @Override
     public void addListener(ITopologyListener listener) {
         topologyAware.add(listener);
     }
@@ -1701,7 +1250,7 @@ public class TopologyImpl
     /**
      * @param routingEngine the storage source to use for persisting link info
      */
-    public void setRoutingEngine(IRoutingEngineService routingEngine) {
+    public void setRoutingEngine(IRoutingService routingEngine) {
         this.routingEngine = routingEngine;
     }
 
@@ -1778,7 +1327,7 @@ public class TopologyImpl
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ILinkDiscoveryService.class);
-        l.add(ITopologyService.class);
+        //l.add(ITopologyService.class);
         return l;
     }
 
@@ -1791,7 +1340,7 @@ public class TopologyImpl
                         IFloodlightService>();
         // We are the class that implements the service
         m.put(ILinkDiscoveryService.class, this);
-        m.put(ITopologyService.class, this);
+        //m.put(ITopologyService.class, this);
         
         return m;
     }
@@ -1802,7 +1351,7 @@ public class TopologyImpl
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
-        l.add(IRoutingEngineService.class);
+        l.add(IRoutingService.class);
         l.add(IRestApiService.class);
         return l;
     }
@@ -1812,7 +1361,7 @@ public class TopologyImpl
                       throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
-        routingEngine = context.getServiceImpl(IRoutingEngineService.class);
+        routingEngine = context.getServiceImpl(IRoutingService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         
         // We create this here because there is no ordering guarantee
@@ -1988,19 +1537,17 @@ public class TopologyImpl
         evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
     }
 
-	@Override
-	public Map<String, Object> getInfo(String type) {
-		if (!"summary".equals(type)) return null;
-		
-		Map<String, Object> info = new HashMap<String, Object>();
-		info.put("# switch clusters", clusters.size());
-		info.put("# switches", switchClusterMap.size());
-		
-		int num_links = 0;
-		for (Set<LinkTuple> links : switchLinks.values())
-			num_links += links.size();
-		info.put("# inter-switch links", num_links / 2);
-		
-		return info;
-	}
+    @Override
+    public Map<String, Object> getInfo(String type) {
+        if (!"summary".equals(type)) return null;
+
+        Map<String, Object> info = new HashMap<String, Object>();
+
+        int num_links = 0;
+        for (Set<LinkTuple> links : switchLinks.values())
+            num_links += links.size();
+        info.put("# inter-switch links", num_links / 2);
+
+        return info;
+    }
 }

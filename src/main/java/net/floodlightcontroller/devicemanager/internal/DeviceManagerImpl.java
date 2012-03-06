@@ -437,10 +437,11 @@ public class DeviceManagerImpl implements
     // *****************
     // ITopologyListener
     // *****************
-    
+
     @Override
-    public void clusterMerged() {
+    public void toplogyChanged() {
         // TODO Auto-generated method stub
+        
     }
     
     // *****************
@@ -648,7 +649,7 @@ public class DeviceManagerImpl implements
             return null;
 
         boolean learnap = true;
-        if (topology.isInternal(sw, (short)port) ||
+        if (topology.isInternal(sw.getId(), (short)port) ||
             !isValidInputPort((short)port)) {
             // If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
@@ -1189,5 +1190,4 @@ public class DeviceManagerImpl implements
         if (switchPort != null) keys.add(DeviceField.PORT);
         return keys;
     }
-    
 }

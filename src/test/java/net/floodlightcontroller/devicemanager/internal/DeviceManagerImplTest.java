@@ -17,14 +17,11 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.List;
-
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createStrictMock;
 import static org.easymock.EasyMock.expect;
@@ -349,7 +346,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getStringId()).
             andReturn("00:00:00:00:00:00:00:01").anyTimes();
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(mockSwitch, 
+        expect(mockTopology.isInternal(1L, 
                                        (short)1)).andReturn(false).anyTimes();
         deviceManager.topology = mockTopology;
 
@@ -407,7 +404,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getId()).andReturn(2L).anyTimes();
         expect(mockSwitch.getStringId()).
             andReturn("00:00:00:00:00:00:00:02").anyTimes();
-        expect(mockTopology.isInternal(mockSwitch, (short)2)).andReturn(false);
+        expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
         expect(mockTopology.inSameCluster(1L, 2L)).andReturn(true);
         
         // Start recording the replay on the mocks
@@ -444,9 +441,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockSwitch.getPort((short)1)).andReturn(port1).anyTimes();
         expect(mockSwitch.getPort((short)2)).andReturn(port2).anyTimes();
-        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
+        expect(mockTopology.isInternal(1L, (short)1))
                            .andReturn(false).atLeastOnce();
-        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))
+        expect(mockTopology.isInternal(1L, (short)2))
                            .andReturn(false).atLeastOnce();
         deviceManager.setTopology(mockTopology);
 
@@ -533,9 +530,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1)))
+        expect(mockTopology.isInternal(1L, (short)1))
                            .andReturn(false).atLeastOnce();
-        expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 2)))
+        expect(mockTopology.isInternal(1L, (short)2))
                            .andReturn(false).atLeastOnce();
         deviceManager.setTopology(mockTopology);
 

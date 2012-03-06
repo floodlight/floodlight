@@ -226,20 +226,7 @@ public interface IOFSwitch {
      * Returns a COPY of the switch's macVlanPortMap, CAN be null.
      */
     public Map<MacVlanPair,Short> getMacVlanToPortMap();
-    
-    /**
-     * Set the {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
-     * ID that this switch is connected to.
-     * @param id The SwitchCluster ID
-     */
-    public void setSwitchClusterId(Long id);
-    
-    /**
-     * Get the {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
-     * ID that this switch is connected to.
-     */
-    public Long getSwitchClusterId();
-    
+
     /**
      * Check if the switch is still connected;
      * Only call while holding processMessageLock

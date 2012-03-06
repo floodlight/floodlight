@@ -40,10 +40,9 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.IRoutingEngineService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
-import net.floodlightcontroller.topology.LinkInfo;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
@@ -90,7 +89,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             IDevice srcDevice =
                     IDeviceManagerService.fcStore.
                         get(cntx, IDeviceManagerService.CONTEXT_SRC_DEVICE);
-            Long srcIsland = sw.getSwitchClusterId();
+            Long srcIsland = topology.getSwitchClusterId(sw.getId());
             
             if (srcDevice == null) {
                 log.error("No device entry found for source device");
@@ -108,11 +107,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             boolean on_same_if = false;
             for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
                 long dstSwDpid = dstDap.getSwitchDPID();
-                IOFSwitch dstSw = 
-                        floodlightProvider.getSwitches().get(dstSwDpid);
-                if (dstSw == null)
-                    continue;
-                Long dstIsland = dstSw.getSwitchClusterId();
+                Long dstIsland = topology.getSwitchClusterId(dstSwDpid);
                 if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                     on_same_island = true;
                     if ((sw.getId() == dstSwDpid) &&
@@ -151,27 +146,23 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             Arrays.sort(dstDaps, clusterIdComparator);
 
             int iSrcDaps = 0, iDstDaps = 0;
-            Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
             
             while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
                 SwitchPort srcDap = srcDaps[iSrcDaps];
                 SwitchPort dstDap = dstDaps[iDstDaps];
-                IOFSwitch srcSw = switches.get(srcDap.getSwitchDPID());
-                IOFSwitch dstSw = switches.get(dstDap.getSwitchDPID());
-                Long srcCluster = null;
-                Long dstCluster = null;
-                if ((srcSw != null) && (dstSw != null)) {
-                    srcCluster = srcSw.getSwitchClusterId();
-                    dstCluster = dstSw.getSwitchClusterId();
-                }
+                Long srcCluster = 
+                        topology.getSwitchClusterId(srcDap.getSwitchDPID());
+                Long dstCluster = 
+                        topology.getSwitchClusterId(dstDap.getSwitchDPID());
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
                     if (!srcDap.equals(dstDap) && 
                         (srcCluster != null) && 
                         (dstCluster != null)) {
-                        Route route = routingEngine.getRoute(srcSw.getId(), 
-                                                             dstSw.getId());
+                        Route route = 
+                                routingEngine.getRoute(srcDap.getSwitchDPID(), 
+                                                       dstDap.getSwitchDPID());
                         if ((route != null) || validLocalHop(srcDap, dstDap)) {
                             int bufferId = OFPacketOut.BUFFER_ID_NONE;
                             if (log.isTraceEnabled()) {
@@ -211,22 +202,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param decision The Forwarding decision
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
-    protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {               
-        SwitchPortTuple srcSwTuple = new SwitchPortTuple(sw, pi.getInPort());
-        LinkInfo linkInfo = topology.getLinkInfo(srcSwTuple, false);
-        if (log.isTraceEnabled()) {
-            log.trace("doFlood pi={} srcSwitchTuple={}, link={}",
-                      new Object[] { pi, srcSwTuple, linkInfo});
+    protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+        SwitchPortTuple srcSwTuple =  new SwitchPortTuple(sw, pi.getInPort());
+        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw.getId(),pi.getInPort()) == false) {
+            if (log.isTraceEnabled()) {
+                log.trace("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
+                         "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple});
+            }
         }
 
-        if (linkInfo != null && linkInfo.isBroadcastBlocked()) {
-            if (log.isDebugEnabled()) {
-                log.debug("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
-                         "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple, linkInfo});
-            }
-            return;
-        }
-        
         // Set Action to flood
         OFPacketOut po = 
             (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
@@ -300,8 +284,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IDeviceManagerService.class);
-        l.add(IRoutingEngineService.class);
-        l.add(ILinkDiscoveryService.class);
+        l.add(IRoutingService.class);
+        l.add(ITopologyService.class);
         l.add(ICounterStoreService.class);
         return l;
     }
@@ -310,8 +294,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
         this.setDeviceManager(context.getServiceImpl(IDeviceManagerService.class));
-        this.setRoutingEngine(context.getServiceImpl(IRoutingEngineService.class));
-        this.setTopology(context.getServiceImpl(ILinkDiscoveryService.class));
+        this.setRoutingEngine(context.getServiceImpl(IRoutingService.class));
+        this.setTopology(context.getServiceImpl(ITopologyService.class));
         this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));
     }
 
