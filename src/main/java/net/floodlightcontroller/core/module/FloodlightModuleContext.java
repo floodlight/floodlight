@@ -72,6 +72,7 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	public void createConfigMaps(Set<IFloodlightModule> moduleSet) {
 	    for (IFloodlightModule mod : moduleSet) {
 	        Map<String, String> moduleParams = new HashMap<String, String>();
+	        System.out.println();
 	        configParams.put(mod.getClass(), moduleParams);
 	    }
 	}
