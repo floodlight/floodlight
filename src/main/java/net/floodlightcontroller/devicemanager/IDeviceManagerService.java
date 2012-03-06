@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager;
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.Iterator;
 
 import net.floodlightcontroller.core.FloodlightContextStore;
@@ -121,11 +122,11 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param unique set to true if only the set of fields specified should be
      * unique.  If multiple devices would match the field, the devices will be
      * updated so that only one will match. 
-     * @param fields the set of fields on which to index
+     * @param keyFields the set of fields on which to index
      */
     public void addIndex(boolean perClass,
                          boolean unique,
-                         DeviceField... fields);
+                         EnumSet<DeviceField> keyFields);
     
     /**
      * Find devices that match the provided query.  Any fields that are

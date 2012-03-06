@@ -18,9 +18,8 @@
 package net.floodlightcontroller.devicemanager;
 
 import java.util.Collection;
-import java.util.Set;
-
-import net.floodlightcontroller.devicemanager.internal.Device;
+import java.util.EnumSet;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.internal.Entity;
 
 /**
@@ -67,7 +66,7 @@ public interface IEntityClassifier {
     * @see {@link IEntityClass#getKeyFields()}
     * @see {@link IEntityClassifier#classifyEntity}
     */
-   Set<IDeviceManagerService.DeviceField> getKeyFields();
+   EnumSet<DeviceField> getKeyFields();
 
    /**
     * Reclassify the given entity into a class.  When reclassifying entities,
@@ -84,7 +83,7 @@ public interface IEntityClassifier {
     * @param entity the entity to reclassify
     * @return the IEntityClass resulting from the classification
     */
-   Collection<IEntityClass> reclassifyEntity(Device curDevice,
+   Collection<IEntityClass> reclassifyEntity(IDevice curDevice,
                                              Entity entity);
 
    /**
@@ -99,7 +98,8 @@ public interface IEntityClassifier {
     * @param newDevices all the new devices derived from the entities of the
     * old device.  If null, the old device was unchanged.
     */
-   void deviceUpdate(Device oldDevice, Collection<Device> newDevices);
+   void deviceUpdate(IDevice oldDevice, 
+                     Collection<? extends IDevice> newDevices);
 
 }
 

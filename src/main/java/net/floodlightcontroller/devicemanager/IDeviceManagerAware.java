@@ -51,7 +51,7 @@ public interface IDeviceManagerAware {
      * 
      * @param device the device that changed
      */
-    public void deviceNetworkAddressChanged(IDevice device);
+    public void deviceIPV4AddrChanged(IDevice device);
     
     /**
      * Called when a VLAN tag for the device has been added or removed

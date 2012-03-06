@@ -211,7 +211,17 @@ public class Entity implements Comparable<Entity> {
             r = 1;
         else
             r = switchPort.compareTo(o.switchPort);
-        return r;
+        if (r != 0) return r;
+
+        if (lastSeenTimestamp == null)
+            r = o.lastSeenTimestamp == null ? 0 : -1;
+        else if (o.lastSeenTimestamp == null)
+            r = 1;
+        else
+            r = lastSeenTimestamp.compareTo(o.lastSeenTimestamp);
+        if (r != 0) return r;
+
+        return 0;
     }
     
 }

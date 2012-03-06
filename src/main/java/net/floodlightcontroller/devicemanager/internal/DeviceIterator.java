@@ -21,14 +21,13 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 
 /**
  * An iterator for handling device queries
  */
-public class DeviceIterator implements Iterator<IDevice> {
+public class DeviceIterator implements Iterator<Device> {
     private Iterator<Device> subIterator;
 
     private IEntityClass[] entityClasses;
@@ -131,9 +130,9 @@ public class DeviceIterator implements Iterator<IDevice> {
     }
 
     @Override
-    public IDevice next() {
+    public Device next() {
         if (hasNext()) {
-            IDevice cur = next;
+            Device cur = next;
             next = null;
             return cur;
         }

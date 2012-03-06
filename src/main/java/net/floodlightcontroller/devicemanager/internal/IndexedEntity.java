@@ -1,6 +1,9 @@
 package net.floodlightcontroller.devicemanager.internal;
 
+import java.util.EnumSet;
+
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 
 /**
  * This is a thin wrapper around {@link Entity} that allows overriding
@@ -9,7 +12,7 @@ import net.floodlightcontroller.devicemanager.IDeviceManagerService;
  * @author readams
  */
 public class IndexedEntity {
-    protected IDeviceManagerService.DeviceField[] keyFields;
+    protected EnumSet<DeviceField> keyFields;
     protected Entity entity;
     private int hashCode = 0;
     
@@ -20,19 +23,45 @@ public class IndexedEntity {
      * {@link IndexedEntity#hashCode()} and {@link IndexedEntity#equals(Object)}
      * @param entity the entity to wrap
      */
-    public IndexedEntity(IDeviceManagerService.DeviceField[] keyFields, Entity entity) {
+    public IndexedEntity(EnumSet<DeviceField> keyFields, Entity entity) {
         super();
         this.keyFields = keyFields;
         this.entity = entity;
     }
 
+    /**
+     * Check whether this entity has non-null values in any of its key fields
+     * @return true if any key fields have a non-null value
+     */
+    public boolean hasNonNullKeys() {
+        for (DeviceField f : keyFields) {
+            switch (f) {
+                case MAC:
+                    return true;
+                case IPV4:
+                    if (entity.ipv4Address != null) return true;
+                    break;
+                case SWITCH:
+                    if (entity.switchDPID != null) return true;
+                    break;
+                case PORT:
+                    if (entity.switchPort != null) return true;
+                    break;
+                case VLAN:
+                    if (entity.vlan != null) return true;
+                    break;
+            }
+        }
+        return false;
+    }
+    
     @Override
     public int hashCode() {
         if (hashCode != 0) return hashCode;
 
         final int prime = 31;
         hashCode = 1;
-        for (IDeviceManagerService.DeviceField f : keyFields) {
+        for (DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode

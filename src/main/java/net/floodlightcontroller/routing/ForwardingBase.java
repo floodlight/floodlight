@@ -478,7 +478,7 @@ public abstract class ForwardingBase implements
     }
 
     @Override
-    public void deviceNetworkAddressChanged(IDevice device) {
+    public void deviceIPV4AddrChanged(IDevice device) {
 
     }
 

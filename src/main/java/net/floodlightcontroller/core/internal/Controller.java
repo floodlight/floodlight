@@ -874,7 +874,7 @@ public class Controller
 
     @Override
     public Map<Long, IOFSwitch> getSwitches() {
-        return this.switches;
+        return Collections.unmodifiableMap(this.switches);
     }
 
     @Override

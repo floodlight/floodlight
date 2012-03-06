@@ -17,10 +17,11 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 
+import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
@@ -50,8 +51,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     
     public static Collection<IEntityClass> entityClasses;
     static {
-        entityClasses = new ArrayList<IEntityClass>(1);
-        entityClasses.add(entityClass);
+        entityClasses = Arrays.asList(entityClass);
     }
 
     @Override
@@ -60,14 +60,14 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
 
     @Override
-    public Collection<IEntityClass> reclassifyEntity(Device curDevice,
+    public Collection<IEntityClass> reclassifyEntity(IDevice curDevice,
                                                      Entity entity) {
         return entityClasses;
     }
 
     @Override
-    public void deviceUpdate(Device oldDevice, 
-                             Collection<Device> newDevices) {
+    public void deviceUpdate(IDevice oldDevice, 
+                             Collection<? extends IDevice> newDevices) {
         // no-op
     }
 

@@ -204,10 +204,10 @@ public class Device implements IDevice {
     /**
      * Check whether the device contains the specified entity
      * @param entity the entity to search for
-     * @return true if the entity is in the device, or false otherwise
+     * @return true the index of the entity, or <0 if not found
      */
-    public boolean containsEntity(Entity entity) {
-        return (0 <= Arrays.binarySearch(entities, entity));
+    public int containsEntity(Entity entity) {
+        return Arrays.binarySearch(entities, entity);
     }
     
     // ******
