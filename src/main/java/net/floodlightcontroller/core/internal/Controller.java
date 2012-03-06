@@ -161,7 +161,7 @@ public class Controller
     // Configuration options
     protected int openFlowPort = 6633;
     protected long ptWarningThresholdInNano;
-    protected int workerThreads;
+    protected int workerThreads = 0;
     
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
@@ -1569,7 +1569,7 @@ public class Controller
      */
     public void run() {
         try {            
-           final ServerBootstrap bootstrap = createServerBootStrap(workerThreads);
+           final ServerBootstrap bootstrap = createServerBootStrap();
 
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
@@ -1615,8 +1615,8 @@ public class Controller
         }
     }
 
-    private ServerBootstrap createServerBootStrap(int threads) {
-        if (threads == 0) {
+    private ServerBootstrap createServerBootStrap() {
+        if (workerThreads == 0) {
             return new ServerBootstrap(
                     new NioServerSocketChannelFactory(
                             Executors.newCachedThreadPool(),
@@ -1625,8 +1625,21 @@ public class Controller
             return new ServerBootstrap(
                     new NioServerSocketChannelFactory(
                             Executors.newCachedThreadPool(),
-                            Executors.newCachedThreadPool(), threads));
+                            Executors.newCachedThreadPool(), workerThreads));
         }
+    }
+    
+    public void setConfigParams(Map<String, String> configParams) {
+        String ofPort = configParams.get("openflowport");
+        if (ofPort != null) {
+            this.openFlowPort = Integer.parseInt(ofPort);
+        }
+        log.info("OpenFlow port set to {}", this.openFlowPort);
+        String threads = configParams.get("workerthreads");
+        if (threads != null) {
+            this.workerThreads = Integer.parseInt(threads);
+        }
+        log.info("Number of worker threads port set to {}", this.workerThreads);
     }
 
     private void initVendorMessages() {
@@ -1650,7 +1663,7 @@ public class Controller
     /**
      * Initialize internal data structures
      */
-    public void init() {
+    public void init(Map<String, String> configParams) {
         // These data structures are initialized here because other
         // module's startUp() might be called before ours
         this.messageListeners =
@@ -1663,6 +1676,7 @@ public class Controller
         this.updates = new LinkedBlockingQueue<Update>();
         this.factory = new BasicFactory();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
+        setConfigParams(configParams);
         this.setRole(getInitialRole());
         initVendorMessages();
     }
@@ -1707,11 +1721,6 @@ public class Controller
        
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
-    }
-    
-    @Override
-    public void setCmdLineOptions(CmdLineSettings settings) {
-        this.openFlowPort = settings.getOpenFlowPort();
     }
 
 	@Override

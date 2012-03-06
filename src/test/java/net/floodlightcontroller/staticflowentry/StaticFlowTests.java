@@ -23,7 +23,9 @@ import org.openflow.util.HexString;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.restserver.RestApiServer;
@@ -176,6 +178,9 @@ public class StaticFlowTests extends FloodlightTestCase {
         
         staticFlowEntryPusher.setStorageSource(storage);
         
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        Set<IFloodlightModule> modSet = new HashSet<IFloodlightModule>();
+        
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
         Map<Long, IOFSwitch> switchMap = new HashMap<Long, IOFSwitch>();
         switchMap.put(dpid, mockSwitch);
@@ -183,8 +188,10 @@ public class StaticFlowTests extends FloodlightTestCase {
         mockFloodlightProvider.setSwitches(switchMap);
         staticFlowEntryPusher.setFloodlightProvider(mockFloodlightProvider);
         RestApiServer restApi = new RestApiServer();
+        modSet.add(restApi);
+        fmc.createConfigMaps(modSet);
         try {
-            restApi.init(null);
+            restApi.init(fmc);
         } catch (FloodlightModuleException e) {
             e.printStackTrace();
         }
