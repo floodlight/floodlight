@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.topology.internal;
+package net.floodlightcontroller.linkdiscovery.internal;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -49,6 +49,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.LinkInfo;
+import net.floodlightcontroller.linkdiscovery.LinkTuple;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
+import net.floodlightcontroller.linkdiscovery.web.TopologyWebRoutable;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -61,14 +68,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
-import net.floodlightcontroller.topology.ILinkDiscovery;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
-import net.floodlightcontroller.topology.ILinkDiscoveryListener;
 import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.LinkInfo;
-import net.floodlightcontroller.topology.LinkTuple;
-import net.floodlightcontroller.topology.SwitchPortTuple;
-import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
 
@@ -111,11 +111,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class TopologyImpl
+public class LinkDiscoveryManager
         implements IOFMessageListener, IOFSwitchListener, 
                    IStorageSourceListener, ILinkDiscoveryService,
                    IFloodlightModule, IInfoProvider {
-    protected static Logger log = LoggerFactory.getLogger(TopologyImpl.class);
+    protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
     private static final String LINK_TABLE_NAME = "controller_link";

@@ -31,9 +31,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.util.HexString;
 

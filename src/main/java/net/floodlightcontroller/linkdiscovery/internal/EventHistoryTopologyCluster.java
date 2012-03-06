@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topology.internal;
+package net.floodlightcontroller.linkdiscovery.internal;
 
 /***
  * Topology Cluster merge/split event history related classes and members

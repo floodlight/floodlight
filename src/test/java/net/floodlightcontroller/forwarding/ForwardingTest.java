@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -48,7 +49,6 @@ import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.SwitchPortTuple;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;

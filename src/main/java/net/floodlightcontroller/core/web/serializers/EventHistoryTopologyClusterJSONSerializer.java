@@ -2,7 +2,7 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import net.floodlightcontroller.topology.internal.EventHistoryTopologyCluster;
+import net.floodlightcontroller.linkdiscovery.internal.EventHistoryTopologyCluster;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;

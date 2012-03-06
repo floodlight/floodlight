@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topology.web;
+package net.floodlightcontroller.linkdiscovery.web;
 
 import org.restlet.Context;
 import org.restlet.Restlet;

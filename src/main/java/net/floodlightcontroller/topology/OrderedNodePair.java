@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topologymanager;
+package net.floodlightcontroller.topology;
 
 public class OrderedNodePair {
     private long src;

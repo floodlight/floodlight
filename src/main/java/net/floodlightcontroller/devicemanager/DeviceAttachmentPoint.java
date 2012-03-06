@@ -18,7 +18,7 @@
 package net.floodlightcontroller.devicemanager;
 import java.util.Date;
 
-import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 
 public class DeviceAttachmentPoint {
     private SwitchPortTuple switchPort;

@@ -22,7 +22,7 @@ import java.util.List;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.devicemanager.Device;
-import net.floodlightcontroller.topology.SwitchPortTuple;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 
 public interface IRoutingDecision {
     public enum RoutingAction {

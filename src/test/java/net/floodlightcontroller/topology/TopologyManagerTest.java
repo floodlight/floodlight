@@ -1,9 +1,10 @@
-package net.floodlightcontroller.topologymanager;
+package net.floodlightcontroller.topology;
 
 import static org.junit.Assert.*;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.topology.ILinkDiscovery;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.topology.TopologyManager;
 
 import org.junit.Before;
 import org.junit.Test;

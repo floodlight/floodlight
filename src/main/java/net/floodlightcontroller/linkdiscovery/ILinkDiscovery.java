@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topology;
+package net.floodlightcontroller.linkdiscovery;
 
 public interface ILinkDiscovery {
     public enum LinkType {
