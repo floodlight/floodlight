@@ -2,7 +2,7 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import net.floodlightcontroller.topology.LinkTuple;
+import net.floodlightcontroller.linkdiscovery.LinkTuple;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;

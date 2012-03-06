@@ -43,7 +43,6 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -203,11 +202,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        SwitchPortTuple srcSwTuple =  new SwitchPortTuple(sw, pi.getInPort());
-        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw.getId(),pi.getInPort()) == false) {
+        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw.getId(),
+                                                            pi.getInPort()) == false) {
             if (log.isTraceEnabled()) {
-                log.trace("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
-                         "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple});
+                log.trace("doFlood, drop broadcast packet, pi={}, " + 
+                          "from a blocked port, srcSwitch=[{},{}], linkInfo={}",
+                          new Object[] {pi, sw.getId(),pi.getInPort()});
             }
         }
 

@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topology.internal;
+package net.floodlightcontroller.linkdiscovery.internal;
 
 /***
  * Topology Switch event history related classes and members

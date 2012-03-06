@@ -2,8 +2,8 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
+import net.floodlightcontroller.linkdiscovery.internal.EventHistoryTopologySwitch;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.topology.internal.EventHistoryTopologySwitch;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;

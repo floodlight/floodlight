@@ -39,7 +39,6 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.SwitchPortTuple;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -354,15 +353,17 @@ public abstract class ForwardingBase implements
 
     public static boolean
             blockHost(IFloodlightProviderService floodlightProvider,
-                      SwitchPortTuple sw_tup, long host_mac,
+                      SwitchPort sw_tup, long host_mac,
                       short hardTimeout) {
 
-        if ((sw_tup == null) || sw_tup.getSw() == null) {
+        if (sw_tup == null) {
             return false;
         }
 
-        IOFSwitch sw = sw_tup.getSw();
-        short inputPort = sw_tup.getPort().shortValue();
+        IOFSwitch sw = 
+                floodlightProvider.getSwitches().get(sw_tup.getSwitchDPID());
+        if (sw == null) return false;
+        int inputPort = sw_tup.getPort();
         log.debug("blockHost sw={} port={} mac={}",
                   new Object[] { sw, sw_tup.getPort(), new Long(host_mac) });
 
@@ -374,7 +375,7 @@ public abstract class ForwardingBase implements
         List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
                                                             // drop
         match.setDataLayerSource(Ethernet.toByteArray(host_mac))
-             .setInputPort(inputPort)
+             .setInputPort((short)inputPort)
              .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
                      & ~OFMatch.OFPFW_IN_PORT);
         fm.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))

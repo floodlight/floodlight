@@ -1,10 +1,10 @@
-package net.floodlightcontroller.topology.web;
+package net.floodlightcontroller.linkdiscovery.web;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
-import net.floodlightcontroller.topology.LinkTuple;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.LinkTuple;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;

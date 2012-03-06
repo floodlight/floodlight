@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.topology.internal;
+package net.floodlightcontroller.linkdiscovery.internal;
 
 import static org.easymock.EasyMock.*;
 
@@ -31,17 +31,18 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.LinkInfo;
+import net.floodlightcontroller.linkdiscovery.LinkTuple;
+import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.ILinkDiscoveryListener;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.LinkInfo;
-import net.floodlightcontroller.topology.LinkTuple;
-import net.floodlightcontroller.topologymanager.TopologyManager;
+import net.floodlightcontroller.topology.TopologyManager;
 
 /**
  *
@@ -49,10 +50,10 @@ import net.floodlightcontroller.topologymanager.TopologyManager;
  */
 public class TopologyImplTest extends FloodlightTestCase {
 
-    private TopologyImpl topology;
+    private LinkDiscoveryManager topology;
     protected static Logger log = LoggerFactory.getLogger(TopologyImplTest.class);
     
-    public TopologyImpl getTopology() {
+    public LinkDiscoveryManager getTopology() {
         return topology;
     }
 
@@ -66,7 +67,7 @@ public class TopologyImplTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext cntx = new FloodlightModuleContext();
-        topology = new TopologyImpl();
+        topology = new LinkDiscoveryManager();
         TopologyManager routingEngine = new TopologyManager();
         topology.topologyAware = new ArrayList<ITopologyListener>();
         topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
@@ -83,7 +84,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testAddOrUpdateLink() throws Exception {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         replay(sw1, sw2);
@@ -104,7 +105,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testDeleteLink() throws Exception {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         replay(sw1, sw2);
@@ -124,7 +125,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testAddOrUpdateLinkToSelf() throws Exception {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         replay(sw1, sw2);
@@ -145,7 +146,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testDeleteLinkToSelf() throws Exception {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         replay(sw1);
         LinkTuple lt = new LinkTuple(sw1, 2, sw1, 3);
@@ -164,7 +165,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testRemovedSwitch() {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         replay(sw1, sw2);
@@ -187,7 +188,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testRemovedSwitchSelf() {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         replay(sw1);
         LinkTuple lt = new LinkTuple(sw1, 2, sw1, 3);
@@ -208,7 +209,7 @@ public class TopologyImplTest extends FloodlightTestCase {
 
     @Test
     public void testAddUpdateLinks() throws Exception {
-        TopologyImpl topology = getTopology();
+        LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         //expect(topology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();

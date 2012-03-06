@@ -1,7 +1,7 @@
 package net.floodlightcontroller.core.web;
 
-import net.floodlightcontroller.topology.internal.EventHistoryTopologyLink;
-import net.floodlightcontroller.topology.internal.TopologyImpl;
+import net.floodlightcontroller.linkdiscovery.internal.EventHistoryTopologyLink;
+import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.util.EventHistory;
 
 import org.restlet.resource.Get;
@@ -26,8 +26,8 @@ public class EventHistoryTopologyLinkResource extends ServerResource {
             // Invalid input for event count - use default value
         }
 
-        TopologyImpl topoManager =
-           (TopologyImpl)getContext().getAttributes().get("topology");
+        LinkDiscoveryManager topoManager =
+           (LinkDiscoveryManager)getContext().getAttributes().get("topology");
 
         return new EventHistory<EventHistoryTopologyLink>(
                                     topoManager.evHistTopologyLink, count);

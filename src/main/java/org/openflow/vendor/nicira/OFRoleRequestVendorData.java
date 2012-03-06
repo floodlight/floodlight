@@ -46,7 +46,7 @@ public class OFRoleRequestVendorData extends OFRoleVendorData {
     /**
      * The data type value for a role request
      */
-    public static final int NXT_ROLE_REQUEST = 9;
+    public static final int NXT_ROLE_REQUEST = 10;
 
     /**
      * Construct a role request vendor data with an unspecified role value.

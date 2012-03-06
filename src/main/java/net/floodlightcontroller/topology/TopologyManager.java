@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topologymanager;
+package net.floodlightcontroller.topology;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,15 +11,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.ILinkDiscovery.LinkType;
-import net.floodlightcontroller.topology.ILinkDiscoveryListener;
-import net.floodlightcontroller.topology.ILinkDiscoveryService;
-import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.ITopologyService;
 
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;

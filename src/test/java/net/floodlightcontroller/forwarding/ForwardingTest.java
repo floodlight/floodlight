@@ -39,6 +39,7 @@ import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.Entity;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;

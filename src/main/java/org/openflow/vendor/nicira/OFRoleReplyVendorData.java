@@ -46,7 +46,7 @@ public class OFRoleReplyVendorData extends OFRoleVendorData {
     /**
      * The data type value for a role reply
      */
-    public static final int NXT_ROLE_REPLY = 10;
+    public static final int NXT_ROLE_REPLY = 11;
 
     /**
      * Construct a role reply vendor data with an unspecified role value.

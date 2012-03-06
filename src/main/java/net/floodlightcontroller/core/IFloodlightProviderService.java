@@ -44,7 +44,12 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public static final String CONTEXT_PI_PAYLOAD = 
             "net.floodlightcontroller.core.IFloodlightProvider.piPayload";
 
-
+    /**
+     * The role of the controller as used by the OF 1.2 and OVS failover and
+     * load-balancing mechanism.
+     */
+    public static enum Role { EQUAL, MASTER, SLAVE };
+    
     /**
      * A FloodlightContextStore object that can be used to retrieve the 
      * packet-in payload
@@ -67,11 +72,22 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public void removeOFMessageListener(OFType type, IOFMessageListener listener);
 
     /**
-     * Returns a list of all actively connected OpenFlow switches
-     * @return the set of connected switches
+     * Returns a list of all actively connected OpenFlow switches. This doesn't
+     * contain switches that are connected but the controller's in the slave role.
+     * @return the set of actively connected switches
      */
     public Map<Long, IOFSwitch> getSwitches();
-
+    
+    /**
+     * Get the current role of the controller
+     */
+    public Role getRole();
+    
+    /**
+     * Set the role of the controller
+     */
+    public void setRole(Role role);
+    
     /**
      * Add a switch listener
      * @param listener
@@ -122,7 +138,7 @@ public interface IFloodlightProviderService extends IFloodlightService {
             FloodlightContext bContext);
 
     /**
-     * Process written messages through the message listeners for the contoller
+     * Process written messages through the message listeners for the controller
      * @param sw The switch being written to
      * @param m the message 
      * @param bc any accompanying context object

@@ -13,7 +13,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.topology;
+package net.floodlightcontroller.linkdiscovery;
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 

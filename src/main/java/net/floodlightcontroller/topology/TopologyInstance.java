@@ -1,4 +1,4 @@
-package net.floodlightcontroller.topologymanager;
+package net.floodlightcontroller.topology;
 
 import java.util.HashMap;
 import java.util.HashSet;

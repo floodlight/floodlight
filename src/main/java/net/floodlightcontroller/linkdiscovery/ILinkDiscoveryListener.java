@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.topology;
+package net.floodlightcontroller.linkdiscovery;
 
 public interface ILinkDiscoveryListener {
     /**

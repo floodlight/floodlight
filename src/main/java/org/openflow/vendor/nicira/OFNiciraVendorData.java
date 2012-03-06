@@ -28,6 +28,7 @@ import org.openflow.protocol.vendor.OFVendorData;
  */
 public class OFNiciraVendorData implements OFVendorData {
 
+    public static final int NX_VENDOR_ID = 0x00002320;
     /**
      * The value of the integer data type at the beginning of the vendor data
      */
