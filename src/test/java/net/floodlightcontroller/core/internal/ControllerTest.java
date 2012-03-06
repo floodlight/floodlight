@@ -420,7 +420,7 @@ public class ControllerTest extends FloodlightTestCase {
 
     @Test
     public void testAddSwitch() throws Exception {
-        controller.switches = new ConcurrentHashMap<Long, IOFSwitch>();
+        controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
 
         //OFSwitchImpl oldsw = createMock(OFSwitchImpl.class);
         OFSwitchImpl oldsw = new OFSwitchImpl();
@@ -449,7 +449,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
 
-        controller.switches.put(0L, oldsw);
+        controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 
         controller.addSwitch(newsw);

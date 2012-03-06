@@ -52,4 +52,12 @@ class OFChannelState {
     protected volatile HandshakeState hsState = HandshakeState.START;
     protected boolean hasGetConfigReply = false;
     protected boolean hasDescription = false;
+    
+    // The hasNxRoleReply flag doesn't mean that the switch supports the NX
+    // role messages, just that we've received an answer back from the 
+    // switch (possibly a bad vendor error) in response to our initial
+    // role request. It's used as a flag to indicate that we've met one
+    // of the conditions necessary to advance the handshake state to READY.
+    protected boolean hasNxRoleReply = false;
+    protected int nxRoleRequestXid;
 }

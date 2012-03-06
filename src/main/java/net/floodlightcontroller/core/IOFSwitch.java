@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.util.TimedCache;
 
@@ -42,6 +43,7 @@ public interface IOFSwitch {
     // Attribute keys
     public static final String SWITCH_DESCRIPTION_FUTURE = "DescriptionFuture";
     public static final String SWITCH_DESCRIPTION_DATA = "DescriptionData";
+    public static final String SWITCH_SUPPORTS_NX_ROLE = "supportsNxRole";
     public static final String SWITCH_IS_CORE_SWITCH = "isCoreSwitch";
     public static final String PROP_FASTWILDCARDS = "FastWildcards";
     public static final String PROP_REQUIRES_L3_MATCH = "requiresL3Match";
@@ -240,6 +242,25 @@ public interface IOFSwitch {
      * @param connected whether the switch is connected
      */
     public void setConnected(boolean connected);
+    
+    /**
+     * Get the current role of the controller for the switch
+     * @return the role of the controller
+     */
+    public Role getRole();
+    
+    /**
+     * Set the role of the controller for the switch
+     * @param role controller role
+     */
+    public void setRole(Role role);
+    
+    /**
+     * Check if the controller is an active controller for the switch.
+     * The controller is active if its role is MASTER or EQUAL.
+     * @return whether the controller is active
+     */
+    public boolean isActive();
     
     /**
      * Deliver the statistics future reply
