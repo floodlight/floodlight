@@ -676,7 +676,7 @@ public class LinkDiscoveryManager
                 // Write changes to storage. This will always write the updated
                 // valid time, plus the port states if they've changed (i.e. if
                 // they weren't set to null in the previous block of code.
-                writeLinkInfo(lt, newLinkInfo);
+                writeLink(lt, newLinkInfo);
 
                 if (linkChanged) {
                     updateOperation = UpdateOperation.UPDATE;
@@ -826,7 +826,7 @@ public class LinkDiscoveryManager
                         }
                         if ((updatedSrcPortState != null) ||
                                                 (updatedDstPortState != null)) {
-                            writeLinkInfo(link, linkInfo);
+                            writeLink(link, linkInfo);
                             topologyChanged = true;
                         }
                     }
@@ -1069,6 +1069,7 @@ public class LinkDiscoveryManager
             Map<String, Object> rowValues = new HashMap<String, Object>();
             String id = getLinkId(lt);
             rowValues.put(LINK_ID, id);
+            rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
             String srcDpid = lt.getSrc().getSw().getStringId();
             rowValues.put(LINK_SRC_SWITCH, srcDpid);
             rowValues.put(LINK_SRC_PORT, lt.getSrc().getPort());
@@ -1080,8 +1081,10 @@ public class LinkDiscoveryManager
                 rowValues.put(LINK_SRC_PORT_STATE,
                               OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
             } else {
-                log.trace("writeLink, link {}, info {}, srcPortState {}",
-                          new Object[]{ lt, linkInfo, linkInfo.getSrcPortState() });
+                if (log.isTraceEnabled()) {
+                    log.trace("writeLink, link {}, info {}, srcPortState {}",
+                              new Object[]{ lt, linkInfo, linkInfo.getSrcPortState() });
+                }
                 rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
             }
             String dstDpid = lt.getDst().getSw().getStringId();
@@ -1097,13 +1100,10 @@ public class LinkDiscoveryManager
             } else {
                 if (log.isTraceEnabled()) {
                     log.trace("writeLink, link {}, info {}, dstPortState {}",
-                              new Object[]{ lt, linkInfo,
-                                            linkInfo.getDstPortState() });
+                              new Object[]{ lt, linkInfo, linkInfo.getDstPortState() });
                 }
                 rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
             }
-            rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
-
             storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
         }
     }
