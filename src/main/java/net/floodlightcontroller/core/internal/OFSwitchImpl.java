@@ -80,6 +80,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Role role;
     protected TimedCache<Long> timedCache;
     protected ReentrantReadWriteLock listenerLock;
+    protected ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
     
     public static IOFSwitchFeatures switchFeatures;
     protected static final ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>> local_msg_buffer =
@@ -105,6 +106,8 @@ public class OFSwitchImpl implements IOFSwitch {
         this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.listenerLock = new ReentrantReadWriteLock();
+        this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, Long>();
+        
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
@@ -447,11 +450,24 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-	public TimedCache<Long> getTimedCache() {
-        return timedCache;
-	}
+    public boolean updateBroadcastCache(Long entry, Short port) {
+        if (timedCache.update(entry)) {
+            Long count = portBroadcastCacheHitMap.putIfAbsent(port, new Long(1));
+            if (count != null) {
+                count++;
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     @Override
+    public Map<Short, Long> getPortBroadcastHits() {
+    	return this.portBroadcastCacheHitMap;
+    }
+    
+
     public void flush() {
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
