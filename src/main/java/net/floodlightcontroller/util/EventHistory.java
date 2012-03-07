@@ -90,6 +90,11 @@ public class EventHistory<T> {
 
     // Copy constructor - copy latest k items of the event history
     public EventHistory(EventHistory<T> eventHist, int latestK) {
+
+        if (eventHist == null) {
+            description = "No event found";
+            return;
+        }
         int curSize = (eventHist.full)?eventHist.event_history_size:
                                                     eventHist.current_index;
         int size  = (latestK < curSize)?latestK:curSize;

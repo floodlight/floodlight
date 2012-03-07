@@ -1,5 +1,6 @@
 package net.floodlightcontroller.core.web;
 
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.internal.EventHistoryTopologyLink;
 import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.util.EventHistory;
@@ -27,7 +28,8 @@ public class EventHistoryTopologyLinkResource extends ServerResource {
         }
 
         LinkDiscoveryManager topoManager =
-           (LinkDiscoveryManager)getContext().getAttributes().get("topology");
+           (LinkDiscoveryManager)getContext().getAttributes().
+               get(ILinkDiscoveryService.class.getCanonicalName());
 
         return new EventHistory<EventHistoryTopologyLink>(
                                     topoManager.evHistTopologyLink, count);
