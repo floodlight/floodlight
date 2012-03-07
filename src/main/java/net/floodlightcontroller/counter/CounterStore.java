@@ -234,7 +234,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
                 String l4Type = String.format("%02x", ipV4.getProtocol());
                 if (TypeAliases.l4TypeAliasMap != null && 
                     TypeAliases.l4TypeAliasMap.containsKey(l4Type)) {
-                    l4Type = "L4_" + TypeAliases.l4TypeAliasMap.get(l4Type);
+                    l4Type = TypeAliases.l4TypeAliasMap.get(l4Type);
                 } else {
                     l4Type = "L4_" + l4Type;
                 }

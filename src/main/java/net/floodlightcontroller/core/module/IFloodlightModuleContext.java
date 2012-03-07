@@ -1,6 +1,7 @@
 package net.floodlightcontroller.core.module;
 
 import java.util.Collection;
+import java.util.Map;
 
 	
 public interface IFloodlightModuleContext {	
@@ -18,4 +19,11 @@ public interface IFloodlightModuleContext {
      * @return A collection of service classes that have been loaded
      */
     public Collection<Class<? extends IFloodlightService>> getAllServices();
+    
+    /**
+     * Gets module specific configuration parameters.
+     * @param module The module to get the configuration parameters for
+     * @return A key, value map of the configuration options
+     */
+    public Map<String, String> getConfigParams(IFloodlightModule module);
 }

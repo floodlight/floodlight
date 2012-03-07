@@ -119,7 +119,7 @@ public class TopologyInstance {
             for (short p: switchPorts.get(s)) {
                 NodePortTuple np = new NodePortTuple(s, p);
                 if (switchPortLinks.get(np) == null) continue;
-                if (broadcastDomainPorts.contains(np)) continue;
+                if (isBroadcastDomainPort(np)) continue;
                 for(Link l: switchPortLinks.get(np)) {
                     if (isBroadcastDomainLink(l)) continue;
                     Cluster c1 = switchClusterMap.get(l.getSrc());
@@ -283,16 +283,6 @@ public class TopologyInstance {
         return currIndex;
     }
 
-    /*
-    public void addLinkToNodePair(Link l, long n1, long n2){
-        NodePair nodepair = new NodePair(n1, n2);
-        if (!links.containsKey(nodepair)) {
-            links.put(nodepair, new HashSet<Link>());
-        }
-        links.get(nodepair).add(l);
-    }
-     */
-
     public boolean isBroadcastDomainLink(Link l) {
         NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
         NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
@@ -300,7 +290,9 @@ public class TopologyInstance {
                 broadcastDomainPorts.contains(n2));
     }
 
-
+    public boolean isBroadcastDomainPort(NodePortTuple npt) {
+        return broadcastDomainPorts.contains(npt);
+    }
 
     class NodeDist implements Comparable<NodeDist> {
         private Long node;

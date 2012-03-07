@@ -1,4 +1,4 @@
-net.floodlightcontroller.core.CoreModule
+net.floodlightcontroller.core.FloodlightProvider
 net.floodlightcontroller.storage.memory.MemoryStorageSource
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
