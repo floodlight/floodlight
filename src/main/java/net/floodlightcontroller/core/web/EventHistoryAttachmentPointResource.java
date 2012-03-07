@@ -10,12 +10,17 @@ import net.floodlightcontroller.util.EventHistory;
 
 import org.restlet.resource.ServerResource;
 import org.restlet.resource.Get;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author subrata
  *
  */
 public class EventHistoryAttachmentPointResource extends ServerResource {
+    // TODO - Move this to the DeviceManager Rest API
+    protected static Logger log = 
+            LoggerFactory.getLogger(EventHistoryAttachmentPointResource.class);
     /***
      * Event History Names:
      *     (a) attachment-point
@@ -42,11 +47,18 @@ public class EventHistoryAttachmentPointResource extends ServerResource {
             // Invalid input for event count - use default value
         }
 
-        DeviceManagerImpl deviceManager = 
-           (DeviceManagerImpl)getContext().getAttributes().
-               get(IDeviceManagerService.class.getCanonicalName());
+        try {
+            DeviceManagerImpl deviceManager = 
+               (DeviceManagerImpl)getContext().getAttributes().
+                   get(IDeviceManagerService.class.getCanonicalName());
+            if (deviceManager != null) {
+                return new EventHistory<EventHistoryAttachmentPoint>(
+                        deviceManager.evHistDevMgrAttachPt, count);
+            }
+        } catch (ClassCastException e) {
+            log.error(e.toString());
+        }
 
-        return new EventHistory<EventHistoryAttachmentPoint>(
-                deviceManager.evHistDevMgrAttachPt, count);
+        return null;
     }
 }
