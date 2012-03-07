@@ -42,15 +42,32 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	    IFloodlightService s = serviceMap.get(service);
 		return (T)s;
 	}
+	
 
+	/**
+	 * Gets all the loaded services
+	 * @return The colleciton of loaded services
+	 */
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getAllServices() {
 	    return serviceMap.keySet();
 	}
 	
+	/**
+	 * Gets the configuration parameter map for a module
+	 * @param module The module to get the configuration map for, usually yourself
+	 * @return A map containing all the configuration parameters for the module, may be empty
+	 */
 	@Override
 	public Map<String, String> getConfigParams(IFloodlightModule module) {
-	    return configParams.get(module.getClass());
+	    Map<String, String> retMap = configParams.get(module.getClass());
+	    if (retMap == null) {
+	        // Return an empty map if none exists so the module does not
+	        // need to null check the map
+	        retMap = new HashMap<String, String>();
+	        configParams.put(module.getClass(), retMap);
+	    }
+	    return retMap;
 	}
 	
 	/**
