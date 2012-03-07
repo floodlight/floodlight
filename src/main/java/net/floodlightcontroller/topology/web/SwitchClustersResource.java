@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.web;
+package net.floodlightcontroller.topology.web;
 
 import java.util.ArrayList;
 import java.util.HashMap;

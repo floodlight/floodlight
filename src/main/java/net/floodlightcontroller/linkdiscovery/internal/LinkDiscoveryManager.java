@@ -55,7 +55,6 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.LinkTuple;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
-import net.floodlightcontroller.linkdiscovery.web.TopologyWebRoutable;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -69,6 +68,7 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
 
