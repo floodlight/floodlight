@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -198,6 +199,11 @@ public class DeviceManagerImpl implements
         }        
     }
     
+    /**
+     * Comparator for sorting by cluster ID
+     */
+    public Comparator<Entity> clusterIdComparator;
+    
     // *********************
     // IDeviceManagerService
     // *********************
@@ -353,8 +359,6 @@ public class DeviceManagerImpl implements
     @Override
     public void setEntityClassifier(IEntityClassifier classifier) {
         entityClassifier = classifier;
-        primaryIndex = new DeviceUniqueIndex(classifier.getKeyFields());
-        secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
     }
     
     @Override
@@ -511,10 +515,46 @@ public class DeviceManagerImpl implements
     public void startUp(FloodlightModuleContext fmc) {
         if (entityClassifier == null)
             setEntityClassifier(new DefaultEntityClassifier());
+        
+        primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
+        secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
+        
         deviceMap = new ConcurrentHashMap<Long, Device>();
         classStateMap = 
                 new ConcurrentHashMap<IEntityClass, ClassState>();
-        
+        clusterIdComparator = new Comparator<Entity>() {
+            @Override
+            public int compare(Entity e1, Entity e2) {
+                int r = 0;
+
+                Long swdpid1 = e1.getSwitchDPID();
+                Long swdpid2 = e2.getSwitchDPID();
+                if (swdpid1 == null)
+                    r = swdpid2 == null ? 0 : -1;
+                else if (swdpid2 == null)
+                    r = 1;
+                else {
+                    Long d1ClusterId = 
+                            topology.getSwitchClusterId(swdpid1);
+                    Long d2ClusterId = 
+                            topology.getSwitchClusterId(swdpid2);
+                    r = d1ClusterId.compareTo(d2ClusterId);
+                }
+                if (r != 0) return r;
+                
+                Date e1t = e1.getLastSeenTimestamp();
+                Date e2t = e2.getLastSeenTimestamp();
+                if (e1t == null)
+                    r = e2t == null ? 0 : -1;
+                else if (e2t == null)
+                    r = 1;
+                else
+                    r = e1t.compareTo(e2t);
+
+                return r;
+            }
+        };
+
         if (topology != null) {
             // Register to get updates from topology
             topology.addListener(this);
@@ -807,13 +847,12 @@ public class DeviceManagerImpl implements
                 }
             }
             if (deviceKey != null) {
-                // If the primary or secondary index contains the entity, 
-                // update the entity timestamp, then use resulting device 
-                // key to look up the device in the device map, and
-                // use the referenced Device below.
+                // If the primary or secondary index contains the entity
+                // use resulting device key to look up the device in the 
+                // device map, and use the referenced Device below.
                 device = deviceMap.get(deviceKey);
                 if (device == null)
-                    continue;
+                    throw new IllegalStateException("Corrupted device index");
             } else {
                 // If the secondary index does not contain the entity, 
                 // create a new Device object containing the entity, and 
@@ -821,11 +860,12 @@ public class DeviceManagerImpl implements
                 synchronized (deviceKeyLock) {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
-                device = new Device(deviceKey, entity, classes);
+                device = new Device(this, deviceKey, entity, classes);
                 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
                 
+                // update indices
                 if (!updateIndices(device, deviceKey)) {
                     if (deleteQueue == null)
                         deleteQueue = new ArrayList<Long>();
@@ -835,6 +875,7 @@ public class DeviceManagerImpl implements
                 
                 updateSecondaryIndices(entity, classes, deviceKey);
                 
+                // generate new device update
                 deviceUpdates = 
                         updateUpdates(deviceUpdates,
                                       new DeviceUpdate(device, true, null));
@@ -856,62 +897,20 @@ public class DeviceManagerImpl implements
                 // field (including updating the entity caches), preserving the 
                 // old timestamp of the entity.
 
-                Entity[] entities = device.getEntities();
-                ArrayList<Entity> newEntities = null;
-                ArrayList<Entity> removedEntities = null;
-                EnumSet<DeviceField> changedFields = 
-                        findChangedFields(device, entity);
-                
-                // iterate backwards since we want indices for removed entities
-                // to update in reverse order
-                for (int i = entities.length - 1; i >= 0; i--) {
-                    // XXX - TODO Handle port channels                    
-                    // XXX - TODO Handle broadcast domains
-                    // XXX - TODO Prevent flapping of entities
-                    // XXX - TODO Handle unique indices
-
-                    Long edpid = entities[i].getSwitchDPID();
-                    Long cdpid = entity.getSwitchDPID();
-                    
-                    // Remove attachment points in the same cluster 
-                    if (edpid != null && cdpid != null &&
-                        topology != null && 
-                        topology.inSameCluster(edpid, cdpid)) {
-                        // XXX - TODO don't delete entities; we should just
-                        // filter out the attachment points on read
-                        removedEntities = 
-                                updateEntityList(removedEntities, entities[i]);
-
-                        changedFields.add(DeviceField.SWITCH);
-                        
-                        Entity shim = makeShimEntity(entity, entities[i], 
-                                                     device.getEntityClasses());
-                        newEntities = updateEntityList(newEntities, shim);
-                        continue;
-                    }
-                    
-                    newEntities = updateEntityList(newEntities, entities[i]);
-                }
-                newEntities = updateEntityList(newEntities, entity);
-                removeEntities(removedEntities, device.getEntityClasses());
+                // XXX - TODO Prevent flapping of entities
                 
                 Device newDevice = new Device(device,
-                                              newEntities, classes);
-
-                updateSecondaryIndices(entity, 
-                                       newDevice.getEntityClasses(), 
-                                       deviceKey);
-                for (Entity e : newEntities) {
-                    updateSecondaryIndices(e, 
-                                           newDevice.getEntityClasses(), 
-                                           deviceKey);                    
-                }
+                                              entity, classes);
                 
+                // generate updates
+                EnumSet<DeviceField> changedFields = 
+                        findChangedFields(device, entity);
                 deviceUpdates = 
                         updateUpdates(deviceUpdates,
                                       new DeviceUpdate(device, false, 
                                                        changedFields));
                 
+                // update the device map with a replace call
                 boolean res = deviceMap.replace(deviceKey, device, newDevice);
                 // If replace returns false, restart the process from the 
                 // beginning (this implies another thread concurrently 
@@ -921,9 +920,13 @@ public class DeviceManagerImpl implements
                 
                 device = newDevice;
                 
+                // update indices
                 if (!updateIndices(device, deviceKey)) {
                     continue;
                 }
+                updateSecondaryIndices(entity, 
+                                       device.getEntityClasses(), 
+                                       deviceKey);
                 break;
             }
         }
@@ -1007,72 +1010,7 @@ public class DeviceManagerImpl implements
             }
         }
     }
-    
-    /**
-     * If there's information that would be lost about a device because
-     * we're removing an old entity, construct a "shim" entity to provide
-     * that information
-     * @param newentity the entity being added
-     * @param rementity the entity that's being removed
-     * @param classes the entity classes
-     * @return the entity, or null if no entity needed
-     */
-    private Entity makeShimEntity(Entity newentity, Entity rementity,
-                                  IEntityClass[] classes) {
-        Set<DeviceField> nonkey = null;
-    
-        for (IEntityClass clazz : classes) {
-            if (nonkey == null)
-                nonkey = EnumSet.complementOf(clazz.getKeyFields());
-            else
-                nonkey.removeAll(clazz.getKeyFields());
-        }
 
-        Integer ipv4Address = null;
-        Short vlan = null;
-
-        for (DeviceField f : nonkey) {
-            switch (f) {
-                case IPV4:
-                    if (rementity.getIpv4Address() != null &&
-                        !rementity.getIpv4Address()
-                        .equals(newentity.getIpv4Address()))
-                        ipv4Address = rementity.getIpv4Address();
-                    break;
-                case VLAN:
-                    if (rementity.getVlan() != null &&
-                        !rementity.getVlan()
-                        .equals(newentity.getVlan()))
-                        vlan = rementity.getVlan();
-                    break;
-                case MAC:
-                case PORT:
-                case SWITCH:
-                    break;
-                default:
-                    logger.warn("Unexpected device field {}", f);
-            }
-        }
-        
-        Entity shim = null;        
-        if (ipv4Address != null || vlan != null) {
-            shim = new Entity(rementity.getMacAddress(), vlan, 
-                              ipv4Address, null, null, 
-                              rementity.getLastSeenTimestamp());
-        }
-        return shim;
-    }
-    
-    private ArrayList<Entity> updateEntityList(ArrayList<Entity> list,
-                                               Entity entity) {
-        if (entity == null) return list;
-        if (list == null)
-            list = new ArrayList<Entity>();
-        list.add(entity);
-        
-        return list;
-    }
-    
     private LinkedList<DeviceUpdate> 
         updateUpdates(LinkedList<DeviceUpdate> list, DeviceUpdate update) {
         if (update == null) return list;

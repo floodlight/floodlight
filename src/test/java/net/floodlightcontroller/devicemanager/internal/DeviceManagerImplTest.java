@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -29,6 +30,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.isA;
+import static org.easymock.EasyMock.anyLong;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -157,6 +159,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.addListener(mockListener);
         deviceManager.setEntityClassifier(new TestEntityClassifier());
         
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.getSwitchClusterId(anyLong())).
+            andReturn(1L).anyTimes();
+        deviceManager.topology = mockTopology;
+
         Entity entity1 = new Entity(1L, null, null, 1L, 1, new Date());
         Entity entity2 = new Entity(1L, null, null, 10L, 1, new Date());
         Entity entity3 = new Entity(1L, null, 1, 10L, 1, new Date());
@@ -164,9 +171,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity5 = new Entity(2L, (short)4, 1, 5L, 2, new Date());
         Entity entity6 = new Entity(2L, (short)4, 1, 50L, 3, new Date());
 
-        
         mockListener.deviceAdded(isA(IDevice.class));
-        replay(mockListener);
+        replay(mockListener, mockTopology);
         
         Device d1 = deviceManager.learnDeviceByEntity(entity1);        
         assertSame(d1, deviceManager.learnDeviceByEntity(entity1)); 
@@ -257,30 +263,27 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.addListener(mockListener);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.inSameCluster(1L, 2L)).andReturn(true).anyTimes();
-        expect(mockTopology.inSameCluster(2L, 1L)).andReturn(true).anyTimes();
-
-        expect(mockTopology.inSameCluster(3L, 4L)).andReturn(true).anyTimes();
-        expect(mockTopology.inSameCluster(4L, 3L)).andReturn(true).anyTimes();
-        
-        expect(mockTopology.inSameCluster(1L, 3L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(3L, 1L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(1L, 4L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(4L, 1L)).andReturn(false).anyTimes();
-
-        expect(mockTopology.inSameCluster(2L, 3L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(3L, 2L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(2L, 4L)).andReturn(false).anyTimes();
-        expect(mockTopology.inSameCluster(4L, 2L)).andReturn(false).anyTimes();
+        expect(mockTopology.getSwitchClusterId(1L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(2L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(3L)).
+        andReturn(3L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(4L)).
+        andReturn(3L).anyTimes();
         
         replay(mockTopology);
         
         deviceManager.topology = mockTopology;
         
-        Entity entity1 = new Entity(1L, null, 1, 1L, 1, new Date());
-        Entity entity2 = new Entity(1L, null, null, 2L, 1, new Date());
-        Entity entity3 = new Entity(1L, null, null, 3L, 1, new Date());
-        Entity entity4 = new Entity(1L, null, null, 4L, 1, new Date());
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        c.add(1,Calendar.SECOND);
+        Entity entity2 = new Entity(1L, null, null, 2L, 1, c.getTime());
+        c.add(1,Calendar.SECOND);
+        Entity entity3 = new Entity(1L, null, null, 3L, 1, c.getTime());
+        c.add(1,Calendar.SECOND);
+        Entity entity4 = new Entity(1L, null, null, 4L, 1, c.getTime());
         
         IDevice d;
         SwitchPort[] aps;
@@ -316,8 +319,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity3);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints(); 
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(3L, 1),
-                                             new SwitchPort(2L, 1) }, aps);
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(2L, 1),
+                                             new SwitchPort(3L, 1) }, aps);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
@@ -339,7 +342,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testPacketIn() throws Exception {
         deviceManager.addIndex(true, true, EnumSet.of(DeviceField.IPV4));
-        byte[] dataLayerSource = ((Ethernet)this.testPacket).getSourceMACAddress();
+        byte[] dataLayerSource = 
+                ((Ethernet)this.testPacket).getSourceMACAddress();
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -356,7 +360,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // build our expected Device
         Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
         Device device = 
-                new Device(new Long(deviceManager.deviceKeyCounter),
+                new Device(deviceManager,
+                           new Long(deviceManager.deviceKeyCounter),
                            new Entity(Ethernet.toLong(dataLayerSource),
                                       (short)5,
                                       ipaddr,
@@ -392,7 +397,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, result);
         
         device = 
-                new Device(new Long(deviceManager.deviceKeyCounter),
+                new Device(device,
                            new Entity(Ethernet.toLong(dataLayerSource),
                                       (short)5,
                                       ipaddr,
@@ -406,7 +411,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getStringId()).
             andReturn("00:00:00:00:00:00:00:02").anyTimes();
         expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
-        expect(mockTopology.inSameCluster(1L, 2L)).andReturn(true);
+        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
         
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);

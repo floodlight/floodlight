@@ -17,10 +17,10 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.TreeSet;
 
 import org.openflow.util.HexString;
@@ -28,6 +28,7 @@ import org.openflow.util.HexString;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.topology.ITopologyService;
 
 /**
  * Concrete implementation of {@link IDevice}
@@ -35,7 +36,8 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
  */
 public class Device implements IDevice {
     protected Long deviceKey;
-    
+    protected DeviceManagerImpl deviceManager;
+
     protected Entity[] entities;
     protected IEntityClass[] entityClasses;
     
@@ -47,13 +49,16 @@ public class Device implements IDevice {
     
     /**
      * Create a device from a set of entities
+     * @param deviceManager the device manager for this device
      * @param deviceKey the unique identifier for this device object
      * @param entity the initial entity for the device
      * @param entityClasses the entity classes associated with the entity
      */
-    public Device(Long deviceKey,
+    public Device(DeviceManagerImpl deviceManager,
+                  Long deviceKey,
                   Entity entity, 
                   Collection<IEntityClass> entityClasses) {
+        this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = new Entity[] {entity};
         this.macAddressString = 
@@ -64,17 +69,20 @@ public class Device implements IDevice {
     }
 
     /**
-     * Construct a new device with the given key and containing the provided
-     * entities and entity classes
+     * Construct a new device consisting of the entities from the old device
+     * plus an additional entity
      * @param device the old device object
-     * @param entities the entities for the device
+     * @param newEntity the entity to add
      * @param entityClasses the entity classes associated with the entities
      */
     public Device(Device device,
-                  Collection<Entity> entities,
+                  Entity newEntity,
                   Collection<IEntityClass> entityClasses) {
-        this.deviceKey = device.getDeviceKey();
-        this.entities = entities.toArray(new Entity[entities.size()]);
+        this.deviceManager = device.deviceManager;
+        this.deviceKey = device.deviceKey;
+        this.entities = Arrays.<Entity>copyOf(device.entities, 
+                                              device.entities.length + 1);
+        this.entities[this.entities.length - 1] = newEntity;
         Arrays.sort(this.entities);
 
         this.macAddressString = 
@@ -162,8 +170,31 @@ public class Device implements IDevice {
             }
         }
 
-        HashSet<SwitchPort> vals = new HashSet<SwitchPort>();
-        for (Entity e : entities) {
+        // Find the most recent attachment point for each cluster
+        // XXX - TODO suppress flapping
+        Entity[] clentities = Arrays.<Entity>copyOf(entities, entities.length);
+        Arrays.sort(clentities, deviceManager.clusterIdComparator);
+        
+        ITopologyService topology = deviceManager.topology;
+        long prevCluster = 0;
+        int clEntIndex = -1;
+        for (int i = 0; i < clentities.length; i++) {
+            if (clentities[i].switchDPID == null) continue;
+            long curCluster = 
+                    topology.getSwitchClusterId(clentities[i].switchDPID);
+            if (prevCluster != curCluster)
+                clEntIndex += 1;
+            clentities[clEntIndex] = clentities[i];
+            prevCluster = curCluster;
+        }
+
+        if (clEntIndex < 0) {
+            return new SwitchPort[0];
+        }
+        
+        ArrayList<SwitchPort> vals = new ArrayList<SwitchPort>(clEntIndex + 1);
+        for (int i = 0; i <= clEntIndex; i++) {
+            Entity e = clentities[i];
             if (e.getSwitchDPID() != null &&
                 e.getSwitchPort() != null) {
                 SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
