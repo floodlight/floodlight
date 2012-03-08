@@ -1,0 +1,28 @@
+One of Floodlight's main goals is extensibility and flexibility.
+
+To prove that point, this directory includes a number of useful
+utilities as examples of what can do with this extensibility.
+
+UTILITIES:
+--------------------------
+
+graphDeps.py and graphTopo.py
+
+    Read the module dependencies (graphDeps.py) or the topology
+    from the REST API and output it in the 'dot' format used by the
+    popular graphviz (www.graphviz.org) package so that they can
+    be visualized.
+
+    Example usage:
+        ./graphTopo.py $hostname                    # generate .dot file
+        dot -Tpdf -o $hostname.pdf $hostname.dot    # convert to PDF
+        open $hostname.pdf                          # open to view topology
+        
+
+
+packetStreamerClientExample.py
+
+    Example client for the packet streamer server in floodlight.
+    Allows you to intercept packets from floodlight's packet_in
+    processing chain and read them.
+
