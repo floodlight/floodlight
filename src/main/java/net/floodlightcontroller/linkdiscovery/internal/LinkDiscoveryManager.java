@@ -298,7 +298,7 @@ public class LinkDiscoveryManager
         }
 
         Ethernet ethernet = new Ethernet()
-            .setSourceMACAddress(new byte[6])
+            .setSourceMACAddress(port.getHardwareAddress())
             .setDestinationMACAddress(dstMacAddress)
             .setEtherType(Ethernet.TYPE_LLDP);
         // using "nearest customer bridge" MAC address for broadest possible propagation
