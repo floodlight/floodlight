@@ -43,6 +43,8 @@ public class FloodlightModuleLoader {
 	
     public static final String COMPILED_CONF_FILE = 
             "floodlightdefault.properties";
+    public static final String FLOODLIGHT_MODULES_KEY =
+            "floodlight.modules";
     
 	public FloodlightModuleLoader() {
 	    floodlightModuleContext = new FloodlightModuleContext();
@@ -133,7 +135,8 @@ public class FloodlightModuleLoader {
             }
         }
         
-        String moduleList = prop.getProperty("floodlight.modules").replaceAll("\\s", "");
+        String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY)
+                                .replaceAll("\\s", "");
         return loadModulesFromList(moduleList.split(","), prop);
 	}
 	
@@ -182,7 +185,6 @@ public class FloodlightModuleLoader {
                         Collection<IFloodlightModule> mods = serviceMap.get(c);
                         // Make sure only one module is loaded
                         if ((mods == null) || (mods.size() == 0)) {
-                            System.out.println(serviceMap.keySet());
                             throw new FloodlightModuleException("ERROR! Could not " +
                                     "find an IFloodlightModule that provides service " +
                                     c.toString());
@@ -299,6 +301,11 @@ public class FloodlightModuleLoader {
         Enumeration<?> e = prop.propertyNames();
         while (e.hasMoreElements()) {
             String key = (String) e.nextElement();
+            // Ignore module list key
+            if (key.equals(FLOODLIGHT_MODULES_KEY)) {
+                continue;
+            }
+            
             String configValue = null;
             int lastPeriod = key.lastIndexOf(".");
             String moduleName = key.substring(0, lastPeriod);
