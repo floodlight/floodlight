@@ -60,6 +60,7 @@ import net.floodlightcontroller.util.MultiIterator;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
@@ -118,7 +119,7 @@ public class DeviceManagerImpl implements
     /**
      * This is the list of indices we want on a per-class basis
      */
-    protected Map<EnumSet<DeviceField>, Boolean> perClassIndices;
+    protected Set<EnumSet<DeviceField>> perClassIndices;
     
     /**
      * The entity classifier currently in use
@@ -157,11 +158,9 @@ public class DeviceManagerImpl implements
             
             secondaryIndexMap = 
                     new HashMap<EnumSet<DeviceField>, DeviceIndex>();
-            for (Map.Entry<EnumSet<DeviceField>,Boolean> keys : 
-                 perClassIndices.entrySet()) {
-                secondaryIndexMap.put(keys.getKey(), 
-                                      DeviceIndex.getInstance(keys.getKey(), 
-                                                              keys.getValue()));
+            for (EnumSet<DeviceField> fields : perClassIndices) {
+                secondaryIndexMap.put(fields, 
+                                      new DeviceMultiIndex(fields));
             }
         }
     }
@@ -248,13 +247,13 @@ public class DeviceManagerImpl implements
     }
 
     @Override
-    public void addIndex(boolean perClass, boolean unique,
+    public void addIndex(boolean perClass,
                          EnumSet<DeviceField> keyFields) {
         if (perClass) {
-            perClassIndices.put(keyFields, unique);
+            perClassIndices.add(keyFields);
         } else {
             secondaryIndexMap.put(keyFields, 
-                                  DeviceIndex.getInstance(keyFields, unique));
+                                  new DeviceMultiIndex(keyFields));
         }
     }
 
@@ -500,7 +499,9 @@ public class DeviceManagerImpl implements
     @Override
     public void init(FloodlightModuleContext fmc) {
         this.perClassIndices =
-                new HashMap<EnumSet<DeviceField>, Boolean>();
+                new HashSet<EnumSet<DeviceField>>();
+        addIndex(true, EnumSet.of(DeviceField.IPV4));
+
         this.deviceListeners = new HashSet<IDeviceManagerAware>();
         
         this.floodlightProvider = 
@@ -625,14 +626,28 @@ public class DeviceManagerImpl implements
     }
     
     /**
-     * Check whether the port is a physical port. We should not learn 
-     * attachment points on "special" ports.
-     * @param port the port to check
-     * @return true if the port is a valid input port
+     * Check whether the given attachment point is valid given the current
+     * topology
+     * @param switchDPID the DPID
+     * @param switchPort the port
+     * @return true if it's a valid attachment point
      */
-    private boolean isValidInputPort(short port) {
-        return ((int)port & 0xff00) != 0xff00 ||
-                     port == (short)0xfffe;
+    protected boolean isValidAttachmentPoint(long switchDPID,
+                                             int switchPort) {
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchDPID);
+        if (sw == null) return false;
+        OFPhysicalPort port = sw.getPort((short)switchPort);
+        if (port == null || !sw.portEnabled(port)) return false;
+        if (topology.isInternal(switchDPID, (short)switchPort))
+            return false;
+        
+        // Check whether the port is a physical port. We should not learn 
+        // attachment points on "special" ports.
+        if (((switchPort & 0xff00) == 0xff00) && 
+             (switchPort != (short)0xfffe))
+            return false;
+        
+        return true;            
     }
     
     private boolean isGratArp(Ethernet eth) {
@@ -689,8 +704,7 @@ public class DeviceManagerImpl implements
             return null;
 
         boolean learnap = true;
-        if (topology.isInternal(sw.getId(), (short)port) ||
-            !isValidInputPort((short)port)) {
+        if (!isValidAttachmentPoint(sw.getId(), (short)port)) {
             // If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
             // handle this case by labeling flows with something that
@@ -860,7 +874,7 @@ public class DeviceManagerImpl implements
                 synchronized (deviceKeyLock) {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
-                device = new Device(this, deviceKey, entity, classes);
+                device = allocateDevice(deviceKey, entity, classes);
                 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
@@ -899,8 +913,7 @@ public class DeviceManagerImpl implements
 
                 // XXX - TODO Prevent flapping of entities
                 
-                Device newDevice = new Device(device,
-                                              entity, classes);
+                Device newDevice = allocateDevice(device, entity, classes);
                 
                 // generate updates
                 EnumSet<DeviceField> changedFields = 
@@ -1127,5 +1140,26 @@ public class DeviceManagerImpl implements
         if (switchDPID != null) keys.add(DeviceField.SWITCH);
         if (switchPort != null) keys.add(DeviceField.PORT);
         return keys;
+    }
+    
+    protected Iterator<Device> queryClassByEntity(IEntityClass clazz,
+                                                EnumSet<DeviceField> keyFields,
+                                                Entity entity) {
+        ClassState classState = getClassState(clazz);
+        DeviceIndex index = classState.secondaryIndexMap.get(keyFields);
+        if (index == null) return Collections.<Device>emptySet().iterator();
+        return new DeviceIndexInterator(this, index.queryByEntity(entity));
+    }
+    
+    protected Device allocateDevice(Long deviceKey,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new Device(this, deviceKey, entity, entityClasses);
+    }
+    
+    protected Device allocateDevice(Device device,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new Device(device, entity, entityClasses);
     }
 }

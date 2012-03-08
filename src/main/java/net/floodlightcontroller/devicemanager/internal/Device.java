@@ -21,10 +21,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.TreeSet;
 
 import org.openflow.util.HexString;
 
+import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -139,6 +142,8 @@ public class Device implements IDevice {
         return vals.toArray(new Short[vals.size()]);
     }
 
+    static final EnumSet<DeviceField> ipv4Fields = EnumSet.of(DeviceField.IPV4);
+
     @Override
     public Integer[] getIPv4Addresses() {
         if (entities.length == 1) {
@@ -151,19 +156,50 @@ public class Device implements IDevice {
 
         TreeSet<Integer> vals = new TreeSet<Integer>();
         for (Entity e : entities) {
-            if (e.getIpv4Address() != null)
+            if (e.getIpv4Address() == null) continue;
+            
+            // We have an IP address only if among the devices within the class
+            // we have the most recent entity with that IP.
+            boolean validIP = true;
+            for (IEntityClass clazz : entityClasses) {
+                Iterator<Device> devices = 
+                        deviceManager.queryClassByEntity(clazz, ipv4Fields, e);
+                while (devices.hasNext()) {
+                    Device d = devices.next();
+                    for (Entity se : d.entities) {
+                        if (se.ipv4Address != null && 
+                            se.ipv4Address.equals(e.ipv4Address) &&
+                            se.lastSeenTimestamp != null &&
+                            0 < se.lastSeenTimestamp.compareTo(e.lastSeenTimestamp)) {
+                            validIP = false;
+                            break;
+                        }
+                    }
+                    if (!validIP)
+                        break;
+                }
+                if (!validIP)
+                    break;
+            }
+
+            if (validIP)
                 vals.add(e.getIpv4Address());
         }
+        
         return vals.toArray(new Integer[vals.size()]);
     }
 
     @Override
     public SwitchPort[] getAttachmentPoints() {
+        // XXX - TODO we can cache this result.  Let's find out if this
+        // is really a performance bottleneck first though.
+
         if (entities.length == 1) {
-            if (entities[0].getSwitchDPID() != null &&
-                entities[0].getSwitchPort() != null) {
-                SwitchPort sp = new SwitchPort(entities[0].getSwitchDPID(), 
-                                               entities[0].getSwitchPort());
+            Long dpid = entities[0].getSwitchDPID();
+            Integer port = entities[0].getSwitchPort();
+            if (dpid != null && port != null &&
+                deviceManager.isValidAttachmentPoint(dpid, port)) {
+                SwitchPort sp = new SwitchPort(dpid, port);
                 return new SwitchPort[] { sp };
             } else {
                 return new SwitchPort[0];
@@ -179,7 +215,11 @@ public class Device implements IDevice {
         long prevCluster = 0;
         int clEntIndex = -1;
         for (int i = 0; i < clentities.length; i++) {
-            if (clentities[i].switchDPID == null) continue;
+            Long dpid = clentities[i].getSwitchDPID();
+            Integer port = clentities[i].getSwitchPort();
+            if (dpid == null || port == null ||
+                !deviceManager.isValidAttachmentPoint(dpid, port))
+                continue;
             long curCluster = 
                     topology.getSwitchClusterId(clentities[i].switchDPID);
             if (prevCluster != curCluster)
@@ -218,7 +258,6 @@ public class Device implements IDevice {
     // ***************
     // Getters/Setters
     // ***************
-
 
     public IEntityClass[] getEntityClasses() {
         return entityClasses;

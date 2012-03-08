@@ -119,13 +119,9 @@ public interface IDeviceManagerService extends IFloodlightService {
      * 
      * @param perClass set to true if the index should be maintained for each
      * entity class separately.
-     * @param unique set to true if only the set of fields specified should be
-     * unique.  If multiple devices would match the field, the devices will be
-     * updated so that only one will match. 
      * @param keyFields the set of fields on which to index
      */
     public void addIndex(boolean perClass,
-                         boolean unique,
                          EnumSet<DeviceField> keyFields);
     
     /**

@@ -1,10 +1,13 @@
 package net.floodlightcontroller.devicemanager.test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
 
@@ -59,4 +62,18 @@ public class MockDeviceManager extends DeviceManagerImpl {
         return learnEntity(macAddress, vlan, ipv4Address, 
                            switchDPID, switchPort, true);
     }
+/*
+    @Override
+    protected Device allocateDevice(Long deviceKey,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new Device(this, deviceKey, entity, entityClasses);
+    }
+    
+    @Override
+    protected Device allocateDevice(Device device,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new Device(device, entity, entityClasses);
+    }*/
 }

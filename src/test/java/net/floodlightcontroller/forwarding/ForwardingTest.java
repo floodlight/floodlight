@@ -23,6 +23,8 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyShort;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -269,6 +271,8 @@ public class ForwardingTest extends FloodlightTestCase {
         sw2.write(capture(wc2), capture(bc2));
         expectLastCall().anyTimes(); 
 
+        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(anyLong(), anyShort())).andReturn(true).anyTimes();
+
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
@@ -342,6 +346,8 @@ public class ForwardingTest extends FloodlightTestCase {
         // Record expected packet-outs/flow-mods
         sw1.write(fm1, cntx);
         sw1.write(packetOut, cntx);
+        
+        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(anyLong(), anyShort())).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);

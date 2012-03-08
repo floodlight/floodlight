@@ -39,26 +39,7 @@ public abstract class DeviceIndex {
         super();
         this.keyFields = keyFields;
     }
-    
-    /**
-     * Get a device index instance, which is either a multi-values or 
-     * single-valued index.
-     * @param keyFields the key fields for the index
-     * @param unique true if this index should allow just one value per 
-     * compound key
-     * @return the newly-allocated index
-     */
-    public static DeviceIndex getInstance(EnumSet<DeviceField> keyFields,
-                                          boolean unique) {
-        DeviceIndex di;
-        if (unique) {
-            di = new DeviceUniqueIndex(keyFields);
-        } else {
-            di = new DeviceMultiIndex(keyFields);
-        }
-        return di;
-    }
-    
+
     /**
      * Find all device keys in the index that match the given entity
      * on all the key fields for this index
