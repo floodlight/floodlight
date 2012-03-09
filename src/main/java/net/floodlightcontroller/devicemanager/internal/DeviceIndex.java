@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Iterator;
 
@@ -85,4 +86,22 @@ public abstract class DeviceIndex {
      * @param deviceKey the key to remove
      */
     public abstract void removeEntity(Entity entity, Long deviceKey);
+    
+    /**
+     * Remove the give device from the index only if this the collection
+     * of others does not contain an entity that is identical on all the key
+     * fields for this index.
+     * @param entity the entity to search for
+     * @param deviceKey the key to remove
+     * @param others the others against which to check
+     */
+    public void removeEntityIfNeeded(Entity entity, Long deviceKey,
+                                     Collection<Entity> others) {
+        IndexedEntity ie = new IndexedEntity(keyFields, entity);
+        for (Entity o : others) {
+            IndexedEntity oio = new IndexedEntity(keyFields, o);
+            if (oio.equals(ie)) return;
+        }
+        removeEntity(entity, deviceKey);
+    }
 }

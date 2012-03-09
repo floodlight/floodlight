@@ -19,6 +19,7 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,6 +33,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -42,6 +45,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
@@ -83,6 +87,16 @@ public class DeviceManagerImpl implements
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
+    
+    /**
+     * Time in milliseconds before entities will expire
+     */
+    protected static final int ENTITY_TIMEOUT = 60*60*1000;
+    
+    /**
+     * Time in seconds between cleaning up old entities/devices
+     */
+    protected static final int ENTITY_CLEANUP_INTERVAL = 60*60;
     
     /**
      * This is the master device map that maps device IDs to {@link Device}
@@ -202,6 +216,11 @@ public class DeviceManagerImpl implements
      * Comparator for sorting by cluster ID
      */
     public Comparator<Entity> clusterIdComparator;
+    
+    /**
+     * Periodic task to clean up expired entities
+     */
+    public SingletonTask entityCleanupTask;
     
     // *********************
     // IDeviceManagerService
@@ -567,7 +586,19 @@ public class DeviceManagerImpl implements
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFSwitchListener(this);
         
-        // XXX - TODO entity aging timer
+        Runnable ecr = new Runnable() {
+            @Override
+            public void run() {
+                cleanupEntities();
+                entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, 
+                                             TimeUnit.SECONDS);
+            }
+        };
+        ScheduledExecutorService ses = 
+                floodlightProvider.getScheduledExecutor();
+        entityCleanupTask = new SingletonTask(ses, ecr);
+        entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, 
+                                     TimeUnit.SECONDS);
     }
     
     // ****************
@@ -813,12 +844,12 @@ public class DeviceManagerImpl implements
      * @param clazz the entity class to search for the entity
      * @param entity the entity to search for
      * @return The {@link Device} object if found
-     */
-    protected Device findDeviceInClassByEntity(IEntityClass clazz,
+    private Device findDeviceInClassByEntity(IEntityClass clazz,
                                                Entity entity) {
         // XXX - TODO
         throw new UnsupportedOperationException();
     }
+     */
     
     /**
      * Look up a {@link Device} based on the provided {@link Entity}.  Also
@@ -906,9 +937,9 @@ public class DeviceManagerImpl implements
                 // When adding an entity, any existing entities on the
                 // same OpenFlow switch cluster but a different attachment
                 // point should be removed. If an entity being removed 
-                // contains non-key fields that the new entity does not contain, 
+                // contains non-key fields that the new entity does not contain,
                 // then a new entity should be added containing the
-                // field (including updating the entity caches), preserving the 
+                // field (including updating the entity caches), preserving the
                 // old timestamp of the entity.
 
                 // XXX - TODO Prevent flapping of entities
@@ -1073,7 +1104,6 @@ public class DeviceManagerImpl implements
                     return false;
             }
         }
-        // XXX - TODO handle indexed views into data
         return true;
     }
     
@@ -1111,21 +1141,89 @@ public class DeviceManagerImpl implements
         updateSecondaryIndices(entity, Arrays.asList(entityClasses), deviceKey);
     }
 
-    private void removeEntities(ArrayList<Entity> removed, 
-                                IEntityClass[] classes) {
-        if (removed == null) return;
-        for (Entity rem : removed) {
-            primaryIndex.removeEntity(rem);
-            
-            for (IEntityClass clazz : classes) {
-                ClassState classState = getClassState(clazz);
+    /**
+     * Clean up expired entities/devices
+     */
+    protected void cleanupEntities() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
+        Date cutoff = c.getTime();
 
-                if (classState.classIndex != null) {
-                    classState.classIndex.removeEntity(rem);
+        ArrayList<Entity> toRemove = new ArrayList<Entity>();
+        ArrayList<Entity> toKeep = new ArrayList<Entity>();
+
+        Iterator<Device> diter = deviceMap.values().iterator();
+        while (diter.hasNext()) {
+            Device d = diter.next();
+
+            while (true) {
+                toRemove.clear();
+                toKeep.clear();
+                for (Entity e : d.getEntities()) {
+                    if (e.getLastSeenTimestamp() != null &&
+                        0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
+                        // individual entity needs to be removed
+                        toRemove.add(e);
+                    } else {
+                        toKeep.add(e);
+                    }
                 }
+                if (toRemove.size() == 0) {
+                    break;
+                }
+                
+                for (Entity e : toRemove) {
+                    Collection<IEntityClass> classes = 
+                            entityClassifier.classifyEntity(e);
+                    removeEntity(e, classes, d.deviceKey, toKeep);
+                }
+
+                if (toKeep.size() > 0) {
+                    Device newDevice = allocateDevice(d.getDeviceKey(),
+                                                      toKeep,
+                                                      d.entityClasses);
+
+                    if (!deviceMap.replace(newDevice.getDeviceKey(),
+                                           d,
+                                           newDevice)) {
+                        // concurrent modification; try again
+                        continue;
+                    }
+                } else {
+                    if (!deviceMap.remove(d.getDeviceKey(), d))
+                        // concurrent modification; try again
+                        continue;
+                }
+                break;
             }
         }
-        // XXX - TODO handle indexed views into data
+    }
+    
+    private void removeEntity(Entity removed, 
+                              Collection<IEntityClass> classes,
+                              Long deviceKey,
+                              Collection<Entity> others) {
+        for (DeviceIndex index : secondaryIndexMap.values()) {
+            index.removeEntityIfNeeded(removed, deviceKey, others);
+        }
+        for (IEntityClass clazz : classes) {
+            ClassState classState = getClassState(clazz);
+            for (DeviceIndex index : classState.secondaryIndexMap.values()) {
+                index.removeEntityIfNeeded(removed, deviceKey, others);
+            }
+        }
+            
+        primaryIndex.removeEntityIfNeeded(removed, deviceKey, others);
+
+        for (IEntityClass clazz : classes) {
+            ClassState classState = getClassState(clazz);
+
+            if (classState.classIndex != null) {
+                classState.classIndex.removeEntityIfNeeded(removed, 
+                                                           deviceKey, 
+                                                           others);
+            }
+        }
     }
 
     private EnumSet<DeviceField> getEntityKeys(Long macAddress,
@@ -1155,6 +1253,12 @@ public class DeviceManagerImpl implements
                                     Entity entity, 
                                     Collection<IEntityClass> entityClasses) {
         return new Device(this, deviceKey, entity, entityClasses);
+    }
+    
+    protected Device allocateDevice(Long deviceKey,
+                                    Collection<Entity> entities, 
+                                    IEntityClass[] entityClasses) {
+        return new Device(this, deviceKey, entities, entityClasses);
     }
     
     protected Device allocateDevice(Device device,

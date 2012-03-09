@@ -10,7 +10,6 @@ import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
-import net.floodlightcontroller.devicemanager.internal.MockDevice;
 
 /**
  * Mock device manager useful for unit tests
@@ -69,6 +68,12 @@ public class MockDeviceManager extends DeviceManagerImpl {
                                     Entity entity, 
                                     Collection<IEntityClass> entityClasses) {
         return new MockDevice(this, deviceKey, entity, entityClasses);
+    }
+    
+    protected Device allocateDevice(Long deviceKey,
+                                    Collection<Entity> entities, 
+                                    IEntityClass[] entityClasses) {
+        return new MockDevice(this, deviceKey, entities, entityClasses);
     }
     
     @Override

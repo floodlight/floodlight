@@ -51,7 +51,7 @@ public class Device implements IDevice {
     // ************
     
     /**
-     * Create a device from a set of entities
+     * Create a device from an entities
      * @param deviceManager the device manager for this device
      * @param deviceKey the unique identifier for this device object
      * @param entity the initial entity for the device
@@ -68,6 +68,26 @@ public class Device implements IDevice {
                 HexString.toHexString(entity.getMacAddress(), 6);
         this.entityClasses = 
                 entityClasses.toArray(new IEntityClass[entityClasses.size()]);
+        Arrays.sort(this.entities);
+    }
+    
+    /**
+     * Create a device from a set of entities
+     * @param deviceManager the device manager for this device
+     * @param deviceKey the unique identifier for this device object
+     * @param entities the initial entities for the device
+     * @param entityClasses the entity classes associated with the entity
+     */
+    public Device(DeviceManagerImpl deviceManager,
+                  Long deviceKey,
+                  Collection<Entity> entities, 
+                  IEntityClass[] entityClasses) {
+        this.deviceManager = deviceManager;
+        this.deviceKey = deviceKey;
+        this.entities = entities.toArray(new Entity[entities.size()]);
+        this.macAddressString = 
+                HexString.toHexString(this.entities[0].getMacAddress(), 6);
+        this.entityClasses = entityClasses;
         Arrays.sort(this.entities);
     }
 
@@ -146,6 +166,9 @@ public class Device implements IDevice {
 
     @Override
     public Integer[] getIPv4Addresses() {
+        // XXX - TODO we can cache this result.  Let's find out if this
+        // is really a performance bottleneck first though.
+        
         if (entities.length == 1) {
             if (entities[0].getIpv4Address() != null) {
                 return new Integer[]{ entities[0].getIpv4Address() };
@@ -170,7 +193,8 @@ public class Device implements IDevice {
                         if (se.ipv4Address != null && 
                             se.ipv4Address.equals(e.ipv4Address) &&
                             se.lastSeenTimestamp != null &&
-                            0 < se.lastSeenTimestamp.compareTo(e.lastSeenTimestamp)) {
+                            0 < se.lastSeenTimestamp.
+                                    compareTo(e.lastSeenTimestamp)) {
                             validIP = false;
                             break;
                         }
@@ -247,9 +271,10 @@ public class Device implements IDevice {
 
     @Override
     public Date getLastSeen() {
-        Date d = entities[0].getLastSeenTimestamp();
-        for (int i = 1; i < entities.length; i++) {
-            if (entities[i].getLastSeenTimestamp().compareTo(d) < 0)
+        Date d = null;
+        for (int i = 0; i < entities.length; i++) {
+            if (d == null ||
+                entities[i].getLastSeenTimestamp().compareTo(d) > 0)
                 d = entities[i].getLastSeenTimestamp();
         }
         return d;
@@ -298,6 +323,7 @@ public class Device implements IDevice {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         Device other = (Device) obj;
+        if (!deviceKey.equals(other.deviceKey)) return false;
         if (!Arrays.equals(entities, other.entities)) return false;
         return true;
     }

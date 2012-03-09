@@ -201,7 +201,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getSwitchClusterId(anyLong())).
             andReturn(1L).anyTimes();
-        expect(mockTopology.isInternal(anyLong(), anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
         deviceManager.topology = mockTopology;
         
         Entity entity1 = new Entity(1L, null, null, 1L, 1, new Date());
@@ -312,7 +313,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.getSwitchClusterId(50L)).
         andReturn(10L).anyTimes();
         
-        expect(mockTopology.isInternal(anyLong(), anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
         
         replay(mockTopology);
         
@@ -388,7 +390,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(anyLong(), anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
         deviceManager.topology = mockTopology;
 
         Date currentDate = new Date();
@@ -444,7 +447,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            DefaultEntityClassifier.entityClasses);
 
         reset(mockTopology);
-        expect(mockTopology.isInternal(anyLong(), anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
         expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getSwitchClusterId(5L)).andReturn(1L).anyTimes();
         
@@ -463,6 +467,77 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 deviceManager.findDevice(Ethernet.toLong(dataLayerSource), 
                                          (short)5, null, null, null);
         assertEquals(device, rdevice);
+    }
+
+    @Test
+    public void testEntityExpiration() throws Exception {
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(5L)).andReturn(5L).anyTimes();
+        replay(mockTopology);
+        deviceManager.topology = mockTopology;
+        
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, 2, 1L, 1, c.getTime());
+        c.add(Calendar.MILLISECOND, -DeviceManagerImpl.ENTITY_TIMEOUT-1);
+        Entity entity2 = new Entity(1L, null, 1, 5L, 1, c.getTime());
+
+        deviceManager.learnDeviceByEntity(entity1);
+        IDevice d = deviceManager.learnDeviceByEntity(entity2);
+        assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) }, 
+                          d.getAttachmentPoints());
+        Iterator<? extends IDevice> diter = 
+                deviceManager.queryClassDevices(d, null, null, 1, null, null);
+        assertTrue(diter.hasNext());
+        assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
+        diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
+        assertTrue(diter.hasNext());
+        assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
+        
+        deviceManager.entityCleanupTask.reschedule(0, null);
+
+        d = deviceManager.getDevice(d.getDeviceKey());
+        assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
+                          d.getAttachmentPoints());
+        diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
+        assertTrue(diter.hasNext());
+        assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
+        diter = deviceManager.queryClassDevices(d, null, null, 1, null, null);
+        assertFalse(diter.hasNext());
+        
+        d = deviceManager.findDevice(1L, null, null, null, null);
+        assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
+                          d.getAttachmentPoints());
+        
+    }
+
+    @Test
+    public void testDeviceExpiration() throws Exception {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.MILLISECOND, -DeviceManagerImpl.ENTITY_TIMEOUT-1);
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        Entity entity2 = new Entity(1L, null, 2, 5L, 1, c.getTime());
+
+        IDevice d = deviceManager.learnDeviceByEntity(entity2);
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
+        
+        deviceManager.entityCleanupTask.reschedule(0, null);
+
+        IDevice r = deviceManager.getDevice(d.getDeviceKey());
+        assertNull(r);
+        Iterator<? extends IDevice> diter = 
+                deviceManager.queryClassDevices(d, null, null, 1, null, null);
+        assertFalse(diter.hasNext());
+        
+        r = deviceManager.findDevice(1L, null, null, null, null);
+        assertNull(r);
     }
     
     @Test

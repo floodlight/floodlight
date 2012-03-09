@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.devicemanager.internal;
+package net.floodlightcontroller.devicemanager.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +23,9 @@ import java.util.TreeSet;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
+import net.floodlightcontroller.devicemanager.internal.Entity;
 
 /**
  * This mock device removes the dependency on topology and a parent device
@@ -42,6 +45,12 @@ public class MockDevice extends Device {
         super(device, newEntity, entityClasses);
     }
     
+    public MockDevice(DeviceManagerImpl deviceManager, Long deviceKey,
+                      Collection<Entity> entities,
+                      IEntityClass[] entityClasses) {
+        super(deviceManager, deviceKey, entities, entityClasses);
+    }
+
     @Override
     public Integer[] getIPv4Addresses() {
         TreeSet<Integer> vals = new TreeSet<Integer>();
