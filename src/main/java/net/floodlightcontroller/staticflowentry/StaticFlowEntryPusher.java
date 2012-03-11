@@ -69,7 +69,7 @@ public class StaticFlowEntryPusher
                                                          // netmask, e.g.
                                                          // "128.8.128.0/24"
     public static final String COLUMN_NW_DST = "nw_dst";
-    public static final String COLUMN_TP_DST = "tp_src";
+    public static final String COLUMN_TP_DST = "tp_dst";
     public static final String COLUMN_TP_SRC = "tp_src";
     public static final String COLUMN_ACTIONS = "actions";
     public static String ColumnNames[] = { COLUMN_NAME, COLUMN_SWITCH,
