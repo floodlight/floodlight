@@ -22,7 +22,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
@@ -70,13 +70,13 @@ public class FloodlightTestCase extends TestCase {
                     eth);
         }
         if (srcDevice != null) {
-            IDeviceManagerService.fcStore.put(bc, 
-                    IDeviceManagerService.CONTEXT_SRC_DEVICE, 
+            IDeviceService.fcStore.put(bc, 
+                    IDeviceService.CONTEXT_SRC_DEVICE, 
                     srcDevice);
         }
         if (dstDevice != null) {
-            IDeviceManagerService.fcStore.put(bc, 
-                    IDeviceManagerService.CONTEXT_DST_DEVICE, 
+            IDeviceService.fcStore.put(bc, 
+                    IDeviceService.CONTEXT_DST_DEVICE, 
                     dstDevice);
         }
         return bc;

@@ -22,7 +22,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
 /**
  * An index that maps key fields of an entity uniquely to a device key

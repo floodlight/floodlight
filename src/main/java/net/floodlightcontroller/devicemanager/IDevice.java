@@ -73,7 +73,7 @@ public interface IDevice {
      * Get the entity classes for the device.
      * @return the entity classes
      * @see IEntityClassifier
-     * @see IDeviceManagerService#setEntityClassifier(IEntityClassifier)
+     * @see IDeviceService#setEntityClassifier(IEntityClassifier)
      */
     public IEntityClass[] getEntityClasses();
 }

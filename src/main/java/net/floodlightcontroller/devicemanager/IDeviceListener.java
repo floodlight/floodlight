@@ -23,7 +23,7 @@ package net.floodlightcontroller.devicemanager;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IDeviceManagerAware {
+public interface IDeviceListener {
     /**
      * Called when a new Device is found
      * @param device the device that changed

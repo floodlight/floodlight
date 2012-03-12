@@ -30,8 +30,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -56,14 +56,14 @@ import org.slf4j.LoggerFactory;
 
 public abstract class ForwardingBase implements
     IOFMessageListener,
-    IDeviceManagerAware {
+    IDeviceListener {
     protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
 
     public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 5; // in seconds
 
     protected IFloodlightProviderService floodlightProvider;
-    protected IDeviceManagerService deviceManager;
+    protected IDeviceService deviceManager;
     protected IRoutingService routingEngine;
     protected ITopologyService topology;
     protected ICounterStoreService counterStore;
@@ -420,7 +420,7 @@ public abstract class ForwardingBase implements
      * @param deviceManager
      *            the deviceManager to set
      */
-    public void setDeviceManager(IDeviceManagerService deviceManager) {
+    public void setDeviceManager(IDeviceService deviceManager) {
         this.deviceManager = deviceManager;
     }
 

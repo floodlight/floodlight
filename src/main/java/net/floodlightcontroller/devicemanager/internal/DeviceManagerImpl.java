@@ -47,10 +47,10 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -77,7 +77,7 @@ import org.slf4j.LoggerFactory;
  * @author readams
  */
 public class DeviceManagerImpl implements 
-        IDeviceManagerService, IOFMessageListener,
+        IDeviceService, IOFMessageListener,
         IOFSwitchListener, ITopologyListener, 
         IStorageSourceListener, IFloodlightModule,
         IInfoProvider {  
@@ -182,7 +182,7 @@ public class DeviceManagerImpl implements
     /**
      * Device manager event listeners
      */
-    protected Set<IDeviceManagerAware> deviceListeners;
+    protected Set<IDeviceListener> deviceListeners;
 
     /**
      * A device update event to be dispatched
@@ -370,7 +370,7 @@ public class DeviceManagerImpl implements
     }
 
     @Override
-    public void addListener(IDeviceManagerAware listener) {
+    public void addListener(IDeviceListener listener) {
         deviceListeners.add(listener);
     }
 
@@ -489,7 +489,7 @@ public class DeviceManagerImpl implements
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IDeviceManagerService.class);
+        l.add(IDeviceService.class);
         return l;
     }
 
@@ -501,7 +501,7 @@ public class DeviceManagerImpl implements
             new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
         // We are the class that implements the service
-        m.put(IDeviceManagerService.class, this);
+        m.put(IDeviceService.class, this);
         return m;
     }
 
@@ -521,7 +521,7 @@ public class DeviceManagerImpl implements
                 new HashSet<EnumSet<DeviceField>>();
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
-        this.deviceListeners = new HashSet<IDeviceManagerAware>();
+        this.deviceListeners = new HashSet<IDeviceListener>();
         
         this.floodlightProvider = 
                 fmc.getServiceImpl(IFloodlightProviderService.class);
@@ -1032,7 +1032,7 @@ public class DeviceManagerImpl implements
         if (updates == null) return;
         DeviceUpdate update = null;
         while (null != (update = updates.poll())) {
-            for (IDeviceManagerAware listener : deviceListeners) {
+            for (IDeviceListener listener : deviceListeners) {
                 if (update.added) {
                     listener.deviceAdded(update.device);
                 } else {

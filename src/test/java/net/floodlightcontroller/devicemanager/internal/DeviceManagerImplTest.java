@@ -43,13 +43,13 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
-import static net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField.*;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import static net.floodlightcontroller.devicemanager.IDeviceService.DeviceField.*;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -104,7 +104,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         modSet.add(mockFloodlightProvider);
         deviceManager = new DeviceManagerImpl();
         modSet.add(deviceManager);
-        fmc.addService(IDeviceManagerService.class, deviceManager);
+        fmc.addService(IDeviceService.class, deviceManager);
         storageSource = new MemoryStorageSource();
         modSet.add(storageSource);
         fmc.addService(IStorageSourceService.class, storageSource);
@@ -183,7 +183,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
 
         @Override
-        public EnumSet<IDeviceManagerService.DeviceField> getKeyFields() {
+        public EnumSet<IDeviceService.DeviceField> getKeyFields() {
             return testKeyFields;
         }
         
@@ -191,8 +191,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     
     @Test
     public void testEntityLearning() throws Exception {
-        IDeviceManagerAware mockListener = 
-                createStrictMock(IDeviceManagerAware.class);
+        IDeviceListener mockListener = 
+                createStrictMock(IDeviceListener.class);
         
         deviceManager.addListener(mockListener);
         deviceManager.setEntityClassifier(new TestEntityClassifier());
@@ -298,8 +298,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     
     @Test
     public void testAttachmentPointLearning() throws Exception {
-        IDeviceManagerAware mockListener = 
-                createStrictMock(IDeviceManagerAware.class);
+        IDeviceListener mockListener = 
+                createStrictMock(IDeviceListener.class);
         
         deviceManager.addListener(mockListener);
 

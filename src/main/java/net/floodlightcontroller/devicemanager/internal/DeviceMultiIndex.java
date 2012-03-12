@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.util.IterableIterator;
 
 /**

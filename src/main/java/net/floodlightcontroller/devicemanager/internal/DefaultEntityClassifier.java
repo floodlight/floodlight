@@ -22,8 +22,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 
@@ -38,7 +38,7 @@ public class DefaultEntityClassifier implements IEntityClassifier {
      */
     protected static class DefaultEntityClass implements IEntityClass {
         @Override
-        public EnumSet<IDeviceManagerService.DeviceField> getKeyFields() {
+        public EnumSet<IDeviceService.DeviceField> getKeyFields() {
             return keyFields;
         }
     }

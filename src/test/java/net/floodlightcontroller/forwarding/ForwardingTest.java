@@ -41,7 +41,7 @@ import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -102,7 +102,7 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(IRoutingService.class, routingEngine);
         fmc.addService(ICounterStoreService.class, new CounterStore());
-        fmc.addService(IDeviceManagerService.class, deviceManager);
+        fmc.addService(IDeviceService.class, deviceManager);
 
         forwarding.init(fmc);
         deviceManager.init(fmc);
@@ -215,9 +215,9 @@ public class ForwardingTest extends FloodlightTestCase {
             put(cntx, 
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                 (Ethernet)testPacket);
-        IDeviceManagerService.fcStore.
+        IDeviceService.fcStore.
             put(cntx, 
-                IDeviceManagerService.CONTEXT_SRC_DEVICE,
+                IDeviceService.CONTEXT_SRC_DEVICE,
                 srcDevice);
     }
 
@@ -236,9 +236,9 @@ public class ForwardingTest extends FloodlightTestCase {
                 new Capture<FloodlightContext>(CaptureType.ALL);
 
         // Set destination as sw2 and Mock route
-        IDeviceManagerService.fcStore.
+        IDeviceService.fcStore.
             put(cntx, 
-                IDeviceManagerService.CONTEXT_DST_DEVICE, 
+                IDeviceService.CONTEXT_DST_DEVICE, 
                 dstDevice1);
 
         Route route = new Route(1L, 2L);
@@ -318,9 +318,9 @@ public class ForwardingTest extends FloodlightTestCase {
                                           null, networkDest,
                                           1L, 3);
         
-        IDeviceManagerService.fcStore.
+        IDeviceService.fcStore.
             put(cntx, 
-                IDeviceManagerService.CONTEXT_DST_DEVICE, 
+                IDeviceService.CONTEXT_DST_DEVICE, 
                 dstDevice2);
         expect(routingEngine.getRoute(1L, 1L)).andReturn(null).atLeastOnce();
         

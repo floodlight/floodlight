@@ -30,10 +30,10 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * that under normal circumstances, {@link Device} objects should be retrieved
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
-public interface IDeviceManagerService extends IFloodlightService {
+public interface IDeviceService extends IFloodlightService {
     /**
      * Fields used in devices for indexes and querying
-     * @see IDeviceManagerService#addIndex
+     * @see IDeviceService#addIndex
      */
     enum DeviceField {
         MAC, IPV4, VLAN, SWITCH, PORT
@@ -96,7 +96,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param vlan the VLAN if available
      * @param ipv4Address The IP address if available.
      * @return an {@link IDevice} or null if no device is found.
-     * @see IDeviceManagerService#findDevice(long, Short, Integer, Long, 
+     * @see IDeviceService#findDevice(long, Short, Integer, Long, 
      * Integer)
      */
     public IDevice findDestDevice(IDevice source,
@@ -136,7 +136,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param switchDPID the switch DPID
      * @param switchPort the switch port
      * @return an iterator over a set of devices matching the query
-     * @see IDeviceManagerService#queryClassDevices(IEntityClass, Long, 
+     * @see IDeviceService#queryClassDevices(IEntityClass, Long, 
      * Short, Integer, Long, Integer)
      */
     public Iterator<? extends IDevice> queryDevices(Long macAddress,
@@ -161,7 +161,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param switchDPID the switch DPID
      * @param switchPort the switch port
     * @return an iterator over a set of devices matching the query
-     * @see IDeviceManagerService#queryClassDevices(Long, 
+     * @see IDeviceService#queryClassDevices(Long, 
      * Short, Integer, Long, Integer)
      */
     public Iterator<? extends IDevice> queryClassDevices(IDevice reference,
@@ -176,7 +176,7 @@ public interface IDeviceManagerService extends IFloodlightService {
      * 
      * @param listener The listener that wants the notifications
      */
-    public void addListener(IDeviceManagerAware listener);
+    public void addListener(IDeviceListener listener);
     
     /**
      * Set the entity classifier for the device manager to use to

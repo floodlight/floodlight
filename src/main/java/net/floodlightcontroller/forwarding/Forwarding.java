@@ -29,7 +29,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -81,13 +81,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
         // Check if we have the location of the destination
         IDevice dstDevice = 
-                IDeviceManagerService.fcStore.
-                    get(cntx, IDeviceManagerService.CONTEXT_DST_DEVICE);
+                IDeviceService.fcStore.
+                    get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         
         if (dstDevice != null) {
             IDevice srcDevice =
-                    IDeviceManagerService.fcStore.
-                        get(cntx, IDeviceManagerService.CONTEXT_SRC_DEVICE);
+                    IDeviceService.fcStore.
+                        get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
             Long srcIsland = topology.getSwitchClusterId(sw.getId());
             
             if (srcDevice == null) {
@@ -283,7 +283,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
-        l.add(IDeviceManagerService.class);
+        l.add(IDeviceService.class);
         l.add(IRoutingService.class);
         l.add(ITopologyService.class);
         l.add(ICounterStoreService.class);
@@ -293,7 +293,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
-        this.setDeviceManager(context.getServiceImpl(IDeviceManagerService.class));
+        this.setDeviceManager(context.getServiceImpl(IDeviceService.class));
         this.setRoutingEngine(context.getServiceImpl(IRoutingService.class));
         this.setTopology(context.getServiceImpl(ITopologyService.class));
         this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));

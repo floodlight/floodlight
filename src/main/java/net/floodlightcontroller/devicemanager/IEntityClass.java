@@ -19,7 +19,7 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.EnumSet;
 
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.internal.Device;
 
 /**

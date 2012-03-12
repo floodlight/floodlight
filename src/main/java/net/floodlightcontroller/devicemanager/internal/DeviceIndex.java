@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Iterator;
 
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
 /**
  * An index that maps key fields of an entity to device keys

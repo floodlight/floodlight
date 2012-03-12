@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
@@ -31,9 +31,9 @@ public class MockDeviceManager extends DeviceManagerImpl {
                                Integer ipv4Address, Long switchDPID, 
                                Integer switchPort,
                                boolean processUpdates) {
-        Set<IDeviceManagerAware> listeners = deviceListeners;
+        Set<IDeviceListener> listeners = deviceListeners;
         if (!processUpdates) {
-            deviceListeners = Collections.<IDeviceManagerAware>emptySet();
+            deviceListeners = Collections.<IDeviceListener>emptySet();
         }
         
         if (vlan != null && vlan.shortValue() <= 0)

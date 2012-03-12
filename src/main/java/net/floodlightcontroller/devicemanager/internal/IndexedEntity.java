@@ -2,8 +2,8 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.EnumSet;
 
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService.DeviceField;
+import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
 /**
  * This is a thin wrapper around {@link Entity} that allows overriding
@@ -104,7 +104,7 @@ public class IndexedEntity {
         if (getClass() != obj.getClass()) return false;
         IndexedEntity other = (IndexedEntity) obj;
 
-        for (IDeviceManagerService.DeviceField f : keyFields) {
+        for (IDeviceService.DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
                     if (entity.macAddress != other.entity.macAddress)
