@@ -471,6 +471,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
     @Test
     public void testEntityExpiration() throws Exception {
+        IDeviceListener mockListener = 
+                createStrictMock(IDeviceListener.class);
+        mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
+        mockListener.deviceMoved(isA(IDevice.class));
+        
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(anyLong(), 
                                        anyShort())).andReturn(false).anyTimes();
@@ -498,8 +503,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
         
+        deviceManager.addListener(mockListener);
+        replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
-
+        
         d = deviceManager.getDevice(d.getDeviceKey());
         assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
@@ -515,6 +522,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
                           d.getAttachmentPoints());
         
+        verify(mockListener);
     }
 
     @Test

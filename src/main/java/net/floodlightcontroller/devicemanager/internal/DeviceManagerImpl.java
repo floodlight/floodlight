@@ -61,6 +61,8 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.util.MultiIterator;
+import static net.floodlightcontroller.devicemanager.internal.
+            DeviceManagerImpl.DeviceUpdate.Change.*;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -188,28 +190,32 @@ public class DeviceManagerImpl implements
      * A device update event to be dispatched
      */
     protected static class DeviceUpdate {
+        protected enum Change {
+            ADD, DELETE, CHANGE;
+        }
+        
         /**
          * The affected device
          */
         protected IDevice device;
         
         /**
-         * True if the device was added
+         * The change that was made
          */
-        protected boolean added;
+        protected Change change;
         
         /**
          * If not added, then this is the list of fields changed
          */
         protected EnumSet<DeviceField> fieldsChanged;
         
-        public DeviceUpdate(IDevice device, boolean added,
+        public DeviceUpdate(IDevice device, Change change,
                             EnumSet<DeviceField> fieldsChanged) {
             super();
             this.device = device;
-            this.added = added;
+            this.change = change;
             this.fieldsChanged = fieldsChanged;
-        }        
+        }
     }
     
     /**
@@ -923,7 +929,7 @@ public class DeviceManagerImpl implements
                 // generate new device update
                 deviceUpdates = 
                         updateUpdates(deviceUpdates,
-                                      new DeviceUpdate(device, true, null));
+                                      new DeviceUpdate(device, ADD, null));
                 
                 break;
             }
@@ -951,7 +957,7 @@ public class DeviceManagerImpl implements
                         findChangedFields(device, entity);
                 deviceUpdates = 
                         updateUpdates(deviceUpdates,
-                                      new DeviceUpdate(device, false, 
+                                      new DeviceUpdate(device, CHANGE, 
                                                        changedFields));
                 
                 // update the device map with a replace call
@@ -1033,23 +1039,28 @@ public class DeviceManagerImpl implements
         DeviceUpdate update = null;
         while (null != (update = updates.poll())) {
             for (IDeviceListener listener : deviceListeners) {
-                if (update.added) {
-                    listener.deviceAdded(update.device);
-                } else {
-                    for (DeviceField field : update.fieldsChanged) {
-                        switch (field) {
-                            case IPV4:
-                                listener.deviceIPV4AddrChanged(update.device);
-                                break;
-                            case SWITCH:
-                            case PORT:
-                                listener.deviceMoved(update.device);
-                                break;
-                            case VLAN:
-                                listener.deviceVlanChanged(update.device);
-                                break;
+                switch (update.change) {
+                    case ADD:
+                        listener.deviceAdded(update.device);
+                        break;
+                    case DELETE:
+                        listener.deviceRemoved(update.device);
+                    case CHANGE:
+                        for (DeviceField field : update.fieldsChanged) {
+                            switch (field) {
+                                case IPV4:
+                                    listener.deviceIPV4AddrChanged(update.device);
+                                    break;
+                                case SWITCH:
+                                case PORT:
+                                    listener.deviceMoved(update.device);
+                                    break;
+                                case VLAN:
+                                    listener.deviceVlanChanged(update.device);
+                                    break;
+                            }
                         }
-                    }
+                        break;
                 }
             }
         }
@@ -1153,10 +1164,14 @@ public class DeviceManagerImpl implements
         ArrayList<Entity> toKeep = new ArrayList<Entity>();
 
         Iterator<Device> diter = deviceMap.values().iterator();
+        LinkedList<DeviceUpdate> deviceUpdates = 
+                new LinkedList<DeviceUpdate>();
+        
         while (diter.hasNext()) {
             Device d = diter.next();
 
             while (true) {
+                deviceUpdates.clear();
                 toRemove.clear();
                 toKeep.clear();
                 for (Entity e : d.getEntities()) {
@@ -1173,15 +1188,21 @@ public class DeviceManagerImpl implements
                 }
                 
                 for (Entity e : toRemove) {
-                    Collection<IEntityClass> classes = 
-                            entityClassifier.classifyEntity(e);
-                    removeEntity(e, classes, d.deviceKey, toKeep);
+                    removeEntity(e, d.getEntityClasses(), d.deviceKey, toKeep);
                 }
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
                                                       toKeep,
                                                       d.entityClasses);
+
+                    EnumSet<DeviceField> changedFields = 
+                            EnumSet.noneOf(DeviceField.class);
+                    for (Entity e : toRemove) {
+                        changedFields.addAll(findChangedFields(newDevice, e));
+                    }
+                    deviceUpdates.add(new DeviceUpdate(d, CHANGE, 
+                                                       changedFields));
 
                     if (!deviceMap.replace(newDevice.getDeviceKey(),
                                            d,
@@ -1190,17 +1211,19 @@ public class DeviceManagerImpl implements
                         continue;
                     }
                 } else {
+                    deviceUpdates.add(new DeviceUpdate(d, DELETE, null));
                     if (!deviceMap.remove(d.getDeviceKey(), d))
                         // concurrent modification; try again
                         continue;
                 }
+                processUpdates(deviceUpdates);
                 break;
             }
         }
     }
     
     private void removeEntity(Entity removed, 
-                              Collection<IEntityClass> classes,
+                              IEntityClass[] classes,
                               Long deviceKey,
                               Collection<Entity> others) {
         for (DeviceIndex index : secondaryIndexMap.values()) {
