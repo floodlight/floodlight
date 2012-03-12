@@ -82,7 +82,7 @@ public class OFMatch implements Cloneable, Serializable {
     final public static String STR_DL_SRC = "dl_src";
     final public static String STR_DL_TYPE = "dl_type";
     final public static String STR_DL_VLAN = "dl_vlan";
-    final public static String STR_DL_VLAN_PCP = "dl_vpcp";
+    final public static String STR_DL_VLAN_PCP = "dl_vlan_pcp";
     final public static String STR_NW_DST = "nw_dst";
     final public static String STR_NW_SRC = "nw_src";
     final public static String STR_NW_PROTO = "nw_proto";
