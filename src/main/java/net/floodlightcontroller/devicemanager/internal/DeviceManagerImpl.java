@@ -1243,15 +1243,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         }
     }
 
-    @Override
-    public void addedLink(long srcSw, short srcPort, int srcPortState,
-            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
-    {
-        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
-    }
-
-    @Override
-    public void updatedLink(long srcSw, short srcPort, int srcPortState,
+    public void addedOrUpdatedLink(long srcSw, short srcPort, int srcPortState,
             long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
     {
         if (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != 
@@ -1270,12 +1262,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         }
     }
 
-    @Override
-    public void removedLink(long src, short srcPort, long dst, 
-                                                                short dstPort)
-    {
-        // no-op
-    }
 
     /**
      * Process device manager aware updates.  Call without any lock held
@@ -2018,7 +2004,19 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
 
     @Override
-    public void updatedSwitch(long swId) {
+    public void linkDiscoveryUpdate(LDUpdate update) {
+        if (update.getOperation() == UpdateOperation.SWITCH_UPDATED) {
+            updatedSwitch(update.getSrc(), update.getSrcType());
+        } else if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
+            this.addedOrUpdatedLink(update.getSrc(), update.getSrcPort(), 
+                                    update.getSrcPortState(), 
+                                    update.getDst(), update.getDstPort(),
+                                    update.getDstPortState(), 
+                                    update.getType());
+        }
+    }
+
+    public void updatedSwitch(long swId, SwitchType stype) {
         IOFSwitch sw = floodlightProvider.getSwitches().get(swId);
         if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
             removedSwitch(sw);
@@ -2195,4 +2193,5 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 		
 		return info;
 	}
+
 }

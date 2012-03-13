@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.types.MacVlanPair;
-import net.floodlightcontroller.util.TimedCache;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
