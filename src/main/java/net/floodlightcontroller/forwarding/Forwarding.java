@@ -119,7 +119,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 // Flood since we don't know the dst device
                 if (log.isDebugEnabled()) {
                     log.debug("No first hop island found for destination device {}, Action = flooding",
-                              dstDevice.getDataLayerAddress());
+                              HexString.toHexString(dstDevice.getDataLayerAddress()));
                 }
                 doFlood(sw, pi, cntx);
                 return;
