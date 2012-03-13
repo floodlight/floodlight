@@ -255,10 +255,31 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         return match.clone();
     }
 
+    /**
+     * This function will push a packet-out to a switch.  The assumption here is that
+     * the packet-in was also generated from the same switch.  Thus, if the input
+     * port of the packet-in and the outport are the same, the function will not 
+     * push the packet-out.
+     * @param sw        switch that generated the packet-in, and from which packet-out is sent
+     * @param match     OFmatch
+     * @param pi        packet-in
+     * @param outport   output port
+     * @param cntx      context of the packet
+     */
     public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, short outport, FloodlightContext cntx) {
         
         if (pi == null) {
             return;
+        }
+        
+        // The assumption here is (sw) is the switch that generated the packet-in.
+        // If the input port is the same as output port, then the packet-out should
+        // be ignored.
+        if (pi.getInPort() == outport) {
+            if (log.isDebugEnabled()) {
+                log.debug("Attemping to do packet-out to the same interface as packet-in. Dropping packet.  SrcSwitch={}, match = {}, pi={}", new Object[]{sw, match, pi});
+                return;
+            }
         }
         
         if (log.isDebugEnabled()) {
@@ -278,7 +299,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         // set buffer_id, in_port
         po.setBufferId(pi.getBufferId());
         po.setInPort(pi.getInPort());
-        
+
         // set data - only if buffer_id == -1
         if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
