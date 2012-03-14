@@ -14,9 +14,13 @@ import org.restlet.Response;
 import org.restlet.Restlet;
 import org.restlet.data.Protocol;
 import org.restlet.data.Reference;
+import org.restlet.data.Status;
+import org.restlet.ext.jackson.JacksonRepresentation;
+import org.restlet.representation.Representation;
 import org.restlet.routing.Filter;
 import org.restlet.routing.Router;
 import org.restlet.routing.Template;
+import org.restlet.service.StatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +77,15 @@ public class RestApiServer
         }
         
         public void run(FloodlightModuleContext fmlContext, int restPort) {
+            setStatusService(new StatusService() {
+                @Override
+                public Representation getRepresentation(Status status,
+                                                        Request request,
+                                                        Response response) {
+                    return new JacksonRepresentation<Status>(status);
+                }                
+            });
+            
             // Add everything in the module context to the rest
             for (Class<? extends IFloodlightService> s : fmlContext.getAllServices()) {
                 context.getAttributes().put(s.getCanonicalName(), 

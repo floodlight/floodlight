@@ -41,7 +41,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -51,15 +50,16 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
             DeviceManagerImpl.DeviceUpdate.Change.*;
@@ -67,7 +67,6 @@ import static net.floodlightcontroller.devicemanager.internal.
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +79,6 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements 
         IDeviceService, IOFMessageListener,
-        IOFSwitchListener, ITopologyListener, 
         IStorageSourceListener, IFloodlightModule,
         IInfoProvider {  
     protected static Logger logger = 
@@ -89,6 +87,7 @@ public class DeviceManagerImpl implements
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
+    protected IRestApiService restApi;
     
     /**
      * Time in milliseconds before entities will expire
@@ -436,9 +435,6 @@ public class DeviceManagerImpl implements
             case PACKET_IN:
                 return this.processPacketInMessage(sw, 
                                                    (OFPacketIn) msg, cntx);
-            case PORT_STATUS:
-                return this.processPortStatusMessage(sw, 
-                                                     (OFPortStatus) msg);
         }
 
         logger.error("received an unexpected message {} from switch {}", 
@@ -460,31 +456,6 @@ public class DeviceManagerImpl implements
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // TODO Auto-generated method stub
         
-    }
-
-    // *****************
-    // ITopologyListener
-    // *****************
-
-    @Override
-    public void toplogyChanged() {
-        // TODO Auto-generated method stub
-        
-    }
-    
-    // *****************
-    // IOFSwitchListener
-    // *****************
-
-    @Override
-    public void addedSwitch(IOFSwitch sw) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void removedSwitch(IOFSwitch sw) {
-        // TODO Auto-generated method stub
     }
 
     // *****************
@@ -518,6 +489,7 @@ public class DeviceManagerImpl implements
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
         l.add(ITopologyService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -535,6 +507,8 @@ public class DeviceManagerImpl implements
                 fmc.getServiceImpl(IStorageSourceService.class);
         this.topology =
                 fmc.getServiceImpl(ITopologyService.class);
+        this.restApi = fmc.getServiceImpl(IRestApiService.class);
+
     }
     
     @Override
@@ -580,17 +554,8 @@ public class DeviceManagerImpl implements
                 return r;
             }
         };
-
-        if (topology != null) {
-            // Register to get updates from topology
-            topology.addListener(this);
-        } else {
-            logger.error("Could not add topology listener");
-        }
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
-        floodlightProvider.addOFSwitchListener(this);
         
         Runnable ecr = new Runnable() {
             @Override
@@ -605,16 +570,17 @@ public class DeviceManagerImpl implements
         entityCleanupTask = new SingletonTask(ses, ecr);
         entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, 
                                      TimeUnit.SECONDS);
+        
+        if (restApi != null) {
+            restApi.addRestletRoutable(new DeviceRoutable());
+        } else {
+            logger.error("Could not instantiate REST API");
+        }
     }
     
     // ****************
     // Internal methods
     // ****************
-    
-    protected Command processPortStatusMessage(IOFSwitch sw, OFPortStatus ps) {
-        // XXX - TODO
-        return null;        
-    }
 
     /**
      * This method is called for every packet-in and should be optimized for
@@ -1045,6 +1011,7 @@ public class DeviceManagerImpl implements
                         break;
                     case DELETE:
                         listener.deviceRemoved(update.device);
+                        break;
                     case CHANGE:
                         for (DeviceField field : update.fieldsChanged) {
                             switch (field) {

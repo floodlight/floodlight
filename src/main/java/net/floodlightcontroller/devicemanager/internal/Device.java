@@ -25,9 +25,11 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.TreeSet;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
+import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -37,6 +39,7 @@ import net.floodlightcontroller.topology.ITopologyService;
  * Concrete implementation of {@link IDevice}
  * @author readams
  */
+@JsonSerialize(using=DeviceSerializer.class)
 public class Device implements IDevice {
     protected Long deviceKey;
     protected DeviceManagerImpl deviceManager;
