@@ -13,7 +13,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
@@ -187,6 +186,8 @@ IRoutingService, ILinkDiscoveryListener {
         portBroadcastDomainLinks.clear();
         tunnelLinks.clear();
     }
+
+
     /**
      * Getters.  No Setters.
      */
@@ -214,39 +215,21 @@ IRoutingService, ILinkDiscoveryListener {
     //  ILinkDiscoveryListener interface methods
     //
 
-    @Override
-    public void addedLink(long srcSw, short srcPort, int srcPortState,
-                          long dstSw, short dstPort, int dstPortState,
-                          LinkType type) {
-        updatedLink(srcSw, srcPort, srcPortState, dstSw, dstPort, dstPortState, type);
-
+    public void linkDiscoveryUpdate(LDUpdate update) {
+        if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
+            boolean added = (((update.getSrcPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
+                    ((update.getDstPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));
+            if (added) {
+            addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
+                               update.getDst(), update.getDstPort(), 
+                               update.getType());
+            } else  {
+                removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
+            }
+        } else if (update.getOperation() == UpdateOperation.REMOVE) {
+            removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
+        }
     }
-
-    @Override
-    public void updatedLink(long srcSw, short srcPort, int srcPortState,
-                            long dstSw, short dstPort, int dstPortState,
-                            LinkType type) {
-        boolean added = (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
-                ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));
-
-        if (added)
-            this.addOrUpdateLink(srcSw, srcPort, dstSw, dstPort, type);
-        else 
-            this.removedLink(srcSw, srcPort, dstSw, dstPort);
-    }
-
-    @Override
-    public void
-    removedLink(long srcSw, short srcPort, long dstSw, short dstPort) {
-        // TODO Auto-generated method stub
-        this.removeLink(srcSw, srcPort, dstSw, dstPort);
-    }
-
-    @Override
-    public void updatedSwitch(long sw) {
-        // TODO Auto-generated method stub
-    }
-
 
     //
     //   IFloodlightModule interfaces

@@ -20,6 +20,7 @@ package net.floodlightcontroller.core.web;
 import java.util.Map;
 
 import org.restlet.resource.Get;
+import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 
@@ -27,7 +28,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
  * Get summary counters registered by all modules
  * @author shudongz
  */
-public class ControllerSummaryResource extends CounterResourceBase {
+public class ControllerSummaryResource extends ServerResource {
     @Get("json")
     public Map<String, Object> retrieve() {
         IFloodlightProviderService floodlightProvider = 

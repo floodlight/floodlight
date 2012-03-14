@@ -50,6 +50,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
@@ -172,16 +175,13 @@ public class LinkDiscoveryManager
      * the array */
     protected ArrayList<ILinkDiscoveryListener> linkDiscoveryAware;
     protected ArrayList<ITopologyListener> topologyAware;
-    protected BlockingQueue<Update> updates;
+    protected BlockingQueue<LDUpdate> updates;
     protected Thread updatesThread;
 
     //This map provides the ids of broadcast domains connected to a switch cluster
     protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
 
     protected boolean isTopologyValid = false;
-
-    public static enum UpdateOperation {ADD, UPDATE, REMOVE,
-                                        SWITCH_UPDATED, TOPOLOGY_CHANGED};
 
     public int getLldpFrequency() {
         return lldpFrequency;
@@ -198,93 +198,20 @@ public class LinkDiscoveryManager
     public boolean isShuttingDown() {
         return shuttingDown;
     }
-
-    protected class Update {
-        public long src;
-        public short srcPort;
-        public int srcPortState;
-        public long dst;
-        public short dstPort;
-        public int dstPortState;
-        public ILinkDiscovery.LinkType type;
-        public UpdateOperation operation;
-
-        public Update(long src, short srcPort, int srcPortState,
-                      long dst, short dstPort, int dstPortState,
-                      ILinkDiscovery.LinkType type,
-                      UpdateOperation operation) {
-            this.src = src;
-            this.srcPort = srcPort;
-            this.srcPortState = srcPortState;
-            this.dst = dst;
-            this.dstPort = dstPort;
-            this.dstPortState = dstPortState;
-            this.type = type;
-            this.operation = operation;
-        }
-
-        public Update(LinkTuple lt, int srcPortState,
-                      int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
-            this(lt.getSrc().getSw().getId(), lt.getSrc().getPort(),
-                 srcPortState, lt.getDst().getSw().getId(), lt.getDst().getPort(),
-                 dstPortState, type, operation);
-        }
-
-        // For updtedSwitch(sw)
-        public Update(IOFSwitch sw) {
-            this.operation = UpdateOperation.SWITCH_UPDATED;
-            this.src = sw.getId();
-        }
-
-        // Should only be used for CLUSTER_MERGED operations
-        public Update(UpdateOperation operation) {
-            this.operation = operation;
-        }
-    }
     
     private void doUpdatesThread() throws InterruptedException {
         do {
-            Update update = updates.take();
+            LDUpdate update = updates.take();
 
-            if (update.operation == UpdateOperation.TOPOLOGY_CHANGED) {
-                if (topologyAware != null) {
-                    for (ITopologyListener ta : topologyAware) { // order maintained
-                        ta.toplogyChanged();
+            if (topologyAware != null) {
+                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                    if (log.isDebugEnabled()) {
+                        log.debug("Dispatching link discovery update {} {} {} {} {}",
+                                  new Object[]{update.getOperation(),
+                                               update.getSrc(), update.getSrcPort(),
+                                               update.getDst(), update.getDstPort()});
                     }
-                } 
-            }else {
-                if (topologyAware != null) {
-                    for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
-                        if (log.isDebugEnabled()) {
-                            log.debug("Dispatching topology update {} {} {} {} {}",
-                                      new Object[]{update.operation,
-                                                   update.src, update.srcPort,
-                                                   update.dst, update.dstPort});
-                        }
-                        switch (update.operation) {
-                            case ADD:
-                                lda.addedLink(update.src, update.srcPort,
-                                              update.srcPortState,
-                                              update.dst, update.dstPort,
-                                              update.dstPortState,
-                                              update.type);
-                                break;
-                            case UPDATE:
-                                lda.updatedLink(update.src, update.srcPort,
-                                                update.srcPortState,
-                                                update.dst, update.dstPort,
-                                                update.dstPortState,
-                                                update.type);
-                                break;
-                            case REMOVE:
-                                lda.removedLink(update.src, update.srcPort,
-                                                update.dst, update.dstPort);
-                                break;
-                            case SWITCH_UPDATED:
-                                lda.updatedSwitch(update.src);
-                                break;
-                        }
-                    }
+                    lda.linkDiscoveryUpdate(update);
                 }
             }
         } while (updates.peek() != null);
@@ -624,7 +551,7 @@ public class LinkDiscoveryManager
                     addLinkToBroadcastDomain(lt);
 
                 writeLink(lt, newLinkInfo);
-                updateOperation = UpdateOperation.ADD;
+                updateOperation = UpdateOperation.ADD_OR_UPDATE;
                 linkChanged = true;
 
                 log.info("Added link {}", lt);
@@ -679,7 +606,7 @@ public class LinkDiscoveryManager
                 writeLink(lt, newLinkInfo);
 
                 if (linkChanged) {
-                    updateOperation = UpdateOperation.UPDATE;
+                    updateOperation = UpdateOperation.ADD_OR_UPDATE;
                     if (log.isTraceEnabled()) {
                         log.trace("Updated link {}", lt);
                     }
@@ -696,8 +623,7 @@ public class LinkDiscoveryManager
             }
 
             if (linkChanged) {
-                updates.add(new Update(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), getLinkType(lt, newLinkInfo), updateOperation));
-                //updateClusters();
+                updates.add(new LDUpdate(lt, newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(), getLinkType(lt, newLinkInfo), updateOperation));
             }
         } finally {
             lock.writeLock().unlock();
@@ -735,7 +661,7 @@ public class LinkDiscoveryManager
                 removeLinkFromBroadcastDomain(lt);
 
                 this.links.remove(lt);
-                updates.add(new Update(lt, 0, 0, null, UpdateOperation.REMOVE));
+                updates.add(new LDUpdate(lt, 0, 0, null, UpdateOperation.REMOVE));
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc().getSw().getId(),
@@ -1305,14 +1231,14 @@ public class LinkDiscoveryManager
             if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
                 sw.removeAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
                 log.debug("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
+                updates.add(new LDUpdate(sw.getId(), SwitchType.BASIC_SWITCH));
             }
             else {
                 sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, new Boolean(true));
                 log.debug("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
+                updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH));
             }
-            updates.add(new Update(sw));
         }
-
     }
 
     @Override
@@ -1368,7 +1294,7 @@ public class LinkDiscoveryManager
         this.topologyAware = new ArrayList<ITopologyListener>();
         this.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         this.lock = new ReentrantReadWriteLock();
-        this.updates = new LinkedBlockingQueue<Update>();
+        this.updates = new LinkedBlockingQueue<LDUpdate>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
