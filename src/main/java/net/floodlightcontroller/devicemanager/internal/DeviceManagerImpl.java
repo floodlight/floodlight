@@ -911,8 +911,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     log.info(
                      "Network address {} moved from {} to {} due to packet {}",
                             new Object[] {networkAddress,
-                                          deviceByNwaddr.getDataLayerAddress(),
-                                          device.getDataLayerAddress(),
+                                          HexString.toHexString(deviceByNwaddr.getDataLayerAddress()),
+                                          HexString.toHexString(device.getDataLayerAddress()),
                                           eth});
                 }
 
