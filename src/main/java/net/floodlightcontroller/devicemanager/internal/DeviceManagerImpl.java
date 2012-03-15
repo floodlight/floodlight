@@ -2138,7 +2138,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Register to get updates from topology
             linkDiscovery.addListener(this);
         } else {
-            log.error("Could add not toplogy listener");
+            log.error("Could not add topology listener");
         }
         
         // Create our database tables
