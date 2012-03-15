@@ -78,6 +78,15 @@ public interface ILinkDiscovery {
         public UpdateOperation getOperation() {
             return operation;
         }
+
+        @Override
+        public String toString() {
+            return "LDUpdate [src=" + src + ", srcPort=" + srcPort
+                   + ", srcPortState=" + srcPortState + ", dst=" + dst
+                   + ", dstPort=" + dstPort + ", dstPortState=" + dstPortState
+                   + ", srcType=" + srcType + ", type=" + type + ", operation="
+                   + operation + "]";
+        }
     }
 
     public enum SwitchType {

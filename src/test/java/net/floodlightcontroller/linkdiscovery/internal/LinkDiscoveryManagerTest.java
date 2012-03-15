@@ -48,10 +48,10 @@ import net.floodlightcontroller.topology.TopologyManager;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class TopologyImplTest extends FloodlightTestCase {
+public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
     private LinkDiscoveryManager topology;
-    protected static Logger log = LoggerFactory.getLogger(TopologyImplTest.class);
+    protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManagerTest.class);
     
     public LinkDiscoveryManager getTopology() {
         return topology;

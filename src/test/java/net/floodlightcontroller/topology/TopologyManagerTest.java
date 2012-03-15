@@ -1,8 +1,9 @@
 package net.floodlightcontroller.topology;
 
 import static org.junit.Assert.*;
-
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.TopologyManager;
 
@@ -15,10 +16,13 @@ public class TopologyManagerTest {
     protected static Logger log = LoggerFactory.getLogger(TopologyManagerTest.class);
     TopologyManager topologyManager;
     FloodlightModuleContext fmc;
-
+    protected MockFloodlightProvider mockFloodlightProvider;
+    
     @Before 
     public void SetUp() throws Exception {
+        mockFloodlightProvider = new MockFloodlightProvider();
         fmc = new FloodlightModuleContext();
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         topologyManager  = new TopologyManager();
         topologyManager.init(fmc);
     }
