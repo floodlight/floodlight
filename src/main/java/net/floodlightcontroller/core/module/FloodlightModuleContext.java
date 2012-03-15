@@ -82,17 +82,10 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	 */
 	public void addConfigParam(IFloodlightModule mod, String key, String value) {
 	    Map<String, String> moduleParams = configParams.get(mod.getClass());
-	    moduleParams.put(key, value);
-	}
-	
-	/**
-	 * We initialize empty configuration maps for each module to be loaded.
-	 * This way each module doens't have to null check their map.
-	 */
-	public void createConfigMaps() {
-	    for (IFloodlightModule mod : moduleSet) {
-	        Map<String, String> moduleParams = new HashMap<String, String>();
+	    if (moduleParams == null) {
+	        moduleParams = new HashMap<String, String>();
 	        configParams.put(mod.getClass(), moduleParams);
 	    }
+	    moduleParams.put(key, value);
 	}
  }
