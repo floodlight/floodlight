@@ -875,13 +875,17 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (networkAddress != null) {
                     updateNetworkAddressLastSeen = true;
                 } else if (eth != null && (eth.getPayload() instanceof ARP)) {
-                    ARP arp = (ARP)eth.getPayload();
-                    // Only learn new MAC-IP mapping on ARP reply
-                    if (arp.getOpCode() == 0x02) {
-                        networkAddress = new DeviceNetworkAddress(nwSrc, 
-                                                                currentDate);
-                        newNetworkAddress = true;
-                    }
+                	/** MAC-IP association should be learnt from both ARP request and reply.
+                	 *  Since a host learns some other host's mac to ip mapping after receiving 
+                	 *  an ARP request from the host.
+                	 *  
+                	 *  However, device's MAC-IP mapping could be wrong if a host sends a ARP request with
+                	 *  an IP other than its own. Unfortunately, there isn't an easy way to allow both learning
+                	 *  and prevent incorrect learning.
+                	 */
+                    networkAddress = new DeviceNetworkAddress(nwSrc, 
+                                                            currentDate);
+                    newNetworkAddress = true;
                 }
 
                 // Also, if this address is currently mapped to a different 

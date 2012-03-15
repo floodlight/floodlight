@@ -308,64 +308,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     }
     
     @Test
-    public void testDeviceDiscover_NegTest() throws Exception {
-        
-        byte[] dataLayerSource = ((Ethernet)this.testARPReqPacket_1).getSourceMACAddress();
-
-        // Mock up our expected behavior
-        IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        expect(mockSwitch.getId()).andReturn(1L).anyTimes();
-        expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
-        deviceManager.setTopology(mockTopology);
-        
-        Date currentDate = new Date();
-        
-        // build our expected Device
-        Device device = new Device();
-        device.setDataLayerAddress(dataLayerSource);
-        device.addAttachmentPoint(new SwitchPortTuple(mockSwitch, (short)1), currentDate);
-        Integer ipaddr = IPv4.toIPv4Address("192.168.1.4");
-        device.addNetworkAddress(ipaddr, currentDate);
-        
-        // Start recording the replay on the mocks
-        replay(mockSwitch, mockTopology);
-        // Get the listener and trigger the packet in
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_4);
-
-        // Verify the replay matched our expectations
-        verify(mockSwitch, mockTopology);
-
-        // Verify the device
-        Device rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
-        assertEquals(device, rdevice);
-
-        reset(mockSwitch, mockTopology);
-        expect(mockSwitch.getId()).andReturn(1L).anyTimes();
-        expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
-        expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
-
-        // The device is learnt from the first packetIn with one network address
-        assertEquals(1, deviceManager.getDeviceByIPv4Address(ipaddr).getNetworkAddresses().size());
-        
-        // Start recording the replay on the mocks
-        replay(mockSwitch, mockTopology);
-        // Get the listener and trigger the packet in
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_5);
-
-        // Verify the replay matched our expectations
-        verify(mockSwitch, mockTopology);
-
-        // The new network address should not be learnt from ARP request.
-        assertNull(deviceManager.getDeviceByIPv4Address(IPv4.toIPv4Address("192.168.1.14")));
-        assertEquals(1, deviceManager.getDeviceByDataLayerAddress(dataLayerSource).getNetworkAddresses().size());
-        
-        // Reset the device cache
-        deviceManager.clearAllDeviceStateFromMemory();
-    }
-    
-    @Test
     public void testDeviceRecoverFromStorage() throws Exception {
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_2).getSourceMACAddress();
 
