@@ -57,16 +57,16 @@ public interface IFloodlightProviderService extends IFloodlightService {
             new FloodlightContextStore<Ethernet>();
 
     /**
-     * 
-     * @param type
-     * @param listener
+     * Adds an OpenFlow message listener
+     * @param type The OFType the component wants to listen for
+     * @param listener The component that wants to listen for the message
      */
     public void addOFMessageListener(OFType type, IOFMessageListener listener);
 
     /**
-     * 
-     * @param type
-     * @param listener
+     * Removes an OpenFlow message listener
+     * @param type The OFType the component no long wants to listen for
+     * @param listener The component that no longer wants to receive the message
      */
     public void removeOFMessageListener(OFType type, IOFMessageListener listener);
 

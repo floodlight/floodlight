@@ -4,7 +4,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import org.openflow.protocol.OFMessage;
+
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IOFMessageListener;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -51,7 +57,6 @@ public class NullPktInProcessingTime
     @Override
     public void init(FloodlightModuleContext context)
                              throws FloodlightModuleException {
-        emptyBucket = new CircularTimeBucketSet(0, 0);
     }
 
     @Override
@@ -65,28 +70,33 @@ public class NullPktInProcessingTime
     }
 
     @Override
-    public long getStartTimeOnePkt() {
-        return 0;
-    }
-
-    @Override
-    public long getStartTimeOneComponent() {
-        return 0;
-    }
-
-    @Override
-    public void updateCumulativeTimeOneComp(long onePktOneCompProcTime_ns,
-                                            int id) {
-        // no-op
-    }
-
-    @Override
-    public void updateCumulativeTimeTotal(long onePktStartTime_ns) {
-        // no-op
-    }
-
-    @Override
     public boolean isEnabled() {
         return false;
+    }
+
+    @Override
+    public void bootstrap(Set<IOFMessageListener> listeners) {
+
+    }
+
+    @Override
+    public void recordStartTimeComp(IOFMessageListener listener) {
+
+    }
+
+    @Override
+    public void recordEndTimeComp(IOFMessageListener listener) {
+
+    }
+
+    @Override
+    public void recordStartTimePktIn() {
+
+    }
+
+    @Override
+    public void recordEndTimePktIn(IOFSwitch sw, OFMessage m,
+                                   FloodlightContext cntx) {
+        
     }
 }

@@ -213,7 +213,8 @@ public class FloodlightModuleLoader {
             }
         }
         
-        floodlightModuleContext.createConfigMaps(moduleSet);
+        floodlightModuleContext.setModuleSet(moduleSet);
+        floodlightModuleContext.createConfigMaps();
         parseConfigParameters(prop);
         initModules(moduleSet);
         startupModules(moduleSet);

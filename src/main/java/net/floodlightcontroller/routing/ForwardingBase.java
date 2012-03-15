@@ -79,11 +79,6 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
     public String getName() {
         return "forwarding";
     }
-    
-    @Override
-    public int getId() {
-        return FlListenerID.FORWARDINGBASE;
-    }
 
     // Comparator for sorting by SwitchCluster
     public Comparator<DeviceAttachmentPoint> clusterIdComparator = new Comparator<DeviceAttachmentPoint>() {

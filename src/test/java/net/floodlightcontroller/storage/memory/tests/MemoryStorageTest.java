@@ -17,11 +17,7 @@
 
 package net.floodlightcontroller.storage.memory.tests;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
@@ -36,10 +32,6 @@ public class MemoryStorageTest extends StorageTest {
         restApi = new RestApiServer();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IRestApiService.class, restApi);
-        Set<IFloodlightModule> modSet = new HashSet<IFloodlightModule>();
-        modSet.add(restApi);
-        modSet.add(storageSource);
-        fmc.createConfigMaps(modSet);
         restApi.init(fmc);
         storageSource.init(fmc);
         restApi.startUp(fmc);

@@ -721,11 +721,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         return "devicemanager";
     }
 
-    @Override
-    public int getId() {
-        return FlListenerID.DEVICEMANAGERIMPL;
-    }
-
     /**
      * Used in processPortStatus to check if the event is delete or shutdown
      * of a switch-port
