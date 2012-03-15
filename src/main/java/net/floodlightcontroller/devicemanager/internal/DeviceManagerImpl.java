@@ -773,7 +773,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         devMgrMaps.updateMaps(device);
         writeDeviceToStorage(device, currentDate);
         updateStatus(device, true);
-        log.debug("New device learned {}", device);
+        if (log.isDebugEnabled()) {
+            log.debug("New device learned {}", device);
+        }
     }
 
     private boolean isGratArp(Ethernet eth) {
@@ -795,15 +797,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
         } else if (eth.getPayload() instanceof IPv4) {
             IPv4 ipv4 = (IPv4) eth.getPayload();
-            if (ipv4.getPayload() instanceof UDP) {
-                UDP udp = (UDP)ipv4.getPayload();
-                if (udp.getPayload() instanceof DHCP) {
-                    DHCP dhcp = (DHCP)udp.getPayload();
-                    if (dhcp.getOpCode() == DHCP.OPCODE_REPLY) {
-                        return ipv4.getSourceAddress();
-                    }
-                }
-            }
+            return ipv4.getSourceAddress();
         }
         return 0;
     }
@@ -881,9 +875,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (networkAddress != null) {
                     updateNetworkAddressLastSeen = true;
                 } else if (eth != null && (eth.getPayload() instanceof ARP)) {
-                    networkAddress = new DeviceNetworkAddress(nwSrc, 
+                    ARP arp = (ARP)eth.getPayload();
+                    // Only learn new MAC-IP mapping on ARP reply
+                    if (arp.getOpCode() == 0x02) {
+                        networkAddress = new DeviceNetworkAddress(nwSrc, 
                                                                 currentDate);
-                    newNetworkAddress = true;
+                        newNetworkAddress = true;
+                    }
                 }
 
                 // Also, if this address is currently mapped to a different 
@@ -913,7 +911,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                             new Object[] {networkAddress,
                                           HexString.toHexString(deviceByNwaddr.getDataLayerAddress()),
                                           HexString.toHexString(device.getDataLayerAddress()),
-                                          eth});
+                                          eth.toString()});
                 }
 
             }
@@ -946,8 +944,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     if (newNetworkAddress) {
                         // add the address
                         nd.addNetworkAddress(networkAddress);
-                        log.debug("Device {} added IP {}", 
-                                            nd, IPv4.fromIPv4Address(nwSrc));
+                        log.info("Device {} added IP {}, packet {}", 
+                                  new Object[] {nd, IPv4.fromIPv4Address(nwSrc), eth.toString()});
                     }
 
                     if (updateDeviceVlan) {
@@ -1544,7 +1542,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     // ********************
 
     public boolean readPortChannelConfigFromStorage() {
-	devMgrMaps.clearPortChannelMap();
+        devMgrMaps.clearPortChannelMap();
 
         try {
             IResultSet pcResultSet = storageSource.executeQuery(
@@ -2140,7 +2138,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Register to get updates from topology
             linkDiscovery.addListener(this);
         } else {
-            log.error("Could add not toplogy listener");
+            log.error("Could not add topology listener");
         }
         
         // Create our database tables
@@ -2178,20 +2176,20 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         deviceManagerAware.add(listener);
     }
 
-	@Override
-	public Map<String, Object> getInfo(String type) {
-		if (!"summary".equals(type))
-			return null;
-		
-		Map<String, Object> info = new HashMap<String, Object>();
-		info.put("# hosts", devMgrMaps.dataLayerAddressDeviceMap.size());
-		info.put("# IP Addresses", devMgrMaps.ipv4AddressDeviceMap.size());
-		int num_aps = 0;
-		for (Map<Integer, Device> devAps : devMgrMaps.switchPortDeviceMap.values())
-			num_aps += devAps.size();
-		info.put("# attachment points", num_aps);
-		
-		return info;
-	}
+    @Override
+    public Map<String, Object> getInfo(String type) {
+        if (!"summary".equals(type))
+            return null;
+
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.put("# hosts", devMgrMaps.dataLayerAddressDeviceMap.size());
+        info.put("# IP Addresses", devMgrMaps.ipv4AddressDeviceMap.size());
+        int num_aps = 0;
+        for (Map<Integer, Device> devAps : devMgrMaps.switchPortDeviceMap.values())
+            num_aps += devAps.size();
+        info.put("# attachment points", num_aps);
+
+        return info;
+    }
 
 }
