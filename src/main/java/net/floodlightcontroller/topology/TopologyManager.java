@@ -384,5 +384,11 @@ IRoutingService, ILinkDiscoveryListener {
     public BroadcastTree getBroadcastTreeForCluster(long clusterId) {
         return currentInstance.getBroadcastTreeForCluster(clusterId);
     }
+
+    @Override
+    public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2) {
+        // TODO Auto-generated method stub
+        return false;
+    }
 }
 

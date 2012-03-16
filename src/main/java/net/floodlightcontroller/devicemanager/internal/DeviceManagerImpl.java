@@ -1069,7 +1069,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // If two ports are in the same port-channel, we don't treat it
             // as conflict, but will forward based on the last seen switch-port
             if (!devMgrMaps.inSamePortChannel(swPort,
-                    curAttachmentPoint.getSwitchPort())) {
+                    curAttachmentPoint.getSwitchPort()) && 
+                    !topology.isInSameBroadcastDomain(swPort.getSw().getId(),
+                                                      swPort.getPort(),
+                                                      curAttachmentPoint.getSwitchPort().getSw().getId(),
+                                                      curAttachmentPoint.getSwitchPort().getPort())) {
                 curAttachmentPoint.setConflict(currentDate);
                 if (curAttachmentPoint.isFlapping()) {
                     curAttachmentPoint.setBlocked(true);

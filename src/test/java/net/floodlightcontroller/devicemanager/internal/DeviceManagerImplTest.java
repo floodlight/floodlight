@@ -450,6 +450,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.setTopology(mockTopology);
 
         // Start recording the replay on the mocks
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)2, (long)1, (short)1)).andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)1, (long)1, (short)2)).andReturn(false).anyTimes();
         replay(mockSwitch, mockTopology);
 
         // Get the listener and trigger the packet in
