@@ -7,13 +7,25 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-import net.floodlightcontroller.core.IOFMessageListener.FlListenerID;
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IOFMessageListener;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.storage.IPredicate;
+import net.floodlightcontroller.storage.IResultSet;
+import net.floodlightcontroller.storage.IStorageSourceListener;
+import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.storage.OperatorPredicate;
+import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.storage.OperatorPredicate.Operator;
 
+import org.openflow.protocol.OFMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class PktInProcessingTime
-    implements IFloodlightModule, IPktInProcessingTimeService  {
+    implements IFloodlightModule, IPktInProcessingTimeService, IStorageSourceListener {
 
     /***
      * This class contains a set of buckets (called time buckets as the
@@ -47,94 +59,108 @@ public class PktInProcessingTime
      * TOT_PROC_TIME_ALERT_THRESHOLD_US: same as above but an alert level
      *    syslog is generated instead
      * 
-     */   
+     */
+    
+    // Our dependencies
+    private IStorageSourceService storageSource;
+    private IRestApiService restApi;
+    
+    protected long ptWarningThresholdInNano;
 
+    // DB storage tables
+    protected static final String ControllerTableName = "controller_controller";
+    public static final String COLUMN_ID = "id";
+    public static final String COLUMN_PERF_MON = "performance_monitor_feature";
+    
     protected static  Logger  logger = 
         LoggerFactory.getLogger(PktInProcessingTime.class);
-
-    // Turn on or off
-    protected boolean isEnabled;
+    
+    protected boolean isEnabled = false;
+    protected boolean isInited = false;
     // Maintains the time when the last packet was processed
-    protected long lastPktTime_ns; 
-    protected long curBucketStartTime;
-    // Time bucket created once and reused as needed
-    public CumulativeTimeBucket  ctb;   // Current time bucket being filled
-    public CircularTimeBucketSet ctbs;  // Set of all time buckets
-    private int numComponents;          // Numbert of components being monitored
-    private int numBuckets;             // number of time buckets, each 10s long
+    protected long lastPktTime_ns;
+    public CircularTimeBucketSet ctbs = null; // Set of all time buckets
+    private int numBuckets = 360;
 
+    
+    /***
+     * BUCKET_SET_SIZE buckets each holding 10s of processing time data, a total
+     * of 30*10s = 5mins of processing time data is maintained
+     */
+    protected static final int ONE_BUCKET_DURATION_SECONDS = 10;// seconds
+    protected static final long ONE_BUCKET_DURATION_NANOSECONDS  =
+                                ONE_BUCKET_DURATION_SECONDS * 1000000000;
+    
+    @Override
+    public void bootstrap(Set<IOFMessageListener> listeners) {
+        ctbs = new CircularTimeBucketSet(listeners, numBuckets, ONE_BUCKET_DURATION_SECONDS);
+        isInited = true;
+    }
+    
     @Override
     public boolean isEnabled() {
-        return isEnabled;
+        return isEnabled && isInited;
     }
     
     public void setEnabled(boolean enabled) {
         isEnabled = enabled;
     }
     
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getCtbs()
-     */
+    private long startTimePktNs;
+    private long startTimeCompNs;
+    @Override
+    public void recordStartTimeComp(IOFMessageListener listener) {
+        if (isEnabled()) {
+            startTimeCompNs = System.nanoTime();
+            checkAndStartNextBucket(startTimeCompNs);
+        }
+    }
+    
+    @Override
+    public void recordEndTimeComp(IOFMessageListener listener) {
+        if (isEnabled()) {
+            long procTime = System.nanoTime() - startTimeCompNs;
+            ctbs.getCurBucket().updateOneComponent(listener, procTime);
+        }
+    }
+    
+    @Override
+    public void recordStartTimePktIn() {
+        if (isEnabled()) {
+            startTimePktNs = System.nanoTime();
+        }
+    }
+    
+    @Override
+    public void recordEndTimePktIn(IOFSwitch sw, OFMessage m, FloodlightContext cntx) {
+        if (isEnabled()) {
+            long procTimeNs = System.nanoTime() - startTimePktNs;
+            ctbs.getCurBucket().updatePerPacketCounters(procTimeNs);
+            
+            if (ptWarningThresholdInNano > 0 && procTimeNs > ptWarningThresholdInNano) {
+                logger.warn("Time to process packet-in: {} us", procTimeNs/1000);
+                logger.warn("{}", OFMessage.getDataAsString(sw, m, cntx));
+            }
+        }
+    }
+    
     @Override
     public CircularTimeBucketSet getCtbs() {
         return ctbs;
     }
-    
-    /***
-     * BUCKET_SET_SIZE buckets each holding 10s of processing time data, a total
-     * of 30*10s = 5mins of processing time data is maintained
-     */
-    protected static final long ONE_BUCKET_DURATION_SECONDS_LONG = 10;// seconds
-    protected static final long ONE_BUCKET_DURATION_NANOSECONDS  =
-                                ONE_BUCKET_DURATION_SECONDS_LONG * 1000000000;
-    protected static final int  BUCKET_SET_SIZE = 360; // 1hr (=1*60*60/10)
-    protected static final int  TOT_PROC_TIME_WARN_THRESHOLD_US  =  5000;  // ms
-    protected static final int  TOT_PROC_TIME_ALERT_THRESHOLD_US = 10000;
-                                // ms, TBD, alert not in logger
-
-    // TBD: Somehow need to get BB last listener id from BB
-    protected static final int BB_LAST_LISTENER_ID = 13;
-
-    public class ProcTime {
-        OneComponentTime [] oneComp;
-
-        public OneComponentTime[] getOneComp() {
-            return oneComp;
-        }
-
-        public void setOneComp(OneComponentTime[] oneComp) {
-            this.oneComp = oneComp;
-        }
-
-        public ProcTime() {
-            oneComp = new OneComponentTime[BB_LAST_LISTENER_ID + 1];
-            for (int idx = FlListenerID.FL_FIRST_LISTENER_ID;
-                            idx <= BB_LAST_LISTENER_ID; idx++) {
-                oneComp[idx] = new OneComponentTime();
-                // Initialise the min and max values;
-                oneComp[idx].maxProcTime_us = Integer.MIN_VALUE;
-                oneComp[idx].minProcTime_us = Integer.MAX_VALUE;  
-                // Set the component id and name
-                oneComp[idx].setCompId(idx);
-                oneComp[idx].setCompName(
-                        FlListenerID.getListenerNameFromId(idx));
-            }
-        }
-    }
 
     /***
-     * This function is called when a packet in processing  starts
+     * This function is called when a packet in processing starts
      * Check if it is time to go to the next bucket
      * @param curTime_ns
      */
-    private void checkAndStartNextBucket(Long curTime_ns) {
+    private void checkAndStartNextBucket(long curTime_ns) {
         // We are not running any timer, packet arrivals themselves drive the 
         // rotation of the buckets
-        this.lastPktTime_ns = curTime_ns;
-        if ((curTime_ns - this.ctb.startTime_ns) >
-                                            ONE_BUCKET_DURATION_NANOSECONDS) {
+        CumulativeTimeBucket ctb = ctbs.getCurBucket();
+        if ((curTime_ns - ctb.getStartTimeNs()) > ONE_BUCKET_DURATION_NANOSECONDS) {
             // Go to next bucket
-            this.ctbs.fillTimeBucket(ctb, numBuckets);
+            this.ctbs.fillTimeBucket(ctb);
             /***
              * We might not have received packets for long time, in which case
              * there would be a gap in the start-time of the timer buckets
@@ -143,83 +169,6 @@ public class PktInProcessingTime
              * buckets.
              */
         }
-    }
-
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getStartTimeOnePkt()
-     */
-    @Override
-    public long getStartTimeOnePkt() {
-        if (this.isEnabled) {
-            long startTime_ns = System.nanoTime();
-            checkAndStartNextBucket(startTime_ns);
-            return startTime_ns;
-        }
-        return 0L;
-    }
-
-    // Component refers to software component like forwarding
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#getStartTimeOneComponent()
-     */
-    @Override
-    public long getStartTimeOneComponent() {
-        if (this.isEnabled) {
-            return System.nanoTime();
-        }
-        return 0L;
-    }
-
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#updateCumulativeTimeOneComp(long, int)
-     */
-    @Override
-    public void updateCumulativeTimeOneComp(
-                                long onePktOneCompProcTime_ns, int id) {
-        if (this.isEnabled) {
-            int onePktOneCompProcTime_us = 
-                (int)((System.nanoTime() - onePktOneCompProcTime_ns) / 1000);
-            OneComponentTime t_temp = this.ctb.tComps.oneComp[id];
-            t_temp.pktCnt++;
-            t_temp.sumProcTime_us += onePktOneCompProcTime_us;
-            t_temp.sumSquaredProcTime_us2 +=
-                onePktOneCompProcTime_us * onePktOneCompProcTime_us;
-            if (onePktOneCompProcTime_us > t_temp.maxProcTime_us) {
-                t_temp.maxProcTime_us = onePktOneCompProcTime_us;
-            }
-            if (onePktOneCompProcTime_us < t_temp.minProcTime_us) {
-                t_temp.minProcTime_us = onePktOneCompProcTime_us;
-            }
-        }
-    }
-
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.perfmon.IPktInProcessingTimeService#updateCumulativeTimeTotal(long)
-     */
-    @Override
-    public void updateCumulativeTimeTotal(long onePktStartTime_ns) {
-        if (this.isEnabled) {
-            // There is no api to get time in microseconds, milliseconds is 
-            // too coarse hence we have to use nanoseconds and then divide by 
-            // 1000 to get microseconds
-            int onePktProcTime_us = 
-                        (int)((System.nanoTime() - onePktStartTime_ns) / 1000);
-            if (onePktProcTime_us > TOT_PROC_TIME_WARN_THRESHOLD_US) {
-                logger.warn("Total processing time for one packet exceeded" +
-                        "threshold: proc time: {}ms", onePktProcTime_us/1000);
-            }
-            this.ctb.totalPktCnt++;
-            this.ctb.totalSumProcTime_us += onePktProcTime_us;
-            this.ctb.totalSumSquaredProcTime_us +=
-                                    onePktProcTime_us * onePktProcTime_us;
-
-            if (onePktProcTime_us > this.ctb.maxTotalProcTime_us) {
-                this.ctb.maxTotalProcTime_us = onePktProcTime_us;
-            } else if (onePktProcTime_us < this.ctb.minTotalProcTime_us) {
-                this.ctb.minTotalProcTime_us = onePktProcTime_us;
-            }
-        }
-
     }
     
     // IFloodlightModule methods
@@ -246,25 +195,90 @@ public class PktInProcessingTime
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        // We don't have any dependencies
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStorageSourceService.class);
+        l.add(IRestApiService.class);
+        return l;
     }
     
     @Override
     public void init(FloodlightModuleContext context)
                                              throws FloodlightModuleException {
-        // no-op
+        storageSource = 
+                context.getServiceImpl(IStorageSourceService.class);
+        restApi =
+                context.getServiceImpl(IRestApiService.class);
     }
     
     @Override
     public void startUp(FloodlightModuleContext context) {
-        // Our 'constructor'
-        FlListenerID.populateCompNames();
-        numComponents = BB_LAST_LISTENER_ID + 1;
-        numBuckets = BUCKET_SET_SIZE;
-        ctbs = new CircularTimeBucketSet(numComponents, numBuckets);
-        ctb  = ctbs.timeBucketSet[ctbs.curBucketIdx];
-        ctb.startTime_ms = System.currentTimeMillis();
-        ctb.startTime_ns = System.nanoTime();
+        // Subscribe to the storage (config change) notifications for the 
+        // controller node
+        storageSource.addListener(ControllerTableName, this);
+        
+        // Add our REST API
+        restApi.addRestletRoutable(new PerfWebRoutable());
+        
+        // TODO - Alex - change this to a config option
+        ptWarningThresholdInNano = Long.parseLong(System.getProperty(
+             "net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
+        if (ptWarningThresholdInNano > 0) {
+            logger.info("Packet processing time threshold for warning set to {} ms.",
+                 ptWarningThresholdInNano/1000000);
+        }
+    }
+    
+    // IStorageSourceListener
+    
+    private boolean readPerfMonFromStorage() {
+        boolean value=false;
+        try {
+            IPredicate predicate =
+                    new OperatorPredicate(COLUMN_ID, Operator.EQ, "localhost");
+            IResultSet resultSet = storageSource.executeQuery(
+                    ControllerTableName,
+                    new String[] { COLUMN_PERF_MON }, predicate, null);
+            if (resultSet.next()) {
+                value = resultSet.getBoolean(COLUMN_PERF_MON);
+            }
+        } catch (StorageException e) {
+            logger.error("Failed to read controller table: {}", e.getMessage());
+        }
+        return value;
+    }
+    
+    @Override
+    public void rowsModified(String tableName, Set<Object> rowKeys) {
+        logger.debug("Processing modification of Table {}", tableName);        
+        if (ControllerTableName.equals(tableName)) {
+            if (rowKeys.contains("localhost")) {
+                // Get the current state
+                boolean oldProcTimeMonitoringState = isEnabled();
+                // Get the new state
+                boolean newProcTimeMonitoringState = readPerfMonFromStorage();
+                // See if the state changes from disabled to enabled
+                if (newProcTimeMonitoringState && !oldProcTimeMonitoringState) {                    
+                    setEnabled(newProcTimeMonitoringState);
+                    logger.info("Packet-In performance monitoring for " +
+                            "controller localhost is enabled");
+                } else if (!newProcTimeMonitoringState && 
+                            oldProcTimeMonitoringState) {  
+                    setEnabled(newProcTimeMonitoringState);
+                    logger.info("Performance monitoring for controller " +
+                            "localhost is disabled");
+                } else {
+                    logger.info("Performance monitoring for controller " +
+                            "localhost is unchanged: {}", 
+                            newProcTimeMonitoringState);
+                }
+            }
+            return;
+        }
+    }
+    
+    @Override
+    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
+        // no-op
     }
 }

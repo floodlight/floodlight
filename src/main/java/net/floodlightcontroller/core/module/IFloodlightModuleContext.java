@@ -21,6 +21,12 @@ public interface IFloodlightModuleContext {
     public Collection<Class<? extends IFloodlightService>> getAllServices();
     
     /**
+     * Returns all loaded modules
+     * @return All Floodlight modules that are going to be loaded
+     */
+    public Collection<IFloodlightModule> getAllModules();
+    
+    /**
      * Gets module specific configuration parameters.
      * @param module The module to get the configuration parameters for
      * @return A key, value map of the configuration options

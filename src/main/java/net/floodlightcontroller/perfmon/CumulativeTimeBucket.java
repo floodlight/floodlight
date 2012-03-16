@@ -1,205 +1,134 @@
 package net.floodlightcontroller.perfmon;
 
-import net.floodlightcontroller.core.IOFMessageListener.FlListenerID;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import net.floodlightcontroller.core.IOFMessageListener;
 
 public class CumulativeTimeBucket {
-    int      bucketNo;
-    long     startTime_ms;
-    long     startTime_ns; // First pkt time-stamp in this bucket
-    // duration for which pkts are put into this bucket in seconds
-    int      duration_s;
-    ProcTime tComps;              // processing times of each component
-    int      totalPktCnt;
-    int      totalSumProcTime_us; // total processing time for one pkt in
-    long     totalSumSquaredProcTime_us;
-    int      maxTotalProcTime_us;
-    int      minTotalProcTime_us;
-    int      avgTotalProcTime_us;
-    int      sigmaTotalProcTime_us; // std. deviation
-    int      numComps;
-
+    private int bucketNo;
+    private long startTime_ns; // First pkt time-stamp in this bucket
+    private int durationS; // how long this bucket is valid for in s
+    private Map<Integer, OneComponentTime> compStats;
+    private long totalPktCnt;
+    private long totalProcTimeNs; // total processing time for one pkt in
+    private long sumSquaredProcTimeNs2;
+    private long maxTotalProcTimeNs;
+    private long minTotalProcTimeNs;
+    private long avgTotalProcTimeNs;
+    private long sigmaTotalProcTimeNs; // std. deviation
+    
     public int getBucketNo() {
         return bucketNo;
     }
-
-    public void setBucketNo(int bucketNo) {
-        this.bucketNo = bucketNo;
+    
+    public int getDurationS() {
+        return durationS;
     }
 
-    public long getStartTime_ms() {
-        return startTime_ms;
-    }
-
-    public void setStartTime_ms(long startTime_ms) {
-        this.startTime_ms = startTime_ms;
-    }
-
-    public long getStartTime_ns() {
+    public long getStartTimeNs() {
         return startTime_ns;
     }
 
-    public void setStartTime_ns(long startTime_ns) {
+    public void setStartTimeNs(long startTime_ns) {
         this.startTime_ns = startTime_ns;
     }
 
-    public int getDuration_s() {
-        return duration_s;
-    }
-
-    public void setDuration_s(int duration_s) {
-        this.duration_s = duration_s;
-    }
-
-    public ProcTime getTComps() {
-        return tComps;
-    }
-
-    public void setTComps(ProcTime tComps) {
-        this.tComps = tComps;
-    }
-
-    public int getTotalPktCnt() {
+    public long getTotalPktCnt() {
         return totalPktCnt;
     }
-
-    public void setTotalPktCnt(int totalPktCnt) {
-        this.totalPktCnt = totalPktCnt;
+    
+    public long getAverageProcTimeNs() {
+        return avgTotalProcTimeNs;
     }
 
-    public int getTotalSumProcTime_us() {
-        return totalSumProcTime_us;
+    public long getMinTotalProcTimeNs() {
+        return minTotalProcTimeNs;
     }
-
-    public void setTotalSumProcTime_us(int totalSumProcTime_us) {
-        this.totalSumProcTime_us = totalSumProcTime_us;
+    
+    public long getMaxTotalProcTimeNs() {
+        return maxTotalProcTimeNs;
     }
-
-    public Long getTotalSumSquaredProcTime_us() {
-        return totalSumSquaredProcTime_us;
+    
+    public long getTotalSigmaProcTimeNs() {
+        return sigmaTotalProcTimeNs;
     }
-
-    public void setTotalSumSquaredProcTime_us(
-                        Long totalSumSquaredProcTime_us) {
-        this.totalSumSquaredProcTime_us = totalSumSquaredProcTime_us;
-    }
-
-    public int getMaxTotalProcTime_us() {
-        return maxTotalProcTime_us;
-    }
-
-    public void setMaxTotalProcTime_us(int maxTotalProcTime_us) {
-        this.maxTotalProcTime_us = maxTotalProcTime_us;
-    }
-
-    public int getMinTotalProcTime_us() {
-        return minTotalProcTime_us;
-    }
-
-    public void setMinTotalProcTime_us(int minTotalProcTime_us) {
-        this.minTotalProcTime_us = minTotalProcTime_us;
-    }
-
-    public int getAvgTotalProcTime_us() {
-        return avgTotalProcTime_us;
-    }
-
-    public void setAvgTotalProcTime_us(int avgTotalProcTime_us) {
-        this.avgTotalProcTime_us = avgTotalProcTime_us;
-    }
-
-    public int getSigmaTotalProcTime_us() {
-        return sigmaTotalProcTime_us;
-    }
-
-    public void setSigmaTotalProcTime_us(int sigmaTotalProcTime_us) {
-        this.sigmaTotalProcTime_us = sigmaTotalProcTime_us;
-    }
-
-    public ProcTime gettComps() {
-        return tComps;
-    }
-
-    public void settComps(ProcTime tComps) {
-        this.tComps = tComps;
-    }
-
+    
     public int getNumComps() {
-        return numComps;
+        return compStats.values().size();
     }
 
-    public void setNumComps(int numComps) {
-        this.numComps = numComps;
-    }
-
-    public void setTotalSumSquaredProcTime_us(long totalSumSquaredProcTime_us) {
-        this.totalSumSquaredProcTime_us = totalSumSquaredProcTime_us;
-    }
-
-    public class ProcTime {
-        OneComponentTime [] oneComp;
-
-        public OneComponentTime[] getOneComp() {
-            return oneComp;
-        }
-
-        public void setOneComp(OneComponentTime[] oneComp) {
-            this.oneComp = oneComp;
-        }
-
-        public ProcTime(int numComponents) {
-            oneComp = new OneComponentTime[numComponents];
-            for (int idx = FlListenerID.FL_FIRST_LISTENER_ID;
-                    idx < numComponents; idx++) {
-                oneComp[idx] = new OneComponentTime();
-                // Initialize the min and max values;
-                oneComp[idx].maxProcTime_us = Integer.MIN_VALUE;
-                oneComp[idx].minProcTime_us = Integer.MAX_VALUE;  
-                // Set the component id and name
-                oneComp[idx].setCompId(idx);
-                oneComp[idx].setCompName(
-                        FlListenerID.getListenerNameFromId(idx));
-            }
+    public CumulativeTimeBucket(Set<IOFMessageListener> listeners, int bucketNo, int duration) {
+        this.durationS = duration;
+        this.bucketNo = bucketNo;
+        compStats = new ConcurrentHashMap<Integer, OneComponentTime>(listeners.size());
+        for (IOFMessageListener l : listeners) {
+            OneComponentTime oct = new OneComponentTime(l);
+            compStats.put(oct.hashCode(), oct);
         }
     }
 
-    public CumulativeTimeBucket(int numComponents) {
-        duration_s  = 0;
-        maxTotalProcTime_us = Integer.MIN_VALUE;
-        minTotalProcTime_us = Integer.MAX_VALUE; 
-        tComps = new ProcTime(numComponents);
-        numComps = numComponents;
+    private void updateSquaredProcessingTime(long curTimeNs) {
+        sumSquaredProcTimeNs2 += (Math.pow(curTimeNs, 2));
     }
-
-    // Initialize the time bucket so that it can be reused for the next 
-    // interval, thus not
-    // creating lots of garbage
-    public void initializeCumulativeTimeBucket(
-                        CumulativeTimeBucket cumulativeTimeBkt) {
-        assert(cumulativeTimeBkt != null);
-        if (cumulativeTimeBkt == null)  {
-            return;
+    
+    /**
+     * Resets all counters and counters for each component time
+     */
+    public void reset() {
+        startTime_ns = System.nanoTime();
+        totalPktCnt = 0;
+        totalProcTimeNs = 0;
+        avgTotalProcTimeNs = 0;
+        sumSquaredProcTimeNs2 = 0;
+        maxTotalProcTimeNs = Long.MIN_VALUE;
+        minTotalProcTimeNs = Long.MAX_VALUE;
+        sigmaTotalProcTimeNs = 0;
+        for (OneComponentTime oct : compStats.values()) {
+            oct.resetAllCounters();
         }
-
-        cumulativeTimeBkt.startTime_ms = System.currentTimeMillis();
-        cumulativeTimeBkt.startTime_ns = System.nanoTime();
-        cumulativeTimeBkt.duration_s  = 0;
-        cumulativeTimeBkt.totalPktCnt  = 0;
-        cumulativeTimeBkt.totalSumProcTime_us            = 0;
-        cumulativeTimeBkt.totalSumSquaredProcTime_us     = 0L;
-        cumulativeTimeBkt.maxTotalProcTime_us = Integer.MIN_VALUE;
-        cumulativeTimeBkt.minTotalProcTime_us = Integer.MAX_VALUE;
-        cumulativeTimeBkt.avgTotalProcTime_us = 0;
-        cumulativeTimeBkt.sigmaTotalProcTime_us = 0;
-        for (int idx = FlListenerID.FL_FIRST_LISTENER_ID; 
-                        idx <= PktInProcessingTime.BB_LAST_LISTENER_ID; idx++) {
-            OneComponentTime oct = cumulativeTimeBkt.tComps.oneComp[idx];
-            oct.pktCnt = 0;
-            oct.sumProcTime_us = 0;
-            oct.sumSquaredProcTime_us2 = 0;
-            oct.maxProcTime_us = Integer.MIN_VALUE;
-            oct.minProcTime_us = Integer.MAX_VALUE;
-            oct.avgProcTime_us = 0;
-            oct.sigmaProcTime_us = 0;
+    }
+    
+    private void computeSigma() {
+        // Computes std. deviation from the sum of count numbers and from
+        // the sum of the squares of count numbers
+        double temp = totalProcTimeNs;
+        temp = Math.pow(temp, 2) / totalPktCnt;
+        temp = (sumSquaredProcTimeNs2 - temp) / totalPktCnt;
+        sigmaTotalProcTimeNs = (long) Math.sqrt(temp);
+    }
+    
+    public void computeAverages() {
+        // Must be called last to, needs latest info
+        computeSigma();
+        
+        for (OneComponentTime oct : compStats.values()) {
+            oct.computeSigma();
         }
+    }
+    
+    public void updatePerPacketCounters(long procTimeNs) {
+        totalPktCnt++;
+        totalProcTimeNs += procTimeNs;
+        avgTotalProcTimeNs = totalProcTimeNs / totalPktCnt;
+        updateSquaredProcessingTime(procTimeNs);
+        
+        if (procTimeNs > maxTotalProcTimeNs) {
+            maxTotalProcTimeNs = procTimeNs;
+        }
+        
+        if (procTimeNs < minTotalProcTimeNs) {
+            minTotalProcTimeNs = procTimeNs;
+        }
+    }
+    
+    public void updateOneComponent(IOFMessageListener l, long procTimeNs) {
+        compStats.get(l).updatePerPacketCounters(procTimeNs);
+    }
+    
+    public Collection<OneComponentTime> getComponentTimes() {
+        return compStats.values();
     }
 }

@@ -19,9 +19,7 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
@@ -33,7 +31,6 @@ import static org.easymock.EasyMock.verify;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
@@ -77,20 +74,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         super.setUp();
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        Set<IFloodlightModule> modSet = new HashSet<IFloodlightModule>();
         RestApiServer restApi = new RestApiServer();
-        modSet.add(restApi);
         mockFloodlightProvider = getMockFloodlightProvider();
-        modSet.add(mockFloodlightProvider);
         deviceManager = new DeviceManagerImpl();
-        modSet.add(deviceManager);
         fmc.addService(IDeviceManagerService.class, deviceManager);
         storageSource = new MemoryStorageSource();
-        modSet.add(storageSource);
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
-        fmc.createConfigMaps(modSet);
         restApi.init(fmc);
         storageSource.init(fmc);
         deviceManager.init(fmc);

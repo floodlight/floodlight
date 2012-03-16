@@ -63,12 +63,6 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     public String getName() {
         return Hub.class.getPackage().getName();
     }
-    
-    @Override
-    public int getId() {
-        return FlListenerID.HUB;
-    }
-
 
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         OFPacketIn pi = (OFPacketIn) msg;

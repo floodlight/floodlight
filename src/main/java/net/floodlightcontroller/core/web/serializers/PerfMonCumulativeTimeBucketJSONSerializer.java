@@ -17,35 +17,32 @@ public class PerfMonCumulativeTimeBucketJSONSerializer
      * Performs the serialization of a OneComponentTime object
      */
    @Override
-   public void serialize(CumulativeTimeBucket cTB,
+   public void serialize(CumulativeTimeBucket ctb,
                    JsonGenerator jGen,
                    SerializerProvider serializer) 
                    throws IOException, JsonProcessingException {
        // Skip if the number of packets processed is zero
-       if (cTB.getTotalPktCnt() != 0) {
+       if (ctb.getTotalPktCnt() != 0) {
            jGen.writeStartObject();
-           jGen.writeNumberField("BktNo",     cTB.getBucketNo());
-           Timestamp ts = new Timestamp(cTB.getStartTime_ms());
+           jGen.writeNumberField("BktNo",     ctb.getBucketNo());
+           Timestamp ts = new Timestamp(ctb.getStartTimeNs());
            String tsStr = ts.toString();
            while (tsStr.length() < 23) {
                tsStr = tsStr.concat("0");
            }
            jGen.writeStringField("StartTime", tsStr);
-           jGen.writeNumberField("Duration",  cTB.getDuration_s());
-           jGen.writeNumberField("TotPkts",   cTB.getTotalPktCnt());
-           jGen.writeNumberField("Avg",       cTB.getAvgTotalProcTime_us());
-           jGen.writeNumberField("Min",       cTB.getMinTotalProcTime_us());
-           jGen.writeNumberField("Max",       cTB.getMaxTotalProcTime_us());
-           jGen.writeNumberField("StdDev",    cTB.getSigmaTotalProcTime_us());
-           int numComps = cTB.getNumComps();
-           for (int idx=0; idx < numComps; idx++) {
-               OneComponentTime oCT = cTB.getTComps().getOneComp()[idx];
-               if (oCT.getPktCnt() != 0) {
-                   serializer.defaultSerializeField(
-                                           Integer.toString(idx), oCT, jGen);
+           jGen.writeNumberField("Duration", ctb.getDurationS());
+           jGen.writeNumberField("TotPkts", ctb.getTotalPktCnt());
+           jGen.writeNumberField("Avg", ctb.getAverageProcTimeNs());
+           jGen.writeNumberField("Min", ctb.getMinTotalProcTimeNs());
+           jGen.writeNumberField("Max", ctb.getMaxTotalProcTimeNs());
+           jGen.writeNumberField("StdDev", ctb.getTotalSigmaProcTimeNs());
+
+           for (OneComponentTime oct : ctb.getComponentTimes()) {
+               if (oct.getPktCnt() > 0) {
+                   serializer.defaultSerializeField(oct.getCompName(), oct, jGen);
                }
            }
-           
            jGen.writeEndObject();
        }
    }
