@@ -296,11 +296,6 @@ public class OFMessageFilterManager
     public String getName() {
         return "messageFilterManager";
     }
-    
-    @Override
-    public int getId() {
-        return FlListenerID.OFMESSAGEFILTERMANAGER;
-    }
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {

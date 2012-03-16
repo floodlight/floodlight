@@ -24,7 +24,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +37,6 @@ import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
@@ -82,30 +80,23 @@ public class ControllerTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        Set<IFloodlightModule> modSet = new HashSet<IFloodlightModule>();
         
         FloodlightProvider cm = new FloodlightProvider();
         controller = (Controller)cm.getServiceImpls().get(IFloodlightProviderService.class);
         fmc.addService(IFloodlightProviderService.class, controller);
-        modSet.add(cm);
         
         MemoryStorageSource memstorage = new MemoryStorageSource();
         fmc.addService(IStorageSourceService.class, memstorage);
-        modSet.add(memstorage);
         
         RestApiServer restApi = new RestApiServer();
         fmc.addService(IRestApiService.class, restApi);
-        modSet.add(restApi);
         
         CounterStore cs = new CounterStore();
         fmc.addService(ICounterStoreService.class, cs);
-        modSet.add(cs);
         
         PktInProcessingTime ppt = new PktInProcessingTime();
         fmc.addService(IPktInProcessingTimeService.class, ppt);
-        modSet.add(ppt);
         
-        fmc.createConfigMaps(modSet);
         ppt.init(fmc);
         restApi.init(fmc);
         memstorage.init(fmc);
@@ -199,7 +190,7 @@ public class ControllerTest extends FloodlightTestCase {
         // verify STOP works
         reset(test1, test2, sw);
         expect(test1.receive(eq(sw), eq(pi), isA(FloodlightContext.class))).andReturn(Command.STOP);       
-        expect(test1.getId()).andReturn(0).anyTimes();
+        //expect(test1.getId()).andReturn(0).anyTimes();
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
         expect(sw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         replay(test1, test2, sw);

@@ -28,36 +28,6 @@ import org.openflow.protocol.OFType;
 public interface IOFMessageListener extends IListener<OFType> {
     public enum Command {
         CONTINUE, STOP
-    }        
-    
-    public class FlListenerID {
-        public static final int FL_FIRST_LISTENER_ID   = 0;
-        public static final int OFMESSAGEFILTERMANAGER = FL_FIRST_LISTENER_ID;
-        public static final int DEVICEMANAGERIMPL      = OFMESSAGEFILTERMANAGER+1;
-        public static final int HUB                    = DEVICEMANAGERIMPL+1;
-        public static final int LEARNINGSWITCH         = HUB+1;
-        public static final int FORWARDINGBASE         = LEARNINGSWITCH+1;
-        public static final int TOPOLOGYIMPL           = FORWARDINGBASE+1;
-        public static final int FL_LAST_LISTENER_ID    = TOPOLOGYIMPL;
-        
-        public static String [] compName = new String[FL_LAST_LISTENER_ID+1];
-                       
-        public static void populateCompNames() {
-            compName[OFMESSAGEFILTERMANAGER] = "OFMsg_Filter-Mgr";
-            compName[DEVICEMANAGERIMPL]      = "Device-Manager";
-            compName[HUB]                    = "Hub";
-            compName[LEARNINGSWITCH]         = "Learning-Switch";
-            compName[FORWARDINGBASE]         = "Forwarding-Base";
-            compName[TOPOLOGYIMPL]           = "Topology";
-        }
-        
-        public static String getListenerNameFromId(int id) {
-            if ((id >= FL_FIRST_LISTENER_ID) && (id <= FL_LAST_LISTENER_ID)) {
-                return compName[id];
-            } else {
-                return "Unknown-Component";
-            }
-        }
     }
 
   /**

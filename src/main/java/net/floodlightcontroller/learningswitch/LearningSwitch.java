@@ -107,12 +107,6 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
     public String getName() {
         return "learningswitch";
     }
-    
-    @Override
-    public int getId() {
-        return FlListenerID.LEARNINGSWITCH;
-    }
-
 
     protected void addToPortMap(IOFSwitch sw, Long mac, Short vlan, short portVal) {
         sw.addToPortMap(mac, vlan, portVal);

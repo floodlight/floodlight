@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.perfmon.PktInProcessingTime;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
@@ -142,9 +141,6 @@ public abstract class StorageTest extends FloodlightTestCase {
     
     public void setUp() throws Exception {
         super.setUp();
-        PktInProcessingTime pktinProcessingTime = new PktInProcessingTime();
-        pktinProcessingTime.startUp(null);
-        storageSource.setPktinProcessingTime(pktinProcessingTime);
         Set<String> indexedColumnNames = new HashSet<String>();
         indexedColumnNames.add(PERSON_LAST_NAME);
         storageSource.setExceptionHandler(null);
