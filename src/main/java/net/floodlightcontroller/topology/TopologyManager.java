@@ -184,6 +184,9 @@ IRoutingService, ILinkDiscoveryListener {
         } else if (type.equals(LinkType.TUNNEL)) {
             addLinkToStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
+        } else if (type.equals(LinkType.DIRECT_LINK)) {
+            removeLinkFromStructure(tunnelLinks, link);
+            removeLinkFromStructure(portBroadcastDomainLinks, link);
         }
     }
 
