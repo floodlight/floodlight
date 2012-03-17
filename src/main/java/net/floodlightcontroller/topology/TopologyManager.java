@@ -369,6 +369,15 @@ IRoutingService, ILinkDiscoveryListener {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
     }
 
+    @Override
+    public Set<Short> getPorts(long sw) {
+        return currentInstance.getPorts(sw);
+    }
+
+    public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort) {
+        return currentInstance.getBroadcastPorts(targetSw, src, srcPort);
+    }
+
     //
     // IRoutingService interface methods
     //
