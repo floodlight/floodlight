@@ -160,7 +160,6 @@ public class Controller
     
     // Configuration options
     protected int openFlowPort = 6633;
-    protected long ptWarningThresholdInNano;
     protected int workerThreads = 0;
     
     // The current role of the controller.
@@ -930,11 +929,6 @@ public class Controller
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-        long startTime = 0;
-        
-        if (pktinProcTime.isEnabled()) {
-            startTime = System.nanoTime();
-        }
 
         switch (m.getType()) {
             case PACKET_IN:
@@ -974,8 +968,7 @@ public class Controller
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
                     // monitoring is turned on
-                    long startTime_ns = pktinProcTime.getStartTimeOnePkt();
-                    long compStartTime_ns;                       
+                    pktinProcTime.recordStartTimePktIn();                     
                     Command cmd;
                     for (IOFMessageListener listener : listeners) {
                         if (listener instanceof IOFSwitchFilter) {
@@ -984,32 +977,23 @@ public class Controller
                             }
                         }
 
-                        // Get the start time of processing current packet for this listener
-                        compStartTime_ns = 
-                                pktinProcTime.getStartTimeOneComponent();
+                        pktinProcTime.recordStartTimeComp(listener);
                         cmd = listener.receive(sw, m, bc);
-                        pktinProcTime.
-                            updateCumulativeTimeOneComp(compStartTime_ns,
-                                                        listener.getId());
+                        pktinProcTime.recordEndTimeComp(listener);
+                            //updateCumulativeTimeOneComp(compStartTime_ns,
+                            //                            listener.getId());
                         
                         if (Command.STOP.equals(cmd)) {
                             break;
                         }
                     }
-                    pktinProcTime.updateCumulativeTimeTotal(startTime_ns);
+                    pktinProcTime.recordEndTimePktIn(sw, m, bc);
+                    //updateCumulativeTimeTotal(startTime_ns);
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
                 }
-                if ((bContext == null) && (bc != null)) flcontext_free(bc);
                 
-                if (pktinProcTime.isEnabled()) {
-                    long processingTime = System.nanoTime() - startTime;
-                    if (ptWarningThresholdInNano > 0 && processingTime > ptWarningThresholdInNano) {
-                        log.warn("Time to process packet-in: {} us", processingTime/1000.0);
-                        if (eth != null)
-                            log.warn("{}", OFMessage.getDataAsString(sw, m, bContext));
-                    }
-                }
+                if ((bContext == null) && (bc != null)) flcontext_free(bc);
         }
     }
     
@@ -1710,14 +1694,6 @@ public class Controller
             }
         }
         log.info("Connected to storage source");
-                
-        // Processing Time Warning Threshold
-        ptWarningThresholdInNano = Long.parseLong(System.getProperty(
-             "net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
-        if (ptWarningThresholdInNano > 0) {
-            log.info("Packet processing time threshold for warning set to {} ms.",
-                 ptWarningThresholdInNano/1000000);
-        }
        
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());

@@ -536,4 +536,18 @@ public class TopologyInstance {
         return switches;
     }
 
+    public Set<Short> getPorts(long sw) {
+        return switchPorts.get(sw);
+    }
+
+    public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort) {
+        Set<Short> result = new HashSet<Short>();
+        long clusterId = getSwitchClusterId(targetSw);
+        for(NodePortTuple npt: clusterBroadcastNodePorts.get(clusterId)) {
+            if (npt.getNodeId() == targetSw) {
+                result.add(npt.getPortId());
+            }
+        }
+        return result;
+    }
 }

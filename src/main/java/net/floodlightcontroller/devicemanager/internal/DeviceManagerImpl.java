@@ -414,11 +414,6 @@ public class DeviceManagerImpl implements
     }
 
     @Override
-    public int getId() {
-        return IOFMessageListener.FlListenerID.DEVICEMANAGERIMPL;
-    }
-
-    @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         return (type == OFType.PACKET_IN && name.equals("topology"));
     }
@@ -481,6 +476,7 @@ public class DeviceManagerImpl implements
         m.put(IDeviceService.class, this);
         return m;
     }
+
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
@@ -601,6 +597,7 @@ public class DeviceManagerImpl implements
                 getSourceEntityFromPacket(eth, sw, pi.getInPort());
         if (srcEntity == null)
             return Command.STOP;
+
 
         if (isGratArp(eth) ||
             isBroadcastDHCPReq(eth)) {

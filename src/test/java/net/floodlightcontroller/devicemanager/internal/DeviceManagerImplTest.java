@@ -23,10 +23,8 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createStrictMock;
@@ -41,7 +39,6 @@ import static org.easymock.EasyMock.anyShort;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import static net.floodlightcontroller.devicemanager.IDeviceService.DeviceField.*;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
@@ -75,9 +72,12 @@ import org.openflow.util.HexString;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImplTest extends FloodlightTestCase {
-    private OFPacketIn packetIn;
-    private IPacket testPacket;
-    private byte[] testPacketSerialized;
+    protected OFPacketIn packetIn_1, packetIn_2, packetIn_3, packetIn_4, packetIn_5;
+    protected IPacket testARPReplyPacket_1, testARPReplyPacket_2, testARPReplyPacket_3;
+    protected IPacket testARPReqPacket_1, testARPReqPacket_2;
+    protected byte[] testARPReplyPacket_1_Serialized, testARPReplyPacket_2_Serialized;
+    private byte[] testARPReplyPacket_3_Serialized;
+    private byte[] testARPReqPacket_1_Serialized, testARPReqPacket_2_Serialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
@@ -97,20 +97,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         super.setUp();
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        Set<IFloodlightModule> modSet = new HashSet<IFloodlightModule>();
         RestApiServer restApi = new RestApiServer();
-        modSet.add(restApi);
         mockFloodlightProvider = getMockFloodlightProvider();
-        modSet.add(mockFloodlightProvider);
         deviceManager = new DeviceManagerImpl();
-        modSet.add(deviceManager);
         fmc.addService(IDeviceService.class, deviceManager);
         storageSource = new MemoryStorageSource();
-        modSet.add(storageSource);
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
-        fmc.createConfigMaps(modSet);
         restApi.init(fmc);
         storageSource.init(fmc);
         deviceManager.init(fmc);
@@ -131,7 +125,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         replay(mockSwitch1, mockSwitch5, mockSwitch10, mockSwitch50);
         
         // Build our test packet
-        this.testPacket = new Ethernet()
+        this.testARPReplyPacket_1 = new Ethernet()
             .setSourceMACAddress("00:44:33:22:11:00")
             .setDestinationMACAddress("00:11:22:33:44:55")
             .setEtherType(Ethernet.TYPE_ARP)
@@ -147,15 +141,116 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
                     .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testPacketSerialized = testPacket.serialize();
+        this.testARPReplyPacket_1_Serialized = testARPReplyPacket_1.serialize();
+        
+        // Another test packet with a different source IP
+        this.testARPReplyPacket_2 = new Ethernet()
+            .setSourceMACAddress("00:44:33:22:11:01")
+            .setDestinationMACAddress("00:11:22:33:44:55")
+            .setEtherType(Ethernet.TYPE_ARP)
+            .setPayload(
+                    new ARP()
+                    .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                    .setProtocolType(ARP.PROTO_TYPE_IP)
+                    .setHardwareAddressLength((byte) 6)
+                    .setProtocolAddressLength((byte) 4)
+                    .setOpCode(ARP.OP_REPLY)
+                    .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
+                    .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
+                    .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
+                    .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+        this.testARPReplyPacket_2_Serialized = testARPReplyPacket_2.serialize();
+        
+        this.testARPReplyPacket_3 = new Ethernet()
+        .setSourceMACAddress("00:44:33:22:11:01")
+        .setDestinationMACAddress("00:11:22:33:44:55")
+        .setEtherType(Ethernet.TYPE_ARP)
+        .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) 6)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REPLY)
+                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
+                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.3"))
+                .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
+                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+        this.testARPReplyPacket_3_Serialized = testARPReplyPacket_3.serialize();
+        
+        this.testARPReqPacket_1 = new Ethernet()
+        .setSourceMACAddress("00:44:33:22:11:04")
+        .setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
+        .setEtherType(Ethernet.TYPE_ARP)
+        .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) 6)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REQUEST)
+                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:04"))
+                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.4"))
+                .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
+                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+        this.testARPReqPacket_1_Serialized = testARPReqPacket_1.serialize();
+        
+        this.testARPReqPacket_2 = new Ethernet()
+        .setSourceMACAddress("00:44:33:22:11:04")
+        .setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
+        .setEtherType(Ethernet.TYPE_ARP)
+        .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) 6)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REQUEST)
+                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:04"))
+                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.14"))
+                .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
+                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+        this.testARPReqPacket_2_Serialized = testARPReqPacket_2.serialize();
         
         // Build the PacketIn
-        this.packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+        this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
             .setBufferId(-1)
             .setInPort((short) 1)
-            .setPacketData(this.testPacketSerialized)
+            .setPacketData(this.testARPReplyPacket_1_Serialized)
             .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testPacketSerialized.length);
+            .setTotalLength((short) this.testARPReplyPacket_1_Serialized.length);
+        
+        // Build the PacketIn
+        this.packetIn_2 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+            .setBufferId(-1)
+            .setInPort((short) 1)
+            .setPacketData(this.testARPReplyPacket_2_Serialized)
+            .setReason(OFPacketInReason.NO_MATCH)
+            .setTotalLength((short) this.testARPReplyPacket_2_Serialized.length);
+        
+        // Build the PacketIn
+        this.packetIn_3 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+            .setBufferId(-1)
+            .setInPort((short) 1)
+            .setPacketData(this.testARPReplyPacket_3_Serialized)
+            .setReason(OFPacketInReason.NO_MATCH)
+            .setTotalLength((short) this.testARPReplyPacket_3_Serialized.length);
+        
+        // Build the PacketIn
+        this.packetIn_4 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+            .setBufferId(-1)
+            .setInPort((short) 1)
+            .setPacketData(this.testARPReqPacket_1_Serialized)
+            .setReason(OFPacketInReason.NO_MATCH)
+            .setTotalLength((short) this.testARPReqPacket_1_Serialized.length);
+        
+        // Build the PacketIn
+        this.packetIn_5 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+            .setBufferId(-1)
+            .setInPort((short) 1)
+            .setPacketData(this.testARPReqPacket_2_Serialized)
+            .setReason(OFPacketInReason.NO_MATCH)
+            .setTotalLength((short) this.testARPReqPacket_2_Serialized.length);
     }
     
     static EnumSet<DeviceField> testKeyFields;
@@ -386,7 +481,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testPacketIn() throws Exception {
         byte[] dataLayerSource = 
-                ((Ethernet)this.testPacket).getSourceMACAddress();
+                ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
         // Mock up our expected behavior
         ITopologyService mockTopology = createMock(ITopologyService.class);
@@ -413,7 +508,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         replay(mockTopology);
         // Get the listener and trigger the packet in
         IOFSwitch switch1 = mockFloodlightProvider.getSwitches().get(1L);
-        mockFloodlightProvider.dispatchMessage(switch1, this.packetIn);
+        mockFloodlightProvider.dispatchMessage(switch1, this.packetIn_1);
 
         // Verify the replay matched our expectations
         verify(mockTopology);
@@ -457,7 +552,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Get the listener and trigger the packet in
         IOFSwitch switch5 = mockFloodlightProvider.getSwitches().get(5L);
         mockFloodlightProvider.dispatchMessage(switch5, 
-                                               this.packetIn.setInPort((short)2));
+                                               this.packetIn_1.setInPort((short)2));
 
         // Verify the replay matched our expectations
         verify(mockTopology);
@@ -546,7 +641,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         r = deviceManager.findDevice(1L, null, null, null, null);
         assertNull(r);
-    }
+   }
     
     @Test
     public void testAttachmentPointFlapping() throws Exception {
@@ -557,7 +652,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         port1.setName("port1");
         port2.setName("port2");
         
-        byte[] dataLayerSource = ((Ethernet)this.testPacket).getSourceMACAddress();
+        byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -573,15 +668,17 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.setTopology(mockTopology);
 
         // Start recording the replay on the mocks
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)2, (long)1, (short)1)).andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)1, (long)1, (short)2)).andReturn(false).anyTimes();
         replay(mockSwitch, mockTopology);
 
         // Get the listener and trigger the packet in
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn);
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)1));
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)1));
-        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn.setInPort((short)2));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1);
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)2));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)1));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)2));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)1));
+        mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)2));
 
         Device device = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         
@@ -599,37 +696,4 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.clearAllDeviceStateFromMemory();
         */
     }
-    /*
-    private static final Map<String, Object> pcPort1;
-    static {
-    	pcPort1 = new HashMap<String, Object>();
-    	pcPort1.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port1");
-    	pcPort1.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port1");
-    }
-    
-    private static final Map<String, Object> pcPort2;
-    static {
-    	pcPort2 = new HashMap<String, Object>();
-    	pcPort2.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port2");
-    	pcPort2.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port2");
-    }
-    
-    private void setupPortChannel() {
-        storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort1);
-        storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort2);
-        deviceManager.readPortChannelConfigFromStorage();
-    }
-    
-    private void teardownPortChannel() {
-        storageSource.deleteRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME,
-                pcPort1.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
-        storageSource.deleteRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME,
-                pcPort2.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
-        deviceManager.readPortChannelConfigFromStorage();
-    }
-    */
 }

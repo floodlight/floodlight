@@ -366,12 +366,7 @@ public class LinkDiscoveryManager
     public String getName() {
         return "topology";
     }
- 
-    @Override
-    public int getId() {
-        return FlListenerID.TOPOLOGYIMPL;
-    }
-
+    
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {

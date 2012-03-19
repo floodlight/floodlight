@@ -1,14 +1,15 @@
 package net.floodlightcontroller.topology;
 
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import static org.junit.Assert.*;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyInstance;
@@ -23,6 +24,7 @@ public class TopologyInstanceTest {
     protected static Logger log = LoggerFactory.getLogger(TopologyInstanceTest.class);
     protected TopologyManager topologyManager;
     protected FloodlightModuleContext fmc;
+    protected MockFloodlightProvider mockFloodlightProvider;
 
     protected int DIRECT_LINK = 1;
     protected int MULTIHOP_LINK = 2;
@@ -31,6 +33,8 @@ public class TopologyInstanceTest {
     @Before 
     public void SetUp() throws Exception {
         fmc = new FloodlightModuleContext();
+        mockFloodlightProvider = new MockFloodlightProvider();
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         topologyManager  = new TopologyManager();
         topologyManager.init(fmc);
     }
@@ -103,6 +107,7 @@ public class TopologyInstanceTest {
 
             topologyManager.addOrUpdateLink((long)r[0], (short)r[1], (long)r[2], (short)r[3], type);
         }
+        topologyManager.createNewInstance();
     }
 
     public TopologyManager getTopologyManager() {
@@ -124,8 +129,8 @@ public class TopologyInstanceTest {
                                          {1,2,3}, 
                                          {4}
             };
+            //tm.recompute();
             createTopologyFromLinks(linkArray);
-
             verifyClusters(expectedClusters);
         }
 
@@ -219,6 +224,7 @@ public class TopologyInstanceTest {
             int [][] expectedClusters = {
                                          {1,2,3,4,5},
             };
+            topologyManager.createNewInstance();
             verifyClusters(expectedClusters);
         }
 
@@ -228,6 +234,7 @@ public class TopologyInstanceTest {
             int [][] expectedClusters = {
                                          {1,2,3,5},
             };
+            topologyManager.createNewInstance();
             verifyClusters(expectedClusters);
         }
     }
@@ -260,6 +267,7 @@ public class TopologyInstanceTest {
         };
 
         createTopologyFromLinks(linkArray);
+        topologyManager.createNewInstance();
         verifyClusters(expectedClusters);
         verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts);
     }
@@ -321,6 +329,7 @@ public class TopologyInstanceTest {
             };
 
             createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
             verifyClusters(expectedClusters);
             verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts);
         }
@@ -367,6 +376,7 @@ public class TopologyInstanceTest {
             };
 
             createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
             verifyClusters(expectedClusters);
             verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts);
         }

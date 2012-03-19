@@ -3,7 +3,6 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The service registry for an IFloodlightProvider.
@@ -12,6 +11,7 @@ import java.util.Set;
 public class FloodlightModuleContext implements IFloodlightModuleContext {
 	protected Map<Class<? extends IFloodlightService>, IFloodlightService> serviceMap;
 	protected Map<Class<? extends IFloodlightModule>, Map<String, String>> configParams;
+	protected Collection<IFloodlightModule> moduleSet;
 	
 	/**
 	 * Creates the ModuleContext for use with this IFloodlightProvider.
@@ -43,14 +43,18 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 		return (T)s;
 	}
 	
-
-	/**
-	 * Gets all the loaded services
-	 * @return The colleciton of loaded services
-	 */
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getAllServices() {
 	    return serviceMap.keySet();
+	}
+	
+	@Override
+	public Collection<IFloodlightModule> getAllModules() {
+	    return moduleSet;
+	}
+	
+	public void setModuleSet(Collection<IFloodlightModule> modSet) {
+	    this.moduleSet = modSet;
 	}
 	
 	/**
@@ -78,18 +82,10 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	 */
 	public void addConfigParam(IFloodlightModule mod, String key, String value) {
 	    Map<String, String> moduleParams = configParams.get(mod.getClass());
-	    moduleParams.put(key, value);
-	}
-	
-	/**
-	 * We initialize empty configuration maps for each module to be loaded.
-	 * This way each module doens't have to null check their map.
-	 * @param moduleSet The modules to initialize maps for
-	 */
-	public void createConfigMaps(Set<IFloodlightModule> moduleSet) {
-	    for (IFloodlightModule mod : moduleSet) {
-	        Map<String, String> moduleParams = new HashMap<String, String>();
+	    if (moduleParams == null) {
+	        moduleParams = new HashMap<String, String>();
 	        configParams.put(mod.getClass(), moduleParams);
 	    }
+	    moduleParams.put(key, value);
 	}
  }

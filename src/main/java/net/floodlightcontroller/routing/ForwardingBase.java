@@ -95,11 +95,6 @@ public abstract class ForwardingBase implements
         return "forwarding";
     }
 
-    @Override
-    public int getId() {
-        return FlListenerID.FORWARDINGBASE;
-    }
-    
     /**
      * All subclasses must define this function if they want any specific
      * forwarding action

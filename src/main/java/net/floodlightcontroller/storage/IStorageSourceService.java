@@ -329,6 +329,4 @@ public interface IStorageSourceService extends IFloodlightService {
      * @param notifications the notifications to dispatch
      */
     public void notifyListeners(List<StorageSourceNotification> notifications);
-
-    public void setPktinProcessingTime(IPktInProcessingTimeService pktinProcessingTime);
 }

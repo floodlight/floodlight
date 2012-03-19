@@ -462,11 +462,6 @@ public class StaticFlowEntryPusher
     public String getName() {
         return StaticFlowName;
     }
-
-    @Override
-    public int getId(){
-        return 0; // TODO - Alex - fix BbPktinProcessingTime.BbListenerID.STATICFLOWENTRYPUSHER;
-    }
     
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {

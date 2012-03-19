@@ -6,11 +6,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.routing.BroadcastTree;
@@ -40,12 +46,50 @@ IRoutingService, ILinkDiscoveryListener {
     protected Map<NodePortTuple, Set<Link>> tunnelLinks; // set of tunnel links
     protected ILinkDiscoveryService linkDiscovery;
     protected ArrayList<ITopologyListener> topologyAware;
+    protected IFloodlightProviderService floodlightProvider;
 
+    protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
+    protected SingletonTask newInstanceTask;
 
-    public void recompute() {
-        createNewInstance();
-        informListeners();
+    /**
+     * Thread for recomputing topology.  The thread is always running, 
+     * however the function applyUpdates() has a blocking call.
+     */
+    protected class NewInstanceWorker implements Runnable {
+        @Override 
+        public void run() {
+            applyUpdates();
+            createNewInstance();
+            informListeners();
+        }
+    }
+
+    public void applyUpdates() {
+        LDUpdate update = null;
+        while (ldUpdates.peek() != null) {
+            try {
+                update = ldUpdates.take();
+            } catch (Exception e) {
+                log.error("Error reading link discovery update. {}", e);
+            }
+            if (log.isTraceEnabled()) {
+                log.info("Applying update: {}", update);
+            }
+            if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
+                boolean added = (((update.getSrcPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
+                        ((update.getDstPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));
+                if (added) {
+                    addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
+                                    update.getDst(), update.getDstPort(), 
+                                    update.getType());
+                } else  {
+                    removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
+                }
+            } else if (update.getOperation() == UpdateOperation.REMOVE) {
+                removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
+            }
+        }
     }
 
     /**
@@ -140,9 +184,10 @@ IRoutingService, ILinkDiscoveryListener {
         } else if (type.equals(LinkType.TUNNEL)) {
             addLinkToStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
+        } else if (type.equals(LinkType.DIRECT_LINK)) {
+            removeLinkFromStructure(tunnelLinks, link);
+            removeLinkFromStructure(portBroadcastDomainLinks, link);
         }
-
-        this.createNewInstance();
     }
 
     public void removeLink(Link link)  {
@@ -172,7 +217,6 @@ IRoutingService, ILinkDiscoveryListener {
                 switchPorts.get(link.getDst()).isEmpty()) {
             switchPorts.remove(link.getDst());
         }
-        this.createNewInstance();
     }
 
     public void removeLink(long srcId, short srcPort, long dstId, short dstPort) {
@@ -216,18 +260,19 @@ IRoutingService, ILinkDiscoveryListener {
     //
 
     public void linkDiscoveryUpdate(LDUpdate update) {
-        if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
-            boolean added = (((update.getSrcPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()) &&
-                    ((update.getDstPortState() & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue()));
-            if (added) {
-            addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
-                               update.getDst(), update.getDstPort(), 
-                               update.getType());
-            } else  {
-                removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
-            }
-        } else if (update.getOperation() == UpdateOperation.REMOVE) {
-            removeLink(update.getSrc(), update.getSrcPort(), update.getDst(), update.getDstPort());
+        boolean scheduleFlag = false;
+        // if there's no udpates in the queue, then
+        // we need to schedule an update.
+        if (ldUpdates.peek() == null)
+            scheduleFlag = true;
+
+        if (log.isTraceEnabled()) {
+            log.trace("Queuing update: {}", update);
+        }
+        ldUpdates.add(update);
+
+        if (scheduleFlag) {
+            newInstanceTask.reschedule(1, TimeUnit.MICROSECONDS);
         }
     }
 
@@ -264,6 +309,7 @@ IRoutingService, ILinkDiscoveryListener {
     getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
         l.add(ILinkDiscoveryService.class);
         return l;
     }
@@ -271,19 +317,23 @@ IRoutingService, ILinkDiscoveryListener {
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         linkDiscovery = context.getServiceImpl(ILinkDiscoveryService.class);
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
+        ldUpdates = new LinkedBlockingQueue<LDUpdate>();
+        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
         // TODO Auto-generated method stub
         linkDiscovery.addListener(this);
-        this.createNewInstance();
+        newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
 
     //
@@ -319,6 +369,15 @@ IRoutingService, ILinkDiscoveryListener {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
     }
 
+    @Override
+    public Set<Short> getPorts(long sw) {
+        return currentInstance.getPorts(sw);
+    }
+
+    public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort) {
+        return currentInstance.getBroadcastPorts(targetSw, src, srcPort);
+    }
+
     //
     // IRoutingService interface methods
     //
@@ -337,4 +396,11 @@ IRoutingService, ILinkDiscoveryListener {
     public BroadcastTree getBroadcastTreeForCluster(long clusterId) {
         return currentInstance.getBroadcastTreeForCluster(clusterId);
     }
+
+    @Override
+    public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2) {
+        // TODO Auto-generated method stub
+        return false;
+    }
 }
+
