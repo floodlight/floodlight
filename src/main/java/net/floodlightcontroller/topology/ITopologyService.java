@@ -16,7 +16,7 @@ public interface ITopologyService extends IFloodlightService  {
     public boolean isInternal(long switchid, short port);
 
     public long getSwitchClusterId(long switchId);
-    
+
     /**
      * Retrieves a set of all the switches in the same cluster as sw.
      * A cluster is a set of switches that are directly or indirectly
@@ -27,7 +27,7 @@ public interface ITopologyService extends IFloodlightService  {
      * @return Set of switches in the cluster
      */
     public Set<Long> getSwitchesInCluster(long switchId);
-    
+
     /**
      * Queries whether two switches are in the same cluster.
      * @param switch1
@@ -36,9 +36,9 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public boolean inSameCluster(long switch1, long switch2);
 
-    
+
     public void addListener(ITopologyListener listener);
-    
+
     public boolean isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId);
 
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2);
@@ -46,4 +46,7 @@ public interface ITopologyService extends IFloodlightService  {
     public Set<Short> getPorts(long sw);
 
     public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort);
+
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort);
 }

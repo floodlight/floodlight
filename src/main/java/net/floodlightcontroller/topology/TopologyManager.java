@@ -399,8 +399,15 @@ IRoutingService, ILinkDiscoveryListener {
 
     @Override
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2) {
-        // TODO Auto-generated method stub
-        return false;
+        return currentInstance.isInSameBroadcastDomain(s1, p1, s2, p2);
+
+    }
+
+    @Override
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+        // Use this function to redirect traffic if needed.
+        return currentInstance.getOutgoingSwitchPort(src, srcPort, dst, dstPort);
     }
 }
 
