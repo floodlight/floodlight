@@ -28,8 +28,8 @@ import net.floodlightcontroller.core.web.serializers.LinkTupleSerializer;
 import net.floodlightcontroller.core.web.serializers.OFFeaturesReplyJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFMatchJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.OFPhysicalPortJSONSerializer;
-import net.floodlightcontroller.core.web.serializers.PerfMonCumulativeTimeBucketJSONSerializer;
-import net.floodlightcontroller.core.web.serializers.PerfMonOneComponentTimeJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.CumulativeTimeBucketJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.OneComponentTimeJSONSerializer;
 
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.Version;
@@ -66,11 +66,9 @@ public class JacksonCustomConverter extends JacksonConverter {
         jsonModule.addSerializer(new OFFeaturesReplyJSONSerializer());
         jsonModule.addSerializer(new OFPhysicalPortJSONSerializer());
         jsonModule.addSerializer(new EventHistoryBaseInfoJSONSerializer());
-        jsonModule.addSerializer(
-                            new EventHistoryAttachmentPointJSONSerializer());
-        jsonModule.addSerializer(new PerfMonOneComponentTimeJSONSerializer());
-        jsonModule.addSerializer(
-                            new PerfMonCumulativeTimeBucketJSONSerializer());
+        jsonModule.addSerializer(new EventHistoryAttachmentPointJSONSerializer());
+        jsonModule.addSerializer(new OneComponentTimeJSONSerializer());
+        jsonModule.addSerializer(new CumulativeTimeBucketJSONSerializer());
         jsonModule.addSerializer(new LinkTupleSerializer());
         jsonModule.addSerializer(new EventHistoryTopologySwitchJSONSerializer());
         jsonModule.addSerializer(new EventHistoryTopologyLinkJSONSerializer());

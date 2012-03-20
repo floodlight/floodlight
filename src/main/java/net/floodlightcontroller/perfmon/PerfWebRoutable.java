@@ -11,12 +11,13 @@ public class PerfWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/data/{type}/json", PerfMonResource.class);
+        router.attach("/data/json", PerfMonDataResource.class);
+        router.attach("/{perfmonstate}/json", PerfMonToggleResource.class); // enable, disable, or reset
         return router;
     }
 
     @Override
     public String basePath() {
-        return "/wm/perform";
+        return "/wm/performance";
     }
 }
