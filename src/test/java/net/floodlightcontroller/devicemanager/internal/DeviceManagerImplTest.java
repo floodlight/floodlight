@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.Device;
 import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
@@ -45,6 +46,7 @@ import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.junit.Before;
@@ -75,6 +77,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         RestApiServer restApi = new RestApiServer();
+        MockThreadPoolService tp = new MockThreadPoolService();
+        fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         fmc.addService(IDeviceManagerService.class, deviceManager);
@@ -82,11 +86,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
+        tp.init(fmc);
         restApi.init(fmc);
         storageSource.init(fmc);
         deviceManager.init(fmc);
         storageSource.startUp(fmc);
         deviceManager.startUp(fmc);
+        tp.startUp(fmc);
         
         // Build our test packet
         this.testARPReplyPacket_1 = new Ethernet()

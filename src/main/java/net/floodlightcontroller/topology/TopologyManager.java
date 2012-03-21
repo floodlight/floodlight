@@ -11,7 +11,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -23,6 +22,7 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
@@ -46,7 +46,7 @@ IRoutingService, ILinkDiscoveryListener {
     protected Map<NodePortTuple, Set<Link>> tunnelLinks; // set of tunnel links
     protected ILinkDiscoveryService linkDiscovery;
     protected ArrayList<ITopologyListener> topologyAware;
-    protected IFloodlightProviderService floodlightProvider;
+    protected IThreadPoolService threadPool;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
@@ -309,29 +309,30 @@ IRoutingService, ILinkDiscoveryListener {
     getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IFloodlightProviderService.class);
         l.add(ILinkDiscoveryService.class);
+        l.add(IThreadPoolService.class);
         return l;
     }
 
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         linkDiscovery = context.getServiceImpl(ILinkDiscoveryService.class);
+        threadPool = context.getServiceImpl(IThreadPoolService.class);
+        
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        // TODO Auto-generated method stub
         linkDiscovery.addListener(this);
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
