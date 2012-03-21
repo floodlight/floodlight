@@ -266,10 +266,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()).contains(lt));
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
 
-
-
         // Set the multicastValidTime to be old and see if that also times out.
-        topology.links.get(lt).setMulticastValidTime(System.currentTimeMillis() - 40000);
+        info = new LinkInfo(null, System.currentTimeMillis() - 40000, 0, 0);
+        topology.addOrUpdateLink(lt, info);
         topology.timeoutLinks();
         assertTrue(topology.links.get(lt) == null);
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getSrc()) == null ||

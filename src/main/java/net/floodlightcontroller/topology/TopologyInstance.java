@@ -532,6 +532,16 @@ public class TopologyInstance {
         return clusterBroadcastNodePorts.get(clusterId);
     }
 
+    public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2) {
+        return false;
+    }
+
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+        // Use this function to redirect traffic if needed.
+        return new NodePortTuple(dst, dstPort);
+    }
+
     public Set<Long> getSwitches() {
         return switches;
     }

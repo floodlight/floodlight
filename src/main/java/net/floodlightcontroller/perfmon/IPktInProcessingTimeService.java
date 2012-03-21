@@ -1,6 +1,6 @@
 package net.floodlightcontroller.perfmon;
 
-import java.util.Set;
+import java.util.List;
 
 import org.openflow.protocol.OFMessage;
 
@@ -8,7 +8,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.perfmon.CircularTimeBucketSet;
 
 public interface IPktInProcessingTimeService extends IFloodlightService {
 
@@ -16,7 +15,7 @@ public interface IPktInProcessingTimeService extends IFloodlightService {
      * Creates time buckets for a set of modules to measure their performance
      * @param listeners The message listeners to create time buckets for
      */
-    public void bootstrap(Set<IOFMessageListener> listeners);
+    public void bootstrap(List<IOFMessageListener> listeners);
     
     /**
      * Stores a timestamp in ns. Used right before a service handles an
@@ -32,5 +31,7 @@ public interface IPktInProcessingTimeService extends IFloodlightService {
     
     public boolean isEnabled();
     
-    public CircularTimeBucketSet getCtbs();
+    public void setEnabled(boolean enabled);
+    
+    public CumulativeTimeBucket getCtb();
 }
