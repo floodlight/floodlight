@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ScheduledExecutorService;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -54,9 +53,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     protected List<IOFSwitchListener> switchListeners;
     protected Map<Long, IOFSwitch> switches;
     protected BasicFactory factory;
-    
-    protected ScheduledExecutorService mockExecutor = 
-        new MockScheduledExecutor();
 
     /**
      * 
@@ -173,15 +169,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
     
     public void terminate() {
-    }
-
-    /**
-     * Return a mock executor that will simply execute each task 
-     * synchronously once.
-     */
-    @Override
-    public ScheduledExecutorService getScheduledExecutor() {
-        return mockExecutor;
     }
 
     @Override

@@ -54,6 +54,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packetstreamer.thrift.*;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 public class OFMessageFilterManager 
         implements IOFMessageListener, IFloodlightModule, IOFMessageFilterManagerService {
@@ -70,6 +71,7 @@ public class OFMessageFilterManager
     protected static PacketStreamer.Client packetClient = null;
 
     protected IFloodlightProviderService floodlightProvider = null;
+    protected IThreadPoolService threadPool = null;
     // filter List is a key value pair.  Key is the session id, value is the filter rules.
     protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> filterMap = null;
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
@@ -337,7 +339,7 @@ public class OFMessageFilterManager
     public class TimeoutFilterTask extends TimerTask {
 
         OFMessageFilterManager filterManager;
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         public TimeoutFilterTask(OFMessageFilterManager manager) {
             filterManager = manager;
@@ -460,6 +462,7 @@ public class OFMessageFilterManager
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
+        l.add(IThreadPoolService.class);
         return l;
     }
 
@@ -468,6 +471,8 @@ public class OFMessageFilterManager
             throws FloodlightModuleException {
         this.floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
+        this.threadPool =
+                context.getServiceImpl(IThreadPoolService.class);
     }
 
     @Override

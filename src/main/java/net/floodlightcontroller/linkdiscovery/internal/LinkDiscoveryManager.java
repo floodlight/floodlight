@@ -72,6 +72,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
@@ -141,6 +142,7 @@ public class LinkDiscoveryManager
     protected IStorageSourceService storageSource;
     protected IRoutingService routingEngine;
     protected IRestApiService restApi;
+    protected IThreadPoolService threadPool;
     
     private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
@@ -1300,6 +1302,7 @@ public class LinkDiscoveryManager
         l.add(IStorageSourceService.class);
         l.add(IRoutingService.class);
         l.add(IRestApiService.class);
+        l.add(IThreadPoolService.class);
         return l;
     }
 
@@ -1310,6 +1313,7 @@ public class LinkDiscoveryManager
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         routingEngine = context.getServiceImpl(IRoutingService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
+        threadPool = context.getServiceImpl(IThreadPoolService.class);
         
         // We create this here because there is no ordering guarantee
         this.topologyAware = new ArrayList<ITopologyListener>();
@@ -1342,7 +1346,7 @@ public class LinkDiscoveryManager
             log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
         }
         
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         // Setup sending out LLDPs
         Runnable lldpSendTimer = new Runnable() {
@@ -1353,7 +1357,7 @@ public class LinkDiscoveryManager
 
                     if (!shuttingDown) {
                         ScheduledExecutorService ses = 
-                            floodlightProvider.getScheduledExecutor();
+                            threadPool.getScheduledExecutor();
                                     ses.schedule(this, lldpFrequency, 
                                                         TimeUnit.MILLISECONDS);
                     }
@@ -1376,7 +1380,7 @@ public class LinkDiscoveryManager
                     timeoutLinks();
                     if (!shuttingDown) {
                         ScheduledExecutorService ses = 
-                            floodlightProvider.getScheduledExecutor();
+                                threadPool.getScheduledExecutor();
                         ses.schedule(this, lldpTimeout, TimeUnit.MILLISECONDS);
                     }
                 } catch (StorageException e) {

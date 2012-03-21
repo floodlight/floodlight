@@ -19,7 +19,6 @@ package net.floodlightcontroller.core;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
@@ -104,14 +103,6 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * @return listeners
      */
     public Map<OFType, List<IOFMessageListener>> getListeners();
-
-    /**
-     * Get the master scheduled thread pool executor maintained by the
-     * floodlight provider.  This can be used by other modules as a centralized
-     * way to schedule tasks.
-     * @return
-     */
-    public ScheduledExecutorService getScheduledExecutor();
 
     /**
      * Terminate the process
