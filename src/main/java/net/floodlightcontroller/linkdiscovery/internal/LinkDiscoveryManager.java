@@ -59,6 +59,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.LinkTuple;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
+import net.floodlightcontroller.packet.BDDP;
 import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -226,6 +227,7 @@ public class LinkDiscoveryManager
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                     sw.getStringId(), port.getPortNumber());
         }
+        LLDP lldp;
 
         Ethernet ethernet;
         
@@ -234,17 +236,19 @@ public class LinkDiscoveryManager
             .setSourceMACAddress(port.getHardwareAddress())
             .setDestinationMACAddress(LLDP_STANDARD_DST_MAC_STRING)
             .setEtherType(Ethernet.TYPE_LLDP);
+            lldp = new LLDP();
         } else {
             ethernet = new Ethernet()
             .setSourceMACAddress(port.getHardwareAddress())
             .setDestinationMACAddress(LLDP_BSN_DST_MAC_STRING)
-            .setEtherType(Ethernet.TYPE_BSN);
+            .setEtherType(Ethernet.TYPE_BDDP);
+            lldp = new BDDP();
         }
         // using "nearest customer bridge" MAC address for broadest possible propagation
         // through provider and TPMR bridges (see IEEE 802.1AB-2009 and 802.1Q-2011),
         // in particular the Linux bridge which behaves mostly like a provider bridge
 
-        LLDP lldp = new LLDP();
+
         ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
         byte[] portId = new byte[] {2, 0, 0}; // filled in later
@@ -497,13 +501,10 @@ public class LinkDiscoveryManager
             IFloodlightProviderService.bcStore.get(cntx, 
                                         IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getPayload() instanceof LLDP)  {
-            String dstMacString = HexString.toHexString(eth.getDestinationMACAddress());
-            if (dstMacString.equals(LLDP_STANDARD_DST_MAC_STRING)) {
-                return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
-            } else {
-                return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
-            }
+        if(eth.getEtherType() == Ethernet.TYPE_BDDP) {
+            return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
+        } else if (eth.getEtherType() == Ethernet.TYPE_LLDP)  {
+            return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
         }
 
         if (eth.getPayload() instanceof BPDU)

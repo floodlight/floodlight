@@ -33,11 +33,13 @@ public class LLDP extends BasePacket {
     protected LLDPTLV portId;
     protected LLDPTLV ttl;
     protected List<LLDPTLV> optionalTLVList;
+    protected short ethType;
 
     public LLDP() {
         this.optionalTLVList = new ArrayList<LLDPTLV>();
+        this.ethType = Ethernet.TYPE_LLDP;
     }
-    
+
     /**
      * @return the chassisId
      */
@@ -117,7 +119,7 @@ public class LLDP extends BasePacket {
         bb.putShort((short) 0); // End of LLDPDU
 
         if (this.parent != null && this.parent instanceof Ethernet)
-            ((Ethernet)this.parent).setEtherType(Ethernet.TYPE_LLDP);
+            ((Ethernet)this.parent).setEtherType(ethType);
 
         return data;
     }
