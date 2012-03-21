@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.test;
+package net.floodlightcontroller.threadpool;
 
 import java.util.ArrayList;
 import java.util.Collection;

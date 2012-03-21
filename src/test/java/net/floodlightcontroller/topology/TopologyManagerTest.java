@@ -5,6 +5,8 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.threadpool.MockThreadPoolService;
 import net.floodlightcontroller.topology.TopologyManager;
 
 import org.junit.Before;
@@ -23,8 +25,12 @@ public class TopologyManagerTest {
         mockFloodlightProvider = new MockFloodlightProvider();
         fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        MockThreadPoolService tp = new MockThreadPoolService();
+        fmc.addService(IThreadPoolService.class, tp);
         topologyManager  = new TopologyManager();
+        tp.init(fmc);
         topologyManager.init(fmc);
+        tp.startUp(fmc);
     }
 
     public TopologyManager getTopologyManager() {

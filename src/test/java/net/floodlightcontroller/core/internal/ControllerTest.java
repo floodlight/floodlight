@@ -51,6 +51,8 @@ import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.threadpool.MockThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
@@ -75,6 +77,7 @@ import org.openflow.protocol.statistics.OFStatisticsType;
  */
 public class ControllerTest extends FloodlightTestCase {
     private Controller controller;
+    private MockThreadPoolService tp;
 
     @Override
     public void setUp() throws Exception {
@@ -97,14 +100,19 @@ public class ControllerTest extends FloodlightTestCase {
         PktInProcessingTime ppt = new PktInProcessingTime();
         fmc.addService(IPktInProcessingTimeService.class, ppt);
         
+        tp = new MockThreadPoolService();
+        fmc.addService(IThreadPoolService.class, tp);
+        
         ppt.init(fmc);
         restApi.init(fmc);
         memstorage.init(fmc);
         cm.init(fmc);
+        tp.init(fmc);
         ppt.startUp(fmc);
         restApi.startUp(fmc);
         memstorage.startUp(fmc);
         cm.startUp(fmc);
+        tp.startUp(fmc);
     }
 
     public Controller getController() {
@@ -240,7 +248,7 @@ public class ControllerTest extends FloodlightTestCase {
         MockFloodlightProvider mbp = new MockFloodlightProvider();
         IOFSwitch sw = createMock(IOFSwitch.class);
         sw.cancelStatisticsReply(1);
-        OFStatisticsFuture sf = new OFStatisticsFuture(mbp, sw, 1);
+        OFStatisticsFuture sf = new OFStatisticsFuture(mbp, tp, sw, 1);
         mbp.addOFSwitchListener(sf);
 
         replay(sw);
@@ -260,7 +268,7 @@ public class ControllerTest extends FloodlightTestCase {
         reset(sw);
         sw.cancelStatisticsReply(1);
 
-        sf = new OFStatisticsFuture(mbp, sw, 1);
+        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
         mbp.addOFSwitchListener(sf);
 
         replay(sw);
@@ -279,7 +287,7 @@ public class ControllerTest extends FloodlightTestCase {
         // Test cancellation
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, sw, 1);
+        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
         mbp.addOFSwitchListener(sf);
 
         replay(sw);
@@ -297,7 +305,7 @@ public class ControllerTest extends FloodlightTestCase {
         // Test self timeout
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, sw, 1, 1, TimeUnit.SECONDS);
+        sf = new OFStatisticsFuture(mbp, tp, sw, 1, 1, TimeUnit.SECONDS);
         mbp.addOFSwitchListener(sf);
 
         replay(sw);

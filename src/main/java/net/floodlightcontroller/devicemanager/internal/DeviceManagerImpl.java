@@ -60,16 +60,15 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
@@ -631,6 +630,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected ILinkDiscoveryService linkDiscovery;
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
+    protected IThreadPoolService threadPool;
 
     protected Runnable deviceAgingTimer;
     protected SingletonTask deviceUpdateTask;
@@ -1929,12 +1929,12 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
                 if (deviceAgingTimer != null) {
                     ScheduledExecutorService ses =
-                        floodlightProvider.getScheduledExecutor();
+                        threadPool.getScheduledExecutor();
                     ses.schedule(this, DEVICE_AGING_TIMER, TimeUnit.MINUTES);
                 }
             }
         };
-        floodlightProvider.getScheduledExecutor().schedule(
+        threadPool.getScheduledExecutor().schedule(
             deviceAgingTimer, DEVICE_AGING_TIMER_INTERVAL, TimeUnit.SECONDS);
     }
 
@@ -2105,6 +2105,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         l.add(ITopologyService.class);
         l.add(ILinkDiscoveryService.class);
         l.add(IStorageSourceService.class);
+        l.add(IThreadPoolService.class);
         return l;
     }
 
@@ -2120,6 +2121,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 context.getServiceImpl(ILinkDiscoveryService.class);
         storageSource =
                 context.getServiceImpl(IStorageSourceService.class);
+        threadPool =
+                context.getServiceImpl(IThreadPoolService.class);
         
         // We create this here because there is no ordering guarantee
         this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
@@ -2159,7 +2162,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
         storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
 
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         deviceUpdateTask = new SingletonTask(ses, new DeviceUpdateWorker());
          
         // Register for the OpenFlow messages we want
