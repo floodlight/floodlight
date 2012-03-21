@@ -5,9 +5,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TimeZone;
 
 public class MySQLStorageSource extends SQLStorageSource {
 
@@ -25,7 +28,7 @@ public class MySQLStorageSource extends SQLStorageSource {
 			try {
 				Class.forName(driverName).newInstance();
 				// String serverName = "localhost";
-				String mydb = "/openflow";
+				String mydb = "localhost/openflow";
 				String username = "root";
 				String password = "root";
 				String url = "jdbc:mysql://" + mydb; // provide jdbc with path to db file
@@ -56,7 +59,8 @@ public class MySQLStorageSource extends SQLStorageSource {
 			//System.out.println(sql);
 			ResultSet sqlresult = stmt.executeQuery(sql);
 
-			pKey = sqlresult.getString(4);
+			sqlresult.first();
+			pKey = sqlresult.getNString("Column_name");
 
 			conn.close();
 		} catch (SQLException e) {
@@ -82,17 +86,27 @@ public class MySQLStorageSource extends SQLStorageSource {
 	@Override
 	public Object formatValue(Object value) {
 		try {
-			if (value.getClass().equals(java.lang.String.class)
-					&& !value.toString().equals("null")
-					&& !value.toString().equals("NULL")) {
-				if (!value.toString().contains("'"))
-					value = "'" + value.toString() + "'";
-			} else if (value.toString().equals("true"))
+			if (value.toString().equals("true"))
 				value = 1;
 			else if (value.toString().equals("false"))
 				value = 0;
+			else if (value.getClass() == java.util.Date.class){
+				value = (Date) value;
+				SimpleDateFormat dateFormat = new SimpleDateFormat(
+					"yyyy-MM-dd HH:mm:ss.SSS");
+				dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+				value = "'" + dateFormat.format(value) + "')";
+			}
+			else{
+				if (!value.toString().equals("null")
+					&& !value.toString().equals("NULL")) {
+					if (!value.toString().contains("'"))
+						value = "'" + value.toString() + "'";
+				}
+			}
 		} catch (NullPointerException e) {
-			System.out.println(value);
+			System.out.println("SQL formatting: value was null");
+			return "null";
 		}
 		return value;
 	}

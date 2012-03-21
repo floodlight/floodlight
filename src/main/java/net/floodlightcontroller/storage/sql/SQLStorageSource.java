@@ -73,9 +73,9 @@ public class SQLStorageSource extends AbstractStorageSource {
 			String sql = "CREATE TABLE if not exists " + tableName + "(";
 			Iterator<String> it = indexedColumns.iterator();
 			for (int i = 0; i < indexedColumns.size() - 1; i++) {
-				sql += it.next().toString() + ", ";
+				sql += it.next().toString() + " varchar(100), ";
 			}
-			sql += it.next().toString() + ");";
+			sql += it.next().toString() + " text);";
 			
 			//System.out.println(sql);
 			stmt.executeUpdate(sql);
@@ -112,7 +112,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 			String sql = "CREATE TABLE if not exists " + tableName + "(";
 			Iterator<String> it = indexedColumns.iterator();
 			for (int i = 0; i < indexedColumns.size(); i++) {
-				sql += it.next().toString() + ", ";
+				String column = it.next().toString();
+				sql += column;
+				if (column.equals(pKey))
+					sql += " varchar(100), ";
+				else
+					sql += " text, ";
 			}
 			sql += "primary key (" + pKey + "));";
 			//System.out.println(sql);
@@ -559,13 +564,13 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 	@Override
 	protected void deleteRowImpl(String tableName, Object rowKey) {
-		// TODO Auto-generated method stub
+		deleteRow(tableName, rowKey);
 		
 	}
 
 	@Override
 	protected void deleteRowsImpl(String tableName, Set<Object> rowKeys) {
-		// TODO Auto-generated method stub
+		deleteRows(tableName, rowKeys);
 		
 	}
 

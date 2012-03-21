@@ -164,7 +164,6 @@ public abstract class SQLStorageTest extends FloodlightTestCase {
 		storageSource.setExceptionHandler(null);
 		storageSource.createTable(PERSON_TABLE_NAME, indexedColumnNames,
 				PERSON_SSN);
-		storageSource.setTablePrimaryKeyName(PERSON_TABLE_NAME, PERSON_SSN);
 		storageSource.deleteRows(PERSON_TABLE_NAME);
 		initPersons();
 	}

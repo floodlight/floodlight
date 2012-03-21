@@ -17,14 +17,14 @@
 
 package net.floodlightcontroller.storage.sql.tests;
 
-import net.floodlightcontroller.storage.sql.SqliteStorageSource;
+import net.floodlightcontroller.storage.sql.MySQLStorageSource;
 import org.junit.Before;
 
-public class SqliteStorageTest extends SQLStorageTest {
+public class MySQLStorageTest extends SQLStorageTest {
 
 	@Before
 	public void setUp() throws Exception {
-		storageSource = new SqliteStorageSource();
+		storageSource = new MySQLStorageSource();
 		super.setUp();
 	}
 }
