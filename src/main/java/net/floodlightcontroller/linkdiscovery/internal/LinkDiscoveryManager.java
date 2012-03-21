@@ -402,10 +402,6 @@ public class LinkDiscoveryManager
         Short remotePort = portBB.getShort();
         IOFSwitch remoteSwitch = null;
         boolean myLLDP = false;
-        
-        if (isStandard == false) {
-            log.info("srini: getting bsn-specific packet.");
-        }
 
         // Verify this LLDP packet matches what we're looking for
         for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
