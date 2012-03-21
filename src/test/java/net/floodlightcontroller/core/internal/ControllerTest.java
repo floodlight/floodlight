@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.ARP;
@@ -52,7 +53,6 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.threadpool.MockThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
@@ -325,8 +325,10 @@ public class ControllerTest extends FloodlightTestCase {
         FloodlightModuleContext fmCntx = new FloodlightModuleContext();
         MockFloodlightProvider mfp = new MockFloodlightProvider();
         OFMessageFilterManager mfm = new OFMessageFilterManager();
+        MockThreadPoolService mtp = new MockThreadPoolService();
         fmCntx.addService(IOFMessageFilterManagerService.class, mfm);
         fmCntx.addService(IFloodlightProviderService.class, mfp);
+        fmCntx.addService(IThreadPoolService.class, mtp);
         String sid = null;
 
         

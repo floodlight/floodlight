@@ -4,9 +4,9 @@ import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.threadpool.MockThreadPoolService;
 import net.floodlightcontroller.topology.TopologyManager;
 
 import org.junit.Before;
