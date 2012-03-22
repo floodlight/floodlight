@@ -435,6 +435,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
                 delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
                 updateMaps(dCopy);
+                removeNetworkAddressFromStorage(d, na);
             }
             d = null; // to catch if anyone is using this reference
         }
@@ -527,8 +528,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             // Now add this updated device to the maps, which will replace
             // the old copy
             updateMaps(dCopy);
-            log.debug("Device 1 {}", d);
-            log.debug("Device 2 {}", dCopy);
+            if (log.isDebugEnabled()) {
+            	log.debug("Remove AP {} for Device {}", dap, d);
+            }
             removeAttachmentPointFromStorage(d, dap);
             d = null; // to catch if anyone is using this reference
         }
@@ -703,15 +705,15 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFSwitchListener(this);
         storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
+
+        // Read all our device state (MACs, IPs, attachment points) from storage
+        readAllDeviceStateFromStorage();
+        readPortChannelConfigFromStorage();
         
         /*
          * Device and storage aging.
          */
         enableDeviceAgingTimer();
-
-        // Read all our device state (MACs, IPs, attachment points) from storage
-        readAllDeviceStateFromStorage();
-        readPortChannelConfigFromStorage();
     }
 
     public void shutDown() {
@@ -1500,7 +1502,7 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             storageSource.deleteRowAsync(
                         DEVICE_ATTACHMENT_POINT_TABLE_NAME, attachmentPointId);
         } catch (NullPointerException e) {
-            log.debug("Null ptr exception for device {} attach-point {}",
+            log.warn("Null ptr exception for device {} attach-point {}",
                     device, attachmentPoint);
         }
     }
@@ -1732,7 +1734,6 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             if (address.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delNwAddrByDataLayerAddr(device.getDataLayerAddressAsLong(), 
                     address.getNetworkAddress().intValue());
-                removeNetworkAddressFromStorage(device, address);
             }
         }
         
@@ -1758,7 +1759,6 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
                 devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
-                removeAttachmentPointFromStorage(device, ap);
             }
         }
         
@@ -1785,121 +1785,6 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
         } 
     }
 
-    /**
-     * Removes aged rows in a table, based on the tables LAST_SEEN_COLUMN_NAME,
-     * requiring 'last_seen' to exist in the table.
-     * 
-     * @param tableName
-     * @param aging
-     * @param currentDate
-     */
-    private void removeAgedRowsFromStorage(String tableName,
-                                           String hostIdFieldName,
-                                           int aging,
-                                           Date currentDate) {
-        if (aging == 0) {
-            return;
-        }
-
-        Date ageBoundary = ageBoundaryDifference(currentDate, DEVICE_MAX_AGE);
-        IResultSet resultSet = null;
-        try {
-            /**
-             * The reason this storage call is asynchronous even though it's 
-             * immediately followed by a synchronous get is that there may be 
-             * other queued up asynchronous storage operations that would affect
-             * the results of executing this query. So we make this call 
-             * asynchronous as well so that we see the affects of the previous 
-             * asynchronous calls.
-             */
-            Future<IResultSet> future = 
-                storageSource.executeQueryAsync(tableName, null,
-                    new OperatorPredicate(LAST_SEEN_COLUMN_NAME, 
-                            OperatorPredicate.Operator.LT, ageBoundary),null);
-            // FIXME: What timeout should we use here?
-            resultSet = future.get(30, TimeUnit.SECONDS);
-            while (resultSet.next()) {
-
-                String dlAddrStr = resultSet.getString(hostIdFieldName);
-                if (dlAddrStr == null) {
-                    continue;
-                }
-
-                long dlAddr = HexString.toLong(dlAddrStr);
-
-                log.debug("removeRowsFromTable:" + hostIdFieldName + " " +
-                   resultSet.getString(hostIdFieldName) + " " + dlAddr +
-                   " " + resultSet.getDate(LAST_SEEN_COLUMN_NAME).toString() +
-                   " " + currentDate.toString());
-
-                lock.writeLock().lock();
-                try {
-                    devMgrMaps.delFromMaps(dlAddr);
-                } finally {
-                    lock.writeLock().unlock();
-                }                
-                resultSet.deleteRow();
-            }
-            resultSet.save();
-            resultSet.close();
-            resultSet = null;
-        }
-        catch (ExecutionException exc) {
-            log.error("Error accessing storage to remove old devices", exc);
-        }
-        catch (InterruptedException exc) {
-            log.error("Interruption accessing storage to remove old devices", 
-                                                                        exc);
-        }
-        catch (TimeoutException exc) {
-            log.warn("Timeout accessing storage to remove old devices", exc);
-        }
-        finally {
-            if (resultSet != null) {
-                resultSet.close();
-            }
-        }
-    }
-
-    /**
-     * Expire all age-out managed state.  Not intended to be called
-     * frequently since storage is queried.
-     */
-    private void removeAgedDeviceStorageState(Date currentDate) {
-        removeAgedRowsFromStorage(DEVICE_TABLE_NAME,
-                                  MAC_COLUMN_NAME,
-                                  DEVICE_MAX_AGE, 
-                                  currentDate);
-
-        removeAgedRowsFromStorage(DEVICE_ATTACHMENT_POINT_TABLE_NAME,
-                                  DEVICE_COLUMN_NAME,
-                                  DEVICE_AP_MAX_AGE, 
-                                  currentDate);
-
-        removeAgedRowsFromStorage(DEVICE_NETWORK_ADDRESS_TABLE_NAME,
-                                  DEVICE_COLUMN_NAME,
-                                  DEVICE_NA_MAX_AGE,
-                                  currentDate);
-    }
-
-    private void removeAgedDeviceState() {
-        Date currentDate = new Date();
-        long dayInMsec = TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS);
-
-        removeAgedDevices(currentDate);
-
-        /*
-         * Once a day review the storage state to expire very
-         * old entries.
-         */
-        Date yesterday = new Date(currentDate.getTime() - dayInMsec);
-        if ((previousStorageAudit == null) ||
-            (previousStorageAudit.before(yesterday))) {
-            previousStorageAudit = currentDate;
-            removeAgedDeviceStorageState(currentDate);
-        }
-    }
-
     private static final int DEVICE_AGING_TIMER= 15; // in minutes
     private static final int DEVICE_AGING_TIMER_INTERVAL = 1; // in seconds
 
@@ -1917,7 +1802,9 @@ public class DeviceManagerImpl implements IDeviceManager, IOFMessageListener,
             public void run() {
                 log.debug("Running device aging timer {} minutes",
                                 DEVICE_AGING_TIMER);
-                removeAgedDeviceState();
+                Date currentDate = new Date();
+
+                removeAgedDevices(currentDate);
 
                 if (deviceAgingTimer != null) {
                     ScheduledExecutorService ses =
