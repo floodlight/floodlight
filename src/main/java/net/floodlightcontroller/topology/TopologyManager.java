@@ -327,12 +327,12 @@ IRoutingService, ILinkDiscoveryListener {
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         
-        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
-        newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
+        newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
