@@ -410,5 +410,10 @@ IRoutingService, ILinkDiscoveryListener {
         // Use this function to redirect traffic if needed.
         return currentInstance.getOutgoingSwitchPort(src, srcPort, dst, dstPort);
     }
+
+	@Override
+	public boolean isBroadcastDomainPort(long sw, short port) {
+		return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, port));
+	}
 }
 

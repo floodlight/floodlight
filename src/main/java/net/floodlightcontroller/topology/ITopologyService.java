@@ -38,6 +38,8 @@ public interface ITopologyService extends IFloodlightService  {
 
 
     public void addListener(ITopologyListener listener);
+    
+    public boolean isBroadcastDomainPort(long sw, short port);
 
     public boolean isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId);
 

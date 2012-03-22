@@ -1233,15 +1233,7 @@ public class Controller
         ldd.addListener(type, listener);
         
         if (log.isDebugEnabled()) {
-            StringBuffer sb = new StringBuffer();
-            sb.append("OFListeners for ");
-            sb.append(type);
-            sb.append(": ");
-            for (IOFMessageListener l : ldd.getOrderedListeners()) {
-                sb.append(l.getName());
-                sb.append(",");
-            }
-            log.debug(sb.toString());
+        	logListeners(type, ldd);
         }
     }
 
@@ -1252,7 +1244,22 @@ public class Controller
             messageListeners.get(type);
         if (ldd != null) {
             ldd.removeListener(listener);
+            if (log.isDebugEnabled()) {
+            	logListeners(type, ldd);
+            }
         }
+    }
+    
+    private void logListeners(OFType type, ListenerDispatcher<OFType, IOFMessageListener> ldd) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("OFListeners for ");
+        sb.append(type);
+        sb.append(": ");
+        for (IOFMessageListener l : ldd.getOrderedListeners()) {
+            sb.append(l.getName());
+            sb.append(",");
+        }
+        log.debug(sb.toString());
     }
     
     public void removeOFMessageListeners(OFType type) {
