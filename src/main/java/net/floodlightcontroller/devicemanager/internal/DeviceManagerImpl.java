@@ -855,6 +855,31 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             updateDevice = device.shouldWriteLastSeenToStorage();
             attachmentPoint = device.getAttachmentPoint(switchPort);
 
+            // If the attachment point moves from a non-broadcast domain
+            // port to a broadcast domain port too quickly, ignore learning
+            // the broadcast domain attachment point.
+            if (attachmentPoint != null) {
+                // if the two switches are in the same cluster
+                // and if currSw,CurrPort is not in broadcast domain
+                long currSw = attachmentPoint.getSwitchPort().getSw().getId();
+                short currPort = attachmentPoint.getSwitchPort().getPort();
+                long newSw = switchPort.getSw().getId();
+                short newPort = switchPort.getPort();
+                if (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) {
+                    if (topology.isBroadcastDomainPort(currSw, currPort) == false) {
+                        if (topology.isBroadcastDomainPort(newSw, newPort) == true) {
+                            // only if the last seen
+                            if (currentDate.getTime() -
+                                    attachmentPoint.getLastSeen().getTime() < 5000) {
+                                // if the packet was seen within the last 5 seconds, we should ignore.
+                                // it should also ignore processing the packet.
+                                return Command.STOP;
+                            }
+                        }
+                    }
+                }
+            }
+
             if (isGratArp(eth)) {
                 clearAttachmentPoints = true;
             }
