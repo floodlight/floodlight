@@ -55,8 +55,10 @@ public class FloodlightModuleLoader {
 	 * serviceMap -> Maps a service to a module
 	 * moduleServiceMap -> Maps a module to all the services it provides
 	 * moduleNameMap -> Maps the string name to the module
+	 * @throws FloodlightModuleException If two modules are specified in the configuration
+	 * that provide the same service.
 	 */
-	protected static void findAllModules() {
+	protected static void findAllModules(Set<String> mList) throws FloodlightModuleException {
 	    synchronized (lock) {
 	        if (serviceMap != null) return;
 	        serviceMap = 
@@ -94,6 +96,23 @@ public class FloodlightModuleLoader {
 	                        serviceMap.put(s, mods);
 	                    }
 	                    mods.add(m);
+	                    // Make sure they haven't specified duplicate modules in the config
+	                    int dupInConf = 0;
+	                    for (IFloodlightModule cMod : mods) {
+	                        if (mList.contains(cMod.getClass().getCanonicalName()))
+	                            dupInConf++;
+	                    }
+	                    
+	                    if (dupInConf > 1) {
+	                        String duplicateMods = "";
+                            for (IFloodlightModule mod : mods) {
+                                duplicateMods += mod.getClass().getCanonicalName() + ", ";
+                            }
+	                        throw new FloodlightModuleException("ERROR! The configuraiton " +
+	                                " file specifies more than one module that provides the service " +
+	                                s.getCanonicalName() +". Please specify only ONE of the " +
+	                                "following modules in the config file: " + duplicateMods);
+	                    }
 	                }
 	            }
 	        }
@@ -137,7 +156,9 @@ public class FloodlightModuleLoader {
         
         String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY)
                                 .replaceAll("\\s", "");
-        return loadModulesFromList(moduleList.split(","), prop);
+        Set<String> configMods = new HashSet<String>();
+        configMods.addAll(Arrays.asList(moduleList.split(",")));
+        return loadModulesFromList(configMods, prop);
 	}
 	
 	/**
@@ -146,18 +167,16 @@ public class FloodlightModuleLoader {
 	 * @return The ModuleContext containing all the loaded modules
 	 * @throws FloodlightModuleException
 	 */
-	public IFloodlightModuleContext loadModulesFromList(String[] mList, Properties prop) 
+	public IFloodlightModuleContext loadModulesFromList(Set<String> configMods, Properties prop) 
             throws FloodlightModuleException {
         logger.debug("Starting module loader");
-        findAllModules();
+        findAllModules(configMods);
         
         Set<IFloodlightModule> moduleSet = new HashSet<IFloodlightModule>();
         Map<Class<? extends IFloodlightService>, IFloodlightModule> moduleMap =
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightModule>();
 
-        HashSet<String> configMods = new HashSet<String>();
-        configMods.addAll(Arrays.asList(mList));
         Queue<String> moduleQ = new LinkedList<String>();
         // Add the explicitly configured modules to the q
         moduleQ.addAll(configMods);
@@ -202,10 +221,15 @@ public class FloodlightModuleLoader {
                                 }
                             }
                             if (!found) {
+                                String duplicateMods = "";
+                                for (IFloodlightModule mod : mods) {
+                                    duplicateMods += mod.getClass().getCanonicalName() + ", ";
+                                }
                                 throw new FloodlightModuleException("ERROR! Found more " + 
-                                        "than one (" + mods.size() + ") IFloodlightModules that provides " + 
-                                        "service " + c.toString() + 
-                                        ". Please resolve this in the config");
+                                    "than one (" + mods.size() + ") IFloodlightModules that provides " +
+                                    "service " + c.toString() + 
+                                    ". Please specify one of the following modules in the config: " + 
+                                    duplicateMods);
                             }
                         }
                     }
