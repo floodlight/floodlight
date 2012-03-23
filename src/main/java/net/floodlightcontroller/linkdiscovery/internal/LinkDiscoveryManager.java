@@ -24,6 +24,7 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +61,6 @@ import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.LinkTuple;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.BDDP;
-import net.floodlightcontroller.packet.BPDU;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
@@ -144,7 +144,8 @@ public class LinkDiscoveryManager
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     
-    private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
+    private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
+    		HexString.fromHexString("01:80:c2:00:00:00");
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
     // private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
     private static final String LLDP_BSN_DST_MAC_STRING = "ff:ff:ff:ff:ff:ff";
@@ -492,11 +493,6 @@ public class LinkDiscoveryManager
         return Command.STOP;
     }
 
-    private Command handleBpdu(BPDU bpdu, IOFSwitch sw, OFPacketIn pi) {
-        // TODO - handle STP here
-        return Command.STOP;
-    }
-
     protected Command handlePacketIn(IOFSwitch sw, OFPacketIn pi,
                                      FloodlightContext cntx) {
         Ethernet eth = 
@@ -507,11 +503,13 @@ public class LinkDiscoveryManager
             return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
         } else if (eth.getEtherType() == Ethernet.TYPE_LLDP)  {
             return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
+        } else if (eth.getEtherType() < 1500 &&
+        		   Arrays.equals(eth.getDestinationMACAddress(),
+        				   	     LLDP_STANDARD_DST_MAC_STRING)) {
+        	// drop any other link discovery/spanning tree protocols
+        	return Command.STOP;
         }
-
-        if (eth.getPayload() instanceof BPDU)
-            return handleBpdu((BPDU) eth.getPayload(), sw, pi);
-
+        
         return Command.CONTINUE;
     }
 
