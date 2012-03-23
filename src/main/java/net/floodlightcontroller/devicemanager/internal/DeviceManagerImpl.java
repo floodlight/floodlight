@@ -870,8 +870,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         if (topology.isBroadcastDomainPort(newSw, newPort) == true) {
                             // only if the last seen
                             if (currentDate.getTime() -
-                                    attachmentPoint.getLastSeen().getTime() < 5000) {
-                                // if the packet was seen within the last 5 seconds, we should ignore.
+                                    attachmentPoint.getLastSeen().getTime() < 300000) {
+                                // if the packet was seen within the last 5 minutes, we should ignore.
                                 // it should also ignore processing the packet.
                                 return Command.STOP;
                             }
