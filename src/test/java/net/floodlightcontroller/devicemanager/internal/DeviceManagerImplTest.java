@@ -444,6 +444,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(1L, (short)2))
                            .andReturn(false).atLeastOnce();
+        expect(mockTopology.getSwitchClusterId(1L))
+                           .andReturn(1L).atLeastOnce();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1))
+                           .andReturn(false).atLeastOnce();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
+                           .andReturn(false).atLeastOnce();
         deviceManager.setTopology(mockTopology);
 
         // Start recording the replay on the mocks
@@ -531,6 +537,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isInternal(1L, (short)1))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(1L, (short)2))
+                           .andReturn(false).atLeastOnce();
+        expect(mockTopology.getSwitchClusterId(1L))
+                           .andReturn(1L).atLeastOnce();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1))
+                           .andReturn(false).atLeastOnce();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
                            .andReturn(false).atLeastOnce();
         deviceManager.setTopology(mockTopology);
 
