@@ -977,7 +977,6 @@ public class LinkDiscoveryManager
         }
     }
 
-
     // STORAGE METHODS
     /**
      * Deletes all links from storage

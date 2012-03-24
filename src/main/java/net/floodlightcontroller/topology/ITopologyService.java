@@ -6,7 +6,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public interface ITopologyService extends IFloodlightService  {
     /**
-     * Query to determine if the specified switch id and port tuple are
+     * Query to determine if the specified switch id and port are
      * connected to another switch or not.  If so, this means the link
      * is passing LLDPs properly between two OpenFlow switches.
      * @param switchid
@@ -30,12 +30,11 @@ public interface ITopologyService extends IFloodlightService  {
 
     /**
      * Queries whether two switches are in the same cluster.
-     * @param switch1
-     * @param switch2
+     * @param switch1 the DPID of the first switch
+     * @param switch2 the DPID of the second switch
      * @return true if the switches are in the same cluster
      */
-    public boolean inSameCluster(long switch1, long switch2);
-
+    public boolean inSameCluster(Long switch1, Long switch2);
 
     public void addListener(ITopologyListener listener);
     

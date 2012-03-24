@@ -356,7 +356,7 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
-    public boolean inSameCluster(long switch1, long switch2) {
+    public boolean inSameCluster(Long switch1, Long switch2) {
         return currentInstance.inSameCluster(switch1, switch2);
     }
 
