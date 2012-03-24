@@ -846,7 +846,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         if (log.isTraceEnabled()) {
             long dstAddr = Ethernet.toLong(match.getDataLayerDestination());
             Device dstDev = devMgrMaps.getDeviceByDataLayerAddr(dstAddr);
-            log.trace("    Src.AttachmentPts: {}", device.getAttachmentPointsMap().keySet());
+            if (device != null)
+	            log.trace("    Src.AttachmentPts: {}", device.getAttachmentPointsMap().keySet());
             if (dstDev != null)
 	            log.trace("    Dst.AttachmentPts: {}", dstDev.getAttachmentPointsMap().keySet());
         }
