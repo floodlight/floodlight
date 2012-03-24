@@ -812,6 +812,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
         // Add this packet-in to event history
         evHistPktIn(match);
+        if (log.isTraceEnabled())
+            log.trace("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
+                      new Object[] { sw.getStringId(), pi.getInPort(), 
+                               HexString.toHexString(match.getDataLayerSource()),
+                               HexString.toHexString(match.getDataLayerDestination()),
+                               match.getDataLayerType()
+                      });
+                      
 
         // Create attachment point/update network address if required
         SwitchPortTuple switchPort = new SwitchPortTuple(sw, pi.getInPort());
@@ -835,6 +843,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                 cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         Device device = devMgrMaps.getDeviceByDataLayerAddr(dlAddr);
+        if (log.isTraceEnabled()) {
+            long dstAddr = Ethernet.toLong(match.getDataLayerDestination());
+            Device dstDev = devMgrMaps.getDeviceByDataLayerAddr(dstAddr);
+            log.trace("    Src.AttachmentPts: {}", device.getAttachmentPointsMap().keySet());
+            if (dstDev != null)
+	            log.trace("    Dst.AttachmentPts: {}", dstDev.getAttachmentPointsMap().keySet());
+        }
         Date currentDate = new Date(); 
         if (device != null) { 
             // Write lock is expensive, check if we have an update first
@@ -853,37 +868,44 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Copy-replace of device would be too expensive here
             device.setLastSeen(currentDate);
             updateDevice = device.shouldWriteLastSeenToStorage();
-            attachmentPoint = device.getAttachmentPoint(switchPort);
 
             // If the attachment point moves from a non-broadcast domain
             // port to a broadcast domain port too quickly, ignore learning
             // the broadcast domain attachment point.
-            if (attachmentPoint != null) {
+            for ( DeviceAttachmentPoint oldDap : device.getAttachmentPoints() ) {
                 // if the two switches are in the same cluster
                 // and if currSw,CurrPort is not in broadcast domain
-                long currSw = attachmentPoint.getSwitchPort().getSw().getId();
-                short currPort = attachmentPoint.getSwitchPort().getPort();
+                long currSw = oldDap.getSwitchPort().getSw().getId();
+                short currPort = oldDap.getSwitchPort().getPort();
                 long newSw = switchPort.getSw().getId();
                 short newPort = switchPort.getPort();
-                if (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) {
-                    if (topology.isBroadcastDomainPort(currSw, currPort) == false) {
-                        if (topology.isBroadcastDomainPort(newSw, newPort) == true) {
-                            // only if the last seen
-                            if (currentDate.getTime() -
-                                    attachmentPoint.getLastSeen().getTime() < 300000) {
-                                // if the packet was seen within the last 5 minutes, we should ignore.
-                                // it should also ignore processing the packet.
-                                return Command.STOP;
-                            }
+                if ( (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) &&
+                        (topology.isBroadcastDomainPort(currSw, currPort) == false) &&
+                        (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
+                    long dt = currentDate.getTime() -
+                            oldDap.getLastSeen().getTime() ;
+                    if (dt < 300000) {
+                        // if the packet was seen within the last 5 minutes, we should ignore.
+                        // it should also ignore processing the packet.
+                        if (log.isTraceEnabled()) {
+                            log.trace("Surpressing too quick move of {} from non broadcast domain port {} {}" +
+                                    " to broadcast domain port {} {}. Last seen on non-BD {} sec ago",
+                                    new Object[] { HexString.toHexString(match.getDataLayerSource()),
+                                                   oldDap.getSwitchPort().getSw().getStringId(), currPort,
+                                                   switchPort.getSw().getStringId(), newPort,
+                                                   dt/1000 }
+                                    );
                         }
+                        return Command.STOP;
                     }
                 }
             }
-
+            
             if (isGratArp(eth)) {
                 clearAttachmentPoints = true;
             }
 
+            attachmentPoint = device.getAttachmentPoint(switchPort);
             if (attachmentPoint != null) {
                 updateAttachmentPointLastSeen = true;
             } else {
@@ -1019,6 +1041,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
 
         } else { // device is null 
+            if (log.isTraceEnabled())
+                log.trace("   new device");
             handleNewDevice(match.getDataLayerSource(), currentDate,
                     switchPort, nwSrc, vlan);
         }
