@@ -367,8 +367,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Update the individual devices by updating its attachment points
             for (Device d : switchPortDevices.values()) {
                 // Remove the device from the switch->device mapping
-                delDevAttachmentPoint(d, swPrt);
-                evHistAttachmtPt(d, swPrt, EvAction.REMOVED,
+                delDevAttachmentPoint(d.getDataLayerAddressAsLong(), swPrt);
+                evHistAttachmtPt(d.getDataLayerAddressAsLong(), swPrt, EvAction.REMOVED,
                                                         "SwitchPort removed");
             }
         }
@@ -441,7 +441,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 updateMaps(dCopy);
                 removeNetworkAddressFromStorage(d, na);
             }
-            d = null; // to catch if anyone is using this reference
         }
         
         /**
@@ -500,8 +499,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
          * @param d the device
          * @param swPort the {@link SwitchPortTuple} to remove
          */
-        protected void delDevAttachmentPoint(Device d, SwitchPortTuple swPort) {
-            delDevAttachmentPoint(d, swPort.getSw(), swPort.getPort());
+        protected void delDevAttachmentPoint(long dlAddr, SwitchPortTuple swPort) {
+            delDevAttachmentPoint(devMgrMaps.getDeviceByDataLayerAddr(dlAddr), 
+            		swPort.getSw(), swPort.getPort());
         }
 
         /**
@@ -534,10 +534,12 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // the old copy
             updateMaps(dCopy);
             if (log.isDebugEnabled()) {
-            	log.debug("Remove AP {} for Device {}", dap, d);
+            	log.debug("Remove AP {} post {} prev {} for Device {}", 
+            			new Object[] {dap, dCopy.getAttachmentPoints().size(),
+            			d.getAttachmentPoints().size(), dCopy});
             }
             removeAttachmentPointFromStorage(d, dap);
-            d = null; // to catch if anyone is using this reference
+            d = null;
             return true;
         }
 
@@ -633,9 +635,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected SingletonTask deviceUpdateTask;
     protected Date previousStorageAudit;
 
-    protected final static int DEVICE_MAX_AGE    = 60 * 60 * 24;
-    protected final static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
-    protected final static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
+    protected static int DEVICE_MAX_AGE    = 60 * 60 * 24;
+    protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
+    protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
 
     // Constants for accessing storage
     // Table names
@@ -975,8 +977,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     if (newAttachmentPoint) {
                         attachmentPoint = getNewAttachmentPoint(nd, switchPort);
                         nd.addAttachmentPoint(attachmentPoint);
-                        evHistAttachmtPt(nd, attachmentPoint.getSwitchPort(),
-                                         EvAction.ADDED, "New AP from pkt-in");
+                        evHistAttachmtPt(nd.getDataLayerAddressAsLong(), 
+                        		attachmentPoint.getSwitchPort(),
+                                EvAction.ADDED, "New AP from pkt-in");
                     }
 
                     if (clearAttachmentPoints) {
@@ -1092,7 +1095,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 log.info("Unblocking {} for device {}",
                          attachmentPoint.getSwitchPort(), device);
                 attachmentPoint.setBlocked(false);
-                evHistAttachmtPt(device, swPort, 
+                evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort, 
                     EvAction.UNBLOCKED, "packet-in after block timer expired");
             }
             // Remove from old list
@@ -1102,7 +1105,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // Update mappings
         devMgrMaps.addDevAttachmentPoint(
                 device.getDataLayerAddressAsLong(), swPort, currentDate);
-        evHistAttachmtPt(device, swPort, EvAction.ADDED, "packet-in GNAP");
+        evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort, 
+        		EvAction.ADDED, "packet-in GNAP");
 
         // If curAttachmentPoint exists, we mark it a conflict and may block it.
         if (curAttachmentPoint != null) {
@@ -1119,7 +1123,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 curAttachmentPoint.setConflict(currentDate);
                 if (curAttachmentPoint.isFlapping()) {
                     curAttachmentPoint.setBlocked(true);
-                    evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(),
+                    evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
+                    		curAttachmentPoint.getSwitchPort(),
                             EvAction.BLOCKED, "Conflict");
                     writeAttachmentPointToStorage(device, curAttachmentPoint, 
                                                 currentDate);
@@ -1129,8 +1134,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         curAttachmentPoint.getSwitchPort()});
                 } else {
                     removeAttachmentPointFromStorage(device, curAttachmentPoint);
-                    evHistAttachmtPt(device, curAttachmentPoint.getSwitchPort(), 
-                                     EvAction.REMOVED, "Conflict");
+                    evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
+                    		curAttachmentPoint.getSwitchPort(), 
+                            EvAction.REMOVED, "Conflict");
                 }
             }
             updateMoved(device, curAttachmentPoint.getSwitchPort(), 
@@ -1384,8 +1390,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         device.clearAttachmentPoints();
         evHistAttachmtPt(device, 0L, (short)(-1), EvAction.CLEARED, "Moved");
         device.addAttachmentPoint(newDap);
-        evHistAttachmtPt(device, newDap.getSwitchPort(), 
-                                                    EvAction.ADDED, "Moved");
+        evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
+        		newDap.getSwitchPort(), 
+                EvAction.ADDED, "Moved");
         
         synchronized (updates) {
             Update update = new Update(UpdateType.MOVED);
@@ -1801,6 +1808,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     private Device removeAgedAttachmentPoints(Device device, Date currentDate) {
         Collection<DeviceAttachmentPoint> aps = device.getAttachmentPoints();
 
+        long dlAddr = device.getDataLayerAddressAsLong();
         for (DeviceAttachmentPoint ap : aps) {
             int expire = ap.getExpire();
 
@@ -1809,8 +1817,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
-                devMgrMaps.delDevAttachmentPoint(device, ap.getSwitchPort());
-                evHistAttachmtPt(device, ap.getSwitchPort(), EvAction.REMOVED,
+                devMgrMaps.delDevAttachmentPoint(dlAddr, ap.getSwitchPort());
+                evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
+                		ap.getSwitchPort(), EvAction.REMOVED,
                         "Aged");
             }
         }
@@ -1837,9 +1846,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
         } 
     }
-
-    private static final int DEVICE_AGING_TIMER= 15; // in minutes
-    private static final int DEVICE_AGING_TIMER_INTERVAL = 1; // in seconds
+     
+    protected static int DEVICE_AGING_TIMER= 60 * 15; // in seconds
+    protected static final int DEVICE_AGING_TIMER_INTERVAL = 1; // in seconds
 
     /**
      * Create the deviceAgingTimer, which calls removeAgedDeviceState()
@@ -1853,16 +1862,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         deviceAgingTimer = new Runnable() {
             @Override
             public void run() {
-                log.debug("Running device aging timer {} minutes",
-                                DEVICE_AGING_TIMER);
                 Date currentDate = new Date();
-
                 removeAgedDevices(currentDate);
 
                 if (deviceAgingTimer != null) {
                     ScheduledExecutorService ses =
                         threadPool.getScheduledExecutor();
-                    ses.schedule(this, DEVICE_AGING_TIMER, TimeUnit.MINUTES);
+                    ses.schedule(this, DEVICE_AGING_TIMER, TimeUnit.SECONDS);
                 }
             }
         };
@@ -1964,10 +1970,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     public EventHistory<EventHistoryAttachmentPoint> evHistDevMgrAttachPt;
     public EventHistoryAttachmentPoint evHAP;
 
-    private void evHistAttachmtPt(Device d, SwitchPortTuple swPrt,
+    private void evHistAttachmtPt(long dlAddr, SwitchPortTuple swPrt,
                                             EvAction action, String reason) {
         evHistAttachmtPt(
-                d.getDataLayerAddressAsLong(),
+                dlAddr,
                 swPrt.getSw().getId(),
                 swPrt.getPort(), action, reason);
     }

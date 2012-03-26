@@ -61,12 +61,11 @@ import org.openflow.protocol.OFPhysicalPort;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class DeviceManagerImplTest extends FloodlightTestCase {
-    protected OFPacketIn packetIn_1, packetIn_2, packetIn_3, packetIn_4, packetIn_5;
+    protected OFPacketIn packetIn_1, packetIn_2, packetIn_3;
     protected IPacket testARPReplyPacket_1, testARPReplyPacket_2, testARPReplyPacket_3;
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
     protected byte[] testARPReplyPacket_1_Serialized, testARPReplyPacket_2_Serialized;
     private byte[] testARPReplyPacket_3_Serialized;
-    private byte[] testARPReqPacket_1_Serialized, testARPReqPacket_2_Serialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
@@ -96,7 +95,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         // Build our test packet
         this.testARPReplyPacket_1 = new Ethernet()
-            .setSourceMACAddress("00:44:33:22:11:00")
+            .setSourceMACAddress("00:44:33:22:11:01")
             .setDestinationMACAddress("00:11:22:33:44:55")
             .setEtherType(Ethernet.TYPE_ARP)
             .setVlanID((short)5)
@@ -107,7 +106,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setHardwareAddressLength((byte) 6)
                     .setProtocolAddressLength((byte) 4)
                     .setOpCode(ARP.OP_REPLY)
-                    .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
+                    .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
                     .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
                     .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
@@ -148,40 +147,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
         this.testARPReplyPacket_3_Serialized = testARPReplyPacket_3.serialize();
         
-        this.testARPReqPacket_1 = new Ethernet()
-        .setSourceMACAddress("00:44:33:22:11:04")
-        .setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
-        .setEtherType(Ethernet.TYPE_ARP)
-        .setPayload(
-                new ARP()
-                .setHardwareType(ARP.HW_TYPE_ETHERNET)
-                .setProtocolType(ARP.PROTO_TYPE_IP)
-                .setHardwareAddressLength((byte) 6)
-                .setProtocolAddressLength((byte) 4)
-                .setOpCode(ARP.OP_REQUEST)
-                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:04"))
-                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.4"))
-                .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
-                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testARPReqPacket_1_Serialized = testARPReqPacket_1.serialize();
-        
-        this.testARPReqPacket_2 = new Ethernet()
-        .setSourceMACAddress("00:44:33:22:11:04")
-        .setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
-        .setEtherType(Ethernet.TYPE_ARP)
-        .setPayload(
-                new ARP()
-                .setHardwareType(ARP.HW_TYPE_ETHERNET)
-                .setProtocolType(ARP.PROTO_TYPE_IP)
-                .setHardwareAddressLength((byte) 6)
-                .setProtocolAddressLength((byte) 4)
-                .setOpCode(ARP.OP_REQUEST)
-                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:04"))
-                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.14"))
-                .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
-                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testARPReqPacket_2_Serialized = testARPReqPacket_2.serialize();
-        
         // Build the PacketIn
         this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
             .setBufferId(-1)
@@ -205,22 +170,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
             .setPacketData(this.testARPReplyPacket_3_Serialized)
             .setReason(OFPacketInReason.NO_MATCH)
             .setTotalLength((short) this.testARPReplyPacket_3_Serialized.length);
-        
-        // Build the PacketIn
-        this.packetIn_4 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-            .setBufferId(-1)
-            .setInPort((short) 1)
-            .setPacketData(this.testARPReqPacket_1_Serialized)
-            .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testARPReqPacket_1_Serialized.length);
-        
-        // Build the PacketIn
-        this.packetIn_5 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-            .setBufferId(-1)
-            .setInPort((short) 1)
-            .setPacketData(this.testARPReqPacket_2_Serialized)
-            .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testARPReqPacket_2_Serialized.length);
     }
 
     
@@ -239,6 +188,80 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(dap1, d.getAttachmentPoint(spt1));
         assertEquals(dap2, d.getAttachmentPoint(spt2));
         assertEquals((int)2, d.getAttachmentPoints().size());
+    }
+    
+    @Test
+    public void testDeviceAging() throws Exception {
+        
+        byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
+
+        // Mock up our expected behavior
+        IOFSwitch mockSwitch1 = createMock(IOFSwitch.class);
+        expect(mockSwitch1.getId()).andReturn(1L).anyTimes();
+        expect(mockSwitch1.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        IOFSwitch mockSwitch2 = createMock(IOFSwitch.class);
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
+        deviceManager.setTopology(mockTopology);
+        // reduce the aging period
+        DeviceManagerImpl.DEVICE_AGING_TIMER = 2;
+        DeviceManagerImpl.DEVICE_AP_MAX_AGE = 1;
+        DeviceManagerImpl.DEVICE_NA_MAX_AGE = 1;
+        DeviceManagerImpl.DEVICE_MAX_AGE = 3;
+
+        Date currentDate = new Date();
+        
+        // build our expected Device
+        Device device = new Device();
+        device.setDataLayerAddress(dataLayerSource);
+        device.addAttachmentPoint(new SwitchPortTuple(mockSwitch1, (short)1), currentDate);
+        Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
+        device.addNetworkAddress(ipaddr, currentDate);
+        expect(mockSwitch2.getId()).andReturn(2L).anyTimes();
+        expect(mockSwitch2.getStringId()).andReturn("00:00:00:00:00:00:00:02").anyTimes();
+        expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
+        expect(mockTopology.inSameCluster(2L, 1L)).andReturn(false);
+        
+        // Start recording the replay on the mocks
+        replay(mockSwitch1, mockSwitch2, mockTopology);
+        // Get the listener and trigger the packet in
+        mockFloodlightProvider.dispatchMessage(mockSwitch1, this.packetIn_1);
+        
+        // Get the listener and trigger the packet in
+        mockFloodlightProvider.dispatchMessage(mockSwitch2, this.packetIn_3.setInPort((short)2));
+
+        // Verify the replay matched our expectations
+        verify(mockSwitch1, mockSwitch2, mockTopology);
+        // Verify the device
+        Device rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
+        assertEquals(device, rdevice);
+        assertEquals(2, rdevice.getAttachmentPoints().size());
+        assertEquals(2, rdevice.getNetworkAddresses().size());
+        
+        // Sleep to make sure the aging thread has run
+        Thread.sleep((DeviceManagerImpl.DEVICE_AGING_TIMER + DeviceManagerImpl.DEVICE_AGING_TIMER_INTERVAL)*1000);
+        
+        rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
+        assertEquals(0, rdevice.getAttachmentPoints().size());
+        assertEquals(0, rdevice.getNetworkAddresses().size());
+        
+        // Make sure the device's AP and NA were removed from storage
+        deviceManager.readAllDeviceStateFromStorage();
+        rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
+        assertEquals(0, rdevice.getAttachmentPoints().size());
+        assertEquals(0, rdevice.getNetworkAddresses().size());
+        
+        // Sleep 4 more seconds to allow device aging thread to run
+        Thread.sleep(DeviceManagerImpl.DEVICE_MAX_AGE*1000);
+
+        assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
+        
+        // Make sure the device's AP and NA were removed from storage
+        deviceManager.readAllDeviceStateFromStorage();
+        assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
+        
+        // Reset the device cache
+        deviceManager.clearAllDeviceStateFromMemory();
     }
     
     @Test
