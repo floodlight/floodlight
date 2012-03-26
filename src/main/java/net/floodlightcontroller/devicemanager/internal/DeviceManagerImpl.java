@@ -479,7 +479,6 @@ public class DeviceManagerImpl implements
         return m;
     }
 
-
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l =
