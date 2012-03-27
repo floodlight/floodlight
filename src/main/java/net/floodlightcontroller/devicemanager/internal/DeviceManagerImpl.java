@@ -62,6 +62,7 @@ import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceListener;
@@ -631,6 +632,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
     protected IThreadPoolService threadPool;
+    protected IRestApiService restApi;
 
     protected Runnable deviceAgingTimer;
     protected SingletonTask deviceUpdateTask;
@@ -2156,6 +2158,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         l.add(ILinkDiscoveryService.class);
         l.add(IStorageSourceService.class);
         l.add(IThreadPoolService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -2173,6 +2176,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 context.getServiceImpl(IStorageSourceService.class);
         threadPool =
                 context.getServiceImpl(IThreadPoolService.class);
+        restApi =
+                context.getServiceImpl(IRestApiService.class);
         
         // We create this here because there is no ordering guarantee
         this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
@@ -2221,6 +2226,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // Register for switch events
         floodlightProvider.addOFSwitchListener(this);
         floodlightProvider.addInfoProvider("summary", this);
+        
+        // Register our REST API
+        restApi.addRestletRoutable(new DeviceManagerWebRoutable());
+        
          // Device and storage aging.
         enableDeviceAgingTimer();
         // Read all our device state (MACs, IPs, attachment points) from storage
