@@ -223,9 +223,6 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
-            log.info("Flow mod sent: Wildcard={} match={}",
-                    Integer.toHexString(fm.getMatch().getWildcards()),
-                    fm.getMatch().toString());
             sw.write(fm, cntx);
             if (doFlush) {
                 sw.flush();
