@@ -980,7 +980,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                             newAttachmentPoint = false;
                         } else {
                             nd.addAttachmentPoint(attachmentPoint);
-                            evHistAttachmtPt(nd, 
+                            evHistAttachmtPt(nd.getDataLayerAddressAsLong(), 
                                              attachmentPoint.getSwitchPort(),
                                              EvAction.ADDED, 
                                              "New AP from pkt-in");
