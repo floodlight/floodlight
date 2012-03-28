@@ -202,6 +202,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch2 = createMock(IOFSwitch.class);
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
+        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).atLeastOnce();
         deviceManager.setTopology(mockTopology);
         // reduce the aging period
         DeviceManagerImpl.DEVICE_AGING_TIMER = 2;
@@ -221,6 +222,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch2.getStringId()).andReturn("00:00:00:00:00:00:00:02").anyTimes();
         expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
         expect(mockTopology.inSameCluster(2L, 1L)).andReturn(false);
+        expect(mockTopology.getSwitchClusterId(2L)).andReturn(2L).atLeastOnce();
+        
         
         // Start recording the replay on the mocks
         replay(mockSwitch1, mockSwitch2, mockTopology);
