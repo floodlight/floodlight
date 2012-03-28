@@ -979,9 +979,15 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     // An exception is thrown if the attachmentPoint is blocked.
                     if (newAttachmentPoint) {
                         attachmentPoint = getNewAttachmentPoint(nd, switchPort);
-                        nd.addAttachmentPoint(attachmentPoint);
-                        evHistAttachmtPt(nd, attachmentPoint.getSwitchPort(),
-                                         EvAction.ADDED, "New AP from pkt-in");
+                        if (attachmentPoint == null) {
+                            newAttachmentPoint = false;
+                        } else {
+                            nd.addAttachmentPoint(attachmentPoint);
+                            evHistAttachmtPt(nd, 
+                                             attachmentPoint.getSwitchPort(),
+                                             EvAction.ADDED, 
+                                             "New AP from pkt-in");
+                        }
                     }
 
                     if (clearAttachmentPoints) {
@@ -1079,6 +1085,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
         }
 
+        if (curAttachmentPoint != null) {
+            Long curDPID = curAttachmentPoint.getSwitchPort().getSw().getId();
+            Short curPort = curAttachmentPoint.getSwitchPort().getPort();
+            boolean sameBD = 
+                    topology.isInSameBroadcastDomain(swPort.getSw().getId(),
+                                                     swPort.getPort(),
+                                                     curDPID, curPort);
+            if (sameBD) return null;
+        }
+        
         // Do we have an old attachment point?
         DeviceAttachmentPoint attachmentPoint = 
                                     device.getOldAttachmentPoint(swPort);
@@ -1116,11 +1132,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // If two ports are in the same port-channel, we don't treat it
             // as conflict, but will forward based on the last seen switch-port
             if (!devMgrMaps.inSamePortChannel(swPort,
-                    curAttachmentPoint.getSwitchPort()) && 
-                    !topology.isInSameBroadcastDomain(swPort.getSw().getId(),
-                                                      swPort.getPort(),
-                                                      curAttachmentPoint.getSwitchPort().getSw().getId(),
-                                                      curAttachmentPoint.getSwitchPort().getPort())) {
+                    curAttachmentPoint.getSwitchPort())) {
                 curAttachmentPoint.setConflict(currentDate);
                 if (curAttachmentPoint.isFlapping()) {
                     curAttachmentPoint.setBlocked(true);

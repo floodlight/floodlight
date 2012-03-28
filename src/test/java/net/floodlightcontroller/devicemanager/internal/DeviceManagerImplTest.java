@@ -544,6 +544,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
                            .andReturn(false).atLeastOnce();
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)1, 
+                                                    (long)1, (short)2)).andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain((long)1, (short)2, 
+                                                    (long)1, (short)1)).andReturn(false).anyTimes();
+
         deviceManager.setTopology(mockTopology);
 
         // Start recording the replay on the mocks
