@@ -24,6 +24,7 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,6 +51,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
@@ -58,7 +60,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.LinkTuple;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
-import net.floodlightcontroller.packet.BPDU;
+import net.floodlightcontroller.packet.BDDP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
@@ -70,6 +72,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
@@ -130,6 +133,7 @@ public class LinkDiscoveryManager
     private static final String LINK_DST_PORT = "dst_port";
     private static final String LINK_DST_PORT_STATE = "dst_port_state";
     private static final String LINK_VALID_TIME = "valid_time";
+    private static final String LINK_TYPE = "link_type";
 
     private static final String SWITCH_TABLE_NAME = "controller_switch";
     private static final String SWITCH_CORE_SWITCH = "core_switch";
@@ -138,10 +142,13 @@ public class LinkDiscoveryManager
     protected IStorageSourceService storageSource;
     protected IRoutingService routingEngine;
     protected IRestApiService restApi;
+    protected IThreadPoolService threadPool;
     
-    private static final String LLDP_STANDARD_DST_MAC_STRING = "01:80:c2:00:00:00";
+    private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
+    		HexString.fromHexString("01:80:c2:00:00:00");
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
-    private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
+    // private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
+    private static final String LLDP_BSN_DST_MAC_STRING = "ff:ff:ff:ff:ff:ff";
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -217,22 +224,34 @@ public class LinkDiscoveryManager
         } while (updates.peek() != null);
     }
 
-    protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, String dstMacAddress) {
+    protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, boolean isStandard) {
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                     sw.getStringId(), port.getPortNumber());
         }
+        LLDP lldp;
 
-        Ethernet ethernet = new Ethernet()
+        Ethernet ethernet;
+        
+        if (isStandard) {
+            ethernet = new Ethernet()
             .setSourceMACAddress(port.getHardwareAddress())
-            .setDestinationMACAddress(dstMacAddress)
+            .setDestinationMACAddress(LLDP_STANDARD_DST_MAC_STRING)
             .setEtherType(Ethernet.TYPE_LLDP);
+            lldp = new LLDP();
+        } else {
+            ethernet = new Ethernet()
+            .setSourceMACAddress(port.getHardwareAddress())
+            .setDestinationMACAddress(LLDP_BSN_DST_MAC_STRING)
+            .setEtherType(Ethernet.TYPE_BDDP);
+            lldp = new BDDP();
+        }
         // using "nearest customer bridge" MAC address for broadest possible propagation
         // through provider and TPMR bridges (see IEEE 802.1AB-2009 and 802.1Q-2011),
         // in particular the Linux bridge which behaves mostly like a provider bridge
 
-        LLDP lldp = new LLDP();
+
         ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
         byte[] portId = new byte[] {2, 0, 0}; // filled in later
@@ -304,16 +323,16 @@ public class LinkDiscoveryManager
 
         OFPhysicalPort port = sw.getPort(swt.getPort());
         if (port != null) {
-            sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
-            sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
+            sendLLDPs(sw, port, true);
+            sendLLDPs(sw, port, false);
         }
     }
 
     protected void sendLLDPs(IOFSwitch sw) {
         if (sw.getEnabledPorts() != null) {
             for (OFPhysicalPort port : sw.getEnabledPorts()) {
-                sendLLDPs(sw, port, LLDP_STANDARD_DST_MAC_STRING);
-                sendLLDPs(sw, port, LLDP_BSN_DST_MAC_STRING);
+                sendLLDPs(sw, port, true);
+                sendLLDPs(sw, port, false);
             }
         }
         sw.flush();
@@ -421,12 +440,10 @@ public class LinkDiscoveryManager
             if (eth.isMulticast()) {
                 if (log.isTraceEnabled())
                     log.trace("Received a multicast LLDP packet from a different controller, allowing the packet to follow normal processing chain.");
-                return Command.STOP;
+                if (isStandard)
+                    return Command.STOP;
+                else return Command.CONTINUE;
             }
-            if (log.isTraceEnabled()) {
-                log.trace("Received a unicast LLDP packet from a different controller, stop processing the packet here.");
-            }
-            return Command.STOP;
         }
 
         if (remoteSwitch == null) {
@@ -476,29 +493,23 @@ public class LinkDiscoveryManager
         return Command.STOP;
     }
 
-    private Command handleBpdu(BPDU bpdu, IOFSwitch sw, OFPacketIn pi) {
-        // TODO - handle STP here
-        return Command.STOP;
-    }
-
     protected Command handlePacketIn(IOFSwitch sw, OFPacketIn pi,
                                      FloodlightContext cntx) {
         Ethernet eth = 
             IFloodlightProviderService.bcStore.get(cntx, 
                                         IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getPayload() instanceof LLDP)  {
-            String dstMacString = HexString.toHexString(eth.getDestinationMACAddress());
-            if (dstMacString.equals(LLDP_STANDARD_DST_MAC_STRING)) {
-                return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
-            } else {
-                return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
-            }
+        if(eth.getEtherType() == Ethernet.TYPE_BDDP) {
+            return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
+        } else if (eth.getEtherType() == Ethernet.TYPE_LLDP)  {
+            return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
+        } else if (eth.getEtherType() < 1500 &&
+        		   Arrays.equals(eth.getDestinationMACAddress(),
+        				   	     LLDP_STANDARD_DST_MAC_STRING)) {
+        	// drop any other link discovery/spanning tree protocols
+        	return Command.STOP;
         }
-
-        if (eth.getPayload() instanceof BPDU)
-            return handleBpdu((BPDU) eth.getPayload(), sw, pi);
-
+        
         return Command.CONTINUE;
     }
 
@@ -653,8 +664,6 @@ public class LinkDiscoveryManager
                 if (this.portLinks.get(lt.getDst()).isEmpty())
                     this.portLinks.remove(lt.getDst());
 
-                removeLinkFromBroadcastDomain(lt);
-
                 this.links.remove(lt);
                 updates.add(new LDUpdate(lt, 0, 0, null, UpdateOperation.REMOVE));
 
@@ -665,7 +674,9 @@ public class LinkDiscoveryManager
                         lt.getDst().getPort(),
                         0, 0, // Port states
                         EvAction.LINK_DELETED, reason);
-                removeLink(lt);
+
+                // remove link from 
+                removeLinkFromStorage(lt);
 
 
                 if (log.isTraceEnabled()) {
@@ -830,36 +841,43 @@ public class LinkDiscoveryManager
         lock.writeLock().lock();
         try {
             Iterator<Entry<LinkTuple, LinkInfo>> it =
-                                            this.links.entrySet().iterator();
+                    this.links.entrySet().iterator();
             while (it.hasNext()) {
                 Entry<LinkTuple, LinkInfo> entry = it.next();
                 LinkTuple lt = entry.getKey();
-                Long uTime = entry.getValue().getUnicastValidTime();
-                Long mTime = entry.getValue().getMulticastValidTime();
+                LinkInfo info = entry.getValue();
 
                 // Timeout the unicast and multicast LLDP valid times
                 // independently.
-                if ((uTime != null) && (uTime + this.lldpTimeout < curTime)){
-                    entry.getValue().setUnicastValidTime(null);
-                    uTime = null;
-                    if (mTime != null)
+                if ((info.getUnicastValidTime() != null) && 
+                        (info.getUnicastValidTime() + this.lldpTimeout < curTime)){
+                    info.setUnicastValidTime(null);
+
+                    if (info.getMulticastValidTime() != null)
                         addLinkToBroadcastDomain(lt);
                     // Note that even if mTime becomes null later on,
                     // the link would be deleted, which would trigger updateClusters().
                     linkChanged = true;
                 }
-                if ((mTime != null) && (mTime + this.lldpTimeout < curTime)) {
-                    entry.getValue().setMulticastValidTime(null);
-                    mTime = null;
+                if ((info.getMulticastValidTime()!= null) && 
+                        (info.getMulticastValidTime()+ this.lldpTimeout < curTime)) {
+                    info.setMulticastValidTime(null);
                     // if uTime is not null, then link will remain as openflow
                     // link. If uTime is null, it will be deleted.  So, we
                     // don't care about linkChanged flag here.
                     removeLinkFromBroadcastDomain(lt);
+                    linkChanged = true;
                 }
-                // Add to the erase list only if both the unicast and multicast
-                // times are null.
-                if (uTime == null && mTime == null){
+                // Add to the erase list only if the unicast
+                // time is null.
+                if (info.getUnicastValidTime() == null && 
+                        info.getMulticastValidTime() == null){
                     eraseList.add(entry.getKey());
+                } else if (linkChanged) {
+                    updates.add(new LDUpdate(lt, info.getSrcPortState(), 
+                                             info.getDstPortState(), 
+                                             getLinkType(lt, info), 
+                                             UpdateOperation.ADD_OR_UPDATE));
                 }
             }
 
@@ -986,7 +1004,6 @@ public class LinkDiscoveryManager
      * @param linkInfo The LinkInfo to write
      */
     void writeLink(LinkTuple lt, LinkInfo linkInfo) {
-        if (linkInfo.getUnicastValidTime() != null) {
             Map<String, Object> rowValues = new HashMap<String, Object>();
             String id = getLinkId(lt);
             rowValues.put(LINK_ID, id);
@@ -994,6 +1011,15 @@ public class LinkDiscoveryManager
             String srcDpid = lt.getSrc().getSw().getStringId();
             rowValues.put(LINK_SRC_SWITCH, srcDpid);
             rowValues.put(LINK_SRC_PORT, lt.getSrc().getPort());
+
+            LinkType type = (this.getLinkType(lt, linkInfo));
+            if (type == LinkType.DIRECT_LINK)
+                rowValues.put(LINK_TYPE, "internal");
+            else if (type == LinkType.MULTIHOP_LINK) 
+                rowValues.put(LINK_TYPE, "external");
+            else if (type == LinkType.TUNNEL) 
+                rowValues.put(LINK_TYPE, "tunnel");
+
             if (linkInfo.linkStpBlocked()) {
                 if (log.isTraceEnabled()) {
                     log.trace("writeLink, link {}, info {}, srcPortState Blocked",
@@ -1026,7 +1052,6 @@ public class LinkDiscoveryManager
                 rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
             }
             storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
-        }
     }
 
     public Long readLinkValidTime(LinkTuple lt) {
@@ -1101,7 +1126,7 @@ public class LinkDiscoveryManager
      * Removes a link from storage using an asynchronous call.
      * @param lt The LinkTuple to delete.
      */
-    void removeLink(LinkTuple lt) {
+    void removeLinkFromStorage(LinkTuple lt) {
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
     }
@@ -1275,6 +1300,7 @@ public class LinkDiscoveryManager
         l.add(IStorageSourceService.class);
         l.add(IRoutingService.class);
         l.add(IRestApiService.class);
+        l.add(IThreadPoolService.class);
         return l;
     }
 
@@ -1285,6 +1311,7 @@ public class LinkDiscoveryManager
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         routingEngine = context.getServiceImpl(IRoutingService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
+        threadPool = context.getServiceImpl(IThreadPoolService.class);
         
         // We create this here because there is no ordering guarantee
         this.topologyAware = new ArrayList<ITopologyListener>();
@@ -1317,7 +1344,7 @@ public class LinkDiscoveryManager
             log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
         }
         
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         // Setup sending out LLDPs
         Runnable lldpSendTimer = new Runnable() {
@@ -1328,7 +1355,7 @@ public class LinkDiscoveryManager
 
                     if (!shuttingDown) {
                         ScheduledExecutorService ses = 
-                            floodlightProvider.getScheduledExecutor();
+                            threadPool.getScheduledExecutor();
                                     ses.schedule(this, lldpFrequency, 
                                                         TimeUnit.MILLISECONDS);
                     }
@@ -1351,7 +1378,7 @@ public class LinkDiscoveryManager
                     timeoutLinks();
                     if (!shuttingDown) {
                         ScheduledExecutorService ses = 
-                            floodlightProvider.getScheduledExecutor();
+                                threadPool.getScheduledExecutor();
                         ses.schedule(this, lldpTimeout, TimeUnit.MILLISECONDS);
                     }
                 } catch (StorageException e) {

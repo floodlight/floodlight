@@ -1,16 +1,14 @@
 package net.floodlightcontroller.perfmon;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.IOFMessageListener;
 
 public class CumulativeTimeBucket {
-    private int bucketNo;
     private long startTime_ns; // First pkt time-stamp in this bucket
-    private int durationS; // how long this bucket is valid for in s
     private Map<Integer, OneComponentTime> compStats;
     private long totalPktCnt;
     private long totalProcTimeNs; // total processing time for one pkt in
@@ -19,21 +17,9 @@ public class CumulativeTimeBucket {
     private long minTotalProcTimeNs;
     private long avgTotalProcTimeNs;
     private long sigmaTotalProcTimeNs; // std. deviation
-    
-    public int getBucketNo() {
-        return bucketNo;
-    }
-    
-    public int getDurationS() {
-        return durationS;
-    }
 
     public long getStartTimeNs() {
         return startTime_ns;
-    }
-
-    public void setStartTimeNs(long startTime_ns) {
-        this.startTime_ns = startTime_ns;
     }
 
     public long getTotalPktCnt() {
@@ -59,15 +45,18 @@ public class CumulativeTimeBucket {
     public int getNumComps() {
         return compStats.values().size();
     }
+    
+    public Collection<OneComponentTime> getModules() {
+        return compStats.values();
+    }
 
-    public CumulativeTimeBucket(Set<IOFMessageListener> listeners, int bucketNo, int duration) {
-        this.durationS = duration;
-        this.bucketNo = bucketNo;
+    public CumulativeTimeBucket(List<IOFMessageListener> listeners) {
         compStats = new ConcurrentHashMap<Integer, OneComponentTime>(listeners.size());
         for (IOFMessageListener l : listeners) {
             OneComponentTime oct = new OneComponentTime(l);
             compStats.put(oct.hashCode(), oct);
         }
+        startTime_ns = System.nanoTime();
     }
 
     private void updateSquaredProcessingTime(long curTimeNs) {
@@ -125,10 +114,6 @@ public class CumulativeTimeBucket {
     }
     
     public void updateOneComponent(IOFMessageListener l, long procTimeNs) {
-        compStats.get(l).updatePerPacketCounters(procTimeNs);
-    }
-    
-    public Collection<OneComponentTime> getComponentTimes() {
-        return compStats.values();
+        compStats.get(l.hashCode()).updatePerPacketCounters(procTimeNs);
     }
 }

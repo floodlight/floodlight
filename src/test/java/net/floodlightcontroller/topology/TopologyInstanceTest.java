@@ -10,7 +10,9 @@ import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyInstance;
 import net.floodlightcontroller.topology.TopologyManager;
@@ -35,8 +37,12 @@ public class TopologyInstanceTest {
         fmc = new FloodlightModuleContext();
         mockFloodlightProvider = new MockFloodlightProvider();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        MockThreadPoolService tp = new MockThreadPoolService();
         topologyManager  = new TopologyManager();
+        fmc.addService(IThreadPoolService.class, tp);
         topologyManager.init(fmc);
+        tp.init(fmc);
+        tp.startUp(fmc);
     }
 
     protected void verifyClusters(int[][] clusters) {

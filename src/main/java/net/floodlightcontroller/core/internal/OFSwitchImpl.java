@@ -36,6 +36,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.jboss.netty.channel.Channel;
@@ -66,6 +67,7 @@ public class OFSwitchImpl implements IOFSwitch {
 
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
+    protected IThreadPoolService threadPool;
     protected Date connectedSince;
     protected OFFeaturesReply featuresReply;
     protected String stringId;
@@ -310,7 +312,7 @@ public class OFSwitchImpl implements IOFSwitch {
     @Override
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
         request.setXid(getNextTransactionId());
-        OFStatisticsFuture future = new OFStatisticsFuture(floodlightProvider, this, request.getXid());
+        OFStatisticsFuture future = new OFStatisticsFuture(floodlightProvider, threadPool, this, request.getXid());
         this.statsFutureMap.put(request.getXid(), future);
         this.floodlightProvider.addOFSwitchListener(future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
@@ -347,6 +349,10 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
+    }
+    
+    public void setThreadPoolService(IThreadPoolService tp) {
+        this.threadPool = tp;
     }
 
     @Override

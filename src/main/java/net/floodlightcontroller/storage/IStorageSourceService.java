@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 
 public interface IStorageSourceService extends IFloodlightService {
 

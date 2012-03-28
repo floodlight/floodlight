@@ -30,6 +30,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 /**
  * A Future object used to retrieve asynchronous OFMessage replies. Unregisters
@@ -43,6 +44,7 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
         IOFSwitchFilter, IOFSwitchListener {
 
     protected IFloodlightProviderService floodlightProvider;
+    protected IThreadPoolService threadPool;
     protected volatile boolean canceled;
     protected CountDownLatch latch;
     protected OFType responseType;
@@ -51,14 +53,15 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
     protected Runnable timeoutTimer;
     protected int transactionId;
 
-    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
-            OFType responseType, int transactionId) {
-        this(floodlightProvider, sw, responseType, transactionId, 60, TimeUnit.SECONDS);
+    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IThreadPoolService tp,
+            IOFSwitch sw, OFType responseType, int transactionId) {
+        this(floodlightProvider, tp, sw, responseType, transactionId, 60, TimeUnit.SECONDS);
     }
 
-    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IOFSwitch sw,
-            OFType responseType, int transactionId, long timeout, TimeUnit unit) {
+    public OFMessageFuture(IFloodlightProviderService floodlightProvider, IThreadPoolService tp,
+            IOFSwitch sw, OFType responseType, int transactionId, long timeout, TimeUnit unit) {
         this.floodlightProvider = floodlightProvider;
+        this.threadPool = tp;
         this.canceled = false;
         this.latch = new CountDownLatch(1);
         this.responseType = responseType;
@@ -73,7 +76,7 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
                     future.cancel(true);
             }
         };
-        floodlightProvider.getScheduledExecutor().schedule(timeoutTimer, timeout, unit);
+        threadPool.getScheduledExecutor().schedule(timeoutTimer, timeout, unit);
     }
 
     protected void unRegister() {

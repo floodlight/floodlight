@@ -43,7 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -67,6 +66,7 @@ import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -132,7 +132,6 @@ public class Controller
     implements IFloodlightProviderService, IOFController {
     
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
-    protected ICounterStoreService counterStore = null;
     
     protected BasicFactory factory;
     protected ConcurrentMap<OFType, 
@@ -150,13 +149,13 @@ public class Controller
     protected Set<IOFSwitchListener> switchListeners;
     protected Map<String, List<IInfoProvider>> providerMap;
     protected BlockingQueue<Update> updates;
-    protected IRestApiService restApi;
-
-    protected ScheduledExecutorService executor = 
-            Executors.newScheduledThreadPool(5);
     
+    // Module dependencies
+    protected IRestApiService restApi;
+    protected ICounterStoreService counterStore = null;
     protected IStorageSourceService storageSource;
     protected IPktInProcessingTimeService pktinProcTime;
+    protected IThreadPoolService threadPool;
     
     // Configuration options
     protected int openFlowPort = 6633;
@@ -229,6 +228,10 @@ public class Controller
     
     public void setRestApiService(IRestApiService restApi) {
         this.restApi = restApi;
+    }
+    
+    public void setThreadPoolService(IThreadPoolService tp) {
+        this.threadPool = tp;
     }
 
     @Override
@@ -349,6 +352,7 @@ public class Controller
             sw = new OFSwitchImpl();
             sw.setChannel(e.getChannel());
             sw.setFloodlightProvider(Controller.this);
+            sw.setThreadPoolService(threadPool);
             
             List<OFMessage> msglist = new ArrayList<OFMessage>(1);
             msglist.add(factory.getMessage(OFType.HELLO));
@@ -968,6 +972,7 @@ public class Controller
                     // Get the starting time (overall and per-component) of 
                     // the processing chain for this packet if performance
                     // monitoring is turned on
+                    pktinProcTime.bootstrap(listeners);
                     pktinProcTime.recordStartTimePktIn();                     
                     Command cmd;
                     for (IOFMessageListener listener : listeners) {
@@ -1228,15 +1233,7 @@ public class Controller
         ldd.addListener(type, listener);
         
         if (log.isDebugEnabled()) {
-            StringBuffer sb = new StringBuffer();
-            sb.append("OFListeners for ");
-            sb.append(type);
-            sb.append(": ");
-            for (IOFMessageListener l : ldd.getOrderedListeners()) {
-                sb.append(l.getName());
-                sb.append(",");
-            }
-            log.debug(sb.toString());
+        	logListeners(type, ldd);
         }
     }
 
@@ -1247,7 +1244,22 @@ public class Controller
             messageListeners.get(type);
         if (ldd != null) {
             ldd.removeListener(listener);
+            if (log.isDebugEnabled()) {
+            	logListeners(type, ldd);
+            }
         }
+    }
+    
+    private void logListeners(OFType type, ListenerDispatcher<OFType, IOFMessageListener> ldd) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("OFListeners for ");
+        sb.append(type);
+        sb.append(": ");
+        for (IOFMessageListener l : ldd.getOrderedListeners()) {
+            sb.append(l.getName());
+            sb.append(",");
+        }
+        log.debug(sb.toString());
     }
     
     public void removeOFMessageListeners(OFType type) {
@@ -1303,11 +1315,6 @@ public class Controller
             return false;
         }
         return true;
-    }
-
-    @Override
-    public ScheduledExecutorService getScheduledExecutor() {
-        return executor;
     }
 
     @Override

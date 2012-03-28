@@ -42,24 +42,28 @@ public class OneComponentTime {
         return pktCnt;
     }
 
-    public long getSumProcTime_us() {
+    public long getSumProcTimeNs() {
         return totalProcTimeNs;
     }
 
-    public long getMaxProcTime_us() {
+    public long getMaxProcTimeNs() {
         return maxProcTimeNs;
     }
 
-    public long getMinProcTime_us() {
+    public long getMinProcTimeNs() {
         return minProcTimeNs;
     }
 
-    public long getAvgProcTime_us() {
+    public long getAvgProcTimeNs() {
         return avgProcTimeNs;
     }
 
-    public long getSigmaProcTime_us() {
+    public long getSigmaProcTimeNs() {
         return sigmaProcTimeNs;
+    }
+    
+    public long getSumSquaredProcTimeNs() {
+        return sumSquaredProcTimeNs2;
     }
 
     // Methods used to update the counters
@@ -68,26 +72,26 @@ public class OneComponentTime {
         pktCnt++;
     }
     
-    private void updateTotalProcessingTime(long curTimeMs) {
-        totalProcTimeNs += curTimeMs;
+    private void updateTotalProcessingTime(long procTimeNs) {
+        totalProcTimeNs += procTimeNs;
     }
     
-    private void updateAvgProcessTime(long curTimeMs) {
+    private void updateAvgProcessTime() {
         avgProcTimeNs = totalProcTimeNs / pktCnt;
     }
     
-    private void updateSquaredProcessingTime(long curTimeMs) {
-        sumSquaredProcTimeNs2 += (Math.pow(curTimeMs, 2));
+    private void updateSquaredProcessingTime(long procTimeNs) {
+        sumSquaredProcTimeNs2 += (Math.pow(procTimeNs, 2));
     }
     
-    private void calculateMinProcTime(long curTimeMs) {
-        if (curTimeMs < minProcTimeNs)
-            minProcTimeNs = curTimeMs;
+    private void calculateMinProcTime(long curTimeNs) {
+        if (curTimeNs < minProcTimeNs)
+            minProcTimeNs = curTimeNs;
     }
     
-    private void calculateMaxProcTime(long curTimeMs) {
-        if (curTimeMs > maxProcTimeNs)
-            maxProcTimeNs = curTimeMs;
+    private void calculateMaxProcTime(long curTimeNs) {
+        if (curTimeNs > maxProcTimeNs)
+            maxProcTimeNs = curTimeNs;
     }
     
     public void computeSigma() {
@@ -104,7 +108,7 @@ public class OneComponentTime {
         updateTotalProcessingTime(procTimeNs);
         calculateMinProcTime(procTimeNs);
         calculateMaxProcTime(procTimeNs);
-        updateAvgProcessTime(procTimeNs);
+        updateAvgProcessTime();
         updateSquaredProcessingTime(procTimeNs);
     }
     
