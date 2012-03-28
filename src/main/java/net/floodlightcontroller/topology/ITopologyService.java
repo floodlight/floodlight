@@ -38,10 +38,10 @@ public interface ITopologyService extends IFloodlightService  {
 
 
     public void addListener(ITopologyListener listener);
-    
+
     public boolean isBroadcastDomainPort(long sw, short port);
 
-    public boolean isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId);
+    public boolean isIncomingBroadcastAllowed(long sw, short portId);
 
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2);
 
@@ -50,5 +50,8 @@ public interface ITopologyService extends IFloodlightService  {
     public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort);
 
     public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort);
+
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort);
 }

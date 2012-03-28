@@ -542,6 +542,12 @@ public class TopologyInstance {
         return new NodePortTuple(dst, dstPort);
     }
 
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+     // Use this function to reinject traffic from a different port if needed.
+        return new NodePortTuple(src, srcPort);
+    }
+
     public Set<Long> getSwitches() {
         return switches;
     }
