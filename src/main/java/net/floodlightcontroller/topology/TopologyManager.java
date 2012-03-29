@@ -104,7 +104,7 @@ IRoutingService, ILinkDiscoveryListener {
     public void informListeners() {
         for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
-            listener.toplogyChanged();
+            listener.topologyChanged();
         }
     }
 

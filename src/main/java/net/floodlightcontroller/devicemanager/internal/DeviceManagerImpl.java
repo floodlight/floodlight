@@ -66,6 +66,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
@@ -91,7 +92,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
         IOFSwitchListener, ILinkDiscoveryListener, IFloodlightModule, IStorageSourceListener,
-        IInfoProvider {      
+        ITopologyListener, IInfoProvider {      
     /**
      * Class to maintain all the device manager maps which consists of four
      * main maps. 
@@ -1457,7 +1458,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     /**
      * Iterates through all devices and cleans up attachment points
      */
-    public void clusterMerged() {
+    @Override
+    public void topologyChanged() {
         deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
     }
 
@@ -2108,9 +2110,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Register to get updates from topology
             linkDiscovery.addListener(this);
         } else {
+            log.error("Could not add linkdiscovery listener");
+        }
+        if (topology != null) {
+            topology.addListener(this);
+        } else {
             log.error("Could not add topology listener");
         }
-        
+
         // Create our database tables
         storageSource.createTable(DEVICE_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
@@ -2162,5 +2169,4 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
         return info;
     }
-
 }
