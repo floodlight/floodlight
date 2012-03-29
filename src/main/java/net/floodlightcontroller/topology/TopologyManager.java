@@ -366,6 +366,11 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
+    public boolean isAllowed(long sw, short portId) {
+        return currentInstance.isAllowed(sw, portId);
+    }
+
+    @Override
     public boolean isIncomingBroadcastAllowed(long sw, short portId) {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
     }

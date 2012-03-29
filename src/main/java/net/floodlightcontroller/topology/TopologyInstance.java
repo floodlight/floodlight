@@ -514,6 +514,10 @@ public class TopologyInstance {
         return (switch1 == switch2);
     }
 
+    public boolean isAllowed(long sw, short portId) {
+        return true;
+    }
+
     protected boolean
     isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId) {
         if (isInternal(sw, portId)) {

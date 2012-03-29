@@ -422,7 +422,6 @@ public class LinkDiscoveryManager
                 remoteSwitch = floodlightProvider.getSwitches().get(dpidBB.getLong(4));
             } else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8){
                 otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
-                log.info("myId = {}, other Id = {}", myId, otherId);
                 if (myId == otherId)
                     myLLDP = true;
             }

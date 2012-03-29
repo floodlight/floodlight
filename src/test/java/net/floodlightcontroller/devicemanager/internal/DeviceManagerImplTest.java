@@ -49,6 +49,7 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.openflow.protocol.OFPacketIn;
@@ -223,7 +224,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
         expect(mockTopology.inSameCluster(2L, 1L)).andReturn(false);
         expect(mockTopology.getSwitchClusterId(2L)).andReturn(2L).atLeastOnce();
-        
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         
         // Start recording the replay on the mocks
         replay(mockSwitch1, mockSwitch2, mockTopology);
@@ -289,13 +290,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
         device.addNetworkAddress(ipaddr, currentDate);
 
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1);
 
         // Verify the replay matched our expectations
-        verify(mockSwitch, mockTopology);
+        verify(mockSwitch);
 
         // Verify the device
         Device rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
@@ -315,6 +317,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.invalidateDeviceAPsByIPv4Address(ipaddr);
         assertEquals(0, deviceManager.getDeviceByIPv4Address(ipaddr).getAttachmentPoints().size());
         
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);
         // Get the listener and trigger the packet in
@@ -341,6 +344,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         deviceManager.setTopology(mockTopology);
 
         // Start recording the replay on the mocks
@@ -419,6 +423,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ITopologyService mockTopology = createNiceMock(ITopologyService.class);
         //expect(mockTopology.isInternal(new SwitchPortTuple(mockSwitch, 1))).andReturn(false);
         deviceManager.setTopology(mockTopology);
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
 
         Date currentDate = new Date();
         // build our expected Device
@@ -477,6 +482,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
                            .andReturn(false).atLeastOnce();
         deviceManager.setTopology(mockTopology);
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
 
         // Start recording the replay on the mocks
         expect(mockTopology.isInSameBroadcastDomain((long)1, (short)2, (long)1, (short)1)).andReturn(false).anyTimes();
@@ -576,7 +582,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                     (long)1, (short)1)).andReturn(false).anyTimes();
 
         deviceManager.setTopology(mockTopology);
-
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);
 

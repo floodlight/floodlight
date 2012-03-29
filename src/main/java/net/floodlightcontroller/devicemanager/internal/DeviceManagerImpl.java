@@ -806,6 +806,24 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      */
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                           FloodlightContext cntx) {
+
+        Ethernet eth = IFloodlightProviderService.bcStore.get(
+                    cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        // If the packet in comes from a port that's not allowed by higher
+        // level topology, it should be dropped.  An L2 bridge can result
+        // in this situation.
+        short pinPort = pi.getInPort();
+        long pinSw = sw.getId();
+        if (eth.getEtherType() != Ethernet.TYPE_BDDP && 
+                topology.isAllowed(pinSw, pinPort) == false) {
+            if (log.isDebugEnabled()) {
+                log.debug("deviceManager: Stopping packet as it is coming" +
+                        "in on a port blocked by higher layer on." + 
+                        "switch ={}, port={}", new Object[] {sw.getStringId(), pinPort});
+            }
+            return Command.STOP;
+        }
+
         Command ret = Command.CONTINUE;
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
@@ -818,7 +836,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                HexString.toHexString(match.getDataLayerDestination()),
                                match.getDataLayerType()
                       });
-                      
 
         // Create attachment point/update network address if required
         SwitchPortTuple switchPort = new SwitchPortTuple(sw, pi.getInPort());
@@ -838,8 +855,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         Long dlAddr = Ethernet.toLong(match.getDataLayerSource());
         Short vlan = match.getDataLayerVirtualLan();
         if (vlan < 0) vlan = null;
-        Ethernet eth = IFloodlightProviderService.bcStore.get(
-                                cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         Device device = devMgrMaps.getDeviceByDataLayerAddr(dlAddr);
         if (log.isTraceEnabled()) {
