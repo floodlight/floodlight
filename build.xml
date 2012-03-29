@@ -23,6 +23,7 @@
 <project default="dist" name="Floodlight">
 
     <property name="target" location="target"/>
+    <property name="lib" location="lib"/>
     <property name="build" location="${target}/bin"/>
     <property name="build-test" location="${target}/bin-test"/>
     <property name="test-output" location="${target}/test"/>
@@ -32,9 +33,9 @@
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.Main"/>
-    <property name="packetstreamer-gen" location="${target}/gen-java" />
-    <property name="packetstreamer-gen-build" location="${target}/gen-java-bin"/>
-    <property name="packetstreamer-thrift-jar" location="${target}/lib/packetstreamer-thrift.jar"/>
+    <property name="packetstreamer-gen" location="${lib}/gen-java" />
+    <property name="packetstreamer-gen-build" location="${lib}/gen-java-bin"/>
+    <property name="packetstreamer-thrift-jar" location="${lib}/packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
 
@@ -54,9 +55,9 @@
         <include name="args4j-2.0.16.jar"/>
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
+        <include name="libthrift-0.7.0.jar"/>
     </patternset>
     <patternset id="genlib">
-        <include name="libthrift-0.7.0.jar"/>
         <include name="packetstreamer-thrift.jar"/>
     </patternset>
 
@@ -84,7 +85,6 @@
     </path>
 
     <target name="init">
-        <exec executable="${basedir}/setup.sh" failonerror="true"/>
         <mkdir dir="${build}"/>
         <mkdir dir="${build-test}"/>
         <mkdir dir="${target}/lib"/>
@@ -125,6 +125,8 @@
 
     <target name="clean">
         <delete dir="${target}"/>
+        <delete dir="${packetstreamer-gen-build}"/>
+        <delete file="${packetstreamer-thrift-jar}"/>
     </target>
 
     <target name="run" depends="dist">
