@@ -26,7 +26,7 @@ import net.floodlightcontroller.storage.RowOrdering.Item;
 import net.floodlightcontroller.storage.StorageSourceNotification.Action;
 
 public class SQLStorageSource extends AbstractStorageSource {
-
+	
 	/**
 	 * we may want to move the information in this method to another file
 	 * (possibly password protected) and only leave the implementation here
@@ -36,16 +36,21 @@ public class SQLStorageSource extends AbstractStorageSource {
 	private Connection openConnection() {
 		Connection conn = null;
 		try {
-			String driverName = "org.sqlite.JDBC";
-			Class.forName(driverName);
-
-			// String serverName = "localhost";
-			String mydb = "/home/andrew/School/CSC 492/openflow.db";
-			String url = "jdbc:sqlite:" + mydb; // provide jdbc with path to db
-												// file
-			// String username = "root";
-			// String password = "root";
-			conn = DriverManager.getConnection(url);
+			String driverName = "com.mysql.jdbc.Driver";
+			
+			try {
+				Class.forName(driverName).newInstance();
+				String mydb = "localhost/openflow";
+				String username = "root";
+				String password = "root";
+				String url = "jdbc:mysql://" + mydb; // provide jdbc with path to db file
+				conn = DriverManager.getConnection(url, username, password);
+			} catch (InstantiationException e) {
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			}
+			
 		} catch (ClassNotFoundException e) {
 			System.out.println("could not find database driver");
 		} catch (SQLException e) {
@@ -65,25 +70,26 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 	@Override
 	public void createTable(String tableName, Set<String> indexedColumns) {
-
+		StringBuffer sb = new StringBuffer();
 		try {
 			Connection conn = openConnection();
 
 			Statement stmt = conn.createStatement();
-			String sql = "CREATE TABLE if not exists " + tableName + "(";
+
+			sb.append("CREATE TABLE if not exists " + tableName + "(");
 			Iterator<String> it = indexedColumns.iterator();
 			for (int i = 0; i < indexedColumns.size() - 1; i++) {
-				sql += it.next().toString() + " varchar(100), ";
+				sb.append(it.next().toString() + " varchar(100), ");
 			}
-			sql += it.next().toString() + " text);";
+			sb.append(it.next().toString() + " varchar(100));");
 			
 			//System.out.println(sql);
-			stmt.executeUpdate(sql);
+			stmt.executeUpdate(sb.toString());
 
 			conn.close();
 		} catch (SQLException e) {
 			System.out.println("could not create the table\n\t"
-					+ e.getMessage());
+					+ e.getMessage() + "\n\t" + sb.toString());
 		}
 
 	}
@@ -105,28 +111,30 @@ public class SQLStorageSource extends AbstractStorageSource {
 	public void createTable(String tableName, Set<String> indexedColumns,
 			String pKey) {
 
+		StringBuffer sb = new StringBuffer();
 		try {
 			Connection conn = openConnection();
 
 			Statement stmt = conn.createStatement();
-			String sql = "CREATE TABLE if not exists " + tableName + "(";
+
+			sb.append("CREATE TABLE if not exists " + tableName + "(");
 			Iterator<String> it = indexedColumns.iterator();
 			for (int i = 0; i < indexedColumns.size(); i++) {
 				String column = it.next().toString();
-				sql += column;
+				sb.append(column);
 				if (column.equals(pKey))
-					sql += " varchar(100), ";
+					sb.append(" varchar(100), ");
 				else
-					sql += " text, ";
+					sb.append(" varchar(100), ");
 			}
-			sql += "primary key (" + pKey + "));";
+			sb.append("primary key (" + pKey + "));");
 			//System.out.println(sql);
-			stmt.executeUpdate(sql);
+			stmt.executeUpdate(sb.toString());
 
 			conn.close();
 		} catch (SQLException e) {
 			System.out.println("could not create the table\n\t"
-					+ e.getMessage());
+					+ e.getMessage() + "\n\t" + sb.toString());
 		}
 
 	}
@@ -141,10 +149,13 @@ public class SQLStorageSource extends AbstractStorageSource {
 			Connection conn = openConnection();
 
 			Statement stmt = conn.createStatement();
-			String sql = "delete FROM " + tableName + " where " + pKey + "="
-					+ rowKey.toString() + ";";
-			// System.out.println(sql);
-			stmt.executeUpdate(sql);
+			StringBuffer sb = new StringBuffer();
+			sb.append("delete FROM " + tableName);
+			if (rowKey != null && !pKey.equals(""))
+				sb.append(" where " + pKey + "=" + rowKey.toString());
+			sb.append(";");
+			//System.out.println(sb.toString());
+			stmt.executeUpdate(sb.toString());
 
 			conn.close();
 
@@ -167,7 +178,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 			Statement stmt = conn.createStatement();
 			String sql = "delete FROM " + tableName + " where " + columnName
 					+ "=" + key + ";";
-			// System.out.println(sql);
+			//System.out.println(sql);
 			stmt.executeUpdate(sql);
 
 			Set<Object> set = new HashSet<Object>();
@@ -188,7 +199,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 	public SqlResultSet executeQuery(SqlQuery query) {
 		SqlResultSet rs = null;
 		query = (SqlQuery) query;
-		String sql = "";
+		StringBuffer sb = new StringBuffer();
 		try {
 			Connection conn = openConnection();
 
@@ -230,16 +241,16 @@ public class SQLStorageSource extends AbstractStorageSource {
 				}
 			}
 
-			sql = "Select " + columns + " from " + query.getTableName();
+			sb.append("Select " + columns + " from " + query.getTableName());
 			if (!predicates.equals("")) {
-				sql += " where " + predicates;
+				sb.append(" where " + predicates);
 			}
 			if (!order.equals(""))
-				sql += " order by " + order;
-			sql += ";";
+				sb.append(" order by " + order);
+			sb.append(";");
 
-			//System.out.println(sql);
-			ResultSet sqlresult = stmt.executeQuery(sql);
+			//System.out.println("\t\t" + sb.toString());
+			ResultSet sqlresult = stmt.executeQuery(sb.toString());
 			ResultSetMetaData rsmeta = sqlresult.getMetaData();
 			List<Map<String, Object>> rowList = new ArrayList<Map<String, Object>>();
 
@@ -257,7 +268,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to execute query: " + sql + "\n"
+			System.out.println("failed to execute query: " + sb.toString() + "\n"
 					+ e.getMessage());
 		}
 		return rs;
@@ -293,20 +304,21 @@ public class SQLStorageSource extends AbstractStorageSource {
 			Statement stmt = conn.createStatement();
 			values = formatValues(values);
 
-			String sql = "Insert into " + tableName + "(";
+			StringBuffer sb = new StringBuffer();
+			sb.append("Insert into " + tableName + "(");
 			String objects = " values(";
 			Iterator<String> it = values.keySet().iterator();
 			for (int i = 0; i < values.size() - 1; i++) {
 				String key = it.next();
-				sql += key + ", ";
+				sb.append(key + ", ");
 				objects += values.get(key) + ", ";
 			}
 			String key = it.next().toString();
 			objects += values.get(key) + ")";
-			sql += key + ") " + objects;
+			sb.append(key + ") " + objects);
 
-			//System.out.println(sql);
-			stmt.execute(sql);
+			System.out.println("\t\t\t" + sb.toString());
+			stmt.execute(sb.toString());
 
 			Set<Object> set = new HashSet<Object>();
 			set.add(values_original.get(getTablePrimaryKeyName(tableName)));
@@ -331,6 +343,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 	@Override
 	public void updateRow(String tableName, Object rowKey,
 			Map<String, Object> values) {
+		StringBuffer sb = new StringBuffer();
 		try {
 			String pKey = getTablePrimaryKeyName(tableName);
 			Connection conn = openConnection();
@@ -339,20 +352,20 @@ public class SQLStorageSource extends AbstractStorageSource {
 			rowKey = formatValue(rowKey);
 			values = formatValues(values);
 
-			String sql = "Insert or replace into " + tableName + "(";
-			String objects = " values(";
+			sb.append("update " + tableName + " set ");
 			Iterator<String> it = values.keySet().iterator();
 			for (int i = 0; i < values.size() - 1; i++) {
 				String key = it.next();
-				sql += key + ", ";
-				objects += values.get(key) + ", ";
+				sb.append(key + "=" + values.get(key) + ", ");
+				//System.out.println(values.get(key) + "\n" + sb.toString());
 			}
 			String key = it.next().toString();
-			objects += values.get(key) + ")";
-			sql += key + ") " + objects + ";";
+			sb.append(key + "=" + values.get(key));
+			if (!pKey.equals(""))
+				sb.append(" where " + pKey + "=" + rowKey + ";");
 			
 			//System.out.println(sql);
-			stmt.execute(sql);
+			stmt.execute(sb.toString());
 
 			Set<Object> set = new HashSet<Object>();
 			set.add(rowKey_original);
@@ -360,7 +373,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 			conn.close();
 
 		} catch (SQLException e) {
-			System.out.println("failed to update row\n" + e.getMessage());
+			System.out.println("failed to update row\n" + e.getMessage() + "\n\t" + sb.toString());
 		}
 	}
 

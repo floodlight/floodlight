@@ -1334,9 +1334,23 @@ public class LinkDiscoveryManager
     @Override
     public void startUp(FloodlightModuleContext context) {
         // Create our storage tables
-        storageSource.createTable(LINK_TABLE_NAME, null);
+       
+        Set<String> columns = new HashSet<String>();
+        columns.add(LINK_ID);
+        columns.add(LINK_SRC_SWITCH);
+        columns.add(LINK_SRC_PORT);
+        columns.add(LINK_SRC_PORT_STATE);
+        columns.add(LINK_DST_SWITCH);
+        columns.add(LINK_DST_PORT);
+        columns.add(LINK_DST_PORT_STATE);
+        columns.add(LINK_VALID_TIME);
+        columns.add(LINK_TYPE);
+        storageSource.createTable(LINK_TABLE_NAME, columns);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
-        storageSource.createTable(LINK_TABLE_NAME, null);
+        
+        columns.clear();
+        columns.add(SWITCH_CORE_SWITCH);
+        storageSource.createTable(LINK_TABLE_NAME, columns);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
         // Register for storage updates for the switch table
         try {

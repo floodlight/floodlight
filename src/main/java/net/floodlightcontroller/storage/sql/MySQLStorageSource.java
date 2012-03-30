@@ -55,18 +55,38 @@ public class MySQLStorageSource extends SQLStorageSource {
 			Connection conn = openConnection();
 			Statement stmt = conn.createStatement();
 
-			String sql = "show keys from " + tableName + " where key_name = 'primary'";
+			StringBuffer sb = new StringBuffer();
+			sb.append("show keys from " + tableName + " where key_name = 'primary'");
 			//System.out.println(sql);
-			ResultSet sqlresult = stmt.executeQuery(sql);
+			ResultSet sqlresult = stmt.executeQuery(sb.toString());
 
-			sqlresult.first();
-			pKey = sqlresult.getNString("Column_name");
+			if (sqlresult.next())
+				pKey = sqlresult.getNString("Column_name");
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to get primary key\n" + e.getMessage());
+			System.out.println("failed to get primary key\n\t" + e.getMessage());
 		}
 		return pKey;
+	}
+	
+	@Override
+	public void setTablePrimaryKeyName(String tableName, String primaryKeyName) {
+		try{
+			Connection conn = openConnection();
+			Statement stmt = conn.createStatement();
+			
+			String sql = "alter table " + tableName + " drop primary key;";
+			String sql2 = "alter table " + tableName + " add primary key(" + primaryKeyName + ");";
+			
+			if (!getTablePrimaryKeyName(tableName).equals(""))
+				stmt.execute(sql);
+			stmt.execute(sql2);
+			
+			conn.close();
+		}catch(SQLException e){
+			System.out.println("Failed to set primary key\n" + e.getMessage());
+		}
 	}
 
 	@Override
@@ -95,7 +115,7 @@ public class MySQLStorageSource extends SQLStorageSource {
 				SimpleDateFormat dateFormat = new SimpleDateFormat(
 					"yyyy-MM-dd HH:mm:ss.SSS");
 				dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-				value = "'" + dateFormat.format(value) + "')";
+				value = "'" + dateFormat.format(value) + "'";
 			}
 			else{
 				if (!value.toString().equals("null")
@@ -105,7 +125,7 @@ public class MySQLStorageSource extends SQLStorageSource {
 				}
 			}
 		} catch (NullPointerException e) {
-			System.out.println("SQL formatting: value was null");
+			//System.out.println("SQL formatting: value was null");
 			return "null";
 		}
 		return value;

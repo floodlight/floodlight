@@ -27,7 +27,7 @@ public class SqliteStorageSource extends SQLStorageSource {
 			Class.forName(driverName);
 
 			// String serverName = "localhost";
-			String mydb = "/home/andrew/School/CSC 492/openflow.db";
+			String mydb = "target/bin/floodlight.db";
 			String url = "jdbc:sqlite:" + mydb; // provide jdbc with path to db
 												// file
 			// String username = "root";
@@ -103,7 +103,7 @@ public class SqliteStorageSource extends SQLStorageSource {
 				}
 			}
 		} catch (NullPointerException e) {
-			System.out.println("SQL formatting: value was null");
+			//System.out.println("SQL formatting: value was null");
 			return "null";
 		}
 		return value;

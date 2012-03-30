@@ -27,6 +27,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1678,9 +1679,37 @@ public class Controller
     public void startupComponents() {
         log.debug("Doing controller internal setup");
         // Create the table names we use
-        storageSource.createTable(CONTROLLER_TABLE_NAME, null);
-        storageSource.createTable(SWITCH_TABLE_NAME, null);
-        storageSource.createTable(PORT_TABLE_NAME, null);
+        Set<String> columns = new HashSet<String>();
+        columns.add(CONTROLLER_ID);
+        storageSource.createTable(CONTROLLER_TABLE_NAME, columns);
+        
+        columns.clear();
+        columns.add(SWITCH_DATAPATH_ID);
+        columns.add(SWITCH_SOCKET_ADDRESS);
+        columns.add(SWITCH_IP);
+        columns.add(SWITCH_CONTROLLER_ID);
+        columns.add(SWITCH_ACTIVE);
+        columns.add(SWITCH_CORE_SWITCH);
+        columns.add(SWITCH_CONNECTED_SINCE);
+        columns.add(SWITCH_CAPABILITIES);
+        columns.add(SWITCH_BUFFERS);
+        columns.add(SWITCH_TABLES);
+        columns.add(SWITCH_ACTIONS);
+        storageSource.createTable(SWITCH_TABLE_NAME, columns);
+        
+        columns.clear();
+        columns.add(PORT_ID);
+        columns.add(PORT_SWITCH);
+        columns.add(PORT_NUMBER);
+        columns.add(PORT_HARDWARE_ADDRESS);
+        columns.add(PORT_NAME);
+        columns.add(PORT_CONFIG);
+        columns.add(PORT_STATE);
+        columns.add(PORT_CURRENT_FEATURES);
+        columns.add(PORT_ADVERTISED_FEATURES);
+        columns.add(PORT_SUPPORTED_FEATURES);
+        columns.add(PORT_PEER_FEATURES);
+        storageSource.createTable(PORT_TABLE_NAME, columns);
         storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
                                              CONTROLLER_ID);
         storageSource.setTablePrimaryKeyName(SWITCH_TABLE_NAME,
