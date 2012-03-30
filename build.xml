@@ -23,7 +23,6 @@
 <project default="dist" name="Floodlight">
 
     <property name="target" location="target"/>
-    <property name="lib" location="lib"/>
     <property name="build" location="${target}/bin"/>
     <property name="build-test" location="${target}/bin-test"/>
     <property name="test-output" location="${target}/test"/>
@@ -33,9 +32,9 @@
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.Main"/>
-    <property name="packetstreamer-gen" location="${lib}/gen-java" />
-    <property name="packetstreamer-gen-build" location="${lib}/gen-java-bin"/>
-    <property name="packetstreamer-thrift-jar" location="${lib}/packetstreamer-thrift.jar"/>
+    <property name="packetstreamer-gen" location="lib/gen-java" />
+    <property name="packetstreamer-gen-build" location="lib/gen-java-bin"/>
+    <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
 
@@ -58,7 +57,7 @@
         <include name="libthrift-0.7.0.jar"/>
     </patternset>
     <patternset id="genlib">
-        <include name="packetstreamer-thrift.jar"/>
+        <include name="${packetstreamer-thrift-jar}"/>
     </patternset>
 
     <path id="classpath">
@@ -119,14 +118,14 @@
 	       classpathref="classpath" />
     </target>
     <target name="packetstreamer-thrift" depends="compile-thrift">
-        <jar jarfile="${packetstreamer-thrift-jar}"
+        <jar jarfile="${target}/lib/${packetstreamer-thrift-jar}"
 	     basedir="${packetstreamer-gen-build}"/>
     </target>
 
     <target name="clean">
         <delete dir="${target}"/>
         <delete dir="${packetstreamer-gen-build}"/>
-        <delete file="${packetstreamer-thrift-jar}"/>
+        <delete file="${target}/lib/${packetstreamer-thrift-jar}"/>
     </target>
 
     <target name="run" depends="dist">
