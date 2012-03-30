@@ -28,21 +28,16 @@ import net.floodlightcontroller.core.IOFSwitch;
  */
 public class SwitchPortTuple {
     protected IOFSwitch sw;
-    protected Short port;
+    protected short port;
 
-    public SwitchPortTuple(IOFSwitch sw, Short port) {
+    public SwitchPortTuple(IOFSwitch sw, short port) {
         super();
         this.sw = sw;
         this.port = port;
     }
-
-    /**
-     * Convenience constructor, port is immediately cast to a short
-     * @param id
-     * @param port
-     */
-    public SwitchPortTuple(IOFSwitch sw, Integer port) {
-        this(sw, port.shortValue());
+    
+    public SwitchPortTuple(IOFSwitch sw, int port) {
+        this(sw, (short)port);
     }
 
     /**
@@ -74,7 +69,7 @@ public class SwitchPortTuple {
         final int prime = 5557;
         int result = 1;
         result = prime * result + ((sw == null) ? 0 : sw.hashCode());
-        result = prime * result + ((port == null) ? 0 : port.hashCode());
+        result = prime * result + (new Short(port)).hashCode();
         return result;
     }
 
@@ -96,10 +91,7 @@ public class SwitchPortTuple {
         } else if (!sw.equals(other.sw))
             return false;
         
-        if (port == null) {
-            if (other.port != null)
-                return false;
-        } else if (!port.equals(other.port))
+        if (port != other.port)
             return false;
 
         return true;
@@ -112,6 +104,6 @@ public class SwitchPortTuple {
     public String toString() {
         return "SwitchPortTuple [id="
                 + ((sw == null) ? "null" : sw.getStringId())
-                + ", port=" + ((port == null) ? "null" : (0xff & port)) + "]";
+                + ", port=" + (0xffff & (int)port) + "]";
     }
 }

@@ -514,6 +514,10 @@ public class TopologyInstance {
         return (switch1 == switch2);
     }
 
+    public boolean isAllowed(long sw, short portId) {
+        return true;
+    }
+
     protected boolean
     isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId) {
         if (isInternal(sw, portId)) {
@@ -540,6 +544,12 @@ public class TopologyInstance {
                                                long dst, short dstPort) {
         // Use this function to redirect traffic if needed.
         return new NodePortTuple(dst, dstPort);
+    }
+
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+     // Use this function to reinject traffic from a different port if needed.
+        return new NodePortTuple(src, srcPort);
     }
 
     public Set<Long> getSwitches() {
