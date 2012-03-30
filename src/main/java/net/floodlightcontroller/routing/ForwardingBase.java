@@ -403,11 +403,14 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         OFMatch match = new OFMatch();
         match.setDataLayerDestination(device.getDataLayerAddress());
         match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
+        long cookie =
+                AppCookie.makeCookie(FORWARDING_APP_ID, 0);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
             .getMessage(OFType.FLOW_MOD))
             .setCommand(OFFlowMod.OFPFC_DELETE)
             .setOutPort((short) OFPort.OFPP_NONE.getValue())
             .setMatch(match)
+            .setCookie(cookie)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
         // Flush to all switches
