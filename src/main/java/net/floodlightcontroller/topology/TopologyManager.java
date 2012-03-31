@@ -371,6 +371,11 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
+    public NodePortTuple getAllowedOutgoingBroadcastPort(NodePortTuple src, NodePortTuple dst) {
+    	return null;
+    }
+    
+    @Override
     public boolean isIncomingBroadcastAllowed(long sw, short portId) {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
     }
