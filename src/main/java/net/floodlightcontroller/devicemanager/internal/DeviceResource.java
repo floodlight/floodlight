@@ -33,11 +33,13 @@ public class DeviceResource extends ServerResource {
         } else {
             // Get device by MAC
             Device dev = null;
-            byte[] devMac = HexString.fromHexString(param);
-            dev = dm.getDeviceByDataLayerAddress(devMac);
-            if (dev != null) {
-                retMap.put(HexString.toHexString(dev.getDataLayerAddress()), dev);
-            }
+            try {
+                byte[] devMac = HexString.fromHexString(param);
+                dev = dm.getDeviceByDataLayerAddress(devMac);
+                if (dev != null) {
+                    retMap.put(HexString.toHexString(dev.getDataLayerAddress()), dev);
+                }
+            } catch (NumberFormatException e) { } // ignore, return empty map
         }
         
         return retMap;
