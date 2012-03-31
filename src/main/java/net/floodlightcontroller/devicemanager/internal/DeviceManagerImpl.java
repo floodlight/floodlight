@@ -92,7 +92,8 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListener,
         IOFSwitchListener, ILinkDiscoveryListener, IFloodlightModule, IStorageSourceListener,
-        ITopologyListener, IInfoProvider {      
+        ITopologyListener, IInfoProvider {
+
     /**
      * Class to maintain all the device manager maps which consists of four
      * main maps. 
@@ -639,6 +640,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static int DEVICE_MAX_AGE    = 60 * 60 * 24;
     protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
     protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
+    protected static long BD_TO_NBD_TIMEDIFF_MS = 300000; // 5 minutes
+    // This the amount of time that we need for a device to move from
+    // a non-broadcast domain port to a broadcast domain port.
 
     // Constants for accessing storage
     // Table names
@@ -900,7 +904,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
                     long dt = currentDate.getTime() -
                             oldDap.getLastSeen().getTime() ;
-                    if (dt < 300000) {
+                    if (dt < BD_TO_NBD_TIMEDIFF_MS) {
                         // if the packet was seen within the last 5 minutes, we should ignore.
                         // it should also ignore processing the packet.
                         if (log.isTraceEnabled()) {
@@ -1463,6 +1467,48 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
     }
 
+    private boolean isNewer(DeviceAttachmentPoint dap1,
+                            DeviceAttachmentPoint dap2) {
+        // dap 1 is newer than dap 2 if
+        // (1) if dap 1 is a non-broadcast domain attachment point
+        //      (a) if (dap 2 is a non-broadcast domain attachment point
+        //          and dap1.lastseen time is after dap2.last seentime
+        //      OR
+        //      (b) if (dap 2 is a braodcast domain attachment point
+        //          and dap1.lastseen time is after (dap2.lastseen-5minutes)
+        // (2) if dap 1 is a broadcast domain attachment point
+        //      (a) if dap 2 is a non-broadcast attachment point and
+        //          dap1.lastseen is after (dap2.lastseen + 5 minutes)
+        //      OR
+        //      (b) if dap2 is a broadcastdomain attachment point and
+        //          dap2.lastseen
+
+        SwitchPortTuple sp1, sp2;
+        boolean flag1, flag2;
+        sp1 = dap1.getSwitchPort();
+        sp2 = dap2.getSwitchPort();
+
+        flag1 = topology.isBroadcastDomainPort(sp1.getSw().getId(),
+                                               sp1.getPort());
+        flag2 = topology.isBroadcastDomainPort(sp2.getSw().getId(),
+                                               sp2.getPort());
+        long ls1 = dap1.getLastSeen().getTime();
+        long ls2 = dap2.getLastSeen().getTime();
+
+        if (flag1 == false) {
+            if (flag2 == false) {
+                return (ls1 > ls2);
+            } else {
+                return (ls1 > (ls2 - BD_TO_NBD_TIMEDIFF_MS));
+            }
+        } else {
+            if (flag2 == false) {
+                return (ls1 > (ls2 + BD_TO_NBD_TIMEDIFF_MS));
+            } else {
+                return (ls1 > ls2);
+            }
+        }
+    }
     /**
      * Removes any attachment points that are in the same 
      * {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster} 
@@ -1479,12 +1525,21 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                             !topology.isInternal(dap.getSwitchPort().getSw().getId(), dap.getSwitchPort().getPort())) {
                 long clusterId = topology.getSwitchClusterId(
                             dap.getSwitchPort().getSw().getId());
+                // do not use attachment points if the attachment point is
+                // not allowed by topology
+                long swid = dap.getSwitchPort().getSw().getId();
+                short port = dap.getSwitchPort().getPort();
+                if (topology.isAllowed(swid, port) == false)
+                    continue;
+
                 if (map.containsKey(clusterId)) {
                     // We compare to see which one is newer, move attachment 
                     // point to "old" list.
                     // They are removed after deleting from storage.
+
                     DeviceAttachmentPoint value = map.get(clusterId);
-                    if (dap.getLastSeen().after(value.getLastSeen())) { 
+                    //if (dap.getLastSeen().after(value.getLastSeen())) {
+                    if (isNewer(dap, map.get(clusterId))) {
                         map.put(clusterId, dap);
                         d.addOldAttachmentPoint(value); // on copy of device
                     }
