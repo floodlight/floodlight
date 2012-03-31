@@ -19,6 +19,9 @@ package net.floodlightcontroller.core.web;
 
 import java.util.List;
 
+import net.floodlightcontroller.core.web.serializers.DeviceAttachmentPointJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.DeviceJSONSerializer;
+import net.floodlightcontroller.core.web.serializers.DeviceNetworkAddressJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.EventHistoryAttachmentPointJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.EventHistoryBaseInfoJSONSerializer;
 import net.floodlightcontroller.core.web.serializers.EventHistoryTopologyClusterJSONSerializer;
@@ -73,6 +76,9 @@ public class JacksonCustomConverter extends JacksonConverter {
         jsonModule.addSerializer(new EventHistoryTopologySwitchJSONSerializer());
         jsonModule.addSerializer(new EventHistoryTopologyLinkJSONSerializer());
         jsonModule.addSerializer(new EventHistoryTopologyClusterJSONSerializer());
+        jsonModule.addSerializer(new DeviceJSONSerializer());
+        jsonModule.addSerializer(new DeviceNetworkAddressJSONSerializer());
+        jsonModule.addSerializer(new DeviceAttachmentPointJSONSerializer());
         jsonObjectMapper.registerModule(jsonModule);
     }
 
