@@ -51,7 +51,7 @@ IRoutingService, ILinkDiscoveryListener {
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
     protected SingletonTask newInstanceTask;
-
+    
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
@@ -195,27 +195,27 @@ IRoutingService, ILinkDiscoveryListener {
         removeLinkFromStructure(tunnelLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
-        NodePortTuple n1 = new NodePortTuple(link.getSrc(), link.getSrcPort());
-        NodePortTuple n2 = new NodePortTuple(link.getDst(), link.getDstPort());
+        NodePortTuple srcNpt = new NodePortTuple(link.getSrc(), link.getSrcPort());
+        NodePortTuple dstNpt = new NodePortTuple(link.getDst(), link.getDstPort());
 
         // Remove switch ports if there are no links through those switch ports
-        if (switchPortLinks.get(n1) == null) {
-            if (switchPorts.get(link.getSrc()) != null)
-                switchPorts.get(link.getSrc()).remove(link.getSrcPort());
+        if (switchPortLinks.get(srcNpt) == null) {
+            if (switchPorts.get(srcNpt.getNodeId()) != null)
+                switchPorts.get(srcNpt.getNodeId()).remove(srcNpt.getPortId());
         }
-        if (switchPortLinks.get(n2) == null) {
-            if (switchPorts.get(link.getDst()) != null)
-                switchPorts.get(link.getDst()).remove(link.getDstPort());
+        if (switchPortLinks.get(dstNpt) == null) {
+            if (switchPorts.get(dstNpt.getNodeId()) != null)
+                switchPorts.get(dstNpt.getNodeId()).remove(dstNpt.getPortId());
         }
 
         // Remove the node if no ports are present
-        if (switchPorts.get(link.getSrc())!=null && 
-                switchPorts.get(link.getSrc()).isEmpty()) {
-            switchPorts.remove(link.getSrc());
+        if (switchPorts.get(srcNpt.getNodeId())!=null && 
+                switchPorts.get(srcNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(srcNpt.getNodeId());
         }
-        if (switchPorts.get(link.getDst())!=null && 
-                switchPorts.get(link.getDst()).isEmpty()) {
-            switchPorts.remove(link.getDst());
+        if (switchPorts.get(dstNpt.getNodeId())!=null && 
+                switchPorts.get(dstNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(dstNpt.getNodeId());
         }
     }
 
