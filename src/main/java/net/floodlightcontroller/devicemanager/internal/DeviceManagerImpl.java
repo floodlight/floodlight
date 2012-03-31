@@ -1242,6 +1242,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
     @Override
     public Device getDeviceByDataLayerAddress(byte[] address) {
+        if (address.length != Ethernet.DATALAYER_ADDRESS_LENGTH) return null;
         return getDeviceByDataLayerAddress(Ethernet.toLong(address));
     }
 
