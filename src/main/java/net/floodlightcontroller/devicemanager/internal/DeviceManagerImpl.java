@@ -821,14 +821,18 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // in this situation.
         short pinPort = pi.getInPort();
         long pinSw = sw.getId();
-        if (eth.getEtherType() != Ethernet.TYPE_BDDP && 
-                topology.isAllowed(pinSw, pinPort) == false) {
-            if (log.isDebugEnabled()) {
-                log.debug("deviceManager: Stopping packet as it is coming" +
-                        "in on a port blocked by higher layer on." + 
-                        "switch ={}, port={}", new Object[] {sw.getStringId(), pinPort});
+        if (topology.isAllowed(pinSw, pinPort) == false) {
+            if (eth.getEtherType() != Ethernet.TYPE_BDDP ||
+                    eth.isMulticast() == false) {
+                return Command.CONTINUE;
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("deviceManager: Stopping packet as it is coming" +
+                            "in on a port blocked by higher layer on." +
+                            "switch ={}, port={}", new Object[] {sw.getStringId(), pinPort});
+                }
+                return Command.STOP;
             }
-            return Command.STOP;
         }
 
         Command ret = Command.CONTINUE;
