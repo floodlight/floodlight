@@ -435,5 +435,11 @@ IRoutingService, ILinkDiscoveryListener {
     public boolean isBroadcastDomainPort(long sw, short port) {
         return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, port));
     }
+
+    @Override
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        return currentInstance.isConsistent(oldSw, oldPort, newSw, newPort);
+    }
 }
 

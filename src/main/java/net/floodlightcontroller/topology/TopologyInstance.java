@@ -524,6 +524,12 @@ public class TopologyInstance {
         return true;
     }
 
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        if (isInternal(newSw, newPort)) return true;
+        return (oldSw == newSw && oldPort == newPort);
+    }
+
     protected Set<NodePortTuple>
     getBroadcastNodePortsInCluster(long sw) {
         long clusterId = getSwitchClusterId(sw);

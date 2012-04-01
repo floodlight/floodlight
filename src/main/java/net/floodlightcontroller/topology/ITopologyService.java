@@ -43,6 +43,8 @@ public interface ITopologyService extends IFloodlightService  {
 
     public boolean isAllowed(long sw, short portId);
 
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort);
     /**
      * If the dst is not allowed by the higher-level topology, this method provides
      * the topologically equivalent broadcast port.  
