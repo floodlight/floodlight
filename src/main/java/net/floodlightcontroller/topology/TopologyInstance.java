@@ -564,4 +564,11 @@ public class TopologyInstance {
         }
         return result;
     }
+
+    public NodePortTuple
+            getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
+                                            short dstPort) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

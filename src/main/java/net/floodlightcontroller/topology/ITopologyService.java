@@ -50,7 +50,10 @@ public interface ITopologyService extends IFloodlightService  {
      * @param dst
      * @return the allowed broadcast port
      */
-    public NodePortTuple getAllowedOutgoingBroadcastPort(NodePortTuple src, NodePortTuple dst);
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort);
     
     public boolean isIncomingBroadcastAllowed(long sw, short portId);
 
