@@ -822,7 +822,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         short pinPort = pi.getInPort();
         long pinSw = sw.getId();
         if (topology.isAllowed(pinSw, pinPort) == false) {
-            if (eth.getEtherType() != Ethernet.TYPE_BDDP ||
+            if (eth.getEtherType() == Ethernet.TYPE_BDDP ||
                     eth.isMulticast() == false) {
                 return Command.CONTINUE;
             } else {
