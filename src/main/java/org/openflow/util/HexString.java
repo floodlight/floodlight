@@ -61,15 +61,17 @@ public class HexString {
      * Convert a string of hex values into a string of bytes
      * @param values "0f:ca:fe:de:ad:be:ef"
      * @return [15, 5 ,2, 5, 17] 
-     */
-    
-    public static byte[] fromHexString(String values) {
+     * @throws NumberFormatException If the string can not be parsed
+     */ 
+    public static byte[] fromHexString(String values) throws NumberFormatException {
         String[] octets = values.split(":");
         byte[] ret = new byte[octets.length];
-        int i;
         
-        for(i=0;i<octets.length; i++)
+        for(int i = 0; i < octets.length; i++) {
+            if (octets[i].length() > 2)
+                throw new NumberFormatException("Invalid octet length");
             ret[i] = Integer.valueOf(octets[i], 16).byteValue();
+        }
         return ret;
     }
     
