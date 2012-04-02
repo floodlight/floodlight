@@ -524,6 +524,12 @@ public class TopologyInstance {
         return true;
     }
 
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        if (isInternal(newSw, newPort)) return true;
+        return (oldSw == newSw && oldPort == newPort);
+    }
+
     protected Set<NodePortTuple>
     getBroadcastNodePortsInCluster(long sw) {
         long clusterId = getSwitchClusterId(sw);
@@ -532,6 +538,10 @@ public class TopologyInstance {
 
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2) {
         return false;
+    }
+
+    public boolean inSameIsland(long switch1, long switch2) {
+        return inSameCluster(switch1, switch2);
     }
 
     public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
@@ -563,5 +573,12 @@ public class TopologyInstance {
             }
         }
         return result;
+    }
+
+    public NodePortTuple
+            getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
+                                            short dstPort) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

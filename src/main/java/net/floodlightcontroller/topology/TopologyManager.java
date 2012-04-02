@@ -371,10 +371,14 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
-    public NodePortTuple getAllowedOutgoingBroadcastPort(NodePortTuple src, NodePortTuple dst) {
-    	return null;
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort) {
+        return currentInstance.getAllowedOutgoingBroadcastPort(src,srcPort,
+                                                               dst,dstPort);
     }
-    
+
     @Override
     public boolean isIncomingBroadcastAllowed(long sw, short portId) {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
@@ -430,6 +434,17 @@ IRoutingService, ILinkDiscoveryListener {
     @Override
     public boolean isBroadcastDomainPort(long sw, short port) {
         return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, port));
+    }
+
+    @Override
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        return currentInstance.isConsistent(oldSw, oldPort, newSw, newPort);
+    }
+
+    @Override
+    public boolean inSameIsland(long switch1, long switch2) {
+        return currentInstance.inSameIsland(switch1, switch2);
     }
 }
 

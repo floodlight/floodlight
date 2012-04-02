@@ -423,13 +423,11 @@ public class OFMessageFilterManager
                 packetClient.pushMessageAsync(sendMsg);
             }
         } catch (TTransportException e) {
-            log.info("Caught TTransportException: {}", e);
-            System.out.println(e);
+            log.error("Caught TTransportException: {}", e);
             disconnectFromPSServer();
             connectToPSServer();
         } catch (Exception e) {
-            log.info("Caught exception: {}", e);
-            System.out.println(e);
+            log.error("Caught exception: {}", e);
             disconnectFromPSServer();
             connectToPSServer();
         }

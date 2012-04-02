@@ -127,8 +127,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                System.out.println("CoreWebManageable thread failed to sleep!"); 
-                e.printStackTrace();
+                log.error("Failed to sleep", e);
             }
         }
         
