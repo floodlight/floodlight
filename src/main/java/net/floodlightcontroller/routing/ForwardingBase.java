@@ -89,7 +89,15 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             return d1ClusterId.compareTo(d2ClusterId);
         }
     };
-    
+
+    // Comparator for sorting the attachment points by last seen.
+    public Comparator<DeviceAttachmentPoint> lastSeenComparator = new Comparator<DeviceAttachmentPoint>() {
+        @Override
+        public int compare(DeviceAttachmentPoint d1, DeviceAttachmentPoint d2) {
+            return d1.getLastSeen().compareTo(d2.getLastSeen());
+        }
+    };
+
     /**
       * All subclasses must define this function if they want any specific forwarding action
      * @param sw Switch that the packet came in from

@@ -36,6 +36,15 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public boolean inSameCluster(long switch1, long switch2);
 
+    /**
+     * Queries whether two switches are in the same island.
+     * Currently, island and cluster are the same. In future,
+     * islands could be different than clusters.
+     * @param switch1
+     * @param switch2
+     * @return
+     */
+    public boolean inSameIsland(long switch1, long switch2);
 
     public void addListener(ITopologyListener listener);
 
@@ -56,7 +65,7 @@ public interface ITopologyService extends IFloodlightService  {
                                                          short srcPort,
                                                          long dst,
                                                          short dstPort);
-    
+
     public boolean isIncomingBroadcastAllowed(long sw, short portId);
 
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2);

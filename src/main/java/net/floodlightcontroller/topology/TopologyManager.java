@@ -441,5 +441,10 @@ IRoutingService, ILinkDiscoveryListener {
                                 short newPort) {
         return currentInstance.isConsistent(oldSw, oldPort, newSw, newPort);
     }
+
+    @Override
+    public boolean inSameIsland(long switch1, long switch2) {
+        return currentInstance.inSameIsland(switch1, switch2);
+    }
 }
 

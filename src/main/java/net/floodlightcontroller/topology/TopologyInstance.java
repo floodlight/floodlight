@@ -540,6 +540,10 @@ public class TopologyInstance {
         return false;
     }
 
+    public boolean inSameIsland(long switch1, long switch2) {
+        return inSameCluster(switch1, switch2);
+    }
+
     public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort) {
         // Use this function to redirect traffic if needed.
