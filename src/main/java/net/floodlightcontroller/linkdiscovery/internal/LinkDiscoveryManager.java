@@ -457,11 +457,11 @@ public class LinkDiscoveryManager
         }
 
         if (!remoteSwitch.portEnabled(remotePort)) {
-            log.info("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
+            log.debug("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
             return Command.STOP;
         }
         if (!sw.portEnabled(pi.getInPort())) {
-            log.info("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
+            log.debug("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
             return Command.STOP;
         }
 
@@ -561,7 +561,7 @@ public class LinkDiscoveryManager
                 updateOperation = UpdateOperation.ADD_OR_UPDATE;
                 linkChanged = true;
 
-                log.info("Added link {}", lt);
+                log.debug("Added link {}", lt);
                 // Add to event history
                 evHistTopoLink(lt.getSrc().getSw().getId(),
                                 lt.getDst().getSw().getId(),
@@ -614,10 +614,7 @@ public class LinkDiscoveryManager
 
                 if (linkChanged) {
                     updateOperation = UpdateOperation.ADD_OR_UPDATE;
-                    if (log.isTraceEnabled()) {
-                        log.trace("Updated link {}", lt);
-                    }
-                    log.info("Updated link {}", lt);
+                    log.debug("Updated link {}", lt);
                     // Add to event history
                     evHistTopoLink(lt.getSrc().getSw().getId(),
                                     lt.getDst().getSw().getId(),
