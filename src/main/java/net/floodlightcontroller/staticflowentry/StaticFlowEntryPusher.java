@@ -267,7 +267,7 @@ public class StaticFlowEntryPusher
                 if (row.get(key) == null)
                     continue;
                 if ( key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME)
-                        || key.equals("id")) // "id" seems implicit in cassandra
+                        || key.equals("id"))
                     continue; // already handled
                 // explicitly ignore timeouts and wildcards
                 if ( key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT) ||

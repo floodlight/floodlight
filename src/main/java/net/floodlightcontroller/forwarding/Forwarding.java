@@ -201,6 +201,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 log.trace("doFlood, drop broadcast packet, pi={}, from a blocked port, " +
                          "srcSwitchTuple={}, linkInfo={}", new Object[] {pi, srcSwTuple});
             }
+            return;
         }
 
         // Set Action to flood
