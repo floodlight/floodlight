@@ -1169,6 +1169,18 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         "Device {}: flapping between {} and {}, block the latter",
                         new Object[] {device, swPort, 
                         curAttachmentPoint.getSwitchPort()});
+                    // Check if flapping is between the same switch port
+                    if (swPort.getSw().getId() ==
+                    		curAttachmentPoint.getSwitchPort().getSw().getId()
+                    	    && swPort.getPort() ==
+                    	    curAttachmentPoint.getSwitchPort().getPort()) {
+                    	log.warn("Fake flapping on port " + swPort.getPort() +
+                    			" between sw " + swPort.getSw() + " and " +
+                    			curAttachmentPoint.getSwitchPort().getSw());
+                    	device.removeOldAttachmentPoint(curAttachmentPoint);
+                    	removeAttachmentPointFromStorage(device,
+                    			curAttachmentPoint);
+                    }
                 } else {
                     removeAttachmentPointFromStorage(device, curAttachmentPoint);
                     evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
