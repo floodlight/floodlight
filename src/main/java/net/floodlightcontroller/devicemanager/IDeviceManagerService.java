@@ -73,4 +73,13 @@ public interface IDeviceManagerService extends IFloodlightService {
      * @param listener The listener that wants the notifications
      */
     public void addListener(IDeviceManagerAware listener);
+    
+    /**
+     * Check if a device has attachment point in the same cluster
+     * as the switch.
+     * @param deviceId
+     * @param switchId
+     * @return true if yes, false otherwise.
+     */
+    public boolean isDeviceKnownToCluster(long deviceId, long switchId);
 }
