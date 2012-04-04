@@ -573,6 +573,7 @@ public class LinkDiscoveryManager
                 if (log.isDebugEnabled()) {
 	                log.debug("Added link {}", lt);
                 }
+
                 // Add to event history
                 evHistTopoLink(lt.getSrc().getSw().getId(),
                                 lt.getDst().getSw().getId(),

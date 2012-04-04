@@ -31,15 +31,18 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.Device;
+import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.packet.Ethernet;
 
 public class MockDeviceManager implements IFloodlightModule, IDeviceManagerService {
     protected Map<Long, Device> devices;
+    protected Map<Long, Long> clusters;
 
     public MockDeviceManager() {
         devices = new HashMap<Long, Device>();
+        clusters = new HashMap<Long, Long>();
     }
     
     @Override
@@ -88,6 +91,14 @@ public class MockDeviceManager implements IFloodlightModule, IDeviceManagerServi
     public void clearDevices() {
         this.devices.clear();
     }
+
+    public void addSwitchToCluster(long switchId, long clusterId) {
+        clusters.put(switchId, clusterId);
+    }
+
+    public void clearCluster() {
+        this.clusters.clear();
+    }
     
     @Override
     public List<Device> getDevices() {
@@ -97,6 +108,26 @@ public class MockDeviceManager implements IFloodlightModule, IDeviceManagerServi
             devices.add(it.next().getValue());
         }
         return devices;
+    }
+
+    @Override
+    public boolean isDeviceKnownToCluster(long deviceId, long switchId) {
+        Device device = this.devices.get(deviceId);
+        if (device == null) {
+            return false;
+        }
+        /** 
+         * Iterate through all APs and check if the switch clusterID matches
+         * with the given clusterId
+         */
+        for(DeviceAttachmentPoint dap : device.getAttachmentPoints()) {
+            if (dap == null) continue;
+            if (this.clusters.get(switchId) == 
+                this.clusters.get(dap.getSwitchPort().getSw().getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
