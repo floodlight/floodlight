@@ -643,6 +643,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
     protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
     protected static long BD_TO_NBD_TIMEDIFF_MS = 300000; // 5 minutes
+    protected static long BD_TO_BD_TIMEDIFF_MS = 5000; // 5 seconds
     // This the amount of time that we need for a device to move from
     // a non-broadcast domain port to a broadcast domain port.
 
@@ -916,6 +917,25 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         if (log.isTraceEnabled()) {
                             log.trace("Surpressing too quick move of {} from non broadcast domain port {} {}" +
                                     " to broadcast domain port {} {}. Last seen on non-BD {} sec ago",
+                                    new Object[] { HexString.toHexString(match.getDataLayerSource()),
+                                                   oldDap.getSwitchPort().getSw().getStringId(), currPort,
+                                                   switchPort.getSw().getStringId(), newPort,
+                                                   dt/1000 }
+                                    );
+                        }
+                        return Command.STOP;
+                    }
+                } else if ( (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) &&
+                        (topology.isBroadcastDomainPort(currSw, currPort) == true) &&
+                        (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
+                    long dt = currentDate.getTime() -
+                            oldDap.getLastSeen().getTime() ;
+                    if (dt < BD_TO_BD_TIMEDIFF_MS) {
+                        // if the packet was seen within the last 5 seconds, we should ignore.
+                        // it should also ignore processing the packet.
+                        if (log.isTraceEnabled()) {
+                            log.trace("Surpressing too quick move of {} from one broadcast domain port {} {}" +
+                                    " to another broadcast domain port {} {}. Last seen on BD {} sec ago",
                                     new Object[] { HexString.toHexString(match.getDataLayerSource()),
                                                    oldDap.getSwitchPort().getSw().getStringId(), currPort,
                                                    switchPort.getSw().getStringId(), newPort,
