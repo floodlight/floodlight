@@ -36,7 +36,7 @@ public enum OFActionType {
                             public OFAction instantiate() {
                                 return new OFActionOutput();
                             }}),
-    SET_VLAN_VID        (1, OFActionVirtualLanIdentifier.class, new Instantiable<OFAction>() {
+    SET_VLAN_ID        (1, OFActionVirtualLanIdentifier.class, new Instantiable<OFAction>() {
                             @Override
                             public OFAction instantiate() {
                                 return new OFActionVirtualLanIdentifier();

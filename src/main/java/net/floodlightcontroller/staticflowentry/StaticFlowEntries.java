@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.packet.IPv4;
+
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import org.codehaus.jackson.JsonParseException;
@@ -15,6 +20,8 @@ import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.MappingJsonFactory;
 import org.openflow.protocol.OFFlowMod;
+import org.openflow.protocol.OFMatch;
+import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionDataLayerDestination;
@@ -29,14 +36,57 @@ import org.openflow.protocol.action.OFActionTransportLayerDestination;
 import org.openflow.protocol.action.OFActionTransportLayerSource;
 import org.openflow.protocol.action.OFActionVirtualLanIdentifier;
 import org.openflow.protocol.action.OFActionVirtualLanPriorityCodePoint;
+import org.openflow.util.HexString;
 
 public class StaticFlowEntries {
+    protected static Logger log = LoggerFactory.getLogger(StaticFlowEntries.class);
     
     private static class SubActionStruct {
         OFAction action;
         int      len;
     }
     
+    
+    /**
+     * This function generates a random hash for the bottom half of the cookie
+     * 
+     * @param fm
+     * @param userCookie
+     * @param name
+     * @return A cookie that encodes the application ID and a hash
+     */
+    public static long computeEntryCookie(OFFlowMod fm, int userCookie, String name) {
+        // flow-specific hash is next 20 bits LOOK! who knows if this 
+        int prime = 211;
+        int flowHash = 2311;
+        for (int i=0; i < name.length(); i++)
+            flowHash = flowHash * prime + (int)name.charAt(i);
+        
+        return AppCookie.makeCookie(StaticFlowEntryPusher.STATIC_FLOW_APP_ID, flowHash);
+    }
+    
+    /**
+     * Sets defaults for an OFFlowMod
+     * @param fm The OFFlowMod to set defaults for
+     * @param entryName The name of the entry. Used to compute the cookie.
+     */
+    public static void initDefaultFlowMod(OFFlowMod fm, String entryName) {
+        fm.setIdleTimeout((short) 0);   // infinite
+        fm.setHardTimeout((short) 0);   // infinite
+        fm.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        fm.setCommand((short) 0);
+        fm.setFlags((short) 0);
+        fm.setOutPort(OFPort.OFPP_NONE.getValue());
+        fm.setCookie(computeEntryCookie(fm, 0, entryName));  
+        fm.setPriority(Short.MAX_VALUE);
+    }
+    
+    /**
+     * Gets the entry name of a flow mod
+     * @param fmJson The OFFlowMod in a JSON representation
+     * @return The name of the OFFlowMod, null if not found
+     * @throws IOException If ther was an error parsing the JSON
+     */
     public static String getEntryNameFromJson(String fmJson) throws IOException{
         MappingJsonFactory f = new MappingJsonFactory();
         JsonParser jp;
@@ -67,6 +117,98 @@ public class StaticFlowEntries {
         }
         
         return null;
+    }
+    
+    /**
+     * Parses an OFFlowMod (and it's inner OFMatch) to the storage entry format.
+     * @param fm The FlowMod to parse
+     * @param sw The switch the FlowMod is going to be installed on
+     * @param name The name of this static flow entry
+     * @return A Map representation of the storage entry 
+     */
+    public static Map<String, Object> flowModToStorageEntry(OFFlowMod fm, String sw, String name) {
+        Map<String, Object> entry = new HashMap<String, Object>();
+        OFMatch match = fm.getMatch();
+        entry.put(StaticFlowEntryPusher.COLUMN_NAME, name);
+        entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
+        entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, StaticFlowEntries.flowModActionsToString(fm.getActions()));
+        entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Short.toString(fm.getPriority()));
+        entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
+        entry.put(StaticFlowEntryPusher.COLUMN_WILDCARD, Integer.toString(match.getWildcards()));
+        entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Short.toString(match.getInputPort()));
+        entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, HexString.toHexString(match.getDataLayerSource()));
+        entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, HexString.toHexString(match.getDataLayerDestination()));
+        entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, Short.toString(match.getDataLayerVirtualLan()));
+        entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Short.toString(match.getDataLayerVirtualLanPriorityCodePoint()));
+        entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, Short.toString(match.getDataLayerType()));
+        entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Short.toString(match.getNetworkTypeOfService()));
+        entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.getNetworkProtocol()));
+        entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, IPv4.fromIPv4Address(match.getNetworkSource()));
+        entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, IPv4.fromIPv4Address(match.getNetworkDestination()));
+        entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, Short.toString(match.getTransportSource()));
+        entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, Short.toString(match.getTransportDestination()));
+        return entry;
+    }
+    
+    /**
+     * Returns a 
+     * @param fmActions A list of OFActions to encode into one string
+     * @return A string of the actions encoded for our database
+     */
+    private static String flowModActionsToString(List<OFAction> fmActions) {
+        // TODO commas?, make a string array then join with commas in between
+        // TODO - some values may be in hex....i.e. ethertype
+        String actions = "";
+        for (OFAction a : fmActions) {
+            switch(a.getType()) {
+                case OUTPUT:
+                    actions += "output=" + Short.toString(((OFActionOutput)a).getPort());
+                    break;
+                case OPAQUE_ENQUEUE:
+                    actions += "enqueue=" + Integer.toString(((OFActionEnqueue)a).getQueueId());
+                    break;
+                case SET_VLAN_ID:
+                    actions += "set-vlan-id=" + 
+                        Short.toString(((OFActionVirtualLanIdentifier)a).getVirtualLanIdentifier());
+                    break;
+                case SET_VLAN_PCP:
+                    actions += "set-vlan-priority=" +
+                        Byte.toString(((OFActionVirtualLanPriorityCodePoint)a).getVirtualLanPriorityCodePoint());
+                    break;
+                case SET_DL_SRC:
+                    actions += "set-src-mac=" + 
+                        HexString.toHexString(((OFActionDataLayerSource)a).getDataLayerAddress());
+                    break;
+                case SET_DL_DST:
+                    actions += "set-dst-mac=" + 
+                        HexString.toHexString(((OFActionDataLayerDestination)a).getDataLayerAddress());
+                    break;
+                case SET_NW_TOS:
+                    actions += "set-tos-bits=" +
+                        Byte.toString(((OFActionNetworkTypeOfService)a).getNetworkTypeOfService());
+                    break;
+                case SET_NW_SRC:
+                    actions += "set-nw-src=" +
+                        IPv4.fromIPv4Address(((OFActionNetworkLayerSource)a).getNetworkAddress());
+                    break;
+                case SET_NW_DST:
+                    actions += "set-nw-dst=" +
+                        IPv4.fromIPv4Address(((OFActionNetworkLayerDestination)a).getNetworkAddress());
+                    break;
+                case SET_TP_SRC:
+                    actions += "set-src-port=" +
+                        Short.toString(((OFActionTransportLayerSource)a).getTransportPort());
+                    break;
+                case SET_TP_DST:
+                    actions += "set-dst-port=" +
+                        Short.toString(((OFActionTransportLayerDestination)a).getTransportPort());
+                    break;
+                default:
+                    
+            }
+                
+        }
+        return actions;
     }
     
     /**
@@ -151,8 +293,13 @@ public class StaticFlowEntries {
         return entry;
     }
     
-    public static void parseActionString(String entryName, String switchName,
-            OFFlowMod flowMod, String actionstr, Logger log) {
+    /**
+     * Parses OFFlowMod actions from a database
+     * @param flowMod The OFFlowMod to set the actions for
+     * @param actionstr The string containing all the actions
+     * @param log A logger to log for errors.
+     */
+    public static void parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
         List<OFAction> actions = new LinkedList<OFAction>();
         int actionsLength = 0;
         if (actionstr != null) {
@@ -304,9 +451,8 @@ public class StaticFlowEntries {
     
     private static SubActionStruct decode_strip_vlan(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
-
-        n = Pattern.compile("strip-vlan").matcher(subaction);
+        Matcher n = Pattern.compile("strip-vlan").matcher(subaction);
+        
         if (n.matches()) {
             OFActionStripVirtualLan action = new OFActionStripVirtualLan();
             log.debug("  action {}", action);
@@ -319,16 +465,14 @@ public class StaticFlowEntries {
             log.debug("  Invalid action: '{}'", subaction);
             return null;
         }
-        
 
         return sa;
     }
     
     private static SubActionStruct decode_set_vlan_id(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-vlan-id=((?:0x)?\\d+)").matcher(subaction);
         
-        n = Pattern.compile("set-vlan-id=((?:0x)?\\d+)").matcher(subaction);
         if (n.matches()) {            
             if (n.group(1) != null) {
                 try {
@@ -357,9 +501,8 @@ public class StaticFlowEntries {
     
     private static SubActionStruct decode_set_vlan_priority(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-vlan-priority=((?:0x)?\\d+)").matcher(subaction); 
         
-        n = Pattern.compile("set-vlan-priority=((?:0x)?\\d+)").matcher(subaction);
         if (n.matches()) {            
             if (n.group(1) != null) {
                 try {
@@ -388,9 +531,8 @@ public class StaticFlowEntries {
     
     private static SubActionStruct decode_set_src_mac(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
-        
-        n = Pattern.compile("set-src-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
+        Matcher n = Pattern.compile("set-src-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction); 
+
         if (n.matches()) {
             byte[] macaddr = get_mac_addr(n, subaction, log);
             if (macaddr != null) {
@@ -413,9 +555,8 @@ public class StaticFlowEntries {
 
     private static SubActionStruct decode_set_dst_mac(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-dst-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
         
-        n = Pattern.compile("set-dst-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
         if (n.matches()) {
             byte[] macaddr = get_mac_addr(n, subaction, log);            
             if (macaddr != null) {
@@ -438,9 +579,8 @@ public class StaticFlowEntries {
     
     private static SubActionStruct decode_set_tos_bits(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-tos-bits=((?:0x)?\\d+)").matcher(subaction); 
 
-        n = Pattern.compile("set-tos-bits=((?:0x)?\\d+)").matcher(subaction);
         if (n.matches()) {
             if (n.group(1) != null) {
                 try {
@@ -469,9 +609,8 @@ public class StaticFlowEntries {
     
     private static SubActionStruct decode_set_src_ip(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-src-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
 
-        n = Pattern.compile("set-src-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
         if (n.matches()) {
             int ipaddr = get_ip_addr(n, subaction, log);
             OFActionNetworkLayerSource action = new OFActionNetworkLayerSource();
@@ -492,9 +631,8 @@ public class StaticFlowEntries {
 
     private static SubActionStruct decode_set_dst_ip(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-dst-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
 
-        n = Pattern.compile("set-dst-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
         if (n.matches()) {
             int ipaddr = get_ip_addr(n, subaction, log);
             OFActionNetworkLayerDestination action = new OFActionNetworkLayerDestination();
@@ -515,9 +653,8 @@ public class StaticFlowEntries {
 
     private static SubActionStruct decode_set_src_port(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-src-port=((?:0x)?\\d+)").matcher(subaction); 
 
-        n = Pattern.compile("set-src-port=((?:0x)?\\d+)").matcher(subaction);
         if (n.matches()) {
             if (n.group(1) != null) {
                 try {
@@ -546,9 +683,8 @@ public class StaticFlowEntries {
 
     private static SubActionStruct decode_set_dst_port(String subaction, Logger log) {
         SubActionStruct sa = null;
-        Matcher n;    
+        Matcher n = Pattern.compile("set-dst-port=((?:0x)?\\d+)").matcher(subaction);
 
-        n = Pattern.compile("set-dst-port=((?:0x)?\\d+)").matcher(subaction);
         if (n.matches()) {
             if (n.group(1) != null) {
                 try {
@@ -621,20 +757,17 @@ public class StaticFlowEntries {
     }
     
     // Parse int as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static int get_int(String str)
-    {
+    private static int get_int(String str) {
         return (int)Integer.decode(str);
     }
    
     // Parse short as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static short get_short(String str)
-    {
+    private static short get_short(String str) {
         return (short)(int)Integer.decode(str);
     }
    
     // Parse byte as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static byte get_byte(String str)
-    {
+    private static byte get_byte(String str) {
         return Integer.decode(str).byteValue();
     }
 
