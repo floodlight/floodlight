@@ -156,7 +156,7 @@ public class LinkDiscoveryManager
     protected Map<LinkTuple, LinkInfo> links;
     protected int lldpFrequency = 15 * 1000; // sending frequency
     protected int lldpTimeout = 35 * 1000; // timeout
-    LLDPTLV controllerTLV;
+    protected LLDPTLV controllerTLV;
     protected ReentrantReadWriteLock lock;
 
     /**
@@ -367,13 +367,17 @@ public class LinkDiscoveryManager
             e.printStackTrace();
         }
 
-        Long result = System.nanoTime();
+        long result = System.nanoTime();
         if (localIPAddress != null)
             result = result * prime + IPv4.toIPv4Address(localIPAddress.getHostAddress());
         if (localInterface != null)
             result = result * prime + localInterface.hashCode();
+        // set the first 4 bits to 0.
+        result = result & (0x0fffffffffffffffL);
+
         bb.putLong(result);
 
+        log.info("Controller TLV: {}", result);
 
         bb.rewind();
         bb.get(controllerTLVValue, 0, 8);
