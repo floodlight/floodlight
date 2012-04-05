@@ -643,7 +643,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
     protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
     protected static long BD_TO_NBD_TIMEDIFF_MS = 300000; // 5 minutes
-    protected static long BD_TO_BD_TIMEDIFF_MS = 5000; // 5 seconds
+    protected static long BD_TO_BD_TIMEDIFF_MS = 0; // 0 seconds
     // This the amount of time that we need for a device to move from
     // a non-broadcast domain port to a broadcast domain port.
 
@@ -1560,7 +1560,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             if (flag2 == false) {
                 return (ls1 > (ls2 + BD_TO_NBD_TIMEDIFF_MS));
             } else {
-                return (ls1 > ls2);
+                return (ls1 > ls2 + BD_TO_BD_TIMEDIFF_MS);
             }
         }
     }
