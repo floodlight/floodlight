@@ -156,59 +156,61 @@ public class StaticFlowEntries {
      * @return A string of the actions encoded for our database
      */
     private static String flowModActionsToString(List<OFAction> fmActions) {
-        // TODO commas?, make a string array then join with commas in between
-        // TODO - some values may be in hex....i.e. ethertype
-        String actions = "";
+        StringBuilder sb = new StringBuilder();
         for (OFAction a : fmActions) {
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
             switch(a.getType()) {
                 case OUTPUT:
-                    actions += "output=" + Short.toString(((OFActionOutput)a).getPort());
+                    sb.append("output=" + Short.toString(((OFActionOutput)a).getPort()));
                     break;
                 case OPAQUE_ENQUEUE:
-                    actions += "enqueue=" + Integer.toString(((OFActionEnqueue)a).getQueueId());
+                    sb.append("enqueue=" + Integer.toString(((OFActionEnqueue)a).getQueueId()));
                     break;
                 case SET_VLAN_ID:
-                    actions += "set-vlan-id=" + 
-                        Short.toString(((OFActionVirtualLanIdentifier)a).getVirtualLanIdentifier());
+                    sb.append("set-vlan-id=" + 
+                        Short.toString(((OFActionVirtualLanIdentifier)a).getVirtualLanIdentifier()));
                     break;
                 case SET_VLAN_PCP:
-                    actions += "set-vlan-priority=" +
-                        Byte.toString(((OFActionVirtualLanPriorityCodePoint)a).getVirtualLanPriorityCodePoint());
+                    sb.append("set-vlan-priority=" +
+                        Byte.toString(((OFActionVirtualLanPriorityCodePoint)a).getVirtualLanPriorityCodePoint()));
                     break;
                 case SET_DL_SRC:
-                    actions += "set-src-mac=" + 
-                        HexString.toHexString(((OFActionDataLayerSource)a).getDataLayerAddress());
+                    sb.append("set-src-mac=" + 
+                        HexString.toHexString(((OFActionDataLayerSource)a).getDataLayerAddress()));
                     break;
                 case SET_DL_DST:
-                    actions += "set-dst-mac=" + 
-                        HexString.toHexString(((OFActionDataLayerDestination)a).getDataLayerAddress());
+                    sb.append("set-dst-mac=" + 
+                        HexString.toHexString(((OFActionDataLayerDestination)a).getDataLayerAddress()));
                     break;
                 case SET_NW_TOS:
-                    actions += "set-tos-bits=" +
-                        Byte.toString(((OFActionNetworkTypeOfService)a).getNetworkTypeOfService());
+                    sb.append("set-tos-bits=" +
+                        Byte.toString(((OFActionNetworkTypeOfService)a).getNetworkTypeOfService()));
                     break;
                 case SET_NW_SRC:
-                    actions += "set-nw-src=" +
-                        IPv4.fromIPv4Address(((OFActionNetworkLayerSource)a).getNetworkAddress());
+                    sb.append("set-nw-src=" +
+                        IPv4.fromIPv4Address(((OFActionNetworkLayerSource)a).getNetworkAddress()));
                     break;
                 case SET_NW_DST:
-                    actions += "set-nw-dst=" +
-                        IPv4.fromIPv4Address(((OFActionNetworkLayerDestination)a).getNetworkAddress());
+                    sb.append("set-nw-dst=" +
+                        IPv4.fromIPv4Address(((OFActionNetworkLayerDestination)a).getNetworkAddress()));
                     break;
                 case SET_TP_SRC:
-                    actions += "set-src-port=" +
-                        Short.toString(((OFActionTransportLayerSource)a).getTransportPort());
+                    sb.append("set-src-port=" +
+                        Short.toString(((OFActionTransportLayerSource)a).getTransportPort()));
                     break;
                 case SET_TP_DST:
-                    actions += "set-dst-port=" +
-                        Short.toString(((OFActionTransportLayerDestination)a).getTransportPort());
+                    sb.append("set-dst-port=" +
+                        Short.toString(((OFActionTransportLayerDestination)a).getTransportPort()));
                     break;
                 default:
-                    
+                    log.error("Could not decode action " + a);
+                    break;
             }
                 
         }
-        return actions;
+        return sb.toString();
     }
     
     /**

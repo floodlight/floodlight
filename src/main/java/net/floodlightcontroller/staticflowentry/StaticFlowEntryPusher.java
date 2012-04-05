@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -577,6 +578,16 @@ public class StaticFlowEntryPusher
     public void deleteAllFlows() {
         for (String entry : entry2dpid.keySet()) {
             deleteFlow(entry);
+        }
+    }
+    
+    @Override
+    public void deleteFlowsForSwitch(long dpid) {
+        String sDpid = HexString.toHexString(dpid);
+        
+        for (Entry<String, String> e : entry2dpid.entrySet()) {
+            if (e.getValue().equals(sDpid))
+                deleteFlow(e.getKey());
         }
     }
 }

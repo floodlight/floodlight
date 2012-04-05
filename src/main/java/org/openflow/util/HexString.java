@@ -75,7 +75,7 @@ public class HexString {
         return ret;
     }
     
-    public static long toLong(String values) {
+    public static long toLong(String values) throws NumberFormatException {
         return Long.parseLong(values.replaceAll(":", ""),16);
     }
 
