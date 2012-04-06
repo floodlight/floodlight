@@ -151,7 +151,7 @@ public class StaticFlowEntries {
     }
     
     /**
-     * Returns a 
+     * Returns a String representation of all the openflow actions.
      * @param fmActions A list of OFActions to encode into one string
      * @return A string of the actions encoded for our database
      */
@@ -166,7 +166,12 @@ public class StaticFlowEntries {
                     sb.append("output=" + Short.toString(((OFActionOutput)a).getPort()));
                     break;
                 case OPAQUE_ENQUEUE:
-                    sb.append("enqueue=" + Integer.toString(((OFActionEnqueue)a).getQueueId()));
+                    int queue = ((OFActionEnqueue)a).getQueueId();
+                    short port = ((OFActionEnqueue)a).getPort();
+                    sb.append("enqueue=" + Short.toString(port) + ":0x" + String.format("%02x", queue));
+                    break;
+                case STRIP_VLAN:
+                    sb.append("strip-vlan");
                     break;
                 case SET_VLAN_ID:
                     sb.append("set-vlan-id=" + 
@@ -189,11 +194,11 @@ public class StaticFlowEntries {
                         Byte.toString(((OFActionNetworkTypeOfService)a).getNetworkTypeOfService()));
                     break;
                 case SET_NW_SRC:
-                    sb.append("set-nw-src=" +
+                    sb.append("set-src-ip=" +
                         IPv4.fromIPv4Address(((OFActionNetworkLayerSource)a).getNetworkAddress()));
                     break;
                 case SET_NW_DST:
-                    sb.append("set-nw-dst=" +
+                    sb.append("set-dst-ip=" +
                         IPv4.fromIPv4Address(((OFActionNetworkLayerDestination)a).getNetworkAddress()));
                     break;
                 case SET_TP_SRC:
