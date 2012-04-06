@@ -77,6 +77,7 @@ import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
+import net.floodlightcontroller.util.StackTraceUtil;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -210,15 +211,21 @@ public class LinkDiscoveryManager
         do {
             LDUpdate update = updates.take();
 
-            if (topologyAware != null) {
-                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
-                    if (log.isDebugEnabled()) {
-                        log.debug("Dispatching link discovery update {} {} {} {} {}",
-                                  new Object[]{update.getOperation(),
-                                               update.getSrc(), update.getSrcPort(),
-                                               update.getDst(), update.getDstPort()});
+            if (log.isTraceEnabled()) {
+                log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+                          new Object[]{update.getOperation(),
+                                       HexString.toHexString(update.getSrc()), update.getSrcPort(),
+                                       HexString.toHexString(update.getDst()), update.getDstPort(),
+                                       linkDiscoveryAware});
+            }
+            if (linkDiscoveryAware != null) {
+                try {
+	                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+	                    lda.linkDiscoveryUpdate(update);
                     }
-                    lda.linkDiscoveryUpdate(update);
+                } 
+                catch (Exception e) {
+                    log.error("Error in link discovery updates loop: {} {}", e, StackTraceUtil.stackTraceToString(e));
                 }
             }
         } while (updates.peek() != null);
