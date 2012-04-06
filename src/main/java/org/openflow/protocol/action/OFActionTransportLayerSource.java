@@ -27,4 +27,9 @@ public class OFActionTransportLayerSource extends OFActionTransportLayer {
         super.setType(OFActionType.SET_TP_SRC);
         super.setLength((short) OFActionTransportLayer.MINIMUM_LENGTH);
     }
+    
+    public OFActionTransportLayerSource(short port) {
+        this();
+        this.transportPort = port;
+    }
 }
