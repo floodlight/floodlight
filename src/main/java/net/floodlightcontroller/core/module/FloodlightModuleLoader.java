@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -156,7 +157,7 @@ public class FloodlightModuleLoader {
         
         String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY)
                                 .replaceAll("\\s", "");
-        Set<String> configMods = new HashSet<String>();
+        Set<String> configMods = new LinkedHashSet<String>();
         configMods.addAll(Arrays.asList(moduleList.split(",")));
         return loadModulesFromList(configMods, prop);
 	}
@@ -282,13 +283,25 @@ public class FloodlightModuleLoader {
             if (simpls != null) {
                 for (Entry<Class<? extends IFloodlightService>, 
                         IFloodlightService> s : simpls.entrySet()) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Setting " + s.getValue() + 
-                                     "  as provider for " + 
-                                     s.getKey().getCanonicalName());
+                    // Only create a new service mapping if one doesn't exist already
+                    if (floodlightModuleContext.getServiceImpl(s.getKey()) == null) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Setting " + s.getValue()
+                                         + "  as provider for "
+                                         + s.getKey().getCanonicalName());
+                        }
+                        floodlightModuleContext.addService(s.getKey(),
+                                                           s.getValue());
+                    } else {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Not setting " + s.getValue()
+                                         + "as a provider for "
+                                         + s.getKey().getCanonicalName()
+                                         + " because "
+                                         + floodlightModuleContext.getServiceImpl(s.getKey())
+                                         + " already provides it");
+                        }
                     }
-                    floodlightModuleContext.addService(s.getKey(),
-                                                       s.getValue());
                 }
             }
         }
