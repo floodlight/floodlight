@@ -642,8 +642,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static int DEVICE_MAX_AGE    = 60 * 60 * 24;
     protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
     protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
-    protected static long BD_TO_NBD_TIMEDIFF_MS = 300000; // 5 minutes
-    protected static long BD_TO_BD_TIMEDIFF_MS = 0; // 0 seconds
+    protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
+    protected static long BD_TO_BD_TIMEDIFF_MS = 5000; // 0 seconds
     // This the amount of time that we need for a device to move from
     // a non-broadcast domain port to a broadcast domain port.
 
@@ -911,7 +911,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
                     long dt = currentDate.getTime() -
                             oldDap.getLastSeen().getTime() ;
-                    if (dt < BD_TO_NBD_TIMEDIFF_MS) {
+                    if (dt < NBD_TO_BD_TIMEDIFF_MS) {
                         // if the packet was seen within the last 5 minutes, we should ignore.
                         // it should also ignore processing the packet.
                         if (log.isTraceEnabled()) {
@@ -923,7 +923,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                                    dt/1000 }
                                     );
                         }
-                        return Command.STOP;
+                        return Command.CONTINUE;
                     }
                 } else if ( (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) &&
                         (topology.isBroadcastDomainPort(currSw, currPort) == true) &&
@@ -942,7 +942,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                                    dt/1000 }
                                     );
                         }
-                        return Command.STOP;
+                        return Command.CONTINUE;
                     }
                 }
             }
@@ -1554,13 +1554,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             if (flag2 == false) {
                 return (ls1 > ls2);
             } else {
-                return (ls1 > (ls2 - BD_TO_NBD_TIMEDIFF_MS));
+                return (ls1 > (ls2 - NBD_TO_BD_TIMEDIFF_MS));
             }
         } else {
             if (flag2 == false) {
-                return (ls1 > (ls2 + BD_TO_NBD_TIMEDIFF_MS));
+                return (ls1 > (ls2 + NBD_TO_BD_TIMEDIFF_MS));
             } else {
-                return (ls1 > ls2 + BD_TO_BD_TIMEDIFF_MS);
+                return ((ls1 > ls2 + BD_TO_BD_TIMEDIFF_MS) ||
+                        (ls1 < ls2 && ls1 > ls2 - BD_TO_BD_TIMEDIFF_MS));
             }
         }
     }
