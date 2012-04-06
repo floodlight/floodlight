@@ -1,5 +1,7 @@
 package net.floodlightcontroller.staticflowentry;
 
+import java.util.Map;
+
 import org.openflow.protocol.OFFlowMod;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -29,4 +31,14 @@ public interface IStaticFlowEntryPusherService extends IFloodlightService {
      * Deletes all flows.
      */
     public void deleteAllFlows();
+    
+    /**
+     * Gets all list of all flows
+     */
+    public Map<String, Map<String, OFFlowMod>> getFlows();
+    
+    /**
+     * Gets a list of flows by switch
+     */
+    public Map<String, OFFlowMod> getFlows(String dpid);
 }

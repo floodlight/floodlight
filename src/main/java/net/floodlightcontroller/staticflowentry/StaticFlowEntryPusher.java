@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -86,7 +87,7 @@ public class StaticFlowEntryPusher
     protected IRestApiService restApi;
 
     // Map<DPID, Map<Name, FlowMod>> ; FlowMod can be null to indicate non-active
-    protected HashMap<String, Map<String, OFFlowMod>> entriesFromStorage;
+    protected Map<String, Map<String, OFFlowMod>> entriesFromStorage;
     // Entry Name -> DPID of Switch it's on
     protected Map<String, String> entry2dpid;
 
@@ -176,7 +177,7 @@ public class StaticFlowEntryPusher
      */
 
     protected Map<String, String> computeEntry2DpidMap(
-                HashMap<String, Map<String, OFFlowMod>> map) {
+                Map<String, Map<String, OFFlowMod>> map) {
         Map<String, String> ret = new HashMap<String, String>();
         for(String dpid : map.keySet()) {
             for( String entry: map.get(dpid).keySet())
@@ -191,8 +192,8 @@ public class StaticFlowEntryPusher
      * @return
      */
     
-    private HashMap<String, Map<String, OFFlowMod>> readEntriesFromStorage() {
-        HashMap<String, Map<String, OFFlowMod>> entries = new HashMap<String, Map<String, OFFlowMod>>();
+    private Map<String, Map<String, OFFlowMod>> readEntriesFromStorage() {
+        Map<String, Map<String, OFFlowMod>> entries = new ConcurrentHashMap<String, Map<String, OFFlowMod>>();
         try {
             Map<String, Object> row;
             // null1=no predicate, null2=no ordering
@@ -221,7 +222,7 @@ public class StaticFlowEntryPusher
      */
 
     void parseRow(Map<String, Object> row,
-            HashMap<String, Map<String, OFFlowMod>> entries) {
+            Map<String, Map<String, OFFlowMod>> entries) {
         String switchName = null;
         String entryName = null;
 
@@ -589,5 +590,15 @@ public class StaticFlowEntryPusher
             if (e.getValue().equals(sDpid))
                 deleteFlow(e.getKey());
         }
+    }
+    
+    @Override
+    public Map<String, Map<String, OFFlowMod>> getFlows() {
+        return entriesFromStorage;
+    }
+    
+    @Override
+    public Map<String, OFFlowMod> getFlows(String dpid) {
+        return entriesFromStorage.get(dpid);
     }
 }
