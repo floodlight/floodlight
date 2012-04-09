@@ -65,6 +65,17 @@ public interface ITopologyService extends IFloodlightService  {
                                                          short srcPort,
                                                          long dst,
                                                          short dstPort);
+    
+    /**
+     * If the src broadcast domain port is not allowed for incoming broadcast, 
+     * this method provides the topologically equivalent incoming broadcast-allowed
+     * src port.  
+     * @param src
+     * @param dst
+     * @return the allowed broadcast port
+     */
+    public NodePortTuple getAllowedIncomingBroadcastPort(long src,
+                                                         short srcPort);
 
     public boolean isIncomingBroadcastAllowed(long sw, short portId);
 

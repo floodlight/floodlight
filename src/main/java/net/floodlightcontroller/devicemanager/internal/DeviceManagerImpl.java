@@ -442,7 +442,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
                 updateMaps(dCopy);
-                removeNetworkAddressFromStorage(d, na);
+                removeNetworkAddressFromStorage(d.getDlAddrString(), na);
             }
         }
         
@@ -541,7 +541,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                           new Object[] {dap, dCopy.getAttachmentPoints().size(),
                                         d.getAttachmentPoints().size(), dCopy});
             }
-            removeAttachmentPointFromStorage(d, dap);
+            removeAttachmentPointFromStorage(d.getDlAddrString(),
+                    HexString.toHexString(dap.getSwitchPort().getSw().getId()),
+                    dap.getSwitchPort().getPort().toString());
             d = null;
             return true;
         }
@@ -643,7 +645,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static int DEVICE_NA_MAX_AGE = 60 * 60 *  2;
     protected static int DEVICE_AP_MAX_AGE = 60 * 60 *  2;
     protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
-    protected static long BD_TO_BD_TIMEDIFF_MS = 5000; // 0 seconds
+    protected static long BD_TO_BD_TIMEDIFF_MS = 5000; // 5 seconds
     // This the amount of time that we need for a device to move from
     // a non-broadcast domain port to a broadcast domain port.
 
@@ -817,14 +819,17 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
         Ethernet eth = IFloodlightProviderService.bcStore.get(
                     cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        // If the packet in comes from a port that's not allowed by higher
-        // level topology, it should be dropped.  An L2 bridge can result
-        // in this situation.
+        /** If a broadcast or multicast packetIn comes from a port that's not allowed by higher
+         *  level topology, it should be dropped.
+         *  If it is an unicast packetIn, let it go through. This is the case when the broadcast
+         *  domain where the unicast packet originated learned the dst device on the wrong port.
+         *  Hopefully, the response from dst device will correct the learning of the BD.
+         */
         short pinPort = pi.getInPort();
         long pinSw = sw.getId();
         if (topology.isAllowed(pinSw, pinPort) == false) {
             if (eth.getEtherType() == Ethernet.TYPE_BDDP ||
-                    eth.isMulticast() == false) {
+                (eth.isBroadcast() == false && eth.isMulticast() == false)) {
                 return Command.CONTINUE;
             } else {
                 if (log.isDebugEnabled()) {
@@ -841,13 +846,26 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
         // Add this packet-in to event history
         evHistPktIn(match);
-        if (log.isTraceEnabled())
-            log.trace("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
+        if (log.isDebugEnabled())
+            log.debug("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
                       new Object[] { sw.getStringId(), pi.getInPort(), 
                                HexString.toHexString(match.getDataLayerSource()),
                                HexString.toHexString(match.getDataLayerDestination()),
                                match.getDataLayerType()
                       });
+
+        /**
+         * Drop all broadcast and multicast packets from not-allowed incoming broadcast ports
+         */
+        if ((eth.isBroadcast() || eth.isMulticast()) &&
+            !topology.isIncomingBroadcastAllowed(pinSw, pinPort)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Drop broadcast/multicast packets with src {} from not-allowed incoming broadcast ports {} {}",
+                        new Object[] {HexString.toHexString(eth.getSourceMACAddress()),
+                        HexString.toHexString(pinSw), pinPort});
+            }
+            return Command.STOP;
+        }
 
         // Create attachment point/update network address if required
         SwitchPortTuple switchPort = new SwitchPortTuple(sw, pi.getInPort());
@@ -895,57 +913,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Copy-replace of device would be too expensive here
             device.setLastSeen(currentDate);
             updateDevice = device.shouldWriteLastSeenToStorage();
-
-            // If the attachment point moves from a non-broadcast domain
-            // port to a broadcast domain port too quickly, ignore learning
-            // the broadcast domain attachment point.
-            for ( DeviceAttachmentPoint oldDap : device.getAttachmentPoints() ) {
-                // if the two switches are in the same cluster
-                // and if currSw,CurrPort is not in broadcast domain
-                long currSw = oldDap.getSwitchPort().getSw().getId();
-                short currPort = oldDap.getSwitchPort().getPort();
-                long newSw = switchPort.getSw().getId();
-                short newPort = switchPort.getPort();
-                if ( (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) &&
-                        (topology.isBroadcastDomainPort(currSw, currPort) == false) &&
-                        (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
-                    long dt = currentDate.getTime() -
-                            oldDap.getLastSeen().getTime() ;
-                    if (dt < NBD_TO_BD_TIMEDIFF_MS) {
-                        // if the packet was seen within the last 5 minutes, we should ignore.
-                        // it should also ignore processing the packet.
-                        if (log.isTraceEnabled()) {
-                            log.trace("Surpressing too quick move of {} from non broadcast domain port {} {}" +
-                                    " to broadcast domain port {} {}. Last seen on non-BD {} sec ago",
-                                    new Object[] { HexString.toHexString(match.getDataLayerSource()),
-                                                   oldDap.getSwitchPort().getSw().getStringId(), currPort,
-                                                   switchPort.getSw().getStringId(), newPort,
-                                                   dt/1000 }
-                                    );
-                        }
-                        return Command.CONTINUE;
-                    }
-                } else if ( (topology.getSwitchClusterId(currSw) == topology.getSwitchClusterId(newSw)) &&
-                        (topology.isBroadcastDomainPort(currSw, currPort) == true) &&
-                        (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
-                    long dt = currentDate.getTime() -
-                            oldDap.getLastSeen().getTime() ;
-                    if (dt < BD_TO_BD_TIMEDIFF_MS) {
-                        // if the packet was seen within the last 5 seconds, we should ignore.
-                        // it should also ignore processing the packet.
-                        if (log.isTraceEnabled()) {
-                            log.trace("Surpressing too quick move of {} from one broadcast domain port {} {}" +
-                                    " to another broadcast domain port {} {}. Last seen on BD {} sec ago",
-                                    new Object[] { HexString.toHexString(match.getDataLayerSource()),
-                                                   oldDap.getSwitchPort().getSw().getStringId(), currPort,
-                                                   switchPort.getSw().getStringId(), newPort,
-                                                   dt/1000 }
-                                    );
-                        }
-                        return Command.CONTINUE;
-                    }
-                }
-            }
             
             if (isGratArp(eth)) {
                 clearAttachmentPoints = true;
@@ -956,6 +923,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 updateAttachmentPointLastSeen = true;
             } else {
                 newAttachmentPoint = true;
+                if ((eth.isBroadcast() || eth.isMulticast()) &&
+                    topology.isIncomingBroadcastAllowed(pinSw, pinPort) == false) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Port {} {} is not allowed for incoming broadcast packet",
+                                  HexString.toHexString(pinSw), pinPort);
+                    }
+                    newAttachmentPoint = false;
+                }
             }
 
             if (nwSrc != 0) {
@@ -997,7 +972,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     dCopy.setNetworkAddresses(namap.values());
                     this.devMgrMaps.updateMaps(dCopy);
                     if (naOld !=null) 
-                        removeNetworkAddressFromStorage(dCopy, naOld);
+                        removeNetworkAddressFromStorage(dCopy.getDlAddrString(), naOld);
                 }
 
             }
@@ -1019,6 +994,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         if (attachmentPoint == null) {
                             newAttachmentPoint = false;
                         } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Learned new AP for device {} at {}",
+                                        HexString.toHexString(nd.getDataLayerAddressAsLong()),
+                                        attachmentPoint);
+                            }
                             nd.addAttachmentPoint(attachmentPoint);
                             evHistAttachmtPt(nd.getDataLayerAddressAsLong(), 
                                              attachmentPoint.getSwitchPort(),
@@ -1112,26 +1092,93 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
         // First, check if we have an existing attachment point
         DeviceAttachmentPoint curAttachmentPoint = null;
-        IOFSwitch newSwitch = swPort.getSw();
         for (DeviceAttachmentPoint existingAttachmentPoint: 
                                                 device.getAttachmentPoints()) {
-            IOFSwitch existingSwitch = 
-                            existingAttachmentPoint.getSwitchPort().getSw();
-            if ((newSwitch == existingSwitch) || ((topology != null) &&
-                    topology.inSameCluster(newSwitch.getId(), existingSwitch.getId()))) {
-                curAttachmentPoint = existingAttachmentPoint;
-                break;
+            // if the two switches are in the same cluster
+            long currSw = existingAttachmentPoint.getSwitchPort().getSw().getId();
+            short currPort = existingAttachmentPoint.getSwitchPort().getPort();
+            long newSw = swPort.getSw().getId();
+            short newPort = swPort.getPort();
+            long dt = currentDate.getTime() - existingAttachmentPoint.getLastSeen().getTime();
+            if (topology.inSameCluster(currSw, newSw)) {
+                if ((topology.isBroadcastDomainPort(currSw, currPort) == false) &&
+                    (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
+                    if (dt < NBD_TO_BD_TIMEDIFF_MS) {
+                        // if the packet was seen within the last 5 minutes, we should ignore.
+                        // it should also ignore processing the packet.
+                        if (log.isDebugEnabled()) {
+                            log.debug("Surpressing too quick move of {} from non broadcast domain port {} {}" +
+                                    " to broadcast domain port {} {}. Last seen on non-BD {} sec ago",
+                                    new Object[] {device.getDlAddrString(),
+                                                existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
+                                                swPort.getSw().getStringId(), newPort,
+                                                dt/1000 }
+                                    );
+                        }
+                        return null;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("AP move of {} from non broadcast domain port {} {}" +
+                                    " to broadcast domain port {} {}. Last seen on BD {} sec ago",
+                                    new Object[] { device.getDlAddrString(),
+                                                   existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
+                                                   swPort.getSw().getStringId(), newPort,
+                                                   dt/1000 }
+                                    );
+                        }
+                        curAttachmentPoint = existingAttachmentPoint;
+                        break;
+                    }
+                } else if ((topology.isBroadcastDomainPort(currSw, currPort) == true) &&
+                          (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
+                    if (topology.isInSameBroadcastDomain(currSw, currPort, newSw, newPort)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("new AP {} {} and current AP {} {} belong to the same broadcast domain",
+                                    new Object[] {HexString.toHexString(newSw), newPort,
+                                    HexString.toHexString(currSw), currPort});
+                        }
+                        return null;
+                    }
+                    if (dt < BD_TO_BD_TIMEDIFF_MS) {
+                        // if the packet was seen within the last 5 seconds, we should ignore.
+                        // it should also ignore processing the packet.
+                        if (log.isDebugEnabled()) {
+                            log.debug("Surpressing too quick move of {} from one broadcast domain port {} {}" +
+                                    " to another broadcast domain port {} {}. Last seen on BD {} sec ago",
+                                    new Object[] {device.getDlAddrString(),
+                                                existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
+                                                swPort.getSw().getStringId(), newPort,
+                                                dt/1000 }
+                                    );
+                        }
+                        return null;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("AP move of {} from one broadcast domain port {} {}" +
+                                    " to another broadcast domain port {} {}. Last seen on BD {} sec ago",
+                                    new Object[] { device.getDlAddrString(),
+                                                   existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
+                                                   swPort.getSw().getStringId(), newPort,
+                                                   dt/1000 }
+                                    );
+                        }
+                        curAttachmentPoint = existingAttachmentPoint;
+                        break;
+                    }
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("AP move of {} from port {} {}" +
+                                " to port {} {}. Last seen {} sec ago",
+                                new Object[] { device.getDlAddrString(),
+                                               existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
+                                               swPort.getSw().getStringId(), newPort,
+                                               dt/1000 }
+                                );
+                    }
+                    curAttachmentPoint = existingAttachmentPoint;
+                    break;
+                }
             }
-        }
-
-        if (curAttachmentPoint != null) {
-            Long curDPID = curAttachmentPoint.getSwitchPort().getSw().getId();
-            Short curPort = curAttachmentPoint.getSwitchPort().getPort();
-            boolean sameBD = 
-                    topology.isInSameBroadcastDomain(swPort.getSw().getId(),
-                                                     swPort.getPort(),
-                                                     curDPID, curPort);
-            if (sameBD) return null;
         }
         
         // Do we have an old attachment point?
@@ -1152,7 +1199,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 log.info("Unblocking {} for device {}",
                          attachmentPoint.getSwitchPort(), device);
                 attachmentPoint.setBlocked(false);
-                evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort, 
+                evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort,
                     EvAction.UNBLOCKED, "packet-in after block timer expired");
             }
             // Remove from old list
@@ -1162,7 +1209,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         // Update mappings
         devMgrMaps.addDevAttachmentPoint(
                 device.getDataLayerAddressAsLong(), swPort, currentDate);
-        evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort, 
+        evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort,
                 EvAction.ADDED, "packet-in GNAP");
 
         // If curAttachmentPoint exists, we mark it a conflict and may block it.
@@ -1176,10 +1223,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 curAttachmentPoint.setConflict(currentDate);
                 if (curAttachmentPoint.isFlapping()) {
                     curAttachmentPoint.setBlocked(true);
-                    evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
+                    evHistAttachmtPt(device.getDataLayerAddressAsLong(),
                             curAttachmentPoint.getSwitchPort(),
                             EvAction.BLOCKED, "Conflict");
-                    writeAttachmentPointToStorage(device, curAttachmentPoint, 
+                    writeAttachmentPointToStorage(device, curAttachmentPoint,
                                                 currentDate);
                     log.warn(
                         "Device {}: flapping between {} and {}, block the latter",
@@ -1187,29 +1234,32 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         curAttachmentPoint.getSwitchPort()});
                     // Check if flapping is between the same switch port
                     if (swPort.getSw().getId() ==
-                    		curAttachmentPoint.getSwitchPort().getSw().getId()
-                    	    && swPort.getPort() ==
-                    	    curAttachmentPoint.getSwitchPort().getPort()) {
-                    	log.warn("Fake flapping on port " + swPort.getPort() +
-                    			" between sw " + swPort.getSw() + " and " +
-                    			curAttachmentPoint.getSwitchPort().getSw());
-                    	device.removeOldAttachmentPoint(curAttachmentPoint);
-                    	removeAttachmentPointFromStorage(device,
-                    			curAttachmentPoint);
+                        curAttachmentPoint.getSwitchPort().getSw().getId() &&
+                        swPort.getPort() ==
+                        curAttachmentPoint.getSwitchPort().getPort()) {
+                        log.warn("Fake flapping on port " + swPort.getPort() +
+                            " between sw " + swPort.getSw() + " and " +
+                            curAttachmentPoint.getSwitchPort().getSw());
+                        device.removeOldAttachmentPoint(curAttachmentPoint);
+                        removeAttachmentPointFromStorage(device.getDlAddrString(),
+                            HexString.toHexString(curAttachmentPoint.getSwitchPort().getSw().getId()),
+                            curAttachmentPoint.getSwitchPort().getPort().toString());
                     }
                 } else {
-                    removeAttachmentPointFromStorage(device, curAttachmentPoint);
-                    evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
-                            curAttachmentPoint.getSwitchPort(), 
+                    removeAttachmentPointFromStorage(device.getDlAddrString(),
+                        HexString.toHexString(curAttachmentPoint.getSwitchPort().getSw().getId()),
+                        curAttachmentPoint.getSwitchPort().getPort().toString());
+                    evHistAttachmtPt(device.getDataLayerAddressAsLong(),
+                            curAttachmentPoint.getSwitchPort(),
                             EvAction.REMOVED, "Conflict");
                 }
             }
-            updateMoved(device, curAttachmentPoint.getSwitchPort(), 
+            updateMoved(device, curAttachmentPoint.getSwitchPort(),
                                                             attachmentPoint);
 
             if (log.isDebugEnabled()) {
                 log.debug("Device {} moved from {} to {}", new Object[] {
-                           device, curAttachmentPoint.getSwitchPort(), swPort});
+                           device.getDlAddrString(), curAttachmentPoint.getSwitchPort(), swPort});
             }
         } else {
             updateStatus(device, true);
@@ -1343,12 +1393,18 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
     @Override
     public void addedSwitch(IOFSwitch sw) {
+        /**
+         * No point to restore the old APs on the switch since
+         * the hosts connecting to the switch will be discovered
+         * by ARP if anyone wants to talk to the hosts.
+         */
         // Fix up attachment points related to the switch
+        /*
         lock.writeLock().lock();
         try {
             Long swDpid = sw.getId();
             List<PendingAttachmentPoint> papl = 
-                devMgrMaps.switchUnresolvedAPMap.get(swDpid);
+                devMgrMaps.getSwitchUnresolvedAPMap().get(swDpid);
             if (papl != null) {
                 for (PendingAttachmentPoint pap : papl) {
                     Device d = devMgrMaps.getDeviceByDataLayerAddr(pap.mac);
@@ -1361,11 +1417,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                             sw.getId(), pap.switchPort,
                             EvAction.ADDED, "Switch Added");
                 }
-                devMgrMaps.switchUnresolvedAPMap.remove(swDpid);
+                devMgrMaps.getSwitchUnresolvedAPMap().remove(swDpid);
             }
         } finally {
             lock.writeLock().unlock();
-        }
+        }*/
     }
 
     @Override
@@ -1522,7 +1578,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
     }
 
-    private boolean isNewer(DeviceAttachmentPoint dap1,
+    protected boolean isNewer(DeviceAttachmentPoint dap1,
                             DeviceAttachmentPoint dap2) {
         // dap 1 is newer than dap 2 if
         // (1) if dap 1 is a non-broadcast domain attachment point
@@ -1539,25 +1595,25 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         //          dap2.lastseen
 
         SwitchPortTuple sp1, sp2;
-        boolean flag1, flag2;
+        boolean sp1IsBDPort, sp2IsBDPort;
         sp1 = dap1.getSwitchPort();
         sp2 = dap2.getSwitchPort();
 
-        flag1 = topology.isBroadcastDomainPort(sp1.getSw().getId(),
+        sp1IsBDPort = topology.isBroadcastDomainPort(sp1.getSw().getId(),
                                                sp1.getPort());
-        flag2 = topology.isBroadcastDomainPort(sp2.getSw().getId(),
+        sp2IsBDPort = topology.isBroadcastDomainPort(sp2.getSw().getId(),
                                                sp2.getPort());
         long ls1 = dap1.getLastSeen().getTime();
         long ls2 = dap2.getLastSeen().getTime();
 
-        if (flag1 == false) {
-            if (flag2 == false) {
+        if (sp1IsBDPort == false) {
+            if (sp2IsBDPort == false) {
                 return (ls1 > ls2);
             } else {
                 return (ls1 > (ls2 - NBD_TO_BD_TIMEDIFF_MS));
             }
         } else {
-            if (flag2 == false) {
+            if (sp2IsBDPort == false) {
                 return (ls1 > (ls2 + NBD_TO_BD_TIMEDIFF_MS));
             } else {
                 return ((ls1 > ls2 + BD_TO_BD_TIMEDIFF_MS) ||
@@ -1566,14 +1622,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         }
     }
     /**
-     * Removes any attachment points that are in the same 
-     * {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster} 
+     * Removes any attachment points that are in the same
+     * {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
      * @param d The device to update the attachment points
      */
     public void cleanupAttachmentPoints(Device d) {
         // The long here is the SwitchCluster ID
-        Map<Long, DeviceAttachmentPoint> map = 
+        Map<Long, DeviceAttachmentPoint> tempAPMap =
                             new HashMap<Long, DeviceAttachmentPoint>();
+        Map<Long, DeviceAttachmentPoint> tempOldAPMap =
+            new HashMap<Long, DeviceAttachmentPoint>();
 
         // Get only the latest DAPs into a map
         for (DeviceAttachmentPoint dap : d.getAttachmentPoints()) {
@@ -1588,19 +1646,18 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (topology.isAllowed(swid, port) == false)
                     continue;
 
-                if (map.containsKey(clusterId)) {
+                if (tempAPMap.containsKey(clusterId)) {
                     // We compare to see which one is newer, move attachment 
                     // point to "old" list.
                     // They are removed after deleting from storage.
 
-                    DeviceAttachmentPoint value = map.get(clusterId);
-                    //if (dap.getLastSeen().after(value.getLastSeen())) {
-                    if (isNewer(dap, map.get(clusterId))) {
-                        map.put(clusterId, dap);
-                        d.addOldAttachmentPoint(value); // on copy of device
+                    DeviceAttachmentPoint existingDap = tempAPMap.get(clusterId);
+                    if (isNewer(dap, existingDap)) {
+                        tempAPMap.put(clusterId, dap);
+                        tempOldAPMap.put(clusterId, existingDap);
                     }
                 } else {
-                    map.put(clusterId, dap);
+                    tempAPMap.put(clusterId, dap);
                 }
             }
         }
@@ -1608,7 +1665,12 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         synchronized (d) {
             // Since the update below is happening on a copy of the device it
             // should not impact packetIn processing time due to lock contention
-            d.setAttachmentPoints(map.values());
+            d.setAttachmentPoints(tempAPMap.values());
+            for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
+                d.addOldAttachmentPoint(dap);
+            }
+
+            log.debug("After cleanup, device {}", d);
         }
     }
 
@@ -1679,20 +1741,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     // Storage Remove Methods
     // **********************
 
-    protected void removeAttachmentPointFromStorage(Device device, 
-                                    DeviceAttachmentPoint attachmentPoint) {
+    protected void removeAttachmentPointFromStorage(String deviceId,
+                                    String switchId, String port) {
+        String attachmentPointId =
+                        deviceId + "|" + switchId + "|" + port;
         try {
-            String deviceId = device.getDlAddrString();
-            SwitchPortTuple switchPort = attachmentPoint.getSwitchPort();
-            String switchId = switchPort.getSw().getStringId();
-            Short port = switchPort.getPort();
-            String attachmentPointId = 
-                            deviceId + "|" + switchId + "|" + port.toString();
             storageSource.deleteRowAsync(
                         DEVICE_ATTACHMENT_POINT_TABLE_NAME, attachmentPointId);
         } catch (NullPointerException e) {
-            log.warn("Null ptr exception for device {} attach-point {}",
-                    device, attachmentPoint);
+            log.warn("Null ptr exception for device {} on sw {} port {}",
+                    new Object[] {deviceId, switchId, port});
         }
     }
 
@@ -1721,11 +1779,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         networkAddress.lastSeenWrittenToStorage(currentDate);
     }
 
-    protected void removeNetworkAddressFromStorage(Device device, 
+    protected void removeNetworkAddressFromStorage(String deviceId,
                                         DeviceNetworkAddress networkAddress) {
-        assert(device != null);
+        assert(deviceId != null);
         assert(networkAddress != null);
-        String deviceId = device.getDlAddrString();
         String networkAddressString = IPv4.fromIPv4Address(
                                             networkAddress.getNetworkAddress());
         String networkAddressId = deviceId + "|" + networkAddressString;
@@ -1830,11 +1887,12 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
            long mac     = HexString.toLong(macString);
            long swDpid  = HexString.toLong(dpidString);
            IOFSwitch sw = floodlightProvider.getSwitches().get(swDpid);
-
            Integer port = dapResultSet.getIntegerObject(PORT_COLUMN_NAME);
+
            if (port == null || port > Short.MAX_VALUE) continue;
 
            if (sw == null) { // switch has not joined yet
+               removeAttachmentPointFromStorage(macString, dpidString, port.toString());
                devMgrMaps.updateSwitchUnresolvedAPMap(
                        swDpid, mac, port.shortValue(), lastSeen);
            } else {
@@ -1945,9 +2003,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      * @return the new device object since the device is immutable
      */
     private Device removeAgedAttachmentPoints(Device device, Date currentDate) {
-        Collection<DeviceAttachmentPoint> aps = device.getAttachmentPoints();
+        if (device == null) return null;
 
         long dlAddr = device.getDataLayerAddressAsLong();
+        Collection<DeviceAttachmentPoint> aps = device.getAttachmentPoints();
+
         for (DeviceAttachmentPoint ap : aps) {
             int expire = ap.getExpire();
 
@@ -1956,6 +2016,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
             Date agedBoundary = ageBoundaryDifference(currentDate, expire);
             if (ap.getLastSeen().before(agedBoundary)) {
+                log.debug("remove AP {} from device {}", ap, HexString.toHexString(dlAddr));
                 devMgrMaps.delDevAttachmentPoint(dlAddr, ap.getSwitchPort());
                 evHistAttachmtPt(device.getDataLayerAddressAsLong(), 
                         ap.getSwitchPort(), EvAction.REMOVED,
@@ -1969,23 +2030,23 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     /**
      * Age device entry based on an expiry associated with the device.
      */
-     private void removeAgedDevices(Date currentDate) {
+    private void removeAgedDevices(Date currentDate) {
         Date deviceAgeBoundary = ageBoundaryDifference(currentDate, 
-                                                                DEVICE_MAX_AGE);
+                                        DEVICE_MAX_AGE);
 
         Collection<Device> deviceColl = devMgrMaps.getDevices();
         for (Device device: deviceColl) {
-            device = removeAgedNetworkAddresses(device, currentDate);
-            device = removeAgedAttachmentPoints(device, currentDate);
+             device = removeAgedNetworkAddresses(device, currentDate);
+             device = removeAgedAttachmentPoints(device, currentDate);
 
-            if ((device.getAttachmentPoints().size() == 0) &&
-                (device.getNetworkAddresses().size() == 0) &&
-                (device.getLastSeen().before(deviceAgeBoundary))) {
-                delDevice(device);
-            }
-        } 
+             if ((device.getAttachmentPoints().size() == 0) &&
+                 (device.getNetworkAddresses().size() == 0) &&
+                 (device.getLastSeen().before(deviceAgeBoundary))) {
+                 delDevice(device);
+             }
+        }
     }
-     
+
     protected static int DEVICE_AGING_TIMER= 60 * 15; // in seconds
     protected static final int DEVICE_AGING_TIMER_INTERVAL = 1; // in seconds
 
@@ -2030,13 +2091,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         public void run() {
             boolean updatePortChannel = portChannelConfigChanged;
             portChannelConfigChanged = false;
-            
+
             if (updatePortChannel) {
                 readPortChannelConfigFromStorage();
             }
 
             try { 
-                log.debug("DeviceUpdateWorker: cleaning up attachment points");
+                log.debug("DeviceUpdateWorker: cleaning up attachment points.");
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
                     // If the set of devices connected to the switches we 
                     // re-iterate a max of 3 times - WHY? TODO
@@ -2052,10 +2113,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                     // with recent activities
                                     if (dap.isInConflict() && !updatePortChannel)
                                         continue;
-                                    // Delete from memory after storage, 
+                                    // Delete from memory after storage,
                                     // otherwise an exception will
                                     // leave stale attachment points on storage.
-                                    removeAttachmentPointFromStorage(dCopy, dap);
+                                    log.debug("Remove AP {} from storage for device {}", dap, dCopy.getDlAddrString());
+                                    removeAttachmentPointFromStorage(dCopy.getDlAddrString(),
+                                        HexString.toHexString(dap.getSwitchPort().getSw().getId()),
+                                        dap.getSwitchPort().getPort().toString());
                                     dCopy.removeOldAttachmentPoint(dap);
                                 }
                                 // Update the maps with the new device copy
@@ -2071,8 +2135,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                 "attempted three times and failed.");
                     }
                 }
-                log.debug("DeviceUpdateWorker: finished cleaning up device " +
-                          "attachment points");
             } catch (StorageException e) {
                 log.error("DeviceUpdateWorker had a storage exception, " +
                         "Floodlight exiting");

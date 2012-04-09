@@ -249,6 +249,14 @@ public class Device {
         }
     }
 
+    public void setOldAttachmentPoints(Collection<DeviceAttachmentPoint> attachmentPoints) {
+        this.oldAttachmentPoints = new ConcurrentHashMap<SwitchPortTuple, DeviceAttachmentPoint>();
+        for (DeviceAttachmentPoint attachmentPoint: attachmentPoints) {
+            assert(attachmentPoint.getSwitchPort() != null);
+            addOldAttachmentPoint(attachmentPoint);
+        }
+    }
+
     public Collection<DeviceAttachmentPoint> getOldAttachmentPoints() {
         return oldAttachmentPoints.values();
     }
@@ -258,7 +266,9 @@ public class Device {
     }
 
     public void addOldAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
-        oldAttachmentPoints.put(attachmentPoint.getSwitchPort(), attachmentPoint);
+        if (attachmentPoint != null) {
+            oldAttachmentPoints.put(attachmentPoint.getSwitchPort(), attachmentPoint);
+        }
     }
 
     public DeviceAttachmentPoint removeOldAttachmentPoint(DeviceAttachmentPoint attachmentPoint) {
