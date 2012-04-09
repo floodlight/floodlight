@@ -305,19 +305,20 @@ public class SQLStorageSource extends AbstractStorageSource {
 			values = formatValues(values);
 
 			StringBuffer sb = new StringBuffer();
+			StringBuffer objects = new StringBuffer();
 			sb.append("Insert into " + tableName + "(");
-			String objects = " values(";
+			objects.append(" values(");
 			Iterator<String> it = values.keySet().iterator();
 			for (int i = 0; i < values.size() - 1; i++) {
 				String key = it.next();
 				sb.append(key + ", ");
-				objects += values.get(key) + ", ";
+				objects.append(values.get(key) + ", ");
 			}
 			String key = it.next().toString();
-			objects += values.get(key) + ")";
-			sb.append(key + ") " + objects);
+			objects.append(values.get(key) + ")");
+			sb.append(key + ") " + objects.toString() + ";");
 
-			System.out.println("\t\t\t" + sb.toString());
+			//System.out.println("\t\t\t" + sb.toString());
 			stmt.execute(sb.toString());
 
 			Set<Object> set = new HashSet<Object>();
@@ -352,17 +353,18 @@ public class SQLStorageSource extends AbstractStorageSource {
 			rowKey = formatValue(rowKey);
 			values = formatValues(values);
 
-			sb.append("update " + tableName + " set ");
+			StringBuffer objects = new StringBuffer();
+			sb.append("replace into " + tableName + "(");
+			objects.append(" values(");
 			Iterator<String> it = values.keySet().iterator();
 			for (int i = 0; i < values.size() - 1; i++) {
 				String key = it.next();
-				sb.append(key + "=" + values.get(key) + ", ");
-				//System.out.println(values.get(key) + "\n" + sb.toString());
+				sb.append(key + ", ");
+				objects.append(values.get(key) + ", ");
 			}
 			String key = it.next().toString();
-			sb.append(key + "=" + values.get(key));
-			if (!pKey.equals(""))
-				sb.append(" where " + pKey + "=" + rowKey + ";");
+			objects.append(values.get(key) + ")");
+			sb.append(key + ") " + objects.toString() + ";");
 			
 			//System.out.println(sql);
 			stmt.execute(sb.toString());
