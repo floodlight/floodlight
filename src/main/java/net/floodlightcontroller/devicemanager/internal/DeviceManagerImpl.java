@@ -2231,10 +2231,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         } else {
             log.error("Could not add topology listener");
         }
-<<<<<<< HEAD
-=======
 
->>>>>>> eda751395b3dce95a3a71d28f0845c1036709187
         // Create our database tables
         Set<String> columns = new HashSet<String>();
         columns.add(MAC_COLUMN_NAME);
@@ -2272,7 +2269,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         storageSource.createTable(PORT_CHANNEL_TABLE_NAME, columns);
         storageSource.setTablePrimaryKeyName(
                         PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
-
+                        
         storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
