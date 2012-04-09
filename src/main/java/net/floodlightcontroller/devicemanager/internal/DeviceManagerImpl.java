@@ -1168,7 +1168,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("AP move of {} from port {} {}" +
-                                " to port {} {}. Last seen on BD {} sec ago",
+                                " to port {} {}. Last seen {} sec ago",
                                 new Object[] { device.getDlAddrString(),
                                                existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
                                                swPort.getSw().getStringId(), newPort,
@@ -1259,7 +1259,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
             if (log.isDebugEnabled()) {
                 log.debug("Device {} moved from {} to {}", new Object[] {
-                           device, curAttachmentPoint.getSwitchPort(), swPort});
+                           device.getDlAddrString(), curAttachmentPoint.getSwitchPort(), swPort});
             }
         } else {
             updateStatus(device, true);
@@ -1666,7 +1666,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             // Since the update below is happening on a copy of the device it
             // should not impact packetIn processing time due to lock contention
             d.setAttachmentPoints(tempAPMap.values());
-            d.setOldAttachmentPoints(tempOldAPMap.values());
+            for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
+                d.addOldAttachmentPoint(dap);
+            }
+
+            log.debug("After cleanup, device {}", d);
         }
     }
 
