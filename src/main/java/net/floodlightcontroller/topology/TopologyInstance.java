@@ -581,4 +581,10 @@ public class TopologyInstance {
         // TODO Auto-generated method stub
         return null;
     }
+
+    public NodePortTuple
+    getAllowedIncomingBroadcastPort(long src, short srcPort) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

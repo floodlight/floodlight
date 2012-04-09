@@ -1,5 +1,7 @@
 package net.floodlightcontroller.topology;
 
+import org.openflow.util.HexString;
+
 public class NodePortTuple {
     protected long nodeId;
     protected short portId;
@@ -23,7 +25,7 @@ public class NodePortTuple {
     }
     
     public String toString() {
-        return "[id=" + new Long(nodeId) + ", port=" + new Short(portId) + "]";
+        return "[id=" + HexString.toHexString(nodeId) + ", port=" + new Short(portId) + "]";
     }
 
     @Override
