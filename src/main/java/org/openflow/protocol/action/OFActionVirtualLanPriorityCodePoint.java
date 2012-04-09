@@ -36,6 +36,11 @@ public class OFActionVirtualLanPriorityCodePoint extends OFAction {
         super.setType(OFActionType.SET_VLAN_PCP);
         super.setLength((short) MINIMUM_LENGTH);
     }
+    
+    public OFActionVirtualLanPriorityCodePoint(byte priority) {
+        this();
+        this.virtualLanPriorityCodePoint = priority;
+    }
 
     /**
      * @return the virtualLanPriorityCodePoint

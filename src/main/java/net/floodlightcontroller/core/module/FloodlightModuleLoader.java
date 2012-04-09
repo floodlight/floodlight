@@ -172,7 +172,7 @@ public class FloodlightModuleLoader {
         logger.debug("Starting module loader");
         findAllModules(configMods);
         
-        Set<IFloodlightModule> moduleSet = new HashSet<IFloodlightModule>();
+        Collection<IFloodlightModule> moduleSet = new ArrayList<IFloodlightModule>();
         Map<Class<? extends IFloodlightService>, IFloodlightModule> moduleMap =
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightModule>();
@@ -253,7 +253,7 @@ public class FloodlightModuleLoader {
 	 */
 	protected void addModule(Map<Class<? extends IFloodlightService>, 
                                            IFloodlightModule> moduleMap,
-                            Set<IFloodlightModule> moduleSet,
+                            Collection<IFloodlightModule> moduleSet,
                             IFloodlightModule module) {
         if (!moduleSet.contains(module)) {
             Collection<Class<? extends IFloodlightService>> servs =
@@ -267,11 +267,11 @@ public class FloodlightModuleLoader {
 	}
 
     /**
-     * Allocate service implementations and then init all the modules
+     * Allocate  service implementations and then init all the modules
      * @param moduleSet The set of modules to call their init function on
      * @throws FloodlightModuleException If a module can not properly be loaded
      */
-    protected void initModules(Set<IFloodlightModule> moduleSet) 
+    protected void initModules(Collection<IFloodlightModule> moduleSet) 
                                            throws FloodlightModuleException {
         for (IFloodlightModule module : moduleSet) {            
             // Get the module's service instance(s)
@@ -307,7 +307,7 @@ public class FloodlightModuleLoader {
      * Call each loaded module's startup method
      * @param moduleSet the module set to start up
      */
-    protected void startupModules(Set<IFloodlightModule> moduleSet) {
+    protected void startupModules(Collection<IFloodlightModule> moduleSet) {
         for (IFloodlightModule m : moduleSet) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Starting " + 

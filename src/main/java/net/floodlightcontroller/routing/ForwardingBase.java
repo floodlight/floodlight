@@ -89,7 +89,15 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             return d1ClusterId.compareTo(d2ClusterId);
         }
     };
-    
+
+    // Comparator for sorting the attachment points by last seen.
+    public Comparator<DeviceAttachmentPoint> lastSeenComparator = new Comparator<DeviceAttachmentPoint>() {
+        @Override
+        public int compare(DeviceAttachmentPoint d1, DeviceAttachmentPoint d2) {
+            return d1.getLastSeen().compareTo(d2.getLastSeen());
+        }
+    };
+
     /**
       * All subclasses must define this function if they want any specific forwarding action
      * @param sw Switch that the packet came in from
@@ -403,11 +411,14 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         OFMatch match = new OFMatch();
         match.setDataLayerDestination(device.getDataLayerAddress());
         match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
+        long cookie =
+                AppCookie.makeCookie(FORWARDING_APP_ID, 0);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
             .getMessage(OFType.FLOW_MOD))
             .setCommand(OFFlowMod.OFPFC_DELETE)
             .setOutPort((short) OFPort.OFPP_NONE.getValue())
             .setMatch(match)
+            .setCookie(cookie)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
         // Flush to all switches

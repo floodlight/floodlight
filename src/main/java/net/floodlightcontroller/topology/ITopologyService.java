@@ -36,12 +36,35 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public boolean inSameCluster(long switch1, long switch2);
 
+    /**
+     * Queries whether two switches are in the same island.
+     * Currently, island and cluster are the same. In future,
+     * islands could be different than clusters.
+     * @param switch1
+     * @param switch2
+     * @return
+     */
+    public boolean inSameIsland(long switch1, long switch2);
 
     public void addListener(ITopologyListener listener);
 
     public boolean isBroadcastDomainPort(long sw, short port);
 
     public boolean isAllowed(long sw, short portId);
+
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort);
+    /**
+     * If the dst is not allowed by the higher-level topology, this method provides
+     * the topologically equivalent broadcast port.  
+     * @param src
+     * @param dst
+     * @return the allowed broadcast port
+     */
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort);
 
     public boolean isIncomingBroadcastAllowed(long sw, short portId);
 
