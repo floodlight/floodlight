@@ -103,14 +103,14 @@ public class TopologyInstance {
     }
 
     public void printTopology() {
-        log.info("-----------------------------------------------");
-        log.info("Links: {}",this.switchPortLinks);
-        log.info("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.info("tunnelPorts: {}", tunnelPorts);
-        log.info("clusters: {}", clusters);
-        log.info("destinationRootedTrees: {}", destinationRootedTrees);
-        log.info("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.info("-----------------------------------------------");
+        log.debug("-----------------------------------------------");
+        log.debug("Links: {}",this.switchPortLinks);
+        log.debug("broadcastDomainPorts: {}", broadcastDomainPorts);
+        log.debug("tunnelPorts: {}", tunnelPorts);
+        log.debug("clusters: {}", clusters);
+        log.debug("destinationRootedTrees: {}", destinationRootedTrees);
+        log.debug("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+        log.debug("-----------------------------------------------");
     }
 
     protected void addLinksToClusters() {
@@ -578,6 +578,12 @@ public class TopologyInstance {
     public NodePortTuple
             getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
                                             short dstPort) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public NodePortTuple
+    getAllowedIncomingBroadcastPort(long src, short srcPort) {
         // TODO Auto-generated method stub
         return null;
     }
