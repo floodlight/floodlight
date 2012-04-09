@@ -209,14 +209,14 @@ public class LinkDiscoveryManager
         do {
             LDUpdate update = updates.take();
 
-            if (log.isTraceEnabled()) {
-                log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
-                          new Object[]{update.getOperation(),
-                                       HexString.toHexString(update.getSrc()), update.getSrcPort(),
-                                       HexString.toHexString(update.getDst()), update.getDstPort(),
-                                       linkDiscoveryAware});
-            }
             if (linkDiscoveryAware != null) {
+	            if (log.isTraceEnabled()) {
+	                log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+	                          new Object[]{update.getOperation(),
+	                                       HexString.toHexString(update.getSrc()), update.getSrcPort(),
+	                                       HexString.toHexString(update.getDst()), update.getDstPort(),
+	                                       linkDiscoveryAware});
+	            }
                 try {
 	                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
 	                    lda.linkDiscoveryUpdate(update);
