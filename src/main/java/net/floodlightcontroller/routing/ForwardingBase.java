@@ -228,9 +228,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
         try {
             counterStore.updatePktOutFMCounterStore(sw, fm);
-            log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
+            if (log.isDebugEnabled()) {
+                log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
+            }
             sw.write(fm, cntx);
             if (doFlush) {
                 sw.flush();
