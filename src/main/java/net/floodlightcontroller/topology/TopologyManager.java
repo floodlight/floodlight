@@ -23,6 +23,7 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.StackTraceUtil;
 
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
@@ -59,9 +60,15 @@ IRoutingService, ILinkDiscoveryListener {
     protected class NewInstanceWorker implements Runnable {
         @Override 
         public void run() {
-            applyUpdates();
-            createNewInstance();
-            informListeners();
+            try {
+	            applyUpdates();
+	            createNewInstance();
+	            informListeners();
+            }
+            catch (Exception e) {
+                log.error("Error in topology instance task thread: {} {}", 
+                          e, StackTraceUtil.stackTraceToString(e));
+            }
         }
     }
 
@@ -71,7 +78,7 @@ IRoutingService, ILinkDiscoveryListener {
             try {
                 update = ldUpdates.take();
             } catch (Exception e) {
-                log.error("Error reading link discovery update. {}", e);
+                log.error("Error reading link discovery update. {} {}", e, StackTraceUtil.stackTraceToString(e));
             }
             if (log.isTraceEnabled()) {
                 log.info("Applying update: {}", update);

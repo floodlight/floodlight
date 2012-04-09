@@ -27,4 +27,9 @@ public class OFActionDataLayerSource extends OFActionDataLayer {
         super.setType(OFActionType.SET_DL_SRC);
         super.setLength((short) OFActionDataLayer.MINIMUM_LENGTH);
     }
+    
+    public OFActionDataLayerSource(byte[] address) {
+        this();
+        this.dataLayerAddress = address;
+    }
 }

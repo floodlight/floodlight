@@ -42,7 +42,6 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.TopologyManager;
 
@@ -71,7 +70,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         FloodlightModuleContext cntx = new FloodlightModuleContext();
         topology = new LinkDiscoveryManager();
         TopologyManager routingEngine = new TopologyManager();
-        topology.topologyAware = new ArrayList<ITopologyListener>();
         topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         MockThreadPoolService tp = new MockThreadPoolService();
         cntx.addService(IThreadPoolService.class, tp);
