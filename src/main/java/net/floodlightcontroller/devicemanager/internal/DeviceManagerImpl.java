@@ -2091,13 +2091,13 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         public void run() {
             boolean updatePortChannel = portChannelConfigChanged;
             portChannelConfigChanged = false;
-            
+
             if (updatePortChannel) {
                 readPortChannelConfigFromStorage();
             }
 
             try { 
-                log.debug("DeviceUpdateWorker: cleaning up attachment points");
+                log.debug("DeviceUpdateWorker: cleaning up attachment points.");
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
                     // If the set of devices connected to the switches we 
                     // re-iterate a max of 3 times - WHY? TODO
@@ -2105,7 +2105,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     while (maxIter > 0) {
                         try {
                             for (Device d: devMgrMaps.getDevicesOnASwitch(sw)) {
-                                log.debug("Cleanup APs for device {}", HexString.toHexString(d.getDataLayerAddressAsLong()));
                                 Device dCopy = new Device(d);
                                 cleanupAttachmentPoints(dCopy);
                                 for (DeviceAttachmentPoint dap : 
@@ -2117,6 +2116,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                     // Delete from memory after storage,
                                     // otherwise an exception will
                                     // leave stale attachment points on storage.
+                                    log.debug("Remove AP {} from storage for device {}", dap, dCopy.getDlAddrString());
                                     removeAttachmentPointFromStorage(dCopy.getDlAddrString(),
                                         HexString.toHexString(dap.getSwitchPort().getSw().getId()),
                                         dap.getSwitchPort().getPort().toString());
@@ -2135,8 +2135,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                 "attempted three times and failed.");
                     }
                 }
-                log.debug("DeviceUpdateWorker: finished cleaning up device " +
-                          "attachment points");
             } catch (StorageException e) {
                 log.error("DeviceUpdateWorker had a storage exception, " +
                         "Floodlight exiting");

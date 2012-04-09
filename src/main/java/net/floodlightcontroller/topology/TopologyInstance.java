@@ -103,14 +103,14 @@ public class TopologyInstance {
     }
 
     public void printTopology() {
-        log.info("-----------------------------------------------");
-        log.info("Links: {}",this.switchPortLinks);
-        log.info("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.info("tunnelPorts: {}", tunnelPorts);
-        log.info("clusters: {}", clusters);
-        log.info("destinationRootedTrees: {}", destinationRootedTrees);
-        log.info("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.info("-----------------------------------------------");
+        log.debug("-----------------------------------------------");
+        log.debug("Links: {}",this.switchPortLinks);
+        log.debug("broadcastDomainPorts: {}", broadcastDomainPorts);
+        log.debug("tunnelPorts: {}", tunnelPorts);
+        log.debug("clusters: {}", clusters);
+        log.debug("destinationRootedTrees: {}", destinationRootedTrees);
+        log.debug("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+        log.debug("-----------------------------------------------");
     }
 
     protected void addLinksToClusters() {
