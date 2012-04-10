@@ -70,6 +70,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
         return new MockDevice(this, deviceKey, entity, entityClasses);
     }
     
+    @Override
     protected Device allocateDevice(Long deviceKey,
                                     Collection<Entity> entities, 
                                     IEntityClass[] entityClasses) {

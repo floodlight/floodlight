@@ -187,7 +187,7 @@ public abstract class ForwardingBase implements
                 fm.getMatch().setInputPort(link.getDstPort());
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
-                    if (log.isDebugEnabled()) {
+                    if (log.isTraceEnabled()) {
                         log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
                                   new Object[] {
                                                 routeIndx,
@@ -263,14 +263,11 @@ public abstract class ForwardingBase implements
 
         try {
             counterStore.updatePktOutFMCounterStore(sw, fm);
-            log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
-                      new Object[] {
-                                    sw,
-                                    fm.getMatch().getInputPort(),
-                                    ((OFActionOutput) fm.getActions().get(0)).getPort() });
-            log.info("Flow mod sent: Wildcard={} match={}",
-                     Integer.toHexString(fm.getMatch().getWildcards()),
-                     fm.getMatch().toString());
+            if (log.isTraceEnabled()) {
+                log.trace("pushRoute flowmod sw={} inPort={} outPort={}",
+                      new Object[] { sw, fm.getMatch().getInputPort(), 
+                                    ((OFActionOutput)fm.getActions().get(0)).getPort() });
+            }
             sw.write(fm, cntx);
             if (doFlush) {
                 sw.flush();
@@ -331,9 +328,9 @@ public abstract class ForwardingBase implements
             }
         }
         
-        if (log.isDebugEnabled()) {
-            log.debug("PacketOut srcSwitch={} match={} pi={}",
-                      new Object[] { sw, match, pi });
+        if (log.isTraceEnabled()) {
+            log.trace("PacketOut srcSwitch={} match={} pi={}", 
+                      new Object[] {sw, match, pi});
         }
 
         OFPacketOut po =
@@ -475,12 +472,15 @@ public abstract class ForwardingBase implements
         OFMatch match = new OFMatch();
         match.setDataLayerDestination(Ethernet.toByteArray(device.getMACAddress()));
         match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
-        OFMessage fm =
-                ((OFFlowMod) floodlightProvider.getOFMessageFactory()
-                                               .getMessage(OFType.FLOW_MOD)).setCommand(OFFlowMod.OFPFC_DELETE)
-                                                                            .setOutPort((short) OFPort.OFPP_NONE.getValue())
-                                                                            .setMatch(match)
-                                                                            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
+        long cookie =
+                AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+        OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
+            .getMessage(OFType.FLOW_MOD))
+            .setCommand(OFFlowMod.OFPFC_DELETE)
+            .setOutPort((short) OFPort.OFPP_NONE.getValue())
+            .setMatch(match)
+            .setCookie(cookie)
+            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
         // Flush to all switches
         for (IOFSwitch outSw : floodlightProvider.getSwitches().values()) {

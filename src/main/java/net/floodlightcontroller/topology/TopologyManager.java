@@ -23,6 +23,7 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.StackTraceUtil;
 
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
@@ -51,7 +52,7 @@ IRoutingService, ILinkDiscoveryListener {
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
     protected SingletonTask newInstanceTask;
-
+    
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
@@ -59,9 +60,15 @@ IRoutingService, ILinkDiscoveryListener {
     protected class NewInstanceWorker implements Runnable {
         @Override 
         public void run() {
-            applyUpdates();
-            createNewInstance();
-            informListeners();
+            try {
+	            applyUpdates();
+	            createNewInstance();
+	            informListeners();
+            }
+            catch (Exception e) {
+                log.error("Error in topology instance task thread: {} {}", 
+                          e, StackTraceUtil.stackTraceToString(e));
+            }
         }
     }
 
@@ -71,7 +78,7 @@ IRoutingService, ILinkDiscoveryListener {
             try {
                 update = ldUpdates.take();
             } catch (Exception e) {
-                log.error("Error reading link discovery update. {}", e);
+                log.error("Error reading link discovery update. {} {}", e, StackTraceUtil.stackTraceToString(e));
             }
             if (log.isTraceEnabled()) {
                 log.info("Applying update: {}", update);
@@ -104,7 +111,7 @@ IRoutingService, ILinkDiscoveryListener {
     public void informListeners() {
         for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
-            listener.toplogyChanged();
+            listener.topologyChanged();
         }
     }
 
@@ -195,27 +202,27 @@ IRoutingService, ILinkDiscoveryListener {
         removeLinkFromStructure(tunnelLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
-        NodePortTuple n1 = new NodePortTuple(link.getSrc(), link.getSrcPort());
-        NodePortTuple n2 = new NodePortTuple(link.getDst(), link.getDstPort());
+        NodePortTuple srcNpt = new NodePortTuple(link.getSrc(), link.getSrcPort());
+        NodePortTuple dstNpt = new NodePortTuple(link.getDst(), link.getDstPort());
 
         // Remove switch ports if there are no links through those switch ports
-        if (switchPortLinks.get(n1) == null) {
-            if (switchPorts.get(link.getSrc()) != null)
-                switchPorts.get(link.getSrc()).remove(link.getSrcPort());
+        if (switchPortLinks.get(srcNpt) == null) {
+            if (switchPorts.get(srcNpt.getNodeId()) != null)
+                switchPorts.get(srcNpt.getNodeId()).remove(srcNpt.getPortId());
         }
-        if (switchPortLinks.get(n2) == null) {
-            if (switchPorts.get(link.getDst()) != null)
-                switchPorts.get(link.getDst()).remove(link.getDstPort());
+        if (switchPortLinks.get(dstNpt) == null) {
+            if (switchPorts.get(dstNpt.getNodeId()) != null)
+                switchPorts.get(dstNpt.getNodeId()).remove(dstNpt.getPortId());
         }
 
         // Remove the node if no ports are present
-        if (switchPorts.get(link.getSrc())!=null && 
-                switchPorts.get(link.getSrc()).isEmpty()) {
-            switchPorts.remove(link.getSrc());
+        if (switchPorts.get(srcNpt.getNodeId())!=null && 
+                switchPorts.get(srcNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(srcNpt.getNodeId());
         }
-        if (switchPorts.get(link.getDst())!=null && 
-                switchPorts.get(link.getDst()).isEmpty()) {
-            switchPorts.remove(link.getDst());
+        if (switchPorts.get(dstNpt.getNodeId())!=null && 
+                switchPorts.get(dstNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(dstNpt.getNodeId());
         }
     }
 
@@ -356,7 +363,7 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
-    public boolean inSameCluster(Long switch1, Long switch2) {
+    public boolean inSameCluster(long switch1, long switch2) {
         return currentInstance.inSameCluster(switch1, switch2);
     }
 
@@ -366,7 +373,27 @@ IRoutingService, ILinkDiscoveryListener {
     }
 
     @Override
-    public boolean isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId) {
+    public boolean isAllowed(long sw, short portId) {
+        return currentInstance.isAllowed(sw, portId);
+    }
+
+    @Override
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort) {
+        return currentInstance.getAllowedOutgoingBroadcastPort(src,srcPort,
+                                                               dst,dstPort);
+    }
+
+    @Override
+    public NodePortTuple getAllowedIncomingBroadcastPort(long src,
+                                                         short srcPort) {
+        return currentInstance.getAllowedIncomingBroadcastPort(src,srcPort);
+    }
+
+    @Override
+    public boolean isIncomingBroadcastAllowed(long sw, short portId) {
         return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
     }
 
@@ -411,9 +438,26 @@ IRoutingService, ILinkDiscoveryListener {
         return currentInstance.getOutgoingSwitchPort(src, srcPort, dst, dstPort);
     }
 
-	@Override
-	public boolean isBroadcastDomainPort(long sw, short port) {
-		return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, port));
-	}
+    @Override
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+        return currentInstance.getIncomingSwitchPort(src, srcPort, dst, dstPort);
+    }
+
+    @Override
+    public boolean isBroadcastDomainPort(long sw, short port) {
+        return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, port));
+    }
+
+    @Override
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        return currentInstance.isConsistent(oldSw, oldPort, newSw, newPort);
+    }
+
+    @Override
+    public boolean inSameIsland(long switch1, long switch2) {
+        return currentInstance.inSameIsland(switch1, switch2);
+    }
 }
 

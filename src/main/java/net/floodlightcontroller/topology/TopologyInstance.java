@@ -103,14 +103,14 @@ public class TopologyInstance {
     }
 
     public void printTopology() {
-        log.info("-----------------------------------------------");
-        log.info("Links: {}",this.switchPortLinks);
-        log.info("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.info("tunnelPorts: {}", tunnelPorts);
-        log.info("clusters: {}", clusters);
-        log.info("destinationRootedTrees: {}", destinationRootedTrees);
-        log.info("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.info("-----------------------------------------------");
+        log.debug("-----------------------------------------------");
+        log.debug("Links: {}",this.switchPortLinks);
+        log.debug("broadcastDomainPorts: {}", broadcastDomainPorts);
+        log.debug("tunnelPorts: {}", tunnelPorts);
+        log.debug("clusters: {}", clusters);
+        log.debug("destinationRootedTrees: {}", destinationRootedTrees);
+        log.debug("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+        log.debug("-----------------------------------------------");
     }
 
     protected void addLinksToClusters() {
@@ -160,9 +160,9 @@ public class TopologyInstance {
         for (Long sw: switches) {
             ClusterDFS cdfs = dfsList.get(sw);
             if (cdfs == null) {
-                log.error("Do DFS object for switch {} found.", sw);
+                log.error("No DFS object for switch {} found.", sw);
             }else if (!cdfs.isVisited()) {
-                dfsTraverse(0, 1, sw, switches, dfsList, currSet, clusters);
+                dfsTraverse(0, 1, sw, dfsList, currSet);
             }
         }
     }
@@ -171,7 +171,7 @@ public class TopologyInstance {
     /**
      * @author Srinivasan Ramasubramanian
      *
-     * This algorithm computes the depth first search (DFS) travesral of the
+     * This algorithm computes the depth first search (DFS) traversal of the
      * switches in the network, computes the lowpoint, and creates clusters
      * (of strongly connected components).
      *
@@ -192,17 +192,13 @@ public class TopologyInstance {
      * @param parentIndex: DFS index of the parent node
      * @param currIndex: DFS index to be assigned to a newly visited node
      * @param currSw: ID of the current switch
-     * @param switches: Set of switch IDs in the network
      * @param dfsList: HashMap of DFS data structure for each switch
      * @param currSet: Set of nodes in the current cluster in formation
-     * @param clusters: Set of already formed clusters
      * @return long: DSF index to be used when a new node is visited
      */
 
-    private long dfsTraverse (long parentIndex, long currIndex,
-                              long currSw, Set<Long> switches,
-                              Map<Long, ClusterDFS> dfsList, Set <Long> currSet,
-                              Set <Cluster> clusters) {
+    private long dfsTraverse (long parentIndex, long currIndex, long currSw,
+                              Map<Long, ClusterDFS> dfsList, Set <Long> currSet) {
 
         //Get the DFS object corresponding to the current switch
         ClusterDFS currDFS = dfsList.get(currSw);
@@ -244,7 +240,7 @@ public class TopologyInstance {
                     } else if (!dstDFS.isVisited()) {
                         // make a DFS visit
                         currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                                                switches, dfsList, currSet, clusters);
+                                                dfsList, currSet);
 
                         if (currIndex < 0) return -1;
 
@@ -286,8 +282,7 @@ public class TopologyInstance {
     public boolean isBroadcastDomainLink(Link l) {
         NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
         NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
-        return (broadcastDomainPorts.contains(n1) ||
-                broadcastDomainPorts.contains(n2));
+        return (isBroadcastDomainPort(n1) || isBroadcastDomainPort(n2));
     }
 
     public boolean isBroadcastDomainPort(NodePortTuple npt) {
@@ -389,7 +384,6 @@ public class TopologyInstance {
         for(Cluster c: clusters) {
             // c.id is the smallest node that's in the cluster
             BroadcastTree tree = clusterBroadcastTrees.get(c.id);
-            clusterBroadcastTrees.put(c.id, tree);
             //log.info("Broadcast Tree {}", tree);
 
             Set<NodePortTuple> nptSet = new HashSet<NodePortTuple>();
@@ -514,6 +508,10 @@ public class TopologyInstance {
         return (switch1 == switch2);
     }
 
+    public boolean isAllowed(long sw, short portId) {
+        return true;
+    }
+
     protected boolean
     isIncomingBroadcastAllowedOnSwitchPort(long sw, short portId) {
         if (isInternal(sw, portId)) {
@@ -526,6 +524,12 @@ public class TopologyInstance {
         return true;
     }
 
+    public boolean isConsistent(long oldSw, short oldPort, long newSw,
+                                short newPort) {
+        if (isInternal(newSw, newPort)) return true;
+        return (oldSw == newSw && oldPort == newPort);
+    }
+
     protected Set<NodePortTuple>
     getBroadcastNodePortsInCluster(long sw) {
         long clusterId = getSwitchClusterId(sw);
@@ -536,10 +540,20 @@ public class TopologyInstance {
         return false;
     }
 
+    public boolean inSameIsland(long switch1, long switch2) {
+        return inSameCluster(switch1, switch2);
+    }
+
     public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort) {
         // Use this function to redirect traffic if needed.
         return new NodePortTuple(dst, dstPort);
+    }
+
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+     // Use this function to reinject traffic from a different port if needed.
+        return new NodePortTuple(src, srcPort);
     }
 
     public Set<Long> getSwitches() {
@@ -559,5 +573,18 @@ public class TopologyInstance {
             }
         }
         return result;
+    }
+
+    public NodePortTuple
+            getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
+                                            short dstPort) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public NodePortTuple
+    getAllowedIncomingBroadcastPort(long src, short srcPort) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

@@ -37,6 +37,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
@@ -51,6 +52,7 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.forwarding.Forwarding;
 
@@ -75,6 +77,7 @@ public class ForwardingTest extends FloodlightTestCase {
     protected IRoutingService routingEngine;
     protected Forwarding forwarding;
     protected ITopologyService topology;
+    protected MockThreadPoolService threadPool;
     protected IOFSwitch sw1, sw2;
     protected IDevice srcDevice, dstDevice1, dstDevice2;
     protected OFPacketIn packetIn;
@@ -92,6 +95,7 @@ public class ForwardingTest extends FloodlightTestCase {
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
         forwarding = getForwarding();
+        threadPool = new MockThreadPoolService();
         deviceManager = new MockDeviceManager();
         routingEngine = createMock(IRoutingService.class);
         topology = createMock(ITopologyService.class);
@@ -99,13 +103,16 @@ public class ForwardingTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, 
                        mockFloodlightProvider);
+        fmc.addService(IThreadPoolService.class, threadPool);
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(IRoutingService.class, routingEngine);
         fmc.addService(ICounterStoreService.class, new CounterStore());
         fmc.addService(IDeviceService.class, deviceManager);
 
+        threadPool.init(fmc);
         forwarding.init(fmc);
         deviceManager.init(fmc);
+        threadPool.startUp(fmc);
         deviceManager.startUp(fmc);
         forwarding.startUp(fmc);
         
@@ -271,7 +278,7 @@ public class ForwardingTest extends FloodlightTestCase {
         sw2.write(capture(wc2), capture(bc2));
         expectLastCall().anyTimes(); 
 
-        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(anyLong(), anyShort())).andReturn(true).anyTimes();
+        expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);
@@ -347,7 +354,7 @@ public class ForwardingTest extends FloodlightTestCase {
         sw1.write(fm1, cntx);
         sw1.write(packetOut, cntx);
         
-        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(anyLong(), anyShort())).andReturn(true).anyTimes();
+        expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);
@@ -362,7 +369,7 @@ public class ForwardingTest extends FloodlightTestCase {
         // expect no Flow-mod or packet out
                 
         // Reset mocks, trigger the packet in, and validate results
-        expect(topology.isIncomingBroadcastAllowedOnSwitchPort(1L, (short)1)).andReturn(true).anyTimes();
+        expect(topology.isIncomingBroadcastAllowed(1L, (short)1)).andReturn(true).anyTimes();
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);

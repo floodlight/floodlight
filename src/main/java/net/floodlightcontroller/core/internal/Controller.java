@@ -67,6 +67,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.StackTraceUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -1332,7 +1333,7 @@ public class Controller
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
                                       FloodlightContext bc) {
-        if (log.isDebugEnabled()) {
+        if (log.isTraceEnabled()) {
             String str = OFMessage.getDataAsString(sw, m, bc);
             log.trace("{}", str);
         }
@@ -1597,11 +1598,11 @@ public class Controller
                 return;
             } catch (StorageException e) {
                 log.error("Storage exception in controller " + 
-                          "updates loop; terminating process",
-                          e);
+                          "updates loop; terminating process: {} {}",
+                          e, StackTraceUtil.stackTraceToString(e));
                 return;
             } catch (Exception e) {
-                log.error("Exception in controller updates loop", e);
+                log.error("Exception in controller updates loop {} {}", e, StackTraceUtil.stackTraceToString(e));
             }
         }
     }

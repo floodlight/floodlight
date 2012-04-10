@@ -202,13 +202,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        if (topology.isIncomingBroadcastAllowedOnSwitchPort(sw.getId(),
-                                                            pi.getInPort()) == false) {
+        if (topology.isIncomingBroadcastAllowed(sw.getId(),
+                                                pi.getInPort()) == false) {
             if (log.isTraceEnabled()) {
                 log.trace("doFlood, drop broadcast packet, pi={}, " + 
                           "from a blocked port, srcSwitch=[{},{}], linkInfo={}",
                           new Object[] {pi, sw.getId(),pi.getInPort()});
             }
+            return;
         }
 
         // Set Action to flood

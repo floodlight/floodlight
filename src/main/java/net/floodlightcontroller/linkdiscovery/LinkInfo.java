@@ -153,7 +153,7 @@ public class LinkInfo {
     @Override
     public String toString() {
         return "LinkInfo [unicastValidTime=" + ((unicastValidTime == null) ? "null" : unicastValidTime)
-                + "multicastValidTime=" + ((multicastValidTime == null) ? "null" : multicastValidTime)
+                + ", multicastValidTime=" + ((multicastValidTime == null) ? "null" : multicastValidTime)
                 + ", srcPortState=" + ((srcPortState == null) ? "null" : srcPortState)
                 + ", dstPortState=" + ((dstPortState == null) ? "null" : srcPortState)
                 + "]";

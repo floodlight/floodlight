@@ -802,7 +802,6 @@ public class DeviceManagerImpl implements
                     // XXX - TODO
                 }
              */
-
         //}
 
         return dstDevice;
