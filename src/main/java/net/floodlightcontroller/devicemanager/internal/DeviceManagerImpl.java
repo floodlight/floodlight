@@ -623,6 +623,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     protected static Logger log = 
             LoggerFactory.getLogger(DeviceManagerImpl.class);
 
+    protected boolean topoChanged = false;
     protected Set<IDeviceManagerAware> deviceManagerAware;
     protected LinkedList<Update> updates;
     protected ReentrantReadWriteLock lock;
@@ -816,6 +817,19 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      */
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                           FloodlightContext cntx) {
+
+        /**
+         * DeviceManager's internal structure needs to be cleaned up upon
+         * topology change.
+         * Make sure it is done before processing more packetIns.
+         */
+        while (topoChanged) {
+            try {
+                this.devMgrMaps.wait();
+            } catch (InterruptedException e) {
+                log.error ("DeviceManagerImpl: Interrupt exception: {}", e);
+            }
+        }
 
         Ethernet eth = IFloodlightProviderService.bcStore.get(
                     cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -1575,7 +1589,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      */
     @Override
     public void topologyChanged() {
-        deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
+        // Halt packetIn processing to handle topoChange event.
+        topoChanged = true;
+        deviceUpdateTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
 
     protected boolean isNewer(DeviceAttachmentPoint dap1,
@@ -2148,6 +2164,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         "Floodlight exiting");
                 System.exit(1);
             }
+            devMgrMaps.notify();
+            topoChanged = false;
         }
     }
 
