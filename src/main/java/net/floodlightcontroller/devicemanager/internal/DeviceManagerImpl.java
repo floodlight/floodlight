@@ -1670,11 +1670,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
              * Also make sure the attachmentPoints are in non-blocked state
              */
             for (DeviceAttachmentPoint dap: tempAPMap.values()) {
-                dap.setBlocked(false);
+            	dap.resetConflictState();
             }
             d.setAttachmentPoints(tempAPMap.values());
             for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
-                dap.setBlocked(false);
+                dap.resetConflictState();
                 d.addOldAttachmentPoint(dap);
             }
 

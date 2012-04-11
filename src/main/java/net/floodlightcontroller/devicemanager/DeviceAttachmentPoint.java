@@ -46,8 +46,7 @@ public class DeviceAttachmentPoint {
         this.lastSeenInStorage = null;
         this.lastWrittenToStorage = null;
         
-        this.lastConflict = null;
-        this.conflictFrequency = 0;
+        resetConflictState();
     }
     
     public SwitchPortTuple getSwitchPort() {
@@ -136,6 +135,12 @@ public class DeviceAttachmentPoint {
             conflictFrequency /= decay;
         lastConflict = currentDate;
         conflictFrequency += 100;
+    }
+    
+    public void resetConflictState() {
+        lastConflict = null;
+        conflictFrequency = 0;
+        setBlocked(false);
     }
     
     public boolean isInConflict() {
