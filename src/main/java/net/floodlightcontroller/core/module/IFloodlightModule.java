@@ -41,7 +41,7 @@ public interface IFloodlightModule {
 	 * Get a list of Modules that this module depends on.  The module system
 	 * will ensure that each these dependencies is resolved before the 
 	 * subsequent calls to init().
-	 * @return The Collection of IFloodlightServices that this module depnds
+	 * @return The Collection of IFloodlightServices that this module depends
 	 *         on.
 	 */
 	
