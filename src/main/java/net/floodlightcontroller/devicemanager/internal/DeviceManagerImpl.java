@@ -697,6 +697,20 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         public Update(UpdateType type) {
             this.updateType = type;
         }
+        
+        @Override
+        public String toString() {
+            String updateString = null;
+            
+            switch (updateType) {
+            case ADDRESS_ADDED:
+            case ADDRESS_REMOVED:
+                updateString = address.toString();
+                break;
+            }
+            return "Update: device " + device.getDlAddrString() +
+            " Type " + updateType + " " + updateString;
+        }
     }
 
     protected class PendingAttachmentPoint {
@@ -825,6 +839,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
          */
         while (topoChanged) {
             try {
+                log.debug("Waiting for completion of topoChange");
                 this.devMgrMaps.wait();
             } catch (InterruptedException e) {
                 log.error ("DeviceManagerImpl: Interrupt exception: {}", e);
@@ -1591,6 +1606,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     public void topologyChanged() {
         // Halt packetIn processing to handle topoChange event.
         topoChanged = true;
+        log.debug("Set topoChanged flag to true. Stop packetIn processing");
         deviceUpdateTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
 
@@ -2166,6 +2182,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
             devMgrMaps.notify();
             topoChanged = false;
+            log.debug("Done topoChange");
         }
     }
 
