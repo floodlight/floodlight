@@ -29,7 +29,7 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	/**
 	 * Adds a IFloodlightModule for this Context.
 	 * @param clazz the service class
-	 * @param module The IFloodlightModule to add to the registry
+	 * @param service The IFloodlightService to add to the registry
 	 */
 	public void addService(Class<? extends IFloodlightService> clazz, 
 	                       IFloodlightService service) {
