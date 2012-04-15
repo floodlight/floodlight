@@ -194,8 +194,100 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     }
     
     @Test
+    public void testIsNewer() throws Exception {
+        long delta = 100;
+
+        IOFSwitch bdsw1 = createMock(IOFSwitch.class);
+        IOFSwitch bdsw2 = createMock(IOFSwitch.class);
+        IOFSwitch nonbdsw1 = createMock(IOFSwitch.class);
+        IOFSwitch nonbdsw2 = createMock(IOFSwitch.class);
+        expect(bdsw1.getId()).andReturn(1L).anyTimes();
+        expect(bdsw2.getId()).andReturn(2L).anyTimes();
+        expect(nonbdsw1.getId()).andReturn(3L).anyTimes();
+        expect(nonbdsw2.getId()).andReturn(4L).anyTimes();
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        SwitchPortTuple bdspt1 = new SwitchPortTuple(bdsw1, (short)1);
+        SwitchPortTuple bdspt2 = new SwitchPortTuple(bdsw2, (short)1);
+        SwitchPortTuple nonbdspt1 = new SwitchPortTuple(nonbdsw1, (short)1);
+        SwitchPortTuple nonbdspt2 = new SwitchPortTuple(nonbdsw2, (short)1);
+        deviceManager.setTopology(mockTopology);
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).andReturn(true).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(2L, (short)1)).andReturn(true).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(3L, (short)1)).andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(4L, (short)1)).andReturn(false).anyTimes();
+
+        // Two BD APs comparison
+        Date lastSeen_bd1 = new Date();
+        Date lastSeen_bd2 = new Date(lastSeen_bd1.getTime() + DeviceManagerImpl.BD_TO_BD_TIMEDIFF_MS + delta);
+        DeviceAttachmentPoint dap_bd1 = new DeviceAttachmentPoint(bdspt1, lastSeen_bd1);
+        DeviceAttachmentPoint dap_bd2 = new DeviceAttachmentPoint(bdspt2, lastSeen_bd2);
+
+        Date lastSeen_bd3 = new Date();
+        Date lastSeen_bd4 = new Date(lastSeen_bd3.getTime() - DeviceManagerImpl.BD_TO_BD_TIMEDIFF_MS + delta);
+        DeviceAttachmentPoint dap_bd3 = new DeviceAttachmentPoint(bdspt1, lastSeen_bd3);
+        DeviceAttachmentPoint dap_bd4 = new DeviceAttachmentPoint(bdspt2, lastSeen_bd4);
+
+        // Two non-BD APs comparison
+        Date lastSeen_nonbd1 = new Date();
+        Date lastSeen_nonbd2 = new Date(lastSeen_nonbd1.getTime() + delta);
+        DeviceAttachmentPoint dap_nonbd1 = new DeviceAttachmentPoint(nonbdspt1, lastSeen_nonbd1);
+        DeviceAttachmentPoint dap_nonbd2 = new DeviceAttachmentPoint(nonbdspt2, lastSeen_nonbd2);
+
+        Date lastSeen_nonbd3 = new Date();
+        Date lastSeen_nonbd4 = new Date(lastSeen_bd3.getTime() - delta);
+        DeviceAttachmentPoint dap_nonbd3 = new DeviceAttachmentPoint(nonbdspt1, lastSeen_nonbd3);
+        DeviceAttachmentPoint dap_nonbd4 = new DeviceAttachmentPoint(nonbdspt2, lastSeen_nonbd4);
+
+        // BD and non-BD APs comparison
+        Date lastSeen_bd5 = new Date();
+        Date lastSeen_nonbd5 = new Date(lastSeen_bd3.getTime() - DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS + delta);
+        DeviceAttachmentPoint dap_bd5 = new DeviceAttachmentPoint(bdspt1, lastSeen_bd5);
+        DeviceAttachmentPoint dap_nonbd5 = new DeviceAttachmentPoint(bdspt2, lastSeen_nonbd5);
+
+        Date lastSeen_bd6 = new Date();
+        Date lastSeen_nonbd6 = new Date(lastSeen_bd6.getTime() + DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS + delta);
+        DeviceAttachmentPoint dap_bd6 = new DeviceAttachmentPoint(nonbdspt1, lastSeen_bd6);
+        DeviceAttachmentPoint dap_nonbd6 = new DeviceAttachmentPoint(nonbdspt2, lastSeen_nonbd6);
+
+        replay(bdsw1, bdsw2, nonbdsw1, nonbdsw2, mockTopology);
+
+        boolean testbd1_2 = deviceManager.isNewer(dap_bd1, dap_bd2);
+        boolean testbd2_1 = deviceManager.isNewer(dap_bd2, dap_bd1);
+        boolean testbd3_4 = deviceManager.isNewer(dap_bd3, dap_bd4);
+        boolean testbd4_3 = deviceManager.isNewer(dap_bd4, dap_bd3);
+
+        boolean testnonbd1_2 = deviceManager.isNewer(dap_nonbd1, dap_nonbd2);
+        boolean testnonbd2_1 = deviceManager.isNewer(dap_nonbd2, dap_nonbd1);
+        boolean testnonbd3_4 = deviceManager.isNewer(dap_nonbd3, dap_nonbd4);
+        boolean testnonbd4_3 = deviceManager.isNewer(dap_nonbd4, dap_nonbd3);
+
+        boolean testbdnonbd5_5 = deviceManager.isNewer(dap_bd5, dap_nonbd5);
+        boolean testnonbdbd5_5 = deviceManager.isNewer(dap_nonbd5, dap_bd5);
+        boolean testbdnonbd6_6 = deviceManager.isNewer(dap_bd6, dap_nonbd6);
+        boolean testnonbdbd6_6 = deviceManager.isNewer(dap_nonbd6, dap_bd6);
+
+        verify(bdsw1, bdsw2, nonbdsw1, nonbdsw2, mockTopology);
+
+        assertFalse(testbd1_2);
+        assertTrue(testbd2_1);
+        assertFalse(testbd3_4);
+        assertTrue(testbd4_3);
+
+        assertFalse(testnonbd1_2);
+        assertTrue(testnonbd2_1);
+        assertTrue(testnonbd3_4);
+        assertFalse(testnonbd4_3);
+
+        assertTrue(testbdnonbd5_5);
+        assertFalse(testnonbdbd5_5);
+        assertFalse(testbdnonbd6_6);
+        assertTrue(testnonbdbd6_6);
+    }
+
+    @Test
     public void testDeviceAging() throws Exception {
-        
+
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
         // Mock up our expected behavior
@@ -205,34 +297,34 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch2 = createMock(IOFSwitch.class);
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
-        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).atLeastOnce();
         deviceManager.setTopology(mockTopology);
-        // reduce the aging period
+
+        // reduce the aging period to a few seconds
         DeviceManagerImpl.DEVICE_AGING_TIMER = 2;
         DeviceManagerImpl.DEVICE_AP_MAX_AGE = 1;
         DeviceManagerImpl.DEVICE_NA_MAX_AGE = 1;
         DeviceManagerImpl.DEVICE_MAX_AGE = 3;
 
         Date currentDate = new Date();
-        
+
         // build our expected Device
         Device device = new Device();
         device.setDataLayerAddress(dataLayerSource);
         device.addAttachmentPoint(new SwitchPortTuple(mockSwitch1, (short)1), currentDate);
         Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
         device.addNetworkAddress(ipaddr, currentDate);
+
         expect(mockSwitch2.getId()).andReturn(2L).anyTimes();
         expect(mockSwitch2.getStringId()).andReturn("00:00:00:00:00:00:00:02").anyTimes();
         expect(mockTopology.isInternal(2L, (short)2)).andReturn(false);
-        expect(mockTopology.inSameCluster(2L, 1L)).andReturn(false);
-        expect(mockTopology.getSwitchClusterId(2L)).andReturn(2L).atLeastOnce();
+        expect(mockTopology.inSameCluster(1L, 2L)).andReturn(false).atLeastOnce();
         expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
-        
+
         // Start recording the replay on the mocks
         replay(mockSwitch1, mockSwitch2, mockTopology);
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch1, this.packetIn_1);
-        
+
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch2, this.packetIn_3.setInPort((short)2));
 
@@ -243,36 +335,36 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, rdevice);
         assertEquals(2, rdevice.getAttachmentPoints().size());
         assertEquals(2, rdevice.getNetworkAddresses().size());
-        
+
         // Sleep to make sure the aging thread has run
         Thread.sleep((DeviceManagerImpl.DEVICE_AGING_TIMER + DeviceManagerImpl.DEVICE_AGING_TIMER_INTERVAL)*1000);
-        
+
         rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         assertEquals(0, rdevice.getAttachmentPoints().size());
         assertEquals(0, rdevice.getNetworkAddresses().size());
-        
+
         // Make sure the device's AP and NA were removed from storage
         deviceManager.readAllDeviceStateFromStorage();
         rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         assertEquals(0, rdevice.getAttachmentPoints().size());
         assertEquals(0, rdevice.getNetworkAddresses().size());
-        
+
         // Sleep 4 more seconds to allow device aging thread to run
         Thread.sleep(DeviceManagerImpl.DEVICE_MAX_AGE*1000);
 
         assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
-        
+
         // Make sure the device's AP and NA were removed from storage
         deviceManager.readAllDeviceStateFromStorage();
         assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
-        
+
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
     }
-    
+
     @Test
     public void testDeviceDiscover() throws Exception {
-        
+
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
         // Mock up our expected behavior
@@ -284,7 +376,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.setTopology(mockTopology);
 
         Date currentDate = new Date();
-        
+
         // build our expected Device
         Device device = new Device();
         device.setDataLayerAddress(dataLayerSource);
@@ -309,7 +401,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // move the port on this device
         device.addAttachmentPoint(new SwitchPortTuple(mockSwitch, (short)2), currentDate);
-        
+
         reset(mockSwitch, mockTopology);
         expect(mockSwitch.getId()).andReturn(2L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:02").anyTimes();
@@ -318,7 +410,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(1, deviceManager.getDeviceByIPv4Address(ipaddr).getAttachmentPoints().size());
         deviceManager.invalidateDeviceAPsByIPv4Address(ipaddr);
         assertEquals(0, deviceManager.getDeviceByIPv4Address(ipaddr).getAttachmentPoints().size());
-        
+
         expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);
@@ -330,11 +422,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Verify the device
         assertEquals(device, deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
-        
+
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
     }
-    
+
     @Test
     public void testDeviceRecoverFromStorage() throws Exception {
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_2).getSourceMACAddress();
@@ -342,7 +434,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         ITopologyService mockTopology = createNiceMock(ITopologyService.class);
-        
+
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getStringId()).andReturn("00:00:00:00:00:00:00:01").anyTimes();
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
@@ -351,7 +443,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Start recording the replay on the mocks
         replay(mockSwitch, mockTopology);
-        
+
         // Add the switch so the list isn't empty
         mockFloodlightProvider.getSwitches().put(mockSwitch.getId(), mockSwitch);
 
@@ -366,7 +458,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         device.addAttachmentPoint(dap);
         device.addNetworkAddress(ipaddr, currentDate);
         device.addNetworkAddress(ipaddr2, currentDate);
-        
+
         // Get the listener and trigger the packet ins
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_2);
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_3);
@@ -376,29 +468,29 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, deviceManager.getDeviceByIPv4Address(ipaddr));
         assertEquals(device, deviceManager.getDeviceByIPv4Address(ipaddr2));
         assertEquals(dap, device.getAttachmentPoint(spt));
-        
+
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
-        
+
         // Verify the device
         assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
         assertNull(deviceManager.getDeviceByIPv4Address(ipaddr));
         assertNull(deviceManager.getDeviceByIPv4Address(ipaddr2));
-        
+
         // Load the device cache from storage
         Thread.sleep(1000);
         deviceManager.readAllDeviceStateFromStorage();
-        
+
         // Verify the device
         Device device2 = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         assertEquals(device, device2);
         assertEquals(dap, device2.getAttachmentPoint(spt));
-        
+
         deviceManager.clearAllDeviceStateFromMemory();
         mockFloodlightProvider.setSwitches(new HashMap<Long,IOFSwitch>());
         deviceManager.removedSwitch(mockSwitch);
         deviceManager.readAllDeviceStateFromStorage();
-        
+
         device2 = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         assertEquals(device, device2);
 
@@ -412,11 +504,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, deviceManager.getDeviceByIPv4Address(ipaddr));
         assertEquals(device, deviceManager.getDeviceByIPv4Address(ipaddr2));
     }
-    
+
     @Test
     public void testDeviceUpdateLastSeenToStorage() throws Exception {
         deviceManager.clearAllDeviceStateFromMemory();
-        
+
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
@@ -442,29 +534,29 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         replay(mockSwitch, mockTopology);
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1);
-        
+
         Thread.sleep(100);
-        
+
         // Get the listener and trigger the packet in
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1);
-        
+
         // Clear the device cache
         deviceManager.clearAllDeviceStateFromMemory();
         // Load the device cache from storage
         deviceManager.readAllDeviceStateFromStorage();
-        
+
         // Make sure the last seen is after our date
         device = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
         assertTrue(device.getLastSeen().after(currentDate));
     }
-    
+
     @Test
     public void testAttachmentPointFlapping() throws Exception {
-    	OFPhysicalPort port1 = new OFPhysicalPort();
-    	OFPhysicalPort port2 = new OFPhysicalPort();
+        OFPhysicalPort port1 = new OFPhysicalPort();
+        OFPhysicalPort port2 = new OFPhysicalPort();
         port1.setName("port1");
         port2.setName("port2");
-        
+
         byte[] dataLayerSource = ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
 
         // Mock up our expected behavior
@@ -478,12 +570,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(1L, (short)2))
                            .andReturn(false).atLeastOnce();
-        expect(mockTopology.getSwitchClusterId(1L))
-                           .andReturn(1L).atLeastOnce();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)1))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
                            .andReturn(false).atLeastOnce();
+        expect(mockTopology.inSameCluster(1L, 1L)).andReturn(true).atLeastOnce();
         deviceManager.setTopology(mockTopology);
         expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
 
@@ -501,7 +592,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)2));
 
         Device device = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
-        
+
         // Verify the replay matched our expectations
         verify(mockSwitch, mockTopology);
 
@@ -511,35 +602,35 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         for (DeviceAttachmentPoint ap : device.getOldAttachmentPoints()) {
             assertTrue(ap.isBlocked());
         }
-        
+
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
     }
-    
+
     private static final Map<String, Object> pcPort1;
     static {
-    	pcPort1 = new HashMap<String, Object>();
-    	pcPort1.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port1");
-    	pcPort1.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port1");
+        pcPort1 = new HashMap<String, Object>();
+        pcPort1.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
+        pcPort1.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port1");
+        pcPort1.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
+        pcPort1.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port1");
     }
-    
+
     private static final Map<String, Object> pcPort2;
     static {
-    	pcPort2 = new HashMap<String, Object>();
-    	pcPort2.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
-    	pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port2");
-    	pcPort2.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
-    	pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port2");
+        pcPort2 = new HashMap<String, Object>();
+        pcPort2.put(DeviceManagerImpl.PORT_CHANNEL_COLUMN_NAME, "channel");
+        pcPort2.put(DeviceManagerImpl.PC_PORT_COLUMN_NAME, "port2");
+        pcPort2.put(DeviceManagerImpl.PC_SWITCH_COLUMN_NAME, "00:00:00:00:00:00:00:01");
+        pcPort2.put(DeviceManagerImpl.PC_ID_COLUMN_NAME, "00:00:00:00:00:00:00:01|port2");
     }
-    
+
     private void setupPortChannel() {
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort1);
         storageSource.insertRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME, pcPort2);
         deviceManager.readPortChannelConfigFromStorage();
     }
-    
+
     private void teardownPortChannel() {
         storageSource.deleteRow(DeviceManagerImpl.PORT_CHANNEL_TABLE_NAME,
                 pcPort1.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
@@ -547,15 +638,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 pcPort2.get(DeviceManagerImpl.PC_ID_COLUMN_NAME));
         deviceManager.readPortChannelConfigFromStorage();
     }
-    
+
     /**
      * The same test as testAttachmentPointFlapping except for port-channel
      * @throws Exception
      */
     @Test
     public void testPortChannel() throws Exception {
-    	OFPhysicalPort port1 = new OFPhysicalPort();
-    	OFPhysicalPort port2 = new OFPhysicalPort();
+        OFPhysicalPort port1 = new OFPhysicalPort();
+        OFPhysicalPort port2 = new OFPhysicalPort();
         port1.setName("port1");
         port2.setName("port2");
 
@@ -573,12 +664,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isInternal(1L, (short)2))
                            .andReturn(false).atLeastOnce();
-        expect(mockTopology.getSwitchClusterId(1L))
-                           .andReturn(1L).atLeastOnce();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)1))
                            .andReturn(false).atLeastOnce();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2))
                            .andReturn(false).atLeastOnce();
+        expect(mockTopology.inSameCluster(1L, 1L)).andReturn(true).atLeastOnce();
         expect(mockTopology.isInSameBroadcastDomain((long)1, (short)1, 
                                                     (long)1, (short)2)).andReturn(false).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain((long)1, (short)2, 
@@ -598,7 +688,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider.dispatchMessage(mockSwitch, this.packetIn_1.setInPort((short)2));
 
         Device device = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
-        
+
         // Verify the replay matched our expectations
         verify(mockSwitch, mockTopology);
 
@@ -608,10 +698,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         for (DeviceAttachmentPoint ap : device.getOldAttachmentPoints()) {
             assertFalse(ap.isBlocked());
         }
-        
+
         // Reset the device cache
         deviceManager.clearAllDeviceStateFromMemory();
-        
+
         teardownPortChannel();
     }
 }

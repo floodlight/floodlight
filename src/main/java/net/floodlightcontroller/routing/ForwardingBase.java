@@ -169,7 +169,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 fm.getMatch().setInputPort(link.getDstPort());
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
-                    if (log.isDebugEnabled()) {
+                    if (log.isTraceEnabled()) {
                         log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
                                   new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), 
                                                  ((OFActionOutput)fm.getActions().get(0)).getPort() });
@@ -228,9 +228,11 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
 
         try {
             counterStore.updatePktOutFMCounterStore(sw, fm);
-            log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
+            if (log.isTraceEnabled()) {
+                log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
+            }
             sw.write(fm, cntx);
             if (doFlush) {
                 sw.flush();
@@ -282,7 +284,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
             }
         }
         
-        if (log.isDebugEnabled()) {
+        if (log.isTraceEnabled()) {
             log.debug("PacketOut srcSwitch={} match={} pi={}", new Object[] {sw, match, pi});
         }
         
