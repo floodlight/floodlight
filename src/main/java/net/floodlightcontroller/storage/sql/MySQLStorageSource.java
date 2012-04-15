@@ -1,5 +1,9 @@
 package net.floodlightcontroller.storage.sql;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -8,31 +12,64 @@ import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 
 public class MySQLStorageSource extends SQLStorageSource {
 
-	/**
-	 * we may want to move the information in this method to another file
-	 * (possibly password protected) and only leave the implementation here
-	 * 
-	 * @return
-	 */
-	private Connection openConnection() {
+	private static String DB_PATH = "";
+	private static String DB_USER = "";
+	private static String DB_PASS = "";
+	
+    public void getDBInfo() {
+        if (DB_PATH.equals("")){
+	    	try{
+	        	FileInputStream fstream = new FileInputStream("config/MySQL.properties");
+	        	DataInputStream in = new DataInputStream(fstream);
+	        	BufferedReader br = new BufferedReader(new InputStreamReader(in));
+	        	String strLine;
+	        	String delimiter = "=";
+	        	String[] values;
+	
+	        	while ((strLine = br.readLine()) != null)   {
+	        		if (strLine.charAt(0)!= '#'){
+	        			values = strLine.split(delimiter);
+	        			values[0] = values[0].replaceAll("\\s", "");
+	        			values[1] = values[1].replaceAll("\\s", "");
+	        			if (values[0].equals("DB_PATH"))
+	        				DB_PATH = values[1];
+	        			else if(values[0].equals("DB_USER"))
+	        				DB_USER = values[1];
+	        			else if(values[0].equals("DB_PASS"))
+	        				DB_PASS = values[1];
+	        		}
+	        	}
+	        	 
+	        	in.close();
+	        }catch (Exception e){//Catch exception if any
+	        	System.out.println("Error: " + e.getMessage());
+	        }
+        }
+	
+    }    
+        
+	@Override
+	public Connection openConnection() {
 		Connection conn = null;
 		try {
 			String driverName = "com.mysql.jdbc.Driver";
 			
 			try {
 				Class.forName(driverName).newInstance();
-				// String serverName = "localhost";
-				String mydb = "localhost/openflow";
-				String username = "root";
-				String password = "root";
-				String url = "jdbc:mysql://" + mydb; // provide jdbc with path to db file
-				conn = DriverManager.getConnection(url, username, password);
+				getDBInfo();
+				String url = "jdbc:mysql://" + DB_PATH; // provide jdbc with path to db file
+				conn = DriverManager.getConnection(url, DB_USER, DB_PASS);
 			} catch (InstantiationException e) {
 				e.printStackTrace();
 			} catch (IllegalAccessException e) {
@@ -85,7 +122,13 @@ public class MySQLStorageSource extends SQLStorageSource {
 			
 			conn.close();
 		}catch(SQLException e){
-			System.out.println("Failed to set primary key\n" + e.getMessage());
+			if (e.getMessage().contains("doesn't exist")){
+				Set<String> columns = new HashSet<String>();
+				columns.add(primaryKeyName);
+				createTable(tableName, columns);
+			}else{
+				System.out.println("Failed to set primary key\n" + e.getMessage());
+			}
 		}
 	}
 
@@ -129,6 +172,26 @@ public class MySQLStorageSource extends SQLStorageSource {
 			return "null";
 		}
 		return value;
+	}
+	
+	@Override
+	public Set<String> getColumns(String tableName){
+		StringBuffer sb = new StringBuffer();
+		Set<String> columns = new HashSet<String>();
+		try {
+			Connection conn = openConnection();
+
+			Statement stmt = conn.createStatement();
+
+			sb.append("SHOW columns FROM " + tableName + ";");
+			ResultSet rs = stmt.executeQuery(sb.toString());
+			while(rs.next()){
+				columns.add(rs.getString("Field"));
+			}
+		}catch(SQLException e){
+			System.out.println("Failed to get columns\n" + e.getMessage());
+		}
+		return columns;
 	}
 
 }

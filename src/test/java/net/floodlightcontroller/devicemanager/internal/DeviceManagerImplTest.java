@@ -45,6 +45,8 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
+import net.floodlightcontroller.storage.sql.MySQLStorageSource;
+import net.floodlightcontroller.storage.sql.SqliteStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -69,7 +71,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private byte[] testARPReplyPacket_3_Serialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
-    MemoryStorageSource storageSource;
+    MySQLStorageSource storageSource;
     
     @Before
     public void setUp() throws Exception {
@@ -82,7 +84,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         fmc.addService(IDeviceManagerService.class, deviceManager);
-        storageSource = new MemoryStorageSource();
+        storageSource = new MySQLStorageSource();
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
@@ -384,6 +386,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertNull(deviceManager.getDeviceByIPv4Address(ipaddr2));
         
         // Load the device cache from storage
+        Thread.sleep(1000);
         deviceManager.readAllDeviceStateFromStorage();
         
         // Verify the device

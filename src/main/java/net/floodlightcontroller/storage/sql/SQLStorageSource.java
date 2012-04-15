@@ -1,7 +1,6 @@
 package net.floodlightcontroller.storage.sql;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -27,39 +26,18 @@ import net.floodlightcontroller.storage.StorageSourceNotification.Action;
 
 public class SQLStorageSource extends AbstractStorageSource {
 	
-	/**
-	 * we may want to move the information in this method to another file
-	 * (possibly password protected) and only leave the implementation here
-	 * 
-	 * @return
-	 */
-	private Connection openConnection() {
+	public Connection openConnection() {
 		Connection conn = null;
-		try {
-			String driverName = "com.mysql.jdbc.Driver";
-			
-			try {
-				Class.forName(driverName).newInstance();
-				String mydb = "localhost/openflow";
-				String username = "root";
-				String password = "root";
-				String url = "jdbc:mysql://" + mydb; // provide jdbc with path to db file
-				conn = DriverManager.getConnection(url, username, password);
-			} catch (InstantiationException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			}
-			
-		} catch (ClassNotFoundException e) {
-			System.out.println("could not find database driver");
-		} catch (SQLException e) {
-			System.out.println("could not connect to database\n"
-					+ e.getMessage());
-		}
 		return conn;
 	}
-
+	
+	/*
+	 * Create an IQuery Object. (Select <columnNames> from <tableName> where <predicate> order by <ordering>)
+	 * @param tableName
+	 * @param columnNames
+	 * @param predicate
+	 * @param ordering
+	 */
 	@Override
 	public IQuery createQuery(String tableName, String[] columnNames,
 			IPredicate predicate, RowOrdering ordering) {
@@ -68,25 +46,33 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return query;
 	}
 
+	/*
+	 * create a table, all columns will be of type VARCHAR(100) for simplicity's sake. If no columns are initially
+	 * passed to the method, nothing is done and the table will be created later.
+	 * @param tableName
+	 * @param indexedColumns
+	 */
 	@Override
 	public void createTable(String tableName, Set<String> indexedColumns) {
 		StringBuffer sb = new StringBuffer();
 		try {
-			Connection conn = openConnection();
-
-			Statement stmt = conn.createStatement();
-
-			sb.append("CREATE TABLE if not exists " + tableName + "(");
-			Iterator<String> it = indexedColumns.iterator();
-			for (int i = 0; i < indexedColumns.size() - 1; i++) {
-				sb.append(it.next().toString() + " varchar(100), ");
+			if (indexedColumns != null){
+				Connection conn = openConnection();
+	
+				Statement stmt = conn.createStatement();
+	
+				sb.append("CREATE TABLE if not exists " + tableName + "(");
+				Iterator<String> it = indexedColumns.iterator();
+				for (int i = 0; i < indexedColumns.size() - 1; i++) {
+					sb.append(it.next().toString() + " varchar(100), ");
+				}
+				sb.append(it.next().toString() + " varchar(100));");
+				
+				//System.out.println(sb.toString());
+				stmt.execute(sb.toString());
+	
+				conn.close();
 			}
-			sb.append(it.next().toString() + " varchar(100));");
-			
-			//System.out.println(sql);
-			stmt.executeUpdate(sb.toString());
-
-			conn.close();
 		} catch (SQLException e) {
 			System.out.println("could not create the table\n\t"
 					+ e.getMessage() + "\n\t" + sb.toString());
@@ -94,6 +80,10 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 	}
 	
+	/*
+	 * Drop the given table if it exists
+	 * @param tableName
+	 */
 	public void dropTable(String tableName) {
 		try {
 			Connection conn = openConnection();
@@ -101,44 +91,100 @@ public class SQLStorageSource extends AbstractStorageSource {
 			Statement stmt = conn.createStatement();
 			String sql = "DROP TABLE if exists " + tableName + ";";
 
-			stmt.executeUpdate(sql);
+			//System.out.println(sql);
+			stmt.execute(sql);
 			conn.close();
 		} catch (SQLException e) {
 			System.out.println("could not drop table \n\t" + e.getMessage());
 		}
 	}
 
+	/*
+	 * Create a table with a primary key. If no columns are initially passed to the method, 
+	 * nothing is done and the table will be created later.
+	 * @param tableName
+	 * @param indexedColumns
+	 * @param pKey
+	 */
 	public void createTable(String tableName, Set<String> indexedColumns,
 			String pKey) {
 
 		StringBuffer sb = new StringBuffer();
 		try {
-			Connection conn = openConnection();
-
-			Statement stmt = conn.createStatement();
-
-			sb.append("CREATE TABLE if not exists " + tableName + "(");
-			Iterator<String> it = indexedColumns.iterator();
-			for (int i = 0; i < indexedColumns.size(); i++) {
-				String column = it.next().toString();
-				sb.append(column);
-				if (column.equals(pKey))
+			if(indexedColumns != null){
+				Connection conn = openConnection();
+	
+				Statement stmt = conn.createStatement();
+	
+				sb.append("CREATE TABLE if not exists " + tableName + "(");
+				Iterator<String> it = indexedColumns.iterator();
+				for (int i = 0; i < indexedColumns.size(); i++) {
+					String column = it.next().toString();
+					sb.append(column);
 					sb.append(" varchar(100), ");
-				else
-					sb.append(" varchar(100), ");
+	
+				}
+				sb.append("primary key(" + pKey + "));");
+				//System.out.println(sb.toString());
+				stmt.execute(sb.toString());
+				conn.close();
 			}
-			sb.append("primary key (" + pKey + "));");
-			//System.out.println(sql);
-			stmt.executeUpdate(sb.toString());
-
-			conn.close();
 		} catch (SQLException e) {
 			System.out.println("could not create the table\n\t"
 					+ e.getMessage() + "\n\t" + sb.toString());
 		}
 
 	}
+	
+	/*
+	 * Alters a table to add a set of columns
+	 * @param tableName
+	 * @param columns
+	 */
+	public void alterTable(String tableName, Set<String> columns){
+		StringBuffer sb = new StringBuffer();
+		try {
+			Connection conn = openConnection();
 
+			Statement stmt = conn.createStatement();
+
+			sb.append("ALTER TABLE " + tableName + " ADD(");
+			Iterator<String> it = columns.iterator();
+			for (int i = 0; i < columns.size() -1; i++) {
+				String column = it.next().toString();
+				sb.append(column);
+				sb.append(" varchar(100), ");
+			}
+			if (it.hasNext()){
+				String column = it.next().toString();
+				sb.append(column);
+				sb.append(" varchar(100)");
+			}
+			sb.append(");");
+			
+			//System.out.println(sb.toString());
+			stmt.execute(sb.toString());
+
+			conn.close();
+		} catch (SQLException e) {
+			System.out.println("could not alter the table\n\t"
+					+ e.getMessage() + "\n\t" + sb.toString());
+		}
+	}
+	
+	/*
+	 * will be overridden
+	 */
+	public Set<String> getColumns(String tableName) {
+		return null;
+	}
+
+
+	/*
+	 * Delete a row from a table 
+	 * @param tableName
+	 * @param rowKey
+	 */
 	@Override
 	public void deleteRow(String tableName, Object rowKey) {
 
@@ -155,7 +201,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 				sb.append(" where " + pKey + "=" + rowKey.toString());
 			sb.append(";");
 			//System.out.println(sb.toString());
-			stmt.executeUpdate(sb.toString());
+			stmt.execute(sb.toString());
 
 			conn.close();
 
@@ -163,11 +209,17 @@ public class SQLStorageSource extends AbstractStorageSource {
 			set.add(rowKey_original);
 			notify(tableName, StorageSourceNotification.Action.DELETE, set);
 		} catch (SQLException e) {
-			System.out.println("could not delete row\n" + e.getMessage());
+			System.out.println("******could not delete row\n" + e.getMessage());
 		}
 
 	}
 
+	/*
+	 * Delete from <tableName> where <columnName> = <key>
+	 * @param tableName
+	 * @param columnName
+	 * @param key
+	 */
 	public void deleteRow(String tableName, String columnName, Object key) {
 
 		try {
@@ -179,7 +231,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 			String sql = "delete FROM " + tableName + " where " + columnName
 					+ "=" + key + ";";
 			//System.out.println(sql);
-			stmt.executeUpdate(sql);
+			stmt.execute(sql);
 
 			Set<Object> set = new HashSet<Object>();
 			set.add(key_original);
@@ -190,12 +242,20 @@ public class SQLStorageSource extends AbstractStorageSource {
 		}
 	}
 
+	/*
+	 * Casts an IQuery to SQLQuery and executes it
+	 * @param query
+	 */
 	@Override
 	public IResultSet executeQuery(IQuery query) {
 		IResultSet rs = executeQuery((SqlQuery) query);
 		return rs;
 	}
 
+	/*
+	 * Execute a SQLQuery object. See createQuery for what goes into query object.
+	 * @param query
+	 */
 	public SqlResultSet executeQuery(SqlQuery query) {
 		SqlResultSet rs = null;
 		query = (SqlQuery) query;
@@ -210,6 +270,11 @@ public class SQLStorageSource extends AbstractStorageSource {
 			String order = "";
 
 			if (query.getColumnNameList() != null) {
+				Set<String> columnNameList = new HashSet<String>();
+				for (String c : query.getColumnNameList())
+					columnNameList.add(c);
+				addMissingColumns(query.getTableName(), columnNameList);
+				
 				String[] columnList = query.getColumnNameList();
 				for (int i = 0; i < columnList.length - 1; i++)
 					columns += columnList[i] + ", ";
@@ -241,6 +306,9 @@ public class SQLStorageSource extends AbstractStorageSource {
 				}
 			}
 
+			if (columns.equals(""))
+				columns = "*";
+			
 			sb.append("Select " + columns + " from " + query.getTableName());
 			if (!predicates.equals("")) {
 				sb.append(" where " + predicates);
@@ -274,6 +342,11 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return rs;
 	}
 
+	/*
+	 * Gets a single row from a table
+	 * @param tableName
+	 * @param rowKey
+	 */
 	@Override
 	public SqlResultSet getRow(String tableName, Object rowKey) {
 		String pKey = getTablePrimaryKeyName(tableName);
@@ -281,6 +354,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return rs;
 	}
 
+	/*
+	 * Gets a single row from a table
+	 * @param tableName
+	 * @param columnName
+	 * @param rowKey
+	 */
 	public SqlResultSet getRow(String tableName, String columnName,
 			Object rowkey) {
 		SqlResultSet rs = null;
@@ -295,7 +374,28 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 		return rs;
 	}
+	
+	/*
+	 * Checks a table to see if a set of columns is present and adds the ones that aren't.
+	 * @param tableName
+	 * @param columns
+	 */
+	public void addMissingColumns(String tableName, Set<String> columns){
+		Set<String> tableColumns = getColumns(tableName);
+		Set<String> missing = new HashSet<String>();
+		for(String c : columns){
+			if (!tableColumns.contains(c))
+				missing.add(c);
+		}
+		if (!missing.isEmpty())
+			alterTable(tableName, missing);
+	}
 
+	/*
+	 * Inserts a row (Insert into <tableName>(column1, column2, ...) values(value1, value2, ....))
+	 * @param tableName
+	 * @param values
+	 */
 	@Override
 	public void insertRow(String tableName, Map<String, Object> values) {
 		Map<String, Object> values_original = values;
@@ -303,6 +403,8 @@ public class SQLStorageSource extends AbstractStorageSource {
 			Connection conn = openConnection();
 			Statement stmt = conn.createStatement();
 			values = formatValues(values);
+			
+			addMissingColumns(tableName, values.keySet());
 
 			StringBuffer sb = new StringBuffer();
 			StringBuffer objects = new StringBuffer();
@@ -333,6 +435,10 @@ public class SQLStorageSource extends AbstractStorageSource {
 				Object rowKey = values_original.get(key);
 				updateRow(tableName, rowKey, values_original);
 			}
+			else if (e.getMessage().contains("doesn't exist") || e.getMessage().contains("no such table")){
+				createTable(tableName, values_original.keySet());
+				insertRow(tableName, values_original);
+			}
 		}
 
 	}
@@ -341,41 +447,60 @@ public class SQLStorageSource extends AbstractStorageSource {
 	public void setTablePrimaryKeyName(String tableName, String primaryKeyName) {
 	}
 
+	/*
+	 * updates a row with the given values
+	 * @param tableName
+	 * @param rowKey
+	 * @param values
+	 */
 	@Override
 	public void updateRow(String tableName, Object rowKey,
 			Map<String, Object> values) {
+		
 		StringBuffer sb = new StringBuffer();
+		Map<String, Object> values_original = values;
+		Object rowKey_original = rowKey;
 		try {
-			String pKey = getTablePrimaryKeyName(tableName);
-			Connection conn = openConnection();
-			Statement stmt = conn.createStatement();
-			Object rowKey_original = rowKey;
-			rowKey = formatValue(rowKey);
-			values = formatValues(values);
-
-			StringBuffer objects = new StringBuffer();
-			sb.append("replace into " + tableName + "(");
-			objects.append(" values(");
-			Iterator<String> it = values.keySet().iterator();
-			for (int i = 0; i < values.size() - 1; i++) {
-				String key = it.next();
-				sb.append(key + ", ");
-				objects.append(values.get(key) + ", ");
-			}
-			String key = it.next().toString();
-			objects.append(values.get(key) + ")");
-			sb.append(key + ") " + objects.toString() + ";");
+			addMissingColumns(tableName, values.keySet());
 			
-			//System.out.println(sql);
-			stmt.execute(sb.toString());
-
-			Set<Object> set = new HashSet<Object>();
-			set.add(rowKey_original);
-			notify(tableName, StorageSourceNotification.Action.MODIFY, set);
-			conn.close();
+			String pKey = getTablePrimaryKeyName(tableName);
+			IPredicate p = new OperatorPredicate(pKey, OperatorPredicate.Operator.EQ, rowKey.toString());
+			IResultSet rs = executeQuery(tableName, null, p, null);
+			if (rs.next()){
+				//System.out.println("****************************UPDATING*************************");
+				Connection conn = openConnection();
+				Statement stmt = conn.createStatement();
+				rowKey = formatValue(rowKey);
+				values = formatValues(values);
+	
+				sb.append("update " + tableName + " set ");
+				Iterator<String> it = values.keySet().iterator();
+				for (int i = 0; i < values.size(); i++) {
+					String key = it.next();
+					sb.append(key + "=" + values.get(key) + ", ");
+				}
+				sb.deleteCharAt(sb.length()-2);
+				sb.append("WHERE " + pKey + "=" + rowKey + ";");
+				
+				//System.out.println("\t\t" + sb.toString());
+				stmt.execute(sb.toString());
+	
+				Set<Object> set = new HashSet<Object>();
+				set.add(rowKey_original);
+				notify(tableName, StorageSourceNotification.Action.MODIFY, set);
+				conn.close();
+			}else{
+				//System.out.println("****************************INSERTING*************************");
+				insertRow(tableName, values);
+			}
 
 		} catch (SQLException e) {
 			System.out.println("failed to update row\n" + e.getMessage() + "\n\t" + sb.toString());
+			
+			if (e.getMessage().contains("doesn't exist") || e.getMessage().contains("no such table")){
+				createTable(tableName, values_original.keySet());
+				updateRow(tableName, rowKey_original, values_original);
+			}
 		}
 	}
 
@@ -453,77 +578,50 @@ public class SQLStorageSource extends AbstractStorageSource {
 	}
 
 	public void deleteRows(String tableName, Set<Object> deleteSet) {
-		Iterator<Object> i = deleteSet.iterator();
-		Object rowKey = null;
-		while (i.hasNext()) {
-			rowKey = i.next();
-			deleteRow(tableName, rowKey);
+		if (deleteSet != null){
+			Iterator<Object> i = deleteSet.iterator();
+			Object rowKey = null;
+			while (i.hasNext()) {
+				rowKey = i.next();
+				deleteRow(tableName, rowKey);
+			}
+		}else{
+			deleteRows(tableName);
 		}
 
 	}
 
 	public String getTablePrimaryKeyName(String tableName) {
 		String pKey = "";
-		try {
-			Connection conn = openConnection();
-			Statement stmt = conn.createStatement();
-
-			String sql = "pragma table_info(" + tableName + ");";
-			// System.out.println(sql);
-			ResultSet sqlresult = stmt.executeQuery(sql);
-
-			while (pKey == "" && sqlresult.next()) {
-				if (sqlresult.getInt(6) == 1) {
-					pKey = sqlresult.getString(2);
-				}
-
-			}
-
-			conn.close();
-		} catch (SQLException e) {
-			System.out.println("failed to get primary key\n" + e.getMessage());
-		}
 		return pKey;
 	}
 
 	public Map<String, Object> formatValues(Map<String, Object> values) {
-		Iterator<String> it = values.keySet().iterator();
-		Object value = null;
-		Map<String, Object> newValues = new HashMap<String, Object>();
-		for (int i = 0; i < values.size(); i++) {
-			String key = it.next();
-			value = values.get(key);
-			value = formatValue(value);
-			newValues.put(key, value);
-		}
-		return newValues;
+		return values;
 	}
 
 	public Object formatValue(Object value) {
-		try {
-			if (value.getClass().equals(java.lang.String.class)
-					&& !value.toString().equals("null")
-					&& !value.toString().equals("NULL")) {
-				if (!value.toString().contains("'"))
-					value = "'" + value.toString() + "'";
-			} else if (value.toString().equals("true"))
-				value = 1;
-			else if (value.toString().equals("false"))
-				value = 0;
-		} catch (NullPointerException e) {
-			System.out.println(value + " could not be formatted. It is null.");
-		}
 		return value;
 	}
 
+	/*
+	 * Creates a predicate string (i.e. Where x = y)
+	 * Can handle both operator and compound predicates
+	 * Will first try and cast as CompoundPredicate. Will then recursively call this method on each predicate
+	 * in the compound predicate's list and add those to the string. 
+	 * If an exception is thrown when casting, we can cast as
+	 * an operator predicate and create our string.
+	 * @param map
+	 * @param predicate 
+	 */
 	public String createPredicateString(Map<String, Comparable<?>> map,
 			IPredicate predicate) {
-		String predS = "";
+		StringBuffer predS = new StringBuffer();
 		try {
 			CompoundPredicate cp = (CompoundPredicate) predicate;
 			for (IPredicate list : cp.getPredicateList()) {
-				predS += createPredicateString(map, list) + " "
-						+ cp.getOperator() + " ";
+				predS .append(createPredicateString(map, list) + " "
+						+ cp.getOperator() + " ");
 			}
 		} catch (ClassCastException e) {
 			OperatorPredicate op = (OperatorPredicate) predicate;
@@ -561,13 +659,13 @@ public class SQLStorageSource extends AbstractStorageSource {
 			if (value.equals("NULL"))
 				operator = "is";
 
-			predS = op.getColumnName() + " " + operator + " "
-					+ value.toString();
+			predS.append(op.getColumnName() + " " + operator + " "
+					+ value.toString());
 		}
-		if (predS.contains("AND") || predS.contains("OR"))
-			predS = predS.substring(0, predS.length() - 4);
+		if (predS.toString().contains("AND") || predS.toString().contains("OR"))
+			predS = predS.delete(predS.length() - 4, predS.length());
 
-		return predS;
+		return predS.toString();
 	}
 
 	public void notify(String tableName, Action action, Set<Object> keys) {

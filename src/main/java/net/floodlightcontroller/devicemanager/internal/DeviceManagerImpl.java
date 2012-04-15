@@ -2237,7 +2237,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         columns.add(MAC_COLUMN_NAME);
         columns.add(VLAN_COLUMN_NAME);
         columns.add(LAST_SEEN_COLUMN_NAME);
-        storageSource.createTable(DEVICE_TABLE_NAME, columns);
+        storageSource.createTable(DEVICE_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_TABLE_NAME, MAC_COLUMN_NAME);
         
@@ -2248,7 +2248,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         columns.add(SWITCH_COLUMN_NAME);
         columns.add(PORT_COLUMN_NAME);
         columns.add(AP_STATUS_COLUMN_NAME);
-        storageSource.createTable(DEVICE_ATTACHMENT_POINT_TABLE_NAME, columns);
+        storageSource.createTable(DEVICE_ATTACHMENT_POINT_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_ATTACHMENT_POINT_TABLE_NAME, ID_COLUMN_NAME);
         
@@ -2257,7 +2257,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         columns.add(DEVICE_COLUMN_NAME);
         columns.add(LAST_SEEN_COLUMN_NAME);
         columns.add(NETWORK_ADDRESS_COLUMN_NAME);
-        storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, columns);
+        storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
         
@@ -2266,7 +2266,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         columns.add(PORT_CHANNEL_COLUMN_NAME);
         columns.add(PC_SWITCH_COLUMN_NAME);
         columns.add(PC_PORT_COLUMN_NAME);
-        storageSource.createTable(PORT_CHANNEL_TABLE_NAME, columns);
+        storageSource.createTable(PORT_CHANNEL_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
                         
