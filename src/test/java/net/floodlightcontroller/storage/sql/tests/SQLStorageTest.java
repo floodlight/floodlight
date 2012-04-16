@@ -649,7 +649,8 @@ public abstract class SQLStorageTest extends FloodlightTestCase {
 
 	/*
 	 * Tests for behavior that is unexpected. Expects an exception to be thrown if an invalid table name is
-	 * used, but storage source catches that exception. This test is either invalid or needs to be
+	 * used, but storage source catches that exception. The exception message will be printed to stdout and a
+	 * null value for the result set is returned. This test is either invalid or needs to be
 	 * re-worked.
 	 */
 	@Test
