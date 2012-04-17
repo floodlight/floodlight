@@ -85,7 +85,7 @@ public class StaticFlowEntries {
      * Gets the entry name of a flow mod
      * @param fmJson The OFFlowMod in a JSON representation
      * @return The name of the OFFlowMod, null if not found
-     * @throws IOException If ther was an error parsing the JSON
+     * @throws IOException If there was an error parsing the JSON
      */
     public static String getEntryNameFromJson(String fmJson) throws IOException{
         MappingJsonFactory f = new MappingJsonFactory();
