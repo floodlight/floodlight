@@ -898,21 +898,11 @@ public class DeviceManagerImpl implements
             }
             
             int entityindex = -1;
-            if ((entityindex = device.containsEntity(entity)) >= 0) {
+            if ((entityindex = device.entityIndex(entity)) >= 0) {
                 // update timestamp on the found entity
                 device.entities[entityindex].setLastSeenTimestamp(new Date());
                 break;
-            } else {
-                // When adding an entity, any existing entities on the
-                // same OpenFlow switch cluster but a different attachment
-                // point should be removed. If an entity being removed 
-                // contains non-key fields that the new entity does not contain,
-                // then a new entity should be added containing the
-                // field (including updating the entity caches), preserving the
-                // old timestamp of the entity.
-
-                // XXX - TODO Prevent flapping of entities
-                
+            } else {                
                 Device newDevice = allocateDevice(device, entity, classes);
                 
                 // generate updates
