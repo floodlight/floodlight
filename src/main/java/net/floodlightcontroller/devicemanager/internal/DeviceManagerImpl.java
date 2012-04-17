@@ -860,8 +860,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
         // Add this packet-in to event history
         evHistPktIn(match);
-        if (log.isDebugEnabled())
-            log.debug("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
+        if (log.isTraceEnabled())
+            log.trace("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
                       new Object[] { sw.getStringId(), pi.getInPort(), 
                                HexString.toHexString(match.getDataLayerSource()),
                                HexString.toHexString(match.getDataLayerDestination()),
