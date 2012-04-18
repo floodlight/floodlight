@@ -39,8 +39,47 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 public class StaticFlowEntryPusherResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusherResource.class);
     
+    /**
+     * Checks to see if the user matches IP information without
+     * checking for the correct ether-type (2048).
+     * @param rows The Map that is a string representation of
+     * the static flow.
+     * @reutrn True if they checked the ether-type, false otherwise
+     */
+    private boolean checkMatchIp(Map<String, Object> rows) {
+        boolean matchEther = false;
+        String val = (String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE);
+        if (val != null) {
+            int type = 0;
+            // check both hex and decimal
+            if (val.startsWith("0x")) {
+                type = Integer.parseInt(val.substring(2), 16);
+            } else {
+                try {
+                    type = Integer.parseInt(val);
+                } catch (NumberFormatException e) { /* fail silently */}
+            }
+            if (type == 2048) matchEther = true;
+        }
+        
+        if ((rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) || 
+                rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_SRC) ||
+                rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_PROTO) ||
+                rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_TOS)) &&
+                (matchEther == false))
+            return false;
+        
+        return true;
+    }
+    
+    /**
+     * Takes a Static Flow Pusher string in JSON format and parses it into
+     * our database schema then pushes it to the database.
+     * @param fmJson The Static Flow Pusher entry in JSON format.
+     * @return A string status message
+     */
     @Post
-    public void store(String fmJson) {
+    public String store(String fmJson) {
         IStorageSourceService storageSource =
                 (IStorageSourceService)getContext().getAttributes().
                     get(IStorageSourceService.class.getCanonicalName());
@@ -48,25 +87,45 @@ public class StaticFlowEntryPusherResource extends ServerResource {
         Map<String, Object> rowValues;
         try {
             rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
+            String status = null;
+            if (!checkMatchIp(rowValues)) {
+                status = "Warning! Pushing a static flow entry that matches IP " +
+                        "fields without matching for IP payload (ether-type 2048) will cause " +
+                        "the switch to wildcard higher level fields.";
+                log.error(status);
+            } else {
+                status = "Entry pushed";
+            }
             storageSource.insertRowAsync(StaticFlowEntryPusher.TABLE_NAME, rowValues);
+            return ("{\"status\" : \"" + status + "\"}");
         } catch (IOException e) {
             log.error("Error parsing push flow mod request: " + fmJson, e);
             e.printStackTrace();
+            return "{\"status\" : \"Error! Could not parse flod mod, see log for details.\"}";
         }
     }
     
     @Delete
-    public void del(String fmJson) {
+    public String del(String fmJson) {
         IStorageSourceService storageSource =
                 (IStorageSourceService)getContext().getAttributes().
                     get(IStorageSourceService.class.getCanonicalName());
-        
+        String fmName = null;
+        if (fmJson == null) {
+            return "{\"status\" : \"Error! No data posted.\"}";
+        }
         try {
-            String fmName = StaticFlowEntries.getEntryNameFromJson(fmJson);
-            storageSource.deleteRow(StaticFlowEntryPusher.TABLE_NAME, fmName);
+            fmName = StaticFlowEntries.getEntryNameFromJson(fmJson);
+            if (fmName == null) {
+                return "{\"status\" : \"Error deleting entry, no name provided\"}";
+            }
         } catch (IOException e) {
             log.error("Error deleting flow mod request: " + fmJson, e);
             e.printStackTrace();
+            return "{\"status\" : \"Error deleting entry, see log for details\"}";
         }
+        
+        storageSource.deleteRowAsync(StaticFlowEntryPusher.TABLE_NAME, fmName);
+        return "{\"status\" : \"Entry " + fmName + " deleted\"}";
     }
 }

@@ -499,7 +499,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
         /**
          * Delete an attachment point from a device
-         * @param d the device
+         * @param dlAddr the data link layer's address of the device
          * @param swPort the {@link SwitchPortTuple} to remove
          */
         protected void delDevAttachmentPoint(long dlAddr, SwitchPortTuple swPort) {
@@ -580,7 +580,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         /**
          * Add switch-port to port_channel mapping to portChannelMap
          * @param switch_id
-         * @param port_no
+         * @param port_name
          * @param port_channel
          */
         protected void addPortToPortChannel(String switch_id,
@@ -860,8 +860,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
         // Add this packet-in to event history
         evHistPktIn(match);
-        if (log.isDebugEnabled())
-            log.debug("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
+        if (log.isTraceEnabled())
+            log.trace("Entering packet_in processing sw {}, port {}. {} --> {}, type {}",
                       new Object[] { sw.getStringId(), pi.getInPort(), 
                                HexString.toHexString(match.getDataLayerSource()),
                                HexString.toHexString(match.getDataLayerDestination()),
@@ -1334,7 +1334,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     }
     
     /**
-     * @param topology the topology to set
+     * @param linkDiscovery the link discovery service to set
      */
     public void setLinkDiscovery(ILinkDiscoveryService linkDiscovery) {
         this.linkDiscovery = linkDiscovery;
