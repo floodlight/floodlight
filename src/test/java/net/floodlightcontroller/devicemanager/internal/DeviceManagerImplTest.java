@@ -45,8 +45,6 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
-import net.floodlightcontroller.storage.sql.MySQLStorageSource;
-import net.floodlightcontroller.storage.sql.SqliteStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -71,7 +69,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     private byte[] testARPReplyPacket_3_Serialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
-    MySQLStorageSource storageSource;
+    MemoryStorageSource storageSource;
     
     @Before
     public void setUp() throws Exception {
@@ -84,7 +82,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         fmc.addService(IDeviceManagerService.class, deviceManager);
-        storageSource = new MySQLStorageSource();
+        storageSource = new MemoryStorageSource();
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);

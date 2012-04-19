@@ -1,6 +1,5 @@
 /**
- *    Copyright 2011, Big Switch Networks, Inc. 
- *    Originally created by David Erickson, Stanford University
+ *    Created by Andrew Freitas
  * 
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain

@@ -40,7 +40,7 @@ public class FloodlightModuleLoader {
     protected static Object lock = new Object();
     
     protected FloodlightModuleContext floodlightModuleContext;
-	
+
     public static final String COMPILED_CONF_FILE = 
             "floodlightdefault.properties";
     public static final String FLOODLIGHT_MODULES_KEY =
@@ -49,7 +49,7 @@ public class FloodlightModuleLoader {
 	public FloodlightModuleLoader() {
 	    floodlightModuleContext = new FloodlightModuleContext();
 	}
-	
+
 	/**
 	 * Finds all IFloodlightModule(s) in the classpath. It creates 3 Maps.
 	 * serviceMap -> Maps a service to a module
@@ -69,7 +69,7 @@ public class FloodlightModuleLoader {
 	                            Collection<Class<? extends 
 	                                       IFloodlightService>>>();
 	        moduleNameMap = new HashMap<String, IFloodlightModule>();
-	        
+
 	        // Get all the current modules in the classpath
 	        ClassLoader cl = Thread.currentThread().getContextClassLoader();
 	        ServiceLoader<IFloodlightModule> moduleLoader
@@ -102,7 +102,7 @@ public class FloodlightModuleLoader {
 	                        if (mList.contains(cMod.getClass().getCanonicalName()))
 	                            dupInConf++;
 	                    }
-	                    
+
 	                    if (dupInConf > 1) {
 	                        String duplicateMods = "";
                             for (IFloodlightModule mod : mods) {
@@ -118,7 +118,7 @@ public class FloodlightModuleLoader {
 	        }
 	    }
 	}
-	
+
 	/**
 	 * Loads the modules from a specified configuration file.
 	 * @param fName The configuration file path
@@ -128,7 +128,7 @@ public class FloodlightModuleLoader {
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
 	    Properties prop = new Properties();
-	    
+
 	    File f = new File(fName);
 	    if (f.isFile()) {
             logger.info("Loading modules from file " + fName);
@@ -160,7 +160,7 @@ public class FloodlightModuleLoader {
         configMods.addAll(Arrays.asList(moduleList.split(",")));
         return loadModulesFromList(configMods, prop);
 	}
-	
+
 	/**
 	 * Loads modules (and their dependencies) specified in the list
 	 * @param mList The array of fully qualified module names
@@ -244,7 +244,7 @@ public class FloodlightModuleLoader {
         
         return floodlightModuleContext;
     }
-	
+
 	/**
 	 * Add a module to the set of modules to load and register its services
 	 * @param moduleMap the module map

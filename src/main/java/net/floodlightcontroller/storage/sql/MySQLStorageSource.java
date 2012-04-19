@@ -1,9 +1,21 @@
+/**
+ *    Created by Andrew Freitas
+ * 
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.storage.sql;
 
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -27,37 +39,16 @@ public class MySQLStorageSource extends SQLStorageSource {
 	private static String DB_USER = "";
 	private static String DB_PASS = "";
 	
-    public void getDBInfo() {
-        if (DB_PATH.equals("")){
-	    	try{
-	        	FileInputStream fstream = new FileInputStream("config/MySQL.properties");
-	        	DataInputStream in = new DataInputStream(fstream);
-	        	BufferedReader br = new BufferedReader(new InputStreamReader(in));
-	        	String strLine;
-	        	String delimiter = "=";
-	        	String[] values;
-	
-	        	while ((strLine = br.readLine()) != null)   {
-	        		if (strLine.charAt(0)!= '#'){
-	        			values = strLine.split(delimiter);
-	        			values[0] = values[0].replaceAll("\\s", "");
-	        			values[1] = values[1].replaceAll("\\s", "");
-	        			if (values[0].equals("DB_PATH"))
-	        				DB_PATH = values[1];
-	        			else if(values[0].equals("DB_USER"))
-	        				DB_USER = values[1];
-	        			else if(values[0].equals("DB_PASS"))
-	        				DB_PASS = values[1];
-	        		}
-	        	}
-	        	 
-	        	in.close();
-	        }catch (Exception e){//Catch exception if any
-	        	System.out.println("Error: " + e.getMessage());
-	        }
-        }
-	
-    }    
+	public void init(FloodlightModuleContext context) throws FloodlightModuleException{
+		Map<String, String> configOptions = context.getConfigParams(this);
+        DB_PATH = configOptions.get("DB_PATH");
+        DB_USER = configOptions.get("DB_USER");
+        DB_PASS = configOptions.get("DB_PASS");
+        logger.info("MySQL database path set to " + DB_PATH);
+        
+        super.init(context);
+	}
+	  
         
 	@Override
 	public Connection openConnection() {
@@ -67,7 +58,6 @@ public class MySQLStorageSource extends SQLStorageSource {
 			
 			try {
 				Class.forName(driverName).newInstance();
-				getDBInfo();
 				String url = "jdbc:mysql://" + DB_PATH; // provide jdbc with path to db file
 				conn = DriverManager.getConnection(url, DB_USER, DB_PASS);
 			} catch (InstantiationException e) {
@@ -77,10 +67,9 @@ public class MySQLStorageSource extends SQLStorageSource {
 			}
 			
 		} catch (ClassNotFoundException e) {
-			System.out.println("could not find database driver");
+			log.error("Could not find database driver " + e.getMessage());
 		} catch (SQLException e) {
-			System.out.println("could not connect to database\n"
-					+ e.getMessage());
+			log.error("Could not connect to database " + e.getMessage());
 		}
 		return conn;
 	}
@@ -102,7 +91,10 @@ public class MySQLStorageSource extends SQLStorageSource {
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to get primary key\n\t" + e.getMessage());
+			if (e.getMessage().contains("doesn't exist")){
+				log.info("Could not get primary becuase one has not been set yet");
+			}else
+				log.error("Could not get primary key " + e.getMessage());
 		}
 		return pKey;
 	}
@@ -125,9 +117,9 @@ public class MySQLStorageSource extends SQLStorageSource {
 			if (e.getMessage().contains("doesn't exist")){
 				Set<String> columns = new HashSet<String>();
 				columns.add(primaryKeyName);
-				createTable(tableName, columns);
+				createTable(tableName, columns, primaryKeyName);
 			}else{
-				System.out.println("Failed to set primary key\n" + e.getMessage());
+				log.error("Could not set primary key " + e.getMessage());
 			}
 		}
 	}
@@ -189,7 +181,7 @@ public class MySQLStorageSource extends SQLStorageSource {
 				columns.add(rs.getString("Field"));
 			}
 		}catch(SQLException e){
-			System.out.println("Failed to get columns\n" + e.getMessage());
+			log.error("Could not get columns for table " + tableName + " " + e.getMessage());
 		}
 		return columns;
 	}

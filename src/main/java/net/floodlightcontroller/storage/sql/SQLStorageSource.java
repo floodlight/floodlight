@@ -1,3 +1,19 @@
+/**
+ *    Created by Andrew Freitas
+ * 
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.storage.sql;
 
 import java.sql.Connection;
@@ -13,6 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.floodlightcontroller.storage.AbstractStorageSource;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IPredicate;
@@ -24,14 +43,13 @@ import net.floodlightcontroller.storage.StorageSourceNotification;
 import net.floodlightcontroller.storage.RowOrdering.Item;
 import net.floodlightcontroller.storage.StorageSourceNotification.Action;
 
-public class SQLStorageSource extends AbstractStorageSource {
+public abstract class SQLStorageSource extends AbstractStorageSource {
 	
-	public Connection openConnection() {
-		Connection conn = null;
-		return conn;
-	}
+	protected static Logger log = LoggerFactory.getLogger(SQLStorageSource.class);
 	
-	/*
+	public abstract Connection openConnection();
+	
+	/**
 	 * Create an IQuery Object. (Select <columnNames> from <tableName> where <predicate> order by <ordering>)
 	 * @param tableName
 	 * @param columnNames
@@ -46,7 +64,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return query;
 	}
 
-	/*
+	/**
 	 * create a table, all columns will be of type VARCHAR(100) for simplicity's sake. If no columns are initially
 	 * passed to the method, nothing is done and the table will be created later.
 	 * @param tableName
@@ -74,13 +92,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 				conn.close();
 			}
 		} catch (SQLException e) {
-			System.out.println("could not create the table\n\t"
-					+ e.getMessage() + "\n\t" + sb.toString());
+			log.error("Can't create table " + e.getMessage());
 		}
 
 	}
 	
-	/*
+	/**
 	 * Drop the given table if it exists
 	 * @param tableName
 	 */
@@ -95,11 +112,11 @@ public class SQLStorageSource extends AbstractStorageSource {
 			stmt.execute(sql);
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("could not drop table \n\t" + e.getMessage());
+			log.error("Can't drop table " +e.getMessage());
 		}
 	}
 
-	/*
+	/**
 	 * Create a table with a primary key. If no columns are initially passed to the method, 
 	 * nothing is done and the table will be created later.
 	 * @param tableName
@@ -130,13 +147,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 				conn.close();
 			}
 		} catch (SQLException e) {
-			System.out.println("could not create the table\n\t"
-					+ e.getMessage() + "\n\t" + sb.toString());
+			log.error("Can't create table " + e.getMessage());
 		}
 
 	}
 	
-	/*
+	/**
 	 * Alters a table to add a set of columns
 	 * @param tableName
 	 * @param columns
@@ -167,20 +183,17 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("could not alter the table\n\t"
-					+ e.getMessage() + "\n\t" + sb.toString());
+			log.error("Can't alter table " + e.getMessage());
 		}
 	}
 	
-	/*
+	/**
 	 * will be overridden
 	 */
-	public Set<String> getColumns(String tableName) {
-		return null;
-	}
+	public abstract Set<String> getColumns(String tableName);
 
 
-	/*
+	/**
 	 * Delete a row from a table 
 	 * @param tableName
 	 * @param rowKey
@@ -209,12 +222,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 			set.add(rowKey_original);
 			notify(tableName, StorageSourceNotification.Action.DELETE, set);
 		} catch (SQLException e) {
-			System.out.println("******could not delete row\n" + e.getMessage());
+			log.error("Can't delete row " + e.getMessage());
 		}
 
 	}
 
-	/*
+	/**
 	 * Delete from <tableName> where <columnName> = <key>
 	 * @param tableName
 	 * @param columnName
@@ -238,11 +251,11 @@ public class SQLStorageSource extends AbstractStorageSource {
 			notify(tableName, StorageSourceNotification.Action.DELETE, set);
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("could not delete row\n" + e.getMessage());
+			log.error("Can't delete row " + e.getMessage());
 		}
 	}
 
-	/*
+	/**
 	 * Casts an IQuery to SQLQuery and executes it
 	 * @param query
 	 */
@@ -252,7 +265,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return rs;
 	}
 
-	/*
+	/**
 	 * Execute a SQLQuery object. See createQuery for what goes into query object.
 	 * @param query
 	 */
@@ -336,13 +349,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to execute query: " + sb.toString() + "\n"
-					+ e.getMessage());
+			log.error("Can't execute query " + e.getMessage());
 		}
 		return rs;
 	}
 
-	/*
+	/**
 	 * Gets a single row from a table
 	 * @param tableName
 	 * @param rowKey
@@ -354,7 +366,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return rs;
 	}
 
-	/*
+	/**
 	 * Gets a single row from a table
 	 * @param tableName
 	 * @param columnName
@@ -375,7 +387,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 		return rs;
 	}
 	
-	/*
+	/**
 	 * Checks a table to see if a set of columns is present and adds the ones that aren't.
 	 * @param tableName
 	 * @param columns
@@ -391,7 +403,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 			alterTable(tableName, missing);
 	}
 
-	/*
+	/**
 	 * Inserts a row (Insert into <tableName>(column1, column2, ...) values(value1, value2, ....))
 	 * @param tableName
 	 * @param values
@@ -428,16 +440,19 @@ public class SQLStorageSource extends AbstractStorageSource {
 			notify(tableName, StorageSourceNotification.Action.MODIFY, set);
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to insert row\n" + e.getMessage()
-					+ "\n\t updating row instead");
+
 			if (e.getMessage().contains("not unique")) {
 				String key = getTablePrimaryKeyName(tableName);
 				Object rowKey = values_original.get(key);
+				log.info("Primary Key " + rowKey + " in table " + tableName + " already exists, updating row instead");
 				updateRow(tableName, rowKey, values_original);
 			}
 			else if (e.getMessage().contains("doesn't exist") || e.getMessage().contains("no such table")){
+				log.info("Table does not exist. Creating table and inserting new row");
 				createTable(tableName, values_original.keySet());
 				insertRow(tableName, values_original);
+			}else{
+				log.error("Could not insert row " + e.getMessage());
 			}
 		}
 
@@ -447,7 +462,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 	public void setTablePrimaryKeyName(String tableName, String primaryKeyName) {
 	}
 
-	/*
+	/**
 	 * updates a row with the given values
 	 * @param tableName
 	 * @param rowKey
@@ -495,11 +510,12 @@ public class SQLStorageSource extends AbstractStorageSource {
 			}
 
 		} catch (SQLException e) {
-			System.out.println("failed to update row\n" + e.getMessage() + "\n\t" + sb.toString());
-			
 			if (e.getMessage().contains("doesn't exist") || e.getMessage().contains("no such table")){
+				log.info("Table does not exist. Creating table and inserting new row");
 				createTable(tableName, values_original.keySet());
 				updateRow(tableName, rowKey_original, values_original);
+			}else{
+				log.error("Could not update Row " + e.getMessage());
 			}
 		}
 	}
@@ -573,7 +589,7 @@ public class SQLStorageSource extends AbstractStorageSource {
 			notify(tableName, StorageSourceNotification.Action.DELETE, set);
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("could not delete rows\n\t" + e.getMessage());
+			log.error("Could not delete rows " + e.getMessage());
 		}
 	}
 
@@ -591,20 +607,13 @@ public class SQLStorageSource extends AbstractStorageSource {
 
 	}
 
-	public String getTablePrimaryKeyName(String tableName) {
-		String pKey = "";
-		return pKey;
-	}
+	public abstract String getTablePrimaryKeyName(String tableName);
 
-	public Map<String, Object> formatValues(Map<String, Object> values) {
-		return values;
-	}
+	public abstract Map<String, Object> formatValues(Map<String, Object> values);
 
-	public Object formatValue(Object value) {
-		return value;
-	}
+	public abstract Object formatValue(Object value);
 
-	/*
+	/**
 	 * Creates a predicate string (i.e. Where x = y)
 	 * Can handle both operator and compound predicates
 	 * Will first try and cast as CompoundPredicate. Will then recursively call this method on each predicate

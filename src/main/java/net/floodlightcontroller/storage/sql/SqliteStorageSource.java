@@ -1,3 +1,19 @@
+/**
+ *    Created by Andrew Freitas
+ * 
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.storage.sql;
 
 import java.sql.Connection;
@@ -14,19 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
-import net.floodlightcontroller.storage.IPredicate;
-import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.OperatorPredicate;
-import net.floodlightcontroller.storage.StorageSourceNotification;
-
 public class SqliteStorageSource extends SQLStorageSource {
 
-	/**
-	 * we may want to move the information in this method to another file
-	 * (possibly password protected) and only leave the implementation here
-	 * 
-	 * @return
-	 */
 	@Override
 	public Connection openConnection() {
 		Connection conn = null;
@@ -40,11 +45,9 @@ public class SqliteStorageSource extends SQLStorageSource {
 												// file
 			conn = DriverManager.getConnection(url);
 		} catch (ClassNotFoundException e) {
-			System.out.println("could not find database driver");
+			log.error("Could not find database driver");
 		} catch (SQLException e) {
-			System.out.println("could not connect to database\n"
-					+ e.getMessage());
-			e.printStackTrace();
+			log.error("Could not connect to database " + e.getMessage());
 			
 		}
 		return conn;
@@ -118,7 +121,13 @@ public class SqliteStorageSource extends SQLStorageSource {
 			}
 			
 		}catch(SQLException e){
-			System.out.println("Could not set primary key\n" + e.getMessage());
+			if (e.getMessage().contains("no such table")){
+				Set<String> columns = new HashSet<String>();
+				columns.add(primaryKeyName);
+				createTable(tableName, columns, primaryKeyName);
+			}else{
+				log.error("Could not set primary key " + e.getMessage());
+			}
 		}
 		
 		
@@ -144,7 +153,10 @@ public class SqliteStorageSource extends SQLStorageSource {
 
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println("failed to get primary key\n" + e.getMessage());
+			if (e.getMessage().contains("doesn't exist")){
+				log.info("Could not get primary becuase one has not been set yet");
+			}else
+				log.error("Could not get primary key " + e.getMessage());
 		}
 		return pKey;
 	}
@@ -208,7 +220,7 @@ public class SqliteStorageSource extends SQLStorageSource {
 			}
 		}catch(SQLException e){
 			if (!e.getMessage().contains("query does not return"))
-				System.out.println("Failed to get columns\n" + e.getMessage());
+				log.error("Could not get columns for table " + tableName + " " + e.getMessage());
 		}
 		return columns;
 	}
