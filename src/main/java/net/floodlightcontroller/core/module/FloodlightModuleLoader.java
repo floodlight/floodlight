@@ -58,7 +58,7 @@ public class FloodlightModuleLoader {
 	 * @throws FloodlightModuleException If two modules are specified in the configuration
 	 * that provide the same service.
 	 */
-	protected static void findAllModules(Set<String> mList) throws FloodlightModuleException {
+	protected static void findAllModules(Collection<String> mList) throws FloodlightModuleException {
 	    synchronized (lock) {
 	        if (serviceMap != null) return;
 	        serviceMap = 
@@ -156,7 +156,7 @@ public class FloodlightModuleLoader {
         
         String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY)
                                 .replaceAll("\\s", "");
-        Set<String> configMods = new HashSet<String>();
+        Collection<String> configMods = new ArrayList<String>();
         configMods.addAll(Arrays.asList(moduleList.split(",")));
         return loadModulesFromList(configMods, prop);
 	}
@@ -167,7 +167,7 @@ public class FloodlightModuleLoader {
 	 * @return The ModuleContext containing all the loaded modules
 	 * @throws FloodlightModuleException
 	 */
-	public IFloodlightModuleContext loadModulesFromList(Set<String> configMods, Properties prop) 
+	public IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop) 
             throws FloodlightModuleException {
         logger.debug("Starting module loader");
         findAllModules(configMods);
