@@ -14,10 +14,7 @@
    limitations under the License.
 */
 
-window.Status = Backbone.Model.extend({
-
-    // url:"http://localhost:8080/wm/core/memory/json",
-    
+window.Status = Backbone.Model.extend({    
     defaults: {
     	host: 'localhost',
     	ofport: 6633,
@@ -25,7 +22,8 @@ window.Status = Backbone.Model.extend({
     	free: 0,
     	total: 0,
     	healthy: 'unknown',
-    	modules: []
+    	modules: [],
+    	moduleText: ''
     },
     
     initialize:function () {
@@ -55,8 +53,8 @@ window.Status = Backbone.Model.extend({
             success:function (data) {
                 console.log("fetched controller status: modules loaded");
                 // console.log(data);
-                // TODO format this better
                 self.set({modules:_.keys(data)});
+                self.set({moduleText:_.reduce(_.keys(data), function(s, m){return s+m.replace("net.floodlightcontroller", "n.f")+", "}, '')});
             }
         });
 
