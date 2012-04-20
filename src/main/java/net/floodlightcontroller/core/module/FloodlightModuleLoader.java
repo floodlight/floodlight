@@ -287,8 +287,18 @@ public class FloodlightModuleLoader {
                                      "  as provider for " + 
                                      s.getKey().getCanonicalName());
                     }
-                    floodlightModuleContext.addService(s.getKey(),
-                                                       s.getValue());
+                    if (floodlightModuleContext.getServiceImpl(s.getKey()) == null) {
+                        floodlightModuleContext.addService(s.getKey(),
+                                                           s.getValue());
+                    } else {
+                        throw new FloodlightModuleException("Cannot set "
+                                                            + s.getValue()
+                                                            + " as the provider for "
+                                                            + s.getKey().getCanonicalName()
+                                                            + " because "
+                                                            + floodlightModuleContext.getServiceImpl(s.getKey())
+                                                            + " already provides it");
+                    }
                 }
             }
         }
