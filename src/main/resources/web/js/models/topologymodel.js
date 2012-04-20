@@ -40,11 +40,13 @@ window.Topology = Backbone.Model.extend({
                 	self.nodes[l['dst-switch']] = true;
                 });
                 // console.log(self.nodes);
-                self.nodes = _.keys(self.nodes);
+                var nl = _.keys(self.nodes);
+                self.nodes = _.map(nl, function (n) {return {name:n}});
                 // step 2: build array of links in format D3 expects
                 _.each(data, function (l) {
-                	self.links.push({source:self.nodes.indexOf(l['src-switch']),
-                					   target:self.nodes.indexOf(l['dst-switch'])});
+                	self.links.push({source:nl.indexOf(l['src-switch']),
+                					 target:nl.indexOf(l['dst-switch']),
+                					 value:10});
                 });
                 // console.log(self.nodes);
                 // console.log(self.links);
