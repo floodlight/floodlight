@@ -35,9 +35,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 
 public class MySQLStorageSource extends SQLStorageSource {
 
-	private static String DB_PATH = "";
-	private static String DB_USER = "";
-	private static String DB_PASS = "";
+	private static String DB_PATH = "localhost/openflow:3306";
+	private static String DB_USER = "root";
+	private static String DB_PASS = "root";
 	
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException{
 		Map<String, String> configOptions = context.getConfigParams(this);
