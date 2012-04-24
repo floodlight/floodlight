@@ -49,7 +49,6 @@ import java.util.concurrent.TimeoutException;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IInfoProvider;
-import net.floodlightcontroller.core.IOFController;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -129,8 +128,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The main controller class.  Handles all setup and network listeners
  */
-public class Controller
-    implements IFloodlightProviderService, IOFController {
+public class Controller implements IFloodlightProviderService {
     
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
     
@@ -257,6 +255,9 @@ public class Controller
                 log.error("Error sending role request message to switch {}", sw);
             }
         }
+        
+        // Send an update
+        // TODO send update
     }
     
     /**
@@ -938,6 +939,13 @@ public class Controller
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
+                
+                if (pi.getPacketData().length <= 0) {
+                    log.error("Ignoring PacketIn (Xid = " + pi.getXid() + 
+                              ") because the data field is empty.");
+                    return;
+                }
+                
                 if (Controller.ALWAYS_DECODE_ETH) {
                     eth = new Ethernet();
                     eth.deserialize(pi.getPacketData(), 0,
@@ -986,15 +994,12 @@ public class Controller
                         pktinProcTime.recordStartTimeComp(listener);
                         cmd = listener.receive(sw, m, bc);
                         pktinProcTime.recordEndTimeComp(listener);
-                            //updateCumulativeTimeOneComp(compStartTime_ns,
-                            //                            listener.getId());
                         
                         if (Command.STOP.equals(cmd)) {
                             break;
                         }
                     }
                     pktinProcTime.recordEndTimePktIn(sw, m, bc);
-                    //updateCumulativeTimeTotal(startTime_ns);
                 } else {
                     log.error("Unhandled OF Message: {} from {}", m, sw);
                 }
@@ -1363,11 +1368,6 @@ public class Controller
         return factory;
     }
     
-    // *************
-    // IOFController
-    // *************
-    
-    @Override
     public String getControllerId() {
         return "localhost";
     }

@@ -216,6 +216,8 @@ public class Ethernet extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
+        if (length <= 0)
+            return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
             this.destinationMACAddress = MACAddress.valueOf(new byte[6]);

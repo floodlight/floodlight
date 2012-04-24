@@ -373,7 +373,7 @@ public class StaticFlowEntries {
         n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(subaction);
         if (n.matches()) {
             OFActionOutput action = new OFActionOutput();
-            action.setMaxLength((short) 0);
+            action.setMaxLength((short) Short.MAX_VALUE);
             short port = OFPort.OFPP_NONE.getValue();
             if (n.group(1) != null) {
                 try {

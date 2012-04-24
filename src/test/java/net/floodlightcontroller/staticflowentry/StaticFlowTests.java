@@ -57,7 +57,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         // setup actions
         List<OFAction> actions = new LinkedList<OFAction>();
         TestRule1.put(COLUMN_ACTIONS, "output=1");
-        actions.add(new OFActionOutput((short)1, (short) 0));
+        actions.add(new OFActionOutput((short)1, (short) Short.MAX_VALUE));
         // done
         FlowMod1.setMatch(match);
         FlowMod1.setActions(actions);
@@ -82,7 +82,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         // setup actions
         List<OFAction> actions = new LinkedList<OFAction>();
         TestRule2.put(COLUMN_ACTIONS, "output=1");
-        actions.add(new OFActionOutput((short)1, (short) 0));
+        actions.add(new OFActionOutput((short)1, (short) Short.MAX_VALUE));
         // done
         FlowMod2.setMatch(match);
         FlowMod2.setActions(actions);
@@ -109,7 +109,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         // setup actions
         TestRule3.put(COLUMN_ACTIONS, "output=controller");
         List<OFAction> actions = new LinkedList<OFAction>();
-        actions.add(new OFActionOutput(OFPort.OFPP_CONTROLLER.getValue(), (short) 0));
+        actions.add(new OFActionOutput(OFPort.OFPP_CONTROLLER.getValue(), (short) Short.MAX_VALUE));
         // done
         FlowMod3.setMatch(match);
         FlowMod3.setActions(actions);
