@@ -82,6 +82,9 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
         OFPacketIn packet = (OFPacketIn)m;
         
+        // Make sure there is data
+        if (packet.getPacketData().length <= 0) return;
+        
         /* Extract the etherType and protocol field for IPv4 packet.
          */
         String etherType = String.format("%04x", eth.getEtherType());
