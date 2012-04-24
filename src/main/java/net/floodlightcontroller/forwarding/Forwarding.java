@@ -197,8 +197,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     /**
      * Creates a OFPacketOut with the OFPacketIn data that is flooded on all ports unless 
      * the port is blocked, in which case the packet will be dropped.
+     * @param sw The switch that receives the OFPacketIn
      * @param pi The OFPacketIn that came to the switch
-     * @param decision The Forwarding decision
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
