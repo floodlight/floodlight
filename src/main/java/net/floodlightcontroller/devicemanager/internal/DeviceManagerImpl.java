@@ -627,15 +627,11 @@ public class DeviceManagerImpl implements
     }
     
     /**
-<<<<<<< HEAD
      * Check whether the given attachment point is valid given the current
      * topology
      * @param switchDPID the DPID
      * @param switchPort the port
      * @return true if it's a valid attachment point
-=======
-     * @param linkDiscovery the link discovery service to set
->>>>>>> 755b9cc2deced03fe491fc7cc6700ef5a8418df1
      */
     protected boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {

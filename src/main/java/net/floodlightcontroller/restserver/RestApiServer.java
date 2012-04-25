@@ -99,6 +99,7 @@ public class RestApiServer
             try {
                 final Component component = new Component();
                 component.getServers().add(Protocol.HTTP, restPort);
+                component.getClients().add(Protocol.CLAP);
                 component.getDefaultHost().attach(this);
                 component.start();
             } catch (Exception e) {
