@@ -2,7 +2,6 @@ package net.floodlightcontroller.ui.web;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.restlet.Client;
