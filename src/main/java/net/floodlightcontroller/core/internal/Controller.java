@@ -48,6 +48,7 @@ import java.util.concurrent.TimeoutException;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
@@ -146,6 +147,7 @@ public class Controller implements IFloodlightProviderService {
     protected ConcurrentHashMap<Long, IOFSwitch> connectedSwitches;
     
     protected Set<IOFSwitchListener> switchListeners;
+    protected Set<IHARoleListener> haListeners;
     protected Map<String, List<IInfoProvider>> providerMap;
     protected BlockingQueue<Update> updates;
     
@@ -199,13 +201,24 @@ public class Controller implements IFloodlightProviderService {
     protected static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
+    protected enum UpdateType {
+        SWITCH, HA
+    }
     protected class Update {
+        public UpdateType type;
         public IOFSwitch sw;
         public boolean added;
+        public Role oldRole;
+        public Role newRole;
 
         public Update(IOFSwitch sw, boolean added) {
             this.sw = sw;
             this.added = added;
+        }
+        
+        public Update(Role newRole, Role oldRole) {
+            this.oldRole = oldRole;
+            this.newRole = newRole;
         }
     }
     
@@ -240,6 +253,7 @@ public class Controller implements IFloodlightProviderService {
     
     @Override
     public synchronized void setRole(Role role) {
+        Role oldRole = this.role;
         this.role = role;
         
         // Send role request messages to all of the connected switches.
@@ -256,8 +270,8 @@ public class Controller implements IFloodlightProviderService {
             }
         }
         
-        // Send an update
-        // TODO send update
+        // Enqueue an update for our listeners.
+        this.updates.add(new Update(role, oldRole));
     }
     
     /**
@@ -1584,15 +1598,35 @@ public class Controller implements IFloodlightProviderService {
         while (true) {
             try {
                 Update update = updates.take();
-                log.debug("Dispatching switch update {} {}",
-                          update.sw, update.added);
-                if (switchListeners != null) {
-                    for (IOFSwitchListener listener : switchListeners) {
-                        if (update.added)
-                            listener.addedSwitch(update.sw);
-                        else
-                            listener.removedSwitch(update.sw);
-                    }
+                switch (update.type) {
+                    case SWITCH:
+                        if (log.isDebugEnabled()) {
+                            log.debug("Dispatching switch update {} {}",
+                                      update.sw, update.added);
+                        }
+                        if (switchListeners != null) {
+                            for (IOFSwitchListener listener : switchListeners) {
+                                if (update.added)
+                                    listener.addedSwitch(update.sw);
+                                else
+                                    listener.removedSwitch(update.sw);
+                            }
+                        }
+                        break;
+                    case HA:
+                        if (log.isDebugEnabled()) {
+                            log.debug("Dispatching HA update newRole = {}, oldRole = {}",
+                                      update.newRole, update.oldRole);
+                        }
+                        if (haListeners != null) {
+                            for (IHARoleListener listener : haListeners) {
+                                listener.roleChanged(update.oldRole, update.newRole);
+                            }
+                        }
+                        break;
+                    default:
+                        log.error("Unreognized update type " + update.type);
+                        break;
                 }
             } catch (InterruptedException e) {
                 return;
@@ -1602,7 +1636,8 @@ public class Controller implements IFloodlightProviderService {
                           e, StackTraceUtil.stackTraceToString(e));
                 return;
             } catch (Exception e) {
-                log.error("Exception in controller updates loop {} {}", e, StackTraceUtil.stackTraceToString(e));
+                log.error("Exception in controller updates loop {} {}", 
+                          e, StackTraceUtil.stackTraceToString(e));
             }
         }
     }
@@ -1663,6 +1698,7 @@ public class Controller implements IFloodlightProviderService {
                                       ListenerDispatcher<OFType, 
                                                          IOFMessageListener>>();
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+        this.haListeners = new CopyOnWriteArraySet<IHARoleListener>();
         this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.connectedSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.updates = new LinkedBlockingQueue<Update>();
@@ -1735,4 +1771,14 @@ public class Controller implements IFloodlightProviderService {
 		
 		return result;
 	}
+
+    @Override
+    public void addHAListener(IHARoleListener listener) {
+        this.haListeners.add(listener);
+    }
+
+    @Override
+    public void removeHAListener(IHARoleListener listener) {
+        this.haListeners.remove(listener);
+    }
 }
