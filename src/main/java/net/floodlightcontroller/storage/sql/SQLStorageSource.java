@@ -39,6 +39,7 @@ import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
+import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.storage.StorageSourceNotification;
 import net.floodlightcontroller.storage.RowOrdering.Item;
 import net.floodlightcontroller.storage.StorageSourceNotification.Action;
@@ -160,28 +161,30 @@ public abstract class SQLStorageSource extends AbstractStorageSource {
 	public void alterTable(String tableName, Set<String> columns){
 		StringBuffer sb = new StringBuffer();
 		try {
-			Connection conn = openConnection();
-
-			Statement stmt = conn.createStatement();
-
-			sb.append("ALTER TABLE " + tableName + " ADD(");
-			Iterator<String> it = columns.iterator();
-			for (int i = 0; i < columns.size() -1; i++) {
-				String column = it.next().toString();
-				sb.append(column);
-				sb.append(" varchar(100), ");
+			if (!columns.contains("*")){
+				Connection conn = openConnection();
+	
+				Statement stmt = conn.createStatement();
+	
+				sb.append("ALTER TABLE " + tableName + " ADD(");
+				Iterator<String> it = columns.iterator();
+				for (int i = 0; i < columns.size() -1; i++) {
+					String column = it.next().toString();
+					sb.append(column);
+					sb.append(" varchar(100), ");
+				}
+				if (it.hasNext()){
+					String column = it.next().toString();
+					sb.append(column);
+					sb.append(" varchar(100)");
+				}
+				sb.append(");");
+				
+				//System.out.println(sb.toString());
+				stmt.execute(sb.toString());
+	
+				conn.close();
 			}
-			if (it.hasNext()){
-				String column = it.next().toString();
-				sb.append(column);
-				sb.append(" varchar(100)");
-			}
-			sb.append(");");
-			
-			//System.out.println(sb.toString());
-			stmt.execute(sb.toString());
-
-			conn.close();
 		} catch (SQLException e) {
 			log.error("Can't alter table " + e.getMessage());
 		}
@@ -350,6 +353,8 @@ public abstract class SQLStorageSource extends AbstractStorageSource {
 			conn.close();
 		} catch (SQLException e) {
 			log.error("Can't execute query " + e.getMessage());
+			if (e.getMessage().contains("doesn't exist") || e.getMessage().contains("no such table"))
+				throw new StorageException("Table " + query.getTableName() + " does not exist");
 		}
 		return rs;
 	}

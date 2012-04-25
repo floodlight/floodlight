@@ -35,16 +35,18 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 
 public class MySQLStorageSource extends SQLStorageSource {
 
-	private static String DB_PATH = "localhost/openflow:3306";
+	private static String DB_PATH = "localhost:3306/";
+	private static String DB_NAME = "floodlight";
 	private static String DB_USER = "root";
 	private static String DB_PASS = "root";
 	
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException{
 		Map<String, String> configOptions = context.getConfigParams(this);
         DB_PATH = configOptions.get("DB_PATH");
+        DB_NAME = configOptions.get("DB_NAME");
         DB_USER = configOptions.get("DB_USER");
         DB_PASS = configOptions.get("DB_PASS");
-        logger.info("MySQL database path set to " + DB_PATH);
+        logger.info("MySQL database path set to " + DB_PATH + DB_NAME);
         
         super.init(context);
 	}
@@ -58,8 +60,37 @@ public class MySQLStorageSource extends SQLStorageSource {
 			
 			try {
 				Class.forName(driverName).newInstance();
+				String url = "jdbc:mysql://" + DB_PATH + DB_NAME; // provide jdbc with path to db file
+				conn = DriverManager.getConnection(url, DB_USER, DB_PASS);
+			} catch (InstantiationException e) {
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			}
+			
+		} catch (ClassNotFoundException e) {
+			log.error("Could not find database driver " + e.getMessage());
+		} catch (SQLException e) {
+			log.error("Could not connect to database " + e.getMessage());
+			if (e.getMessage().contains("Unknown database")){
+				log.info("Creating new database " + DB_NAME);
+				conn = createDatabase();
+			}
+		}
+		return conn;
+	}
+		
+	public Connection createDatabase(){
+		Connection conn = null;
+		try{
+			String driverName = "com.mysql.jdbc.Driver";
+			try {
+				Class.forName(driverName).newInstance();
 				String url = "jdbc:mysql://" + DB_PATH; // provide jdbc with path to db file
 				conn = DriverManager.getConnection(url, DB_USER, DB_PASS);
+				Statement stmt = conn.createStatement();
+				String sql = "Create database " + DB_NAME + ";";
+				stmt.execute(sql);
 			} catch (InstantiationException e) {
 				e.printStackTrace();
 			} catch (IllegalAccessException e) {
