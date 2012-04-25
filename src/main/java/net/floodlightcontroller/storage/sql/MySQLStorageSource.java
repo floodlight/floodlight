@@ -42,10 +42,18 @@ public class MySQLStorageSource extends SQLStorageSource {
 	
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException{
 		Map<String, String> configOptions = context.getConfigParams(this);
-        DB_PATH = configOptions.get("DB_PATH");
-        DB_NAME = configOptions.get("DB_NAME");
-        DB_USER = configOptions.get("DB_USER");
-        DB_PASS = configOptions.get("DB_PASS");
+        String s = configOptions.get("DB_PATH");
+        if (s != null)
+        	DB_PATH = s;
+        s = configOptions.get("DB_NAME");
+        if (s != null)
+        	DB_NAME = s;
+        s = configOptions.get("DB_USER");
+        if (s != null)
+        	DB_USER = s;
+        s = configOptions.get("DB_PASS");
+        if (s!= null)
+        	DB_PASS = s;
         logger.info("MySQL database path set to " + DB_PATH + DB_NAME);
         
         super.init(context);

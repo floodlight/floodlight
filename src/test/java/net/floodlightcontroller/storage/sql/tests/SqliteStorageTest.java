@@ -16,6 +16,9 @@
 
 package net.floodlightcontroller.storage.sql.tests;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.sql.SqliteStorageSource;
 import org.junit.Before;
 
@@ -24,6 +27,14 @@ public class SqliteStorageTest extends SQLStorageTest {
 	@Before
 	public void setUp() throws Exception {
 		storageSource = new SqliteStorageSource();
+        restApi = new RestApiServer();
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        fmc.addService(IRestApiService.class, restApi);
+        fmc.addService(SqliteStorageSource.class, storageSource);
+        restApi.init(fmc);
+        storageSource.init(fmc);
+        restApi.startUp(fmc);
+        storageSource.startUp(fmc);
 		super.setUp();
 	}
 }

@@ -16,7 +16,11 @@
 
 package net.floodlightcontroller.storage.sql.tests;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.sql.MySQLStorageSource;
+
 import org.junit.Before;
 
 public class MySQLStorageTest extends SQLStorageTest {
@@ -24,6 +28,14 @@ public class MySQLStorageTest extends SQLStorageTest {
 	@Before
 	public void setUp() throws Exception {
 		storageSource = new MySQLStorageSource();
+        restApi = new RestApiServer();
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        fmc.addService(IRestApiService.class, restApi);
+        fmc.addService(MySQLStorageSource.class, storageSource);
+        restApi.init(fmc);
+        storageSource.init(fmc);
+        restApi.startUp(fmc);
+        storageSource.startUp(fmc);
 		super.setUp();
 	}
 }

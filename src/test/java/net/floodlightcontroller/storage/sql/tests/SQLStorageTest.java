@@ -30,6 +30,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
@@ -49,6 +50,7 @@ import org.junit.Test;
 public abstract class SQLStorageTest extends FloodlightTestCase {
 
 	protected SQLStorageSource storageSource;
+    protected RestApiServer restApi;
 
 	protected String PERSON_TABLE_NAME = "Person";
 
