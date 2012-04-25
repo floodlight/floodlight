@@ -19,7 +19,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
-public class StaticWebRoutable implements RestletRoutable, IFloodlightModule, IStaticWebRoutableService {
+public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
 
 	private IRestApiService restApi;
 	
@@ -33,22 +33,13 @@ public class StaticWebRoutable implements RestletRoutable, IFloodlightModule, IS
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IStaticWebRoutableService.class);
-        return l;
+        return null;
     }
     
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
-            new HashMap<Class<? extends IFloodlightService>,
-                        IFloodlightService>();
-        // We are the class that implements the service
-        m.put(IStaticWebRoutableService.class, this);
-        return m;
+        return null;
     }
 
     @Override
