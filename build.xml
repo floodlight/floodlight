@@ -150,6 +150,7 @@
             <batchtest todir="${test-output}">
                 <fileset dir="${source-test}">
                     <exclude name="**/storage/tests/StorageTest.java"/>
+                	<exclude name="**/storage/sql/tests/SQLStorageTest.java"/>
                     <exclude name="**/test/Mock*"/>
                 </fileset>
             </batchtest>
