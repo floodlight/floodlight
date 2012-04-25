@@ -55,6 +55,8 @@
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
+        <include name="sqlitejdbc-v056.jar"/>
+        <include name="mysql-connector-java-5.1.18-bin.jar"/>        
     </patternset>
     <patternset id="genlib">
         <include name="${packetstreamer-thrift-jar}"/>

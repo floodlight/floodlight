@@ -15,3 +15,5 @@ net.floodlightcontroller.jython.JythonDebugInterface
 net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.threadpool.ThreadPool
+net.floodlightcontroller.storage.sql.SqliteStorageSource
+net.floodlightcontroller.storage.sql.MySQLStorageSource

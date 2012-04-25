@@ -476,6 +476,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertNull(deviceManager.getDeviceByIPv4Address(ipaddr2));
 
         // Load the device cache from storage
+        Thread.sleep(1000);
         deviceManager.readAllDeviceStateFromStorage();
 
         // Verify the device

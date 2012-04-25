@@ -2331,15 +2331,19 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         storageSource.createTable(DEVICE_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_TABLE_NAME, MAC_COLUMN_NAME);
+        
         storageSource.createTable(DEVICE_ATTACHMENT_POINT_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_ATTACHMENT_POINT_TABLE_NAME, ID_COLUMN_NAME);
+        
         storageSource.createTable(DEVICE_NETWORK_ADDRESS_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         DEVICE_NETWORK_ADDRESS_TABLE_NAME, ID_COLUMN_NAME);
+        
         storageSource.createTable(PORT_CHANNEL_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(
                         PORT_CHANNEL_TABLE_NAME, PC_ID_COLUMN_NAME);
+                        
         storageSource.addListener(PORT_CHANNEL_TABLE_NAME, this);
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
