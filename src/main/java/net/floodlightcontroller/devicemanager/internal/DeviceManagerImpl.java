@@ -1660,15 +1660,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (topology.isAllowed(swid, port) == false)
                     continue;
 
-                if (tempAPMap.containsKey(clusterId)) {
+                DeviceAttachmentPoint existingDap = tempAPMap.get(clusterId);
+                if (existingDap != null) {
                     // We compare to see which one is newer, move attachment 
                     // point to "old" list.
                     // They are removed after deleting from storage.
-
-                    DeviceAttachmentPoint existingDap = tempAPMap.get(clusterId);
                     if (isNewer(dap, existingDap)) {
                         tempAPMap.put(clusterId, dap);
                         tempOldAPMap.put(clusterId, existingDap);
+                    } else {
+                        tempOldAPMap.put(clusterId, dap);
                     }
                 } else {
                     tempAPMap.put(clusterId, dap);
@@ -1684,15 +1685,25 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
              * Also make sure the attachmentPoints are in non-blocked state
              */
             for (DeviceAttachmentPoint dap: tempAPMap.values()) {
-            	dap.setBlocked(false);
+                if (log.isDebugEnabled()) {
+                    log.debug("Reset AP {} for device {}", dap, d);
+                }
+            	//dap.setBlocked(false);
+                dap.resetConflictState();
             }
             d.setAttachmentPoints(tempAPMap.values());
             for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
-            	dap.setBlocked(false);
+                if (log.isDebugEnabled()) {
+                    log.debug("Reset Old AP {} for device {}", dap, d);
+                }
+            	//dap.setBlocked(false);
+                dap.resetConflictState();
                 d.addOldAttachmentPoint(dap);
             }
 
-            log.debug("After cleanup, device {}", d);
+            if (log.isDebugEnabled()) {
+                log.debug("After cleanup, device {}", d);
+            }
         }
     }
 
