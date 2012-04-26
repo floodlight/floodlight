@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.core.internal;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -32,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.BlockingQueue;
@@ -161,6 +159,7 @@ public class Controller implements IFloodlightProviderService {
     // Configuration options
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
+    protected String controllerId = "localhost";
     
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
@@ -214,11 +213,13 @@ public class Controller implements IFloodlightProviderService {
         public Update(IOFSwitch sw, boolean added) {
             this.sw = sw;
             this.added = added;
+            this.type = UpdateType.SWITCH;
         }
         
         public Update(Role newRole, Role oldRole) {
             this.oldRole = oldRole;
             this.newRole = newRole;
+            this.type = UpdateType.HA;
         }
     }
     
@@ -253,6 +254,7 @@ public class Controller implements IFloodlightProviderService {
     
     @Override
     public synchronized void setRole(Role role) {
+        if (role == null) throw new NullPointerException("Role can not be null.");
         Role oldRole = this.role;
         this.role = role;
         
@@ -1382,8 +1384,9 @@ public class Controller implements IFloodlightProviderService {
         return factory;
     }
     
+    @Override
     public String getControllerId() {
-        return "localhost";
+        return controllerId;
     }
     
     // **************
@@ -1535,25 +1538,13 @@ public class Controller implements IFloodlightProviderService {
         storageSource.deleteRowAsync(PORT_TABLE_NAME, id);
     }
 
-    protected Role getInitialRole() {
-        // FIXME: This code should be changed to get the settings from
-        // the property file used by the module loader once Alex has
-        // that code written instead of using system properties.
+    /**
+     * Sets the role based on a string.
+     * @param roleString The role string
+     * @return The role is a valid string is passed, nulll otherwise
+     */
+    protected Role getInitialRole(String roleString) {
         Role role = null;
-        String roleString = System.getProperty("floodlight.role");
-        if (roleString == null) {
-            String rolePath = System.getProperty("floodlight.role.path");
-            if (rolePath != null) {
-                Properties properties = new Properties();
-                try {
-                    properties.load(new FileInputStream(rolePath));
-                    roleString = properties.getProperty("floodlight.role");
-                }
-                catch (IOException exc) {
-                    log.error("Error reading current role value from file: {}", rolePath);
-                }
-            }
-        }
         
         if (roleString != null) {
             // Canonicalize the string to the form used for the enum constants
@@ -1566,6 +1557,7 @@ public class Controller implements IFloodlightProviderService {
             }
         }
         
+        log.info("Controller roles set to {}", role);
         return role;
     }
     
@@ -1620,7 +1612,7 @@ public class Controller implements IFloodlightProviderService {
                         }
                         if (haListeners != null) {
                             for (IHARoleListener listener : haListeners) {
-                                listener.roleChanged(update.oldRole, update.newRole);
+                                    listener.roleChanged(update.oldRole, update.newRole);
                             }
                         }
                         break;
@@ -1667,6 +1659,11 @@ public class Controller implements IFloodlightProviderService {
             this.workerThreads = Integer.parseInt(threads);
         }
         log.info("Number of worker threads port set to {}", this.workerThreads);
+        String controllerId = configParams.get("controllerid");
+        if (controllerId != null) {
+            this.controllerId = controllerId;
+        }
+        log.info("ControllerId set to {}", this.controllerId);
     }
 
     private void initVendorMessages() {
@@ -1705,7 +1702,7 @@ public class Controller implements IFloodlightProviderService {
         this.factory = new BasicFactory();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
-        this.setRole(getInitialRole());
+        this.role = getInitialRole(configParams.get("role"));
         initVendorMessages();
     }
     

@@ -88,6 +88,11 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public Role getRole();
     
     /**
+     * Gets the ID of the controller
+     */
+    public String getControllerId();
+    
+    /**
      * Set the role of the controller
      */
     public void setRole(Role role);

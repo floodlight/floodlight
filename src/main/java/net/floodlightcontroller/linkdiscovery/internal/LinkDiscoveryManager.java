@@ -186,11 +186,6 @@ public class LinkDiscoveryManager
     protected BlockingQueue<LDUpdate> updates;
     protected Thread updatesThread;
 
-    //This map provides the ids of broadcast domains connected to a switch cluster
-    protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
-
-    protected boolean isTopologyValid = false;
-
     public int getLldpFrequency() {
         return lldpFrequency;
     }
@@ -1515,22 +1510,21 @@ public class LinkDiscoveryManager
     
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
-        // This will create events for TopologyManager to handle
         switch(newRole) {
             case MASTER:
                 if (oldRole == Role.SLAVE) {
-                    log.debug("Re-reading links from storage due " +
+                    log.debug("Sending LLDPs " +
                             "to HA change from SLAVE->MASTER");
                     sendLLDPs();
                 }
                 break;
             case SLAVE:
-                if (oldRole == Role.MASTER) {
-                    log.debug("Clearing links due to " +
-                            "HA change from MASTER->SLAVE");
-                    portLinks.clear();
-                    portBroadcastDomainLinks.clear();
-                }
+                log.debug("Clearing links due to " +
+                        "HA change to SLAVE");
+                switchLinks.clear();
+                links.clear();
+                portLinks.clear();
+                portBroadcastDomainLinks.clear();
                 break;
         }
     }

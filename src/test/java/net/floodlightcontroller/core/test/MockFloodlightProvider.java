@@ -215,15 +215,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         // TODO Auto-generated method stub
         return null;
     }
-
-    @Override
-    public Role getRole() {
-        return null;
-    }
-    
-    @Override
-    public void setRole(Role role) {
-    }
     
     @Override
     public
@@ -266,5 +257,31 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public void removeHAListener(IHARoleListener listener) {
         haListeners.remove(listener);
+    }
+    
+    @Override
+    public Role getRole() {
+        return null;
+    }
+    
+    @Override
+    public void setRole(Role role) {
+        
+    }
+    
+    /**
+     * Dispatches a new role change notification
+     * @param oldRole
+     * @param newRole
+     */
+    public void dispatchRoleChanged(Role oldRole, Role newRole) {
+        for (IHARoleListener rl : haListeners) {
+            rl.roleChanged(oldRole, newRole);
+        }
+    }
+
+    @Override
+    public String getControllerId() {
+        return "localhost";
     }
 }

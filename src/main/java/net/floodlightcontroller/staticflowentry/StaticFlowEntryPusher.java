@@ -620,12 +620,10 @@ public class StaticFlowEntryPusher
                 }
                 break;
             case SLAVE:
-                if (oldRole == Role.MASTER) {
-                    log.debug("Clearing in-memory flows due to " +
-                            "HA change from MASTER->SLAVE");
-                    entry2dpid.clear();
-                    entriesFromStorage.clear();
-                }
+                log.debug("Clearing in-memory flows due to " +
+                        "HA change to SLAVE");
+                entry2dpid.clear();
+                entriesFromStorage.clear();
                 break;
         }
     }
