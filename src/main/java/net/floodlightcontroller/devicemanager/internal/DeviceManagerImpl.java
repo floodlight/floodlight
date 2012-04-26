@@ -579,26 +579,17 @@ public class DeviceManagerImpl implements
     // Internal methods
     // ****************
 
-    /**
-     * This method is called for every packet-in and should be optimized for
-     * performance.
-     * @param sw
-     * @param pi
-     * @param cntx
-     * @return
-     */
     protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
         Ethernet eth = 
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
+        
         // Extract source entity information
         Entity srcEntity = 
                 getSourceEntityFromPacket(eth, sw, pi.getInPort());
         if (srcEntity == null)
             return Command.STOP;
-
 
         if (isGratArp(eth) ||
             isBroadcastDHCPReq(eth)) {

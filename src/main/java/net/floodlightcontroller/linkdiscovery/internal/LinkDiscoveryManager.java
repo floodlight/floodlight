@@ -76,7 +76,6 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
-import net.floodlightcontroller.util.StackTraceUtil;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -223,7 +222,7 @@ public class LinkDiscoveryManager
                     }
                 } 
                 catch (Exception e) {
-                    log.error("Error in link discovery updates loop: {} {}", e, StackTraceUtil.stackTraceToString(e));
+                    log.error("Error in link discovery updates loop", e);
                 }
             }
         } while (updates.peek() != null);

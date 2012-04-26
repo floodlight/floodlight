@@ -66,7 +66,6 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.util.StackTraceUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -1598,11 +1597,10 @@ public class Controller implements IFloodlightProviderService {
                 return;
             } catch (StorageException e) {
                 log.error("Storage exception in controller " + 
-                          "updates loop; terminating process: {} {}",
-                          e, StackTraceUtil.stackTraceToString(e));
+                          "updates loop; terminating process", e);
                 return;
             } catch (Exception e) {
-                log.error("Exception in controller updates loop {} {}", e, StackTraceUtil.stackTraceToString(e));
+                log.error("Exception in controller updates loop", e);
             }
         }
     }
