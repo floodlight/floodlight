@@ -114,15 +114,23 @@ public class RestApiServer
     
     @Override
     public void addRestletRoutable(RestletRoutable routable) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Adding REST API routable " 
-                    + routable.getClass().getCanonicalName());
-        }
         restlets.add(routable);
     }
 
     @Override
     public void run() {
+        if (logger.isDebugEnabled()) {
+            StringBuffer sb = new StringBuffer();
+            sb.append("REST API routables: ");
+            for (RestletRoutable routable : restlets) {
+                sb.append(routable.getClass().getSimpleName());
+                sb.append(" (");
+                sb.append(routable.basePath());
+                sb.append("), ");
+            }
+            logger.debug(sb.toString());
+        }
+        
         RestApplication restApp = new RestApplication();
         restApp.run(fmlContext, restPort);
     }

@@ -1236,10 +1236,6 @@ public class Controller implements IFloodlightProviderService {
             messageListeners.put(type, ldd);
         }
         ldd.addListener(type, listener);
-        
-        if (log.isDebugEnabled()) {
-        	logListeners(type, ldd);
-        }
     }
 
     @Override
@@ -1249,22 +1245,29 @@ public class Controller implements IFloodlightProviderService {
             messageListeners.get(type);
         if (ldd != null) {
             ldd.removeListener(listener);
-            if (log.isDebugEnabled()) {
-            	logListeners(type, ldd);
-            }
         }
     }
     
-    private void logListeners(OFType type, ListenerDispatcher<OFType, IOFMessageListener> ldd) {
-        StringBuffer sb = new StringBuffer();
-        sb.append("OFListeners for ");
-        sb.append(type);
-        sb.append(": ");
-        for (IOFMessageListener l : ldd.getOrderedListeners()) {
-            sb.append(l.getName());
-            sb.append(",");
+    private void logListeners() {
+        for (Map.Entry<OFType,
+                       ListenerDispatcher<OFType, 
+                                          IOFMessageListener>> entry
+             : messageListeners.entrySet()) {
+            
+            OFType type = entry.getKey();
+            ListenerDispatcher<OFType, IOFMessageListener> ldd = 
+                    entry.getValue();
+            
+            StringBuffer sb = new StringBuffer();
+            sb.append("OFListeners for ");
+            sb.append(type);
+            sb.append(": ");
+            for (IOFMessageListener l : ldd.getOrderedListeners()) {
+                sb.append(l.getName());
+                sb.append(",");
+            }
+            log.debug(sb.toString());            
         }
-        log.debug(sb.toString());
     }
     
     public void removeOFMessageListeners(OFType type) {
@@ -1559,6 +1562,10 @@ public class Controller implements IFloodlightProviderService {
      * @throws IOException 
      */
     public void run() {
+        if (log.isDebugEnabled()) {
+            logListeners();
+        }
+        
         try {            
            final ServerBootstrap bootstrap = createServerBootStrap();
 
