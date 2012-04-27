@@ -899,7 +899,8 @@ public class DeviceManagerImpl implements
                 // generate updates
                 EnumSet<DeviceField> changedFields = 
                         findChangedFields(device, entity);
-                deviceUpdates = 
+                if (changedFields.size() > 0)
+                    deviceUpdates = 
                         updateUpdates(deviceUpdates,
                                       new DeviceUpdate(device, CHANGE, 
                                                        changedFields));
@@ -1146,8 +1147,9 @@ public class DeviceManagerImpl implements
                     for (Entity e : toRemove) {
                         changedFields.addAll(findChangedFields(newDevice, e));
                     }
-                    deviceUpdates.add(new DeviceUpdate(d, CHANGE, 
-                                                       changedFields));
+                    if (changedFields.size() > 0)
+                        deviceUpdates.add(new DeviceUpdate(d, CHANGE, 
+                                                           changedFields));
 
                     if (!deviceMap.replace(newDevice.getDeviceKey(),
                                            d,

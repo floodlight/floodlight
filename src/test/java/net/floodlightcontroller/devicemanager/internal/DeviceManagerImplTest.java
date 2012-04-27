@@ -70,10 +70,6 @@ import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.util.HexString;
 
-/**
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
- */
 public class DeviceManagerImplTest extends FloodlightTestCase {
     protected OFPacketIn packetIn_1, packetIn_2, packetIn_3;
     protected IPacket testARPReplyPacket_1, testARPReplyPacket_2, testARPReplyPacket_3;
