@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -51,11 +52,25 @@ import net.floodlightcontroller.topology.TopologyManager;
  */
 public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
-    private LinkDiscoveryManager topology;
+    private TestLinkDiscoveryManager ldm;
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManagerTest.class);
     
+    public class TestLinkDiscoveryManager extends LinkDiscoveryManager {
+        public boolean isSendLLDPsCalled = false;
+        
+        @Override
+        protected void sendLLDPs() {
+            isSendLLDPsCalled = true;
+            super.sendLLDPs();
+        }
+        
+        public void reset() {
+            isSendLLDPsCalled = false;
+        }
+    }
+    
     public LinkDiscoveryManager getTopology() {
-        return topology;
+        return ldm;
     }
 
     public IOFSwitch createMockSwitch(Long id) {
@@ -68,22 +83,22 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext cntx = new FloodlightModuleContext();
-        topology = new LinkDiscoveryManager();
+        ldm = new TestLinkDiscoveryManager();
         TopologyManager routingEngine = new TopologyManager();
-        topology.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
+        ldm.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         MockThreadPoolService tp = new MockThreadPoolService();
         cntx.addService(IThreadPoolService.class, tp);
         cntx.addService(IRoutingService.class, routingEngine);
-        cntx.addService(ILinkDiscoveryService.class, topology);
-        cntx.addService(ITopologyService.class, topology);
+        cntx.addService(ILinkDiscoveryService.class, ldm);
+        cntx.addService(ITopologyService.class, ldm);
         cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         tp.init(cntx);
         routingEngine.init(cntx);
-        topology.init(cntx);
+        ldm.init(cntx);
         tp.startUp(cntx);
         routingEngine.startUp(cntx);
-        topology.startUp(cntx);
+        ldm.startUp(cntx);
     }
 
     @Test
@@ -216,8 +231,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         LinkDiscoveryManager topology = getTopology();
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
-        //expect(topology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
-        //expect(topology.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
+        //expect(ldm.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
+        //expect(ldm.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
         replay(sw1, sw2);
         LinkTuple lt = new LinkTuple(sw1, 1, sw2, 1);
         LinkInfo info;
@@ -329,4 +344,32 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(topology.portBroadcastDomainLinks.get(lt.getDst()).contains(lt));
     }
 
+    @Test
+    public void testHARoleChange() throws Exception {
+        LinkDiscoveryManager topology = getTopology();
+        IOFSwitch sw1 = createMockSwitch(1L);
+        IOFSwitch sw2 = createMockSwitch(2L);
+        replay(sw1, sw2);
+        LinkTuple lt = new LinkTuple(sw1, 2, sw2, 1);
+        LinkInfo info = new LinkInfo(System.currentTimeMillis(), null,
+                                     0, 0);
+        topology.addOrUpdateLink(lt, info);
+
+        // check invariants hold
+        assertNotNull(topology.switchLinks.get(lt.getSrc().getSw()));
+        assertTrue(topology.switchLinks.get(lt.getSrc().getSw()).contains(lt));
+        assertNotNull(topology.portLinks.get(lt.getSrc()));
+        assertTrue(topology.portLinks.get(lt.getSrc()).contains(lt));
+        assertNotNull(topology.portLinks.get(lt.getDst()));
+        assertTrue(topology.portLinks.get(lt.getDst()).contains(lt));
+        assertTrue(topology.links.containsKey(lt));
+        
+        // check that it clears from memory
+        getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
+        assertTrue(topology.switchLinks.isEmpty());
+        getMockFloodlightProvider().dispatchRoleChanged(Role.SLAVE, Role.MASTER);
+        // check that lldps were sent
+        assertTrue(ldm.isSendLLDPsCalled);
+        ldm.reset();
+    }
 }

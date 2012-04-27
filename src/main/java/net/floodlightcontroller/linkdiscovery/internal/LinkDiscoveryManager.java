@@ -41,6 +41,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -119,7 +121,7 @@ import org.slf4j.LoggerFactory;
 public class LinkDiscoveryManager
         implements IOFMessageListener, IOFSwitchListener, 
                    IStorageSourceListener, ILinkDiscoveryService,
-                   IFloodlightModule, IInfoProvider {
+                   IFloodlightModule, IInfoProvider, IHARoleListener {
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
@@ -182,11 +184,6 @@ public class LinkDiscoveryManager
     protected ArrayList<ILinkDiscoveryListener> linkDiscoveryAware;
     protected BlockingQueue<LDUpdate> updates;
     protected Thread updatesThread;
-
-    //This map provides the ids of broadcast domains connected to a switch cluster
-    protected Map<Long, Set<Long>> switchClusterBroadcastDomainMap;
-
-    protected boolean isTopologyValid = false;
 
     public int getLldpFrequency() {
         return lldpFrequency;
@@ -1416,6 +1413,7 @@ public class LinkDiscoveryManager
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         // Register for switch updates
         floodlightProvider.addOFSwitchListener(this);
+        floodlightProvider.addHAListener(this);
         floodlightProvider.addInfoProvider("summary", this);
         
         // init our rest api
@@ -1504,5 +1502,28 @@ public class LinkDiscoveryManager
         info.put("# inter-switch links", num_links / 2);
 
         return info;
+    }
+
+    // IHARoleListener
+    
+    @Override
+    public void roleChanged(Role oldRole, Role newRole) {
+        switch(newRole) {
+            case MASTER:
+                if (oldRole == Role.SLAVE) {
+                    log.debug("Sending LLDPs " +
+                            "to HA change from SLAVE->MASTER");
+                    sendLLDPs();
+                }
+                break;
+            case SLAVE:
+                log.debug("Clearing links due to " +
+                        "HA change to SLAVE");
+                switchLinks.clear();
+                links.clear();
+                portLinks.clear();
+                portBroadcastDomainLinks.clear();
+                break;
+        }
     }
 }

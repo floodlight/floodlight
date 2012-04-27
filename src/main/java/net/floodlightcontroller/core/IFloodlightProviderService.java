@@ -68,6 +68,12 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * @param listener The component that no longer wants to receive the message
      */
     public void removeOFMessageListener(OFType type, IOFMessageListener listener);
+    
+    /**
+     * Return a non-modifiable list of all current listeners
+     * @return listeners
+     */
+    public Map<OFType, List<IOFMessageListener>> getListeners();
 
     /**
      * Returns a list of all actively connected OpenFlow switches. This doesn't
@@ -82,27 +88,38 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public Role getRole();
     
     /**
+     * Gets the ID of the controller
+     */
+    public String getControllerId();
+    
+    /**
      * Set the role of the controller
      */
     public void setRole(Role role);
     
     /**
      * Add a switch listener
-     * @param listener
+     * @param listener The module that wants to listen for events
      */
     public void addOFSwitchListener(IOFSwitchListener listener);
 
     /**
      * Remove a switch listener
-     * @param listener
+     * @param listener The The module that no longer wants to listen for events
      */
     public void removeOFSwitchListener(IOFSwitchListener listener);
-
+    
     /**
-     * Return a non-modifiable list of all current listeners
-     * @return listeners
+     * Adds a listener for HA role events
+     * @param listener The module that wants to listen for events
      */
-    public Map<OFType, List<IOFMessageListener>> getListeners();
+    public void addHAListener(IHARoleListener listener);
+    
+    /**
+     * Removes a listener for HA role events
+     * @param listener The module that no longer wants to listen for events
+     */
+    public void removeHAListener(IHARoleListener listener);
 
     /**
      * Terminate the process

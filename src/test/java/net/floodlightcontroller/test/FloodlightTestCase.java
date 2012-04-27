@@ -25,6 +25,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.Ethernet;
 
+import org.junit.Test;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
@@ -86,11 +87,8 @@ public class FloodlightTestCase extends TestCase {
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
     }
- 
-    /**
-     * @return the applicationContext
-     */
 
+    @Test
     public void testSanity() {
         assertTrue(true);
     }

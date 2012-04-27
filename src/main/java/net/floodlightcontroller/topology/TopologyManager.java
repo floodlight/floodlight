@@ -13,8 +13,10 @@ import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -44,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public class TopologyManager implements 
         IFloodlightModule, ITopologyService, 
         IRoutingService, ILinkDiscoveryListener,
-        IOFMessageListener {
+        IOFMessageListener, IHARoleListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -68,9 +70,11 @@ public class TopologyManager implements
      */
     protected Map<NodePortTuple, Set<Link>> tunnelLinks; 
     protected ILinkDiscoveryService linkDiscovery;
-    protected ArrayList<ITopologyListener> topologyAware;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
+
+    // Modules that listen to our updates
+    protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
@@ -272,6 +276,27 @@ public class TopologyManager implements
         log.error("received an unexpected message {} from switch {}", 
                   msg, sw);
         return Command.CONTINUE;
+    }
+
+    // ***************
+    // IHARoleListener
+    // ***************
+    @Override
+    public void roleChanged(Role oldRole, Role newRole) {
+        switch(newRole) {
+            case MASTER:
+                if (oldRole == Role.SLAVE) {
+                    log.debug("Re-computing topology due " +
+                            "to HA change from SLAVE->MASTER");
+                    newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
+                }
+                break;
+            case SLAVE:
+                log.debug("Clearing topology due to " +
+                        "HA change to SLAVE");
+                clearCurrentTopology();
+                break;
+        }
     }
 
     // *****************
@@ -544,8 +569,19 @@ public class TopologyManager implements
         portBroadcastDomainLinks.clear();
         tunnelLinks.clear();
     }
-
-
+    
+    /**
+    * Clears the current topology. Note that this does NOT
+    * send out updates.
+    */
+    private void clearCurrentTopology() {
+        switchPorts.clear();
+        switchPortLinks.clear();
+        portBroadcastDomainLinks.clear();
+        tunnelLinks.clear();
+        createNewInstance();
+    }
+    
     /**
      * Getters.  No Setters.
      */

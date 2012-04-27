@@ -27,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -51,6 +52,7 @@ import org.openflow.protocol.factory.BasicFactory;
 public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
     protected Map<OFType, List<IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
+    protected List<IHARoleListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
     protected BasicFactory factory;
 
@@ -61,6 +63,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         listeners = new ConcurrentHashMap<OFType, List<IOFMessageListener>>();
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switchListeners = new CopyOnWriteArrayList<IOFSwitchListener>();
+        haListeners = new CopyOnWriteArrayList<IHARoleListener>();
         factory = new BasicFactory();
     }
 
@@ -213,15 +216,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         // TODO Auto-generated method stub
         return null;
     }
-
-    @Override
-    public Role getRole() {
-        return null;
-    }
-    
-    @Override
-    public void setRole(Role role) {
-    }
     
     @Override
     public
@@ -255,4 +249,40 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+    @Override
+    public void addHAListener(IHARoleListener listener) {
+        haListeners.add(listener);
+    }
+
+    @Override
+    public void removeHAListener(IHARoleListener listener) {
+        haListeners.remove(listener);
+    }
+    
+    @Override
+    public Role getRole() {
+        return null;
+    }
+    
+    @Override
+    public void setRole(Role role) {
+        
+    }
+    
+    /**
+     * Dispatches a new role change notification
+     * @param oldRole
+     * @param newRole
+     */
+    public void dispatchRoleChanged(Role oldRole, Role newRole) {
+        for (IHARoleListener rl : haListeners) {
+            rl.roleChanged(oldRole, newRole);
+        }
+    }
+
+    @Override
+    public String getControllerId() {
+        return "localhost";
+    }
 }
