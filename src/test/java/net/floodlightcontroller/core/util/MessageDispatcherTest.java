@@ -22,6 +22,10 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import org.junit.Test;
 import org.openflow.protocol.OFType;
 
@@ -30,57 +34,120 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class MessageDispatcherTest extends FloodlightTestCase {
 
-    /**
-     * Verify that our callbacks are ordered with respect to the order specified
-     * @throws Exception
-     */
-    @Test
-    public void testCallbackOrderingBase() throws Exception {
-        testCallbackOrdering(new String[] {"topology"}, new String[] {"topology"});
-        testCallbackOrdering(new String[] {"learningswitch","topology"}, new String[] {"learningswitch","topology"});
-        testCallbackOrdering(new String[] {"topology","devicemanager","learningswitch"}, new String[] {"topology","devicemanager","learningswitch"});
-        testCallbackOrdering(new String[] {"topology","devicemanager","routing","learningswitch"}, new String[] {"topology","devicemanager","routing","learningswitch"});
-        testCallbackOrdering(new String[] {"devicemanager","topology","learningswitch","routing"}, new String[] {"topology","devicemanager","routing","learningswitch"});
+    IOFMessageListener createLMock(String name) {
+        IOFMessageListener mock = createNiceMock(IOFMessageListener.class);
+        expect(mock.getName()).andReturn(name).anyTimes();
+        return mock;
     }
-
-    protected void testCallbackOrdering(String[] addOrder, String[] verifyOrder) throws Exception {
+    
+    void addPrereqs(IOFMessageListener mock, String... deps) {
+        for (String dep : deps) {
+            expect(mock.isCallbackOrderingPrereq(OFType.PACKET_IN, dep)).andReturn(true).anyTimes();
+        }
+    }
+    
+    void testOrdering(ArrayList<IOFMessageListener> inputListeners) {
         ListenerDispatcher<OFType, IOFMessageListener> ld = 
-            new ListenerDispatcher<OFType, IOFMessageListener>();
+                new ListenerDispatcher<OFType, IOFMessageListener>();
+        
+        for (IOFMessageListener l : inputListeners) {
+            ld.addListener(OFType.PACKET_IN, l);
+        }
+        for (IOFMessageListener l : inputListeners) {
+            verify(l);
+        }
+        
+        List<IOFMessageListener> result = ld.getOrderedListeners();
+        System.out.print("Ordering: ");
+        for (IOFMessageListener l : result) {
+            System.out.print(l.getName());
+            System.out.print(",");
+        }
+        System.out.print("\n");
 
-        IOFMessageListener topology = createNiceMock(IOFMessageListener.class);
-        IOFMessageListener devicemanager = createNiceMock(IOFMessageListener.class);
-        IOFMessageListener routing = createNiceMock(IOFMessageListener.class);
-        IOFMessageListener learningswitch = createNiceMock(IOFMessageListener.class);
-
-        expect(topology.getName()).andReturn("topology").anyTimes();
-        expect(devicemanager.getName()).andReturn("devicemanager").anyTimes();
-        expect(routing.getName()).andReturn("routing").anyTimes();
-        expect(learningswitch.getName()).andReturn("learningswitch").anyTimes();
-
-        expect(devicemanager.isCallbackOrderingPrereq(OFType.PACKET_IN, "topology")).andReturn(true).anyTimes();
-        expect(routing.isCallbackOrderingPrereq(OFType.PACKET_IN, "topology")).andReturn(true).anyTimes();
-        expect(routing.isCallbackOrderingPrereq(OFType.PACKET_IN, "devicemanager")).andReturn(true).anyTimes();
-        expect(learningswitch.isCallbackOrderingPrereq(OFType.PACKET_IN, "routing")).andReturn(true).anyTimes();
-        expect(learningswitch.isCallbackOrderingPrereq(OFType.PACKET_IN, "devicemanager")).andReturn(true).anyTimes();
-
-        replay(topology, devicemanager, routing, learningswitch);
-        for (String o : addOrder) {
-            if ("topology".equals(o)) {
-                ld.addListener(OFType.PACKET_IN, topology);
-            } else if ("devicemanager".equals(o)) {
-                ld.addListener(OFType.PACKET_IN, devicemanager);
-            } else if ("routing".equals(o)) {
-                ld.addListener(OFType.PACKET_IN, routing);
-            } else {
-                ld.addListener(OFType.PACKET_IN, learningswitch);
+        for (int ind_i = 0; ind_i < result.size(); ind_i++) {
+            IOFMessageListener i = result.get(ind_i);
+            for (int ind_j = ind_i+1; ind_j < result.size(); ind_j++) {
+                IOFMessageListener j = result.get(ind_j);
+                
+                boolean orderwrong = 
+                        (i.isCallbackOrderingPrereq(OFType.PACKET_IN, j.getName()) ||
+                         j.isCallbackOrderingPostreq(OFType.PACKET_IN, i.getName()));
+                assertFalse("Invalid order: " + 
+                            ind_i + " (" + i.getName() + ") " + 
+                            ind_j + " (" + j.getName() + ") ", orderwrong);
             }
         }
-
-        verify(topology, devicemanager, routing, learningswitch);
-        for (int i = 0; i < verifyOrder.length; ++i) {
-            String o = verifyOrder[i];
-            assertEquals(o, ld.getOrderedListeners().get(i).getName());
+    }
+    
+    void randomTestOrdering(ArrayList<IOFMessageListener> mocks) {
+        Random rand = new Random(0);
+        ArrayList<IOFMessageListener> random = 
+                new ArrayList<IOFMessageListener>();
+        random.addAll(mocks);
+        for (int i = 0; i < 20; i++) {
+            for (int j = 0; j < random.size(); j++) {
+                int ind = rand.nextInt(mocks.size()-1);
+                IOFMessageListener tmp = random.get(j);
+                random.set(j, random.get(ind));
+                random.set(ind, tmp);
+            }
+            testOrdering(random);
         }
     }
+    
+    @Test
+    public void testCallbackOrderingSimple() throws Exception {
+        ArrayList<IOFMessageListener> mocks = 
+                new ArrayList<IOFMessageListener>();
+        for (int i = 0; i < 10; i++) {
+            mocks.add(createLMock(""+i));
+        }
+        for (int i = 1; i < 10; i++) {
+            addPrereqs(mocks.get(i), ""+(i-1));
+        }
+        for (IOFMessageListener l : mocks) {
+            replay(l);
+        }
+        randomTestOrdering(mocks);
+    }
 
+    @Test
+    public void testCallbackOrderingPartial() throws Exception {
+        ArrayList<IOFMessageListener> mocks = 
+                new ArrayList<IOFMessageListener>();
+        for (int i = 0; i < 10; i++) {
+            mocks.add(createLMock(""+i));
+        }
+        for (int i = 1; i < 5; i++) {
+            addPrereqs(mocks.get(i), ""+(i-1));
+        }
+        for (int i = 6; i < 10; i++) {
+            addPrereqs(mocks.get(i), ""+(i-1));
+        }
+        for (IOFMessageListener l : mocks) {
+            replay(l);
+        }
+        randomTestOrdering(mocks);
+    }
+    
+
+    @Test
+    public void testCallbackOrderingPartial2() throws Exception {
+        ArrayList<IOFMessageListener> mocks = 
+                new ArrayList<IOFMessageListener>();
+        for (int i = 0; i < 10; i++) {
+            mocks.add(createLMock(""+i));
+        }
+        for (int i = 2; i < 5; i++) {
+            addPrereqs(mocks.get(i), ""+(i-1));
+        }
+        for (int i = 6; i < 9; i++) {
+            addPrereqs(mocks.get(i), ""+(i-1));
+        }
+        for (IOFMessageListener l : mocks) {
+            replay(l);
+        }
+        randomTestOrdering(mocks);
+    }
 }
