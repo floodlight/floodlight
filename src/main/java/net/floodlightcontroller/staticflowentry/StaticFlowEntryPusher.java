@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -44,7 +46,7 @@ import org.slf4j.LoggerFactory;
 
 public class StaticFlowEntryPusher 
     implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService,
-        IStorageSourceListener, IOFMessageListener {
+        IStorageSourceListener, IOFMessageListener, IHARoleListener {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
     public static final String StaticFlowName = "staticflowentry";
     
@@ -544,8 +546,9 @@ public class StaticFlowEntryPusher
     public void startUp(FloodlightModuleContext context) {        
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         floodlightProvider.addOFSwitchListener(this);
-        // assumes no switches connected at startup()
+        floodlightProvider.addHAListener(this);
         
+        // assumes no switches connected at startup()
         storageSource.createTable(TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(TABLE_NAME, COLUMN_NAME);
         storageSource.addListener(TABLE_NAME, this);
@@ -600,5 +603,28 @@ public class StaticFlowEntryPusher
     @Override
     public Map<String, OFFlowMod> getFlows(String dpid) {
         return entriesFromStorage.get(dpid);
+    }
+
+    
+    // IHARoleListener
+    
+    @Override
+    public void roleChanged(Role oldRole, Role newRole) {
+        switch(newRole) {
+            case MASTER:
+                if (oldRole == Role.SLAVE) {
+                    log.debug("Re-reading static flows from storage due " +
+                            "to HA change from SLAVE->MASTER");
+                    entriesFromStorage = readEntriesFromStorage(); 
+                    entry2dpid = computeEntry2DpidMap(entriesFromStorage);
+                }
+                break;
+            case SLAVE:
+                log.debug("Clearing in-memory flows due to " +
+                        "HA change to SLAVE");
+                entry2dpid.clear();
+                entriesFromStorage.clear();
+                break;
+        }
     }
 }
