@@ -248,6 +248,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getSwitchClusterId(anyLong())).
             andReturn(1L).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
+        andReturn(false).anyTimes();
+
         expect(mockTopology.isInternal(anyLong(), 
                                        anyShort())).andReturn(false).anyTimes();
         deviceManager.topology = mockTopology;
@@ -359,6 +362,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(10L).anyTimes();
         expect(mockTopology.getSwitchClusterId(50L)).
         andReturn(10L).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
+                andReturn(false).anyTimes();
         
         expect(mockTopology.isInternal(anyLong(), 
                                        anyShort())).andReturn(false).anyTimes();
@@ -428,6 +433,53 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
+    }
+
+    @Test
+    public void testBDAttachmentPointLearning() throws Exception {
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.getSwitchClusterId(anyLong())).
+                andReturn(1L).anyTimes();
+        expect(mockTopology.isInternal(anyLong(), anyShort())).
+                andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).
+                andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)2)).
+                andReturn(true).anyTimes();
+        
+        replay(mockTopology);
+        
+        deviceManager.topology = mockTopology;
+        
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        c.add(Calendar.MILLISECOND, 
+              (int)DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS / 2);
+        Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
+        c.add(Calendar.MILLISECOND, 
+              (int)DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS / 2 + 1);
+        Entity entity3 = new Entity(1L, null, null, 1L, 2, c.getTime());
+        
+        IDevice d;
+        SwitchPort[] aps;
+
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints(); 
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+
+        // this timestamp is too soon; don't switch
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints(); 
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+
+        // it should switch when we learn with a timestamp after the 
+        // timeout
+        d = deviceManager.learnDeviceByEntity(entity3);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints(); 
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2) }, aps);
     }
 
     @Test

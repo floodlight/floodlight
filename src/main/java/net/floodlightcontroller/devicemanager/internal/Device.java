@@ -237,7 +237,7 @@ public class Device implements IDevice {
         // XXX - TODO suppress flapping
         // XXX - TODO handle suppressing switching to a broadcast domain
         Entity[] clentities = Arrays.<Entity>copyOf(entities, entities.length);
-        Arrays.sort(clentities, deviceManager.clusterIdComparator);
+        Arrays.sort(clentities, deviceManager.apComparator);
         
         ITopologyService topology = deviceManager.topology;
         long prevCluster = 0;

@@ -102,6 +102,14 @@ public class DeviceManagerImpl implements
     protected static final int ENTITY_CLEANUP_INTERVAL = 60*60;
     
     /**
+     * Attachment points on a broadcast domain will have lower priority
+     * than attachment points in openflow domains.  This is the timeout
+     * for switching from a non-broadcast domain to a broadcast domain 
+     * attachment point.
+     */
+    protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
+    
+    /**
      * This is the master device map that maps device IDs to {@link Device}
      * objects.
      */
@@ -220,9 +228,70 @@ public class DeviceManagerImpl implements
     }
     
     /**
+     * Comparator for finding the correct attachment point to use based on
+     * the set of entities
+     */
+    protected class AttachmentPointComparator 
+            implements Comparator<Entity> {
+
+        
+        public AttachmentPointComparator() {
+            super();
+        }
+
+        @Override
+        public int compare(Entity e1, Entity e2) {
+            int r = 0;
+
+            Long swdpid1 = e1.getSwitchDPID();
+            Long swdpid2 = e2.getSwitchDPID();
+            if (swdpid1 == null)
+                r = swdpid2 == null ? 0 : -1;
+            else if (swdpid2 == null)
+                r = 1;
+            else {
+                Long d1ClusterId = 
+                        topology.getSwitchClusterId(swdpid1);
+                Long d2ClusterId = 
+                        topology.getSwitchClusterId(swdpid2);
+                r = d1ClusterId.compareTo(d2ClusterId);
+            }
+            if (r != 0) return r;
+            
+            Date e1t = e1.getLastSeenTimestamp();
+            Date e2t = e2.getLastSeenTimestamp();
+            if (e1t == null)
+                r = e2t == null ? 0 : -1;
+            else if (e2t == null)
+                r = 1;
+            else {
+                long e1ts = e1t.getTime();
+                long e2ts = e2t.getTime();
+                if (topology.
+                        isBroadcastDomainPort(e1.getSwitchDPID(), 
+                                              e1.getSwitchPort().
+                                                  shortValue())) {
+                    e1ts -= NBD_TO_BD_TIMEDIFF_MS;
+                }
+                if (topology.
+                        isBroadcastDomainPort(e2.getSwitchDPID(), 
+                                              e2.getSwitchPort().
+                                                  shortValue())) {
+                    e2ts -= NBD_TO_BD_TIMEDIFF_MS;
+                }
+                
+                r = Long.valueOf(e1ts).compareTo(e2ts);
+            }
+
+            return r;
+        }
+        
+    }
+    
+    /**
      * Comparator for sorting by cluster ID
      */
-    public Comparator<Entity> clusterIdComparator;
+    public Comparator<Entity> apComparator;
     
     /**
      * Periodic task to clean up expired entities
@@ -520,38 +589,7 @@ public class DeviceManagerImpl implements
         deviceMap = new ConcurrentHashMap<Long, Device>();
         classStateMap = 
                 new ConcurrentHashMap<IEntityClass, ClassState>();
-        clusterIdComparator = new Comparator<Entity>() {
-            @Override
-            public int compare(Entity e1, Entity e2) {
-                int r = 0;
-
-                Long swdpid1 = e1.getSwitchDPID();
-                Long swdpid2 = e2.getSwitchDPID();
-                if (swdpid1 == null)
-                    r = swdpid2 == null ? 0 : -1;
-                else if (swdpid2 == null)
-                    r = 1;
-                else {
-                    Long d1ClusterId = 
-                            topology.getSwitchClusterId(swdpid1);
-                    Long d2ClusterId = 
-                            topology.getSwitchClusterId(swdpid2);
-                    r = d1ClusterId.compareTo(d2ClusterId);
-                }
-                if (r != 0) return r;
-                
-                Date e1t = e1.getLastSeenTimestamp();
-                Date e2t = e2.getLastSeenTimestamp();
-                if (e1t == null)
-                    r = e2t == null ? 0 : -1;
-                else if (e2t == null)
-                    r = 1;
-                else
-                    r = e1t.compareTo(e2t);
-
-                return r;
-            }
-        };
+        apComparator = new AttachmentPointComparator();
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         
