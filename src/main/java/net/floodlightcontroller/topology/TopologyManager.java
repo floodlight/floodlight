@@ -11,6 +11,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHARoleListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -36,8 +39,9 @@ import org.slf4j.LoggerFactory;
  *
  */
 
-public class TopologyManager implements IFloodlightModule, ITopologyService, 
-IRoutingService, ILinkDiscoveryListener {
+public class TopologyManager 
+    implements IFloodlightModule, ITopologyService, IRoutingService, 
+               ILinkDiscoveryListener, IHARoleListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -45,9 +49,13 @@ IRoutingService, ILinkDiscoveryListener {
     protected Map<NodePortTuple, Set<Link>> switchPortLinks; // Set of links organized by node port tuple
     protected Map<NodePortTuple, Set<Link>> portBroadcastDomainLinks; // set of links that are broadcast domain links.
     protected Map<NodePortTuple, Set<Link>> tunnelLinks; // set of tunnel links
+    
+    // Dependencies
     protected ILinkDiscoveryService linkDiscovery;
-    protected ArrayList<ITopologyListener> topologyAware;
     protected IThreadPoolService threadPool;
+    protected IFloodlightProviderService floodlightProvider;
+    // Modules that listen to our updates
+    protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
@@ -318,6 +326,7 @@ IRoutingService, ILinkDiscoveryListener {
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
+        l.add(IFloodlightProviderService.class);
         return l;
     }
 
@@ -326,6 +335,7 @@ IRoutingService, ILinkDiscoveryListener {
             throws FloodlightModuleException {
         linkDiscovery = context.getServiceImpl(ILinkDiscoveryService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -333,7 +343,6 @@ IRoutingService, ILinkDiscoveryListener {
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-        
     }
 
     @Override
@@ -341,6 +350,7 @@ IRoutingService, ILinkDiscoveryListener {
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
+        floodlightProvider.addHAListener(this);
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
     }
 
@@ -458,6 +468,36 @@ IRoutingService, ILinkDiscoveryListener {
     @Override
     public boolean inSameIsland(long switch1, long switch2) {
         return currentInstance.inSameIsland(switch1, switch2);
+    }
+
+    /**
+     * Clears the current topology. Note that this does NOT
+     * send out updates.
+     */
+    public void clearCurrentTopology() {
+        switchPorts.clear();
+        switchPortLinks.clear();
+        portBroadcastDomainLinks.clear();
+        tunnelLinks.clear();
+        createNewInstance();
+    }
+
+    @Override
+    public void roleChanged(Role oldRole, Role newRole) {
+        switch(newRole) {
+            case MASTER:
+                if (oldRole == Role.SLAVE) {
+                    log.debug("Re-computing topology due " +
+                            "to HA change from SLAVE->MASTER");
+                    newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
+                }
+                break;
+            case SLAVE:
+                log.debug("Clearing topology due to " +
+                        "HA change to SLAVE");
+                clearCurrentTopology();
+                break;
+        }
     }
 }
 

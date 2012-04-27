@@ -61,6 +61,7 @@ public class RoleResource extends ServerResource {
         if (role == null) {
             log.warn ("Invalid role value specified in REST API to set controller role");
             setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid role value");
+            return;
         }
         
         IFloodlightProviderService floodlightProvider = 

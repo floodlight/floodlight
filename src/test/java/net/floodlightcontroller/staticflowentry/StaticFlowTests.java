@@ -22,6 +22,7 @@ import org.openflow.util.HexString;
 
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -292,5 +293,42 @@ public class StaticFlowTests extends FloodlightTestCase {
         storage.insertRow(StaticFlowEntryPusher.TABLE_NAME, TestRule3);
 
         return storage;
+    }
+    
+    @Test 
+    public void testHARoleChanged() throws IOException {
+        StaticFlowEntryPusher staticFlowEntryPusher = new StaticFlowEntryPusher();
+        IStorageSourceService storage = createStorageWithFlowEntries();
+        MockFloodlightProvider mfp = getMockFloodlightProvider();
+        staticFlowEntryPusher.setFloodlightProvider(mfp);
+        staticFlowEntryPusher.setStorageSource(storage);
+        RestApiServer restApi = new RestApiServer();
+        try {
+            FloodlightModuleContext fmc = new FloodlightModuleContext();
+            restApi.init(fmc);
+        } catch (FloodlightModuleException e) {
+            e.printStackTrace();
+        }
+        staticFlowEntryPusher.restApi = restApi;
+        staticFlowEntryPusher.startUp(null);    // again, to hack unittest
+        
+        assert(staticFlowEntryPusher.entry2dpid.containsValue(TestSwitch1DPID));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod1));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod2));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod3));
+        
+        // Send a notification that we've changed to slave
+        mfp.dispatchRoleChanged(null, Role.SLAVE);
+        // Make sure we've removed all our entries
+        assert(staticFlowEntryPusher.entry2dpid.isEmpty());
+        assert(staticFlowEntryPusher.entriesFromStorage.isEmpty());
+        
+        // Send a notification that we've changed to master
+        mfp.dispatchRoleChanged(Role.SLAVE, Role.MASTER);  
+        // Make sure we've learned the entries
+        assert(staticFlowEntryPusher.entry2dpid.containsValue(TestSwitch1DPID));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod1));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod2));
+        assert(staticFlowEntryPusher.entriesFromStorage.containsValue(FlowMod3));
     }
 }

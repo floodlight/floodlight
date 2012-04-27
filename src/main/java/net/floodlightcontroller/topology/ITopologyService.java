@@ -15,6 +15,11 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public boolean isInternal(long switchid, short port);
 
+    /**
+     * Returns the cluster ID of a given switch.
+     * @param switchId The DPID of the switch in long form
+     * @return The DPID of the switch that is the key for the cluster
+     */
     public long getSwitchClusterId(long switchId);
 
     /**
@@ -42,7 +47,7 @@ public interface ITopologyService extends IFloodlightService  {
      * islands could be different than clusters.
      * @param switch1
      * @param switch2
-     * @return
+     * @return True of they are in the same island, false otherwise
      */
     public boolean inSameIsland(long switch1, long switch2);
 
@@ -81,6 +86,11 @@ public interface ITopologyService extends IFloodlightService  {
 
     public boolean isInSameBroadcastDomain(long s1, short p1, long s2, short p2);
 
+    /**
+     * Gets a list of ports on a given switch
+     * @param sw The switch DPID in long
+     * @return The set of ports on this switch
+     */
     public Set<Short> getPorts(long sw);
 
     public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort);
