@@ -456,7 +456,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             if (na != null) {
                 delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
-                // Always update§
+                // Always update
                 updateMaps(dCopy, new Date(0));
                 removeNetworkAddressFromStorage(d.getDlAddrString(), na);
             }
