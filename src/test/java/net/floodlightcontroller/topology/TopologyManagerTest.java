@@ -1,11 +1,11 @@
 package net.floodlightcontroller.topology;
 
-import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.TopologyManager;
 
@@ -14,32 +14,26 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TopologyManagerTest {
+public class TopologyManagerTest extends FloodlightTestCase {
     protected static Logger log = LoggerFactory.getLogger(TopologyManagerTest.class);
-    TopologyManager topologyManager;
+    TopologyManager tm;
     FloodlightModuleContext fmc;
-    protected MockFloodlightProvider mockFloodlightProvider;
     
-    @Before 
-    public void SetUp() throws Exception {
-        mockFloodlightProvider = new MockFloodlightProvider();
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
         fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         MockThreadPoolService tp = new MockThreadPoolService();
         fmc.addService(IThreadPoolService.class, tp);
-        topologyManager  = new TopologyManager();
+        tm  = new TopologyManager();
         tp.init(fmc);
-        topologyManager.init(fmc);
+        tm.init(fmc);
         tp.startUp(fmc);
     }
 
-    public TopologyManager getTopologyManager() {
-        return topologyManager;
-    }
-
     @Test
-    public void basicTest1() {
-        TopologyManager tm = getTopologyManager();
+    public void testBasic1() throws Exception {
         tm.addOrUpdateLink((long)1, (short)1, (long)2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
         assertTrue(tm.getSwitchPorts().size() == 2);  // for two nodes.
         assertTrue(tm.getSwitchPorts().get((long)1).size()==1);
@@ -89,8 +83,7 @@ public class TopologyManagerTest {
     }
 
     @Test
-    public void basicTest2() {
-        TopologyManager tm = getTopologyManager();
+    public void testBasic2() throws Exception {
         tm.addOrUpdateLink((long)1, (short)1, (long)2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
         tm.addOrUpdateLink((long)2, (short)2, (long)3, (short)1, ILinkDiscovery.LinkType.MULTIHOP_LINK);
         tm.addOrUpdateLink((long)3, (short)2, (long)1, (short)2, ILinkDiscovery.LinkType.TUNNEL);
@@ -135,5 +128,15 @@ public class TopologyManagerTest {
         assertTrue(tm.getSwitchPortLinks().size()==0);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==0);
         assertTrue(tm.getTunnelLinks().size()==0);
+    }
+    
+    @Test
+    public void testHARoleChange() throws Exception {
+        testBasic2();
+        getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
+        assert(tm.switchPorts.isEmpty());
+        assert(tm.switchPortLinks.isEmpty());
+        assert(tm.portBroadcastDomainLinks.isEmpty());
+        assert(tm.tunnelLinks.isEmpty());
     }
 }

@@ -18,8 +18,6 @@
 package net.floodlightcontroller.core.util;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
@@ -38,6 +36,25 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
     protected static Logger logger = LoggerFactory.getLogger(ListenerDispatcher.class);
     List<T> listeners = null;
     
+    private void visit(List<T> newlisteners, U type, HashSet<T> visited, 
+                       List<T> ordering, T listener) {
+        if (!visited.contains(listener)) {
+            visited.add(listener);
+            
+            for (T i : newlisteners) {
+                if (ispre(type, i, listener)) {
+                    visit(newlisteners, type, visited, ordering, i);
+                }
+            }
+            ordering.add(listener);
+        }
+    }
+    
+    private boolean ispre(U type, T l1, T l2) {
+        return (l2.isCallbackOrderingPrereq(type, l1.getName()) ||
+                l1.isCallbackOrderingPostreq(type, l2.getName()));
+    }
+    
     /**
      * Add a listener to the list of listeners
      * @param listener
@@ -48,31 +65,36 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
             newlisteners.addAll(listeners);
 
         newlisteners.add(listener);
-        
-        // compute transitive closure of dependencies
-        HashSet<String> deps = new HashSet<String>();
-        for (T k : newlisteners) {
-            for (T i : newlisteners) {
-                for (T j : newlisteners) {
-                    boolean ispre = 
-                        (i.isCallbackOrderingPrereq(type, j.getName()) ||
-                         j.isCallbackOrderingPostreq(type, i.getName()));
-                    if (ispre || 
-                            (deps.contains(i.getName() + "|||" + k.getName()) &&
-                             deps.contains(k.getName() + "|||" + j.getName()))) {
-                        deps.add(i.getName() + "|||" + j.getName());
-                        // Check for dependency cycle
-                        if (deps.contains(j.getName() + "|||" + i.getName())) {
-                            logger.error("Cross dependency cycle between {} and {}",
-                                      i.getName(), j.getName());
-                        }
-                    }
+        // Find nodes without outgoing edges
+        List<T> terminals = new ArrayList<T>(); 
+        for (T i : newlisteners) {
+            boolean isterm = true;
+            for (T j : newlisteners) {
+                if (ispre(type, i, j)) {
+                    isterm = false;
+                    break;
                 }
+            }
+            if (isterm) {
+                terminals.add(i);
             }
         }
         
-        Collections.sort(newlisteners, new ListenerComparator(deps));
-        listeners = newlisteners;
+        if (terminals.size() == 0) {
+            logger.error("No listener dependency solution: " +
+            		     "No listeners without incoming dependencies");
+            listeners = newlisteners;
+            return;
+        }
+        
+        // visit depth-first traversing in the opposite order from
+        // the dependencies.  Note we will not generally detect cycles
+        HashSet<T> visited = new HashSet<T>();
+        List<T> ordering = new ArrayList<T>(); 
+        for (T term : terminals) {
+            visit(newlisteners, type, visited, ordering, term);
+        }
+        listeners = ordering;
     }
 
     /**
@@ -101,28 +123,5 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
      */
     public List<T> getOrderedListeners() {
         return listeners;
-    }
-    
-    /**
-     * Comparator for listeners to use with computed transitive dependencies
-     * 
-     * @author readams
-     *
-     */
-    protected class ListenerComparator implements Comparator<IListener<U>> {
-        HashSet<String> deps;
-        
-        ListenerComparator(HashSet<String> deps) {
-            this.deps = deps;
-        }
-        
-        @Override
-        public int compare(IListener<U> arg0, IListener<U> arg1) {
-            if (deps.contains(arg0.getName() + "|||" + arg1.getName()))
-                return 1;
-            else if (deps.contains(arg1.getName() + "|||" + arg0.getName()))
-                return -1;
-            return 0;  // strictly partial ordering
-        }
     }
 }
