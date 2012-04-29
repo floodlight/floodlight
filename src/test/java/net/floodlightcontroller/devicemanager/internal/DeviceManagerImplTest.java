@@ -297,10 +297,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
         deviceManager.setTopology(mockTopology);
 
-        // reduce the aging period to a few milliseconds
+        // reduce the aging period to a few seconds
+        DeviceManagerImpl.DEVICE_AGING_TIMER = 2;
         DeviceManagerImpl.DEVICE_AP_MAX_AGE = 1;
         DeviceManagerImpl.DEVICE_NA_MAX_AGE = 1;
-        DeviceManagerImpl.DEVICE_MAX_AGE = 2;
+        DeviceManagerImpl.DEVICE_MAX_AGE = 3;
 
         Date currentDate = new Date();
 
@@ -334,11 +335,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(2, rdevice.getNetworkAddresses().size());
 
         // Sleep to make sure the aging thread has run
-        Thread.sleep(Math.max(DeviceManagerImpl.DEVICE_NA_MAX_AGE, DeviceManagerImpl.DEVICE_AP_MAX_AGE)*1000);
-        deviceManager.removeAgedDevices(new Date());
+        Thread.sleep((DeviceManagerImpl.DEVICE_AGING_TIMER + DeviceManagerImpl.DEVICE_AGING_TIMER_INTERVAL)*1000);
 
         rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
-
+        assertEquals(0, rdevice.getAttachmentPoints().size());
         assertEquals(0, rdevice.getNetworkAddresses().size());
 
         // Make sure the device's AP and NA were removed from storage
@@ -347,10 +347,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(0, rdevice.getAttachmentPoints().size());
         assertEquals(0, rdevice.getNetworkAddresses().size());
 
-        // Sleep a bit longer seconds to allow device age
-        Thread.sleep((DeviceManagerImpl.DEVICE_MAX_AGE - 
-        		Math.max(DeviceManagerImpl.DEVICE_NA_MAX_AGE, DeviceManagerImpl.DEVICE_AP_MAX_AGE))*1000);
-        deviceManager.removeAgedDevices(new Date());
+        // Sleep 4 more seconds to allow device aging thread to run
+        Thread.sleep(DeviceManagerImpl.DEVICE_MAX_AGE*1000);
 
         assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));
 
