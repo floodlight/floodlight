@@ -297,7 +297,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isInternal(1L, (short)1)).andReturn(false);
         deviceManager.setTopology(mockTopology);
 
-        // reduce the aging period to a few milliseconds
+        // reduce the aging period to a few seconds
         DeviceManagerImpl.DEVICE_AP_MAX_AGE = 1;
         DeviceManagerImpl.DEVICE_NA_MAX_AGE = 1;
         DeviceManagerImpl.DEVICE_MAX_AGE = 2;
@@ -338,7 +338,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.removeAgedDevices(new Date());
 
         rdevice = deviceManager.getDeviceByDataLayerAddress(dataLayerSource);
-
         assertEquals(0, rdevice.getNetworkAddresses().size());
 
         // Make sure the device's AP and NA were removed from storage
@@ -349,7 +348,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Sleep a bit longer seconds to allow device age
         Thread.sleep((DeviceManagerImpl.DEVICE_MAX_AGE - 
-        		Math.max(DeviceManagerImpl.DEVICE_NA_MAX_AGE, DeviceManagerImpl.DEVICE_AP_MAX_AGE))*1000);
+                      Math.max(DeviceManagerImpl.DEVICE_NA_MAX_AGE, DeviceManagerImpl.DEVICE_AP_MAX_AGE))*1000);
         deviceManager.removeAgedDevices(new Date());
 
         assertNull(deviceManager.getDeviceByDataLayerAddress(dataLayerSource));

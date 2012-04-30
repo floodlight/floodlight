@@ -170,7 +170,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
                     if (log.isTraceEnabled()) {
-                        log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
+                        log.trace("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
                                   new Object[] { routeIndx, sw, fm.getMatch().getInputPort(), 
                                                  ((OFActionOutput)fm.getActions().get(0)).getPort() });
                     }
@@ -229,7 +229,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         try {
             counterStore.updatePktOutFMCounterStore(sw, fm);
             if (log.isTraceEnabled()) {
-                log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
+                log.trace("pushRoute flowmod sw={} inPort={} outPort={}",
                       new Object[] { sw, fm.getMatch().getInputPort(), 
                                     ((OFActionOutput)fm.getActions().get(0)).getPort() });
             }
@@ -285,7 +285,7 @@ public abstract class ForwardingBase implements IOFMessageListener, IDeviceManag
         }
         
         if (log.isTraceEnabled()) {
-            log.debug("PacketOut srcSwitch={} match={} pi={}", new Object[] {sw, match, pi});
+            log.trace("PacketOut srcSwitch={} match={} pi={}", new Object[] {sw, match, pi});
         }
         
         OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
