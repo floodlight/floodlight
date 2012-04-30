@@ -235,7 +235,6 @@ public class Device implements IDevice {
 
         // Find the most recent attachment point for each cluster
         // XXX - TODO suppress flapping
-        // XXX - TODO handle suppressing switching to a broadcast domain
         Entity[] clentities = Arrays.<Entity>copyOf(entities, entities.length);
         Arrays.sort(clentities, deviceManager.apComparator);
         
