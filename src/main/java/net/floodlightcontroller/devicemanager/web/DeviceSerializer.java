@@ -64,6 +64,8 @@ public class DeviceSerializer extends JsonSerializer<Device> {
         }
         jGen.writeEndArray();
 
+        jGen.writeNumberField("lastSeen", device.getLastSeen().getTime());
+        
         jGen.writeEndObject();
     }
 

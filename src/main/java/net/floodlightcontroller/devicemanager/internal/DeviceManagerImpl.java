@@ -267,20 +267,23 @@ public class DeviceManagerImpl implements
             else {
                 long e1ts = e1t.getTime();
                 long e2ts = e2t.getTime();
-                if (topology.
-                        isBroadcastDomainPort(e1.getSwitchDPID(), 
-                                              e1.getSwitchPort().
+                if (e1.getSwitchDPID() != null &&
+                    e2.getSwitchPort() != null) {
+                    if (topology.
+                            isBroadcastDomainPort(e1.getSwitchDPID(), 
+                                                  e1.getSwitchPort().
                                                   shortValue())) {
-                    e1ts -= NBD_TO_BD_TIMEDIFF_MS;
-                }
-                if (topology.
-                        isBroadcastDomainPort(e2.getSwitchDPID(), 
-                                              e2.getSwitchPort().
+                        e1ts -= NBD_TO_BD_TIMEDIFF_MS;
+                    }
+                    if (topology.
+                            isBroadcastDomainPort(e2.getSwitchDPID(), 
+                                                  e2.getSwitchPort().
                                                   shortValue())) {
-                    e2ts -= NBD_TO_BD_TIMEDIFF_MS;
+                        e2ts -= NBD_TO_BD_TIMEDIFF_MS;
+                    }
+
+                    r = Long.valueOf(e1ts).compareTo(e2ts);
                 }
-                
-                r = Long.valueOf(e1ts).compareTo(e2ts);
             }
 
             return r;
