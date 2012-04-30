@@ -165,6 +165,7 @@ public class LinkDiscoveryManager
      * Map from a id:port to the set of links containing it as an endpoint
      */
     protected Map<SwitchPortTuple, Set<LinkTuple>> portLinks;
+    protected Set<SwitchPortTuple> suppressLLDPs;
 
     /**
      * Set of link tuples over which multicast LLDPs are received
@@ -197,6 +198,20 @@ public class LinkDiscoveryManager
     public Map<SwitchPortTuple, Set<LinkTuple>> getPortLinks() {
         return portLinks;
     }
+    
+    public Set<SwitchPortTuple> getSuppressLLDPsInfo() {
+    	return suppressLLDPs;
+    }
+    
+    public void AddToSuppressLLDPs(IOFSwitch sw, short port)
+    {
+    	this.suppressLLDPs.add(new SwitchPortTuple(sw, port));
+    }
+    
+    public void RemoveFromSuppressLLDPs(IOFSwitch sw, short port) 
+    {
+    	this.suppressLLDPs.remove(new SwitchPortTuple(sw, port));
+    }
 
     public boolean isShuttingDown() {
         return shuttingDown;
@@ -227,6 +242,13 @@ public class LinkDiscoveryManager
     }
 
     protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, boolean isStandard) {
+    	
+    	if (this.suppressLLDPs.contains(new SwitchPortTuple(sw, port.getPortNumber()))) {
+    		/* Dont send LLDPs out of this port as suppressLLDPs set
+    		 * 
+    		 */
+    		return;
+    	}
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -1323,6 +1345,7 @@ public class LinkDiscoveryManager
         this.updates = new LinkedBlockingQueue<LDUpdate>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
+        this.suppressLLDPs = new HashSet<SwitchPortTuple>();
         this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
         this.evHistTopologySwitch =
