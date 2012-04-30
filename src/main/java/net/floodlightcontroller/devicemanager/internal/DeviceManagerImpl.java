@@ -52,7 +52,6 @@ import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
 import net.floodlightcontroller.devicemanager.DeviceNetworkAddress;
 import net.floodlightcontroller.devicemanager.IDeviceManagerService;
 import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
@@ -304,8 +303,25 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         /**
          * Overall update, delete and clear methods for the set of maps
          * @param d the device to update
+         * @return true if successfully update the devMap.
          */
-        private synchronized void updateMaps(Device d) {
+        private synchronized boolean updateMaps(Device d, Date lastTopoChangeTime) {
+            /**
+             * If the device was last seen before the most recent topology change,
+             * the device might be outdated.
+             * Throw it away.
+             */
+            if (lastTopoChangeTime.after(d.getLastSeen())) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Skip device update {}, which is seen before last topo change, {}",
+                              d, lastTopoChangeTime);
+                }
+                return false;
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("UpdateMaps, update device {}", d);
+            }
             // Update dataLayerAddressDeviceMap
             updateDataLayerAddressDeviceMap(d);
             // Update ipv4AddressDeviceMap
@@ -314,6 +330,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             updateSwitchDeviceMap(d);
             // Update switchPortDeviceMap
             updateSwitchPortDeviceMap(d);
+            return true;
         }
 
         /** 
@@ -422,7 +439,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             if (na == null) { // this particular address is not in the device
                 na = new DeviceNetworkAddress(nwAddr, lastSeen);
                 dCopy.addNetworkAddress(na);
-                updateMaps(dCopy);
+                /** Device network address is independent of network topology,
+                 * so always allow to update network address.
+                 */
+                updateMaps(dCopy, new Date(0));
             }
         }
 
@@ -441,7 +461,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             if (na != null) {
                 delFromIpv4AddressDeviceMap(nwAddr, d);
                 dCopy.removeNetworkAddress(na);
-                updateMaps(dCopy);
+                /** Device network address is independent of network topology,
+                 * so always allow to update network address.
+                 */
+                updateMaps(dCopy, new Date(0));
                 removeNetworkAddressFromStorage(d.getDlAddrString(), na);
             }
         }
@@ -489,7 +512,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             dCopy.addAttachmentPoint(dap);
             // Now add this updated device to the maps, which will replace
             // the old copy
-            updateMaps(dCopy);
+            updateMaps(dCopy, lastTopoChangeTime);
             return true;
         }
 
@@ -535,7 +558,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             delFromSwitchDeviceMap(sw, d);  
             // Now add this updated device to the maps, which will replace
             // the old copy
-            updateMaps(dCopy);
+            updateMaps(dCopy, new Date(0));
             if (log.isDebugEnabled()) {
                 log.debug("Remove AP {} post {} prev {} for Device {}", 
                           new Object[] {dap, dCopy.getAttachmentPoints().size(),
@@ -615,7 +638,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     } // End of DevMgrMap class definition
 
     private DevMgrMaps devMgrMaps;
-
+    private boolean topoChangedEvent;
+    private Date lastTopoChangeTime;
     public DevMgrMaps getDevMgrMaps() {
         return devMgrMaps;
     }
@@ -787,8 +811,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         evHistAttachmtPt(mac, swPort, EvAction.ADDED, "New device");
         device.addNetworkAddress(nwAddr, currentDate);
         device.setVlanId(vlan);
-        // Update the maps - insert the device in the maps
-        devMgrMaps.updateMaps(device);
+        // Allow to update with new device regardless topology state.
+        devMgrMaps.updateMaps(device, new Date(0));
         writeDeviceToStorage(device, currentDate);
         updateStatus(device, true);
     }
@@ -893,21 +917,21 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             return Command.CONTINUE;
         }
 
-        Long dlAddr = Ethernet.toLong(match.getDataLayerSource());
+        Long srcDlAddr = Ethernet.toLong(match.getDataLayerSource());
         Short vlan = match.getDataLayerVirtualLan();
         if (vlan < 0) vlan = null;
-        int nwSrc = getSrcNwAddr(eth, dlAddr);
-        Device device = devMgrMaps.getDeviceByDataLayerAddr(dlAddr);
+        int nwSrc = getSrcNwAddr(eth, srcDlAddr);
+        Device srcDevice = devMgrMaps.getDeviceByDataLayerAddr(srcDlAddr);
         if (log.isTraceEnabled()) {
             long dstAddr = Ethernet.toLong(match.getDataLayerDestination());
-            Device dstDev = devMgrMaps.getDeviceByDataLayerAddr(dstAddr);
-            if (device != null)
-                log.trace("    Src.AttachmentPts: {}", device.getAttachmentPointsMap().keySet());
-            if (dstDev != null)
-                log.trace("    Dst.AttachmentPts: {}", dstDev.getAttachmentPointsMap().keySet());
+            Device dstDevice = devMgrMaps.getDeviceByDataLayerAddr(dstAddr);
+            if (srcDevice != null)
+                log.trace("    Src.AttachmentPts: {}", srcDevice.getAttachmentPointsMap().keySet());
+            if (dstDevice != null)
+                log.trace("    Dst.AttachmentPts: {}", dstDevice.getAttachmentPointsMap().keySet());
         }
         Date currentDate = new Date(); 
-        if (device != null) { 
+        if (srcDevice != null) {
             // Write lock is expensive, check if we have an update first
             boolean newAttachmentPoint = false;
             boolean newNetworkAddress = false;
@@ -922,14 +946,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             DeviceNetworkAddress networkAddress = null;
 
             // Copy-replace of device would be too expensive here
-            device.setLastSeen(currentDate);
-            updateDevice = device.shouldWriteLastSeenToStorage();
+            srcDevice.setLastSeen(currentDate);
+            updateDevice = srcDevice.shouldWriteLastSeenToStorage();
             
             if (isGratArp(eth)) {
                 clearAttachmentPoints = true;
             }
 
-            attachmentPoint = device.getAttachmentPoint(switchPort);
+            attachmentPoint = srcDevice.getAttachmentPoint(switchPort);
             if (attachmentPoint != null) {
                 updateAttachmentPointLastSeen = true;
             } else {
@@ -945,7 +969,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             }
 
             if (nwSrc != 0) {
-                networkAddress = device.getNetworkAddress(nwSrc);
+                networkAddress = srcDevice.getNetworkAddress(nwSrc);
                 if (networkAddress != null) {
                     updateNetworkAddressLastSeen = true;
                 } else if (eth != null && (eth.getPayload() instanceof ARP)) {
@@ -973,7 +997,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 Device deviceByNwaddr = this.getDeviceByIPv4Address(nwSrc);
                 if ((deviceByNwaddr != null) &&
                     (deviceByNwaddr.getDataLayerAddressAsLong() != 
-                                    device.getDataLayerAddressAsLong())) {
+                                    srcDevice.getDataLayerAddressAsLong())) {
                     updateNeworkAddressMap = true;
                     Device dCopy = new Device(deviceByNwaddr);
                     DeviceNetworkAddress naOld = dCopy.getNetworkAddress(nwSrc);
@@ -981,20 +1005,20 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                                 dCopy.getNetworkAddressesMap();
                     if (namap.containsKey(nwSrc)) namap.remove(nwSrc);
                     dCopy.setNetworkAddresses(namap.values());
-                    this.devMgrMaps.updateMaps(dCopy);
+                    this.devMgrMaps.updateMaps(dCopy, new Date(0));
                     if (naOld !=null) 
                         removeNetworkAddressFromStorage(dCopy.getDlAddrString(), naOld);
                 }
-
             }
-            if ((vlan == null && device.getVlanId() != null) ||
-                    (vlan != null && !vlan.equals(device.getVlanId()))) {
+
+            if ((vlan == null && srcDevice.getVlanId() != null) ||
+                    (vlan != null && !vlan.equals(srcDevice.getVlanId()))) {
                 updateDeviceVlan = true;
             }
 
             if (newAttachmentPoint || newNetworkAddress || updateDeviceVlan || 
                                 updateNeworkAddressMap) {
-                Device nd = new Device(device);
+                Device nd = new Device(srcDevice);
 
                 try {
                     // Check if we have seen this attachmentPoint recently,
@@ -1006,18 +1030,17 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         } else {
                             if (log.isDebugEnabled()) {
                                 log.debug("Learned new AP for device {} at {}",
-                                        HexString.toHexString(nd.getDataLayerAddressAsLong()),
-                                        attachmentPoint);
+                                        nd, attachmentPoint);
                             }
-                            nd.addAttachmentPoint(attachmentPoint);
-                            evHistAttachmtPt(nd.getDataLayerAddressAsLong(), 
-                                             attachmentPoint.getSwitchPort(),
-                                             EvAction.ADDED, 
-                                             "New AP from pkt-in");
                         }
                     }
 
                     if (clearAttachmentPoints) {
+                        for (DeviceAttachmentPoint ap : nd.getAttachmentPoints()) {
+                             removeAttachmentPointFromStorage(nd.getDlAddrString(),
+                                    HexString.toHexString(ap.getSwitchPort().getSw().getId()),
+                                    ap.getSwitchPort().getPort().toString());
+                        }
                         nd.clearAttachmentPoints();
                         evHistAttachmtPt(nd, 0L, (short)(-1),
                                 EvAction.CLEARED, "Grat. ARP from pkt-in");
@@ -1044,10 +1067,10 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     // set hard timeout to 5 seconds to avoid blocking host 
                     // forever
                     ForwardingBase.blockHost(floodlightProvider, switchPort,
-                        dlAddr, ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT);
+                        srcDlAddr, ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT);
                 }
                 // Update the maps
-                devMgrMaps.updateMaps(nd);
+                devMgrMaps.updateMaps(nd, lastTopoChangeTime);
                 // publish the update after devMgrMaps is updated.
                 if (newNetworkAddress) {
                     updateAddress(nd, networkAddress, true);
@@ -1055,14 +1078,14 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (updateDeviceVlan) {
                     updateVlan(nd);
                 }
-                device = nd;
+                srcDevice = nd;
             }
 
             if (updateAttachmentPointLastSeen) {
                 attachmentPoint.setLastSeen(currentDate);
                 if (attachmentPoint.shouldWriteLastSeenToStorage())
                     writeAttachmentPointToStorage(
-                            device, attachmentPoint, currentDate);
+                            srcDevice, attachmentPoint, currentDate);
             }
 
             if (updateNetworkAddressLastSeen || newNetworkAddress) {
@@ -1071,11 +1094,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 if (newNetworkAddress || 
                         networkAddress.shouldWriteLastSeenToStorage())
                     writeNetworkAddressToStorage(
-                            device, networkAddress, currentDate);
+                            srcDevice, networkAddress, currentDate);
             }
 
             if (updateDevice) {
-                writeDeviceToStorage(device, currentDate);
+                writeDeviceToStorage(srcDevice, currentDate);
             }
 
         } else { // device is null 
@@ -1085,6 +1108,12 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     switchPort, nwSrc, vlan);
         }
         processUpdates();
+        if (log.isTraceEnabled()) {
+            log.trace("Done DeviceManager PacketIn processing for {} --> {}, srcDevice: {}",
+                new Object[] {HexString.toHexString(match.getDataLayerSource()),
+                HexString.toHexString(match.getDataLayerDestination()),
+                srcDevice});
+        }
         return ret;
     }
 
@@ -1116,8 +1145,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     if (dt < NBD_TO_BD_TIMEDIFF_MS) {
                         // if the packet was seen within the last 5 minutes, we should ignore.
                         // it should also ignore processing the packet.
-                        if (log.isDebugEnabled()) {
-                            log.debug("Surpressing too quick move of {} from non broadcast domain port {} {}" +
+                        if (log.isTraceEnabled()) {
+                            log.trace("Surpressing too quick move of {} from non broadcast domain port {} {}" +
                                     " to broadcast domain port {} {}. Last seen on non-BD {} sec ago",
                                     new Object[] {device.getDlAddrString(),
                                                 existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
@@ -1128,7 +1157,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                         return null;
                     } else {
                         if (log.isDebugEnabled()) {
-                            log.debug("AP move of {} from non broadcast domain port {} {}" +
+                            log.trace("AP move of {} from non broadcast domain port {} {}" +
                                     " to broadcast domain port {} {}. Last seen on BD {} sec ago",
                                     new Object[] { device.getDlAddrString(),
                                                    existingAttachmentPoint.getSwitchPort().getSw().getStringId(), currPort,
@@ -1142,8 +1171,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 } else if ((topology.isBroadcastDomainPort(currSw, currPort) == true) &&
                           (topology.isBroadcastDomainPort(newSw, newPort) == true)) {
                     if (topology.isInSameBroadcastDomain(currSw, currPort, newSw, newPort)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("new AP {} {} and current AP {} {} belong to the same broadcast domain",
+                        if (log.isTraceEnabled()) {
+                            log.trace("new AP {} {} and current AP {} {} belong to the same broadcast domain",
                                     new Object[] {HexString.toHexString(newSw), newPort,
                                     HexString.toHexString(currSw), currPort});
                         }
@@ -1216,12 +1245,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
             device.removeOldAttachmentPoint(attachmentPoint);
         }
 
-        // Update mappings
-        devMgrMaps.addDevAttachmentPoint(
-                device.getDataLayerAddressAsLong(), swPort, currentDate);
-        evHistAttachmtPt(device.getDataLayerAddressAsLong(), swPort,
-                EvAction.ADDED, "packet-in GNAP");
-
         // If curAttachmentPoint exists, we mark it a conflict and may block it.
         if (curAttachmentPoint != null) {
             device.removeAttachmentPoint(curAttachmentPoint);
@@ -1240,7 +1263,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                                                 currentDate);
                     log.warn(
                         "Device {}: flapping between {} and {}, block the latter",
-                        new Object[] {device, swPort, 
+                        new Object[] {device.getDlAddrString(), swPort,
                         curAttachmentPoint.getSwitchPort()});
                     // Check if flapping is between the same switch port
                     if (swPort.getSw().getId() ==
@@ -1269,11 +1292,15 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
             if (log.isDebugEnabled()) {
                 log.debug("Device {} moved from {} to {}", new Object[] {
-                           device.getDlAddrString(), curAttachmentPoint.getSwitchPort(), swPort});
+                           device, curAttachmentPoint.getSwitchPort(), swPort});
             }
         } else {
+            device.addAttachmentPoint(attachmentPoint);
+            evHistAttachmtPt(device.getDataLayerAddressAsLong(),
+                             attachmentPoint.getSwitchPort(),
+                             EvAction.ADDED,
+                             "New AP from pkt-in");
             updateStatus(device, true);
-            log.debug("Device {} added AP at {}", device, swPort);
         }
 
         writeAttachmentPointToStorage(device, attachmentPoint, currentDate);
@@ -1446,26 +1473,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         }
     }
 
-    public void addedOrUpdatedLink(long srcSw, short srcPort, int srcPortState,
-            long dstSw, short dstPort, int dstPortState, ILinkDiscovery.LinkType type)
-    {
-        if (((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != 
-                    OFPortState.OFPPS_STP_BLOCK.getValue()) &&
-            ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) != 
-                    OFPortState.OFPPS_STP_BLOCK.getValue())) {
-            // Remove all devices living on this switch:port now that it is 
-            // internal
-            SwitchPortTuple switchPort = new SwitchPortTuple(floodlightProvider.getSwitches().get(dstSw), dstPort);
-            lock.writeLock().lock();
-            try {
-                devMgrMaps.removeSwPort(switchPort);
-            } finally {
-                lock.writeLock().unlock();
-            }
-        }
-    }
-
-
     /**
      * Process device manager aware updates.  Call without any lock held
      */
@@ -1581,6 +1588,11 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      */
     @Override
     public void topologyChanged() {
+    	// If there is an outstanding topoChangeEvent, skip.
+    	if (topoChangedEvent) {
+    		return;
+    	}
+    	topoChangedEvent = true;
         deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
     }
 
@@ -1632,7 +1644,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
      * {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
      * @param d The device to update the attachment points
      */
-    public void cleanupAttachmentPoints(Device d) {
+    public void cleanupAttachmentPoints(Device d, boolean topoChange) {
         // The long here is the SwitchCluster ID
         Map<Long, DeviceAttachmentPoint> tempAPMap =
                             new HashMap<Long, DeviceAttachmentPoint>();
@@ -1668,33 +1680,33 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 }
             }
         }
+        d.setAttachmentPoints(tempAPMap.values());
+        /**
+         * Since the update below is happening on a copy of the device it
+         * should not impact packetIn processing time due to lock contention
+         *
+         * Also make sure the attachmentPoints are in non-blocked state
+         */
+        if (topoChange) {
+	        for (DeviceAttachmentPoint dap: tempAPMap.values()) {
+	            if (log.isDebugEnabled()) {
+	                log.debug("Cleanup: Reset AP {} for device {}", dap, d);
+	            }
+	            dap.resetConflictState();
+	            writeAttachmentPointToStorage(d, dap, dap.getLastSeen());
+	        }
+        }
 
-        synchronized (d) {
-            /**
-             * Since the update below is happening on a copy of the device it
-             * should not impact packetIn processing time due to lock contention
-             *
-             * Also make sure the attachmentPoints are in non-blocked state
-             */
-            for (DeviceAttachmentPoint dap: tempAPMap.values()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Reset AP {} for device {}", dap, d);
-                }
-            	//dap.setBlocked(false);
+        for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
+            d.addOldAttachmentPoint(dap);
+        }
+        for (DeviceAttachmentPoint dap: d.getOldAttachmentPoints()) {
+            if (topoChange) {
                 dap.resetConflictState();
-            }
-            d.setAttachmentPoints(tempAPMap.values());
-            for (DeviceAttachmentPoint dap : tempOldAPMap.values()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Reset Old AP {} for device {}", dap, d);
-                }
-            	//dap.setBlocked(false);
-                dap.resetConflictState();
-                d.addOldAttachmentPoint(dap);
-            }
-
-            if (log.isDebugEnabled()) {
-                log.debug("After cleanup, device {}", d);
+                writeAttachmentPointToStorage(d, dap, dap.getLastSeen());
+	            if (log.isDebugEnabled()) {
+	                log.debug("Cleanup: Reset Old AP {} for device {}", dap, d);
+	            }
             }
         }
     }
@@ -1885,7 +1897,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                     continue;
                 }
             }
-            devMgrMaps.updateMaps(d);
+            devMgrMaps.updateMaps(d, new Date(0));
         }
     }
 
@@ -2057,7 +2069,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     /**
      * Age device entry based on an expiry associated with the device.
      */
-    private void removeAgedDevices(Date currentDate) {
+    protected void removeAgedDevices(Date currentDate) {
         Date deviceAgeBoundary = ageBoundaryDifference(currentDate, 
                                         DEVICE_MAX_AGE);
 
@@ -2118,68 +2130,58 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         public void run() {
             boolean updatePortChannel = portChannelConfigChanged;
             portChannelConfigChanged = false;
+            boolean updateTopo = topoChangedEvent;
+            topoChangedEvent = false;
 
             if (updatePortChannel) {
                 readPortChannelConfigFromStorage();
             }
 
-            try { 
-                log.debug("DeviceUpdateWorker: cleaning up attachment points.");
+            try {
                 for (IOFSwitch sw  : devMgrMaps.getSwitches()) {
-                    // If the set of devices connected to the switches we 
-                    // re-iterate a max of 3 times - WHY? TODO
-                    int maxIter = 3;
-                    while (maxIter > 0) {
-                        try {
-                            for (Device d: devMgrMaps.getDevicesOnASwitch(sw)) {
-                                Device dCopy = new Device(d);
-                                cleanupAttachmentPoints(dCopy);
-                                for (DeviceAttachmentPoint dap : 
-                                    dCopy.getOldAttachmentPoints()) {
-                                    // Don't remove conflict attachment points 
-                                    // with recent activities
-                                    if (dap.isInConflict() && !updatePortChannel)
-                                        continue;
-                                    // Delete from memory after storage,
-                                    // otherwise an exception will
-                                    // leave stale attachment points on storage.
-                                    log.debug("Remove AP {} from storage for device {}", dap, dCopy.getDlAddrString());
-                                    removeAttachmentPointFromStorage(dCopy.getDlAddrString(),
-                                        HexString.toHexString(dap.getSwitchPort().getSw().getId()),
-                                        dap.getSwitchPort().getPort().toString());
-                                    dCopy.removeOldAttachmentPoint(dap);
-                                }
-                                // Update the maps with the new device copy
-                                devMgrMaps.updateMaps(dCopy);
+                    try {
+                        for (Device d: devMgrMaps.getDevicesOnASwitch(sw)) {
+                            Device dCopy = new Device(d);
+                            cleanupAttachmentPoints(dCopy, updateTopo);
+                            for (DeviceAttachmentPoint dap :
+                                dCopy.getOldAttachmentPoints()) {
+                                // Don't remove conflict attachment points
+                                // with recent activities
+                                if (dap.isInConflict() && !updatePortChannel)
+                                    continue;
+                                // Delete from memory after storage,
+                                // otherwise an exception will
+                                // leave stale attachment points on storage.
+                                log.debug("Remove AP {} from storage for device {}", dap, dCopy.getDlAddrString());
+                                removeAttachmentPointFromStorage(dCopy.getDlAddrString(),
+                                    HexString.toHexString(dap.getSwitchPort().getSw().getId()),
+                                    dap.getSwitchPort().getPort().toString());
+                                dCopy.removeOldAttachmentPoint(dap);
                             }
-                            break;
-                        }  catch (ConcurrentModificationException e) {
-                            maxIter--;
-                        } catch (NullPointerException e) { }
-                    }
-                    if (maxIter == 0) {
-                        log.warn("Device attachment point clean up " +
-                                "attempted three times and failed.");
-                    }
+                            // Update the maps with the new device copy
+                            devMgrMaps.updateMaps(dCopy, new Date(0));
+                        }
+                        break;
+                    }  catch (ConcurrentModificationException e) {
+                    } catch (NullPointerException e) { }
                 }
             } catch (StorageException e) {
                 log.error("DeviceUpdateWorker had a storage exception, " +
                         "Floodlight exiting");
                 System.exit(1);
             }
+            lastTopoChangeTime = new Date();
+            log.debug("Set lastTopoChangeTime {}", lastTopoChangeTime);
         }
     }
 
     @Override
     public void linkDiscoveryUpdate(LDUpdate update) {
+        /**
+         * All other link updates are handled by topology
+         */
         if (update.getOperation() == UpdateOperation.SWITCH_UPDATED) {
             updatedSwitch(update.getSrc(), update.getSrcType());
-        } else if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
-            this.addedOrUpdatedLink(update.getSrc(), update.getSrcPort(), 
-                                    update.getSrcPortState(), 
-                                    update.getDst(), update.getDstPort(),
-                                    update.getDstPortState(), 
-                                    update.getType());
         }
     }
 
@@ -2297,6 +2299,8 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         this.deviceManagerAware = new HashSet<IDeviceManagerAware>();
         this.updates = new LinkedList<Update>();
         this.devMgrMaps = new DevMgrMaps();
+        this.topoChangedEvent = false;
+        this.lastTopoChangeTime = new Date(0);
         this.lock = new ReentrantReadWriteLock();
         
         this.evHistDevMgrAttachPt = 
