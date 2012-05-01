@@ -71,10 +71,8 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
                 result.put(sw.getStringId(), fr);
             }
             return result;
-        } else if (statType.equals("host")) {
-            result.put(switchId, getSwitchTableJson(HexString.toLong(switchId)));
-            return result;
         }
+        
         result.put(switchId, values);
         return result;
     }
