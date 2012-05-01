@@ -188,13 +188,14 @@ public abstract class ForwardingBase implements
                 try {
                     counterStore.updatePktOutFMCounterStore(sw, fm);
                     if (log.isTraceEnabled()) {
-                        log.debug("Pushing Route flowmod routeIndx={} sw={} inPort={} outPort={}",
-                                  new Object[] {
-                                                routeIndx,
+                        log.trace("Pushing Route flowmod routeIndx={} " + 
+                                  "sw={} inPort={} outPort={}",
+                                  new Object[] {routeIndx,
                                                 sw,
                                                 fm.getMatch().getInputPort(),
-                                                ((OFActionOutput) fm.getActions()
-                                                                    .get(0)).getPort() });
+                                                ((OFActionOutput)
+                                                        fm.getActions()
+                                                        .get(0)).getPort() });
                     }
                     sw.write(fm, cntx);
                     if (doFlush) {
