@@ -17,18 +17,13 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.types.MacVlanPair;
 
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPort;
@@ -55,8 +50,7 @@ public class SwitchResourceBase extends ServerResource {
     
     public enum REQUESTTYPE {
         OFSTATS,
-        OFFEATURES,
-        SWITCHTABLE
+        OFFEATURES
     }
     
     @Override
@@ -126,36 +120,4 @@ public class SwitchResourceBase extends ServerResource {
     protected List<OFStatistics> getSwitchStatistics(String switchId, OFStatisticsType statType) {
         return getSwitchStatistics(HexString.toLong(switchId), statType);
     }
-
-    /**
-     * Returns a JSON list of the switch's MAC table.
-     * This API will only return results if LearningSwitch is being used.
-     * @param switchId The switch's DPID
-     * @return A list of switch table entries
-     */
-    protected List<Map<String, Object>> getSwitchTableJson(long switchId) {
-        IFloodlightProviderService floodlightProvider = 
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
-
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
-        List<Map<String, Object>> switchTableJson = null;
-        if (sw != null) {
-            switchTableJson = new ArrayList<Map<String, Object>>();
-            Map<MacVlanPair, Short> swTable = sw.getMacVlanToPortMap();
-            if (swTable != null) {
-                Iterator<MacVlanPair> iterSwitchTable = swTable.keySet().iterator();
-                while (iterSwitchTable.hasNext()) {
-                    MacVlanPair key = iterSwitchTable.next();
-                    Map<String, Object> switchTableEntry = new HashMap<String, Object>();
-                    switchTableEntry.put("mac", HexString.toHexString(key.mac));
-                    switchTableEntry.put("vlan", key.vlan);
-                    switchTableEntry.put("port", swTable.get(key));
-                    switchTableJson.add(switchTableEntry);
-                }
-            }
-        }
-        return switchTableJson;
-    }
-    
 }

@@ -24,15 +24,19 @@ import static org.easymock.EasyMock.verify;
 
 import java.util.Arrays;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.counter.CounterStore;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.junit.Before;
@@ -60,18 +64,22 @@ public class LearningSwitchTest extends FloodlightTestCase {
     protected byte[] broadcastPacketSerialized;
     protected IPacket testPacketReply;
     protected byte[] testPacketReplySerialized;
-    private   MockFloodlightProvider mockFloodlightProvider;
     private LearningSwitch learningSwitch;
     
     @Before
     public void setUp() throws Exception {
         super.setUp();
 
-        mockFloodlightProvider = getMockFloodlightProvider();
+        FloodlightModuleContext fmc = new FloodlightModuleContext();
+        fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        fmc.addService(ICounterStoreService.class, new CounterStore());
+        RestApiServer restApi = new RestApiServer();
+        fmc.addService(IRestApiService.class, restApi);
+        restApi.init(fmc);
+        restApi.startUp(fmc);
         learningSwitch = new LearningSwitch();
-        learningSwitch.setFloodlightProvider(mockFloodlightProvider);
-        learningSwitch.setCounterStore(new CounterStore());
-        mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
+        learningSwitch.init(fmc);
+        learningSwitch.startUp(fmc);
         
         // Build our test packet
         this.testPacket = new Ethernet()
@@ -129,21 +137,10 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setPacketData(this.testPacketSerialized)
             .setReason(OFPacketInReason.NO_MATCH)
             .setTotalLength((short) this.testPacketSerialized.length);
-
-        // clear the MAC tables
-        //getLearningSwitch().getMacTables().clear();
-    }
-
-    protected LearningSwitch getLearningSwitch() {
-        return new LearningSwitch();
     }
 
     @Test
     public void testFlood() throws Exception {
-        LearningSwitch learningSwitch = getLearningSwitch();
-        
-        MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
-
         // build our expected flooded packetOut
         OFPacketOut po = new OFPacketOut()
             .setActions(Arrays.asList(new OFAction[] {new OFActionOutput().setPort(OFPort.OFPP_FLOOD.getValue())}))
@@ -156,15 +153,11 @@ public class LearningSwitchTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        mockSwitch.addToPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42, (short) 1);       
-        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42)).andReturn(null); 
         expect(mockSwitch.getStringId()).andReturn("00:11:22:33:44:55:66:77");
-        //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
         expect(mockSwitch.getId()).andReturn(1L);
         mockSwitch.write(po, null);
 
-        // Start recording the replay on the mocks       
-        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42)).andReturn((short) 1);
+        // Start recording the replay on the mocks
         replay(mockSwitch);
         // Get the listener and trigger the packet in
         IOFMessageListener listener = mockFloodlightProvider.getListeners().get(
@@ -181,9 +174,6 @@ public class LearningSwitchTest extends FloodlightTestCase {
     
     @Test
     public void testFlowMod() throws Exception {
-        LearningSwitch learningSwitch = getLearningSwitch();
-        MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
-
         // tweak the test packet in since we need a bufferId
         this.packetIn.setBufferId(50);
 
@@ -221,18 +211,12 @@ public class LearningSwitchTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        mockSwitch.addToPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42, (short) 2);
-        mockSwitch.addToPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42, (short) 1);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
-        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42)).andReturn((short) 1);
-        expect(mockSwitch.getFromPortMap(Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42)).andReturn((short) 2);
         expect(mockSwitch.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer) (OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO
                 | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_NW_SRC_ALL
                 | OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_TOS));
         expect(mockSwitch.getStringId()).andReturn("00:11:22:33:44:55:66:77").anyTimes();
-        //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
         mockSwitch.write(fm1, null);
-        //expect(mockSwitch.getOutputStream()).andReturn(mockStream);
         mockSwitch.write(fm2, null);
 
         // Start recording the replay on the mocks

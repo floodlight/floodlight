@@ -33,8 +33,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -44,8 +47,10 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.restserver.IRestApiService;
 
 import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFFlowMod;
@@ -61,13 +66,20 @@ import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
+import org.openflow.util.LRULinkedHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
+public class LearningSwitch 
+    implements IFloodlightModule, ILearningSwitchService, IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
+    
+    // Module dependencies
     protected IFloodlightProviderService floodlightProvider;
     protected ICounterStoreService counterStore;
+    protected IRestApiService restApi;
+    
+    protected Map<IOFSwitch, Map<MacVlanPair,Short>> macVlanToSwitchPortMap;
 
     // flow-mod - for use in the cookie
     public static final int LEARNING_SWITCH_APP_ID = 1;
@@ -108,16 +120,84 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
         return "learningswitch";
     }
 
-    protected void addToPortMap(IOFSwitch sw, Long mac, Short vlan, short portVal) {
-        sw.addToPortMap(mac, vlan, portVal);
+    /**
+     * Adds a host to the MAC/VLAN->SwitchPort mapping
+     * @param sw The switch to add the mapping to
+     * @param mac The MAC address of the host to add
+     * @param vlan The VLAN that the host is on
+     * @param portVal The switchport that the host is on
+     */
+    protected void addToPortMap(IOFSwitch sw, long mac, short vlan, short portVal) {
+        Map<MacVlanPair,Short> swMap = macVlanToSwitchPortMap.get(sw);
+        
+        if (vlan == (short) 0xffff) {
+            // OFMatch.loadFromPacket sets VLAN ID to 0xffff if the packet contains no VLAN tag;
+            // for our purposes that is equivalent to the default VLAN ID 0
+            vlan = 0;
+        }
+        
+        if (swMap == null) {
+            // May be accessed by REST API so we need to make it thread safe
+            swMap = Collections.synchronizedMap(new LRULinkedHashMap<MacVlanPair,Short>(MAX_MACS_PER_SWITCH));
+            macVlanToSwitchPortMap.put(sw, swMap);
+        }
+        swMap.put(new MacVlanPair(mac, vlan), portVal);
     }
     
-    protected void removeFromPortMap(IOFSwitch sw, Long mac, Short vlan) {
-        sw.removeFromPortMap(mac, vlan);
+    /**
+     * Removes a host from the MAC/VLAN->SwitchPort mapping
+     * @param sw The switch to remove the mapping from
+     * @param mac The MAC address of the host to remove
+     * @param vlan The VLAN that the host is on
+     */
+    protected void removeFromPortMap(IOFSwitch sw, long mac, short vlan) {
+        if (vlan == (short) 0xffff) {
+            vlan = 0;
+        }
+        Map<MacVlanPair,Short> swMap = macVlanToSwitchPortMap.get(sw);
+        if (swMap != null)
+            swMap.remove(new MacVlanPair(mac, vlan));
     }
 
-    public Short getFromPortMap(IOFSwitch sw, Long mac, Short vlan) {
-        return sw.getFromPortMap(mac, vlan);
+    /**
+     * Get the port that a MAC/VLAN pair is associated with
+     * @param sw The switch to get the mapping from
+     * @param mac The MAC address to get
+     * @param vlan The VLAN number to get
+     * @return The port the host is on
+     */
+    public Short getFromPortMap(IOFSwitch sw, long mac, short vlan) {
+        if (vlan == (short) 0xffff) {
+            vlan = 0;
+        }
+        Map<MacVlanPair,Short> swMap = macVlanToSwitchPortMap.get(sw);
+        if (swMap != null)
+            return swMap.get(new MacVlanPair(mac, vlan));
+        
+        // if none found
+        return null;
+    }
+    
+    /**
+     * Clears the MAC/VLAN -> SwitchPort map for all switches
+     */
+    public void clearLearnedTable() {
+        macVlanToSwitchPortMap.clear();
+    }
+    
+    /**
+     * Clears the MAC/VLAN -> SwitchPort map for a single switch
+     * @param sw The switch to clear the mapping for
+     */
+    public void clearLearnedTable(IOFSwitch sw) {
+        Map<MacVlanPair, Short> swMap = macVlanToSwitchPortMap.get(sw);
+        if (swMap != null)
+            swMap.clear();
+    }
+    
+    @Override
+    public synchronized Map<IOFSwitch, Map<MacVlanPair,Short>> getTable() {
+        return macVlanToSwitchPortMap;
     }
     
     private void writeFlowMod(IOFSwitch sw, short command, int bufferId,
@@ -293,7 +373,7 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
         // delete the switch structures 
         // they will get recreated on first packetin 
         log.info("clearing macVlanToPortMap for switch {}", sw);
-        sw.clearPortMapTable();
+        clearLearnedTable(sw);
     }
     
     private Command processPortStatusMessage(IOFSwitch sw, OFPortStatus portStatusMessage) {
@@ -379,15 +459,21 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // We don't provide any services, return null
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ILearningSwitchService.class);
+        return l;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        // We don't provide any services, return null
-        return null;
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        m.put(ILearningSwitchService.class, this);
+        return m;
     }
 
     @Override
@@ -397,16 +483,21 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(ICounterStoreService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
+        macVlanToSwitchPortMap = 
+                new ConcurrentHashMap<IOFSwitch, Map<MacVlanPair,Short>>();
         floodlightProvider =
                 context.getServiceImpl(IFloodlightProviderService.class);
         counterStore =
                 context.getServiceImpl(ICounterStoreService.class);
+        restApi =
+                context.getServiceImpl(IRestApiService.class);
     }
 
     @Override
@@ -415,5 +506,6 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
         //floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         floodlightProvider.addOFMessageListener(OFType.ERROR, this);
+        restApi.addRestletRoutable(new LearningSwitchWebRoutable());
     }
 }
