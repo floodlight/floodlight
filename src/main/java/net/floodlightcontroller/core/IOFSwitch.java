@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.types.MacVlanPair;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -194,39 +193,6 @@ public interface IOFSwitch {
      */
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request)
             throws IOException;
-    
-    /**
-     * Adds a host to the macVlanPortMap
-     * @param mac The MAC address of the host to add
-     * @param vlan The VLAN that the host is on
-     * @param portVal The switchport that the host is on
-     */
-    public void addToPortMap(Long mac, Short vlan, short portVal);
-    
-    /**
-     * Removes a host from the macVlanPortMap 
-     * @param mac The MAC address of the host to remove
-     * @param vlan The VLAN that the host is on
-     */
-    public void removeFromPortMap(Long mac, Short vlan);
-    
-    /**
-     * Get the port that a MAC/VLAN pair is associated with
-     * @param mac The MAC address to get
-     * @param vlan The VLAN number to get
-     * @return The port the host is on
-     */
-    public Short getFromPortMap(Long mac, Short vlan);
-    
-    /**
-     * Clear the switch table
-     */
-    public void clearPortMapTable();
-    
-    /**
-     * Returns a COPY of the switch's macVlanPortMap, CAN be null.
-     */
-    public Map<MacVlanPair,Short> getMacVlanToPortMap();
 
     /**
      * Check if the switch is still connected;
