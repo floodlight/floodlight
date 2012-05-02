@@ -49,7 +49,7 @@ var AppRouter = Backbone.Router.extend({
     topology:function () {
     	console.log("switching to topology view");
     	var topo = new Topology();
-        $('#content').html(new TopologyView({model:topo}).render().el);
+        $('#content').html(new TopologyView({model:topo, hosts:hl}).render().el);
         // TODO factor this code out
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="topology"]').parent().addClass('active');
