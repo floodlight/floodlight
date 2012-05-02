@@ -38,11 +38,12 @@ window.TopologyView = Backbone.View.extend({
         if(this.model.nodes) {
           for (var i = 0; i < this.model.nodes.length; i++) {
             this.model.nodes[i].group = 1;
+            this.model.nodes[i].id = this.model.nodes[i].name;
           }
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
-            host.name = host.id;
+            host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
             host.group = 2;
             console.log(host);
           }
@@ -52,13 +53,13 @@ window.TopologyView = Backbone.View.extend({
           var all_nodes_map = new Array();
 
           _.each(all_nodes, function(n) {
-            all_nodes_map[n.name] = n;
+            all_nodes_map[n.id] = n;
           });
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
             for (var j = 0; j < host.attributes['attachment-points'].length; j++) {
-              var link = {source:all_nodes_map[host.name],
+              var link = {source:all_nodes_map[host.id],
                       target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
                       value:10};
               console.log(link);
@@ -68,7 +69,6 @@ window.TopologyView = Backbone.View.extend({
 
           var all_links = this.model.links.concat(this.host_links);
 
-          console.log("Hi Nick blam!");
           force.nodes(all_nodes).links(all_links).start();
           var link = svg.selectAll("line.link").data(all_links).enter()
                     .append("line").attr("class", "link")
