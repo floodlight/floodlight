@@ -24,7 +24,7 @@ window.TopologyView = Backbone.View.extend({
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
         var width = 940,
-        	height = 940; // might as well make it square
+          height = 940; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
             .charge(-120)
@@ -34,27 +34,26 @@ window.TopologyView = Backbone.View.extend({
             .attr("width", width)
             .attr("height", height);
         if(this.model.nodes) {
-        	// FIXME links are invisible
-        	force.nodes(this.model.nodes).links(this.model.links).start();
-        	var link = svg.selectAll("line.link").data(this.model.links).enter()
-        			      .append("line").attr("class", "link")
-        			      .style("stroke", function (d) { return "black"; });
-        	var node = svg.selectAll("circle.node").data(this.model.nodes)
-        	              .enter().append("circle")
-        	              .attr("class", "node")
-        	              .attr("r", 10)
-        	              .style("fill", function(d) { return color(d.group); })
-        	              .call(force.drag);
-        	node.append("title").text(function(d) { return d.name; });
-        	force.on("tick", function() {
-        		link.attr("x1", function(d) { return d.source.x; })
-        		    .attr("y1", function(d) { return d.source.y; })
-        		    .attr("x2", function(d) { return d.target.x; })
-        		    .attr("y2", function(d) { return d.target.y; });
+          force.nodes(this.model.nodes).links(this.model.links).start();
+          var link = svg.selectAll("line.link").data(this.model.links).enter()
+                    .append("line").attr("class", "link")
+                    .style("stroke", function (d) { return "black"; });
+          var node = svg.selectAll("circle.node").data(this.model.nodes)
+                        .enter().append("circle")
+                        .attr("class", "node")
+                        .attr("r", 10)
+                        .style("fill", function(d) { return color(d.group); })
+                        .call(force.drag);
+          node.append("title").text(function(d) { return d.name; });
+          force.on("tick", function() {
+            link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
 
-        		node.attr("cx", function(d) { return d.x; })
-        		    .attr("cy", function(d) { return d.y; });
-        	});
+            node.attr("cx", function(d) { return d.x; })
+                .attr("cy", function(d) { return d.y; });
+          });
         }
         return this;
     }
