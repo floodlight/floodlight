@@ -366,7 +366,7 @@ public class Device {
         return "Device [dataLayerAddress=" + 
                 dlAddrString +
                 ", attachmentPoints=" + attachmentPoints + ", networkAddresses="
-                + IPv4.fromIPv4AddressCollection(networkAddresses.keySet()) + "]";
+                + "[" + IPv4.fromIPv4AddressCollection(networkAddresses.keySet()) + "]";
     }
 
     public Date getLastSeenInStorage() {
