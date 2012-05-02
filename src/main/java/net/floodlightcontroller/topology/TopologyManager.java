@@ -21,11 +21,13 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import net.floodlightcontroller.util.StackTraceUtil;
 
 
@@ -54,6 +56,7 @@ public class TopologyManager
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
+    protected IRestApiService restApi;
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
 
@@ -261,11 +264,7 @@ public class TopologyManager
     public Map<NodePortTuple, Set<Link>> getPortBroadcastDomainLinks() {
         return portBroadcastDomainLinks;
     }
-
-    public Map<NodePortTuple, Set<Link>> getTunnelLinks() {
-        return tunnelLinks;
-    }
-
+    
     public TopologyInstance getCurrentInstance() {
         return currentInstance;
     }
@@ -297,7 +296,6 @@ public class TopologyManager
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // TODO Auto-generated method stub
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ITopologyService.class);
@@ -306,12 +304,10 @@ public class TopologyManager
     }
 
     @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService>
-    getServiceImpls() {
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
-        new HashMap<Class<? extends IFloodlightService>,
-        IFloodlightService>();
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
         // We are the class that implements the service
         m.put(ITopologyService.class, this);
         m.put(IRoutingService.class, this);
@@ -327,6 +323,7 @@ public class TopologyManager
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
         l.add(IFloodlightProviderService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -336,6 +333,7 @@ public class TopologyManager
         linkDiscovery = context.getServiceImpl(ILinkDiscoveryService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
         
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -351,7 +349,12 @@ public class TopologyManager
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
         floodlightProvider.addHAListener(this);
+        addWebRoutable();
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
+    }
+    
+    protected void addWebRoutable() {
+        restApi.addRestletRoutable(new TopologyWebRoutable());
     }
 
     //
@@ -498,6 +501,16 @@ public class TopologyManager
                 clearCurrentTopology();
                 break;
         }
+    }
+
+    @Override
+    public Set<NodePortTuple> getBroadcastDomainLinks() {
+        return portBroadcastDomainLinks.keySet();
+    }
+    
+    @Override
+    public Set<NodePortTuple> getTunnelLinks() {
+        return tunnelLinks.keySet();
     }
 }
 
