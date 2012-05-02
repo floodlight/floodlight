@@ -18,6 +18,8 @@ window.TopologyView = Backbone.View.extend({
     initialize:function () {
         this.template = _.template(tpl.get('topology'));
         this.model.bind("change", this.render, this);
+        this.hosts = this.options.hosts.models;
+        this.host_links = new Array();
     },
 
     render:function (eventName) {
@@ -34,11 +36,44 @@ window.TopologyView = Backbone.View.extend({
             .attr("width", width)
             .attr("height", height);
         if(this.model.nodes) {
-          force.nodes(this.model.nodes).links(this.model.links).start();
-          var link = svg.selectAll("line.link").data(this.model.links).enter()
+          for (var i = 0; i < this.model.nodes.length; i++) {
+            this.model.nodes[i].group = 1;
+          }
+
+          for (var i = 0; i < this.hosts.length; i++) {
+            host = this.hosts[i];
+            host.name = host.id;
+            host.group = 2;
+            console.log(host);
+          }
+
+          var all_nodes = this.model.nodes.concat(this.hosts);
+
+          var all_nodes_map = new Array();
+
+          _.each(all_nodes, function(n) {
+            all_nodes_map[n.name] = n;
+          });
+
+          for (var i = 0; i < this.hosts.length; i++) {
+            host = this.hosts[i];
+            for (var j = 0; j < host.attributes['attachment-points'].length; j++) {
+              var link = {source:all_nodes_map[host.name],
+                      target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
+                      value:10};
+              console.log(link);
+              this.host_links.push(link);
+            }
+          }
+
+          var all_links = this.model.links.concat(this.host_links);
+
+          console.log("Hi Nick blam!");
+          force.nodes(all_nodes).links(all_links).start();
+          var link = svg.selectAll("line.link").data(all_links).enter()
                     .append("line").attr("class", "link")
                     .style("stroke", function (d) { return "black"; });
-          var node = svg.selectAll("circle.node").data(this.model.nodes)
+          var node = svg.selectAll("circle.node").data(all_nodes)
                         .enter().append("circle")
                         .attr("class", "node")
                         .attr("r", 10)
