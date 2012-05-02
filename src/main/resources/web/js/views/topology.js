@@ -38,11 +38,11 @@ window.TopologyView = Backbone.View.extend({
         	force.nodes(this.model.nodes).links(this.model.links).start();
         	var link = svg.selectAll("line.link").data(this.model.links).enter()
         			      .append("line").attr("class", "link")
-        			      .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+        			      .style("stroke", function (d) { return "black"; });
         	var node = svg.selectAll("circle.node").data(this.model.nodes)
         	              .enter().append("circle")
         	              .attr("class", "node")
-        	              .attr("r", 5)
+        	              .attr("r", 10)
         	              .style("fill", function(d) { return color(d.group); })
         	              .call(force.drag);
         	node.append("title").text(function(d) { return d.name; });
