@@ -53,7 +53,6 @@ import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.util.HexString;
-import org.openflow.util.LRULinkedHashMap;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -353,55 +352,6 @@ public class OFSwitchImpl implements IOFSwitch {
     
     public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
-    }
-
-    @Override
-    public synchronized void addToPortMap(Long mac, Short vlan, short portVal) {
-        if (vlan == (short) 0xffff) {
-            // OFMatch.loadFromPacket sets VLAN ID to 0xffff if the packet contains no VLAN tag;
-            // for our purposes that is equivalent to the default VLAN ID 0
-            vlan = 0;
-        }
-        
-        if (macVlanToPortMap == null) {
-            this.macVlanToPortMap = new LRULinkedHashMap<MacVlanPair,Short>(MAX_MACS_PER_SWITCH);
-        }
-        macVlanToPortMap.put(new MacVlanPair(mac, vlan), portVal);
-    }
-
-    @Override
-    public synchronized void removeFromPortMap(Long mac, Short vlan) {
-        if (vlan == (short) 0xffff) {
-            vlan = 0;
-        }
-        if (macVlanToPortMap != null)
-            macVlanToPortMap.remove(new MacVlanPair(mac, vlan));
-    }
-
-    @Override
-    public synchronized Short getFromPortMap(Long mac, Short vlan) {
-        if (vlan == (short) 0xffff) {
-            vlan = 0;
-        }
-        if (macVlanToPortMap != null)
-            return macVlanToPortMap.get(new MacVlanPair(mac, vlan));
-        else
-            return null;
-    }
-
-    @Override
-    public synchronized void clearPortMapTable() {
-        if (macVlanToPortMap != null)
-            macVlanToPortMap.clear();
-    }
-
-    @Override
-    public synchronized Map<MacVlanPair, Short> getMacVlanToPortMap() {
-        // Note that this function intentionally returns a copy
-        if (macVlanToPortMap != null)
-            return new ConcurrentHashMap<MacVlanPair, Short>(macVlanToPortMap);
-        else
-            return null;
     }
 
     @Override
