@@ -234,7 +234,6 @@ public class Device implements IDevice {
         }
 
         // Find the most recent attachment point for each cluster
-        // XXX - TODO suppress flapping
         Entity[] clentities = Arrays.<Entity>copyOf(entities, entities.length);
         Arrays.sort(clentities, deviceManager.apComparator);
         
@@ -251,7 +250,30 @@ public class Device implements IDevice {
                     topology.getSwitchClusterId(clentities[i].switchDPID);
             if (prevCluster != curCluster)
                 clEntIndex += 1;
-            clentities[clEntIndex] = clentities[i];
+            
+            long prevLastSeen = 
+                    deviceManager.apComparator.
+                        getEffTS(clentities[clEntIndex],
+                                 clentities[clEntIndex].getLastSeenTimestamp());
+            long curActive = 
+                    deviceManager.apComparator.
+                        getEffTS(clentities[i],
+                                 clentities[i].getActiveSince());
+            if (0 < Long.valueOf(prevLastSeen).compareTo(curActive)) {
+                // If the previous and current are both active at the same time
+                // (i.e. the last seen timestamp of previous is greater than
+                // active timestamp of current item, we want to suppress rapid 
+                // flapping between the two points. We choose arbitrarily 
+                // based on criteria other than timestamp; the compareTo
+                // for entity should fit the bill.
+                if (0 >= clentities[clEntIndex].compareTo(clentities[i])) {
+                    clentities[clEntIndex] = clentities[i];
+                } else {
+                    
+                }
+            } else {
+                clentities[clEntIndex] = clentities[i];
+            }
             prevCluster = curCluster;
         }
 

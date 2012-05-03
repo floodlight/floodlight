@@ -37,6 +37,12 @@ import org.openflow.util.HexString;
  */
 public class Entity implements Comparable<Entity> {
     /**
+     * Timeout for computing {@link Entity#activeSince}.
+     * @see {@link Entity#activeSince}
+     */
+    protected static int ACTIVITY_TIMEOUT = 30000;
+    
+    /**
      * The MAC address associated with this entity
      */
     protected long macAddress;
@@ -69,6 +75,16 @@ public class Entity implements Comparable<Entity> {
      */
     protected Date lastSeenTimestamp;
 
+    /**
+     * The time between {@link Entity#activeSince} and 
+     * {@link Entity#lastSeenTimestamp} is a period of activity for this
+     * entity where it was observed repeatedly.  If, when the entity is
+     * observed, the  is longer ago than the activity timeout, 
+     * {@link Entity#lastSeenTimestamp} and {@link Entity#activeSince} will 
+     * be set to the current time.
+     */
+    protected Date activeSince;
+    
     private int hashCode = 0;
 
     // ************
@@ -94,6 +110,7 @@ public class Entity implements Comparable<Entity> {
         this.switchDPID = switchDPID;
         this.switchPort = switchPort;
         this.lastSeenTimestamp = lastSeenTimestamp;
+        this.activeSince = lastSeenTimestamp;
     }
 
     // ***************
@@ -124,8 +141,25 @@ public class Entity implements Comparable<Entity> {
         return lastSeenTimestamp;
     }
 
+    /**
+     * Set the last seen timestamp and also update {@link Entity#activeSince}
+     * if appropriate
+     * @param lastSeenTimestamp the new last seen timestamp
+     * @see {@link Entity#activeSince}
+     */
     public void setLastSeenTimestamp(Date lastSeenTimestamp) {
+        if ((activeSince.getTime() +  ACTIVITY_TIMEOUT) <
+                lastSeenTimestamp.getTime())
+            this.activeSince = lastSeenTimestamp;
         this.lastSeenTimestamp = lastSeenTimestamp;
+    }
+
+    public Date getActiveSince() {
+        return activeSince;
+    }
+
+    public void setActiveSince(Date activeSince) {
+        this.activeSince = activeSince;
     }
 
     @Override
@@ -211,14 +245,6 @@ public class Entity implements Comparable<Entity> {
             r = 1;
         else
             r = switchPort.compareTo(o.switchPort);
-        if (r != 0) return r;
-
-        if (lastSeenTimestamp == null)
-            r = o.lastSeenTimestamp == null ? 0 : -1;
-        else if (o.lastSeenTimestamp == null)
-            r = 1;
-        else
-            r = lastSeenTimestamp.compareTo(o.lastSeenTimestamp);
         if (r != 0) return r;
 
         return 0;

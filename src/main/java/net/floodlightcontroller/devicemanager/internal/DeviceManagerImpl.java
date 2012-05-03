@@ -239,6 +239,18 @@ public class DeviceManagerImpl implements
             super();
         }
 
+        protected long getEffTS(Entity e, Date ts) {
+            if (ts == null)
+                return 0;
+            long et = ts.getTime();
+            if (topology.
+                    isBroadcastDomainPort(e.getSwitchDPID(), 
+                                          e.getSwitchPort().shortValue())) {
+                return et - NBD_TO_BD_TIMEDIFF_MS;
+            }
+            return et;
+        }
+        
         @Override
         public int compare(Entity e1, Entity e2) {
             int r = 0;
@@ -258,35 +270,9 @@ public class DeviceManagerImpl implements
             }
             if (r != 0) return r;
             
-            Date e1t = e1.getLastSeenTimestamp();
-            Date e2t = e2.getLastSeenTimestamp();
-            if (e1t == null)
-                r = e2t == null ? 0 : -1;
-            else if (e2t == null)
-                r = 1;
-            else {
-                long e1ts = e1t.getTime();
-                long e2ts = e2t.getTime();
-                if (e1.getSwitchDPID() != null &&
-                    e2.getSwitchPort() != null) {
-                    if (topology.
-                            isBroadcastDomainPort(e1.getSwitchDPID(), 
-                                                  e1.getSwitchPort().
-                                                  shortValue())) {
-                        e1ts -= NBD_TO_BD_TIMEDIFF_MS;
-                    }
-                    if (topology.
-                            isBroadcastDomainPort(e2.getSwitchDPID(), 
-                                                  e2.getSwitchPort().
-                                                  shortValue())) {
-                        e2ts -= NBD_TO_BD_TIMEDIFF_MS;
-                    }
-
-                    r = Long.valueOf(e1ts).compareTo(e2ts);
-                }
-            }
-
-            return r;
+            long e1ts = getEffTS(e1, e1.getLastSeenTimestamp());
+            long e2ts = getEffTS(e2, e2.getLastSeenTimestamp());
+            return Long.valueOf(e1ts).compareTo(e2ts);
         }
         
     }
@@ -294,7 +280,7 @@ public class DeviceManagerImpl implements
     /**
      * Comparator for sorting by cluster ID
      */
-    public Comparator<Entity> apComparator;
+    public AttachmentPointComparator apComparator;
     
     /**
      * Periodic task to clean up expired entities
@@ -932,7 +918,8 @@ public class DeviceManagerImpl implements
             int entityindex = -1;
             if ((entityindex = device.entityIndex(entity)) >= 0) {
                 // update timestamp on the found entity
-                device.entities[entityindex].setLastSeenTimestamp(new Date());
+                device.entities[entityindex].
+                    setLastSeenTimestamp(entity.getLastSeenTimestamp());
                 break;
             } else {                
                 Device newDevice = allocateDevice(device, entity, classes);
