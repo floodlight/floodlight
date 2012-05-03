@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -31,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.BlockingQueue;
@@ -1539,12 +1541,41 @@ public class Controller implements IFloodlightProviderService {
     }
 
     /**
-     * Sets the role based on a string.
-     * @param roleString The role string
-     * @return The role is a valid string is passed, nulll otherwise
+     * Sets the initial role based on properties in the config params.
+     * It looks for two different properties.
+     * If the "role" property is specified then the value should be
+     * either "EQUAL", "MASTER", or "SLAVE" and the role of the
+     * controller is set to the specified value. If the "role" property
+     * is not specified then it looks next for the "role.path" property.
+     * In this case the value should be the path to a property file in
+     * the file system that contains a property called "floodlight.role"
+     * which can be one of the values listed above for the "role" property.
+     * The idea behind the "role.path" mechanism is that you have some
+     * separate heartbeat and master controller election algorithm that
+     * determines the role of the controller. When a role transition happens,
+     * it updates the current role in the file specified by the "role.path"
+     * file. Then if floodlight restarts for some reason it can get the
+     * correct current role of the controller from the file.
+     * @param configParams The config params for the FloodlightProvider service
+     * @return A valid role if role information is specified in the
+     *         config params, otherwise null
      */
-    protected Role getInitialRole(String roleString) {
+    protected Role getInitialRole(Map<String, String> configParams) {
         Role role = null;
+        String roleString = configParams.get("role");
+        if (roleString == null) {
+        	String rolePath = configParams.get("rolepath");
+        	if (rolePath != null) {
+        		Properties properties = new Properties();
+        		try {
+                    properties.load(new FileInputStream(rolePath));
+                    roleString = properties.getProperty("floodlight.role");
+                }
+                catch (IOException exc) {
+                    log.error("Error reading current role value from file: {}", rolePath);
+                }
+            }
+        }
         
         if (roleString != null) {
             // Canonicalize the string to the form used for the enum constants
@@ -1558,6 +1589,7 @@ public class Controller implements IFloodlightProviderService {
         }
         
         log.info("Controller roles set to {}", role);
+        
         return role;
     }
     
@@ -1702,7 +1734,7 @@ public class Controller implements IFloodlightProviderService {
         this.factory = new BasicFactory();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
-        this.role = getInitialRole(configParams.get("role"));
+        this.role = getInitialRole(configParams);
         initVendorMessages();
     }
     
