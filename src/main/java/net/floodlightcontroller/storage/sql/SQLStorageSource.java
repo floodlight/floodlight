@@ -287,9 +287,11 @@ public abstract class SQLStorageSource extends AbstractStorageSource {
 
 			if (query.getColumnNameList() != null) {
 				Set<String> columnNameList = new HashSet<String>();
-				for (String c : query.getColumnNameList())
-					columnNameList.add(c);
-				addMissingColumns(query.getTableName(), columnNameList);
+				Set<String> tableColumns = getColumns(query.getTableName());
+				for (String c : query.getColumnNameList()){
+					if (tableColumns.contains(c))
+						columnNameList.add(c);
+				}
 				
 				String[] columnList = query.getColumnNameList();
 				for (int i = 0; i < columnList.length - 1; i++)
