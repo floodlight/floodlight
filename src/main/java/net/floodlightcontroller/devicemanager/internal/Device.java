@@ -215,9 +215,14 @@ public class Device implements IDevice {
         
         return vals.toArray(new Integer[vals.size()]);
     }
-
+    
     @Override
     public SwitchPort[] getAttachmentPoints() {
+        return getAttachmentPoints(false);
+    }
+
+    @Override
+    public SwitchPort[] getAttachmentPoints(boolean includeBlocked) {
         // XXX - TODO we can cache this result.  Let's find out if this
         // is really a performance bottleneck first though.
 
@@ -236,45 +241,77 @@ public class Device implements IDevice {
         // Find the most recent attachment point for each cluster
         Entity[] clentities = Arrays.<Entity>copyOf(entities, entities.length);
         Arrays.sort(clentities, deviceManager.apComparator);
-        
+        ArrayList<SwitchPort> blocked = null;
+        ArrayList<SwitchPort> clusterBlocked = null;
+        if (includeBlocked) {
+            blocked = new ArrayList<SwitchPort>();
+            clusterBlocked = new ArrayList<SwitchPort>();
+        }
+            
         ITopologyService topology = deviceManager.topology;
         long prevCluster = 0;
         int clEntIndex = -1;
+        Entity prev = null;
+        long latestLastSeen = 0;
         for (int i = 0; i < clentities.length; i++) {
-            Long dpid = clentities[i].getSwitchDPID();
-            Integer port = clentities[i].getSwitchPort();
+            Entity cur = clentities[i];
+            Long dpid = cur.getSwitchDPID();
+            Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
                 !deviceManager.isValidAttachmentPoint(dpid, port))
                 continue;
             long curCluster = 
-                    topology.getSwitchClusterId(clentities[i].switchDPID);
-            if (prevCluster != curCluster)
+                    topology.getSwitchClusterId(cur.switchDPID);
+            if (prevCluster != curCluster) {
+                prev = null;
+                latestLastSeen = 0;
                 clEntIndex += 1;
+                if (includeBlocked) {
+                    blocked.addAll(clusterBlocked);
+                    clusterBlocked.clear();
+                }
+            }
             
+            if (prev != null) {
+                long curActive = 
+                        deviceManager.apComparator.
+                            getEffTS(cur, cur.getActiveSince());
+                if (latestLastSeen > 0 &&
+                    curActive > 0 &&
+                    0 < Long.valueOf(latestLastSeen).compareTo(curActive)) {
+                    // If the previous and current are both active at the same
+                    // time (i.e. the last seen timestamp of previous is 
+                    // greater than active timestamp of current item, we want
+                    // to suppress rapid flapping between the two points. We
+                    // choose arbitrarily based on criteria other than 
+                    // timestamp; the compareTo for entity should fit the bill.
+                    Entity block = prev;
+                    if (0 < prev.compareTo(cur)) {
+                        block = cur;
+                        cur = prev;
+                    }
+                    if (includeBlocked) {
+                        clusterBlocked.add(new SwitchPort(block.getSwitchDPID(), 
+                                                          block.getSwitchPort(),
+                                                          true));
+                    }
+                } else {
+                    if (includeBlocked) {
+                        clusterBlocked.clear();
+                    }
+                    latestLastSeen = 0;
+                }
+            }
+            
+            prev = clentities[clEntIndex] = cur;
+            prevCluster = curCluster;
+
             long prevLastSeen = 
                     deviceManager.apComparator.
-                        getEffTS(clentities[clEntIndex],
-                                 clentities[clEntIndex].getLastSeenTimestamp());
-            long curActive = 
-                    deviceManager.apComparator.
-                        getEffTS(clentities[i],
-                                 clentities[i].getActiveSince());
-            if (0 < Long.valueOf(prevLastSeen).compareTo(curActive)) {
-                // If the previous and current are both active at the same time
-                // (i.e. the last seen timestamp of previous is greater than
-                // active timestamp of current item, we want to suppress rapid 
-                // flapping between the two points. We choose arbitrarily 
-                // based on criteria other than timestamp; the compareTo
-                // for entity should fit the bill.
-                if (0 >= clentities[clEntIndex].compareTo(clentities[i])) {
-                    clentities[clEntIndex] = clentities[i];
-                } else {
-                    
-                }
-            } else {
-                clentities[clEntIndex] = clentities[i];
-            }
-            prevCluster = curCluster;
+                    getEffTS(prev,
+                             prev.getLastSeenTimestamp());
+            if (latestLastSeen < prevLastSeen)
+                latestLastSeen = prevLastSeen;
         }
 
         if (clEntIndex < 0) {
@@ -291,6 +328,11 @@ public class Device implements IDevice {
                 vals.add(sp);
             }
         }
+        if (includeBlocked) {
+            vals.addAll(blocked);
+            vals.addAll(clusterBlocked);
+        }
+
         return vals.toArray(new SwitchPort[vals.size()]);
     }
 

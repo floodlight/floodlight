@@ -58,10 +58,20 @@ public interface IDevice {
     public Integer[] getIPv4Addresses();
     
     /**
-     * Get all unique attachment points associated with the device.
+     * Get all unique attachment points associated with the device.  This will
+     * not include any blocked attachment points.
      * @return an array containing all unique attachment points for the device
      */
     public SwitchPort[] getAttachmentPoints();
+    
+    /**
+     * Get all unique attachment points associated with the device.
+     * @param includeBlocked whether to include blocked attachment points.
+     * Blocked attachment points should not be used for forwarding, but
+     * could be useful to show to a user
+     * @return an array containing all unique attachment points for the device
+     */
+    public SwitchPort[] getAttachmentPoints(boolean includeBlocked);
     
     /**
      * Get the most recent timestamp for this device

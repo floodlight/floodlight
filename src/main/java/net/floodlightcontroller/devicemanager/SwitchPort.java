@@ -25,6 +25,20 @@ package net.floodlightcontroller.devicemanager;
 public class SwitchPort {
     protected long switchDPID;
     protected int port;
+    boolean blocked;
+
+    /**
+     * Simple constructor
+     * @param switchDPID the dpid
+     * @param port the port
+     * @param blocked whether the switch port is blocked
+     */
+    public SwitchPort(long switchDPID, int port, boolean blocked) {
+        super();
+        this.switchDPID = switchDPID;
+        this.port = port;
+        this.blocked = blocked;
+    }
 
     /**
      * Simple constructor
@@ -35,6 +49,7 @@ public class SwitchPort {
         super();
         this.switchDPID = switchDPID;
         this.port = port;
+        this.blocked = false;
     }
     
     // ***************
@@ -47,26 +62,31 @@ public class SwitchPort {
     public int getPort() {
         return port;
     }
-
+    public boolean isBlocked() {
+        return blocked;
+    }
+    
     // ******
     // Object
     // ******
-    
+
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
+        result = prime * result + (blocked ? 1231 : 1237);
         result = prime * result + port;
         result = prime * result + (int) (switchDPID ^ (switchDPID >>> 32));
         return result;
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         SwitchPort other = (SwitchPort) obj;
+        if (blocked != other.blocked) return false;
         if (port != other.port) return false;
         if (switchDPID != other.switchDPID) return false;
         return true;
@@ -75,7 +95,6 @@ public class SwitchPort {
     @Override
     public String toString() {
         return "SwitchPort [switchDPID=" + switchDPID + ", port=" + port
-                + "]";
+                + ", blocked=" + blocked + "]";
     }
-    
 }

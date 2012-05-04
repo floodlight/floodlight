@@ -654,7 +654,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testAttachmentPointFlapping() throws Exception {
         Calendar c = Calendar.getInstance();
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
         
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isInternal(anyLong(), 
@@ -669,34 +668,46 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         Entity entity1 = new Entity(1L, null, null, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
-        Entity entity3 = new Entity(1L, null, null, 2L, 1, c.getTime());
+        Entity entity3 = new Entity(1L, null, null, 10L, 1, c.getTime());
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, 1);
         entity3.setLastSeenTimestamp(c.getTime());
 
         deviceManager.learnDeviceByEntity(entity1);
         deviceManager.learnDeviceByEntity(entity2);
         IDevice d = deviceManager.learnDeviceByEntity(entity3);
 
-        // all entities are active, so entity2 should win
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, 
+        // all entities are active, so entity3 should win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) }, 
                           d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
+                                             new SwitchPort(1L, 1, true),
+                                             new SwitchPort(5L, 1, true) }, 
+                          d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/4);
         entity1.setLastSeenTimestamp(c.getTime());
 
-        // all are still active; entity2 should still win
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, 
+        // all are still active; entity3 should still win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) }, 
                           d.getAttachmentPoints());
-        
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
+                                             new SwitchPort(5L, 1, true),
+                                             new SwitchPort(1L, 1, true) }, 
+                          d.getAttachmentPoints(true));
         
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
         entity1.setLastSeenTimestamp(c.getTime());
         
+        assertEquals(entity1.getActiveSince(), entity1.getLastSeenTimestamp());
         // entity1 should now be the only active entity
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
                           d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
+                          d.getAttachmentPoints(true));
         
         deviceManager.startUp(null);
         c = Calendar.getInstance();
@@ -724,4 +735,74 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, 
                           d.getAttachmentPoints());
     }
+    
+    @Test
+    public void testAttachmentPointFlappingTwoCluster() throws Exception {
+        Calendar c = Calendar.getInstance();
+        
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.isInternal(anyLong(), 
+                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), 
+                                                  anyShort())).
+                                       andReturn(false).anyTimes();
+        expect(mockTopology.getSwitchClusterId(1L)).
+                andReturn(1L).anyTimes();
+        expect(mockTopology.getSwitchClusterId(5L)).
+                andReturn(5L).anyTimes();
+        replay(mockTopology);
+        deviceManager.topology = mockTopology;
+        
+        Entity entity1 = new Entity(1L, null, null, 1L, 1, c.getTime());
+        Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
+        Entity entity3 = new Entity(1L, null, null, 5L, 1, c.getTime());
+        Entity entity4 = new Entity(1L, null, null, 5L, 2, c.getTime());
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
+        entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, 1);
+        entity2.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, 1);
+        entity3.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, 1);
+        entity4.setLastSeenTimestamp(c.getTime());
+
+        deviceManager.learnDeviceByEntity(entity1);
+        deviceManager.learnDeviceByEntity(entity2);
+        deviceManager.learnDeviceByEntity(entity3);
+        IDevice d = deviceManager.learnDeviceByEntity(entity4);
+
+        // all entities are active, so entities 2,4 should win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2),
+                                             new SwitchPort(5L, 2) }, 
+                          d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2),
+                                             new SwitchPort(5L, 2),
+                                             new SwitchPort(1L, 1, true),
+                                             new SwitchPort(5L, 1, true) }, 
+                          d.getAttachmentPoints(true));
+
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
+        entity1.setLastSeenTimestamp(c.getTime());
+
+        // entities 3,4 are still in conflict, but 1 should be resolved
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 2) }, 
+                          d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 2),
+                                             new SwitchPort(5L, 1, true) }, 
+                          d.getAttachmentPoints(true));
+        
+        entity3.setLastSeenTimestamp(c.getTime());
+        
+        // no conflicts, 1 and 3 will win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) }, 
+                          d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) }, 
+                          d.getAttachmentPoints(true));
+
+    }
+
 }
