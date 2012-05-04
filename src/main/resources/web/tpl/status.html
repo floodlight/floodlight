@@ -3,10 +3,11 @@
 <div class="page-header">
 	<h1>Controller Status</h1>
 </div>
-Hostname: <%= host %>:<%= ofport %><br>
-Healthy: <%= healthy %><br>
-Uptime: <%= uptime %><br>
-JVM memory bloat: <%= free %> free out of <%= total %><br>
-Modules loaded: <%= moduleText %>
+<table class="status-table">
+  <tr><td class="status-head">Hostname:<td><%= host %>:<%= ofport %></td></tr>
+  <tr><td class="status-head">Healthy:<td><%= healthy %></td>
+  <tr><td class="status-head">Uptime:<td><%= uptime %><td>
+  <tr><td class="status-head">JVM memory bloat:<td><%= free %> free out of <%= total %></td>
+  <Tr><td class="status-head">Modules loaded:<td><%= moduleText %></td>
 </div>
 </div>
