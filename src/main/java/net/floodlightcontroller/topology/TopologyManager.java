@@ -230,14 +230,12 @@ public class TopologyManager implements
     
     @Override
     public Set<NodePortTuple> getBroadcastDomainLinks() {
-        // TODO Auto-generated method stub
-        return null;
+        return portBroadcastDomainLinks.keySet();
     }
 
     @Override
     public Set<NodePortTuple> getTunnelLinks() {
-        // TODO Auto-generated method stub
-        return null;
+        return tunnelLinks.keySet();
     }
 
     // ***************
