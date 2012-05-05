@@ -51,8 +51,24 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public boolean inSameIsland(long switch1, long switch2);
 
+    /**
+     * Adds a listener to get topology notifications
+     * @param listener The module that wants to listen for events
+     */
     public void addListener(ITopologyListener listener);
 
+    /**
+     * Gets the set of ports that belong to a broadcast domain.
+     * @return The set of ports that belong to a broadcast domain.
+     */
+    public Set<NodePortTuple> getBroadcastDomainLinks();
+    
+    /**
+     * Returns that set of links that are tunnel links.
+     * @return The set of links that are tunnel links.
+     */
+    public Set<NodePortTuple> getTunnelLinks();
+    
     public boolean isBroadcastDomainPort(long sw, short port);
 
     public boolean isAllowed(long sw, short portId);

@@ -25,11 +25,13 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -72,6 +74,7 @@ public class TopologyManager implements
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
+    protected IRestApiService restApi;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -224,6 +227,18 @@ public class TopologyManager implements
     public boolean inSameIsland(long switch1, long switch2) {
         return currentInstance.inSameIsland(switch1, switch2);
     }
+    
+    @Override
+    public Set<NodePortTuple> getBroadcastDomainLinks() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Set<NodePortTuple> getTunnelLinks() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
     // ***************
     // IRoutingService
@@ -317,8 +332,8 @@ public class TopologyManager implements
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
         IFloodlightService> m = 
-        new HashMap<Class<? extends IFloodlightService>,
-        IFloodlightService>();
+            new HashMap<Class<? extends IFloodlightService>,
+                IFloodlightService>();
         // We are the class that implements the service
         m.put(ITopologyService.class, this);
         m.put(IRoutingService.class, this);
@@ -334,6 +349,7 @@ public class TopologyManager implements
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
         l.add(IFloodlightProviderService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -344,6 +360,7 @@ public class TopologyManager implements
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
         
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -358,6 +375,7 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
+        restApi.addRestletRoutable(new TopologyWebRoutable());
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
@@ -597,13 +615,8 @@ public class TopologyManager implements
         return portBroadcastDomainLinks;
     }
 
-    public Map<NodePortTuple, Set<Link>> getTunnelLinks() {
-        return tunnelLinks;
-    }
-
     public TopologyInstance getCurrentInstance() {
         return currentInstance;
     }
-
 }
 

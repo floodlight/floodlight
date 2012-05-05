@@ -36,15 +36,14 @@ public class TopologyInstance {
     protected Set<Long> switches;
     protected Set<NodePortTuple> broadcastDomainPorts;
     protected Set<NodePortTuple> tunnelPorts;
-    //protected Set<NodePortTuple> blockedPorts;
 
     protected Set<Cluster> clusters;  // set of clusters
     protected Map<Long, Cluster> switchClusterMap; // switch to cluster map
 
     // States for routing
-    protected Map<Long, BroadcastTree> destinationRootedTrees;
-    protected Map<Long, Set<NodePortTuple>> clusterBroadcastNodePorts;
-    protected Map<Long, BroadcastTree> clusterBroadcastTrees;
+    protected Map<Long, BroadcastTree> destinationRootedTrees; // DPID -> BroadcastTree
+    protected Map<Long, Set<NodePortTuple>> clusterBroadcastNodePorts; // ClusterID -> BroadcastTree
+    protected Map<Long, BroadcastTree> clusterBroadcastTrees; // ClusterID -> BroadcastTree
     protected LRUHashMap<RouteId, Route> pathcache;
 
     public TopologyInstance() {

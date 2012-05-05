@@ -25,8 +25,8 @@ window.TopologyView = Backbone.View.extend({
     render:function (eventName) {
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
-        var width = 940,
-          height = 940; // might as well make it square
+        var width = 900,
+          height = 900; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
             .charge(-120)
