@@ -2161,7 +2161,6 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                             // Update the maps with the new device copy
                             devMgrMaps.updateMaps(dCopy, new Date(0));
                         }
-                        break;
                     }  catch (ConcurrentModificationException e) {
                     } catch (NullPointerException e) { }
                 }
