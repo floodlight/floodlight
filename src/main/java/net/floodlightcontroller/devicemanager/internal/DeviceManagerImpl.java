@@ -918,8 +918,9 @@ public class DeviceManagerImpl implements
             int entityindex = -1;
             if ((entityindex = device.entityIndex(entity)) >= 0) {
                 // update timestamp on the found entity
-                device.entities[entityindex].
-                    setLastSeenTimestamp(entity.getLastSeenTimestamp());
+                Date lastSeen = entity.getLastSeenTimestamp();
+                if (lastSeen == null) lastSeen = new Date();
+                device.entities[entityindex].setLastSeenTimestamp(lastSeen);
                 break;
             } else {                
                 Device newDevice = allocateDevice(device, entity, classes);

@@ -148,7 +148,8 @@ public class Entity implements Comparable<Entity> {
      * @see {@link Entity#activeSince}
      */
     public void setLastSeenTimestamp(Date lastSeenTimestamp) {
-        if ((activeSince.getTime() +  ACTIVITY_TIMEOUT) <
+        if (activeSince == null ||
+            (activeSince.getTime() +  ACTIVITY_TIMEOUT) <
                 lastSeenTimestamp.getTime())
             this.activeSince = lastSeenTimestamp;
         this.lastSeenTimestamp = lastSeenTimestamp;
