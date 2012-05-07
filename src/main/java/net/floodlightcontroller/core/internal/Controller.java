@@ -172,9 +172,15 @@ public class Controller implements IFloodlightProviderService,
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
     
+    // The id for this controller node. Should be unique for each controller
+    // node in a controller cluster.
+    protected String controllerId;
+    
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
+    
+    protected static final String CONTROLLER_INTERFACE_TABLE_NAME = "controller_controllerinterface";
     
     protected static final String SWITCH_TABLE_NAME = "controller_switch";
     protected static final String SWITCH_DATAPATH_ID = "dpid";
