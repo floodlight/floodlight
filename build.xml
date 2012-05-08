@@ -19,15 +19,15 @@
    limitations under the License.
 -->
 
-
 <project default="dist" name="Floodlight">
-
     <property name="target" location="target"/>
     <property name="build" location="${target}/bin"/>
     <property name="build-test" location="${target}/bin-test"/>
+    <property name="build-coverage" location="${target}/bin-coverage"/>
     <property name="test-output" location="${target}/test"/>
+    <property name="coverage-output" location="${target}/coverage"/>
     <property name="source" location="src/main/java"/>
-	<property name="resources" location="src/main/resources/"/>
+    <property name="resources" location="src/main/resources/"/>
     <property name="source-test" location="src/test/java"/>
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
@@ -69,6 +69,19 @@
         </fileset>
     </path>
 
+    <patternset id="lib-cobertura">
+        <include name="cobertura-1.9.4.1.jar"/>
+        <include name="asm-3.0.jar"/>
+        <include name="asm-tree-3.0.jar"/>
+        <include name="oro/jakarta-oro-2.0.8.jar"/>
+        <include name="log4j-1.2.9.jar"/>
+    </patternset>
+    <path id="classpath-cobertura">
+        <fileset dir="lib">
+            <patternset refid="lib-cobertura"/>
+	</fileset>
+    </path>
+
     <patternset id="lib-test">
         <include name="junit-4.8.2.jar"/>
         <include name="org.easymock_2.5.2.jar"/>
@@ -76,6 +89,7 @@
     <path id="classpath-test">
         <fileset dir="lib">
             <patternset refid="lib-test"/>
+            <patternset refid="lib-cobertura"/>
             <patternset refid="lib"/>
         </fileset>
         <fileset dir="${target}/lib">
@@ -138,8 +152,13 @@
 
     <target name="tests" depends="test"/>
     <target name="test" depends="compile-test">
-        <junit failureproperty="junit.failure" printsummary="on">
+        <junit fork="true" forkmode="once"
+	       failureproperty="junit.failure"
+	       printsummary="on">
+  	    <sysproperty key="net.sourceforge.cobertura.datafile"
+			 file="${target}/cobertura.ser" />
             <classpath>
+                <pathelement location="${build-coverage}"/>
                 <pathelement location="${build}"/>
                 <pathelement location="${build-test}"/>
                 <path refid="classpath-test"/>
@@ -155,7 +174,33 @@
         <fail if="junit.failure" message="Unit test(s) failed.  See reports!"/>
     </target>
 
-    <target name="dist" depends="compile,compile-tests">
+    <taskdef classpathref="classpath-cobertura" resource="tasks.properties"/>
+    <target name="clean-instrument">
+        <delete file="${target}/cobertura.ser"/>
+        <delete dir="${build-coverage}"/>
+    </target>
+    <target name="instrument" depends="compile,compile-test,clean-instrument">
+      <cobertura-instrument datafile="${target}/cobertura.ser"
+			    todir="${build-coverage}"
+			    classpathref="classpath-cobertura">
+	<fileset dir="${build}">
+	  <include name="**/*.class"/>
+	</fileset>
+      </cobertura-instrument>
+    </target>
+    <target name="coverage-report">
+        <cobertura-report format="html"
+			  datafile="${target}/cobertura.ser"
+			  destdir="${coverage-output}"
+			  srcdir="${source}"/>
+        <cobertura-report format="xml"
+			  datafile="${target}/cobertura.ser"
+			  destdir="${coverage-output}"
+			  srcdir="${source}"/>
+    </target>
+    <target name="coverage" depends="instrument,test,coverage-report"/>
+
+    <target name="dist" depends="compile,compile-test">
         <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
@@ -181,6 +226,7 @@
         	<fileset dir="${resources}"/>
             <zipgroupfileset dir="lib">
                 <patternset refid="lib-test"/>
+                <patternset refid="lib-cobertura"/>
             </zipgroupfileset>
             <zipgroupfileset dir="${target}/lib">
                 <patternset refid="genlib"/>

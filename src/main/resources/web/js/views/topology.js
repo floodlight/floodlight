@@ -43,7 +43,12 @@ window.TopologyView = Backbone.View.extend({
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
-            host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
+            if (( host.attributes['network-addresses'].length > 0 ) && 
+                    ('ip' in host.attributes['network-addresses'][0])) {
+                host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
+            } else {
+                host.name = host.id;
+            }
             host.group = 2;
             console.log(host);
           }
