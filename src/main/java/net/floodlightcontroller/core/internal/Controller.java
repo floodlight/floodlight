@@ -166,15 +166,13 @@ public class Controller implements IFloodlightProviderService,
     // Configuration options
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
+    // The id for this controller node. Should be unique for each controller
+    // node in a controller cluster.
     protected String controllerId = "localhost";
     
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
-    
-    // The id for this controller node. Should be unique for each controller
-    // node in a controller cluster.
-    protected String controllerId;
     
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
