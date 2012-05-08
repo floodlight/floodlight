@@ -29,8 +29,8 @@ window.TopologyView = Backbone.View.extend({
           height = 600; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
-            .charge(-120)
-            .linkDistance(60)
+            .charge(-240)
+            .linkDistance(100)
             .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
             .attr("width", width)
