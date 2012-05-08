@@ -30,7 +30,7 @@ window.TopologyView = Backbone.View.extend({
         var color = d3.scale.category20();
         var force = d3.layout.force()
             .charge(-120)
-            .linkDistance(30)
+            .linkDistance(60)
             .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
             .attr("width", width)
@@ -85,7 +85,7 @@ window.TopologyView = Backbone.View.extend({
           var node = svg.selectAll("circle.node").data(all_nodes)
                         .enter().append("circle")
                         .attr("class", "node")
-                        .attr("r", 10)
+                        .attr("r", 20)
                         .style("fill", function(d) { return color(d.group); })
                         .call(force.drag);
           node.append("title").text(function(d) { return d.name; });
