@@ -26,7 +26,7 @@ window.TopologyView = Backbone.View.extend({
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
         var width = 900,
-          height = 900; // might as well make it square
+          height = 600; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
             .charge(-120)
@@ -68,7 +68,11 @@ window.TopologyView = Backbone.View.extend({
                       target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
                       value:10};
               console.log(link);
-              this.host_links.push(link);
+              if ( link.source && link.target) {
+                  this.host_links.push(link);
+              } else {
+                  console.log("Error: skipping link with undefined stuff!")
+              }
             }
           }
 
