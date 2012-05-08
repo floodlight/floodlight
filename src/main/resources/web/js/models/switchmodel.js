@@ -32,43 +32,47 @@ window.Switch = Backbone.Model.extend({
     initialize:function () {
         var self = this;
 
-        console.log("fetching switch " + this.id + " desc")
+        //console.log("fetching switch " + this.id + " desc")
         $.ajax({
             url:hackBase + "/wm/core/switch/" + self.id + '/desc/json',
             dataType:"json",
             success:function (data) {
-                console.log("fetched  switch " + self.id + " desc");
+                //console.log("fetched  switch " + self.id + " desc");
                 //console.log(data[self.id][0]);
                 self.set(data[self.id][0]);
             }
         });
 
-        console.log("fetching switch " + this.id + " aggregate")
+        //console.log("fetching switch " + this.id + " aggregate")
         $.ajax({
             url:hackBase + "/wm/core/switch/" + self.id + '/aggregate/json',
             dataType:"json",
             success:function (data) {
-                console.log("fetched  switch " + self.id + " aggregate");
-                //console.log(data[self.id][0]);
+                //console.log("fetched  switch " + self.id + " aggregate");
+		//console.log(data[self.id][0]);
                 self.set(data[self.id][0]);
             }
         });
-    	
+    	self.trigger('add');
     	this.ports = new PortCollection();
-        
     	this.flows = new FlowCollection();
+	this.loadPorts();
+	this.loadFlows();
+    },
 
+    fetch:function () {
+	this.initialize()
     },
 
     loadPorts:function () {
     	if (this.ports.length == 0) {
 	    	var self = this;
-	        console.log("fetching switch " + this.id + " ports")
+	        //console.log("fetching switch " + this.id + " ports")
 	        $.ajax({
 	            url:hackBase + "/wm/core/switch/" + self.id + '/port/json',
 	            dataType:"json",
 	            success:function (data) {
-	                console.log("fetched  switch " + self.id + " ports");
+	                //console.log("fetched  switch " + self.id + " ports");
 	                // console.log(data[self.id]);
 	                // create port models
 	                // TODO maybe clean up the errors
@@ -86,12 +90,12 @@ window.Switch = Backbone.Model.extend({
     
     loadFlows:function () {
     	var self = this;
-        console.log("fetching switch " + this.id + " flows")
+        //console.log("fetching switch " + this.id + " flows")
         $.ajax({
             url:hackBase + "/wm/core/switch/" + self.id + '/flow/json',
             dataType:"json",
             success:function (data) {
-                console.log("fetched  switch " + self.id + " flows");
+                //console.log("fetched  switch " + self.id + " flows");
                 // console.log(data[self.id]);
                 // create flow models
                 var i = 0;
@@ -119,17 +123,20 @@ window.SwitchCollection = Backbone.Collection.extend({
     
     initialize:function () {
         var self = this;
-        console.log("fetching switch list")
+        //console.log("fetching switch list")
         $.ajax({
             url:hackBase + "/wm/core/controller/switches/json",
             dataType:"json",
             success:function (data) {
-                console.log("fetched  switch list: " + data.length);
+                //console.log("fetched  switch list: " + data.length);
                 // console.log(data);
                 _.each(data, function(sw) {self.add({id: sw['dpid']})});
             }
         });
+    },
 
+  fetch:function () {
+	this.initialize()
     }
 
 

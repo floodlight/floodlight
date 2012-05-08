@@ -33,12 +33,12 @@ window.HostCollection = Backbone.Collection.extend({
 
     initialize:function () {
         var self = this;
-        console.log("fetching host list")
+        //console.log("fetching host list")
         $.ajax({
             url:hackBase + "/wm/devicemanager/device/all/json",
             dataType:"json",
             success:function (data) {
-                console.log("fetched  host list: " + _.keys(data).length);
+                //console.log("fetched  host list: " + _.keys(data).length);
                 // console.log(data);
                 // data is a hash where each key is a MAC address
                 _.each(_.keys(data), function(h) {
@@ -57,6 +57,10 @@ window.HostCollection = Backbone.Collection.extend({
             }
         });
 
+    },
+
+    fetch:function () {
+	this.initialize()
     }
 
     /*
