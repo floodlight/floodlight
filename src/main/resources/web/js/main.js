@@ -47,7 +47,7 @@ var AppRouter = Backbone.Router.extend({
     },
 
     topology:function () {
-    	console.log("switching to topology view");
+    	//console.log("switching to topology view");
     	var topo = new Topology();
         $('#content').html(new TopologyView({model:topo, hosts:hl}).render().el);
         // TODO factor this code out
@@ -56,7 +56,7 @@ var AppRouter = Backbone.Router.extend({
     },
     
     switchDetails:function (id) {
-    	console.log("switching [sic] to single switch view");
+    	//console.log("switching [sic] to single switch view");
     	var sw = swl.get(id);
     	$('#content').html(new SwitchView({model:sw}).render().el);
         $('ul.nav > li').removeClass('active');
@@ -64,14 +64,14 @@ var AppRouter = Backbone.Router.extend({
     },
     
     switchList:function () {
-    	console.log("switching [sic] to switch list view");
+    	//console.log("switching [sic] to switch list view");
         $('#content').html(new SwitchListView({model:swl}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/switches"]').parent().addClass('active');
     },
 
     hostDetails:function (id) {
-    	console.log("switching to single host view");
+    	//console.log("switching to single host view");
     	var h = hl.get(id);
     	$('#content').html(new HostView({model:h}).render().el);
         $('ul.nav > li').removeClass('active');
@@ -79,7 +79,7 @@ var AppRouter = Backbone.Router.extend({
     },
     
     hostList:function () {
-    	console.log("switching to host list view");
+    	//console.log("switching to host list view");
         $('#content').html(new HostListView({model:hl}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/hosts"]').parent().addClass('active');
@@ -116,4 +116,12 @@ tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-lis
 	    
         });
     });
+
+setInterval(function () {
+    swl.fetch();
+}, 3000);
+
+setInterval(function () {
+    hl.fetch();
+}, 3000);
 

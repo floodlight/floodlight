@@ -33,12 +33,12 @@ window.HostCollection = Backbone.Collection.extend({
 
     initialize:function () {
         var self = this;
-        console.log("fetching host list")
+        //console.log("fetching host list")
         $.ajax({
             url:hackBase + "/wm/device/",
             dataType:"json",
             success:function (data) {
-                console.log("fetched  host list: " + data.length);
+                // console.log("fetched  host list: " + data.length);
                 // console.log(data);
                 // data is a list of device hashes
                 _.each(data, function(h) {
@@ -53,6 +53,10 @@ window.HostCollection = Backbone.Collection.extend({
             }
         });
 
+    },
+
+    fetch:function () {
+	this.initialize()
     }
 
     /*
