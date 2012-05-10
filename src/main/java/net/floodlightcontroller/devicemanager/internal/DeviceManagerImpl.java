@@ -243,9 +243,10 @@ public class DeviceManagerImpl implements
             if (ts == null)
                 return 0;
             long et = ts.getTime();
-            if (topology.
-                    isBroadcastDomainPort(e.getSwitchDPID(), 
-                                          e.getSwitchPort().shortValue())) {
+            Long dpid = e.getSwitchDPID();
+            Integer port = e.getSwitchPort();
+            if (dpid != null && port != null &&
+                topology.isBroadcastDomainPort(dpid, port.shortValue())) {
                 return et - NBD_TO_BD_TIMEDIFF_MS;
             }
             return et;
