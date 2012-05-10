@@ -66,12 +66,12 @@ public interface IDevice {
     
     /**
      * Get all unique attachment points associated with the device.
-     * @param includeBlocked whether to include blocked attachment points.
+     * @param includeError whether to include blocked attachment points.
      * Blocked attachment points should not be used for forwarding, but
      * could be useful to show to a user
      * @return an array containing all unique attachment points for the device
      */
-    public SwitchPort[] getAttachmentPoints(boolean includeBlocked);
+    public SwitchPort[] getAttachmentPoints(boolean includeError);
     
     /**
      * Get the most recent timestamp for this device

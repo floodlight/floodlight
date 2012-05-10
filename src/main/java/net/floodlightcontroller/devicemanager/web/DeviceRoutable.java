@@ -37,6 +37,7 @@ public class DeviceRoutable implements RestletRoutable {
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
         router.attach("/", DeviceResource.class);
+        router.attach("/debug", DeviceEntityResource.class);
         return router;
     }
 

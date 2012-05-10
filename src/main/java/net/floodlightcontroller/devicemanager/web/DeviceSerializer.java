@@ -60,6 +60,8 @@ public class DeviceSerializer extends JsonSerializer<Device> {
             jGen.writeStringField("dpid", 
                                   HexString.toHexString(ap.getSwitchDPID(), 8));
             jGen.writeNumberField("port", ap.getPort());
+            jGen.writeStringField("errorStatus",
+                                  ap.getErrorStatus().toString());
             jGen.writeEndObject();
         }
         jGen.writeEndArray();

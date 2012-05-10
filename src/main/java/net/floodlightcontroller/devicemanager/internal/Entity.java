@@ -19,6 +19,11 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Date;
 
+import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
+import net.floodlightcontroller.core.web.serializers.MACSerializer;
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
 /**
@@ -117,10 +122,12 @@ public class Entity implements Comparable<Entity> {
     // Getters/Setters
     // ***************
 
+    @JsonSerialize(using=MACSerializer.class)
     public long getMacAddress() {
         return macAddress;
     }
 
+    @JsonSerialize(using=IPv4Serializer.class)
     public Integer getIpv4Address() {
         return ipv4Address;
     }
@@ -129,6 +136,7 @@ public class Entity implements Comparable<Entity> {
         return vlan;
     }
 
+    @JsonSerialize(using=DPIDSerializer.class)
     public Long getSwitchDPID() {
         return switchDPID;
     }
@@ -216,22 +224,6 @@ public class Entity implements Comparable<Entity> {
         if (macAddress > o.macAddress) return 1;
 
         int r;
-        if (ipv4Address == null)
-            r = o.ipv4Address == null ? 0 : -1;
-        else if (o.ipv4Address == null)
-            r = 1;
-        else
-            r = ipv4Address.compareTo(o.ipv4Address);
-        if (r != 0) return r;
-
-        if (vlan == null)
-            r = o.vlan == null ? 0 : -1;
-        else if (o.vlan == null)
-            r = 1;
-        else
-            r = vlan.compareTo(o.vlan);
-        if (r != 0) return r;
-
         if (switchDPID == null)
             r = o.switchDPID == null ? 0 : -1;
         else if (o.switchDPID == null)
@@ -246,6 +238,22 @@ public class Entity implements Comparable<Entity> {
             r = 1;
         else
             r = switchPort.compareTo(o.switchPort);
+        if (r != 0) return r;
+
+        if (ipv4Address == null)
+            r = o.ipv4Address == null ? 0 : -1;
+        else if (o.ipv4Address == null)
+            r = 1;
+        else
+            r = ipv4Address.compareTo(o.ipv4Address);
+        if (r != 0) return r;
+
+        if (vlan == null)
+            r = o.vlan == null ? 0 : -1;
+        else if (o.vlan == null)
+            r = 1;
+        else
+            r = vlan.compareTo(o.vlan);
         if (r != 0) return r;
 
         return 0;

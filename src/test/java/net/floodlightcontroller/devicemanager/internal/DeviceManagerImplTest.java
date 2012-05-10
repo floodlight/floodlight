@@ -59,6 +59,7 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
+import static net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus.*;
 import static org.junit.Assert.*;
 
 import org.easymock.EasyMock;
@@ -299,6 +300,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d3.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
                           d3.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
+                          d3.getAttachmentPoints(true));
 
         assertEquals(2, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -667,16 +670,19 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.topology = mockTopology;
         
         Entity entity1 = new Entity(1L, null, null, 1L, 1, c.getTime());
+        Entity entity1a = new Entity(1L, null, 1, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 10L, 1, c.getTime());
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        entity1a.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity3.setLastSeenTimestamp(c.getTime());
 
         deviceManager.learnDeviceByEntity(entity1);
+        deviceManager.learnDeviceByEntity(entity1a);
         deviceManager.learnDeviceByEntity(entity2);
         IDevice d = deviceManager.learnDeviceByEntity(entity3);
 
@@ -684,8 +690,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) }, 
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(1L, 1, true),
-                                             new SwitchPort(5L, 1, true) }, 
+                                             new SwitchPort(1L, 1, 
+                                                            DUPLICATE_DEVICE),
+                                             new SwitchPort(5L, 1, 
+                                                            DUPLICATE_DEVICE) }, 
                           d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/4);
@@ -695,8 +703,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) }, 
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(5L, 1, true),
-                                             new SwitchPort(1L, 1, true) }, 
+                                             new SwitchPort(1L, 1, 
+                                                            DUPLICATE_DEVICE),
+                                             new SwitchPort(5L, 1, 
+                                                            DUPLICATE_DEVICE) }, 
                           d.getAttachmentPoints(true));
         
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
@@ -777,8 +787,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2),
                                              new SwitchPort(5L, 2),
-                                             new SwitchPort(1L, 1, true),
-                                             new SwitchPort(5L, 1, true) }, 
+                                             new SwitchPort(1L, 1, 
+                                                            DUPLICATE_DEVICE),
+                                             new SwitchPort(5L, 1, 
+                                                            DUPLICATE_DEVICE) }, 
                           d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
@@ -790,7 +802,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
                                              new SwitchPort(5L, 2),
-                                             new SwitchPort(5L, 1, true) }, 
+                                             new SwitchPort(5L, 1, 
+                                                            DUPLICATE_DEVICE) }, 
                           d.getAttachmentPoints(true));
         
         entity3.setLastSeenTimestamp(c.getTime());

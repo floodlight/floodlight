@@ -33,6 +33,7 @@ import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import static net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus.*;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
@@ -222,7 +223,7 @@ public class Device implements IDevice {
     }
 
     @Override
-    public SwitchPort[] getAttachmentPoints(boolean includeBlocked) {
+    public SwitchPort[] getAttachmentPoints(boolean includeError) {
         // XXX - TODO we can cache this result.  Let's find out if this
         // is really a performance bottleneck first though.
 
@@ -243,7 +244,7 @@ public class Device implements IDevice {
         Arrays.sort(clentities, deviceManager.apComparator);
         ArrayList<SwitchPort> blocked = null;
         ArrayList<SwitchPort> clusterBlocked = null;
-        if (includeBlocked) {
+        if (includeError) {
             blocked = new ArrayList<SwitchPort>();
             clusterBlocked = new ArrayList<SwitchPort>();
         }
@@ -266,13 +267,15 @@ public class Device implements IDevice {
                 prev = null;
                 latestLastSeen = 0;
                 clEntIndex += 1;
-                if (includeBlocked) {
+                if (includeError) {
                     blocked.addAll(clusterBlocked);
                     clusterBlocked.clear();
                 }
             }
             
-            if (prev != null) {
+            if (prev != null && 
+                !(dpid.equals(prev.getSwitchDPID()) &&
+                  port.equals(prev.getSwitchPort()))) {
                 long curActive = 
                         deviceManager.apComparator.
                             getEffTS(cur, cur.getActiveSince());
@@ -290,13 +293,25 @@ public class Device implements IDevice {
                         block = cur;
                         cur = prev;
                     }
-                    if (includeBlocked) {
-                        clusterBlocked.add(new SwitchPort(block.getSwitchDPID(), 
-                                                          block.getSwitchPort(),
-                                                          true));
+                    if (includeError) {
+                        boolean alreadyBlocked = false;
+                        for (SwitchPort bl : clusterBlocked) {
+                            if (dpid.equals(bl.getSwitchDPID()) &&
+                                port.equals(bl.getPort())) {
+                                alreadyBlocked = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyBlocked) {
+                            SwitchPort blap = 
+                                    new SwitchPort(block.getSwitchDPID(), 
+                                                   block.getSwitchPort(),
+                                                   DUPLICATE_DEVICE);
+                            clusterBlocked.add(blap);
+                        }
                     }
                 } else {
-                    if (includeBlocked) {
+                    if (includeError) {
                         clusterBlocked.clear();
                     }
                     latestLastSeen = 0;
@@ -328,7 +343,7 @@ public class Device implements IDevice {
                 vals.add(sp);
             }
         }
-        if (includeBlocked) {
+        if (includeError) {
             vals.addAll(blocked);
             vals.addAll(clusterBlocked);
         }
