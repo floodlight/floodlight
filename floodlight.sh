@@ -26,10 +26,8 @@ JVM_OPTS="$JVM_OPTS -XX:CompileThreshold=1500 -XX:PreBlockSpin=8"
       </root>
       <logger name="org" level="WARN"/>
       <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
-      <logger name="net.floodlightcontroller" level="ERROR"/>
+      <logger name="net.floodlightcontroller" level="INFO"/>
       <logger name="net.floodlightcontroller.logging" level="ERROR"/>
-      <logger name="net.beaconcontroller" level="ERROR" />
-      <logger name="net.beaconcontroller.logging" level="ERROR" />
     </configuration>
 EOF_LOGBACK
 
