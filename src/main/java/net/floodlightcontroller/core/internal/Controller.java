@@ -1708,7 +1708,11 @@ public class Controller implements IFloodlightProviderService,
                     roleString = properties.getProperty("floodlight.role");
                 }
                 catch (IOException exc) {
-                    log.error("Error reading current role value from file: {}", rolePath);
+                	// Don't treat it as an error if the file specified by the
+                	// rolepath property doesn't exist. This lets us enable the
+                	// HA mechanism by just creating/setting the floodlight.role
+                	// property in that file without having to modify the
+                	// floodlight properties.
                 }
             }
         }
