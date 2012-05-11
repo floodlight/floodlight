@@ -1694,7 +1694,7 @@ public class Controller implements IFloodlightProviderService {
         if (threads != null) {
             this.workerThreads = Integer.parseInt(threads);
         }
-        log.info("Number of worker threads port set to {}", this.workerThreads);
+        log.info("Number of worker threads set to {}", this.workerThreads);
         String controllerId = configParams.get("controllerid");
         if (controllerId != null) {
             this.controllerId = controllerId;

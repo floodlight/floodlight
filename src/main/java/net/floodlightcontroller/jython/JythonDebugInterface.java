@@ -14,7 +14,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public class JythonDebugInterface implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(JythonDebugInterface.class);
-    JythonServer debug_server;
+    protected JythonServer debug_server;
+    protected static int JYTHON_PORT = 6655;
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -44,8 +45,7 @@ public class JythonDebugInterface implements IFloodlightModule {
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        Map<String, Object> locals = new HashMap<String, Object>();
-        
+        Map<String, Object> locals = new HashMap<String, Object>();     
         // add all existing module references to the debug server
         for (Class<? extends IFloodlightService> s : context.getAllServices()) {
             // Put only the last part of the name
@@ -54,7 +54,15 @@ public class JythonDebugInterface implements IFloodlightModule {
             locals.put(name, context.getServiceImpl(s));
         }
         
-        JythonServer debug_server = new JythonServer(6655, locals);
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        int port = JYTHON_PORT;
+        String portNum = configOptions.get("port");
+        if (portNum != null) {
+            port = Integer.parseInt(portNum);
+        }
+        
+        JythonServer debug_server = new JythonServer(port, locals);
         debug_server.start();
     }
 }
