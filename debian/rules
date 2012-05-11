@@ -9,5 +9,7 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+export JAVA_HOME=/usr/lib/jvm/default-java
+
 %:
-	dh $@ 
+	dh $@ --with javahelper
