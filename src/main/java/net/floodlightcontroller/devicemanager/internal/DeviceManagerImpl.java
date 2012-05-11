@@ -1595,6 +1595,16 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
     		return;
     	}
     	topoChangedEvent = true;
+    	
+    	//solve race condition where deviceUpdateTask can still be null 
+        while (deviceUpdateTask == null) { 
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException ie) {
+                //intentionally blank
+            }
+        }
+
         deviceUpdateTask.reschedule(10, TimeUnit.MILLISECONDS);
     }
 
