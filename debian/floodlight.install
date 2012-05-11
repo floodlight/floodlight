@@ -1,0 +1,2 @@
+target/floodlight.jar usr/share/java
+debian/misc/floodlight usr/bin
