@@ -111,7 +111,7 @@
 	       debug="true" 
 	       srcdir="${source}:${packetstreamer-gen}"
 	       destdir="${build}">
-	</javac>
+        </javac>
     </target>
 
     <target name="compile-tests" depends="compile-test"/>
