@@ -1,14 +1,40 @@
 package net.floodlightcontroller.topology;
 
+import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
+
 import org.openflow.util.HexString;
 
+/**
+ * A NodePortTuple is similar to a SwitchPortTuple
+ * but it only stores IDs instead of references
+ * to the actual objects.
+ * @author srini
+ */
 public class NodePortTuple {
-    protected long nodeId;
-    protected short portId;
+    protected long nodeId; // switch DPID
+    protected short portId; // switch port id
 
+    /**
+     * Creates a NodePortTuple
+     * @param nodeId The DPID of the switch
+     * @param portId The port of the switch
+     */
     public NodePortTuple(long nodeId, short portId) {
         this.nodeId = nodeId;
         this.portId = portId;
+    }
+    
+    /**
+     * Creates a NodePortTuple from the same information
+     * in a SwitchPortTuple
+     * @param swt
+     */
+    public NodePortTuple(SwitchPortTuple swt) {
+        if (swt.getSw() != null)
+            this.nodeId = swt.getSw().getId();
+        else
+            this.nodeId = 0;
+        this.portId = swt.getPort();
     }
 
     public long getNodeId() {

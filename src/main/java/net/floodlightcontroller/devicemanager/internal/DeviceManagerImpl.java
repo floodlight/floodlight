@@ -621,6 +621,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
         protected boolean inSamePortChannel(SwitchPortTuple swPort1,
                                         SwitchPortTuple swPort2) {
             IOFSwitch sw = swPort1.getSw();
+            if (sw == null) return false;
             String portName = sw.getPort(swPort1.getPort()).getName();
             String key = sw.getStringId() + portName;
             String portChannel1 = portChannelMap.get(key);
@@ -628,6 +629,7 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
                 return false;
 
             sw = swPort2.getSw();
+            if (sw == null) return false;
             portName = sw.getPort(swPort2.getPort()).getName();
             key = sw.getStringId() + portName;
             String portChannel2 = portChannelMap.get(key);
