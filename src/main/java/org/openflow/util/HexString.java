@@ -17,6 +17,8 @@
 
 package org.openflow.util;
 
+import java.math.BigInteger;
+
 public class HexString {
     /**
      * Convert a string of bytes to a ':' separated hex string
@@ -76,7 +78,11 @@ public class HexString {
     }
     
     public static long toLong(String values) throws NumberFormatException {
-        return Long.parseLong(values.replaceAll(":", ""),16);
+        // Long.parseLong() can't handle HexStrings with MSB set. Sigh. 
+        BigInteger bi = new BigInteger(values.replaceAll(":", ""),16);
+        if (bi.bitLength() > 64) 
+            throw new NumberFormatException("Input string too big to fit in long: " + values);
+        return bi.longValue();
     }
 
 }
