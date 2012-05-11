@@ -238,6 +238,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     }
     
     @Test
+    public void testLastSeen() throws Exception {    
+        Calendar c = Calendar.getInstance();
+        Date d1 = c.getTime();
+        Entity entity1 = new Entity(1L, null, null, null, null, d1);
+        c.add(Calendar.SECOND, 1);
+        Entity entity2 = new Entity(1L, null, 1, null, null, c.getTime());
+        
+        IDevice d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(c.getTime(), d.getLastSeen());
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(c.getTime(), d.getLastSeen());
+        
+        deviceManager.startUp(null);
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(d1, d.getLastSeen());
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(c.getTime(), d.getLastSeen());
+    }
+    
+    @Test
     public void testEntityLearning() throws Exception {
         IDeviceListener mockListener = 
                 createStrictMock(IDeviceListener.class);
@@ -262,6 +282,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity4 = new Entity(1L, null, 1, 1L, 1, new Date());
         Entity entity5 = new Entity(2L, (short)4, 1, 5L, 2, new Date());
         Entity entity6 = new Entity(2L, (short)4, 1, 50L, 3, new Date());
+        Entity entity7 = new Entity(2L, (short)4, 2, 50L, 3, new Date());
 
         mockListener.deviceAdded(isA(IDevice.class));
         replay(mockListener, mockTopology);
@@ -271,6 +292,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertSame(d1, deviceManager.findDeviceByEntity(entity1));
         assertArrayEquals(new IEntityClass[]{ DefaultEntityClassifier.entityClass }, 
                           d1.entityClasses);
+        assertArrayEquals(new Short[] { -1 }, d1.getVlanId());
+        assertArrayEquals(new Integer[] { }, d1.getIPv4Addresses());
 
         assertEquals(1, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -284,6 +307,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertNotSame(d1, d2);
         assertArrayEquals(new IEntityClass[]{ testEC }, 
                           d2.entityClasses);
+        assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
+        assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
 
         assertEquals(2, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -302,6 +327,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d3.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
                           d3.getAttachmentPoints(true));
+        assertArrayEquals(new Short[] { -1 },
+                          d3.getVlanId());
 
         assertEquals(2, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -318,6 +345,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d4.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
                           d4.getAttachmentPoints());
+        assertArrayEquals(new Short[] { -1 },
+                          d4.getVlanId());
         
         assertEquals(2, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -344,6 +373,19 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d6.getAttachmentPoints());
         assertArrayEquals(new Short[] { (short) 4 },
                           d6.getVlanId());
+
+        assertEquals(4, deviceManager.getAllDevices().size());
+        verify(mockListener);
+
+        reset(mockListener);
+        mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
+        replay(mockListener);
+
+        Device d7 = deviceManager.learnDeviceByEntity(entity7);
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(50L, 3) },
+                          d7.getAttachmentPoints());
+        assertArrayEquals(new Short[] { (short) 4 },
+                          d7.getVlanId());
 
         assertEquals(4, deviceManager.getAllDevices().size());
         verify(mockListener);
@@ -377,6 +419,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         Calendar c = Calendar.getInstance();
         Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        Entity entity0 = new Entity(1L, null, null, null, null, c.getTime());
         c.add(Calendar.SECOND, 1);
         Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
         c.add(Calendar.SECOND, 1);
@@ -391,7 +434,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockListener.deviceAdded(isA(IDevice.class));
         replay(mockListener);
 
-        d = deviceManager.learnDeviceByEntity(entity1);
+        deviceManager.learnDeviceByEntity(entity1);
+        d = deviceManager.learnDeviceByEntity(entity0);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints(); 
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);

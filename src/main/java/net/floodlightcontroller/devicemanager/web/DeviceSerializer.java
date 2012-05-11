@@ -56,13 +56,7 @@ public class DeviceSerializer extends JsonSerializer<Device> {
         jGen.writeEndArray();
         jGen.writeArrayFieldStart("attachmentPoint");
         for (SwitchPort ap : device.getAttachmentPoints(true)) {
-            jGen.writeStartObject();
-            jGen.writeStringField("dpid", 
-                                  HexString.toHexString(ap.getSwitchDPID(), 8));
-            jGen.writeNumberField("port", ap.getPort());
-            jGen.writeStringField("errorStatus",
-                                  ap.getErrorStatus().toString());
-            jGen.writeEndObject();
+            serializer.defaultSerializeValue(ap, jGen);
         }
         jGen.writeEndArray();
 

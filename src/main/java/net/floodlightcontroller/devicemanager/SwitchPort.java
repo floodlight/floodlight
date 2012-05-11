@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 
@@ -28,7 +30,6 @@ import org.codehaus.jackson.map.ser.ToStringSerializer;
 public class SwitchPort {
     @JsonSerialize(using=ToStringSerializer.class)
     public enum ErrorStatus {
-        NONE("none"),
         DUPLICATE_DEVICE("duplicate-device");
         
         private String value;
@@ -47,7 +48,7 @@ public class SwitchPort {
                     return m;
                 }
             }
-            return ErrorStatus.NONE;
+            return null;
         }
     }
     
@@ -77,19 +78,22 @@ public class SwitchPort {
         super();
         this.switchDPID = switchDPID;
         this.port = port;
-        this.errorStatus = ErrorStatus.NONE;
+        this.errorStatus = null;
     }
     
     // ***************
     // Getters/Setters
     // ***************
 
+    @JsonSerialize(using=DPIDSerializer.class)
     public long getSwitchDPID() {
         return switchDPID;
     }
+    
     public int getPort() {
         return port;
     }
+    
     public ErrorStatus getErrorStatus() {
         return errorStatus;
     }

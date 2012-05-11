@@ -985,20 +985,20 @@ public class DeviceManagerImpl implements
         if (changedFields.size() == 0) return changedFields;
         
         for (Entity entity : device.getEntities()) {
-            if (newEntity.getIpv4Address() != null &&
-                entity.getIpv4Address() != null &&
-                entity.getIpv4Address().equals(newEntity.getIpv4Address()))
+            if (newEntity.getIpv4Address() == null ||
+                (entity.getIpv4Address() != null &&
+                 entity.getIpv4Address().equals(newEntity.getIpv4Address())))
                 changedFields.remove(DeviceField.IPV4);
-            if (newEntity.getVlan() != null &&
-                entity.getVlan() != null &&
-                entity.getVlan().equals(newEntity.getVlan()))
+            if (newEntity.getVlan() == null ||
+                (entity.getVlan() != null &&
+                 entity.getVlan().equals(newEntity.getVlan())))
                 changedFields.remove(DeviceField.VLAN);
-            if (newEntity.getSwitchDPID() != null &&
-                entity.getSwitchDPID() != null &&
-                newEntity.getSwitchPort() != null &&
-                entity.getSwitchPort() != null &&
-                entity.getSwitchDPID().equals(newEntity.getSwitchDPID()) &&
-                entity.getSwitchPort().equals(newEntity.getSwitchPort()))
+            if (newEntity.getSwitchDPID() == null ||
+                newEntity.getSwitchPort() == null ||
+                (entity.getSwitchDPID() != null &&
+                 entity.getSwitchPort() != null &&
+                 entity.getSwitchDPID().equals(newEntity.getSwitchDPID()) &&
+                 entity.getSwitchPort().equals(newEntity.getSwitchPort())))
                 changedFields.remove(DeviceField.SWITCH);            
         }
         
