@@ -619,11 +619,6 @@ public class DeviceManagerImpl implements
         if (srcEntity == null)
             return Command.STOP;
 
-        if (isGratArp(eth) ||
-            isBroadcastDHCPReq(eth)) {
-            // XXX - TODO - Clear attachment points from other clusters
-        }
-
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
         if (srcDevice == null)
@@ -668,20 +663,6 @@ public class DeviceManagerImpl implements
             return false;
         
         return true;            
-    }
-    
-    private boolean isGratArp(Ethernet eth) {
-        if (eth.getPayload() instanceof ARP) {
-            ARP arp = (ARP) eth.getPayload();
-            if (arp.isGratuitous()) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    private boolean isBroadcastDHCPReq(Ethernet eth) {
-        return ((eth.getPayload() instanceof DHCP) && (eth.isBroadcast()));
     }
 
     private int getSrcNwAddr(Ethernet eth, long dlAddr) {

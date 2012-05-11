@@ -73,9 +73,10 @@ import org.openflow.util.HexString;
 
 public class DeviceManagerImplTest extends FloodlightTestCase {
     protected OFPacketIn packetIn_1, packetIn_2, packetIn_3;
-    protected IPacket testARPReplyPacket_1, testARPReplyPacket_2, testARPReplyPacket_3;
+    protected IPacket testARPReplyPacket_1, testARPReplyPacket_2, 
+        testARPReplyPacket_3;
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
-    protected byte[] testARPReplyPacket_1_Serialized, testARPReplyPacket_2_Serialized;
+    protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
     private byte[] testARPReplyPacket_3_Serialized;
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
@@ -86,8 +87,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockSwitch.getId()).andReturn(id).anyTimes();
         expect(mockSwitch.getStringId()).
             andReturn(HexString.toHexString(id, 6)).anyTimes();
-        expect(mockSwitch.getPort(anyShort())).andReturn(new OFPhysicalPort()).anyTimes();
-        expect(mockSwitch.portEnabled(isA(OFPhysicalPort.class))).andReturn(true).anyTimes();
+        expect(mockSwitch.getPort(anyShort())).
+            andReturn(new OFPhysicalPort()).anyTimes();
+        expect(mockSwitch.portEnabled(isA(OFPhysicalPort.class))).
+            andReturn(true).anyTimes();
         return mockSwitch;
     }
     
@@ -144,7 +147,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
                     .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testARPReplyPacket_1_Serialized = testARPReplyPacket_1.serialize();
+        this.testARPReplyPacket_1_Srld = testARPReplyPacket_1.serialize();
         
         // Another test packet with a different source IP
         this.testARPReplyPacket_2 = new Ethernet()
@@ -162,7 +165,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
                     .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testARPReplyPacket_2_Serialized = testARPReplyPacket_2.serialize();
+        this.testARPReplyPacket_2_Srld = testARPReplyPacket_2.serialize();
         
         this.testARPReplyPacket_3 = new Ethernet()
         .setSourceMACAddress("00:44:33:22:11:01")
@@ -182,23 +185,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         this.testARPReplyPacket_3_Serialized = testARPReplyPacket_3.serialize();
         
         // Build the PacketIn
-        this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+        this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.
+                getOFMessageFactory().getMessage(OFType.PACKET_IN))
             .setBufferId(-1)
             .setInPort((short) 1)
-            .setPacketData(this.testARPReplyPacket_1_Serialized)
+            .setPacketData(this.testARPReplyPacket_1_Srld)
             .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testARPReplyPacket_1_Serialized.length);
+            .setTotalLength((short) this.testARPReplyPacket_1_Srld.length);
         
         // Build the PacketIn
-        this.packetIn_2 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+        this.packetIn_2 = ((OFPacketIn) mockFloodlightProvider.
+                getOFMessageFactory().getMessage(OFType.PACKET_IN))
             .setBufferId(-1)
             .setInPort((short) 1)
-            .setPacketData(this.testARPReplyPacket_2_Serialized)
+            .setPacketData(this.testARPReplyPacket_2_Srld)
             .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testARPReplyPacket_2_Serialized.length);
+            .setTotalLength((short) this.testARPReplyPacket_2_Srld.length);
         
         // Build the PacketIn
-        this.packetIn_3 = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
+        this.packetIn_3 = ((OFPacketIn) mockFloodlightProvider.
+                getOFMessageFactory().getMessage(OFType.PACKET_IN))
             .setBufferId(-1)
             .setInPort((short) 1)
             .setPacketData(this.testARPReplyPacket_3_Serialized)
@@ -555,7 +561,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                       currentDate),
                            DefaultEntityClassifier.entityClasses);
 
-        expect(mockTopology.isAllowed(EasyMock.anyLong(), EasyMock.anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.isAllowed(EasyMock.anyLong(), 
+                                      EasyMock.anyShort())).
+                                      andReturn(true).anyTimes();
         // Start recording the replay on the mocks
         replay(mockTopology);
         // Get the listener and trigger the packet in
@@ -603,8 +611,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         replay(mockTopology);
         // Get the listener and trigger the packet in
         IOFSwitch switch5 = mockFloodlightProvider.getSwitches().get(5L);
-        mockFloodlightProvider.dispatchMessage(switch5, 
-                                               this.packetIn_1.setInPort((short)2));
+        mockFloodlightProvider.
+            dispatchMessage(switch5, 
+                            this.packetIn_1.setInPort((short)2));
 
         // Verify the replay matched our expectations
         verify(mockTopology);
@@ -861,5 +870,134 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d.getAttachmentPoints(true));
 
     }
+    
+    protected void doTestDeviceQuery() throws Exception {
+        Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
+        Entity entity2 = new Entity(2L, (short)2, 2, 1L, 2, new Date());
+        Entity entity3 = new Entity(3L, (short)3, 3, 5L, 1, new Date());
+        Entity entity4 = new Entity(4L, (short)4, 3, 5L, 2, new Date());
+        Entity entity5 = new Entity(1L, (short)4, 3, 5L, 2, new Date());
+        
+        deviceManager.learnDeviceByEntity(entity1);
+        deviceManager.learnDeviceByEntity(entity2);
+        deviceManager.learnDeviceByEntity(entity3);
+        deviceManager.learnDeviceByEntity(entity4);
+        
+        Iterator<? extends IDevice> iter = 
+                deviceManager.queryDevices(null, (short)1, 1, null, null);
+        int count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(1, count);
 
+        iter = deviceManager.queryDevices(null, (short)3, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(1, count);
+
+        iter = deviceManager.queryDevices(null, (short)1, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(0, count);
+        
+        deviceManager.learnDeviceByEntity(entity5);
+        iter = deviceManager.queryDevices(null, (short)4, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(2, count);
+    }
+    
+    @Test
+    public void testDeviceIndex() throws Exception {
+        EnumSet<IDeviceService.DeviceField> indexFields = 
+                EnumSet.noneOf(IDeviceService.DeviceField.class);
+        indexFields.add(IDeviceService.DeviceField.IPV4);
+        indexFields.add(IDeviceService.DeviceField.VLAN);
+        deviceManager.addIndex(false, indexFields);
+
+        doTestDeviceQuery();
+    }
+    
+    @Test
+    public void testDeviceQuery() throws Exception {
+        doTestDeviceQuery();
+    }
+    
+    protected void doTestDeviceClassQuery() throws Exception {
+        Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
+        Entity entity2 = new Entity(2L, (short)2, 2, 1L, 2, new Date());
+        Entity entity3 = new Entity(3L, (short)3, 3, 5L, 1, new Date());
+        Entity entity4 = new Entity(4L, (short)4, 3, 5L, 2, new Date());
+        Entity entity5 = new Entity(1L, (short)4, 3, 5L, 2, new Date());
+        
+        IDevice d = deviceManager.learnDeviceByEntity(entity1);
+        deviceManager.learnDeviceByEntity(entity2);
+        deviceManager.learnDeviceByEntity(entity3);
+        deviceManager.learnDeviceByEntity(entity4);
+        
+        Iterator<? extends IDevice> iter = 
+                deviceManager.queryClassDevices(d, null, 
+                                                (short)1, 1, null, null);
+        int count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(1, count);
+
+        iter = deviceManager.queryClassDevices(d, null, 
+                                               (short)3, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(1, count);
+
+        iter = deviceManager.queryClassDevices(d, null, 
+                                               (short)1, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(0, count);
+
+        deviceManager.learnDeviceByEntity(entity5);
+        iter = deviceManager.queryClassDevices(d, null, 
+                                               (short)4, 3, null, null);
+        count = 0;
+        while (iter.hasNext()) {
+            count += 1;
+            iter.next();
+        }
+        assertEquals(2, count);
+    }
+    
+    @Test
+    public void testDeviceClassIndex() throws Exception {
+        EnumSet<IDeviceService.DeviceField> indexFields = 
+                EnumSet.noneOf(IDeviceService.DeviceField.class);
+        indexFields.add(IDeviceService.DeviceField.IPV4);
+        indexFields.add(IDeviceService.DeviceField.VLAN);
+        deviceManager.addIndex(true, indexFields);
+
+        doTestDeviceClassQuery();
+    }
+
+    @Test
+    public void testDeviceClassQuery() throws Exception {
+        doTestDeviceClassQuery();
+    }
 }
