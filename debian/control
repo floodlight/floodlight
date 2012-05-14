@@ -11,6 +11,6 @@ Vcs-Browser: https://github.com/floodlight/floodlight
 Package: floodlight
 Architecture: all
 Depends: ${java:Depends}, ${misc:Depends}
-Description: An Apache licensed, Java based OpenFlow controller
-  Floodlight is a Java based OpenFlow controller originally written by David Erickson at Stanford
-  University. It is available under the Apache 2.0 license.
+Description: Java based OpenFlow controller
+ Floodlight is a Java based OpenFlow controller originally written by David
+ Erickson at Stanford University.
