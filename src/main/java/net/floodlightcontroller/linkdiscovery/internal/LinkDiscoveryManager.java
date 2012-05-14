@@ -275,13 +275,14 @@ public class LinkDiscoveryManager
         ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
         byte[] portId = new byte[] {2, 0, 0}; // filled in later
-        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7).setValue(chassisId));
-        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) 3).setValue(portId));
-        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) 2).setValue(new byte[] {0, 0x78}));
+        byte[] ttlValue = new byte[] {0, 0x78};
+        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
+        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
+        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
 
         // OpenFlow OUI - 00-26-E1
         byte[] dpidTLVValue = new byte[] {0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) 12).setValue(dpidTLVValue);
+        LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) dpidTLVValue.length).setValue(dpidTLVValue);
         lldp.getOptionalTLVList().add(dpidTLV);
 
         // Add the controller identifier to the TLV value.
@@ -407,7 +408,7 @@ public class LinkDiscoveryManager
         bb.rewind();
         bb.get(controllerTLVValue, 0, 8);
 
-        this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) 8).setValue(controllerTLVValue);
+        this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) controllerTLVValue.length).setValue(controllerTLVValue);
     }
 
     @Override
