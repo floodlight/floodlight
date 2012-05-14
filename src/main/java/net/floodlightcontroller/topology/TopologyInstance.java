@@ -53,7 +53,18 @@ public class TopologyInstance {
         this.broadcastDomainPorts = new HashSet<NodePortTuple>();
         this.tunnelPorts = new HashSet<NodePortTuple>();
     }
-
+    
+    public TopologyInstance(Map<Long, Set<Short>> switchPorts,
+                            Map<NodePortTuple, Set<Link>> switchPortLinks)
+    {
+        this.switches = new HashSet<Long>(switchPorts.keySet());
+        this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
+        this.switchPortLinks = new HashMap<NodePortTuple, 
+                                           Set<Link>>(switchPortLinks);
+        
+        clusters = new HashSet<Cluster>();
+        switchClusterMap = new HashMap<Long, Cluster>();
+    }
     public TopologyInstance(Map<Long, Set<Short>> switchPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
                             Map<NodePortTuple, Set<Link>> portBroadcastDomainLinks, 
