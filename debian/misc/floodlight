@@ -1,2 +1,2 @@
 #!/bin/sh
-exec java -jar /usr/share/java/floodlight.jar
+exec java -jar /usr/share/java/floodlight.jar "$@"
