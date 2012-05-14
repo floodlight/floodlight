@@ -1,14 +1,13 @@
 Format: http://dep.debian.net/deps/dep5
 Upstream-Name: floodlight
-Source: <url://example.com>
+Source: https://github.com/floodlight/floodlight
 
 Files: *
-Copyright: <years> <put author's name and email here>
-           <years> <likewise for another author>
+Copyright: 2011 Big Switch Networks <rlane@bigswitch.com>
 License: Apache-2.0
 
 Files: debian/*
-Copyright: 2012 Rich Lane <rlane@bigswitch.com>
+Copyright: 2012 Big Switch Networks <rlane@bigswitch.com>
 License: Apache-2.0
 
 License: Apache-2.0
