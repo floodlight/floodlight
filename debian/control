@@ -1,15 +1,16 @@
 Source: floodlight
-Section: unknown
+Section: net
 Priority: extra
 Maintainer: Rich Lane <rlane@bigswitch.com>
 Build-Depends: debhelper (>= 8.0.0), javahelper (>= 0.40ubuntu1)
 Standards-Version: 3.9.2
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Git: git://git.debian.org/collab-maint/floodlight.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/floodlight.git;a=summary
+Homepage: http://floodlight.openflowhub.org/
+Vcs-Git: git://github.com/floodlight/floodlight.git
+Vcs-Browser: https://github.com/floodlight/floodlight
 
 Package: floodlight
 Architecture: all
 Depends: ${java:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: An Apache licensed, Java based OpenFlow controller
+  Floodlight is a Java based OpenFlow controller originally written by David Erickson at Stanford
+  University. It is available under the Apache 2.0 license.
