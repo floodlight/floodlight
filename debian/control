@@ -1,0 +1,16 @@
+Source: floodlight
+Section: net
+Priority: extra
+Maintainer: Rich Lane <rlane@bigswitch.com>
+Build-Depends: debhelper (>= 8.0.0), javahelper (>= 0.40ubuntu1)
+Standards-Version: 3.9.2
+Homepage: http://floodlight.openflowhub.org/
+Vcs-Git: git://github.com/floodlight/floodlight.git
+Vcs-Browser: https://github.com/floodlight/floodlight
+
+Package: floodlight
+Architecture: all
+Depends: ${java:Depends}, ${misc:Depends}
+Description: Java based OpenFlow controller
+ Floodlight is a Java based OpenFlow controller originally written by David
+ Erickson at Stanford University.
