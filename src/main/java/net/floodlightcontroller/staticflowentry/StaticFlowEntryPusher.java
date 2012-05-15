@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 
 public class StaticFlowEntryPusher 
     implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService,
-        IStorageSourceListener, IOFMessageListener, IHARoleListener {
+        IStorageSourceListener, IOFMessageListener, IHAListener {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
     public static final String StaticFlowName = "staticflowentry";
     
@@ -606,7 +606,7 @@ public class StaticFlowEntryPusher
     }
 
     
-    // IHARoleListener
+    // IHAListener
     
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
@@ -627,4 +627,13 @@ public class StaticFlowEntryPusher
                 break;
         }
     }
+    
+    @Override
+    public void controllerNodeIPsChanged(
+            Map<String, String> curControllerNodeIPs,
+            Map<String, String> addedControllerNodeIPs,
+            Map<String, String> removedControllerNodeIPs) {
+        // ignore
+    }
+     
 }

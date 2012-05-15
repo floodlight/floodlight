@@ -27,7 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -52,7 +52,7 @@ import org.openflow.protocol.factory.BasicFactory;
 public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
     protected Map<OFType, List<IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
-    protected List<IHARoleListener> haListeners;
+    protected List<IHAListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
     protected BasicFactory factory;
 
@@ -63,7 +63,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         listeners = new ConcurrentHashMap<OFType, List<IOFMessageListener>>();
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switchListeners = new CopyOnWriteArrayList<IOFSwitchListener>();
-        haListeners = new CopyOnWriteArrayList<IHARoleListener>();
+        haListeners = new CopyOnWriteArrayList<IHAListener>();
         factory = new BasicFactory();
     }
 
@@ -251,12 +251,12 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 	}
 
     @Override
-    public void addHAListener(IHARoleListener listener) {
+    public void addHAListener(IHAListener listener) {
         haListeners.add(listener);
     }
 
     @Override
-    public void removeHAListener(IHARoleListener listener) {
+    public void removeHAListener(IHAListener listener) {
         haListeners.remove(listener);
     }
     
@@ -276,7 +276,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
      * @param newRole
      */
     public void dispatchRoleChanged(Role oldRole, Role newRole) {
-        for (IHARoleListener rl : haListeners) {
+        for (IHAListener rl : haListeners) {
             rl.roleChanged(oldRole, newRole);
         }
     }

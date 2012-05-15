@@ -16,7 +16,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 public class TopologyManager implements 
         IFloodlightModule, ITopologyService, 
         IRoutingService, ILinkDiscoveryListener,
-        IOFMessageListener, IHARoleListener {
+        IOFMessageListener, IHAListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -292,8 +292,9 @@ public class TopologyManager implements
     }
 
     // ***************
-    // IHARoleListener
+    // IHAListener
     // ***************
+
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
         switch(newRole) {
@@ -310,6 +311,14 @@ public class TopologyManager implements
                 clearCurrentTopology();
                 break;
         }
+    }
+
+    @Override
+    public void controllerNodeIPsChanged(
+                          Map<String, String> curControllerNodeIPs,
+                          Map<String, String> addedControllerNodeIPs,
+                          Map<String, String> removedControllerNodeIPs) {
+        // no-op
     }
 
     // *****************
