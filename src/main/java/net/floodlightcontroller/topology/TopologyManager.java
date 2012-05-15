@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 public class TopologyManager 
     implements IFloodlightModule, ITopologyService, IRoutingService, 
-               ILinkDiscoveryListener, IHARoleListener {
+               ILinkDiscoveryListener, IHAListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -484,6 +484,8 @@ public class TopologyManager
         tunnelLinks.clear();
         createNewInstance();
     }
+    
+    // IHAListener
 
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
@@ -502,6 +504,15 @@ public class TopologyManager
                 break;
         }
     }
+    
+    @Override
+    public void controllerNodeIPsChanged(
+            Map<String, String> curControllerNodeIPs,
+            Map<String, String> addedControllerNodeIPs,
+            Map<String, String> removedControllerNodeIPs) {
+        // ignore
+    }
+     
 
     @Override
     public Set<NodePortTuple> getBroadcastDomainLinks() {

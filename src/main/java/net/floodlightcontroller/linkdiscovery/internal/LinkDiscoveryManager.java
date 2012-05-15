@@ -42,7 +42,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -120,7 +120,7 @@ import org.slf4j.LoggerFactory;
 public class LinkDiscoveryManager
         implements IOFMessageListener, IOFSwitchListener, 
                    IStorageSourceListener, ILinkDiscoveryService,
-                   IFloodlightModule, IInfoProvider, IHARoleListener {
+                   IFloodlightModule, IInfoProvider, IHAListener {
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
@@ -1538,4 +1538,13 @@ public class LinkDiscoveryManager
                 break;
         }
     }
+    
+    @Override
+    public void controllerNodeIPsChanged(
+            Map<String, String> curControllerNodeIPs,
+            Map<String, String> addedControllerNodeIPs,
+            Map<String, String> removedControllerNodeIPs) {
+        // ignore
+    }
+    
 }
