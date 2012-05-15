@@ -11,7 +11,7 @@ public class MACAddress {
     public static final int MAC_ADDRESS_LENGTH = 6;
     private byte[] address = new byte[MAC_ADDRESS_LENGTH];
 
-    private MACAddress(byte[] address) {
+    public MACAddress(byte[] address) {
         this.address = Arrays.copyOf(address, MAC_ADDRESS_LENGTH);
     }
 

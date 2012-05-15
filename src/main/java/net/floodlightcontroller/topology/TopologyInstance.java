@@ -499,7 +499,7 @@ public class TopologyInstance {
         return (c.getNodes());
     }
 
-    protected boolean inSameCluster(long switch1, long switch2) {
+    protected boolean inSameCluster(Long switch1, Long switch2) {
         Cluster c1 = switchClusterMap.get(switch1);
         Cluster c2 = switchClusterMap.get(switch2);
         if (c1 != null && c2 != null)
