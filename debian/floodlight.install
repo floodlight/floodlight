@@ -1,2 +1,2 @@
-target/floodlight.jar usr/share/java
+target/floodlight-nodeps.jar usr/share/java
 debian/misc/floodlight usr/bin

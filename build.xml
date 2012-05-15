@@ -36,6 +36,7 @@
     <property name="packetstreamer-gen-build" location="lib/gen-java-bin"/>
     <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
+    <property name="floodlight-nodeps-jar" location="${target}/floodlight-nodeps.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
 
     <patternset id="lib">
@@ -201,7 +202,7 @@
     <target name="coverage" depends="instrument,test,coverage-report"/>
 
     <target name="dist" depends="compile,compile-test">
-        <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
+        <jar destfile="${floodlight-nodeps-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
                 <attribute name="Class-Path" value="."/>
@@ -211,12 +212,19 @@
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
-            <zipgroupfileset dir="lib">
-                <patternset refid="lib"/>
-            </zipgroupfileset>
             <zipgroupfileset dir="${target}/lib">
                 <patternset refid="genlib"/>
             </zipgroupfileset>
+        </jar>
+        <jar destfile="${floodlight-jar}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <zipgroupfileset dir="lib">
+                <patternset refid="lib"/>
+            </zipgroupfileset>
+            <zipfileset src="${floodlight-nodeps-jar}"/>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
