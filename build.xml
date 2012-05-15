@@ -35,6 +35,8 @@
     <property name="packetstreamer-gen" location="lib/gen-java" />
     <property name="packetstreamer-gen-build" location="lib/gen-java-bin"/>
     <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
+    <property name="floodlight-nodeps-jar" location="${target}/floodlight-nodeps.jar"/>
+    <property name="floodlight-debian-jar" location="${target}/floodlight-debian.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
 
@@ -55,6 +57,15 @@
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
+    </patternset>
+    <!-- Dependencies we can't get from Debian/Ubuntu. -->
+    <patternset id="debian-lib">
+        <include name="org.restlet-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.jackson-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.simple-2.1-RC1.jar"/>
+        <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
+        <include name="libthrift-0.7.0.jar"/>
+        <include name="simple-4.1.21.jar"/>
     </patternset>
     <patternset id="genlib">
         <include name="${packetstreamer-thrift-jar}"/>
@@ -201,7 +212,7 @@
     <target name="coverage" depends="instrument,test,coverage-report"/>
 
     <target name="dist" depends="compile,compile-test">
-        <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
+        <jar destfile="${floodlight-nodeps-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
                 <attribute name="Class-Path" value="."/>
@@ -211,12 +222,30 @@
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
-            <zipgroupfileset dir="lib">
-                <patternset refid="lib"/>
-            </zipgroupfileset>
             <zipgroupfileset dir="${target}/lib">
                 <patternset refid="genlib"/>
             </zipgroupfileset>
+        </jar>
+        <jar destfile="${floodlight-jar}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <zipgroupfileset dir="lib">
+                <patternset refid="lib"/>
+            </zipgroupfileset>
+            <zipfileset src="${floodlight-nodeps-jar}"/>
+        </jar>
+        <jar destfile="${floodlight-debian-jar}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <!-- JARs under /usr/share/java on Debian/Ubuntu -->
+                <attribute name="Class-Path" value="args4j.jar slf4j-api.jar logback-core.jar logback-classic.jar jackson-core-asl.jar jackson-mapper-asl.jar easymock.jar netty.jar concurrentlinkedhashmap-lru.jar jython.jar antlr3-runtime.jar asm3.jar asm3-tree.jar ."/>
+            </manifest>
+            <zipgroupfileset dir="lib">
+                <patternset refid="debian-lib"/>
+            </zipgroupfileset>
+            <zipfileset src="${floodlight-nodeps-jar}"/>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
