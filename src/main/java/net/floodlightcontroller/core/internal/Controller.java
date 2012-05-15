@@ -421,6 +421,17 @@ public class Controller implements IFloodlightProviderService,
                 sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
         if ((supportsNxRole != null) && supportsNxRole) {
             sendNxRoleRequest(sw, role);
+        } else if (supportsNxRole != null && !supportsNxRole) {
+            // We know switch does not support role-request (and so sw.role is null)
+            // but we may have just switched roles from MASTER to SLAVE in which
+            // case we should disconnect switch
+            if (getRole() == Role.SLAVE && sw.getRole() == null) {
+                log.error("Disconnecting switch {} that doesn't support " +
+                "role request messages from a controller that went to SLAVE mode");
+                // Closing the channel should result in a call to
+                // channelDisconnect which updates all state 
+                sw.getChannel().close();
+            }
         }
     }
     
@@ -674,14 +685,14 @@ public class Controller implements IFloodlightProviderService,
                          role);
                 state.nxRoleRequestXid = sendNxRoleRequest(sw, role);
             } else {
-                // The hasNxRole field is just a flag that's checked before 
-                // advancing the handshake state to READY. In this case, if role 
-                // support isn't enabled for the controller, then we're not 
-                // sending the role request probe to the switch so we don't need 
-                // to wait for a reply/error before transitioning to the READY 
-                // state.
+                // if role support isn't enabled for the controller, then we're  
+                // not sending the role request probe to the switch
                 log.info("This controllers role is null - not sending role-" +
-                		"request-msg");
+                "request-msg");
+                // The hasNxRole field is just a flag that's checked before 
+                // advancing the handshake state to READY. In this case,  
+                // we set the flag, so we don't need to wait for a 
+                // reply/error before transitioning to the READY state.
                 state.hasNxRoleReply = true;
             }
         }
@@ -693,7 +704,7 @@ public class Controller implements IFloodlightProviderService,
                 state.hsState = HandshakeState.READY;
                 
                 if (getRole() == Role.SLAVE && sw.getRole() == null) {
-                    // When the controller is currently in the slave role and 
+                    // When the controller is in the slave role and 
                     // the switch doesn't understand the role request message - 
                     // we disconnect the switch! The expected behavior is that 
                     // the switch will probably try to reconnect repeatedly 
@@ -701,8 +712,9 @@ public class Controller implements IFloodlightProviderService,
                     // while will give-up and move on to the next controller-IP 
                     // configured on the switch. This is the serial failover 
                     // mechanism from OpenFlow spec v1.0.
-                    log.error("Disconnecting switch {} that doesn't support " +
-                    		"role request messages from a slave controller");
+                    log.error("Disconnecting switch from SLAVE controller." +
+                    		" Switch {} doesn't support role request messages",
+                    		sw.getId());
                     sw.setConnected(false);
                     connectedSwitches.remove(sw.getId());
                     sw.getChannel().close();
