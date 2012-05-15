@@ -19,6 +19,8 @@ package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
@@ -45,6 +48,7 @@ import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packetstreamer.thrift.OFMessageType;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.perfmon.PktInProcessingTime;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -55,14 +59,21 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelHandler;
+import org.jboss.netty.channel.ChannelStateEvent;
 import org.junit.Test;
+import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFError.OFBadActionCode;
+import org.openflow.protocol.OFError.OFBadRequestCode;
+import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -464,12 +475,74 @@ public class ControllerTest extends FloodlightTestCase {
         expect(channel2.getRemoteAddress()).andReturn(null);
         expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
-
         controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 
         controller.addSwitch(newsw);
 
         verify(newsw, channel, channel2);
+    }
+    
+    
+    @Test
+    public void testRoleChangeForSerialFailoverSwitch() throws Exception {
+        IOFSwitch newsw = createMock(IOFSwitch.class);
+        expect(newsw.getId()).andReturn(0L).anyTimes();
+        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        Channel channel2 = createMock(Channel.class);
+        expect(newsw.getChannel()).andReturn(channel2);
+        
+        // newsw.role is null because the switch does not support
+        // role request messages
+        expect(newsw.getRole()).andReturn(null);
+        expect(newsw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
+                        .andReturn(false);
+        // switch is connected 
+        controller.connectedSwitches.put(0L, newsw);
+
+        // the switch should get disconnected when role is changed to SLAVE
+        expect(channel2.close()).andReturn(null);
+
+        replay(newsw, channel2);
+        controller.setRole(Role.SLAVE);
+        verify(newsw,  channel2);
+    }
+
+    @Test
+    public void testSlaveRoleHandshakeForSerialFailoverSwitch() 
+            throws Exception {
+        controller.role = Role.SLAVE;
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setDatapathId(0L);
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        OFChannelState state = new OFChannelState();
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+
+        Channel ch = createMock(Channel.class);
+        ChannelStateEvent e = createMock(ChannelStateEvent.class);
+        expect(e.getChannel()).andReturn(ch).anyTimes();
+        SocketAddress sa = new InetSocketAddress(45454);
+        expect(ch.getRemoteAddress()).andReturn(sa);
+        expect(ch.write(anyObject())).andReturn(null);
+
+        // the error returned when role request message is not supported by sw
+        OFMessage msg = new OFError();
+        msg.setType(OFType.ERROR);
+        ((OFError) msg).setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        ((OFError) msg).setErrorCode(OFBadRequestCode.OFPBRC_BAD_VENDOR);
+        
+        // the switch connection should get disconnected when the controller is
+        // in SLAVE mode and the switch does not support role-request messages
+        expect(ch.close()).andReturn(null);
+        
+        replay(ch, e);
+        chdlr.channelConnected(null, e);
+        chdlr.sw.setFeaturesReply(featuresReply);
+        chdlr.processOFMessage(msg);
+        verify(ch, e);
+        
     }
 }
