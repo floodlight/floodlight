@@ -113,13 +113,13 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * Adds a listener for HA role events
      * @param listener The module that wants to listen for events
      */
-    public void addHAListener(IHARoleListener listener);
+    public void addHAListener(IHAListener listener);
     
     /**
      * Removes a listener for HA role events
      * @param listener The module that no longer wants to listen for events
      */
-    public void removeHAListener(IHARoleListener listener);
+    public void removeHAListener(IHAListener listener);
 
     /**
      * Terminate the process
