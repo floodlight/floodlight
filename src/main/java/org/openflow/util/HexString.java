@@ -40,12 +40,12 @@ public class HexString {
         return ret;
     }
     
-    public static String toHexString(long val) {
+    public static String toHexString(long val, int padTo) {
         char arr[] = Long.toHexString(val).toCharArray();
         String ret = "";
         // prepend the right number of leading zeros
         int i = 0;
-        for (; i < (16 - arr.length); i++) {
+        for (; i < (padTo * 2 - arr.length); i++) {
             ret += "0";
             if ((i % 2) == 1)
                 ret += ":";
@@ -55,7 +55,11 @@ public class HexString {
             if ((((i + j) % 2) == 1) && (j < (arr.length - 1)))
                 ret += ":";
         }
-        return ret;
+        return ret;        
+    }
+   
+    public static String toHexString(long val) {
+        return toHexString(val, 8);
     }
     
     

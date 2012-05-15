@@ -14,9 +14,13 @@ import org.restlet.Response;
 import org.restlet.Restlet;
 import org.restlet.data.Protocol;
 import org.restlet.data.Reference;
+import org.restlet.data.Status;
+import org.restlet.ext.jackson.JacksonRepresentation;
+import org.restlet.representation.Representation;
 import org.restlet.routing.Filter;
 import org.restlet.routing.Router;
 import org.restlet.routing.Template;
+import org.restlet.service.StatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +77,15 @@ public class RestApiServer
         }
         
         public void run(FloodlightModuleContext fmlContext, int restPort) {
+            setStatusService(new StatusService() {
+                @Override
+                public Representation getRepresentation(Status status,
+                                                        Request request,
+                                                        Response response) {
+                    return new JacksonRepresentation<Status>(status);
+                }                
+            });
+            
             // Add everything in the module context to the rest
             for (Class<? extends IFloodlightService> s : fmlContext.getAllServices()) {
                 context.getAttributes().put(s.getCanonicalName(), 
@@ -101,15 +114,23 @@ public class RestApiServer
     
     @Override
     public void addRestletRoutable(RestletRoutable routable) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Adding REST API routable " 
-                    + routable.getClass().getCanonicalName());
-        }
         restlets.add(routable);
     }
 
     @Override
     public void run() {
+        if (logger.isDebugEnabled()) {
+            StringBuffer sb = new StringBuffer();
+            sb.append("REST API routables: ");
+            for (RestletRoutable routable : restlets) {
+                sb.append(routable.getClass().getSimpleName());
+                sb.append(" (");
+                sb.append(routable.basePath());
+                sb.append("), ");
+            }
+            logger.debug(sb.toString());
+        }
+        
         RestApplication restApp = new RestApplication();
         restApp.run(fmlContext, restPort);
     }

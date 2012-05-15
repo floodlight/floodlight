@@ -1,173 +1,86 @@
-/**
-*    Copyright 2011, Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
-
 package net.floodlightcontroller.devicemanager.test;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Collections;
+import java.util.Set;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.devicemanager.Device;
-import net.floodlightcontroller.devicemanager.DeviceAttachmentPoint;
-import net.floodlightcontroller.devicemanager.IDeviceManagerAware;
-import net.floodlightcontroller.devicemanager.IDeviceManagerService;
-import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
+import net.floodlightcontroller.devicemanager.internal.Entity;
 
-public class MockDeviceManager implements IFloodlightModule, IDeviceManagerService {
-    protected Map<Long, Device> devices;
-    protected Map<Long, Long> clusters;
-
-    public MockDeviceManager() {
-        devices = new HashMap<Long, Device>();
-        clusters = new HashMap<Long, Long>();
-    }
-    
-    @Override
-    public Device getDeviceByDataLayerAddress(byte[] address) {
-        return devices.get(Ethernet.toLong(address));
-    }
-    
-    @Override
-    public Device getDeviceByDataLayerAddress(long address) {       
-        return devices.get(new Long(address));
-    }
-
-    @Override
-    public Device getDeviceByIPv4Address(Integer address) {
-        Iterator<Entry<Long, Device>> it = devices.entrySet().iterator();
-        while (it.hasNext()) {
-            Device d = it.next().getValue();
-            if (null != d && null != d.getNetworkAddress(address))
-                return d;
+/**
+ * Mock device manager useful for unit tests
+ * @author readams
+ */
+public class MockDeviceManager extends DeviceManagerImpl {
+    /**
+     * Learn a device using the given characteristics. 
+     * @param macAddress the MAC
+     * @param vlan the VLAN (can be null)
+     * @param ipv4Address the IP (can be null)
+     * @param switchDPID the attachment point switch DPID (can be null)
+     * @param switchPort the attachment point switch port (can be null)
+     * @param processUpdates if false, will not send updates.  Note that this 
+     * method is not thread safe if this is false
+     * @return the device, either new or not
+     */
+    public IDevice learnEntity(long macAddress, Short vlan, 
+                               Integer ipv4Address, Long switchDPID, 
+                               Integer switchPort,
+                               boolean processUpdates) {
+        Set<IDeviceListener> listeners = deviceListeners;
+        if (!processUpdates) {
+            deviceListeners = Collections.<IDeviceListener>emptySet();
         }
-        return null;
-    }
-
-    @Override
-    public void invalidateDeviceAPsByIPv4Address(Integer address) {
-        Iterator<Entry<Long, Device>> it = devices.entrySet().iterator();
-        while (it.hasNext()) {
-            Device d = it.next().getValue();
-            if (null != d && null != d.getNetworkAddress(address))
-                d.getAttachmentPoints().clear();
-        }
-    }
-    
-    public void addDevices(List<Device> devices) {
-        ListIterator<Device> lit = devices.listIterator();
-        while (lit.hasNext()) {
-            Device d = lit.next();
-            this.devices.put(d.getDataLayerAddressAsLong(), d);
-        }
-    }
-
-    public void addDevice(Device device) {
-        this.devices.put(device.getDataLayerAddressAsLong(), device);
-    }
-
-    public void clearDevices() {
-        this.devices.clear();
-    }
-
-    public void addSwitchToCluster(long switchId, long clusterId) {
-        clusters.put(switchId, clusterId);
-    }
-
-    public void clearCluster() {
-        this.clusters.clear();
-    }
-    
-    @Override
-    public List<Device> getDevices() {
-        List<Device> devices = new ArrayList<Device>();
-        Iterator<Entry<Long, Device>> it = this.devices.entrySet().iterator();
-        while (it.hasNext()) {
-            devices.add(it.next().getValue());
-        }
-        return devices;
-    }
-
-    @Override
-    public boolean isDeviceKnownToCluster(long deviceId, long switchId) {
-        Device device = this.devices.get(deviceId);
-        if (device == null) {
-            return false;
-        }
-        /** 
-         * Iterate through all APs and check if the switch clusterID matches
-         * with the given clusterId
-         */
-        for(DeviceAttachmentPoint dap : device.getAttachmentPoints()) {
-            if (dap == null) continue;
-            if (this.clusters.get(switchId) == 
-                this.clusters.get(dap.getSwitchPort().getSw().getId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public void addListener(IDeviceManagerAware listener) {
-        // TODO Auto-generated method stub
         
+        if (vlan != null && vlan.shortValue() <= 0)
+            vlan = null;
+        if (ipv4Address != null && ipv4Address == 0)
+            ipv4Address = null;
+        IDevice res =  learnDeviceByEntity(new Entity(macAddress, vlan, 
+                                                      ipv4Address, switchDPID, 
+                                                      switchPort, null));
+        deviceListeners = listeners;
+        return res;
+    }
+    
+    /**
+     * Learn a device using the given characteristics. 
+     * @param macAddress the MAC
+     * @param vlan the VLAN (can be null)
+     * @param ipv4Address the IP (can be null)
+     * @param switchDPID the attachment point switch DPID (can be null)
+     * @param switchPort the attachment point switch port (can be null)
+     * @return the device, either new or not
+     */
+    public IDevice learnEntity(long macAddress, Short vlan, 
+                               Integer ipv4Address, Long switchDPID, 
+                               Integer switchPort) {
+        return learnEntity(macAddress, vlan, ipv4Address, 
+                           switchDPID, switchPort, true);
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // TODO Auto-generated method stub
-        return null;
+    protected Device allocateDevice(Long deviceKey,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new MockDevice(this, deviceKey, entity, entityClasses);
     }
-
+    
     @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService>
-            getServiceImpls() {
-        // TODO Auto-generated method stub
-        return null;
+    protected Device allocateDevice(Long deviceKey,
+                                    Collection<Entity> entities, 
+                                    IEntityClass[] entityClasses) {
+        return new MockDevice(this, deviceKey, entities, entityClasses);
     }
-
+    
     @Override
-    public Collection<Class<? extends IFloodlightService>>
-            getModuleDependencies() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public
-            void
-            init(FloodlightModuleContext context)
-                                                 throws FloodlightModuleException {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // TODO Auto-generated method stub
-        
+    protected Device allocateDevice(Device device,
+                                    Entity entity, 
+                                    Collection<IEntityClass> entityClasses) {
+        return new MockDevice(device, entity, entityClasses);
     }
 }
