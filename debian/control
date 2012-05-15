@@ -2,7 +2,7 @@ Source: floodlight
 Section: net
 Priority: extra
 Maintainer: Rich Lane <rlane@bigswitch.com>
-Build-Depends: debhelper (>= 8.0.0), javahelper (>= 0.40ubuntu1)
+Build-Depends: debhelper (>= 8.0.0), javahelper (>= 0.40ubuntu1), liblogback-java, libjackson-json-java, libeasymock-java, libslf4j-java, libsimple-xml-java, libnetty-java, libargs4j-java, libconcurrentlinkedhashmap-java, jython
 Standards-Version: 3.9.2
 Homepage: http://floodlight.openflowhub.org/
 Vcs-Git: git://github.com/floodlight/floodlight.git
