@@ -35,23 +35,19 @@ window.HostCollection = Backbone.Collection.extend({
         var self = this;
         //console.log("fetching host list")
         $.ajax({
-            url:hackBase + "/wm/devicemanager/device/all/json",
+            url:hackBase + "/wm/device/",
             dataType:"json",
             success:function (data) {
-                //console.log("fetched  host list: " + _.keys(data).length);
+                // console.log("fetched  host list: " + data.length);
                 // console.log(data);
-                // data is a hash where each key is a MAC address
-                _.each(_.keys(data), function(h) {
-                	var d = data[h];
-                	if (d['attachment-points'].length > 0) {
-                		d.id = h;
-                		d.seen = d['last-seen'];
-                		d.swport = _.reduce(d['attachment-points'], function(memo, ap) {
-                			return memo + ap.switch + "-" + ap.port + " "}, "")
-                		d.ip = _.reduce(d['network-addresses'], function(memo, na) {return memo + na.ip + " "}, "")
-                		// console.log(d);
-                		self.add(d, {silent: true});
-                	}
+                // data is a list of device hashes
+                _.each(data, function(h) {
+		    if (h['attachmentPoint'].length > 0) {
+			h.swport = _.reduce(h['attachmentPoint'], function(memo, ap) {
+			    return memo + ap.dpid + "-" + ap.port + " "}, "")
+			console.log(h.swport);
+			self.add(h, {silent: true});
+		    }
                 });
                 self.trigger('add'); // batch redraws
             }
