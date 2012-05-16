@@ -134,8 +134,8 @@ public class LinkDiscoveryManager
     private static final String LINK_VALID_TIME = "valid_time";
     private static final String LINK_TYPE = "link_type";
 
-    private static final String SWITCH_TABLE_NAME = "controller_switch";
-    private static final String SWITCH_CORE_SWITCH = "core_switch";
+    private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
+    private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
@@ -1244,8 +1244,8 @@ public class LinkDiscoveryManager
                     for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
                         // In case of multiple rows, use the status in last row?
                         Map<String, Object> row = it.next().getRow();
-                        if (row.containsKey(SWITCH_CORE_SWITCH)) {
-                            new_status = ((String)row.get(SWITCH_CORE_SWITCH)).equals("true");
+                        if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
+                            new_status = ((String)row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
                         }
                     }
                 }
@@ -1357,9 +1357,9 @@ public class LinkDiscoveryManager
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
         // Register for storage updates for the switch table
         try {
-            storageSource.addListener(SWITCH_TABLE_NAME, this);
+            storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
         } catch (StorageException ex) {
-            log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
+            log.error("Error in installing listener for switch table - {}", SWITCH_CONFIG_TABLE_NAME);
         }
         
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
