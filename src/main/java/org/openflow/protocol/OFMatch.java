@@ -21,7 +21,10 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.protocol.serializers.OFMatchJSONSerializer;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.openflow.util.U8;
@@ -33,6 +36,7 @@ import org.openflow.util.U8;
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  * 
  */
+@JsonSerialize(using=OFMatchJSONSerializer.class)
 public class OFMatch implements Cloneable, Serializable {
     /**
      * 

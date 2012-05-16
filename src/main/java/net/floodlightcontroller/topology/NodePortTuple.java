@@ -1,7 +1,10 @@
 package net.floodlightcontroller.topology;
 
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
 /**
@@ -37,12 +40,15 @@ public class NodePortTuple {
         this.portId = swt.getPort();
     }
 
+    @JsonProperty("switch")
+    @JsonSerialize(using=DPIDSerializer.class)
     public long getNodeId() {
         return nodeId;
     }
     public void setNodeId(long nodeId) {
         this.nodeId = nodeId;
     }
+    @JsonProperty("port")
     public short getPortId() {
         return portId;
     }

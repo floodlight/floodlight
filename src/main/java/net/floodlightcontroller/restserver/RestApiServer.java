@@ -28,7 +28,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.web.JacksonCustomConverter;
 
 public class RestApiServer
     implements IFloodlightModule, IRestApiService {
@@ -91,9 +90,6 @@ public class RestApiServer
                 context.getAttributes().put(s.getCanonicalName(), 
                                             fmlContext.getServiceImpl(s));
             }
-            
-            // Use our custom serializers
-            JacksonCustomConverter.replaceConverter();
             
             // Start listening for REST requests
             try {

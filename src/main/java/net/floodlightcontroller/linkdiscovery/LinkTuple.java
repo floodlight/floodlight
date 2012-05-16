@@ -17,13 +17,17 @@
 
 package net.floodlightcontroller.linkdiscovery;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.web.serializers.LinkTupleSerializer;
 
 /**
  *
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
+@JsonSerialize(using=LinkTupleSerializer.class)
 public class LinkTuple {
     protected SwitchPortTuple src;
     protected SwitchPortTuple dst;

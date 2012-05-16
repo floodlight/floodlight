@@ -14,13 +14,12 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.web.serializers;
+package net.floodlightcontroller.util;
 
 import java.io.IOException;
 
 import java.sql.Timestamp;
 
-import net.floodlightcontroller.util.EventHistoryBaseInfo;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
