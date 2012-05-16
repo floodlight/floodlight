@@ -178,8 +178,6 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
     
-    protected static final String CONTROLLER_INTERFACE_TABLE_NAME = "controller_controllerinterface";
-    
     protected static final String SWITCH_TABLE_NAME = "controller_switch";
     protected static final String SWITCH_DATAPATH_ID = "dpid";
     protected static final String SWITCH_SOCKET_ADDRESS = "socket_address";
@@ -422,15 +420,42 @@ public class Controller implements IFloodlightProviderService,
      * @throws IOException
      */
     protected void sendRoleRequest(IOFSwitch sw, Role role) throws IOException {
+        // There are three cases to consider:
+        //
+        // 1) If the controller role at the point the switch connected was
+        //    null/disabled, then we never sent the role request probe to the
+        //    switch and therefore never set the SWITCH_SUPPORTS_NX_ROLE
+        //    attribute for the switch, so supportsNxRole is null. In that
+    	//    case since we're now enabling role support for the controller
+    	//    we should send out the role request probe/update to the switch.
+        //
+        // 2) If supportsNxRole == Boolean.TRUE then that means we've already
+        //    sent the role request probe to the switch and it replied with
+        //    a role reply message, so we know it supports role request
+        //    messages. Now we're changing the role and we want to send
+        //    it another role request message to inform it of the new role
+        //    for the controller.
+        //
+        // 3) If supportsNxRole == Boolean.FALSE, then that means we sent the
+        //    role request probe to the switch but it responded with an error
+        //    indicating that it didn't understand the role request message.
+        //    In that case we don't want to send it another role request that
+        //    it (still) doesn't understand. But if the new role of the
+    	//    controller is SLAVE, then we don't want the switch to remain
+        //    connected to this controller. It might support the older serial
+        //    failover model for HA support, so we want to terminate the
+        //    connection and get it to initiate a connection with another
+        //    controller in its list of controllers. Eventually (hopefully, if
+        //    things are configured correctly) it will walk down its list of
+    	//    controllers and connect to the current master controller.
         Boolean supportsNxRole = (Boolean)
                 sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
-        if ((supportsNxRole != null) && supportsNxRole) {
+        if ((supportsNxRole == null) || supportsNxRole) {
+        	// Handle cases #1 and #2
             sendNxRoleRequest(sw, role);
-        } else if (supportsNxRole != null && !supportsNxRole) {
-            // We know switch does not support role-request (and so sw.role is null)
-            // but we may have just switched roles from MASTER to SLAVE in which
-            // case we should disconnect switch
-            if (getRole() == Role.SLAVE && sw.getRole() == null) {
+        } else {
+        	// Handle case #3
+            if (getRole() == Role.SLAVE) {
                 log.error("Disconnecting switch {} that doesn't support " +
                 "role request messages from a controller that went to SLAVE mode");
                 // Closing the channel should result in a call to
