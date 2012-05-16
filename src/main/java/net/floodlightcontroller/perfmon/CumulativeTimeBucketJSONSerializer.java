@@ -1,10 +1,8 @@
-package net.floodlightcontroller.core.web.serializers;
+package net.floodlightcontroller.perfmon;
 
 import java.io.IOException;
 import java.sql.Timestamp;
 
-import net.floodlightcontroller.perfmon.CumulativeTimeBucket;
-import net.floodlightcontroller.perfmon.OneComponentTime;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;

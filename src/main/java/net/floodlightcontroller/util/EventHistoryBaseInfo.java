@@ -1,5 +1,9 @@
 package net.floodlightcontroller.util;
 
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
+@JsonSerialize(using=EventHistoryBaseInfoJSONSerializer.class)
 public class EventHistoryBaseInfo {
     public int              idx;
     public long             time_ms; // timestamp in milliseconds

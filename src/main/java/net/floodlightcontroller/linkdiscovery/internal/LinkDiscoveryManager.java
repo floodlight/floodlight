@@ -1457,15 +1457,14 @@ public class LinkDiscoveryManager
         if ((sw.getChannel() != null) &&
             (SocketAddress.class.isInstance(
                 sw.getChannel().getRemoteAddress()))) {
-            evTopoSwitch.ipv4Addr =
-                ((InetSocketAddress)(sw.getChannel().
-                        getRemoteAddress())).getAddress().getAddress();
+            evTopoSwitch.ipv4Addr = 
+                IPv4.toIPv4Address(((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getAddress().getAddress());
             evTopoSwitch.l4Port   =
-                (short)(((InetSocketAddress)(sw.getChannel().
-                        getRemoteAddress())).getPort());
+                ((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getPort();
         } else {
-            byte[] zeroIpa = new byte[] {(byte)0, (byte)0, (byte)0, (byte)0};
-            evTopoSwitch.ipv4Addr = zeroIpa;
+            evTopoSwitch.ipv4Addr = 0;
             evTopoSwitch.l4Port = 0;
         }
         evTopoSwitch.reason   = reason;
@@ -1480,8 +1479,8 @@ public class LinkDiscoveryManager
         }
         evTopoLink.srcSwDpid = srcDpid;
         evTopoLink.dstSwDpid = dstDpid;
-        evTopoLink.srcSwport = srcPort;
-        evTopoLink.dstSwport = dstPort;
+        evTopoLink.srcSwport = srcPort & 0xffff;
+        evTopoLink.dstSwport = dstPort & 0xffff;
         evTopoLink.srcPortState = srcPortState;
         evTopoLink.dstPortState = dstPortState;
         evTopoLink.reason    = reason;
