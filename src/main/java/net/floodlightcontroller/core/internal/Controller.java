@@ -712,8 +712,8 @@ public class Controller implements IFloodlightProviderService,
                     // configured on the switch. This is the serial failover 
                     // mechanism from OpenFlow spec v1.0.
                     log.error("Disconnecting switch from SLAVE controller." +
-                    		" Switch {} doesn't support role request messages",
-                    		sw.getId());
+                            " Switch {} doesn't support role request messages",
+                            sw.getId());
                     sw.setConnected(false);
                     connectedSwitches.remove(sw.getId());
                     sw.getChannel().close();
@@ -772,7 +772,7 @@ public class Controller implements IFloodlightProviderService,
             }
             
             log.info("Received NX role reply message; setting role of " +
-            		"controller to {}", role.name());
+                    "controller to {}", role.name());
             
             sw.setRole(role);
             
@@ -1932,7 +1932,7 @@ public class Controller implements IFloodlightProviderService,
                            CONTROLLER_INTERFACE_TYPE, 
                            CONTROLLER_INTERFACE_NUMBER, 
                            CONTROLLER_INTERFACE_DISCOVERED_IP };
-        synchronized(curControllerNodeIPs) {
+        synchronized(controllerNodeIPsCache) {
             // We currently assume that interface Ethernet0 is the relevant
             // controller interface. Might change.
             // We could (should?) implement this using 
@@ -1981,6 +1981,18 @@ public class Controller implements IFloodlightProviderService,
             }
         }
     }
+    
+    @Override
+    public Map<String, String> getControllerNodeIPs() {
+        // We return a copy of the mapping so we can guarantee that
+        // the mapping return is the same as one that will be (or was)
+        // dispatched to IHAListeners
+        HashMap<String,String> retval = new HashMap<String,String>();
+        synchronized(controllerNodeIPsCache) {
+            retval.putAll(controllerNodeIPsCache);
+        }
+        return retval;
+    }
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
@@ -1996,4 +2008,5 @@ public class Controller implements IFloodlightProviderService,
             handleControllerNodeIPChanges();
         }
     }
+
 }

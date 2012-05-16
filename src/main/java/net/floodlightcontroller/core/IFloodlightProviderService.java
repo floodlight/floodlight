@@ -88,6 +88,13 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public Role getRole();
     
     /**
+     * Get the current mapping of controller IDs to their IP addresses
+     * Returns a copy of the current mapping. 
+     * @see IHAListener
+     */
+    public Map<String,String> getControllerNodeIPs();
+    
+    /**
      * Gets the ID of the controller
      */
     public String getControllerId();

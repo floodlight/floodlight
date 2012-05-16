@@ -622,7 +622,7 @@ public class ControllerTest extends FloodlightTestCase {
             expectedAddedMap.put("c1", "1.1.1.1");
             listener.wait(waitTimeout);
             listener.do_assert(1, expectedCurMap, expectedAddedMap, expectedRemovedMap);
-
+            
             // Add an interface that we want to ignore. 
             controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                     getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
@@ -667,6 +667,22 @@ public class ControllerTest extends FloodlightTestCase {
             listener.wait(waitTimeout);
             listener.do_assert(4, expectedCurMap, expectedAddedMap, expectedRemovedMap);
         }
+    }
+    
+    @Test
+    public void testGetControllerNodeIPs() {
+        HashMap<String,String> expectedCurMap = new HashMap<String, String>();
+        
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row1", "c1", "Ethernet", 0, "1.1.1.1"));
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.2"));
+        expectedCurMap.put("c1", "1.1.1.1");
+        expectedCurMap.put("c2", "2.2.2.2");    
+        assertEquals("expectedControllerNodeIPs is not as expected", 
+                expectedCurMap, controller.getControllerNodeIPs());
     }
     
     @Test
