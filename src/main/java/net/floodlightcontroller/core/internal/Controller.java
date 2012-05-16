@@ -182,12 +182,14 @@ public class Controller implements IFloodlightProviderService,
     protected static final String SWITCH_IP = "ip";
     protected static final String SWITCH_CONTROLLER_ID = "controller_id";
     protected static final String SWITCH_ACTIVE = "active";
-    protected static final String SWITCH_CORE_SWITCH = "core_switch";
     protected static final String SWITCH_CONNECTED_SINCE = "connected_since";
     protected static final String SWITCH_CAPABILITIES = "capabilities";
     protected static final String SWITCH_BUFFERS = "buffers";
     protected static final String SWITCH_TABLES = "tables";
     protected static final String SWITCH_ACTIONS = "actions";
+
+    protected static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
+    protected static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
     
     protected static final String PORT_TABLE_NAME = "controller_port";
     protected static final String PORT_ID = "id";
@@ -593,20 +595,20 @@ public class Controller implements IFloodlightProviderService,
                     try {
                         String swid = sw.getStringId();
                         resultSet = 
-                                storageSource.getRow(SWITCH_TABLE_NAME, swid);
+                                storageSource.getRow(SWITCH_CONFIG_TABLE_NAME, swid);
                         for (Iterator<IResultSet> it = 
                                 resultSet.iterator(); it.hasNext();) {
                             // In case of multiple rows, use the status
                             // in last row?
                             Map<String, Object> row = it.next().getRow();
-                            if (row.containsKey(SWITCH_CORE_SWITCH)) {
+                            if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
                                 if (log.isDebugEnabled()) {
                                     log.debug("Reading SWITCH_IS_CORE_SWITCH " + 
                                               "config for switch={}, is-core={}",
-                                              sw, row.get(SWITCH_CORE_SWITCH));
+                                              sw, row.get(SWITCH_CONFIG_CORE_SWITCH));
                                 }
                                 String ics = 
-                                        (String)row.get(SWITCH_CORE_SWITCH);
+                                        (String)row.get(SWITCH_CONFIG_CORE_SWITCH);
                                 is_core_switch = ics.equals("true");
                             }
                         }
