@@ -63,4 +63,24 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @param listener The listener that wants the notifications
      */
     public void addListener(ILinkDiscoveryListener listener);
+    
+    /**
+     * Retrieves a set of all switch ports on which lldps are suppressed.
+     * @return
+     */
+    public Set<SwitchPortTuple> getSuppressLLDPsInfo();
+    
+    /**
+     * Adds a switch port to suppress lldp set
+     * @param sw
+     * @param port
+     */
+    public void AddToSuppressLLDPs(IOFSwitch sw, short port);
+    
+    /**
+     * Removes a switch port from suppress lldp set
+     * @param sw
+     * @param port
+     */
+    public void RemoveFromSuppressLLDPs(IOFSwitch sw, short port);
 }
