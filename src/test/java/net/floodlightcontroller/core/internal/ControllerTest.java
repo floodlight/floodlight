@@ -19,11 +19,14 @@ package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -31,10 +34,13 @@ import java.util.concurrent.TimeUnit;
 import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IHAListener;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFMessageListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
@@ -55,14 +61,19 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelStateEvent;
 import org.junit.Test;
+import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFError.OFBadRequestCode;
+import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -76,6 +87,7 @@ import org.openflow.protocol.statistics.OFStatisticsType;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class ControllerTest extends FloodlightTestCase {
+   
     private Controller controller;
     private MockThreadPoolService tp;
 
@@ -132,6 +144,16 @@ public class ControllerTest extends FloodlightTestCase {
         if (moreReplies)
             sr.setFlags((short) 1);
         return sr;
+    }
+    
+    /**
+     * Run the controller's main loop so that updates are processed
+     */
+    protected class ControllerRunThread extends Thread {
+        public void run() {
+            controller.openFlowPort = 0; // Don't listen
+            controller.run();
+        }
     }
 
     /**
@@ -464,12 +486,263 @@ public class ControllerTest extends FloodlightTestCase {
         expect(channel2.getRemoteAddress()).andReturn(null);
         expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
-
         controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 
         controller.addSwitch(newsw);
 
         verify(newsw, channel, channel2);
+    }
+    
+    @Test
+    public void testUpdateQueue() throws Exception {
+        class DummySwitchListener implements IOFSwitchListener {
+            public int nAdded;
+            public int nRemoved;
+            public DummySwitchListener() {
+                nAdded = 0;
+                nRemoved = 0;
+            }
+            public synchronized void addedSwitch(IOFSwitch sw) {
+                nAdded++;
+                notifyAll();
+            }
+            public synchronized void removedSwitch(IOFSwitch sw) {
+                nRemoved++;
+                notifyAll();
+            }
+            public String getName() {
+                return "dummy";
+            }
+        }
+        DummySwitchListener switchListener = new DummySwitchListener();
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        ControllerRunThread t = new ControllerRunThread();
+        t.start();
+        
+        controller.addOFSwitchListener(switchListener);
+        synchronized(switchListener) {
+            controller.updates.put(controller.new SwitchUpdate(sw, true));
+            switchListener.wait(500);
+            assertTrue("IOFSwitchListener.addedSwitch() was not called", 
+                    switchListener.nAdded == 1);
+            controller.updates.put(controller.new SwitchUpdate(sw, false));
+            switchListener.wait(500);
+            assertTrue("IOFSwitchListener.removedSwitch() was not called", 
+                    switchListener.nRemoved == 1);
+        }
+    }
+    
+
+    private Map<String,Object> getFakeControllerIPRow(String id, String controllerId, 
+            String type, int number, String discoveredIP ) {
+        HashMap<String, Object> row = new HashMap<String,Object>();
+        row.put(Controller.CONTROLLER_INTERFACE_ID, id);
+        row.put(Controller.CONTROLLER_INTERFACE_CONTROLLER_ID, controllerId);
+        row.put(Controller.CONTROLLER_INTERFACE_TYPE, type);
+        row.put(Controller.CONTROLLER_INTERFACE_NUMBER, number);
+        row.put(Controller.CONTROLLER_INTERFACE_DISCOVERED_IP, discoveredIP);
+        return row;
+    }
+
+    /**
+     * Test notifications for controller node IP changes. This requires
+     * synchronization between the main test thread and another thread 
+     * that runs Controller's main loop and takes / handles updates. We
+     * synchronize with wait(timeout) / notifyAll(). We check for the 
+     * expected condition after the wait returns. However, if wait returns
+     * due to the timeout (or due to spurious awaking) and the check fails we
+     * might just not have waited long enough. Using a long enough timeout
+     * mitigates this but we cannot get rid of the fundamental "issue". 
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testControllerNodeIPChanges() throws Exception {
+        class DummyHAListener implements IHAListener {
+            public Map<String, String> curControllerNodeIPs;
+            public Map<String, String> addedControllerNodeIPs;
+            public Map<String, String> removedControllerNodeIPs;
+            public int nCalled;
+            
+            public DummyHAListener() {
+                this.nCalled = 0;
+            }
+                
+            @Override
+            public void roleChanged(Role oldRole, Role newRole) {
+                // ignore
+            }
+    
+            @Override
+            public synchronized void controllerNodeIPsChanged(
+                    Map<String, String> curControllerNodeIPs,
+                    Map<String, String> addedControllerNodeIPs,
+                    Map<String, String> removedControllerNodeIPs) {
+                this.curControllerNodeIPs = curControllerNodeIPs;
+                this.addedControllerNodeIPs = addedControllerNodeIPs;
+                this.removedControllerNodeIPs = removedControllerNodeIPs;
+                this.nCalled++;
+                notifyAll();
+            }
+            
+            public void do_assert(int nCalled,
+                    Map<String, String> curControllerNodeIPs,
+                    Map<String, String> addedControllerNodeIPs,
+                    Map<String, String> removedControllerNodeIPs) {
+                assertEquals("nCalled is not as expected", nCalled, this.nCalled);
+                assertEquals("curControllerNodeIPs is not as expected", 
+                        curControllerNodeIPs, this.curControllerNodeIPs);
+                assertEquals("addedControllerNodeIPs is not as expected", 
+                        addedControllerNodeIPs, this.addedControllerNodeIPs);
+                assertEquals("removedControllerNodeIPs is not as expected", 
+                        removedControllerNodeIPs, this.removedControllerNodeIPs);
+                
+            }
+        }
+        long waitTimeout = 250; // ms
+        DummyHAListener listener  = new DummyHAListener();
+        HashMap<String,String> expectedCurMap = new HashMap<String, String>();
+        HashMap<String,String> expectedAddedMap = new HashMap<String, String>();
+        HashMap<String,String> expectedRemovedMap = new HashMap<String, String>();
+        
+        controller.addHAListener(listener);
+        ControllerRunThread t = new ControllerRunThread();
+        t.start();
+        
+        synchronized(listener) {
+            // Insert a first entry
+            controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                    getFakeControllerIPRow("row1", "c1", "Ethernet", 0, "1.1.1.1"));
+            expectedCurMap.clear();
+            expectedAddedMap.clear();
+            expectedRemovedMap.clear();
+            expectedCurMap.put("c1", "1.1.1.1");
+            expectedAddedMap.put("c1", "1.1.1.1");
+            listener.wait(waitTimeout);
+            listener.do_assert(1, expectedCurMap, expectedAddedMap, expectedRemovedMap);
+            
+            // Add an interface that we want to ignore. 
+            controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                    getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
+            listener.wait(waitTimeout); // TODO: do a different check. This call will have to wait for the timeout
+            assertTrue("controllerNodeIPsChanged() should not have been called here", 
+                    listener.nCalled == 1);
+
+            // Add another entry
+            controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                    getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.2"));
+            expectedCurMap.clear();
+            expectedAddedMap.clear();
+            expectedRemovedMap.clear();
+            expectedCurMap.put("c1", "1.1.1.1");
+            expectedCurMap.put("c2", "2.2.2.2");
+            expectedAddedMap.put("c2", "2.2.2.2");
+            listener.wait(waitTimeout);
+            listener.do_assert(2, expectedCurMap, expectedAddedMap, expectedRemovedMap);
+
+
+            // Update an entry
+            controller.storageSource.updateRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                    "row3", getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.3"));
+            expectedCurMap.clear();
+            expectedAddedMap.clear();
+            expectedRemovedMap.clear();
+            expectedCurMap.put("c1", "1.1.1.1");
+            expectedCurMap.put("c2", "2.2.2.3");
+            expectedAddedMap.put("c2", "2.2.2.3");
+            expectedRemovedMap.put("c2", "2.2.2.2");
+            listener.wait(waitTimeout);
+            listener.do_assert(3, expectedCurMap, expectedAddedMap, expectedRemovedMap);
+
+            // Delete an entry
+            controller.storageSource.deleteRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME, 
+                    "row3");
+            expectedCurMap.clear();
+            expectedAddedMap.clear();
+            expectedRemovedMap.clear();
+            expectedCurMap.put("c1", "1.1.1.1");
+            expectedRemovedMap.put("c2", "2.2.2.3");
+            listener.wait(waitTimeout);
+            listener.do_assert(4, expectedCurMap, expectedAddedMap, expectedRemovedMap);
+        }
+    }
+    
+    @Test
+    public void testGetControllerNodeIPs() {
+        HashMap<String,String> expectedCurMap = new HashMap<String, String>();
+        
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row1", "c1", "Ethernet", 0, "1.1.1.1"));
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
+        controller.storageSource.insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.2"));
+        expectedCurMap.put("c1", "1.1.1.1");
+        expectedCurMap.put("c2", "2.2.2.2");    
+        assertEquals("expectedControllerNodeIPs is not as expected", 
+                expectedCurMap, controller.getControllerNodeIPs());
+    }
+    
+    @Test
+    public void testRoleChangeForSerialFailoverSwitch() throws Exception {
+        IOFSwitch newsw = createMock(IOFSwitch.class);
+        expect(newsw.getId()).andReturn(0L).anyTimes();
+        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        Channel channel2 = createMock(Channel.class);
+        expect(newsw.getChannel()).andReturn(channel2);
+        
+        // newsw.role is null because the switch does not support
+        // role request messages
+        expect(newsw.getRole()).andReturn(null);
+        expect(newsw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
+                        .andReturn(false);
+        // switch is connected 
+        controller.connectedSwitches.put(0L, newsw);
+
+        // the switch should get disconnected when role is changed to SLAVE
+        expect(channel2.close()).andReturn(null);
+
+        replay(newsw, channel2);
+        controller.setRole(Role.SLAVE);
+        verify(newsw,  channel2);
+    }
+
+    @Test
+    public void testSlaveRoleHandshakeForSerialFailoverSwitch() 
+            throws Exception {
+        controller.role = Role.SLAVE;
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setDatapathId(0L);
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        OFChannelState state = new OFChannelState();
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+
+        Channel ch = createMock(Channel.class);
+        ChannelStateEvent e = createMock(ChannelStateEvent.class);
+        expect(e.getChannel()).andReturn(ch).anyTimes();
+        SocketAddress sa = new InetSocketAddress(45454);
+        expect(ch.getRemoteAddress()).andReturn(sa);
+        expect(ch.write(anyObject())).andReturn(null);
+
+        // the error returned when role request message is not supported by sw
+        OFMessage msg = new OFError();
+        msg.setType(OFType.ERROR);
+        ((OFError) msg).setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        ((OFError) msg).setErrorCode(OFBadRequestCode.OFPBRC_BAD_VENDOR);
+        
+        // the switch connection should get disconnected when the controller is
+        // in SLAVE mode and the switch does not support role-request messages
+        expect(ch.close()).andReturn(null);
+        
+        replay(ch, e);
+        chdlr.channelConnected(null, e);
+        chdlr.sw.setFeaturesReply(featuresReply);
+        chdlr.processOFMessage(msg);
+        verify(ch, e);
+        
     }
 }

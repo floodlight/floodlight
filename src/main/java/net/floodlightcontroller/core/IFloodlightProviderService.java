@@ -88,6 +88,13 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public Role getRole();
     
     /**
+     * Get the current mapping of controller IDs to their IP addresses
+     * Returns a copy of the current mapping. 
+     * @see IHAListener
+     */
+    public Map<String,String> getControllerNodeIPs();
+    
+    /**
      * Gets the ID of the controller
      */
     public String getControllerId();
@@ -113,13 +120,13 @@ public interface IFloodlightProviderService extends IFloodlightService {
      * Adds a listener for HA role events
      * @param listener The module that wants to listen for events
      */
-    public void addHAListener(IHARoleListener listener);
+    public void addHAListener(IHAListener listener);
     
     /**
      * Removes a listener for HA role events
      * @param listener The module that no longer wants to listen for events
      */
-    public void removeHAListener(IHARoleListener listener);
+    public void removeHAListener(IHAListener listener);
 
     /**
      * Terminate the process

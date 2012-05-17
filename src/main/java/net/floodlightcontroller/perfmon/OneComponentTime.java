@@ -1,5 +1,7 @@
 package net.floodlightcontroller.perfmon;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
 import net.floodlightcontroller.core.IOFMessageListener;
 
 /**
@@ -34,34 +36,42 @@ public class OneComponentTime {
         sigmaProcTimeNs = 0;
     }
     
+    @JsonProperty("module-name")
     public String getCompName() {
         return compName;
     }
 
+    @JsonProperty("num-packets")
     public int getPktCnt() {
         return pktCnt;
     }
 
+    @JsonProperty("total")
     public long getSumProcTimeNs() {
         return totalProcTimeNs;
     }
 
+    @JsonProperty("max")
     public long getMaxProcTimeNs() {
         return maxProcTimeNs;
     }
 
+    @JsonProperty("min")
     public long getMinProcTimeNs() {
         return minProcTimeNs;
     }
 
+    @JsonProperty("average")
     public long getAvgProcTimeNs() {
         return avgProcTimeNs;
     }
 
+    @JsonProperty("std-dev")
     public long getSigmaProcTimeNs() {
         return sigmaProcTimeNs;
     }
     
+    @JsonProperty("average-squared")
     public long getSumSquaredProcTimeNs() {
         return sumSquaredProcTimeNs2;
     }

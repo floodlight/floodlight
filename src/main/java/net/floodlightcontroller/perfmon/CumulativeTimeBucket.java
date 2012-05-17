@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 import net.floodlightcontroller.core.IOFMessageListener;
 
+@JsonSerialize(using=CumulativeTimeBucketJSONSerializer.class)
 public class CumulativeTimeBucket {
     private long startTime_ns; // First pkt time-stamp in this bucket
     private Map<Integer, OneComponentTime> compStats;

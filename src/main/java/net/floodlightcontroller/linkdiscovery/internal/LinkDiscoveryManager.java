@@ -42,7 +42,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IHARoleListener;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -76,7 +76,6 @@ import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.EventHistory.EvAction;
-import net.floodlightcontroller.util.StackTraceUtil;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -120,7 +119,7 @@ import org.slf4j.LoggerFactory;
 public class LinkDiscoveryManager
         implements IOFMessageListener, IOFSwitchListener, 
                    IStorageSourceListener, ILinkDiscoveryService,
-                   IFloodlightModule, IInfoProvider, IHARoleListener {
+                   IFloodlightModule, IInfoProvider, IHAListener {
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
@@ -135,8 +134,8 @@ public class LinkDiscoveryManager
     private static final String LINK_VALID_TIME = "valid_time";
     private static final String LINK_TYPE = "link_type";
 
-    private static final String SWITCH_TABLE_NAME = "controller_switch";
-    private static final String SWITCH_CORE_SWITCH = "core_switch";
+    private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
+    private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
@@ -232,7 +231,7 @@ public class LinkDiscoveryManager
                     }
                 } 
                 catch (Exception e) {
-                    log.error("Error in link discovery updates loop: {} {}", e, StackTraceUtil.stackTraceToString(e));
+                    log.error("Error in link discovery updates loop", e);
                 }
             }
         } while (updates.peek() != null);
@@ -276,13 +275,14 @@ public class LinkDiscoveryManager
         ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
         byte[] portId = new byte[] {2, 0, 0}; // filled in later
-        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7).setValue(chassisId));
-        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) 3).setValue(portId));
-        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) 2).setValue(new byte[] {0, 0x78}));
+        byte[] ttlValue = new byte[] {0, 0x78};
+        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
+        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
+        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
 
         // OpenFlow OUI - 00-26-E1
         byte[] dpidTLVValue = new byte[] {0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) 12).setValue(dpidTLVValue);
+        LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) dpidTLVValue.length).setValue(dpidTLVValue);
         lldp.getOptionalTLVList().add(dpidTLV);
 
         // Add the controller identifier to the TLV value.
@@ -408,12 +408,12 @@ public class LinkDiscoveryManager
         bb.rewind();
         bb.get(controllerTLVValue, 0, 8);
 
-        this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) 8).setValue(controllerTLVValue);
+        this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) controllerTLVValue.length).setValue(controllerTLVValue);
     }
 
     @Override
     public String getName() {
-        return "topology";
+        return "linkdiscovery";
     }
     
     @Override
@@ -1018,7 +1018,6 @@ public class LinkDiscoveryManager
         }
     }
 
-
     // STORAGE METHODS
     /**
      * Deletes all links from storage
@@ -1245,8 +1244,8 @@ public class LinkDiscoveryManager
                     for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
                         // In case of multiple rows, use the status in last row?
                         Map<String, Object> row = it.next().getRow();
-                        if (row.containsKey(SWITCH_CORE_SWITCH)) {
-                            new_status = ((String)row.get(SWITCH_CORE_SWITCH)).equals("true");
+                        if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
+                            new_status = ((String)row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
                         }
                     }
                 }
@@ -1358,9 +1357,9 @@ public class LinkDiscoveryManager
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
         // Register for storage updates for the switch table
         try {
-            storageSource.addListener(SWITCH_TABLE_NAME, this);
+            storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
         } catch (StorageException ex) {
-            log.error("Error in installing listener for switch table - {}", SWITCH_TABLE_NAME);
+            log.error("Error in installing listener for switch table - {}", SWITCH_CONFIG_TABLE_NAME);
         }
         
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
@@ -1458,15 +1457,14 @@ public class LinkDiscoveryManager
         if ((sw.getChannel() != null) &&
             (SocketAddress.class.isInstance(
                 sw.getChannel().getRemoteAddress()))) {
-            evTopoSwitch.ipv4Addr =
-                ((InetSocketAddress)(sw.getChannel().
-                        getRemoteAddress())).getAddress().getAddress();
+            evTopoSwitch.ipv4Addr = 
+                IPv4.toIPv4Address(((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getAddress().getAddress());
             evTopoSwitch.l4Port   =
-                (short)(((InetSocketAddress)(sw.getChannel().
-                        getRemoteAddress())).getPort());
+                ((InetSocketAddress)(sw.getChannel().
+                        getRemoteAddress())).getPort();
         } else {
-            byte[] zeroIpa = new byte[] {(byte)0, (byte)0, (byte)0, (byte)0};
-            evTopoSwitch.ipv4Addr = zeroIpa;
+            evTopoSwitch.ipv4Addr = 0;
             evTopoSwitch.l4Port = 0;
         }
         evTopoSwitch.reason   = reason;
@@ -1481,8 +1479,8 @@ public class LinkDiscoveryManager
         }
         evTopoLink.srcSwDpid = srcDpid;
         evTopoLink.dstSwDpid = dstDpid;
-        evTopoLink.srcSwport = srcPort;
-        evTopoLink.dstSwport = dstPort;
+        evTopoLink.srcSwport = srcPort & 0xffff;
+        evTopoLink.dstSwport = dstPort & 0xffff;
         evTopoLink.srcPortState = srcPortState;
         evTopoLink.dstPortState = dstPortState;
         evTopoLink.reason    = reason;
@@ -1537,4 +1535,13 @@ public class LinkDiscoveryManager
                 break;
         }
     }
+    
+    @Override
+    public void controllerNodeIPsChanged(
+            Map<String, String> curControllerNodeIPs,
+            Map<String, String> addedControllerNodeIPs,
+            Map<String, String> removedControllerNodeIPs) {
+        // ignore
+    }
+    
 }
