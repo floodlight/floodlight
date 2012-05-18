@@ -340,6 +340,15 @@ public class Controller
         protected OFSwitchImpl sw;
         protected OFChannelState state;
         
+        @Override
+        public String toString() {
+            if (sw == null) {
+                return "null switch";
+            } else {
+                return sw.toString() + " State: " + state;
+            }
+        }
+
         public OFChannelHandler(OFChannelState state) {
             this.state = state;
         }
@@ -364,13 +373,13 @@ public class Controller
         @Override
         public void channelDisconnected(ChannelHandlerContext ctx,
                                         ChannelStateEvent e) throws Exception {
+            log.info("Disconnected switch {}", this);
             if (sw != null && state.hsState == HandshakeState.READY) {
                 if (sw.getRole() != Role.SLAVE)
                     removeSwitch(sw);
                 connectedSwitches.remove(sw.getId());
                 sw.setConnected(false);
             }
-            log.info("Disconnected switch {}", sw);
         }
 
         @Override
