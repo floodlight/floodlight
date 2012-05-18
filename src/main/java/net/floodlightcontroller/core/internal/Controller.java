@@ -177,6 +177,7 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_ID = "id";
     
     protected static final String SWITCH_TABLE_NAME = "controller_switch";
+    protected static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
     protected static final String SWITCH_DATAPATH_ID = "dpid";
     protected static final String SWITCH_SOCKET_ADDRESS = "socket_address";
     protected static final String SWITCH_IP = "ip";
@@ -1852,6 +1853,7 @@ public class Controller implements IFloodlightProviderService,
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);
         storageSource.createTable(SWITCH_TABLE_NAME, null);
+        storageSource.createTable(SWITCH_CONFIG_TABLE_NAME, null);
         storageSource.createTable(PORT_TABLE_NAME, null);
         storageSource.createTable(CONTROLLER_INTERFACE_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
