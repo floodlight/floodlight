@@ -21,7 +21,10 @@ import java.util.Iterator;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.util.FilterIterator;
 
 import org.openflow.util.HexString;
 import org.restlet.data.Form;
@@ -113,12 +116,82 @@ public abstract class AbstractDeviceResource extends ServerResource {
             }
         }
         
-        Iterator<? extends IDevice> diter =
+        @SuppressWarnings("unchecked")
+        Iterator<Device> diter = (Iterator<Device>)
                 deviceManager.queryDevices(macAddress, 
                                            vlan, 
                                            ipv4Address, 
                                            switchDPID, 
                                            switchPort);
-        return diter;
+        
+        final String macStartsWith = 
+                form.getFirstValue("mac__startswith", true);
+        final String vlanStartsWith = 
+                form.getFirstValue("vlan__startswith", true);
+        final String ipv4StartsWith = 
+                form.getFirstValue("ipv4__startswith", true);
+        final String dpidStartsWith = 
+                form.getFirstValue("dpid__startswith", true);
+        final String portStartsWith = 
+                form.getFirstValue("port__startswith", true);
+        
+        return new FilterIterator<Device>(diter) {
+            @Override
+            protected boolean matches(Device value) {
+                if (macStartsWith != null) {
+                    if (!value.getMACAddressString().startsWith(macStartsWith))
+                        return false;
+                }
+                if (vlanStartsWith != null) {
+                    boolean match = false;
+                    for (Short v : value.getVlanId()) {
+                        if (v != null && 
+                            v.toString().startsWith(vlanStartsWith)) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (!match) return false;
+                }
+                if (ipv4StartsWith != null) {
+                    boolean match = false;
+                    for (Integer v : value.getIPv4Addresses()) {
+                        String str = IPv4.fromIPv4Address(v);
+                        if (v != null && 
+                            str.startsWith(ipv4StartsWith)) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (!match) return false;
+                }
+                if (dpidStartsWith != null) {
+                    boolean match = false;
+                    for (SwitchPort v : value.getAttachmentPoints(true)) {
+                        String str = 
+                                HexString.toHexString(v.getSwitchDPID(), 8);
+                        if (v != null && 
+                            str.startsWith(dpidStartsWith)) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (!match) return false;
+                }
+                if (portStartsWith != null) {
+                    boolean match = false;
+                    for (SwitchPort v : value.getAttachmentPoints(true)) {
+                        String str = Integer.toString(v.getPort());
+                        if (v != null && 
+                            str.startsWith(portStartsWith)) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (!match) return false;
+                }
+                return true;
+            }
+        };
     }
 }

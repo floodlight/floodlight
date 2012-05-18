@@ -415,6 +415,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(10L).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
                 andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
+        		anyLong(), anyShort())).andReturn(false).anyTimes();
         
         expect(mockTopology.isInternal(anyLong(), 
                                        anyShort())).andReturn(false).anyTimes();
@@ -499,6 +501,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 andReturn(false).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2)).
                 andReturn(true).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)1,
+        		1L, (short)2)).andReturn(true).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)2,
+        		1L, (short)1)).andReturn(true).anyTimes();
         
         replay(mockTopology);
         
@@ -717,6 +723,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isBroadcastDomainPort(anyLong(), 
                                                   anyShort())).
                                        andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
+        		anyLong(), anyShort())).andReturn(false).anyTimes();
         expect(mockTopology.getSwitchClusterId(anyLong())).
                     andReturn(1L).anyTimes();
         replay(mockTopology);
@@ -809,6 +817,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isBroadcastDomainPort(anyLong(), 
                                                   anyShort())).
                                        andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
+                anyLong(), anyShort())).andReturn(false).anyTimes();
         expect(mockTopology.getSwitchClusterId(1L)).
                 andReturn(1L).anyTimes();
         expect(mockTopology.getSwitchClusterId(5L)).
