@@ -19,17 +19,15 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.util.FilterIterator;
 
 /**
  * An iterator for handling device queries
  */
-public class DeviceIterator implements Iterator<Device> {
-    private Iterator<Device> subIterator;
-
+public class DeviceIterator extends FilterIterator<Device> {
     private IEntityClass[] entityClasses;
     
     private Long macAddress;
@@ -37,8 +35,6 @@ public class DeviceIterator implements Iterator<Device> {
     private Integer ipv4Address; 
     private Long switchDPID;
     private Integer switchPort;
-
-    private Device next = null;
     
     /**
      * Construct a new device iterator over the key fields
@@ -57,7 +53,7 @@ public class DeviceIterator implements Iterator<Device> {
                           Integer ipv4Address, 
                           Long switchDPID,
                           Integer switchPort) {
-        super();
+        super(subIterator);
         this.entityClasses = entityClasses;
         this.subIterator = subIterator;
         this.macAddress = macAddress;
@@ -68,80 +64,57 @@ public class DeviceIterator implements Iterator<Device> {
     }
 
     @Override
-    public boolean hasNext() {
-        if (next != null) return true;
-
+    protected boolean matches(Device value) {
         boolean match;
-        while (subIterator.hasNext()) {
-            next = subIterator.next();
+        if (entityClasses != null) {
+            IEntityClass[] classes = next.getEntityClasses();
+            if (classes == null) return false;
 
-            if (entityClasses != null) {
-                IEntityClass[] classes = next.getEntityClasses();
-                if (classes == null) continue;
-
-                match = false;
-                for (IEntityClass clazz : classes) {
-                    for (IEntityClass entityClass : entityClasses) {
-                        if (clazz.equals(entityClass)) {
-                            match = true;
-                            break;
-                        }
+            match = false;
+            for (IEntityClass clazz : classes) {
+                for (IEntityClass entityClass : entityClasses) {
+                    if (clazz.equals(entityClass)) {
+                        match = true;
+                        break;
                     }
-                    if (match == true) break;
                 }
-                if (!match) continue;                
+                if (match == true) break;
             }
-            if (macAddress != null) {
-                if (macAddress.longValue() != next.getMACAddress())
-                    continue;
-            }
-            if (vlan != null) {
-                Short[] vlans = next.getVlanId();
-                if (Arrays.binarySearch(vlans, vlan) < 0) 
-                    continue;
-            }
-            if (ipv4Address != null) {
-                Integer[] ipv4Addresses = next.getIPv4Addresses();
-                if (Arrays.binarySearch(ipv4Addresses, ipv4Address) < 0) 
-                    continue;
-            }
-            if (switchDPID != null || switchPort != null) {
-                SwitchPort[] sps = next.getAttachmentPoints();
-                if (sps == null) continue;
-                
-                match = false;
-                for (SwitchPort sp : sps) {
-                    if (switchDPID != null) {
-                        if (switchDPID.longValue() != sp.getSwitchDPID())
-                            continue;
-                    }
-                    if (switchPort != null) {
-                        if (switchPort.intValue() != sp.getPort())
-                            continue;
-                    }
-                    match = true;
-                    break;
+            if (!match) return false;                
+        }
+        if (macAddress != null) {
+            if (macAddress.longValue() != next.getMACAddress())
+                return false;
+        }
+        if (vlan != null) {
+            Short[] vlans = next.getVlanId();
+            if (Arrays.binarySearch(vlans, vlan) < 0) 
+                return false;
+        }
+        if (ipv4Address != null) {
+            Integer[] ipv4Addresses = next.getIPv4Addresses();
+            if (Arrays.binarySearch(ipv4Addresses, ipv4Address) < 0) 
+                return false;
+        }
+        if (switchDPID != null || switchPort != null) {
+            SwitchPort[] sps = next.getAttachmentPoints();
+            if (sps == null) return false;
+            
+            match = false;
+            for (SwitchPort sp : sps) {
+                if (switchDPID != null) {
+                    if (switchDPID.longValue() != sp.getSwitchDPID())
+                        return false;
                 }
-                if (!match) continue;
+                if (switchPort != null) {
+                    if (switchPort.intValue() != sp.getPort())
+                        return false;
+                }
+                match = true;
+                break;
             }
-            return true;
+            if (!match) return false;
         }
-        return false;
+        return true;
     }
-
-    @Override
-    public Device next() {
-        if (hasNext()) {
-            Device cur = next;
-            next = null;
-            return cur;
-        }
-        throw new NoSuchElementException();
-    }
-
-    @Override
-    public void remove() {
-        throw new UnsupportedOperationException();
-    }
-
 }
