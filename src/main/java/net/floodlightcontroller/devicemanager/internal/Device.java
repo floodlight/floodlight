@@ -275,7 +275,11 @@ public class Device implements IDevice {
             
             if (prev != null && 
                 !(dpid.equals(prev.getSwitchDPID()) &&
-                  port.equals(prev.getSwitchPort()))) {
+                  port.equals(prev.getSwitchPort())) &&
+                !topology.isInSameBroadcastDomain(dpid.longValue(),
+                		port.shortValue(),
+                        prev.getSwitchDPID().longValue(),
+                        prev.getSwitchPort().shortValue())) {
                 long curActive = 
                         deviceManager.apComparator.
                             getEffTS(cur, cur.getActiveSince());
