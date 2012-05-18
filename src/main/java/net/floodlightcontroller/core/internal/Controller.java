@@ -1854,6 +1854,7 @@ public class Controller implements IFloodlightProviderService,
         storageSource.createTable(SWITCH_TABLE_NAME, null);
         storageSource.createTable(PORT_TABLE_NAME, null);
         storageSource.createTable(CONTROLLER_INTERFACE_TABLE_NAME, null);
+        storageSource.createTable(SWITCH_CONFIG_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
                                              CONTROLLER_ID);
         storageSource.setTablePrimaryKeyName(SWITCH_TABLE_NAME,
