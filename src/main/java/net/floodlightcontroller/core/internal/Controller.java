@@ -228,7 +228,7 @@ public class Controller implements IFloodlightProviderService,
         public void dispatch();
     }
     /**
-     * A switch was added or removed 
+     * Update message indicating a switch was added or removed 
      */
     protected class SwitchUpdate implements IUpdate {
         public IOFSwitch sw;
@@ -254,7 +254,7 @@ public class Controller implements IFloodlightProviderService,
     }
     
     /**
-     * Controller's role has changed
+     * Update message indicating controller's role has changed
      */
     protected class HARoleUpdate implements IUpdate {
         public Role oldRole;
@@ -277,6 +277,7 @@ public class Controller implements IFloodlightProviderService,
     }
     
     /**
+     * Update message indicating
      * IPs of controllers in controller cluster have changed.
      */
     protected class HAControllerNodeIPUpdate implements IUpdate {
@@ -1302,6 +1303,8 @@ public class Controller implements IFloodlightProviderService,
                 // the listeners for this switch in processOFMessage
                 oldSw.setConnected(false);
                 
+                oldSw.cancelAllStatisticsReplies();
+                
                 updateInactiveSwitchInfo(oldSw);
     
                 // we need to clean out old switch state definitively 
@@ -1351,6 +1354,11 @@ public class Controller implements IFloodlightProviderService,
             log.debug("Not removing switch {}; already removed", sw);
             return;
         }
+        // We cancel all outstanding statistics replies if the switch transition
+        // from active. In the future we might allow statistics requests 
+        // from slave controllers. Then we need to move this cancelation
+        // to switch disconnect
+        sw.cancelAllStatisticsReplies();
             
         // FIXME: I think there's a race condition if we call updateInactiveSwitchInfo
         // here if role support is enabled. In that case if the switch is being

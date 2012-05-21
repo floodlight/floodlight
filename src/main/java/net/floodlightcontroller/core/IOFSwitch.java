@@ -238,6 +238,11 @@ public interface IOFSwitch {
      * @param transactionId the transaction ID
      */
     public void cancelStatisticsReply(int transactionId);
+    
+    /**
+     * Cancel all statistics replies
+     */
+    public void cancelAllStatisticsReplies();
 
     /**
      * Checks if a specific switch property exists for this switch

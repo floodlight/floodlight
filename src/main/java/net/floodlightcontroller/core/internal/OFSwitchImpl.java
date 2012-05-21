@@ -114,6 +114,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
     }
+    
 
     @Override
     public Object getAttribute(String name) {
@@ -311,9 +312,8 @@ public class OFSwitchImpl implements IOFSwitch {
     @Override
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
         request.setXid(getNextTransactionId());
-        OFStatisticsFuture future = new OFStatisticsFuture(floodlightProvider, threadPool, this, request.getXid());
+        OFStatisticsFuture future = new OFStatisticsFuture(threadPool, this, request.getXid());
         this.statsFutureMap.put(request.getXid(), future);
-        this.floodlightProvider.addOFSwitchListener(future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
         this.channel.write(msglist);
@@ -343,6 +343,19 @@ public class OFSwitchImpl implements IOFSwitch {
         }
     }
 
+    @Override
+    public void cancelAllStatisticsReplies() {
+        /* we don't need to be synchronized here. Even if another thread
+         * modifies the map while we're cleaning up the future will eventuall
+         * timeout */
+        for (OFStatisticsFuture f : statsFutureMap.values()) {
+            f.cancel(true);
+        }
+        statsFutureMap.clear();
+        iofMsgListenersMap.clear();
+    }
+ 
+    
     /**
      * @param floodlightProvider the floodlightProvider to set
      */

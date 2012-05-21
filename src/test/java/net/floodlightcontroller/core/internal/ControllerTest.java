@@ -267,11 +267,9 @@ public class ControllerTest extends FloodlightTestCase {
     @Test
     public void testOFStatisticsFuture() throws Exception {
         // Test for a single stats reply
-        MockFloodlightProvider mbp = new MockFloodlightProvider();
         IOFSwitch sw = createMock(IOFSwitch.class);
         sw.cancelStatisticsReply(1);
-        OFStatisticsFuture sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        OFStatisticsFuture sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         List<OFStatistics> stats;
@@ -284,14 +282,12 @@ public class ControllerTest extends FloodlightTestCase {
         stats = ff.getValue();
         verify(sw);
         assertEquals(10, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test multiple stats replies
         reset(sw);
         sw.cancelStatisticsReply(1);
 
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -304,13 +300,11 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(15, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test cancellation
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -322,13 +316,11 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(0, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test self timeout
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1, 1, TimeUnit.SECONDS);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1, 1, TimeUnit.SECONDS);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -339,7 +331,6 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(0, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
     }
 
     @Test
