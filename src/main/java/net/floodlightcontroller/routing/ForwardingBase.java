@@ -78,9 +78,9 @@ public abstract class ForwardingBase implements
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
                     Long d1ClusterId = 
-                            topology.getSwitchClusterId(d1.getSwitchDPID());
+                            topology.getL2DomainId(d1.getSwitchDPID());
                     Long d2ClusterId = 
-                            topology.getSwitchClusterId(d2.getSwitchDPID());
+                            topology.getL2DomainId(d2.getSwitchDPID());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };

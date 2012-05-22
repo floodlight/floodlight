@@ -119,11 +119,11 @@ public class ForwardingTest extends FloodlightTestCase {
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(1L).anyTimes();
-        expect(topology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
+        expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
 
         sw2 = EasyMock.createNiceMock(IOFSwitch.class);  
         expect(sw2.getId()).andReturn(2L).anyTimes();
-        expect(topology.getSwitchClusterId(2L)).andReturn(1L).anyTimes();
+        expect(topology.getL2DomainId(2L)).andReturn(1L).anyTimes();
 
         //fastWilcards mocked as this constant
         int fastWildcards = 

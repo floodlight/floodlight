@@ -248,7 +248,7 @@ public class Device implements IDevice {
             blocked = new ArrayList<SwitchPort>();
             clusterBlocked = new ArrayList<SwitchPort>();
         }
-            
+
         ITopologyService topology = deviceManager.topology;
         long prevCluster = 0;
         int clEntIndex = -1;
@@ -262,7 +262,7 @@ public class Device implements IDevice {
                 !deviceManager.isValidAttachmentPoint(dpid, port))
                 continue;
             long curCluster = 
-                    topology.getSwitchClusterId(cur.switchDPID);
+                    topology.getL2DomainId(cur.switchDPID);
             if (prevCluster != curCluster) {
                 prev = null;
                 latestLastSeen = 0;
