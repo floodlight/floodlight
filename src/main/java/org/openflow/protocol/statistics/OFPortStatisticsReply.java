@@ -18,6 +18,7 @@
 package org.openflow.protocol.statistics;
 
 
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
@@ -222,6 +223,7 @@ public class OFPortStatisticsReply implements OFStatistics {
     }
 
     @Override
+    @JsonIgnore
     public int getLength() {
         return 104;
     }
