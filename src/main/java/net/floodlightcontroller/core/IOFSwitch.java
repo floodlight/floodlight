@@ -312,12 +312,4 @@ public interface IOFSwitch {
      */
      public void flush();
 
-     /**
-      * Get transaction id. for using in a message to be sent to the switch.
-      * The caller can use the transaction id as a key to maintain some
-      * meta data that can be retrieved based on the same message id. that
-      * would be returned in the response from the switch.
-      * @return transaction id to be passed in the sendStatsQuery() API.
-      */
-     public int getXid();
 }

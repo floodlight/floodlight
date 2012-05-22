@@ -294,11 +294,6 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public int getXid() {
-        return getNextTransactionId();
-    }
-
-    @Override
     public void sendStatsQuery(OFStatisticsRequest request, int xid,
                                 IOFMessageListener caller) throws IOException {
         request.setXid(xid);
