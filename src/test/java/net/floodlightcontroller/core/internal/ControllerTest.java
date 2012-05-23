@@ -694,7 +694,6 @@ public class ControllerTest extends FloodlightTestCase {
         
         // newsw.role is null because the switch does not support
         // role request messages
-        expect(newsw.getRole()).andReturn(null);
         expect(newsw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(false);
         // switch is connected 
