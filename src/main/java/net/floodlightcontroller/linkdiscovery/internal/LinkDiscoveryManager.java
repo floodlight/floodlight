@@ -403,8 +403,6 @@ public class LinkDiscoveryManager
 
         bb.putLong(result);
 
-        log.info("Controller TLV: {}", result);
-
         bb.rewind();
         bb.get(controllerTLVValue, 0, 8);
 

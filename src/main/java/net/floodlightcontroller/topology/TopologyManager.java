@@ -670,7 +670,7 @@ public class TopologyManager implements
         po.setLength(poLength);
 
         try {
-            counterStore.updatePktOutFMCounterStore(sw, po);
+            //counterStore.updatePktOutFMCounterStore(sw, po);
             if (log.isTraceEnabled()) {
                 log.trace("write broadcast packet on switch-id={} " + 
                         "interaces={} packet-data={} packet-out={}",
@@ -699,12 +699,16 @@ public class TopologyManager implements
         TopologyInstance ti = this.currentInstanceWithoutTunnels;
 
         Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
-
-        if (switches == null) return;
+        
+        if (switches == null) // this implies that there are no links connected to the switches
+        {
+            switches = new HashSet<Long>();
+            switches.add(pinSwitch);
+        }
 
         for(long sid: switches) {
             IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
-
+            if (sw == null) continue;
             Set<Short> ports = new HashSet<Short>();
             if (sw.getPorts() == null) continue;
             ports.addAll(sw.getPorts().keySet());
@@ -714,11 +718,13 @@ public class TopologyManager implements
             // broadcast port, otherwise, we should eliminate.
             Set<Short> portsKnownToTopo = ti.getPorts(sid);
 
-            for(short p: portsKnownToTopo) {
-                NodePortTuple npt = 
-                        new NodePortTuple(sid, p);
-                if (ti.isBroadcastDomainPort(npt) == false) {
-                    ports.remove(p);
+            if (portsKnownToTopo != null) {
+                for(short p: portsKnownToTopo) {
+                    NodePortTuple npt = 
+                            new NodePortTuple(sid, p);
+                    if (ti.isBroadcastDomainPort(npt) == false) {
+                        ports.remove(p);
+                    }
                 }
             }
 
@@ -726,8 +732,6 @@ public class TopologyManager implements
             if (pinSwitch == sid) {
                 ports.remove(pi.getInPort());
             }
-
-            log.info("Doing BDDP flooding on switch {}, ports {}", sid, ports);
 
             // we have all the switch ports to which we need to broadcast.
             doMultiActionPacketOut(pi.getPacketData(), sw, ports, cntx);
@@ -764,7 +768,7 @@ public class TopologyManager implements
                 log.error("Error reading link discovery update.", e);
             }
             if (log.isTraceEnabled()) {
-                log.info("Applying update: {}", update);
+                log.trace("Applying update: {}", update);
             }
             if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
                 boolean added = 

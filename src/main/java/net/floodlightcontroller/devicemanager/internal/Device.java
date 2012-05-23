@@ -259,7 +259,13 @@ public class Device implements IDevice {
             Long dpid = cur.getSwitchDPID();
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
-                !deviceManager.isValidAttachmentPoint(dpid, port))
+                !deviceManager.isValidAttachmentPoint(dpid, port))                
+                /*||
+                (prev != null && topology.isConsistent(prev.getSwitchDPID().longValue(),
+                                                       prev.getSwitchPort().shortValue(),
+                                                       dpid.longValue(),
+                                                       port.shortValue()))
+                )*/
                 continue;
             long curCluster = 
                     topology.getL2DomainId(cur.switchDPID);
