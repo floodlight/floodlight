@@ -43,6 +43,7 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -54,6 +55,8 @@ import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileListener;
+import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -84,7 +87,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements 
         IDeviceService, IOFMessageListener,
         IStorageSourceListener, IFloodlightModule,
-        IInfoProvider, IHAListener {  
+        IFlowReconcileListener, IInfoProvider, IHAListener {  
     protected static Logger logger = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -635,6 +638,14 @@ public class DeviceManagerImpl implements
         // no-op
     }
     
+    // **********************
+    // IFlowReconcileListener
+    // **********************
+ 
+    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList, FloodlightContext cntx) {
+        return Command.CONTINUE;
+    }
+
     // ****************
     // Internal methods
     // ****************

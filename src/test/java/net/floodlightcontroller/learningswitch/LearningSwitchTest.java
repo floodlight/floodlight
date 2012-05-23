@@ -185,7 +185,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setCommand(OFFlowMod.OFPFC_ADD)
             .setIdleTimeout((short) 5)
             .setMatch(new OFMatch()
-                .loadFromPacket(testPacketSerialized, (short) 1, 1L)
+                .loadFromPacket(testPacketSerialized, (short) 1)
                 .setWildcards(OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST
                         | OFMatch.OFPFW_NW_TOS))
             .setOutPort(OFPort.OFPP_NONE.getValue())
@@ -200,7 +200,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setCommand(OFFlowMod.OFPFC_ADD)
             .setIdleTimeout((short) 5)
             .setMatch(new OFMatch()
-                .loadFromPacket(testPacketReplySerialized, (short) 2, 1L)
+                .loadFromPacket(testPacketReplySerialized, (short) 2)
                 .setWildcards(OFMatch.OFPFW_NW_PROTO | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST
                         | OFMatch.OFPFW_NW_TOS))
             .setOutPort(OFPort.OFPP_NONE.getValue())

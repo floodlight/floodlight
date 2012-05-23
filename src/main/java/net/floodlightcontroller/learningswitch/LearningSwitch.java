@@ -310,7 +310,7 @@ public class LearningSwitch
     private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
         OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
         Long sourceMac = Ethernet.toLong(match.getDataLayerSource());
         Long destMac = Ethernet.toLong(match.getDataLayerDestination());
         Short vlan = match.getDataLayerVirtualLan();

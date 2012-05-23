@@ -255,7 +255,7 @@ public class ForwardingTest extends FloodlightTestCase {
 
         // Expected Flow-mods
         OFMatch match = new OFMatch();
-        match.loadFromPacket(testPacketSerialized, (short) 1, 1L);
+        match.loadFromPacket(testPacketSerialized, (short) 1);
         OFActionOutput action = new OFActionOutput((short)3, (short)0);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
@@ -333,7 +333,7 @@ public class ForwardingTest extends FloodlightTestCase {
         
         // Expected Flow-mods
         OFMatch match = new OFMatch();
-        match.loadFromPacket(testPacketSerialized, (short) 1, 1L);
+        match.loadFromPacket(testPacketSerialized, (short) 1);
         OFActionOutput action = new OFActionOutput((short)3, (short)0);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
