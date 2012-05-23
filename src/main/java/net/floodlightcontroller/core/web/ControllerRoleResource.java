@@ -11,33 +11,10 @@ import org.restlet.resource.Post;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RoleResource extends ServerResource {
+public class ControllerRoleResource extends ServerResource {
 
-    protected static Logger log = LoggerFactory.getLogger(RoleResource.class);
+    protected static Logger log = LoggerFactory.getLogger(ControllerRoleResource.class);
 
-    public static class RoleInfo {
-        protected String role;
-        
-        public RoleInfo() {
-        }
-        
-        public RoleInfo(String role) {
-            setRole(role);
-        }
-        
-        public RoleInfo(Role role) {
-            this.role = (role != null) ? role.name() : "DISABLED";
-        }
-        
-        public String getRole() {
-            return role;
-        }
-        
-        public void setRole(String role) {
-            this.role = role;
-        }
-    }
-    
     @Get("json")
     public RoleInfo getRole() {
         IFloodlightProviderService floodlightProvider = 
