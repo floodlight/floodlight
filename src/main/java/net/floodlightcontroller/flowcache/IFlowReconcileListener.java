@@ -37,5 +37,4 @@ public interface IFlowReconcileListener extends IListener<OFType> {
      *           be programmed
      */
     public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList);
-
 }
