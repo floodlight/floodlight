@@ -21,9 +21,9 @@
 
 <!--
     The build uses pregenerated Thrift code by default to reduce build
-    dependencies. To generate it locally run ant with
-    -Dthrift.out.dir=target/gen-java. If you change the Thrift files be
-    sure to also commit the updated generated code.
+    dependencies. To generate it locally run the gen-thrift target.
+    If you change the Thrift files be sure to also commit the updated
+    generated code.
 -->
 
 <project default="dist" name="Floodlight">
@@ -106,7 +106,7 @@
         <mkdir dir="${test-output}"/>
     </target>
 
-    <target name="compile" depends="init,gen-thrift">
+    <target name="compile" depends="init">
         <javac includeAntRuntime="false" 
 	       classpathref="classpath" 
 	       debug="true" 
@@ -130,20 +130,7 @@
         <include name="**/*.thrift"/>
     </fileset>
 
-    <!-- Determine if thrift generated java is up to date -->
-    <!-- Removes generated code if the thrift files changed -->
-    <target name="thrift-deps" depends="init">
-        <dependset>
-            <srcfileset refid="thrift.files"/>
-            <targetfileset dir = "${thrift.out.dir}/${thrift.package}">
-                <include name="**/*.java"/>
-            </targetfileset>
-        </dependset>
-        <available file="${thrift.out.dir}/${thrift.package}/Message.java"
-            property="thrift.uptodate"/>
-    </target>
-
-    <target name="gen-thrift" depends="thrift-deps,init" unless="thrift.uptodate">
+    <target name="gen-thrift" depends="init">
         <pathconvert property="thrift.file.list" refid="thrift.files"
             pathsep=" " dirsep="/">
         </pathconvert>
@@ -261,7 +248,7 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="init,gen-thrift">
+    <target name="eclipse" depends="init">
         <pathconvert property="eclipse-lib">
             <map from="${basedir}/" to=""/>
             <fileset dir="${lib}">
