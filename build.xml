@@ -19,6 +19,13 @@
    limitations under the License.
 -->
 
+<!--
+    The build uses pregenerated Thrift code by default to reduce build
+    dependencies. To generate it locally run ant with
+    -Dthrift.out.dir=target/gen-java. If you change the Thrift files be
+    sure to also commit the updated generated code.
+-->
+
 <project default="dist" name="Floodlight">
     <property name="target" location="target"/>
     <property name="build" location="${target}/bin"/>
@@ -32,11 +39,14 @@
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.Main"/>
-    <property name="packetstreamer-gen" location="lib/gen-java" />
-    <property name="packetstreamer-gen-build" location="lib/gen-java-bin"/>
-    <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
+    <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
+    <property name="thrift.out.dir" value="lib/gen-java"/>
+    <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
+    <property name="ant.build.javac.source" value="1.6"/>
+    <property name="ant.build.javac.target" value="1.6"/>
+    <property name="lib" location="lib"/>
 
     <patternset id="lib">
         <include name="logback-classic-1.0.0.jar"/>
@@ -56,16 +66,10 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
     </patternset>
-    <patternset id="genlib">
-        <include name="${packetstreamer-thrift-jar}"/>
-    </patternset>
 
     <path id="classpath">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib"/>
-        </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
         </fileset>
     </path>
 
@@ -77,7 +81,7 @@
         <include name="log4j-1.2.9.jar"/>
     </patternset>
     <path id="classpath-cobertura">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib-cobertura"/>
 	</fileset>
     </path>
@@ -87,13 +91,10 @@
         <include name="org.easymock_2.5.2.jar"/>
     </patternset>
     <path id="classpath-test">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib-test"/>
             <patternset refid="lib-cobertura"/>
             <patternset refid="lib"/>
-        </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
         </fileset>
     </path>
 
@@ -101,15 +102,15 @@
         <mkdir dir="${build}"/>
         <mkdir dir="${build-test}"/>
         <mkdir dir="${target}/lib"/>
-        <mkdir dir="${packetstreamer-gen-build}"/>
+        <mkdir dir="${thrift.out.dir}"/>
         <mkdir dir="${test-output}"/>
     </target>
 
-    <target name="compile" depends="init,packetstreamer-thrift">
+    <target name="compile" depends="init,gen-thrift">
         <javac includeAntRuntime="false" 
 	       classpathref="classpath" 
 	       debug="true" 
-	       srcdir="${source}:${packetstreamer-gen}"
+	       srcdir="${source}:${thrift.out.dir}"
 	       destdir="${build}">
         </javac>
     </target>
@@ -124,22 +125,36 @@
 	       destdir="${build-test}"/>
     </target>
 
-    <target name="compile-thrift" depends="init">
-        <javac srcdir="${packetstreamer-gen}" 
-	       includeantruntime="false" 
-	       destdir="${packetstreamer-gen-build}"
-	       debug="true" debuglevel="lines,vars,source"
-	       classpathref="classpath" />
+    <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
+    <fileset id="thrift.files" dir="${thrift.dir}">
+        <include name="**/*.thrift"/>
+    </fileset>
+
+    <!-- Determine if thrift generated java is up to date -->
+    <!-- Removes generated code if the thrift files changed -->
+    <target name="thrift-deps" depends="init">
+        <dependset>
+            <srcfileset refid="thrift.files"/>
+            <targetfileset dir = "${thrift.out.dir}/${thrift.package}">
+                <include name="**/*.java"/>
+            </targetfileset>
+        </dependset>
+        <available file="${thrift.out.dir}/${thrift.package}/Message.java"
+            property="thrift.uptodate"/>
     </target>
-    <target name="packetstreamer-thrift" depends="compile-thrift">
-        <jar jarfile="${target}/lib/${packetstreamer-thrift-jar}"
-	     basedir="${packetstreamer-gen-build}"/>
+
+    <target name="gen-thrift" depends="thrift-deps,init" unless="thrift.uptodate">
+        <pathconvert property="thrift.file.list" refid="thrift.files"
+            pathsep=" " dirsep="/">
+        </pathconvert>
+        <echo message="Running thrift generator on ${thrift.file.list}"/>
+        <exec executable="thrift" dir="${basedir}" failonerror="true">
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
+        </exec>
     </target>
 
     <target name="clean">
         <delete dir="${target}"/>
-        <delete dir="${packetstreamer-gen-build}"/>
-        <delete file="${target}/lib/${packetstreamer-thrift-jar}"/>
     </target>
 
     <target name="run" depends="dist">
@@ -211,11 +226,8 @@
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
-            <zipgroupfileset dir="lib">
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib"/>
-            </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
@@ -224,12 +236,9 @@
             </manifest>
             <fileset dir="${build-test}"/>
         	<fileset dir="${resources}"/>
-            <zipgroupfileset dir="lib">
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
                 <patternset refid="lib-cobertura"/>
-            </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
     </target>
@@ -252,20 +261,17 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="init,packetstreamer-thrift">
-        <pathconvert property="lib">
+    <target name="eclipse" depends="init,gen-thrift">
+        <pathconvert property="eclipse-lib">
             <map from="${basedir}/" to=""/>
-            <fileset dir="lib">
+            <fileset dir="${lib}">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
-            </fileset>
-            <fileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </fileset>
         </pathconvert>
         <exec executable="${basedir}/setup-eclipse.sh">
             <arg value="${main-class}"/>
-            <arg value="${lib}"/>
+            <arg value="${eclipse-lib}"/>
         </exec>
     </target>
 
