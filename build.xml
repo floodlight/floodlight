@@ -39,6 +39,7 @@
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
+    <property name="lib" location="lib"/>
 
     <patternset id="lib">
         <include name="logback-classic-1.0.0.jar"/>
@@ -63,7 +64,7 @@
     </patternset>
 
     <path id="classpath">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib"/>
         </fileset>
         <fileset dir="${target}/lib">
@@ -79,7 +80,7 @@
         <include name="log4j-1.2.9.jar"/>
     </patternset>
     <path id="classpath-cobertura">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib-cobertura"/>
 	</fileset>
     </path>
@@ -89,7 +90,7 @@
         <include name="org.easymock_2.5.2.jar"/>
     </patternset>
     <path id="classpath-test">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib-test"/>
             <patternset refid="lib-cobertura"/>
             <patternset refid="lib"/>
@@ -213,7 +214,7 @@
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
-            <zipgroupfileset dir="lib">
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib"/>
             </zipgroupfileset>
             <zipgroupfileset dir="${target}/lib">
@@ -226,7 +227,7 @@
             </manifest>
             <fileset dir="${build-test}"/>
         	<fileset dir="${resources}"/>
-            <zipgroupfileset dir="lib">
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
                 <patternset refid="lib-cobertura"/>
             </zipgroupfileset>
@@ -255,9 +256,9 @@
     </target>
 
     <target name="eclipse" depends="init,packetstreamer-thrift">
-        <pathconvert property="lib">
+        <pathconvert property="eclipse-lib">
             <map from="${basedir}/" to=""/>
-            <fileset dir="lib">
+            <fileset dir="${lib}">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
             </fileset>
@@ -267,7 +268,7 @@
         </pathconvert>
         <exec executable="${basedir}/setup-eclipse.sh">
             <arg value="${main-class}"/>
-            <arg value="${lib}"/>
+            <arg value="${eclipse-lib}"/>
         </exec>
     </target>
 
