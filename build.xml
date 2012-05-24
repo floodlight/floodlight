@@ -19,6 +19,13 @@
    limitations under the License.
 -->
 
+<!--
+    The build uses pregenerated Thrift code by default to reduce build
+    dependencies. To generate it locally run ant with
+    -Dthrift.out.dir=target/gen-java. If you change the Thrift files be
+    sure to also commit the updated generated code.
+-->
+
 <project default="dist" name="Floodlight">
     <property name="target" location="target"/>
     <property name="build" location="${target}/bin"/>
@@ -32,11 +39,13 @@
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.Main"/>
-    <property name="packetstreamer-gen" location="lib/gen-java" />
-    <property name="packetstreamer-gen-build" location="lib/gen-java-bin"/>
     <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
+    <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
+    <property name="thrift.out.dir" value="lib/gen-java"/>
+    <property name="thrift.bin.dir" value="${target}/gen-java-bin"/>
+    <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
     <property name="lib" location="lib"/>
@@ -104,7 +113,8 @@
         <mkdir dir="${build}"/>
         <mkdir dir="${build-test}"/>
         <mkdir dir="${target}/lib"/>
-        <mkdir dir="${packetstreamer-gen-build}"/>
+        <mkdir dir="${thrift.out.dir}"/>
+        <mkdir dir="${thrift.bin.dir}"/>
         <mkdir dir="${test-output}"/>
     </target>
 
@@ -112,7 +122,7 @@
         <javac includeAntRuntime="false" 
 	       classpathref="classpath" 
 	       debug="true" 
-	       srcdir="${source}:${packetstreamer-gen}"
+	       srcdir="${source}:${thrift.bin.dir}"
 	       destdir="${build}">
         </javac>
     </target>
@@ -127,22 +137,48 @@
 	       destdir="${build-test}"/>
     </target>
 
-    <target name="compile-thrift" depends="init">
-        <javac srcdir="${packetstreamer-gen}" 
+    <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
+    <fileset id="thrift.files" dir="${thrift.dir}">
+        <include name="**/*.thrift"/>
+    </fileset>
+
+    <!-- Determine if thrift generated java is up to date -->
+    <!-- Removes generated code if the thrift files changed -->
+    <target name="thrift-deps" depends="init">
+        <dependset>
+            <srcfileset refid="thrift.files"/>
+            <targetfileset dir = "${thrift.out.dir}/${thrift.package}">
+                <include name="**/*.java"/>
+            </targetfileset>
+        </dependset>
+        <available file="${thrift.out.dir}/${thrift.package}/Message.java"
+            property="thrift.uptodate"/>
+    </target>
+
+    <target name="gen-thrift" depends="thrift-deps,init" unless="thrift.uptodate">
+        <pathconvert property="thrift.file.list" refid="thrift.files"
+            pathsep=" " dirsep="/">
+        </pathconvert>
+        <echo message="Running thrift generator on ${thrift.file.list}"/>
+        <exec executable="thrift" dir="${basedir}" failonerror="true">
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
+        </exec>
+    </target>
+
+    <target name="compile-thrift" depends="init,gen-thrift">
+        <javac srcdir="${thrift.out.dir}" 
 	       includeantruntime="false" 
-	       destdir="${packetstreamer-gen-build}"
+	       destdir="${thrift.bin.dir}"
 	       debug="true" debuglevel="lines,vars,source"
 	       classpathref="classpath" />
     </target>
     <target name="packetstreamer-thrift" depends="compile-thrift">
         <jar jarfile="${target}/lib/${packetstreamer-thrift-jar}"
-	     basedir="${packetstreamer-gen-build}"/>
+	     basedir="${thrift.bin.dir}"/>
     </target>
 
     <target name="clean">
         <delete dir="${target}"/>
-        <delete dir="${packetstreamer-gen-build}"/>
-        <delete file="${target}/lib/${packetstreamer-thrift-jar}"/>
     </target>
 
     <target name="run" depends="dist">
