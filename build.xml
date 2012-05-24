@@ -39,12 +39,10 @@
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
     <property name="main-class" value="net.floodlightcontroller.core.Main"/>
-    <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
     <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
     <property name="thrift.out.dir" value="lib/gen-java"/>
-    <property name="thrift.bin.dir" value="${target}/gen-java-bin"/>
     <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
@@ -68,16 +66,10 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
     </patternset>
-    <patternset id="genlib">
-        <include name="${packetstreamer-thrift-jar}"/>
-    </patternset>
 
     <path id="classpath">
         <fileset dir="${lib}">
             <patternset refid="lib"/>
-        </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
         </fileset>
     </path>
 
@@ -104,9 +96,6 @@
             <patternset refid="lib-cobertura"/>
             <patternset refid="lib"/>
         </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
-        </fileset>
     </path>
 
     <target name="init">
@@ -114,15 +103,14 @@
         <mkdir dir="${build-test}"/>
         <mkdir dir="${target}/lib"/>
         <mkdir dir="${thrift.out.dir}"/>
-        <mkdir dir="${thrift.bin.dir}"/>
         <mkdir dir="${test-output}"/>
     </target>
 
-    <target name="compile" depends="init,packetstreamer-thrift">
+    <target name="compile" depends="init,gen-thrift">
         <javac includeAntRuntime="false" 
 	       classpathref="classpath" 
 	       debug="true" 
-	       srcdir="${source}:${thrift.bin.dir}"
+	       srcdir="${source}:${thrift.out.dir}"
 	       destdir="${build}">
         </javac>
     </target>
@@ -163,18 +151,6 @@
         <exec executable="thrift" dir="${basedir}" failonerror="true">
             <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
         </exec>
-    </target>
-
-    <target name="compile-thrift" depends="init,gen-thrift">
-        <javac srcdir="${thrift.out.dir}" 
-	       includeantruntime="false" 
-	       destdir="${thrift.bin.dir}"
-	       debug="true" debuglevel="lines,vars,source"
-	       classpathref="classpath" />
-    </target>
-    <target name="packetstreamer-thrift" depends="compile-thrift">
-        <jar jarfile="${target}/lib/${packetstreamer-thrift-jar}"
-	     basedir="${thrift.bin.dir}"/>
     </target>
 
     <target name="clean">
@@ -253,9 +229,6 @@
             <zipgroupfileset dir="${lib}">
                 <patternset refid="lib"/>
             </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
-            </zipgroupfileset>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
@@ -266,9 +239,6 @@
             <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
                 <patternset refid="lib-cobertura"/>
-            </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
     </target>
@@ -291,15 +261,12 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="init,packetstreamer-thrift">
+    <target name="eclipse" depends="init,gen-thrift">
         <pathconvert property="eclipse-lib">
             <map from="${basedir}/" to=""/>
             <fileset dir="${lib}">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
-            </fileset>
-            <fileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </fileset>
         </pathconvert>
         <exec executable="${basedir}/setup-eclipse.sh">
