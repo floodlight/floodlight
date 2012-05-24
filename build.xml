@@ -37,6 +37,8 @@
     <property name="packetstreamer-thrift-jar" value="packetstreamer-thrift.jar"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
+    <property name="ant.build.javac.source" value="1.6"/>
+    <property name="ant.build.javac.target" value="1.6"/>
 
     <patternset id="lib">
         <include name="logback-classic-1.0.0.jar"/>
