@@ -11,8 +11,8 @@ public class VirtualNetworkWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        //router.attach("/tenants/{tenant}/networks", NetworkResource.java);
-        //router.attach("/");
+        router.attach("/tenants/{tenant}/networks/{network}", NetworkResource.class);
+        router.attach("/tenants/{tenant}/networks/{network}/ports/{port}/attachment", HostResource.class);
         return router;
     }
 

@@ -3,9 +3,13 @@ package net.floodlightcontroller.virtualnetwork.forwarding;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openflow.protocol.OFFlowMod;
@@ -56,83 +60,140 @@ public class VirtualNetworkFilter
     // Our internal state
     protected Map<String, String> nameToGuid; // Logical name -> Network ID
     protected Map<String, Integer> guidToGateway; // Network ID -> Gateway IP
-    protected Map<Integer, String> gatewayToGuid; // Gateway IP -> Network ID
+    protected Map<Integer, Set<String>> gatewayToGuid; // Gateway IP -> Network ID
     protected Map<MACAddress, String> macToGuid; // Host MAC -> Network ID
-    
+    protected Map<String, MACAddress> portToMac; // Host MAC -> logical port name
     
     protected void addGateway(String guid, Integer ip) {
         if (ip.intValue() != 0) {
             guidToGateway.put(guid, ip);
-            gatewayToGuid.put(ip, guid);
+            if (gatewayToGuid.containsKey(ip)) {
+                Set<String> gSet = gatewayToGuid.get(ip);
+                gSet.add(guid);
+            } else {
+                Set<String> gSet = Collections.synchronizedSet(new HashSet<String>());
+                gSet.add(guid);
+                gatewayToGuid.put(ip, gSet);
+            }
         }
     }
     
     protected void deleteGateway(String guid) {
         Integer gwIp = guidToGateway.remove(guid);
         if (gwIp == null) return;
-        gatewayToGuid.remove(gwIp);
+        Set<String> gSet = gatewayToGuid.get(gwIp);
+        gSet.remove(guid);
     }
     
     // IVirtualNetworkService
     
     @Override
-    public void createNetwork(String network, String guid, Integer gateway) {
-        if (log.isDebugEnabled()) 
+    public void createNetwork(String guid, String network, Integer gateway) {
+        if (log.isDebugEnabled()) {
+            String gw = null;
+            try {
+                gw = IPv4.fromIPv4Address(gateway);
+            } catch (Exception e) {
+                // fail silently
+            }
             log.debug("Creating network {} with ID {} and gateway {}", 
-                      new Object[] {network, guid, IPv4.fromIPv4Address(gateway)});
-        if (!nameToGuid.containsKey(network)) {
-            nameToGuid.put(network, guid);
+                      new Object[] {network, guid, gw});
+        }
+        
+        if (!nameToGuid.isEmpty()) {
+            // We have to iterate all the networks to handle name/gateway changes
+            for (Entry<String, String> entry : nameToGuid.entrySet()) {
+                if (entry.getValue().equals(guid)) {
+                    nameToGuid.remove(entry.getKey());
+                    break;
+                }
+            }
+        }
+        nameToGuid.put(network, guid);
+        // If they don't specify a new gateway the old one will be preserved
+        if ((gateway != null) && (gateway != 0))
             addGateway(guid, gateway);
-        } else {
-            if (log.isDebugEnabled())
-                log.debug("Network {} already exists, ignoring", network);
+    }
+
+    @Override
+    public void deleteNetwork(String guid) {
+        String name = null;
+        if (nameToGuid.isEmpty()) {
+            log.warn("Could not delete network with ID {}, network doesn't exist",
+                     guid);
+            return;
+        }
+        for (Entry<String, String> entry : nameToGuid.entrySet()) {
+            if (entry.getValue().equals(guid)) {
+                name = entry.getKey();
+                break;
+            }
+            log.warn("Could not delete network with ID {}, network doesn't exist",
+                     guid);
+        }
+        
+        if (log.isDebugEnabled()) 
+            log.debug("Deleting network with name {} ID {}", name, guid);
+        
+        nameToGuid.remove(name);
+        deleteGateway(guid);
+        Collection<MACAddress> deleteList = new ArrayList<MACAddress>();
+        for (MACAddress host : macToGuid.keySet()) {
+            if (macToGuid.get(host).equals(guid)) {
+                deleteList.add(host);
+            }
+        }
+        for (MACAddress mac : deleteList) {
+            if (log.isDebugEnabled()) {
+                log.debug("Removing host {} from network {}", 
+                          HexString.toHexString(mac.toBytes()), guid);
+            }
+            macToGuid.remove(mac);
+            for (Entry<String, MACAddress> entry : portToMac.entrySet()) {
+                if (entry.getValue().equals(mac)) {
+                    portToMac.remove(entry.getKey());
+                    break;
+                }
+            }
         }
     }
 
     @Override
-    public void deleteNetwork(String name) {
-        if (log.isDebugEnabled()) log.debug("Deleting network name {}", name);
-        if (nameToGuid.containsKey(name)) {
-            String guid = nameToGuid.remove(name);
-            deleteGateway(guid);
-            Collection<MACAddress> deleteList = new ArrayList<MACAddress>();
-            for (MACAddress host : macToGuid.keySet()) {
-                if (macToGuid.get(host).equals(guid)) {
-                    deleteList.add(host);
-                }
-            }
-            for (MACAddress mac : deleteList) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Removing host {} from network {}", 
-                              HexString.toHexString(mac.toBytes()), guid);
-                }
-                macToGuid.remove(mac);
-            }
-        }
-    }
-
-    @Override
-    public void addHost(MACAddress mac, String network) {
+    public void addHost(MACAddress mac, String network, String port) {
         String guid = nameToGuid.get(network);
         if (guid != null) {
             if (log.isDebugEnabled()) {
-                log.debug("Adding {} to network {}", mac, network);
+                log.debug("Adding {} to network {} on port {}",
+                          new Object[] {mac, network, port});
             }
-            macToGuid.put(mac, guid); // TODO what if a mapping exists?
+            // We ignore old mappings
+            macToGuid.put(mac, guid);
+            portToMac.put(port, mac);
         } else {
-            // TODO - throw an exception
+            log.warn("Could not add MAC {} to network {} on port {}, the network does not exist",
+                     new Object[] {mac, network, port});
         }
     }
 
     @Override
-    public void deleteHost(MACAddress mac, String network) {
-        if (macToGuid.remove(mac) != null) {
-            if (log.isDebugEnabled()) {
-                log.debug("Removing {} from network {}", mac, network);
+    public void deleteHost(MACAddress mac, String port) {
+        if (log.isDebugEnabled()) {
+            log.debug("Removing host {} from port {}", mac, port);
+        }
+        if (mac == null && port == null) return;
+        if (port != null) {
+            MACAddress host = portToMac.remove(port);
+            macToGuid.remove(host);
+        } else if (mac != null) {
+            if (!portToMac.isEmpty()) {
+                for (Entry<String, MACAddress> entry : portToMac.entrySet()) {
+                    if (entry.getValue().equals(mac)) {
+                        portToMac.remove(entry.getKey());
+                        macToGuid.remove(entry.getValue());
+                        return;
+                    }
+                }
             }
-        } else {
-            log.warn("Tried to remove {} from network {}, but no mapping was found",
-                     mac, network);
         }
     }
 
@@ -156,8 +217,7 @@ public class VirtualNetworkFilter
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>>
-            getModuleDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
@@ -173,8 +233,9 @@ public class VirtualNetworkFilter
         
         nameToGuid = new ConcurrentHashMap<String, String>();
         guidToGateway = new ConcurrentHashMap<String, Integer>();
-        gatewayToGuid = new ConcurrentHashMap<Integer, String>();
+        gatewayToGuid = new ConcurrentHashMap<Integer, Set<String>>();
         macToGuid = new ConcurrentHashMap<MACAddress, String>();
+        portToMac = new ConcurrentHashMap<String, MACAddress>();
     }
 
     @Override
@@ -192,8 +253,8 @@ public class VirtualNetworkFilter
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        // We don't care who goes before us
-        return false;
+        // Link discovery should go before us so we don't block LLDPs
+        return (type.equals(OFType.PACKET_IN) && name.equals("linkdiscovery"));
     }
 
     @Override
@@ -228,30 +289,39 @@ public class VirtualNetworkFilter
     protected Command processPacketIn(IOFSwitch sw, OFPacketIn msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        if (eth.isBroadcast() || eth.isMulticast()) {
-            // TODO - handle this shit somehow
-            return Command.CONTINUE;
-        }
-
         Command ret = Command.STOP;
         String srcNetwork = macToGuid.get(eth.getSourceMAC());
-        if (oneSameNetwork(eth.getSourceMAC(), eth.getDestinationMAC())) {
-            // if they are on the same network continue
-            ret = Command.CONTINUE;
-        } else if ((eth.getPayload() instanceof IPv4) 
-                && isDefaultGatewayIp(srcNetwork, (IPv4)eth.getPayload())) {
-            // or if the host is talking to the gateway continue
-            ret = Command.CONTINUE;
-        }
-        
-        if (ret == Command.CONTINUE) {
-            if (log.isTraceEnabled()) {
-                log.trace("Allowing flow between {} and {} on network {}", 
-                          new Object[] {eth.getSourceMAC(), eth.getDestinationMAC(), srcNetwork});
+        if (srcNetwork == null) {
+            log.debug("Blocking traffic from host {} because it is not attached to any network.",
+                      HexString.toHexString(eth.getSourceMACAddress()));
+            ret = Command.STOP;
+        } else {
+            if (eth.isBroadcast() || eth.isMulticast()) {
+                return Command.CONTINUE;
             }
-        } else if (ret == Command.STOP) {
-            // they are on different virtual networks so we drop the flow
-            doDropFlow(sw, msg, cntx);
+            
+            if (oneSameNetwork(eth.getSourceMAC(), eth.getDestinationMAC())) {
+                // if they are on the same network continue
+                ret = Command.CONTINUE;
+            } else if ((eth.getPayload() instanceof IPv4) 
+                    && isDefaultGatewayIp(srcNetwork, (IPv4)eth.getPayload())) {
+                // or if the host is talking to the gateway continue
+                ret = Command.CONTINUE;
+            }
+            
+            if (ret == Command.CONTINUE) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Allowing flow between {} and {} on network {}", 
+                              new Object[] {eth.getSourceMAC(), eth.getDestinationMAC(), srcNetwork});
+                }
+            } else if (ret == Command.STOP) {
+                // they are on different virtual networks so we drop the flow
+                if (log.isTraceEnabled()) {
+                    log.trace("Dropping flow between {} and {} because they are on different networks", 
+                              new Object[] {eth.getSourceMAC(), eth.getDestinationMAC()});
+                }
+                doDropFlow(sw, msg, cntx);
+            }
         }
         
         return ret;
