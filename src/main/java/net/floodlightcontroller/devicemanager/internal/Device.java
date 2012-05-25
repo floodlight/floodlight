@@ -259,13 +259,17 @@ public class Device implements IDevice {
             Long dpid = cur.getSwitchDPID();
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
-                !deviceManager.isValidAttachmentPoint(dpid, port))                
-                /*||
-                (prev != null && topology.isConsistent(prev.getSwitchDPID().longValue(),
+                !deviceManager.isValidAttachmentPoint(dpid, port) ||
+                ///*||
+                (prev != null && 
+                //topology.isBroadcastDomainPort(prev.getSwitchDPID().longValue(), 
+                //                               prev.getSwitchPort().shortValue()) == false &&
+                topology.isBroadcastDomainPort(dpid.longValue(), port.shortValue()) &&
+                topology.isConsistent(prev.getSwitchDPID().longValue(),
                                                        prev.getSwitchPort().shortValue(),
                                                        dpid.longValue(),
                                                        port.shortValue()))
-                )*/
+                )//*/
                 continue;
             long curCluster = 
                     topology.getL2DomainId(cur.switchDPID);
@@ -278,7 +282,7 @@ public class Device implements IDevice {
                     clusterBlocked.clear();
                 }
             }
-            
+
             if (prev != null && 
                 !(dpid.equals(prev.getSwitchDPID()) &&
                   port.equals(prev.getSwitchPort())) &&
