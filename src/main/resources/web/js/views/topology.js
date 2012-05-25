@@ -19,18 +19,21 @@ window.TopologyView = Backbone.View.extend({
         this.template = _.template(tpl.get('topology'));
         this.model.bind("change", this.render, this);
         this.hosts = this.options.hosts.models;
+	this.swl = this.options.switches.models;
         this.host_links = new Array();
     },
 
     render:function (eventName) {
+
+	
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
-        var width = 940,
-          height = 940; // might as well make it square
+        var width = 900,
+          height = 500; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
             .charge(-120)
-            .linkDistance(30)
+            .linkDistance(50)
             .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
             .attr("width", width)
@@ -43,7 +46,12 @@ window.TopologyView = Backbone.View.extend({
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
-            host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
+            if (( host.attributes['network-addresses'].length > 0 ) && 
+                    ('ip' in host.attributes['network-addresses'][0])) {
+                host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
+            } else {
+                host.name = host.id;
+            }
             host.group = 2;
             console.log(host);
           }
@@ -58,25 +66,76 @@ window.TopologyView = Backbone.View.extend({
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
+		host.radius = 10;
             for (var j = 0; j < host.attributes['attachment-points'].length; j++) {
               var link = {source:all_nodes_map[host.id],
                       target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
-                      value:10};
+                      value:10,
+			color:"black",
+			strength:2};
               console.log(link);
               this.host_links.push(link);
             }
           }
 
+
+	var swl_map = new Array();
+
+	_.each(this.swl, function(n) {
+		swl_map[n.id] = n;
+	});
+
+	for(var i=0; i< this.model.links.length; i++) {
+		
+		var swFlows1 = swl_map[all_nodes[this.model.links[i]['source']].id].flows.models;
+		var swFlows2 = swl_map[all_nodes[this.model.links[i]['target']].id].flows.models;
+
+		var matched = false;
+		for(var j=0; j< swFlows1.length; j++) {
+			for(var k=0; k< swFlows2.length; k++) {
+				
+				matched = matched || (swFlows1[j]['attributes']['match']['networkDestionation'] == swFlows2[k]['attributes']['match']['networkDestination']);		
+				matched = matched || (swFlows1[j]['attributes']['match']['networkDestionation'] == swFlows2[k]['attributes']['match']['networkSource']);		
+				matched = matched || (swFlows1[j]['attributes']['match']['networkSource'] == swFlows2[k]['attributes']['match']['networkDestination']);		
+				matched = matched || (swFlows1[j]['attributes']['match']['networkSource'] == swFlows2[k]['attributes']['match']['networkSource']);
+
+			}
+		}
+
+		if(matched)
+		{
+			this.model.links[i].color="red";
+		}
+		else
+		{
+			this.model.links[i].color="black";
+		}
+		
+	}
+
           var all_links = this.model.links.concat(this.host_links);
+
+	// var d3LineLinear = d3.svg.line().interpolate("linear");
+	//  var d3color = d3.interpolateRgb("#BAE4B3", "#006D2C"); /* color range for flow lines */ 
+
+	//var strength_scale = d3.scale.linear()
+	//    .range([2, 10]) /* thickness range for flow lines */
+	//    .domain([0, d3.max(all_links, function(d) { return d.strength; })]);
+
+	 // var color_scale = d3.scale.linear()
+	 //     .range([0, 1])
+	 //     .domain([0, d3.max(all_links, function(d) { return d.strength; })]);
+
 
           force.nodes(all_nodes).links(all_links).start();
           var link = svg.selectAll("line.link").data(all_links).enter()
                     .append("line").attr("class", "link")
-                    .style("stroke", function (d) { return "black"; });
+		    .attr("id", function(i, d) { return "link_line" + d; } )
+                    .style("stroke", function (d) { return d.color; /*"black";*/ });
           var node = svg.selectAll("circle.node").data(all_nodes)
                         .enter().append("circle")
                         .attr("class", "node")
-                        .attr("r", 10)
+                        .attr("r", function(d) { return d.radius; })    //10)
                         .style("fill", function(d) { return color(d.group); })
                         .call(force.drag);
           node.append("title").text(function(d) { return d.name; });
@@ -92,4 +151,6 @@ window.TopologyView = Backbone.View.extend({
         }
         return this;
     }
+
+
 });
