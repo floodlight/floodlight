@@ -39,6 +39,7 @@ import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
