@@ -39,6 +39,7 @@ import net.floodlightcontroller.core.types.MacVlanPair;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -139,6 +140,7 @@ public class OFSwitchImpl implements IOFSwitch {
         return this.attributes.containsKey(name);
     }
         
+    @JsonIgnore
     public Channel getChannel() {
         return this.channel;
     }
@@ -451,6 +453,7 @@ public class OFSwitchImpl implements IOFSwitch {
      * switch list from being modified out from under the listeners.
      * @return 
      */
+    @JsonIgnore
     public Lock getListenerReadLock() {
         return listenerLock.readLock();
     }
@@ -462,6 +465,7 @@ public class OFSwitchImpl implements IOFSwitch {
      * message from the switch.
      * @return
      */
+    @JsonIgnore
     public Lock getListenerWriteLock() {
         return listenerLock.writeLock();
     }
