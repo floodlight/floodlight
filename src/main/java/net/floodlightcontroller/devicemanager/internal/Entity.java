@@ -22,6 +22,7 @@ import java.util.Date;
 import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
 import net.floodlightcontroller.core.web.serializers.MACSerializer;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.packet.IPv4;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
@@ -214,7 +215,7 @@ public class Entity implements Comparable<Entity> {
     public String toString() {
         return "Entity [macAddress=" + HexString.toHexString(macAddress)
                + ", ipv4Address="
-               + ipv4Address + ", vlan=" + vlan + ", switchDPID="
+               + IPv4.fromIPv4Address(ipv4Address==null ? 0 : ipv4Address.intValue()) + ", vlan=" + vlan + ", switchDPID="
                + switchDPID + ", switchPort=" + switchPort + "]";
     }
 

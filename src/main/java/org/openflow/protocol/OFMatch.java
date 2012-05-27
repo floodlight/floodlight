@@ -117,6 +117,7 @@ public class OFMatch implements Cloneable, Serializable {
         this.wildcards = OFPFW_ALL;
         this.dataLayerDestination = new byte[6];
         this.dataLayerSource = new byte[6];
+        this.dataLayerVirtualLan = -1;
     }
 
     /**

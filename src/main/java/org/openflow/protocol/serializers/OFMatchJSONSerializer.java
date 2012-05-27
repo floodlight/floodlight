@@ -61,8 +61,6 @@ public class OFMatchJSONSerializer extends JsonSerializer<OFMatch> {
                     match.getDataLayerVirtualLan());
         jGen.writeNumberField("dataLayerVirtualLanPriorityCodePoint", 
                     match.getDataLayerVirtualLanPriorityCodePoint());
-        jGen.writeStringField("inputSwitch", 
-                    HexString.toHexString(match.getSwitchDataPathId()));
         jGen.writeNumberField("inputPort", match.getInputPort());
         jGen.writeStringField("networkDestination", 
                     intToIp(match.getNetworkDestination()));
