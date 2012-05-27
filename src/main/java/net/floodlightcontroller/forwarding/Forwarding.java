@@ -43,6 +43,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.TopologyManager;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -72,7 +73,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         
         return Command.CONTINUE;
     }
-    
+
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
                                  FloodlightContext cntx,
                                  boolean requestFlowRemovedNotifn) {    
@@ -88,7 +89,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             IDevice srcDevice =
                     IDeviceService.fcStore.
                         get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-            Long srcIsland = topology.getSwitchClusterId(sw.getId());
+            Long srcIsland = topology.getL2DomainId(sw.getId());
             
             if (srcDevice == null) {
                 log.error("No device entry found for source device");
@@ -106,7 +107,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             boolean on_same_if = false;
             for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
                 long dstSwDpid = dstDap.getSwitchDPID();
-                Long dstIsland = topology.getSwitchClusterId(dstSwDpid);
+                Long dstIsland = topology.getL2DomainId(dstSwDpid);
                 if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                     on_same_island = true;
                     if ((sw.getId() == dstSwDpid) &&
@@ -145,14 +146,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             Arrays.sort(dstDaps, clusterIdComparator);
 
             int iSrcDaps = 0, iDstDaps = 0;
-            
+
             while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
                 SwitchPort srcDap = srcDaps[iSrcDaps];
                 SwitchPort dstDap = dstDaps[iDstDaps];
                 Long srcCluster = 
-                        topology.getSwitchClusterId(srcDap.getSwitchDPID());
+                        topology.getL2DomainId(srcDap.getSwitchDPID());
                 Long dstCluster = 
-                        topology.getSwitchClusterId(dstDap.getSwitchDPID());
+                        topology.getL2DomainId(dstDap.getSwitchDPID());
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
