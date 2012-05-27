@@ -38,9 +38,11 @@ import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -81,7 +83,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements 
         IDeviceService, IOFMessageListener,
         IStorageSourceListener, IFloodlightModule,
-        IInfoProvider {  
+        IInfoProvider, IHAListener {  
     protected static Logger logger = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -601,6 +603,28 @@ public class DeviceManagerImpl implements
         } else {
             logger.error("Could not instantiate REST API");
         }
+    }
+
+    // ***************
+    // IHAListener
+    // ***************
+
+    @Override
+    public void roleChanged(Role oldRole, Role newRole) {
+        switch(newRole) {
+            case SLAVE:
+                logger.debug("Resetting device state because of role change");
+                startUp(null);
+                break;
+        }
+    }
+
+    @Override
+    public void controllerNodeIPsChanged(
+                          Map<String, String> curControllerNodeIPs,
+                          Map<String, String> addedControllerNodeIPs,
+                          Map<String, String> removedControllerNodeIPs) {
+        // no-op
     }
     
     // ****************
