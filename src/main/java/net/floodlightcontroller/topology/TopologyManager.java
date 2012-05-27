@@ -1005,5 +1005,10 @@ public class TopologyManager implements
     public TopologyInstance getCurrentInstance() {
         return this.getCurrentInstance(true);
     }
+
+    @Override
+    public boolean isTunnelEnabled(long srcMac, long dstMac) {
+        return false;
+    }
 }
 

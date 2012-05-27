@@ -168,4 +168,10 @@ public interface ITopologyService extends IFloodlightService  {
      */
     public Set<NodePortTuple> getBroadcastDomainPorts();
     public Set<NodePortTuple> getTunnelPorts();
+    
+    /**
+     * Indicates if tunnels are allowed between a given source
+     * destination pair.
+     */
+    public boolean isTunnelEnabled(long srcMac, long dstMac);
 }

@@ -262,8 +262,8 @@ public class Device implements IDevice {
                 !deviceManager.isValidAttachmentPoint(dpid, port) ||
                 ///*||
                 (prev != null && 
-                //topology.isBroadcastDomainPort(prev.getSwitchDPID().longValue(), 
-                //                               prev.getSwitchPort().shortValue()) == false &&
+                topology.isBroadcastDomainPort(prev.getSwitchDPID().longValue(), 
+                                               prev.getSwitchPort().shortValue()) == false &&
                 topology.isBroadcastDomainPort(dpid.longValue(), port.shortValue()) &&
                 topology.isConsistent(prev.getSwitchDPID().longValue(),
                                                        prev.getSwitchPort().shortValue(),

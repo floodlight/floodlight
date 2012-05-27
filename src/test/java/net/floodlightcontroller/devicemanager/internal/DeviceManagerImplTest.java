@@ -505,6 +505,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         		1L, (short)2)).andReturn(true).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(1L, (short)2,
         		1L, (short)1)).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(anyLong(), anyShort(), anyLong(), anyShort())).andReturn(false).anyTimes();
         
         replay(mockTopology);
         
