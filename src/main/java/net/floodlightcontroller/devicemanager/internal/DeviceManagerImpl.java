@@ -266,9 +266,9 @@ public class DeviceManagerImpl implements
                 r = 1;
             else {
                 Long d1ClusterId = 
-                        topology.getSwitchClusterId(swdpid1);
+                        topology.getL2DomainId(swdpid1);
                 Long d2ClusterId = 
-                        topology.getSwitchClusterId(swdpid2);
+                        topology.getL2DomainId(swdpid2);
                 r = d1ClusterId.compareTo(d2ClusterId);
             }
             if (r != 0) return r;
@@ -677,7 +677,7 @@ public class DeviceManagerImpl implements
         if (sw == null) return false;
         OFPhysicalPort port = sw.getPort((short)switchPort);
         if (port == null || !sw.portEnabled(port)) return false;
-        if (topology.isInternal(switchDPID, (short)switchPort))
+        if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
             return false;
         
         // Check whether the port is a physical port. We should not learn 
