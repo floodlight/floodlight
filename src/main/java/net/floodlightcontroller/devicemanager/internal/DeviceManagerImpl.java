@@ -673,14 +673,6 @@ public class DeviceManagerImpl implements
                           Map<String, String> removedControllerNodeIPs) {
         // no-op
     }
-    
-    // **********************
-    // IFlowReconcileListener
-    // **********************
- 
-    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList, FloodlightContext cntx) {
-        return Command.CONTINUE;
-    }
 
     // ****************
     // Internal methods
@@ -688,35 +680,35 @@ public class DeviceManagerImpl implements
 
     protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
-        Ethernet eth = 
-                IFloodlightProviderService.bcStore.
-                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
-        // Extract source entity information
-        Entity srcEntity = 
-                getSourceEntityFromPacket(eth, sw, pi.getInPort());
-        if (srcEntity == null)
-            return Command.STOP;
-
-        // Learn/lookup device information
-        Device srcDevice = learnDeviceByEntity(srcEntity);
-        if (srcDevice == null)
-            return Command.STOP;
-
-        // Store the source device in the context
-        fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
-
-        // Find the device matching the destination from the entity
-        // classes of the source.
-        Entity dstEntity = getDestEntityFromPacket(eth);
-        if (dstEntity != null) {
-            Device dstDevice = 
-                    findDestByEntity(srcDevice, dstEntity);
-            if (dstDevice != null)
-                fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
-        }
-
-        return Command.CONTINUE;
+    	Ethernet eth = 
+            IFloodlightProviderService.bcStore.
+            get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+    
+	    // Extract source entity information
+	    Entity srcEntity = 
+	            getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
+	    if (srcEntity == null)
+	        return Command.STOP;
+	
+	    // Learn/lookup device information
+	    Device srcDevice = learnDeviceByEntity(srcEntity);
+	    if (srcDevice == null)
+	        return Command.STOP;
+	
+	    // Store the source device in the context
+	    fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
+	
+	    // Find the device matching the destination from the entity
+	    // classes of the source.
+	    Entity dstEntity = getDestEntityFromPacket(eth);
+	    if (dstEntity != null) {
+	        Device dstDevice = 
+	                findDestByEntity(srcDevice, dstEntity);
+	        if (dstDevice != null)
+	            fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
+	    }
+	
+	    return Command.CONTINUE;
     }
     
     /**
@@ -777,7 +769,7 @@ public class DeviceManagerImpl implements
      * @return the entity from the packet
      */
     private Entity getSourceEntityFromPacket(Ethernet eth, 
-                                             IOFSwitch sw, 
+                                             long swdpid, 
                                              int port) {
         byte[] dlAddrArr = eth.getSourceMACAddress();
         long dlAddr = Ethernet.toLong(dlAddrArr);
@@ -787,7 +779,7 @@ public class DeviceManagerImpl implements
             return null;
 
         boolean learnap = true;
-        if (!isValidAttachmentPoint(sw.getId(), (short)port)) {
+        if (!isValidAttachmentPoint(swdpid, (short)port)) {
             // If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
             // handle this case by labeling flows with something that
@@ -802,7 +794,7 @@ public class DeviceManagerImpl implements
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
                           ((nwSrc != 0) ? nwSrc : null),
-                          (learnap ? sw.getId() : null),
+                          (learnap ? swdpid : null),
                           (learnap ? port : null),
                           new Date());
     }
