@@ -154,7 +154,6 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getStringId()).andReturn("00:11:22:33:44:55:66:77");
-        expect(mockSwitch.getId()).andReturn(1L);
         mockSwitch.write(po, null);
 
         // Start recording the replay on the mocks

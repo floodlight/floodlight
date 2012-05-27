@@ -1,5 +1,7 @@
 package net.floodlightcontroller.flowcache;
 
+import net.floodlightcontroller.core.FloodlightContext;
+
 import org.openflow.protocol.OFMatchWithSwDpid;
 
 /**
@@ -49,12 +51,16 @@ public class OFMatchReconcile  {
     /** The reconcile action. */
     public ReconcileAction rcAction;
 
+    // The context for the reconcile action
+    public FloodlightContext cntx;
+    
     /**
      * Instantiates a new oF match reconcile object.
      */
     public OFMatchReconcile() {
         ofmWithSwDpid      = new OFMatchWithSwDpid();
         rcAction = ReconcileAction.NO_CHANGE;
+        cntx = new FloodlightContext();
     }
     
     @Override

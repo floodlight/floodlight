@@ -43,7 +43,6 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -71,6 +70,7 @@ import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
             DeviceManagerImpl.DeviceUpdate.Change.*;
 
+import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
@@ -487,7 +487,8 @@ public class DeviceManagerImpl implements
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return (type == OFType.PACKET_IN && name.equals("topology"));
+        return ((type == OFType.PACKET_IN || type == OFType.FLOW_MOD) 
+        		&& name.equals("topology"));
     }
 
     @Override
@@ -506,6 +507,41 @@ public class DeviceManagerImpl implements
 
         logger.error("received an unexpected message {} from switch {}", 
                      msg, sw);
+        return Command.CONTINUE;
+    }
+    
+    // ***************
+    // IFlowReconcileListener
+    // ***************
+    @Override
+    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList) {
+        for (OFMatchReconcile ofm : ofmRcList) {
+        	// Extract source entity information
+            Entity srcEntity = 
+            	getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
+            if (srcEntity == null)
+                return Command.STOP;
+
+            // Learn/lookup device information
+            Device srcDevice = learnDeviceByEntity(srcEntity);
+            if (srcDevice == null)
+                return Command.STOP;
+
+            // Store the source device in the context
+            fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
+
+            // Find the device matching the destination from the entity
+            // classes of the source.
+            Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
+            logger.debug("DeviceManager dstEntity {}", dstEntity);
+            if (dstEntity != null) {
+                Device dstDevice = 
+                        findDestByEntity(srcDevice, dstEntity);
+                logger.debug("DeviceManager dstDevice {}", dstDevice);
+                if (dstDevice != null)
+                    fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
+            }
+        }
         return Command.CONTINUE;
     }
     
@@ -798,7 +834,48 @@ public class DeviceManagerImpl implements
                           null,
                           null);
     }
+    
+    /**
+     * Parse an entity from an OFMatchWithSwDpid.
+     * @param ofmWithSwDpid
+     * @return the entity from the packet
+     */
+    private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid, boolean isSource) {
+    	byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
+        int nwSrc = ofmWithSwDpid.getOfMatch().getNetworkSource();
+        if (!isSource) {
+        	dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerDestination();
+        	nwSrc = ofmWithSwDpid.getOfMatch().getNetworkDestination();
+        }
+        
+        long dlAddr = Ethernet.toLong(dlAddrArr);
 
+        // Ignore broadcast/multicast source
+        if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        
+        long swDpid = ofmWithSwDpid.getSwitchDataPathId();
+        short inPort = ofmWithSwDpid.getOfMatch().getInputPort();
+
+        boolean learnap = true;
+        if (!isValidAttachmentPoint(swDpid, inPort)) {
+            // If this is an internal port or we otherwise don't want
+            // to learn on these ports.  In the future, we should
+            // handle this case by labeling flows with something that
+            // will give us the entity class.  For now, we'll do our
+            // best assuming attachment point information isn't used
+            // as a key field.
+            learnap = false;
+        }
+       
+        short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
+        return new Entity(dlAddr,
+                          ((vlan >= 0) ? vlan : null),
+                          ((nwSrc != 0) ? nwSrc : null),
+                          (learnap ? swDpid : null),
+                          (learnap ? (int)inPort : null),
+                          new Date());
+    }
     /**
      * Look up a {@link Device} based on the provided {@link Entity}.
      * @param entity the entity to search for
