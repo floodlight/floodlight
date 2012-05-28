@@ -22,7 +22,6 @@ import java.util.EnumSet;
 import java.util.Iterator;
 
 import net.floodlightcontroller.core.FloodlightContextStore;
-
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
@@ -197,4 +196,15 @@ public interface IDeviceService extends IFloodlightService {
      */
     public void flushEntityCache(IEntityClass entityClass,
                                  boolean reclassify);
+
+    /**
+     * Specify points in the network where attachment points are not to
+     * be learned.
+     * @param sw
+     * @param port
+     */
+	public void addSuppressAPs(long swId, short port);
+
+	public void removeSuppressAPs(long swId, short port);
+
 }
