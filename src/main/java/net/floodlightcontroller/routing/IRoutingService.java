@@ -22,9 +22,28 @@ import net.floodlightcontroller.routing.Route;
 
 public interface IRoutingService extends IFloodlightService {
 
+    /** Provides a route between src and dst that allows tunnels. */
     public Route getRoute(long src, long dst);
 
+    /** Provides a route between src and dst, with option to allow or 
+     *  not allow tunnels in the path.*/
+    public Route getRoute(long src, long dst, boolean tunnelEnabled);
+
+
+    public Route getRoute(long srcId, short srcPort, 
+                             long dstId, short dstPort);
+
+    public Route getRoute(long srcId, short srcPort, 
+                             long dstId, short dstPort, 
+                             boolean tunnelEnabled);
+
+    /** Check if a route exists between src and dst, including tunnel links
+     *  in the path.
+     */
     public boolean routeExists(long src, long dst);
 
-    public BroadcastTree getBroadcastTreeForCluster(long cluster);
+    /** Check if a route exists between src and dst, with option to have
+     *  or not have tunnels as part of the path.
+     */
+    public boolean routeExists(long src, long dst, boolean tunnelEnabled);
 }

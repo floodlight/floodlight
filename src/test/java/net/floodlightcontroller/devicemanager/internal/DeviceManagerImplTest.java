@@ -273,13 +273,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.startUp(null);
         
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.getSwitchClusterId(anyLong())).
+        expect(mockTopology.getL2DomainId(anyLong())).
             andReturn(1L).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
         andReturn(false).anyTimes();
 
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
         deviceManager.topology = mockTopology;
         
         Entity entity1 = new Entity(1L, null, null, 1L, 1, new Date());
@@ -405,21 +405,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.addListener(mockListener);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.getSwitchClusterId(1L)).
+        expect(mockTopology.getL2DomainId(1L)).
         andReturn(1L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(5L)).
+        expect(mockTopology.getL2DomainId(5L)).
         andReturn(1L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(10L)).
+        expect(mockTopology.getL2DomainId(10L)).
         andReturn(10L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(50L)).
+        expect(mockTopology.getL2DomainId(50L)).
         andReturn(10L).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
                 andReturn(false).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
         		anyLong(), anyShort())).andReturn(false).anyTimes();
         
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
         
         replay(mockTopology);
         
@@ -493,10 +493,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testBDAttachmentPointLearning() throws Exception {
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.getSwitchClusterId(anyLong())).
+        expect(mockTopology.getL2DomainId(anyLong())).
                 andReturn(1L).anyTimes();
-        expect(mockTopology.isInternal(anyLong(), anyShort())).
-                andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), anyShort())).
+                andReturn(true).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).
                 andReturn(false).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(1L, (short)2)).
@@ -505,6 +505,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         		1L, (short)2)).andReturn(true).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(1L, (short)2,
         		1L, (short)1)).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(anyLong(), anyShort(), anyLong(), anyShort())).andReturn(false).anyTimes();
         
         replay(mockTopology);
         
@@ -548,8 +549,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
         deviceManager.topology = mockTopology;
 
         Date currentDate = new Date();
@@ -608,10 +609,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                            DefaultEntityClassifier.entityClasses);
 
         reset(mockTopology);
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
-        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(5L)).andReturn(1L).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(5L)).andReturn(1L).anyTimes();
         
         // Start recording the replay on the mocks
         replay(mockTopology);
@@ -639,13 +640,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockListener.deviceMoved(isA(IDevice.class));
         
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), 
                                                   anyShort())).
                                        andReturn(false).anyTimes();
-        expect(mockTopology.getSwitchClusterId(1L)).andReturn(1L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(5L)).andReturn(5L).anyTimes();
+        expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(5L)).andReturn(5L).anyTimes();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         
@@ -718,14 +719,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Calendar c = Calendar.getInstance();
         
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                       anyShort())).andReturn(true).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), 
                                                   anyShort())).
                                        andReturn(false).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
         		anyLong(), anyShort())).andReturn(false).anyTimes();
-        expect(mockTopology.getSwitchClusterId(anyLong())).
+        expect(mockTopology.getL2DomainId(anyLong())).
                     andReturn(1L).anyTimes();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
@@ -812,16 +813,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Calendar c = Calendar.getInstance();
         
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isInternal(anyLong(), 
-                                       anyShort())).andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), 
+                                       anyShort())).andReturn(true).anyTimes();
         expect(mockTopology.isBroadcastDomainPort(anyLong(), 
                                                   anyShort())).
                                        andReturn(false).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
                 anyLong(), anyShort())).andReturn(false).anyTimes();
-        expect(mockTopology.getSwitchClusterId(1L)).
+        expect(mockTopology.getL2DomainId(1L)).
                 andReturn(1L).anyTimes();
-        expect(mockTopology.getSwitchClusterId(5L)).
+        expect(mockTopology.getL2DomainId(5L)).
                 andReturn(5L).anyTimes();
         replay(mockTopology);
         deviceManager.topology = mockTopology;

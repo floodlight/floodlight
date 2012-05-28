@@ -46,6 +46,10 @@ public class TopologyInstanceTest {
     }
 
     protected void verifyClusters(int[][] clusters) {
+        verifyClusters(clusters, true);
+    }
+
+    protected void verifyClusters(int[][] clusters, boolean tunnelsEnabled) {
         List<Long> verifiedSwitches = new ArrayList<Long>();
 
         // Make sure the expected cluster arrays are sorted so we can
@@ -53,7 +57,8 @@ public class TopologyInstanceTest {
         for (int i = 0; i < clusters.length; i++)
             Arrays.sort(clusters[i]);
 
-        TopologyInstance ti = topologyManager.getCurrentInstance();
+        TopologyInstance ti = 
+                topologyManager.getCurrentInstance(tunnelsEnabled);
         Set<Long> switches = ti.getSwitches();
 
         for (long sw: switches) {
@@ -68,7 +73,7 @@ public class TopologyInstanceTest {
                     }
                 }
                 if (expectedCluster != null) {
-                    Set<Long> cluster = ti.getSwitchesInCluster(sw);
+                    Set<Long> cluster = ti.getSwitchesInOpenflowDomain(sw);
                     assertEquals(expectedCluster.length, cluster.size());
                     for (long sw2: cluster) {
                         assertTrue(Arrays.binarySearch(expectedCluster, (int)sw2) >= 0);
@@ -79,7 +84,14 @@ public class TopologyInstanceTest {
         }
     }
 
-    protected void verifyExpectedBroadcastPortsInClusters(int [][][] ebp) {
+    protected void 
+    verifyExpectedBroadcastPortsInClusters(int [][][] ebp) {
+        verifyExpectedBroadcastPortsInClusters(ebp, true);
+    }
+
+    protected void 
+    verifyExpectedBroadcastPortsInClusters(int [][][] ebp, 
+                                           boolean tunnelsEnabled) {
         NodePortTuple npt = null;
         Set<NodePortTuple> expected = new HashSet<NodePortTuple>();
         for(int i=0; i<ebp.length; ++i) {
@@ -89,7 +101,7 @@ public class TopologyInstanceTest {
                 npt = new NodePortTuple((long)nptList[j][0], (short)nptList[j][1]);
                 expected.add(npt);
             }
-            TopologyInstance ti = topologyManager.getCurrentInstance();
+            TopologyInstance ti = topologyManager.getCurrentInstance(tunnelsEnabled);
             Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.nodeId);
             if (computed != null)
                 assertTrue(computed.equals(expected));
@@ -279,6 +291,120 @@ public class TopologyInstanceTest {
     }
 
     @Test
+    public void testTunnelLinkDeletion() throws Exception {
+
+        //      +-------+             +-------+
+        //      |       |             |       |
+        //      |   1  1|-------------|1  2   |
+        //      |   2   |             |   2   |
+        //      +-------+             +-------+
+        //          |                     |
+        //          |                     |
+        //      +-------+                 |
+        //      |   1   |                 |
+        //      |   3  2|-----------------+
+        //      |   3   |
+        //      +-------+
+        //
+        //
+        //      +-------+
+        //      |   1   |
+        //      |   4  2|----------------+
+        //      |   3   |                |
+        //      +-------+                |
+        //          |                    |
+        //          |                    |
+        //      +-------+             +-------+
+        //      |   1   |             |   2   |
+        //      |   5  2|-------------|1  6   |
+        //      |       |             |       |
+        //      +-------+             +-------+
+        {
+            int [][] linkArray = {
+                                  {1, 1, 2, 1, DIRECT_LINK},
+                                  {2, 1, 1, 1, DIRECT_LINK},
+                                  {1, 2, 3, 1, TUNNEL_LINK},
+                                  {3, 1, 1, 2, TUNNEL_LINK},
+                                  {2, 2, 3, 2, TUNNEL_LINK},
+                                  {3, 2, 2, 2, TUNNEL_LINK},
+
+                                  {4, 2, 6, 2, DIRECT_LINK},
+                                  {6, 2, 4, 2, DIRECT_LINK},
+                                  {4, 3, 5, 1, TUNNEL_LINK},
+                                  {5, 1, 4, 3, TUNNEL_LINK},
+                                  {5, 2, 6, 1, TUNNEL_LINK},
+                                  {6, 1, 5, 2, TUNNEL_LINK},
+
+            };
+
+            int [][] expectedClusters = {
+                                         {1, 2},
+                                         {4, 6},
+            };
+            int [][][] expectedBroadcastPorts = {
+                                                 {{1,1}, {2,1}},
+                                                 {{4,2}, {6,2}}
+            };
+
+            createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
+            verifyClusters(expectedClusters, false);
+            verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts, false);
+        }
+
+        //      +-------+             +-------+
+        //      |       |    TUNNEL   |       |
+        //      |   1  1|-------------|1  2   |
+        //      |   2   |             |   2   |
+        //      +-------+             +-------+
+        //          |                     |
+        //          |                     |
+        //      +-------+                 |
+        //      |   1   |                 |
+        //      |   3  2|-----------------+
+        //      |   3   |
+        //      +-------+
+        //          | 
+        //          |   TUNNEL
+        //          |
+        //      +-------+
+        //      |   1   |    TUNNEL
+        //      |   4  2|----------------+
+        //      |   3   |                |
+        //      +-------+                |
+        //          |                    |
+        //          |                    |
+        //      +-------+             +-------+
+        //      |   1   |             |   2   |
+        //      |   5  2|-------------|1  6   |
+        //      |       |             |       |
+        //      +-------+             +-------+
+
+        {
+            int [][] linkArray = {
+                                  {3, 3, 4, 1, TUNNEL_LINK},
+                                  {4, 1, 3, 3, TUNNEL_LINK},
+
+            };
+            int [][] expectedClusters = {
+                                         {1, 2},
+                                         {4, 6},
+                                         {3},
+                                         {5},
+            };
+            int [][][] expectedBroadcastPorts = {
+                                                 {{1,1}, {2,1}},
+                                                 {{4,2}, {6,2}}
+            };
+
+            createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
+            verifyClusters(expectedClusters, false);
+            verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts, false);
+        }
+    }
+
+    @Test
     public void testLoopDetectionWithIslands() throws Exception {
 
         //      +-------+             +-------+
@@ -330,8 +456,8 @@ public class TopologyInstanceTest {
                                          {4, 5, 6}
             };
             int [][][] expectedBroadcastPorts = {
-                                                 {{1,1}, {2,1}, {1,2}, {3,1}},
-                                                 {{4,3}, {5,1}, {4,2}, {6,2}},
+                                                 {{1,2}, {3,1}, {2,2}, {3,2}},
+                                                 {{4,3}, {5,1}, {5,2}, {6,1}},
             };
 
             createTopologyFromLinks(linkArray);
@@ -375,15 +501,17 @@ public class TopologyInstanceTest {
 
             };
             int [][] expectedClusters = {
-                                         {1, 2, 3, 4, 5, 6}
+                                         {1, 2, 3}, 
+                                         {4, 5, 6}
             };
             int [][][] expectedBroadcastPorts = {
-                                                 {{1,1}, {2,1}, {1,2}, {3,1}, {3,3}, {4,1}, {4,3}, {5,1}, {4,2}, {6,2}},
+                                                 {{1,2}, {3,1}, {2,2}, {3,2}},
+                                                 {{4,3}, {5,1}, {5,2}, {6,1}},
             };
 
             createTopologyFromLinks(linkArray);
             topologyManager.createNewInstance();
-            verifyClusters(expectedClusters);
+            verifyClusters(expectedClusters, false);
             verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts);
         }
     }
