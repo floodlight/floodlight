@@ -232,14 +232,14 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
     @Test
     public void testAddHost() {
         testModifyNetwork();
-        vns.addHost(mac1, net1, hostPort1);
+        vns.addHost(mac1, guid1, hostPort1);
         assertTrue(vns.macToGuid.get(mac1).equals(guid1));
         assertTrue(vns.portToMac.get(hostPort1).equals(mac1));
-        vns.addHost(mac2, net1, hostPort2);
+        vns.addHost(mac2, guid1, hostPort2);
         assertTrue(vns.macToGuid.get(mac2).equals(guid1));
         assertTrue(vns.portToMac.get(hostPort2).equals(mac2));
-        vns.addHost(mac3, net3, hostPort3);
-        vns.addHost(mac4, net3, hostPort4);
+        vns.addHost(mac3, guid3, hostPort3);
+        vns.addHost(mac4, guid3, hostPort4);
     }
     
     @Test

@@ -159,19 +159,18 @@ public class VirtualNetworkFilter
     }
 
     @Override
-    public void addHost(MACAddress mac, String network, String port) {
-        String guid = nameToGuid.get(network);
+    public void addHost(MACAddress mac, String guid, String port) {
         if (guid != null) {
             if (log.isDebugEnabled()) {
-                log.debug("Adding {} to network {} on port {}",
-                          new Object[] {mac, network, port});
+                log.debug("Adding {} to network ID {} on port {}",
+                          new Object[] {mac, guid, port});
             }
             // We ignore old mappings
             macToGuid.put(mac, guid);
             portToMac.put(port, mac);
         } else {
-            log.warn("Could not add MAC {} to network {} on port {}, the network does not exist",
-                     new Object[] {mac, network, port});
+            log.warn("Could not add MAC {} to network ID {} on port {}, the network does not exist",
+                     new Object[] {mac, guid, port});
         }
     }
 

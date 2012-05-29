@@ -21,6 +21,7 @@ public class HostResource extends org.restlet.resource.ServerResource {
         String port = null; // Logical port name
         String guid = null; // Network ID
         String mac = null; // MAC Address
+        String attachment = null; // Attachment name
     }
     
     protected void jsonToHostDefinition(String json, HostDefinition host) throws IOException {
@@ -51,7 +52,7 @@ public class HostResource extends org.restlet.resource.ServerResource {
                 while (jp.nextToken() != JsonToken.END_OBJECT) {
                     String field = jp.getCurrentName();
                     if (field.equals("id")) {
-                        host.guid = jp.getText();
+                        host.attachment = jp.getText();
                     } else if (field.equals("mac")) {
                         host.mac = jp.getText();
                     }
@@ -69,6 +70,7 @@ public class HostResource extends org.restlet.resource.ServerResource {
                     get(IVirtualNetworkService.class.getCanonicalName());
         HostDefinition host = new HostDefinition();
         host.port = (String) getRequestAttributes().get("port");
+        host.guid = (String) getRequestAttributes().get("network");
         try {
             jsonToHostDefinition(postData, host);
         } catch (IOException e) {
