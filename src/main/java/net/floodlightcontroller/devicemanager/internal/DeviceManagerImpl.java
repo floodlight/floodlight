@@ -52,6 +52,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
@@ -286,10 +287,15 @@ public class DeviceManagerImpl implements
     public AttachmentPointComparator apComparator;
     
     /**
+     * Switch ports where attachment points shouldn't be learned
+     */
+	private Set<SwitchPort> suppressAPs;
+    
+    /**
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
-    
+
     // *********************
     // IDeviceManagerService
     // *********************
@@ -559,6 +565,8 @@ public class DeviceManagerImpl implements
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
         this.deviceListeners = new HashSet<IDeviceListener>();
+        this.suppressAPs =
+        		Collections.synchronizedSet(new HashSet<SwitchPort>());
         
         this.floodlightProvider = 
                 fmc.getServiceImpl(IFloodlightProviderService.class);
@@ -685,6 +693,9 @@ public class DeviceManagerImpl implements
         if (((switchPort & 0xff00) == 0xff00) && 
              (switchPort != (short)0xfffe))
             return false;
+        
+        if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
+        	return false;
         
         return true;            
     }
@@ -1272,4 +1283,14 @@ public class DeviceManagerImpl implements
                                     Collection<IEntityClass> entityClasses) {
         return new Device(device, entity, entityClasses);
     }
+
+	@Override
+	public void addSuppressAPs(long swId, short port) {
+		suppressAPs.add(new SwitchPort(swId, port));
+	}
+
+	@Override
+	public void removeSuppressAPs(long swId, short port) {
+		suppressAPs.remove(new SwitchPort(swId, port));
+	}
 }
