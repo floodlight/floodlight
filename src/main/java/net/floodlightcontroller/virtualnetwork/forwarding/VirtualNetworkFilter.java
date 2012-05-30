@@ -341,7 +341,7 @@ public class VirtualNetworkFilter
         OFFlowMod fm = 
             (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
         OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
         List<OFAction> actions = new ArrayList<OFAction>(); // no actions = drop
         long cookie = AppCookie.makeCookie(APP_ID, 0);
         fm.setCookie(cookie)
