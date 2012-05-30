@@ -43,7 +43,6 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.TopologyManager;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;

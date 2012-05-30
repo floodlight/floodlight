@@ -43,7 +43,6 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -673,14 +672,6 @@ public class DeviceManagerImpl implements
                           Map<String, String> addedControllerNodeIPs,
                           Map<String, String> removedControllerNodeIPs) {
         // no-op
-    }
-    
-    // **********************
-    // IFlowReconcileListener
-    // **********************
- 
-    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList, FloodlightContext cntx) {
-        return Command.CONTINUE;
     }
 
     // ****************

@@ -2,7 +2,6 @@ package net.floodlightcontroller.flowcache;
 
 import java.util.ArrayList;
 
-import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IListener;
 import org.openflow.protocol.OFType;
 
@@ -37,10 +36,6 @@ public interface IFlowReconcileListener extends IListener<OFType> {
      *           further. In this case the no reconciled flow-mods would 
      *           be programmed
      */
-<<<<<<< HEAD
     public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList);
-=======
-    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList, FloodlightContext cntx);
->>>>>>> 764be04... remove switchDpid from OFMatch
 
 }
