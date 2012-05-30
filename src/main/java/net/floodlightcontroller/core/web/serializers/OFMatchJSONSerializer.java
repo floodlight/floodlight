@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package org.openflow.protocol.serializers;
+package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
