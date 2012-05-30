@@ -43,7 +43,6 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.TopologyManager;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -78,7 +77,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                  FloodlightContext cntx,
                                  boolean requestFlowRemovedNotifn) {    
         OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort(), sw.getId());
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
 
         // Check if we have the location of the destination
         IDevice dstDevice = 
