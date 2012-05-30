@@ -63,7 +63,22 @@ public class TopologyInstance {
         this.blockedPorts = new HashSet<NodePortTuple>();
         this.blockedLinks = new HashSet<Link>();
     }
-
+    
+    public TopologyInstance(Map<Long, Set<Short>> switchPorts,
+                            Map<NodePortTuple, Set<Link>> switchPortLinks)
+    {
+        this.switches = new HashSet<Long>(switchPorts.keySet());
+        this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
+        this.switchPortLinks = new HashMap<NodePortTuple, 
+                                           Set<Link>>(switchPortLinks);
+        this.broadcastDomainPorts = new HashSet<NodePortTuple>();
+        this.tunnelPorts = new HashSet<NodePortTuple>();
+        this.blockedPorts = new HashSet<NodePortTuple>();
+        this.blockedLinks = new HashSet<Link>();
+        
+        clusters = new HashSet<Cluster>();
+        switchClusterMap = new HashMap<Long, Cluster>();
+    }
     public TopologyInstance(Map<Long, Set<Short>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
@@ -409,7 +424,9 @@ public class TopologyInstance {
         }
     }
 
-    protected BroadcastTree dijkstra(Cluster c, Long dst, Map<Link, Integer> linkCost) {
+    protected BroadcastTree dijkstra(Cluster c, Long root, 
+                                     Map<Link, Integer> linkCost,
+                                     boolean isDstRooted) {
         HashMap<Long, Link> nexthoplinks = new HashMap<Long, Link>();
         //HashMap<Long, Long> nexthopnodes = new HashMap<Long, Long>();
         HashMap<Long, Integer> cost = new HashMap<Long, Integer>();
@@ -423,8 +440,8 @@ public class TopologyInstance {
 
         HashMap<Long, Boolean> seen = new HashMap<Long, Boolean>();
         PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
-        nodeq.add(new NodeDist(dst, 0));
-        cost.put(dst, 0);
+        nodeq.add(new NodeDist(root, 0));
+        cost.put(root, 0);
         while (nodeq.peek() != null) {
             NodeDist n = nodeq.poll();
             Long cnode = n.getNode();
@@ -434,7 +451,14 @@ public class TopologyInstance {
             seen.put(cnode, true);
 
             for (Link link: c.links.get(cnode)) {
-                Long neighbor = link.getSrc();
+                Long neighbor;
+                
+                if (isDstRooted == true) neighbor = link.getSrc();
+                else neighbor = link.getDst();
+                
+                // links directed toward cnode will result in this condition
+                // if (neighbor == cnode) continue;
+                
                 if (linkCost == null || linkCost.get(link)==null) w = 1;
                 else w = linkCost.get(link);
 
@@ -469,7 +493,7 @@ public class TopologyInstance {
 
         for(Cluster c: clusters) {
             for (Long node : c.links.keySet()) {
-                BroadcastTree tree = dijkstra(c, node, linkCost);
+                BroadcastTree tree = dijkstra(c, node, linkCost, true);
                 destinationRootedTrees.put(node, tree);
             }
         }
