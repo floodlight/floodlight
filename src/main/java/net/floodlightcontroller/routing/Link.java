@@ -17,6 +17,10 @@
 
 package net.floodlightcontroller.routing;
 
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
 public class Link {
@@ -32,17 +36,24 @@ public class Link {
         this.dstPort = dstPort;
     }
 
+    
+    @JsonProperty("src-switch")
+    @JsonSerialize(using=DPIDSerializer.class)
     public long getSrc() {
         return src;
     }
 
+    @JsonProperty("src-port")
     public short getSrcPort() {
         return srcPort;
     }
 
+    @JsonProperty("dst-switch")
+    @JsonSerialize(using=DPIDSerializer.class)
     public long getDst() {
         return dst;
     }
+    @JsonProperty("dst-port")
     public short getDstPort() {
         return dstPort;
     }
