@@ -237,9 +237,13 @@ public class LinkDiscoveryManager
         } while (updates.peek() != null);
     }
 
+    private boolean isLLDPSuppressed(IOFSwitch sw, short portNumber) {
+    	return this.suppressLLDPs.contains(new SwitchPortTuple(sw, portNumber));
+    }
+    
     protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, boolean isStandard) {
     	
-    	if (this.suppressLLDPs.contains(new SwitchPortTuple(sw, port.getPortNumber()))) {
+    	if (isLLDPSuppressed(sw, port.getPortNumber())) {
     		/* Dont send LLDPs out of this port as suppressLLDPs set
     		 * 
     		 */
@@ -428,6 +432,10 @@ public class LinkDiscoveryManager
     }
 
     private Command handleLldp(LLDP lldp, IOFSwitch sw, OFPacketIn pi, boolean isStandard, FloodlightContext cntx) {
+        // If LLDP is suppressed on this port, ignore received packet as well
+        if (isLLDPSuppressed(sw, pi.getInPort()))
+        	return Command.CONTINUE;
+        
         // If this is a malformed LLDP, or not from us, exit
         if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3)
             return Command.CONTINUE;

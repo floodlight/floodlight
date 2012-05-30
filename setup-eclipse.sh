@@ -33,6 +33,7 @@ cat >$d/.classpath <<EOF
 	<classpathentry kind="src" path="src/main/java" output="target/bin"/>
 	<classpathentry kind="src" path="src/main/resources"/>
         <classpathentry kind="src" path="src/test/java" output="target/bin-test"/>
+        <classpathentry kind="src" path="lib/gen-java" output="target/bin"/>
 EOF
 (
 IFS=":"

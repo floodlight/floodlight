@@ -26,11 +26,11 @@ window.TopologyView = Backbone.View.extend({
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
         var width = 900,
-          height = 900; // might as well make it square
+          height = 600; // might as well make it square
         var color = d3.scale.category20();
         var force = d3.layout.force()
-            .charge(-120)
-            .linkDistance(30)
+            .charge(-240)
+            .linkDistance(100)
             .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
             .attr("width", width)
@@ -68,7 +68,11 @@ window.TopologyView = Backbone.View.extend({
                       target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
                       value:10};
               console.log(link);
-              this.host_links.push(link);
+              if ( link.source && link.target) {
+                  this.host_links.push(link);
+              } else {
+                  console.log("Error: skipping link with undefined stuff!")
+              }
             }
           }
 
@@ -81,7 +85,7 @@ window.TopologyView = Backbone.View.extend({
           var node = svg.selectAll("circle.node").data(all_nodes)
                         .enter().append("circle")
                         .attr("class", "node")
-                        .attr("r", 10)
+                        .attr("r", 20)
                         .style("fill", function(d) { return color(d.group); })
                         .call(force.drag);
           node.append("title").text(function(d) { return d.name; });
