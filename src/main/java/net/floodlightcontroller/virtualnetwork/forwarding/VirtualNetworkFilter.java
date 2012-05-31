@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -61,6 +62,7 @@ public class VirtualNetworkFilter
     protected Map<String, String> nameToGuid; // Logical name -> Network ID
     protected Map<String, Integer> guidToGateway; // Network ID -> Gateway IP
     protected Map<Integer, Set<String>> gatewayToGuid; // Gateway IP -> Network ID
+    protected Map<MACAddress, Integer> macToGateway; // Gateway MAC -> Gateway IP
     protected Map<MACAddress, String> macToGuid; // Host MAC -> Network ID
     protected Map<String, MACAddress> portToMac; // Host MAC -> logical port name
     
@@ -306,6 +308,26 @@ public class VirtualNetworkFilter
                     && isDefaultGatewayIp(srcNetwork, (IPv4)eth.getPayload())) {
                 // or if the host is talking to the gateway continue
                 ret = Command.CONTINUE;
+            } else if (eth.getPayload() instanceof ARP){
+                // We have to check here if it is an ARP reply from the default gateway
+                ARP arp = (ARP) eth.getPayload();
+                if (arp.getProtocolType() != ARP.PROTO_TYPE_IP) {
+                    ret = Command.CONTINUE;
+                } else if (arp.getOpCode() == ARP.OP_REPLY) {
+                    int ip = IPv4.toIPv4Address(arp.getSenderProtocolAddress());
+                    for (Integer i : gatewayToGuid.keySet()) {
+                        if (i.intValue() == ip) {
+                            // Learn the default gateway MAC
+                            macToGateway.put(new MACAddress(arp.getSenderHardwareAddress()), ip);
+                            // Now we see if it's allowed for this packet
+                            String hostNet = macToGuid.get(new MACAddress(eth.getDestinationMACAddress()));
+                            Set<String> gwGuids = gatewayToGuid.get(ip);
+                            if ((gwGuids != null) && (gwGuids.contains(hostNet)))
+                                ret = Command.CONTINUE;
+                            break;
+                        }
+                    }
+                }
             }
             
             if (ret == Command.CONTINUE) {
