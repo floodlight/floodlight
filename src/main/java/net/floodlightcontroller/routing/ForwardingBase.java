@@ -446,8 +446,7 @@ public abstract class ForwardingBase implements
             		IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         
         Long broadcastHash;
-        broadcastHash = topology.getL2DomainId(sw.getId()) * prime
-        		+ eth.hashCode();
+        broadcastHash = sw.getId() * prime + eth.hashCode();
         if (broadcastCache.update(broadcastHash)) {
             sw.updateBroadcastCache(broadcastHash, pi.getInPort());
             return true;
