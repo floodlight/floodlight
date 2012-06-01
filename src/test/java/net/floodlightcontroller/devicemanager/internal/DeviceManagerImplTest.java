@@ -280,8 +280,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         expect(mockTopology.isAttachmentPointPort(anyLong(), 
                                        anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(10L, (short)1, 10L, (short)1)).
+        andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 1L, (short)1)).
+        andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(50L, (short)3, 50L, (short)3)).
+        andReturn(true).anyTimes();
+
         deviceManager.topology = mockTopology;
-        
+
         Entity entity1 = new Entity(1L, null, null, 1L, 1, new Date());
         Entity entity2 = new Entity(1L, null, null, 10L, 1, new Date());
         Entity entity3 = new Entity(1L, null, 1, 10L, 1, new Date());
@@ -420,6 +427,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         expect(mockTopology.isAttachmentPointPort(anyLong(), 
                                        anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 10L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(10L, (short)1, 50L, (short)1)).
+        andReturn(false).anyTimes();
         
         replay(mockTopology);
         
@@ -513,6 +526,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         expect(mockTopology.isAttachmentPointPort(anyLong(), 
                                        anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 50L, (short)1)).
+        andReturn(false).anyTimes();
         
         replay(mockTopology);
         
@@ -742,6 +757,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                        andReturn(false).anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(5L).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
+
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         
@@ -823,6 +841,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         		anyLong(), anyShort())).andReturn(false).anyTimes();
         expect(mockTopology.getL2DomainId(anyLong())).
                     andReturn(1L).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 1L, (short)1)).
+        andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 10L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(10L, (short)1, 1L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 1L, (short)1)).
+        andReturn(false).anyTimes();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         
@@ -919,9 +947,23 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).
                 andReturn(5L).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 1L, (short)2)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)2, 5L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 5L, (short)2)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)2, 1L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)2)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)2, 5L, (short)1)).
+        andReturn(false).anyTimes();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
-        
+
         Entity entity1 = new Entity(1L, null, null, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 5L, 1, c.getTime());

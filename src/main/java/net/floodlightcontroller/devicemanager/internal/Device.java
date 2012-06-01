@@ -260,16 +260,12 @@ public class Device implements IDevice {
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
                 !deviceManager.isValidAttachmentPoint(dpid, port) ||
-                ///*||
                 (prev != null && 
-                topology.isBroadcastDomainPort(prev.getSwitchDPID().longValue(), 
-                                               prev.getSwitchPort().shortValue()) == false &&
-                topology.isBroadcastDomainPort(dpid.longValue(), port.shortValue()) &&
                 topology.isConsistent(prev.getSwitchDPID().longValue(),
-                                                       prev.getSwitchPort().shortValue(),
-                                                       dpid.longValue(),
-                                                       port.shortValue()))
-                )//*/
+                                      prev.getSwitchPort().shortValue(),
+                                      dpid.longValue(),
+                                      port.shortValue()))
+                )
                 continue;
             long curCluster = 
                     topology.getL2DomainId(cur.switchDPID);
@@ -287,9 +283,12 @@ public class Device implements IDevice {
                 !(dpid.equals(prev.getSwitchDPID()) &&
                   port.equals(prev.getSwitchPort())) &&
                 !topology.isInSameBroadcastDomain(dpid.longValue(),
-                		port.shortValue(),
-                        prev.getSwitchDPID().longValue(),
-                        prev.getSwitchPort().shortValue())) {
+                                                  port.shortValue(),
+                                                  prev.getSwitchDPID().longValue(),
+                                                  prev.getSwitchPort().shortValue()) &&
+                !topology.isConsistent(prev.getSwitchDPID().longValue(), 
+                                       prev.getSwitchPort().shortValue(), 
+                                       dpid.longValue(), port.shortValue())) {
                 long curActive = 
                         deviceManager.apComparator.
                             getEffTS(cur, cur.getActiveSince());
