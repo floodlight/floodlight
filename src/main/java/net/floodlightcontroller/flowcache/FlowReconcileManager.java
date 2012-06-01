@@ -2,6 +2,7 @@ package net.floodlightcontroller.flowcache;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -98,13 +99,21 @@ public class FlowReconcileManager
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFlowReconcileService.class);
+        return l;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> 
                                                             getServiceImpls() {
-        return null;
+    	Map<Class<? extends IFloodlightService>,
+    	IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                IFloodlightService>();
+        m.put(IFlowReconcileService.class, this);
+        return m;
     }
 
     @Override
