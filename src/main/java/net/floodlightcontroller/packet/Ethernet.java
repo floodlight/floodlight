@@ -65,10 +65,17 @@ public class Ethernet extends BasePacket {
     }
     
     /**
-     * @return the destinationMACAddress
+     * @return the destinationMACAddress as a byte array
      */
     public byte[] getDestinationMACAddress() {
         return destinationMACAddress.toBytes();
+    }
+    
+    /**
+     * @return the destinationMACAddress
+     */
+    public MACAddress getDestinationMAC() {
+        return destinationMACAddress;
     }
 
     /**
@@ -88,10 +95,17 @@ public class Ethernet extends BasePacket {
     }
 
     /**
-     * @return the sourceMACAddress
+     * @return the sourceMACAddress as a byte array
      */
     public byte[] getSourceMACAddress() {
         return sourceMACAddress.toBytes();
+    }
+    
+    /**
+     * @return the sourceMACAddress
+     */
+    public MACAddress getSourceMAC() {
+        return sourceMACAddress;
     }
 
     /**

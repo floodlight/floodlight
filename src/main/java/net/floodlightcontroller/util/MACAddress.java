@@ -1,5 +1,6 @@
 package net.floodlightcontroller.util;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
@@ -13,6 +14,11 @@ public class MACAddress {
 
     public MACAddress(byte[] address) {
         this.address = Arrays.copyOf(address, MAC_ADDRESS_LENGTH);
+    }
+    
+    public MACAddress(long address) {
+        this.address = ByteBuffer.allocate(6).putLong(address).array();
+        assert(this.address.length == 6);
     }
 
     /**
