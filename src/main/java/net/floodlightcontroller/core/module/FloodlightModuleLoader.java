@@ -142,7 +142,7 @@ public class FloodlightModuleLoader {
                 e.printStackTrace();
             }
         } else {
-            logger.debug("Loading default modules");
+            logger.info("Loading default modules");
             InputStream is = this.getClass().getClassLoader().
                                     getResourceAsStream(COMPILED_CONF_FILE);
             try {
