@@ -237,6 +237,7 @@ public class VirtualNetworkFilter
         gatewayToGuid = new ConcurrentHashMap<Integer, Set<String>>();
         macToGuid = new ConcurrentHashMap<MACAddress, String>();
         portToMac = new ConcurrentHashMap<String, MACAddress>();
+        macToGateway = new ConcurrentHashMap<MACAddress, Integer>();
     }
 
     @Override
@@ -292,7 +293,7 @@ public class VirtualNetworkFilter
                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         Command ret = Command.STOP;
         String srcNetwork = macToGuid.get(eth.getSourceMAC());
-        if (srcNetwork == null) {
+        if (srcNetwork == null && !(eth.getPayload() instanceof ARP)) {
             log.debug("Blocking traffic from host {} because it is not attached to any network.",
                       HexString.toHexString(eth.getSourceMACAddress()));
             ret = Command.STOP;
@@ -318,6 +319,11 @@ public class VirtualNetworkFilter
                     for (Integer i : gatewayToGuid.keySet()) {
                         if (i.intValue() == ip) {
                             // Learn the default gateway MAC
+                            if (log.isDebugEnabled()) {
+                                log.debug("Adding {} with IP {} as a gateway",
+                                          HexString.toHexString(arp.getSenderHardwareAddress()),
+                                          IPv4.fromIPv4Address(ip));
+                            }
                             macToGateway.put(new MACAddress(arp.getSenderHardwareAddress()), ip);
                             // Now we see if it's allowed for this packet
                             String hostNet = macToGuid.get(new MACAddress(eth.getDestinationMACAddress()));
