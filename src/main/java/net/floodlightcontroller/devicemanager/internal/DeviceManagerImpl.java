@@ -278,9 +278,12 @@ public class DeviceManagerImpl implements
                 r = d1ClusterId.compareTo(d2ClusterId);
             }
             if (r != 0) return r;
-            
-            long e1ts = getEffTS(e1, e1.getLastSeenTimestamp());
-            long e2ts = getEffTS(e2, e2.getLastSeenTimestamp());
+
+            // the ordering of active times is a more
+            // representative of the causal relationship
+            // than lastSeen time.
+            long e1ts = getEffTS(e1, e1.getActiveSince());
+            long e2ts = getEffTS(e2, e2.getActiveSince());
             return Long.valueOf(e1ts).compareTo(e2ts);
         }
         
