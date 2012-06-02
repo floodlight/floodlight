@@ -55,6 +55,7 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
+import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
@@ -96,6 +97,7 @@ public class DeviceManagerImpl implements
     protected IStorageSourceService storageSource;
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
+    protected IFlowReconcileService flowReconcileMgr;
     
     /**
      * Time in milliseconds before entities will expire
@@ -618,6 +620,7 @@ public class DeviceManagerImpl implements
                 fmc.getServiceImpl(ITopologyService.class);
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
+        this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
     }
     
     @Override
@@ -634,6 +637,7 @@ public class DeviceManagerImpl implements
         apComparator = new AttachmentPointComparator();
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        flowReconcileMgr.addFlowReconcileListener(this);
         
         Runnable ecr = new Runnable() {
             @Override

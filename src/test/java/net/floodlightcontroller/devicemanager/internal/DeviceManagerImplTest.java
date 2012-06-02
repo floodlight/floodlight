@@ -48,6 +48,8 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.flowcache.FlowReconcileManager;
+import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -81,6 +83,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
+    FlowReconcileManager flowReconcileMgr;
     
     private IOFSwitch makeSwitchMock(long id) {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -104,17 +107,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
+        flowReconcileMgr = new FlowReconcileManager();
         fmc.addService(IDeviceService.class, deviceManager);
         storageSource = new MemoryStorageSource();
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
+        fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         tp.init(fmc);
         restApi.init(fmc);
         storageSource.init(fmc);
         deviceManager.init(fmc);
+        flowReconcileMgr.init(fmc);
         storageSource.startUp(fmc);
         deviceManager.startUp(fmc);
+        flowReconcileMgr.startUp(fmc);
         tp.startUp(fmc);
         
         IOFSwitch mockSwitch1 = makeSwitchMock(1L);
