@@ -35,7 +35,10 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Link;
@@ -50,6 +53,7 @@ import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
@@ -72,6 +76,7 @@ public abstract class ForwardingBase implements
     protected ICounterStoreService counterStore;
     
     // for broadcast loop suppression
+    protected boolean broadcastCacheFeature = true;
     public final int prime = 2633;  // for hash calculation
     public TimedCache<Long> broadcastCache =
     		new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
@@ -79,7 +84,8 @@ public abstract class ForwardingBase implements
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
                                                    // by a global APP_ID class
-
+    public long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =
             new Comparator<SwitchPort>() {
@@ -441,12 +447,16 @@ public abstract class ForwardingBase implements
         // Get the hash of the Ethernet packet.
         if (sw == null) return true;  
         
+        // If the feature is disabled, always return false;
+        if (!broadcastCacheFeature) return false;
+
         Ethernet eth = 
             IFloodlightProviderService.bcStore.get(cntx,
             		IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         
         Long broadcastHash;
-        broadcastHash = sw.getId() * prime + eth.hashCode();
+        broadcastHash = topology.getL2DomainId(sw.getId())
+        		* prime + eth.hashCode();
         if (broadcastCache.update(broadcastHash)) {
             sw.updateBroadcastCache(broadcastHash, pi.getInPort());
             return true;
@@ -455,11 +465,27 @@ public abstract class ForwardingBase implements
         }
     }
 
+    protected boolean isInSwitchBroadcastCache(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+        if (sw == null) return true;
+        
+        // If the feature is disabled, always return false;
+        if (!broadcastCacheFeature) return false;
+        
+        // Get the hash of the Ethernet packet.
+        Ethernet eth =
+                IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        // some FORWARD_OR_FLOOD packets are unicast with unknown destination mac
+        // if (eth.isBroadcast() || eth.isMulticast())
+            return sw.updateBroadcastCache(new Long(eth.hashCode()), pi.getInPort());
+
+        // return false;
+    }
 
     public static boolean
             blockHost(IFloodlightProviderService floodlightProvider,
                       SwitchPort sw_tup, long host_mac,
-                      short hardTimeout) {
+                      short hardTimeout, long cookie) {
 
         if (sw_tup == null) {
             return false;
@@ -483,7 +509,7 @@ public abstract class ForwardingBase implements
              .setInputPort((short)inputPort)
              .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
                      & ~OFMatch.OFPFW_IN_PORT);
-        fm.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+        fm.setCookie(cookie)
           .setHardTimeout((short) hardTimeout)
           .setIdleTimeout((short) 5)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
