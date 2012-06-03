@@ -409,6 +409,25 @@ public class TopologyManager implements
         return tunnelLinks.keySet();
     }
 
+    @Override
+    public Set<NodePortTuple> getBlockedPorts() {
+        Set<NodePortTuple> bp;
+        Set<NodePortTuple> blockedPorts =
+                new HashSet<NodePortTuple>();
+
+        // As we might have two topologies, simply get the union of
+        // both of them and send it.
+        bp = currentInstance.getBlockedPorts();
+        if (bp != null)
+            blockedPorts.addAll(bp);
+
+        bp = currentInstanceWithoutTunnels.getBlockedPorts();
+        if (bp != null)
+            blockedPorts.addAll(bp);
+
+        return blockedPorts;
+    }
+
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
