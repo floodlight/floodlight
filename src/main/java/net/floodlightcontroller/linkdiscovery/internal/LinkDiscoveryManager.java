@@ -849,7 +849,7 @@ public class LinkDiscoveryManager
         // It's probably overkill to send LLDP from all switches, but we don't
         // know which switches might be connected to the new switch.
         // Need to optimize when supporting a large number of switches.
-        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
+        sendLLDPTask.reschedule(2000, TimeUnit.MILLISECONDS);
         // Update event history
         evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
     }
@@ -1379,28 +1379,26 @@ public class LinkDiscoveryManager
         
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
+        // To be started by the first switch connection
         sendLLDPTask = new SingletonTask(ses, new Runnable() {
         	@Override
         	public void run() {
         		try {
         			sendLLDPs();
-
-        			if (!shuttingDown) {
-        				sendLLDPTask.reschedule(lldpFrequency,
-        						TimeUnit.MILLISECONDS);
-        			}
         		} catch (StorageException e) {
         			log.error("Storage exception in LLDP send timer; " + 
         					"terminating process", e);
         			floodlightProvider.terminate();
         		} catch (Exception e) {
         			log.error("Exception in LLDP send timer", e);
+        		} finally {
+        			if (!shuttingDown) {
+        				sendLLDPTask.reschedule(lldpFrequency,
+        						TimeUnit.MILLISECONDS);
+        			}
         		}
         	}
         });
-
-        // Setup sending out LLDPs
-        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
 
         Runnable timeoutLinksTimer = new Runnable() {
             @Override
