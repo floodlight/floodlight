@@ -248,7 +248,7 @@ public class Device implements IDevice {
             blocked = new ArrayList<SwitchPort>();
             clusterBlocked = new ArrayList<SwitchPort>();
         }
-            
+
         ITopologyService topology = deviceManager.topology;
         long prevCluster = 0;
         int clEntIndex = -1;
@@ -259,10 +259,16 @@ public class Device implements IDevice {
             Long dpid = cur.getSwitchDPID();
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
-                !deviceManager.isValidAttachmentPoint(dpid, port))
+                !deviceManager.isValidAttachmentPoint(dpid, port) ||
+                (prev != null && 
+                topology.isConsistent(prev.getSwitchDPID().longValue(),
+                                      prev.getSwitchPort().shortValue(),
+                                      dpid.longValue(),
+                                      port.shortValue()))
+                )
                 continue;
             long curCluster = 
-                    topology.getSwitchClusterId(cur.switchDPID);
+                    topology.getL2DomainId(cur.switchDPID);
             if (prevCluster != curCluster) {
                 prev = null;
                 latestLastSeen = 0;
@@ -272,14 +278,17 @@ public class Device implements IDevice {
                     clusterBlocked.clear();
                 }
             }
-            
+
             if (prev != null && 
                 !(dpid.equals(prev.getSwitchDPID()) &&
                   port.equals(prev.getSwitchPort())) &&
                 !topology.isInSameBroadcastDomain(dpid.longValue(),
-                		port.shortValue(),
-                        prev.getSwitchDPID().longValue(),
-                        prev.getSwitchPort().shortValue())) {
+                                                  port.shortValue(),
+                                                  prev.getSwitchDPID().longValue(),
+                                                  prev.getSwitchPort().shortValue()) &&
+                !topology.isConsistent(prev.getSwitchDPID().longValue(), 
+                                       prev.getSwitchPort().shortValue(), 
+                                       dpid.longValue(), port.shortValue())) {
                 long curActive = 
                         deviceManager.apComparator.
                             getEffTS(cur, cur.getActiveSince());

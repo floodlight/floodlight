@@ -96,7 +96,6 @@ public class OFMatch implements Cloneable, Serializable {
 
     protected int wildcards;
     protected short inputPort;
-    protected long  switchDataPathId;
     protected byte[] dataLayerSource;
     protected byte[] dataLayerDestination;
     protected short dataLayerVirtualLan;
@@ -118,6 +117,7 @@ public class OFMatch implements Cloneable, Serializable {
         this.wildcards = OFPFW_ALL;
         this.dataLayerDestination = new byte[6];
         this.dataLayerSource = new byte[6];
+        this.dataLayerVirtualLan = -1;
     }
 
     /**
@@ -265,16 +265,6 @@ public class OFMatch implements Cloneable, Serializable {
         this.inputPort = inputPort;
         return this;
     }
-
-    public long getSwitchDataPathId() {
-        return this.switchDataPathId;
-    }
-
-    public OFMatch setSwitchDataPathId(long dpid) {
-        this.switchDataPathId = dpid;
-        return this;
-    }
-
 
     /**
      * Get nw_dst
@@ -455,8 +445,7 @@ public class OFMatch implements Cloneable, Serializable {
      * @param inputPort
      *            the port the packet arrived on
      */
-    public OFMatch loadFromPacket(byte[] packetData, short inputPort, 
-                                                                  long dpid) {
+    public OFMatch loadFromPacket(byte[] packetData, short inputPort) {
         short scratch;
         int transportOffset = 34;
         ByteBuffer packetDataBB = ByteBuffer.wrap(packetData);
@@ -464,7 +453,6 @@ public class OFMatch implements Cloneable, Serializable {
 
         this.wildcards = 0; // all fields have explicit entries
 
-        this.switchDataPathId = dpid;
         this.inputPort = inputPort;
 
         if (inputPort == OFPort.OFPP_ALL.getValue())

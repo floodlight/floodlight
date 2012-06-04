@@ -15,6 +15,6 @@ public class BroadcastDomainResource extends ServerResource {
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
         
-        return topology.getBroadcastDomainLinks();
+        return topology.getBroadcastDomainPorts();
     }
 }

@@ -15,6 +15,6 @@ public class TunnelLinksResource extends ServerResource {
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
         
-        return topology.getTunnelLinks();
+        return topology.getTunnelPorts();
     }
 }

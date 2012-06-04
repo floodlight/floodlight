@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -142,6 +143,7 @@ public class LinkDiscoveryManager
     protected IRoutingService routingEngine;
     protected IThreadPoolService threadPool;
     
+    protected SingletonTask sendLLDPTask;
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
     		HexString.fromHexString("01:80:c2:00:00:00");
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
@@ -201,7 +203,8 @@ public class LinkDiscoveryManager
     
     public void AddToSuppressLLDPs(IOFSwitch sw, short port)
     {
-    	this.suppressLLDPs.add(new SwitchPortTuple(sw, port));
+    	SwitchPortTuple swt = new SwitchPortTuple(sw, port);
+    	this.suppressLLDPs.add(swt);
     }
     
     public void RemoveFromSuppressLLDPs(IOFSwitch sw, short port) 
@@ -237,9 +240,13 @@ public class LinkDiscoveryManager
         } while (updates.peek() != null);
     }
 
+    private boolean isLLDPSuppressed(IOFSwitch sw, short portNumber) {
+    	return this.suppressLLDPs.contains(new SwitchPortTuple(sw, portNumber));
+    }
+    
     protected void sendLLDPs(IOFSwitch sw, OFPhysicalPort port, boolean isStandard) {
     	
-    	if (this.suppressLLDPs.contains(new SwitchPortTuple(sw, port.getPortNumber()))) {
+    	if (isLLDPSuppressed(sw, port.getPortNumber())) {
     		/* Dont send LLDPs out of this port as suppressLLDPs set
     		 * 
     		 */
@@ -403,8 +410,6 @@ public class LinkDiscoveryManager
 
         bb.putLong(result);
 
-        log.info("Controller TLV: {}", result);
-
         bb.rewind();
         bb.get(controllerTLVValue, 0, 8);
 
@@ -430,6 +435,10 @@ public class LinkDiscoveryManager
     }
 
     private Command handleLldp(LLDP lldp, IOFSwitch sw, OFPacketIn pi, boolean isStandard, FloodlightContext cntx) {
+        // If LLDP is suppressed on this port, ignore received packet as well
+        if (isLLDPSuppressed(sw, pi.getInPort()))
+        	return Command.STOP;
+        
         // If this is a malformed LLDP, or not from us, exit
         if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3)
             return Command.CONTINUE;
@@ -489,6 +498,11 @@ public class LinkDiscoveryManager
         if (!remoteSwitch.portEnabled(remotePort)) {
             log.debug("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
             return Command.STOP;
+        }
+        if (suppressLLDPs.contains(new SwitchPortTuple(remoteSwitch, remotePort))) {
+            log.debug("Ignoring link with suppressed src port: switch {} port {}",
+            		remoteSwitch, remotePort);
+        	return Command.STOP;
         }
         if (!sw.portEnabled(pi.getInPort())) {
             log.debug("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
@@ -820,7 +834,8 @@ public class LinkDiscoveryManager
             // cluster-merge. If it is a link delete then there is not need
             // to send the LLDPs right away and instead we wait for the LLDPs
             // to be sent on the timer as it is normally done
-            sendLLDPs(); // do it outside the write-lock
+        	// do it outside the write-lock
+            sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
         }
         return Command.CONTINUE;
     }
@@ -834,7 +849,7 @@ public class LinkDiscoveryManager
         // It's probably overkill to send LLDP from all switches, but we don't
         // know which switches might be connected to the new switch.
         // Need to optimize when supporting a large number of switches.
-        sendLLDPs();
+        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
         // Update event history
         evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
     }
@@ -1337,7 +1352,8 @@ public class LinkDiscoveryManager
         this.updates = new LinkedBlockingQueue<LDUpdate>();
         this.links = new HashMap<LinkTuple, LinkInfo>();
         this.portLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
-        this.suppressLLDPs = new HashSet<SwitchPortTuple>();
+        this.suppressLLDPs =
+        		Collections.synchronizedSet(new HashSet<SwitchPortTuple>());
         this.portBroadcastDomainLinks = new HashMap<SwitchPortTuple, Set<LinkTuple>>();
         this.switchLinks = new HashMap<IOFSwitch, Set<LinkTuple>>();
         this.evHistTopologySwitch =
@@ -1353,8 +1369,7 @@ public class LinkDiscoveryManager
         // Create our storage tables
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
-        storageSource.createTable(LINK_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
+        storageSource.deleteMatchingRows(LINK_TABLE_NAME, null);
         // Register for storage updates for the switch table
         try {
             storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
@@ -1364,29 +1379,28 @@ public class LinkDiscoveryManager
         
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
-        // Setup sending out LLDPs
-        Runnable lldpSendTimer = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    sendLLDPs();
+        sendLLDPTask = new SingletonTask(ses, new Runnable() {
+        	@Override
+        	public void run() {
+        		try {
+        			sendLLDPs();
 
-                    if (!shuttingDown) {
-                        ScheduledExecutorService ses = 
-                            threadPool.getScheduledExecutor();
-                                    ses.schedule(this, lldpFrequency, 
-                                                        TimeUnit.MILLISECONDS);
-                    }
-                } catch (StorageException e) {
-                    log.error("Storage exception in LLDP send timer; " + 
-                              "terminating process", e);
-                    floodlightProvider.terminate();
-                } catch (Exception e) {
-                    log.error("Exception in LLDP send timer", e);
-                }
-            }   
-        };
-        ses.schedule(lldpSendTimer, 1000, TimeUnit.MILLISECONDS);
+        			if (!shuttingDown) {
+        				sendLLDPTask.reschedule(lldpFrequency,
+        						TimeUnit.MILLISECONDS);
+        			}
+        		} catch (StorageException e) {
+        			log.error("Storage exception in LLDP send timer; " + 
+        					"terminating process", e);
+        			floodlightProvider.terminate();
+        		} catch (Exception e) {
+        			log.error("Exception in LLDP send timer", e);
+        		}
+        	}
+        });
+
+        // Setup sending out LLDPs
+        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
 
         Runnable timeoutLinksTimer = new Runnable() {
             @Override

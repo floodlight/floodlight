@@ -1,9 +1,11 @@
 package net.floodlightcontroller.topology;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -22,11 +24,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -35,7 +37,11 @@ import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPacketOut;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,21 +58,24 @@ public class TopologyManager implements
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
+    public static final String CONTEXT_TUNNEL_ENABLED = 
+            "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
+
     /** 
      * Set of ports for each switch 
      */
     protected Map<Long, Set<Short>> switchPorts; 
-    
+
     /**
      * Set of links organized by node port tuple
      */
     protected Map<NodePortTuple, Set<Link>> switchPortLinks;
-    
+
     /**
      * set of links that are broadcast domain links.
      */
     protected Map<NodePortTuple, Set<Link>> portBroadcastDomainLinks;
-    
+
     /**
      * set of tunnel links
      */
@@ -74,6 +83,7 @@ public class TopologyManager implements
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
+    protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
 
     // Modules that listen to our updates
@@ -81,9 +91,9 @@ public class TopologyManager implements
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected TopologyInstance currentInstance;
+    protected TopologyInstance currentInstanceWithoutTunnels;
     protected SingletonTask newInstanceTask;
 
-    
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
@@ -128,115 +138,279 @@ public class TopologyManager implements
     // ITopologyService
     // ****************
 
-    @Override
-    public boolean isInternal(long switchid, short port) {
-        return currentInstance.isInternal(switchid, port);
-    }
-
-    @Override
-    public long getSwitchClusterId(long switchId) {
-        return currentInstance.getSwitchClusterId(switchId);
-    }
-
-    @Override
-    public Set<Long> getSwitchesInCluster(long switchId) {
-        return currentInstance.getSwitchesInCluster(switchId);
-    }
-
-    @Override
-    public boolean inSameCluster(long switch1, long switch2) {
-        return currentInstance.inSameCluster(switch1, switch2);
-    }
+    //
+    // ITopologyService interface methods
+    //
 
     @Override
     public void addListener(ITopologyListener listener) {
         topologyAware.add(listener);
     }
 
+    @Override 
+    public boolean isAttachmentPointPort(long switchid, short port) {
+        return isAttachmentPointPort(switchid, port, true);
+    }
+
+    @Override
+    public boolean isAttachmentPointPort(long switchid, short port, 
+                                         boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.isAttachmentPointPort(switchid, port);
+    }
+    
+    public long getOpenflowDomainId(long switchId) {
+        return getOpenflowDomainId(switchId, true);
+    }
+
+    public long getOpenflowDomainId(long switchId, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getOpenflowDomainId(switchId);
+    }
+
+    @Override
+    public long getL2DomainId(long switchId) {
+        return getL2DomainId(switchId, true);
+    }
+
+    @Override
+    public long getL2DomainId(long switchId, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getL2DomainId(switchId);
+    }
+
+    @Override
+    public boolean inSameOpenflowDomain(long switch1, long switch2) {
+        return inSameOpenflowDomain(switch1, switch2, true);
+    }
+
+    @Override
+    public boolean inSameOpenflowDomain(long switch1, long switch2,
+                                        boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.inSameOpenflowDomain(switch1, switch2);
+    }
+
     @Override
     public boolean isAllowed(long sw, short portId) {
-        return currentInstance.isAllowed(sw, portId);
+        return isAllowed(sw, portId, true);
+    }
+
+    @Override
+    public boolean isAllowed(long sw, short portId, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.isAllowed(sw, portId);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public boolean isIncomingBroadcastAllowed(long sw, short portId) {
+        return isIncomingBroadcastAllowed(sw, portId, true);
+    }
+
+    public boolean isIncomingBroadcastAllowed(long sw, short portId,
+                                              boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    /** Get all the ports connected to the switch */
+    @Override
+    public Set<Short> getPorts(long sw) {
+        return getPorts(sw, true);
+    }
+
+    /** Get all the ports connected to the switch */
+    @Override
+    public Set<Short> getPorts(long sw, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getPorts(sw);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    /** Get all the ports on the target switch (targetSw) on which a 
+     * broadcast packet must be sent from a host whose attachment point
+     * is on switch port (src, srcPort).
+     */
+    public Set<Short> getBroadcastPorts(long targetSw, 
+                                        long src, short srcPort) {
+        return getBroadcastPorts(targetSw, src, srcPort, true);
+    }
+
+    /** Get all the ports on the target switch (targetSw) on which a 
+     * broadcast packet must be sent from a host whose attachment point
+     * is on switch port (src, srcPort).
+     */
+    public Set<Short> getBroadcastPorts(long targetSw, 
+                                        long src, short srcPort,
+                                        boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getBroadcastPorts(targetSw, src, srcPort);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+        // Use this function to redirect traffic if needed.
+        return getOutgoingSwitchPort(src, srcPort, dst, dstPort, true);
+    }
+    
+    @Override
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort,
+                                               boolean tunnelEnabled) {
+        // Use this function to redirect traffic if needed.
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getOutgoingSwitchPort(src, srcPort,
+                                                     dst, dstPort);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
+        return getIncomingSwitchPort(src, srcPort, dst, dstPort, true);
+    }
+
+    @Override
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort,
+                                               boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getIncomingSwitchPort(src, srcPort,
+                                                     dst, dstPort);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    /**
+     * Checks if the two switchports belong to the same broadcast domain.
+     */
+    @Override
+    public boolean isInSameBroadcastDomain(long s1, short p1, long s2,
+                                           short p2) {
+        return isInSameBroadcastDomain(s1, p1, s2, p2, true);
+
+    }
+
+    @Override
+    public boolean isInSameBroadcastDomain(long s1, short p1,
+                                           long s2, short p2,
+                                           boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.inSameBroadcastDomain(s1, p1, s2, p2);
+
+    }
+
+
+    /**
+     * Checks if the switchport is a broadcast domain port or not.
+     */
+    @Override
+    public boolean isBroadcastDomainPort(long sw, short port) {
+        return isBroadcastDomainPort(sw, port, true);
+    }
+
+    @Override
+    public boolean isBroadcastDomainPort(long sw, short port,
+                                         boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
+    }
+
+
+    /**
+     * Checks if the new attachment point port is consistent with the
+     * old attachment point port.
+     */
+    @Override
+    public boolean isConsistent(long oldSw, short oldPort,
+                                long newSw, short newPort) {
+        return isConsistent(oldSw, oldPort,
+                                            newSw, newPort, true);
+    }
+
+    @Override
+    public boolean isConsistent(long oldSw, short oldPort,
+                                long newSw, short newPort,
+                                boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.isConsistent(oldSw, oldPort, newSw, newPort);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    /**
+     * Checks if the two switches are in the same Layer 2 domain.
+     */
+    @Override
+    public boolean inSameL2Domain(long switch1, long switch2) {
+        return inSameL2Domain(switch1, switch2, true);
+    }
+
+    @Override
+    public boolean inSameL2Domain(long switch1, long switch2,
+                                  boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.inSameL2Domain(switch1, switch2);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort) {
+        return getAllowedOutgoingBroadcastPort(src, srcPort,
+                                               dst, dstPort, true);
     }
 
     @Override
     public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
                                                          short srcPort,
                                                          long dst,
-                                                         short dstPort) {
-        return currentInstance.getAllowedOutgoingBroadcastPort(src,srcPort,
-                                                               dst,dstPort);
+                                                         short dstPort,
+                                                         boolean tunnelEnabled){
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getAllowedOutgoingBroadcastPort(src, srcPort,
+                                                  dst, dstPort);
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public NodePortTuple 
+    getAllowedIncomingBroadcastPort(long src, short srcPort) {
+        return getAllowedIncomingBroadcastPort(src,srcPort, true);
     }
 
     @Override
-    public NodePortTuple getAllowedIncomingBroadcastPort(long src,
-                                                         short srcPort) {
-        return currentInstance.getAllowedIncomingBroadcastPort(src,srcPort);
+    public NodePortTuple 
+    getAllowedIncomingBroadcastPort(long src, short srcPort,
+                                    boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getAllowedIncomingBroadcastPort(src,srcPort);
     }
 
     @Override
-    public boolean isIncomingBroadcastAllowed(long sw, short portId) {
-        return currentInstance.isIncomingBroadcastAllowedOnSwitchPort(sw, 
-                                                                      portId);
-    }
-
-    @Override
-    public Set<Short> getPorts(long sw) {
-        return currentInstance.getPorts(sw);
-    }
-
-    public Set<Short> getBroadcastPorts(long targetSw, long src, 
-                                        short srcPort) {
-        return currentInstance.getBroadcastPorts(targetSw, src, srcPort);
-    }
-
-    @Override
-    public boolean isInSameBroadcastDomain(long s1, short p1, 
-                                           long s2, short p2) {
-        return currentInstance.isInSameBroadcastDomain(s1, p1, s2, p2);
-
-    }
-
-    @Override
-    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
-                                               long dst, short dstPort) {
-        // Use this function to redirect traffic if needed.
-        return currentInstance.getOutgoingSwitchPort(src, srcPort, 
-                                                     dst, dstPort);
-    }
-
-    @Override
-    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
-                                               long dst, short dstPort) {
-        return currentInstance.getIncomingSwitchPort(src, srcPort,
-                                                     dst, dstPort);
-    }
-
-    @Override
-    public boolean isBroadcastDomainPort(long sw, short port) {
-        return currentInstance.isBroadcastDomainPort(new NodePortTuple(sw, 
-                                                                       port));
-    }
-
-    @Override
-    public boolean isConsistent(long oldSw, short oldPort, long newSw,
-                                short newPort) {
-        return currentInstance.isConsistent(oldSw, oldPort, newSw, newPort);
-    }
-
-    @Override
-    public boolean inSameIsland(long switch1, long switch2) {
-        return currentInstance.inSameIsland(switch1, switch2);
-    }
-    
-    @Override
-    public Set<NodePortTuple> getBroadcastDomainLinks() {
+    public Set<NodePortTuple> getBroadcastDomainPorts() {
         return portBroadcastDomainLinks.keySet();
     }
 
     @Override
-    public Set<NodePortTuple> getTunnelLinks() {
+    public Set<NodePortTuple> getTunnelPorts() {
         return tunnelLinks.keySet();
     }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     // ***************
     // IRoutingService
@@ -244,19 +418,38 @@ public class TopologyManager implements
 
     @Override
     public Route getRoute(long src, long dst) {
-        Route r = currentInstance.getRoute(src, dst);
-        return r;
+        return getRoute(src, dst, true);
+    }
+
+    @Override
+    public Route getRoute(long src, long dst, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getRoute(src, dst);
+    }
+
+    @Override
+    public Route getRoute(long src, short srcPort, long dst, short dstPort) {
+        return getRoute(src, srcPort, dst, dstPort, true);
+    }
+
+    @Override
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, 
+                          boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getRoute(src, srcPort, dst, dstPort);
     }
 
     @Override
     public boolean routeExists(long src, long dst) {
-        return currentInstance.routeExists(src, dst);
+        return routeExists(src, dst, true);
     }
 
     @Override
-    public BroadcastTree getBroadcastTreeForCluster(long clusterId) {
-        return currentInstance.getBroadcastTreeForCluster(clusterId);
+    public boolean routeExists(long src, long dst, boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.routeExists(src, dst);
     }
+
 
     // ******************
     // IOFMessageListener
@@ -356,6 +549,7 @@ public class TopologyManager implements
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
         l.add(IFloodlightProviderService.class);
+        l.add(ICounterStoreService.class);
         l.add(IRestApiService.class);
         return l;
     }
@@ -367,14 +561,17 @@ public class TopologyManager implements
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
+        counterStore = 
+                context.getServiceImpl(ICounterStoreService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
-        
+
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
+
     }
 
     @Override
@@ -390,17 +587,24 @@ public class TopologyManager implements
     // ****************
     // Internal methods
     // ****************
-    
-    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
+    public static boolean isTunnelEnabled(FloodlightContext cntx) {
+        if (cntx == null) return false;
+        Boolean flag = (Boolean) cntx.getStorage().get(CONTEXT_TUNNEL_ENABLED);
+        if (flag == null || flag == false) return false;
+        return true;
+    }
+
+    protected Command dropFilter(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
+        Command result = Command.CONTINUE;
         Ethernet eth = 
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
+
         if (isAllowed(sw.getId(), pi.getInPort()) == false) {
             if (eth.getEtherType() == Ethernet.TYPE_BDDP ||
                 (eth.isBroadcast() == false && eth.isMulticast() == false)) {
-                return Command.CONTINUE;
+                result = Command.CONTINUE;
             } else {
                 if (log.isTraceEnabled()) {
                     log.trace("Ignoring packet because of topology " + 
@@ -408,12 +612,153 @@ public class TopologyManager implements
                               new Object[] {sw.getStringId(), 
                                             pi.getInPort()});
                 }
-                return Command.STOP;
+                result = Command.STOP;
             }
         }
-        return Command.CONTINUE;
+        return result;
+    }
+
+    protected void checkTunnelUsage(IOFSwitch sw, OFPacketIn pi, 
+                                    FloodlightContext cntx) {
+        // tunnels are disabled.
+        cntx.getStorage().put(CONTEXT_TUNNEL_ENABLED, false);
     }
     
+
+    /** 
+     * TODO This method must be moved to a layer below forwarding
+     * so that anyone can use it.
+     * @param packetData
+     * @param sw
+     * @param ports
+     * @param cntx
+     */
+    public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw, 
+                                       Set<Short> ports,
+                                       FloodlightContext cntx) {
+
+        if (ports == null) return;
+        if (packetData == null || packetData.length <= 0) return;
+
+        OFPacketOut po = 
+                (OFPacketOut) floodlightProvider.getOFMessageFactory().
+                getMessage(OFType.PACKET_OUT);
+
+        List<OFAction> actions = new ArrayList<OFAction>();
+        for(short p: ports) {
+            actions.add(new OFActionOutput(p, (short) 0));
+        }
+
+        // set actions
+        po.setActions(actions);
+        // set action length
+        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * 
+                ports.size()));
+        // set buffer-id to BUFFER_ID_NONE
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        // set in-port to OFPP_NONE
+        po.setInPort(OFPort.OFPP_NONE.getValue());
+
+        // set packet data
+        po.setPacketData(packetData);
+
+        // compute and set packet length.
+        short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + 
+                po.getActionsLength() + 
+                packetData.length);
+
+        po.setLength(poLength);
+
+        try {
+            //counterStore.updatePktOutFMCounterStore(sw, po);
+            if (log.isTraceEnabled()) {
+                log.trace("write broadcast packet on switch-id={} " + 
+                        "interaces={} packet-data={} packet-out={}",
+                        new Object[] {sw.getId(), ports, packetData, po});
+            }
+            sw.write(po, cntx);
+
+        } catch (IOException e) {
+            log.error("Failure writing packet out", e);
+        }
+    }
+
+
+    /**
+     * The BDDP packets are forwarded out of all the ports out of an
+     * openflowdomain.  Get all the switches in the same openflow
+     * domain as the sw (disabling tunnels).  Then get all the 
+     * external switch ports and send these packets out.
+     * @param sw
+     * @param pi
+     * @param cntx
+     */
+    protected void doFloodBDDP(long pinSwitch, OFPacketIn pi, 
+                               FloodlightContext cntx) {
+
+        TopologyInstance ti = this.currentInstanceWithoutTunnels;
+
+        Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
+        
+        if (switches == null) // this implies that there are no links connected to the switches
+        {
+            switches = new HashSet<Long>();
+            switches.add(pinSwitch);
+        }
+
+        for(long sid: switches) {
+            IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
+            if (sw == null) continue;
+            Set<Short> ports = new HashSet<Short>();
+            if (sw.getPorts() == null) continue;
+            ports.addAll(sw.getPorts().keySet());
+
+            // all the ports known to topology // without tunnels.
+            // out of these, we need to choose only those that are 
+            // broadcast port, otherwise, we should eliminate.
+            Set<Short> portsKnownToTopo = ti.getPorts(sid);
+
+            if (portsKnownToTopo != null) {
+                for(short p: portsKnownToTopo) {
+                    NodePortTuple npt = 
+                            new NodePortTuple(sid, p);
+                    if (ti.isBroadcastDomainPort(npt) == false) {
+                        ports.remove(p);
+                    }
+                }
+            }
+
+            // remove the incoming switch port
+            if (pinSwitch == sid) {
+                ports.remove(pi.getInPort());
+            }
+
+            // we have all the switch ports to which we need to broadcast.
+            doMultiActionPacketOut(pi.getPacketData(), sw, ports, cntx);
+        }
+
+    }
+
+    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
+                                             FloodlightContext cntx) {
+
+        // get the packet-in switch.
+        Ethernet eth = 
+                IFloodlightProviderService.bcStore.
+                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        if (eth.getEtherType() == Ethernet.TYPE_BDDP) {
+            doFloodBDDP(sw.getId(), pi, cntx);
+        } else {
+            // if the packet is BDDP, then send flood it on all the external 
+            // switch ports in the same openflow domain.
+            checkTunnelUsage(sw, pi, cntx);
+            return dropFilter(sw, pi, cntx);
+        }
+        return Command.STOP;
+    }
+
+
     public void applyUpdates() {
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
@@ -423,7 +768,7 @@ public class TopologyManager implements
                 log.error("Error reading link discovery update.", e);
             }
             if (log.isTraceEnabled()) {
-                log.info("Applying update: {}", update);
+                log.trace("Applying update: {}", update);
             }
             if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
                 boolean added = 
@@ -451,13 +796,42 @@ public class TopologyManager implements
     /**
      * This function computes a new topology.
      */
+    /**
+     * This function computes a new topology intance.
+     * It ignores links connected to all broadcast domain ports
+     * and tunnel ports.
+     */
     public void createNewInstance() {
-        TopologyInstance nt = 
-                new TopologyInstance(switchPorts, switchPortLinks, 
-                                     portBroadcastDomainLinks, tunnelLinks);
+        Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
+
+        Map<NodePortTuple, Set<Link>> openflowLinks;
+        openflowLinks = 
+                new HashMap<NodePortTuple, Set<Link>>(switchPortLinks);
+
+        // Remove all tunnel links.
+        for(NodePortTuple npt: tunnelLinks.keySet()) {
+            if (openflowLinks.get(npt) != null)
+                openflowLinks.remove(npt);
+        }
+
+        // Remove all broadcast domain links.
+        for(NodePortTuple npt: portBroadcastDomainLinks.keySet()) {
+            if (openflowLinks.get(npt) != null)
+                openflowLinks.remove(npt);
+        }
+
+        TopologyInstance nt = new TopologyInstance(switchPorts, 
+                                                   blockedPorts,
+                                                   openflowLinks, 
+                                                   portBroadcastDomainLinks.keySet(), 
+                                                   tunnelLinks.keySet());
         nt.compute();
+        // We set the instances with and without tunnels to be identical.
+        // If needed, we may compute them differently.
         currentInstance = nt;
+        currentInstanceWithoutTunnels = nt;
     }
+
 
     public void informListeners() {
         for(int i=0; i<topologyAware.size(); ++i) {
@@ -622,8 +996,19 @@ public class TopologyManager implements
         return portBroadcastDomainLinks;
     }
 
+    public TopologyInstance getCurrentInstance(boolean tunnelEnabled) {
+        if (tunnelEnabled)
+            return currentInstance;
+        else return this.currentInstanceWithoutTunnels;
+    }
+
     public TopologyInstance getCurrentInstance() {
-        return currentInstance;
+        return this.getCurrentInstance(true);
+    }
+
+    @Override
+    public boolean isTunnelEnabled(long srcMac, long dstMac) {
+        return false;
     }
 }
 

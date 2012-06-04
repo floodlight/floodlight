@@ -52,7 +52,10 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifier;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileListener;
+import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -67,6 +70,7 @@ import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
             DeviceManagerImpl.DeviceUpdate.Change.*;
 
+import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
@@ -83,7 +87,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements 
         IDeviceService, IOFMessageListener,
         IStorageSourceListener, IFloodlightModule,
-        IInfoProvider, IHAListener {  
+        IFlowReconcileListener, IInfoProvider, IHAListener {  
     protected static Logger logger = 
         LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -266,15 +270,18 @@ public class DeviceManagerImpl implements
                 r = 1;
             else {
                 Long d1ClusterId = 
-                        topology.getSwitchClusterId(swdpid1);
+                        topology.getL2DomainId(swdpid1);
                 Long d2ClusterId = 
-                        topology.getSwitchClusterId(swdpid2);
+                        topology.getL2DomainId(swdpid2);
                 r = d1ClusterId.compareTo(d2ClusterId);
             }
             if (r != 0) return r;
-            
-            long e1ts = getEffTS(e1, e1.getLastSeenTimestamp());
-            long e2ts = getEffTS(e2, e2.getLastSeenTimestamp());
+
+            // the ordering of active times is a more
+            // representative of the causal relationship
+            // than lastSeen time.
+            long e1ts = getEffTS(e1, e1.getActiveSince());
+            long e2ts = getEffTS(e2, e2.getActiveSince());
             return Long.valueOf(e1ts).compareTo(e2ts);
         }
         
@@ -286,10 +293,15 @@ public class DeviceManagerImpl implements
     public AttachmentPointComparator apComparator;
     
     /**
+     * Switch ports where attachment points shouldn't be learned
+     */
+	private Set<SwitchPort> suppressAPs;
+    
+    /**
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
-    
+
     // *********************
     // IDeviceManagerService
     // *********************
@@ -478,7 +490,8 @@ public class DeviceManagerImpl implements
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return (type == OFType.PACKET_IN && name.equals("topology"));
+        return ((type == OFType.PACKET_IN || type == OFType.FLOW_MOD) 
+        		&& name.equals("topology"));
     }
 
     @Override
@@ -497,6 +510,41 @@ public class DeviceManagerImpl implements
 
         logger.error("received an unexpected message {} from switch {}", 
                      msg, sw);
+        return Command.CONTINUE;
+    }
+    
+    // ***************
+    // IFlowReconcileListener
+    // ***************
+    @Override
+    public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList) {
+        for (OFMatchReconcile ofm : ofmRcList) {
+        	// Extract source entity information
+            Entity srcEntity = 
+            	getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
+            if (srcEntity == null)
+                return Command.STOP;
+
+            // Learn/lookup device information
+            Device srcDevice = learnDeviceByEntity(srcEntity);
+            if (srcDevice == null)
+                return Command.STOP;
+
+            // Store the source device in the context
+            fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
+
+            // Find the device matching the destination from the entity
+            // classes of the source.
+            Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
+            logger.debug("DeviceManager dstEntity {}", dstEntity);
+            if (dstEntity != null) {
+                Device dstDevice = 
+                        findDestByEntity(srcDevice, dstEntity);
+                logger.debug("DeviceManager dstDevice {}", dstDevice);
+                if (dstDevice != null)
+                    fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
+            }
+        }
         return Command.CONTINUE;
     }
     
@@ -559,6 +607,8 @@ public class DeviceManagerImpl implements
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
         this.deviceListeners = new HashSet<IDeviceListener>();
+        this.suppressAPs =
+        		Collections.synchronizedSet(new HashSet<SwitchPort>());
         
         this.floodlightProvider = 
                 fmc.getServiceImpl(IFloodlightProviderService.class);
@@ -626,42 +676,42 @@ public class DeviceManagerImpl implements
                           Map<String, String> removedControllerNodeIPs) {
         // no-op
     }
-    
+
     // ****************
     // Internal methods
     // ****************
 
     protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
-        Ethernet eth = 
-                IFloodlightProviderService.bcStore.
-                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
-        // Extract source entity information
-        Entity srcEntity = 
-                getSourceEntityFromPacket(eth, sw, pi.getInPort());
-        if (srcEntity == null)
-            return Command.STOP;
-
-        // Learn/lookup device information
-        Device srcDevice = learnDeviceByEntity(srcEntity);
-        if (srcDevice == null)
-            return Command.STOP;
-
-        // Store the source device in the context
-        fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
-
-        // Find the device matching the destination from the entity
-        // classes of the source.
-        Entity dstEntity = getDestEntityFromPacket(eth);
-        if (dstEntity != null) {
-            Device dstDevice = 
-                    findDestByEntity(srcDevice, dstEntity);
-            if (dstDevice != null)
-                fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
-        }
-
-        return Command.CONTINUE;
+    	Ethernet eth = 
+            IFloodlightProviderService.bcStore.
+            get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+    
+	    // Extract source entity information
+	    Entity srcEntity = 
+	            getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
+	    if (srcEntity == null)
+	        return Command.STOP;
+	
+	    // Learn/lookup device information
+	    Device srcDevice = learnDeviceByEntity(srcEntity);
+	    if (srcDevice == null)
+	        return Command.STOP;
+	
+	    // Store the source device in the context
+	    fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
+	
+	    // Find the device matching the destination from the entity
+	    // classes of the source.
+	    Entity dstEntity = getDestEntityFromPacket(eth);
+	    if (dstEntity != null) {
+	        Device dstDevice = 
+	                findDestByEntity(srcDevice, dstEntity);
+	        if (dstDevice != null)
+	            fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
+	    }
+	
+	    return Command.CONTINUE;
     }
     
     /**
@@ -677,7 +727,7 @@ public class DeviceManagerImpl implements
         if (sw == null) return false;
         OFPhysicalPort port = sw.getPort((short)switchPort);
         if (port == null || !sw.portEnabled(port)) return false;
-        if (topology.isInternal(switchDPID, (short)switchPort))
+        if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
             return false;
         
         // Check whether the port is a physical port. We should not learn 
@@ -685,6 +735,9 @@ public class DeviceManagerImpl implements
         if (((switchPort & 0xff00) == 0xff00) && 
              (switchPort != (short)0xfffe))
             return false;
+        
+        if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
+        	return false;
         
         return true;            
     }
@@ -719,7 +772,7 @@ public class DeviceManagerImpl implements
      * @return the entity from the packet
      */
     private Entity getSourceEntityFromPacket(Ethernet eth, 
-                                             IOFSwitch sw, 
+                                             long swdpid, 
                                              int port) {
         byte[] dlAddrArr = eth.getSourceMACAddress();
         long dlAddr = Ethernet.toLong(dlAddrArr);
@@ -729,7 +782,7 @@ public class DeviceManagerImpl implements
             return null;
 
         boolean learnap = true;
-        if (!isValidAttachmentPoint(sw.getId(), (short)port)) {
+        if (!isValidAttachmentPoint(swdpid, (short)port)) {
             // If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
             // handle this case by labeling flows with something that
@@ -744,7 +797,7 @@ public class DeviceManagerImpl implements
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
                           ((nwSrc != 0) ? nwSrc : null),
-                          (learnap ? sw.getId() : null),
+                          (learnap ? swdpid : null),
                           (learnap ? port : null),
                           new Date());
     }
@@ -776,7 +829,48 @@ public class DeviceManagerImpl implements
                           null,
                           null);
     }
+    
+    /**
+     * Parse an entity from an OFMatchWithSwDpid.
+     * @param ofmWithSwDpid
+     * @return the entity from the packet
+     */
+    private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid, boolean isSource) {
+    	byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
+        int nwSrc = ofmWithSwDpid.getOfMatch().getNetworkSource();
+        if (!isSource) {
+        	dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerDestination();
+        	nwSrc = ofmWithSwDpid.getOfMatch().getNetworkDestination();
+        }
+        
+        long dlAddr = Ethernet.toLong(dlAddrArr);
 
+        // Ignore broadcast/multicast source
+        if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        
+        long swDpid = ofmWithSwDpid.getSwitchDataPathId();
+        short inPort = ofmWithSwDpid.getOfMatch().getInputPort();
+
+        boolean learnap = true;
+        if (!isValidAttachmentPoint(swDpid, inPort)) {
+            // If this is an internal port or we otherwise don't want
+            // to learn on these ports.  In the future, we should
+            // handle this case by labeling flows with something that
+            // will give us the entity class.  For now, we'll do our
+            // best assuming attachment point information isn't used
+            // as a key field.
+            learnap = false;
+        }
+       
+        short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
+        return new Entity(dlAddr,
+                          ((vlan >= 0) ? vlan : null),
+                          ((nwSrc != 0) ? nwSrc : null),
+                          (learnap ? swDpid : null),
+                          (learnap ? (int)inPort : null),
+                          new Date());
+    }
     /**
      * Look up a {@link Device} based on the provided {@link Entity}.
      * @param entity the entity to search for
@@ -1272,4 +1366,14 @@ public class DeviceManagerImpl implements
                                     Collection<IEntityClass> entityClasses) {
         return new Device(device, entity, entityClasses);
     }
+
+	@Override
+	public void addSuppressAPs(long swId, short port) {
+		suppressAPs.add(new SwitchPort(swId, port));
+	}
+
+	@Override
+	public void removeSuppressAPs(long swId, short port) {
+		suppressAPs.remove(new SwitchPort(swId, port));
+	}
 }
