@@ -293,7 +293,7 @@ public class RoleChanger {
     protected void verifyRoleReplyReceived(Collection<OFSwitchImpl> switches,
                                    long cookie) {
         for (OFSwitchImpl sw: switches) {
-            if (sw.checkFirstPendingRoleReqeustCookie(cookie)) {
+            if (sw.checkFirstPendingRoleRequestCookie(cookie)) {
                 sw.getChannel().close();
                 log.warn("Timeout while waiting for role reply from switch {}."
                          + " Disconnecting", sw);

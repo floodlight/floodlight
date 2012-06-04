@@ -140,13 +140,13 @@ public class RoleChangerTest {
         
         // Add a switch that has received a role reply
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
-        expect(sw1.checkFirstPendingRoleReqeustCookie(123456))
+        expect(sw1.checkFirstPendingRoleRequestCookie(123456))
                         .andReturn(false).once();
         switches.add(sw1);
         
         // Add a switch that has not yet received a role reply
         OFSwitchImpl sw2 = EasyMock.createMock(OFSwitchImpl.class);
-        expect(sw2.checkFirstPendingRoleReqeustCookie(123456))
+        expect(sw2.checkFirstPendingRoleRequestCookie(123456))
                         .andReturn(true).once();
         Channel channel2 = createMock(Channel.class);
         expect(sw2.getChannel()).andReturn(channel2);
@@ -201,9 +201,9 @@ public class RoleChangerTest {
         expect(sw1.sendNxRoleRequest(EasyMock.same(Role.SLAVE), EasyMock.anyLong()))
                        .andReturn(1);
         // The following calls happen for timeout handling:
-        expect(sw1.checkFirstPendingRoleReqeustCookie(EasyMock.anyLong()))
+        expect(sw1.checkFirstPendingRoleRequestCookie(EasyMock.anyLong()))
                         .andReturn(false);
-        expect(sw1.checkFirstPendingRoleReqeustCookie(EasyMock.anyLong()))
+        expect(sw1.checkFirstPendingRoleRequestCookie(EasyMock.anyLong()))
                         .andReturn(false);
         switches.add(sw1);
         

@@ -51,6 +51,7 @@ public interface IOFSwitch {
     /**
      * Writes to the OFMessage to the output stream.
      * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners
      * @param m   
      * @param bc  
      * @throws IOException  
@@ -60,6 +61,7 @@ public interface IOFSwitch {
     /**
      * Writes the list of messages to the output stream
      * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners.
      * @param msglist
      * @param bc
      * @throws IOException
@@ -73,7 +75,8 @@ public interface IOFSwitch {
     public void disconnectOutputStream();
 
     /**
-     *
+     * FIXME: remove getChannel(). All access to the channel should be through
+     *        wrapper functions in IOFSwitch
      * @return
      */
     public Channel getChannel();
@@ -213,12 +216,6 @@ public interface IOFSwitch {
      * @return the role of the controller
      */
     public Role getRole();
-    
-    /**
-     * Set the role of the controller for the switch
-     * @param role controller role
-     */
-    public void setRole(Role role);
     
     /**
      * Check if the controller is an active controller for the switch.
