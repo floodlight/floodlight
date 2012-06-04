@@ -599,6 +599,7 @@ public class DeviceManagerImpl implements
         l.add(ITopologyService.class);
         l.add(IRestApiService.class);
         l.add(IThreadPoolService.class);
+        l.add(IFlowReconcileService.class);
         return l;
     }
 
