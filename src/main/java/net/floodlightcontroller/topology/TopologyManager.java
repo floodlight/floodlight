@@ -601,6 +601,7 @@ public class TopologyManager implements
         restApi.addRestletRoutable(new TopologyWebRoutable());
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addHAListener(this);
     }
 
     // ****************
