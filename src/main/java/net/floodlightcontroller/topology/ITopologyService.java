@@ -3,6 +3,7 @@ package net.floodlightcontroller.topology;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 
 public interface ITopologyService extends IFloodlightService  {
 
@@ -182,4 +183,11 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public Set<NodePortTuple> getBlockedPorts();
+    
+    /**
+     * Returns a set of link updates, which had been applied
+     * in computing the new topology.
+     * @return
+     */
+    public Set<LDUpdate> getAppliedLinkUpdates();
 }
