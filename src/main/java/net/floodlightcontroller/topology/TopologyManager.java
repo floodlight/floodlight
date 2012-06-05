@@ -429,7 +429,7 @@ public class TopologyManager implements
     }
 
     @Override
-    public Set<LDUpdate> getAppliedLinkUpdates() {
+    public Set<LDUpdate> getLastLinkUpdates() {
     	return appliedUpdates;
     }
     ////////////////////////////////////////////////////////////////////////
