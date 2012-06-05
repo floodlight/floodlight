@@ -185,9 +185,10 @@ public interface ITopologyService extends IFloodlightService  {
     public Set<NodePortTuple> getBlockedPorts();
     
     /**
-     * Returns a set of link updates, which had been applied
-     * in computing the new topology.
+     * ITopologyListener provides topologyChanged notification, 
+     * but not *what* the changes were.  
+     * This method returns the delta in the linkUpdates between the current and the previous topology instance.
      * @return
      */
-    public Set<LDUpdate> getAppliedLinkUpdates();
+    public Set<LDUpdate> getLastLinkUpdates();
 }
