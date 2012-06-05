@@ -42,9 +42,13 @@ import net.floodlightcontroller.virtualnetwork.IVirtualNetworkService;
 /**
  * A simple Layer 2 (MAC based) network virtualization module. This module allows
  * you to create simple L2 networks (host + gateway) and will drop traffic if
- * they are not on the same virtual network. This module does not support overlapping
- * MAC address or IP address space. It also limits you to one default gateway per
- * virtual network. It also must work in conjunction with the forwarding module.
+ * they are not on the same virtual network.
+ * 
+ * LIMITATIONS
+ * - This module does not allow overlapping of IPs or MACs
+ * - You can only have 1 gateway per virtual network (can be shared)
+ * - There is filtering of multicast/broadcast traffic
+ * 
  * @author alexreimers
  */
 public class VirtualNetworkFilter 
@@ -52,7 +56,7 @@ public class VirtualNetworkFilter
     protected static Logger log = LoggerFactory.getLogger(VirtualNetworkFilter.class);
     
     private final short FLOW_MOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
-    private final short APP_ID = 10; // TODO - check this
+    private final short APP_ID = 20;
     
     // Our dependencies
     IFloodlightProviderService floodlightProvider;
@@ -374,6 +378,7 @@ public class VirtualNetworkFilter
         long cookie = AppCookie.makeCookie(APP_ID, 0);
         fm.setCookie(cookie)
         .setIdleTimeout(FLOW_MOD_DEFAULT_IDLE_TIMEOUT)
+        .setHardTimeout((short) 0)
         .setBufferId(OFPacketOut.BUFFER_ID_NONE)
         .setMatch(match)
         .setActions(actions)

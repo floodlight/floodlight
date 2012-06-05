@@ -36,6 +36,18 @@ public interface ILinkDiscovery {
                  dstPortState, type, operation);
         }
 
+        public LDUpdate(LDUpdate old) {
+        	this.src = old.src;
+        	this.srcPort = old.srcPort;
+        	this.srcPortState = old.srcPortState;
+        	this.dst = old.dst;
+        	this.dstPort = old.dstPort;
+        	this.dstPortState = old.dstPortState;
+        	this.srcType = old.srcType;
+        	this.type = old.type;
+        	this.operation = old.operation;
+        }
+        
         // For updtedSwitch(sw)
         public LDUpdate(long switchId, SwitchType stype) {
             this.operation = UpdateOperation.SWITCH_UPDATED;
@@ -79,6 +91,10 @@ public interface ILinkDiscovery {
             return operation;
         }
 
+        public void setOperation(UpdateOperation operation) {
+            this.operation = operation;
+        }
+        
         @Override
         public String toString() {
             return "LDUpdate [src=" + src + ", srcPort=" + srcPort
