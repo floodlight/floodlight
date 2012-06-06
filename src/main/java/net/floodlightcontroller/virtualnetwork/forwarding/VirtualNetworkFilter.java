@@ -33,7 +33,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.MACAddress;
@@ -48,6 +50,7 @@ import net.floodlightcontroller.virtualnetwork.IVirtualNetworkService;
  * - This module does not allow overlapping of IPs or MACs
  * - You can only have 1 gateway per virtual network (can be shared)
  * - There is filtering of multicast/broadcast traffic
+ * - All DHCP traffic will be allowed, regardless of unicast/broadcast
  * 
  * @author alexreimers
  */
@@ -291,18 +294,33 @@ public class VirtualNetworkFilter
         return srcNetwork.equals(dstNetwork);
     }
     
+    protected boolean isDhcpPacket(Ethernet frame) {
+        IPacket payload = frame.getPayload(); // IP
+        if (payload == null) return false;
+        IPacket p2 = payload.getPayload(); // TCP or UDP
+        if (p2 == null) return false;
+        IPacket p3 = p2.getPayload(); // Application
+        if ((p3 != null) && (p3 instanceof DHCP)) return true;
+        return false;
+    }
     
     protected Command processPacketIn(IOFSwitch sw, OFPacketIn msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         Command ret = Command.STOP;
         String srcNetwork = macToGuid.get(eth.getSourceMAC());
-        if (srcNetwork == null && !(eth.getPayload() instanceof ARP)) {
+        // If the host is on an unknown network we deny it.
+        // We make exceptions for ARP in order to handle gateways
+        // and for DHCP.
+        if (isDhcpPacket(eth)) {
+            log.trace("Letting DHCP traffic through");
+            ret = Command.CONTINUE;
+        } else if (srcNetwork == null && !(eth.getPayload() instanceof ARP)) {
             log.debug("Blocking traffic from host {} because it is not attached to any network.",
                       HexString.toHexString(eth.getSourceMACAddress()));
             ret = Command.STOP;
         } else {
-            if (eth.isBroadcast() || eth.isMulticast()) {
+            if (eth.isBroadcast() || eth.isMulticast() || (eth.getPayload() instanceof DHCP)) {
                 return Command.CONTINUE;
             }
             
