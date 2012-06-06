@@ -10,7 +10,7 @@ public interface IVirtualNetworkService extends IFloodlightService {
      * and the fields you want to update.
      * @param network The network name. Must be unique.
      * @param guid The ID of the network. Must be unique.
-     * @param gateway The IP address of the network gateway, null if none. Must be unique.
+     * @param gateway The IP address of the network gateway, null if none.
      */
     public void createNetwork(String guid, String network, Integer gateway);
     
