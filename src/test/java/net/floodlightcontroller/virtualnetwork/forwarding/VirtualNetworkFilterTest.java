@@ -17,6 +17,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.test.PacketFactory;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -25,7 +26,6 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.test.util.Packets;
 import net.floodlightcontroller.util.MACAddress;
 
 public class VirtualNetworkFilterTest extends FloodlightTestCase {
@@ -296,8 +296,8 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
     public void testDhcp() {
         IOFMessageListener listener = mockFloodlightProvider.getListeners().
                 get(OFType.PACKET_IN).get(0);
-        Ethernet dhcpPacket = Packets.DhcpDiscoveryRequestEthernet(mac1);
-        OFPacketIn dhcpPacketOf = Packets.DhcpDiscoveryRequestOFPacketIn(mac1);
+        Ethernet dhcpPacket = PacketFactory.DhcpDiscoveryRequestEthernet(mac1);
+        OFPacketIn dhcpPacketOf = PacketFactory.DhcpDiscoveryRequestOFPacketIn(mac1);
         cntx = new FloodlightContext();
         IFloodlightProviderService.bcStore.put(cntx, 
                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 

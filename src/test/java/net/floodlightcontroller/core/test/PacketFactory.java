@@ -1,4 +1,4 @@
-package net.floodlightcontroller.test.util;
+package net.floodlightcontroller.core.test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +22,7 @@ import org.openflow.protocol.factory.BasicFactory;
  * @author alexreimers
  *
  */
-public class Packets {
+public class PacketFactory {
     public static String broadcastMac = "ff:ff:ff:ff:ff:ff";
     public static String broadcastIp = "255.255.255.255";
     protected static BasicFactory OFMessageFactory = new BasicFactory();
