@@ -25,6 +25,7 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.test.util.Packets;
 import net.floodlightcontroller.util.MACAddress;
 
 public class VirtualNetworkFilterTest extends FloodlightTestCase {
@@ -64,6 +65,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
     protected OFPacketIn mac1ToGwPacketIn;
     protected IPacket mac1ToGwPacketIntestPacket;
     protected byte[] mac1ToGwPacketIntestPacketSerialized;
+    protected OFPacketIn packetInDHCPDiscoveryRequest;
     
     @Before
     public void setUp() throws Exception {
@@ -268,7 +270,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                                (Ethernet)mac1ToMac2PacketIntestPacket);
         Command ret = listener.receive(sw1, mac1ToMac2PacketIn, cntx);
         assertTrue(ret == Command.CONTINUE);
-        //reset(sw1);
         // make sure mac1 can't communicate with mac4
         cntx = new FloodlightContext();
         IFloodlightProviderService.bcStore.put(cntx, 
@@ -288,6 +289,20 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                                (Ethernet)mac1ToGwPacketIntestPacket);
         Command ret = listener.receive(sw1, mac1ToGwPacketIn, cntx);
+        assertTrue(ret == Command.CONTINUE);
+    }
+    
+    @Test
+    public void testDhcp() {
+        IOFMessageListener listener = mockFloodlightProvider.getListeners().
+                get(OFType.PACKET_IN).get(0);
+        Ethernet dhcpPacket = Packets.DhcpDiscoveryRequestEthernet(mac1);
+        OFPacketIn dhcpPacketOf = Packets.DhcpDiscoveryRequestOFPacketIn(mac1);
+        cntx = new FloodlightContext();
+        IFloodlightProviderService.bcStore.put(cntx, 
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+                           dhcpPacket);
+        Command ret = listener.receive(sw1, dhcpPacketOf, cntx);
         assertTrue(ret == Command.CONTINUE);
     }
 }

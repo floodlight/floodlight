@@ -56,6 +56,10 @@ public class NetworkResource extends ServerResource {
                         network.name = jp.getText();
                     } else if (field.equals("gateway")) {
                         network.gateway = jp.getText();
+                    } else {
+                        log.warn("Unrecognized field {} in " +
+                        		"parsing network definition", 
+                        		jp.getText());
                     }
                 }
             }
