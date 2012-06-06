@@ -638,6 +638,7 @@ public class DeviceManagerImpl implements
         apComparator = new AttachmentPointComparator();
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addHAListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
         
         Runnable ecr = new Runnable() {
