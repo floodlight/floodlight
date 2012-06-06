@@ -83,13 +83,13 @@ public class TopologyManager implements
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
-    protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
+    protected Set<LDUpdate> appliedUpdates;
     protected TopologyInstance currentInstance;
     protected TopologyInstance currentInstanceWithoutTunnels;
     protected SingletonTask newInstanceTask;
@@ -428,6 +428,10 @@ public class TopologyManager implements
         return blockedPorts;
     }
 
+    @Override
+    public Set<LDUpdate> getLastLinkUpdates() {
+    	return appliedUpdates;
+    }
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
@@ -580,8 +584,6 @@ public class TopologyManager implements
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
-        counterStore = 
-                context.getServiceImpl(ICounterStoreService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
 
         switchPorts = new HashMap<Long,Set<Short>>();
@@ -590,7 +592,7 @@ public class TopologyManager implements
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-
+        appliedUpdates = new HashSet<LDUpdate>();
     }
 
     @Override
@@ -779,10 +781,14 @@ public class TopologyManager implements
 
 
     public void applyUpdates() {
+    	appliedUpdates.clear();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
+        	boolean updateApplied = false;
+        	LDUpdate newUpdate = null;
             try {
                 update = ldUpdates.take();
+                newUpdate = new LDUpdate(update);
             } catch (Exception e) {
                 log.error("Error reading link discovery update.", e);
             }
@@ -801,13 +807,23 @@ public class TopologyManager implements
                     addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
                                     update.getDst(), update.getDstPort(), 
                                     update.getType());
+                    updateApplied = true;
                 } else  {
                     removeLink(update.getSrc(), update.getSrcPort(), 
                                update.getDst(), update.getDstPort());
+                    newUpdate = new LDUpdate(update);
+                    // set the update operation to remove
+                    newUpdate.setOperation(UpdateOperation.REMOVE);
+                    updateApplied = true;
                 }
             } else if (update.getOperation() == UpdateOperation.REMOVE) {
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
+                updateApplied = true;
+            }
+            
+            if (updateApplied) {
+            	appliedUpdates.add(newUpdate);
             }
         }
     }
@@ -986,6 +1002,7 @@ public class TopologyManager implements
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
         tunnelLinks.clear();
+        appliedUpdates.clear();
     }
     
     /**
@@ -993,10 +1010,7 @@ public class TopologyManager implements
     * send out updates.
     */
     private void clearCurrentTopology() {
-        switchPorts.clear();
-        switchPortLinks.clear();
-        portBroadcastDomainLinks.clear();
-        tunnelLinks.clear();
+        this.clear();
         createNewInstance();
     }
     

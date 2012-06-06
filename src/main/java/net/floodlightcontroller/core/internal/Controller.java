@@ -826,14 +826,17 @@ public class Controller implements IFloodlightProviderService,
                                   " list", HexString.toHexString(sw.getId()));
                     }
                 } else if (!isActive) {
+                    // Some switches don't seem to update us with port
+                    // status messages while in slave role.
+                    readSwitchPortStateFromStorage(sw);
                     addSwitch(sw);
                     log.debug("Added master switch {} to active switch list",
-                             HexString.toHexString(sw.getId()));
+                              HexString.toHexString(sw.getId()));
                 }
             }
         }
-        
-        protected boolean handleVendorMessage(OFVendor vendorMessage) {
+
+		protected boolean handleVendorMessage(OFVendor vendorMessage) {
             boolean shouldHandleMessage = false;
             int vendor = vendorMessage.getVendor();
             switch (vendor) {
@@ -1694,6 +1697,51 @@ public class Controller implements IFloodlightProviderService,
         portInfo.put(PORT_PEER_FEATURES, peerFeatures);
         storageSource.updateRowAsync(PORT_TABLE_NAME, portInfo);
     }
+    
+    /**
+     * Read switch port data from storage and write it into a switch object
+     * @param sw the switch to update
+     */
+    protected void readSwitchPortStateFromStorage(OFSwitchImpl sw) {
+        OperatorPredicate op = 
+                new OperatorPredicate(PORT_SWITCH, 
+                                      OperatorPredicate.Operator.EQ,
+                                      sw.getStringId());
+        IResultSet portResultSet = 
+                storageSource.executeQuery(PORT_TABLE_NAME,
+                                           null, op, null);
+        Map<Short, OFPhysicalPort> oldports = 
+                new HashMap<Short, OFPhysicalPort>();
+        oldports.putAll(sw.getPorts());
+
+        while (portResultSet.next()) {
+            try {
+                OFPhysicalPort p = new OFPhysicalPort();
+                p.setPortNumber((short)portResultSet.getInt(PORT_NUMBER));
+                p.setName(portResultSet.getString(PORT_NAME));
+                p.setConfig((int)portResultSet.getLong(PORT_CONFIG));
+                p.setState((int)portResultSet.getLong(PORT_STATE));
+                String portMac = portResultSet.getString(PORT_HARDWARE_ADDRESS);
+                p.setHardwareAddress(HexString.fromHexString(portMac));
+                p.setCurrentFeatures((int)portResultSet.
+                                     getLong(PORT_CURRENT_FEATURES));
+                p.setAdvertisedFeatures((int)portResultSet.
+                                        getLong(PORT_ADVERTISED_FEATURES));
+                p.setSupportedFeatures((int)portResultSet.
+                                       getLong(PORT_SUPPORTED_FEATURES));
+                p.setPeerFeatures((int)portResultSet.
+                                  getLong(PORT_PEER_FEATURES));
+                oldports.remove(Short.valueOf(p.getPortNumber()));
+                sw.setPort(p);
+            } catch (NullPointerException e) {
+                // ignore
+            }
+        }
+
+        for (Short portNum : oldports.keySet()) {
+            sw.deletePort(portNum);
+        }
+	}
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
         String datapathIdString = sw.getStringId();
