@@ -578,6 +578,7 @@ public class LinkDiscoveryManager
                                 lt.getSrc().getPort(),
                                 lt.getDst().getPort(),
                                 newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
+                                getLinkType(lt, newLinkInfo),
                                 EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
                 // Since the link info is already there, we need to
@@ -631,6 +632,7 @@ public class LinkDiscoveryManager
                                     lt.getSrc().getPort(),
                                     lt.getDst().getPort(),
                                     newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
+                                    getLinkType(lt, newLinkInfo),
                                     EvAction.LINK_PORT_STATE_UPDATED,
                                     "LLDP Recvd");
                 }
@@ -681,6 +683,7 @@ public class LinkDiscoveryManager
                         lt.getSrc().getPort(),
                         lt.getDst().getPort(),
                         0, 0, // Port states
+                        ILinkDiscovery.LinkType.INVALID_LINK,
                         EvAction.LINK_DELETED, reason);
 
                 // remove link from 
@@ -1468,6 +1471,7 @@ public class LinkDiscoveryManager
 
     private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
             short dstPort, int srcPortState, int dstPortState,
+            ILinkDiscovery.LinkType linkType,
             EvAction actn, String reason) {
         if (evTopoLink == null) {
             evTopoLink = new EventHistoryTopologyLink();
@@ -1479,6 +1483,21 @@ public class LinkDiscoveryManager
         evTopoLink.srcPortState = srcPortState;
         evTopoLink.dstPortState = dstPortState;
         evTopoLink.reason    = reason;
+        switch (linkType) {
+        case DIRECT_LINK:
+        	evTopoLink.linkType = "DIRECT_LINK";
+        	break;
+        case MULTIHOP_LINK:
+        	evTopoLink.linkType = "MULTIHOP_LINK";
+        	break;
+        case TUNNEL:
+        	evTopoLink.linkType = "TUNNEL";
+        	break;
+        case INVALID_LINK:
+        default:
+        	evTopoLink.linkType = "Unknown";
+        	break;
+        }
         evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
     }
 

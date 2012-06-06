@@ -417,6 +417,8 @@ public class Controller
             } else {
                 log.error("Error while processing message from switch " + sw,
                           e.getCause());
+                log.error(e.getCause().getStackTrace().toString());
+                ctx.getChannel().close();
             }
         }
 
@@ -1204,6 +1206,7 @@ public class Controller
         // No need to acquire the listener lock, since
         // this method is only called after netty has processed all
         // pending messages
+    	log.debug("removeSwitch: {}", sw);
         if (!this.activeSwitches.remove(sw.getId(), sw) || !sw.isConnected()) {
             log.debug("Not removing switch {}; already removed", sw);
             return;
@@ -1487,6 +1490,7 @@ public class Controller
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
+    	log.debug("Update DB with inactiveSW {}", sw);
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();

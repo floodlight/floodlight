@@ -35,6 +35,7 @@ public class EventHistoryTopologyLinkJSONSerializer
        jGen.writeNumberField("DstPort", topoLnk.dstSwport);
        jGen.writeNumberField("SrcPortState", topoLnk.srcPortState);
        jGen.writeNumberField("DstPortState", topoLnk.dstPortState);
+       jGen.writeStringField("LinkType", topoLnk.linkType);
        jGen.writeStringField("Reason", topoLnk.reason);
        jGen.writeEndObject();
    }

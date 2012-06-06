@@ -15,5 +15,6 @@ public class EventHistoryTopologyLink {
     public int      dstPortState;
     public short    srcSwport;
     public short    dstSwport;
+    public String   linkType;
     public String   reason;
 }
