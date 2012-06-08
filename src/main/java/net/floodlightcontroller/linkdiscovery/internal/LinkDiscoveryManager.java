@@ -346,24 +346,22 @@ public class LinkDiscoveryManager
 
     }
 
-    protected void sendLLDPs(SwitchPortTuple swt) {
+    protected void sendLLDPs(SwitchPortTuple swt, boolean isStandard) {
         IOFSwitch sw = swt.getSw();
 
         if (sw == null) return;
 
         OFPhysicalPort port = sw.getPort(swt.getPort());
         if (port != null) {
-            sendLLDPs(sw, port, true);
-            sendLLDPs(sw, port, false);
+            sendLLDPs(sw, port, isStandard);
         }
     }
 
-    protected void sendLLDPs(IOFSwitch sw) {
+    protected void sendLLDPs(IOFSwitch sw, boolean isStandard) {
     	
         if (sw.getEnabledPorts() != null) {
             for (OFPhysicalPort port : sw.getEnabledPorts()) {
-                sendLLDPs(sw, port, true);
-                sendLLDPs(sw, port, false);
+                sendLLDPs(sw, port, isStandard);
             }
         }
         sw.flush();
@@ -377,7 +375,11 @@ public class LinkDiscoveryManager
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         for (Entry<Long, IOFSwitch> entry : switches.entrySet()) {
             IOFSwitch sw = entry.getValue();
-            sendLLDPs(sw);
+            sendLLDPs(sw, true);
+        }
+        for (Entry<Long, IOFSwitch> entry : switches.entrySet()) {
+            IOFSwitch sw = entry.getValue();
+            sendLLDPs(sw, false);
         }
     }
 

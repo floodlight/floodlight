@@ -556,7 +556,6 @@ public class Controller implements IFloodlightProviderService,
             } else {
                 log.error("Error while processing message from switch " + sw,
                           e.getCause());
-                log.error(e.getCause().getStackTrace().toString());
                 ctx.getChannel().close();
             }
         }
@@ -1714,9 +1713,9 @@ public class Controller implements IFloodlightProviderService,
         IResultSet portResultSet = 
                 storageSource.executeQuery(PORT_TABLE_NAME,
                                            null, op, null);
-        Map<Short, OFPhysicalPort> oldports = 
-                new HashMap<Short, OFPhysicalPort>();
-        oldports.putAll(sw.getPorts());
+        //Map<Short, OFPhysicalPort> oldports = 
+        //        new HashMap<Short, OFPhysicalPort>();
+        //oldports.putAll(sw.getPorts());
 
         while (portResultSet.next()) {
             try {
@@ -1735,16 +1734,16 @@ public class Controller implements IFloodlightProviderService,
                                        getLong(PORT_SUPPORTED_FEATURES));
                 p.setPeerFeatures((int)portResultSet.
                                   getLong(PORT_PEER_FEATURES));
-                oldports.remove(Short.valueOf(p.getPortNumber()));
+                //oldports.remove(Short.valueOf(p.getPortNumber()));
                 sw.setPort(p);
             } catch (NullPointerException e) {
                 // ignore
             }
         }
 
-        for (Short portNum : oldports.keySet()) {
-            sw.deletePort(portNum);
-        }
+        //for (Short portNum : oldports.keySet()) {
+        //    sw.deletePort(portNum);
+        //}
 	}
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
