@@ -301,7 +301,7 @@ public class StaticFlowEntries {
     }
     
     /**
-     * Parses OFFlowMod actions from a database
+     * Parses OFFlowMod actions from strings.
      * @param flowMod The OFFlowMod to set the actions for
      * @param actionstr The string containing all the actions
      * @param log A logger to log for errors.
