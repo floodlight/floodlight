@@ -556,7 +556,6 @@ public class Controller implements IFloodlightProviderService,
             } else {
                 log.error("Error while processing message from switch " + sw,
                           e.getCause());
-                log.error(e.getCause().getStackTrace().toString());
                 ctx.getChannel().close();
             }
         }
