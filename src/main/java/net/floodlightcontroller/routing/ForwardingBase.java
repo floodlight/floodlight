@@ -95,11 +95,17 @@ public abstract class ForwardingBase implements
                 }
             };
 
+    /**
+     * Adds a listener for devicemanager and registers for PacketIns.
+     */
     public void startUp() {
         deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
 
+    /**
+     * Returns the application name "forwarding".
+     */
     @Override
     public String getName() {
         return "forwarding";
@@ -128,9 +134,9 @@ public abstract class ForwardingBase implements
             case PACKET_IN:
                 IRoutingDecision decision = null;
                 if (cntx != null)
-                                 decision =
-                                         IRoutingDecision.rtStore.get(cntx,
-                                                                      IRoutingDecision.CONTEXT_DECISION);
+                     decision =
+                             IRoutingDecision.rtStore.get(cntx,
+                                                          IRoutingDecision.CONTEXT_DECISION);
 
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg,
@@ -309,7 +315,7 @@ public abstract class ForwardingBase implements
     }
 
     /**
-     * This function will push a packet-out to a switch.  The assumption here is that
+     * Pushes a packet-out to a switch.  The assumption here is that
      * the packet-in was also generated from the same switch.  Thus, if the input
      * port of the packet-in and the outport are the same, the function will not 
      * push the packet-out.
@@ -526,18 +532,14 @@ public abstract class ForwardingBase implements
     }
 
     /**
-     * @param floodlightProvider
-     *            the floodlightProvider to set
+     * @param floodlightProvider the floodlightProvider to set
      */
-    public
-            void
-            setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
 
     /**
-     * @param routingEngine
-     *            the routingEngine to set
+     * @param routingEngine the routingEngine to set
      */
     public void setRoutingEngine(IRoutingService routingEngine) {
         this.routingEngine = routingEngine;
@@ -557,10 +559,6 @@ public abstract class ForwardingBase implements
      */
     public void setTopology(ITopologyService topology) {
         this.topology = topology;
-    }
-
-    public ICounterStoreService getCounterStore() {
-        return counterStore;
     }
 
     public void setCounterStore(ICounterStoreService counterStore) {
