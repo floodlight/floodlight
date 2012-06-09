@@ -294,6 +294,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isConsistent(50L, (short)3, 50L, (short)3)).
         andReturn(true).anyTimes();
 
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         deviceManager.topology = mockTopology;
 
         Entity entity1 = new Entity(1L, null, null, 1L, 1, new Date());
@@ -440,7 +444,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(10L, (short)1, 50L, (short)1)).
         andReturn(false).anyTimes();
-        
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         
         deviceManager.topology = mockTopology;
@@ -535,7 +543,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                        anyShort())).andReturn(true).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 50L, (short)1)).
         andReturn(false).anyTimes();
-        
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         
         deviceManager.topology = mockTopology;
@@ -623,7 +635,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isInSameBroadcastDomain(1L, (short)2,
         		1L, (short)1)).andReturn(true).anyTimes();
         expect(mockTopology.isConsistent(anyLong(), anyShort(), anyLong(), anyShort())).andReturn(false).anyTimes();
-        
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         
         deviceManager.topology = mockTopology;
@@ -767,6 +783,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
         andReturn(false).anyTimes();
 
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         
@@ -778,8 +798,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.learnDeviceByEntity(entity1);
         IDevice d = deviceManager.learnDeviceByEntity(entity2);
         assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
-                                             new SwitchPort(5L, 1) }, 
+        // As (5L, 1) attachment point would be older than the topology
+        // update time, we won't get it as part of attachments.
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1)}, 
                           d.getAttachmentPoints());
         Iterator<? extends IDevice> diter = 
                 deviceManager.queryClassDevices(d, null, null, 1, null, null);
@@ -858,6 +879,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 1L, (short)1)).
         andReturn(false).anyTimes();
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         
@@ -968,6 +994,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)2, 5L, (short)1)).
         andReturn(false).anyTimes();
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
         replay(mockTopology);
         deviceManager.topology = mockTopology;
 
