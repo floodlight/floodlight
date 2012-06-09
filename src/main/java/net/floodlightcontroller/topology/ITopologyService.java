@@ -1,5 +1,6 @@
 package net.floodlightcontroller.topology;
 
+import java.util.Date;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -8,6 +9,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 public interface ITopologyService extends IFloodlightService  {
 
     public void addListener(ITopologyListener listener);
+
+    public Date getLastUpdateTime();
 
     /**
      * Query to determine if devices must be learned on a given switch port.
