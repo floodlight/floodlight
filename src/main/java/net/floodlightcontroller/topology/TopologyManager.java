@@ -3,6 +3,7 @@ package net.floodlightcontroller.topology;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +95,8 @@ public class TopologyManager implements
     protected TopologyInstance currentInstanceWithoutTunnels;
     protected SingletonTask newInstanceTask;
 
+    private Date lastUpdateTime;
+
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
@@ -104,6 +107,7 @@ public class TopologyManager implements
             try {
 	            applyUpdates();
 	            createNewInstance();
+	            lastUpdateTime = new Date();
 	            informListeners();
             }
             catch (Exception e) {
@@ -141,6 +145,10 @@ public class TopologyManager implements
     //
     // ITopologyService interface methods
     //
+    @Override
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
 
     @Override
     public void addListener(ITopologyListener listener) {
@@ -593,6 +601,8 @@ public class TopologyManager implements
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new HashSet<LDUpdate>();
+
+        lastUpdateTime = new Date();
     }
 
     @Override
