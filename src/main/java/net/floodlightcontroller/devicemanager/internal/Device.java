@@ -260,6 +260,8 @@ public class Device implements IDevice {
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
                 !deviceManager.isValidAttachmentPoint(dpid, port) ||
+                cur.getLastSeenTimestamp().
+                    before(topology.getLastUpdateTime()) ||
                 (prev != null && 
                 topology.isConsistent(prev.getSwitchDPID().longValue(),
                                       prev.getSwitchPort().shortValue(),
