@@ -91,10 +91,12 @@ public class TopologyManager implements
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected Set<LDUpdate> appliedUpdates;
+    
+    // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
     protected TopologyInstance currentInstanceWithoutTunnels;
+    
     protected SingletonTask newInstanceTask;
-
     private Date lastUpdateTime;
 
     /**
@@ -425,11 +427,11 @@ public class TopologyManager implements
 
         // As we might have two topologies, simply get the union of
         // both of them and send it.
-        bp = currentInstance.getBlockedPorts();
+        bp = getCurrentInstance(true).getBlockedPorts();
         if (bp != null)
             blockedPorts.addAll(bp);
 
-        bp = currentInstanceWithoutTunnels.getBlockedPorts();
+        bp = getCurrentInstance(false).getBlockedPorts();
         if (bp != null)
             blockedPorts.addAll(bp);
 
@@ -569,7 +571,6 @@ public class TopologyManager implements
         m.put(ITopologyService.class, this);
         m.put(IRoutingService.class, this);
         return m;
-
     }
 
     @Override
@@ -610,10 +611,14 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        restApi.addRestletRoutable(new TopologyWebRoutable());
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
+        addRestletRoutable();
+    }
+    
+    protected void addRestletRoutable() {
+        restApi.addRestletRoutable(new TopologyWebRoutable());
     }
 
     // ****************
@@ -728,7 +733,7 @@ public class TopologyManager implements
     protected void doFloodBDDP(long pinSwitch, OFPacketIn pi, 
                                FloodlightContext cntx) {
 
-        TopologyInstance ti = this.currentInstanceWithoutTunnels;
+        TopologyInstance ti = getCurrentInstance(false);
 
         Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
         
