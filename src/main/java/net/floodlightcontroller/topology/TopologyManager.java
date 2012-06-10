@@ -91,10 +91,12 @@ public class TopologyManager implements
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected Set<LDUpdate> appliedUpdates;
+    
+    // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
     protected TopologyInstance currentInstanceWithoutTunnels;
+    
     protected SingletonTask newInstanceTask;
-
     private Date lastUpdateTime;
 
     /**
@@ -731,7 +733,7 @@ public class TopologyManager implements
     protected void doFloodBDDP(long pinSwitch, OFPacketIn pi, 
                                FloodlightContext cntx) {
 
-        TopologyInstance ti = this.currentInstanceWithoutTunnels;
+        TopologyInstance ti = getCurrentInstance(false);
 
         Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
         
