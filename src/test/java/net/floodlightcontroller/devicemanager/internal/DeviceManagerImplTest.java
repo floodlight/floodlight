@@ -798,9 +798,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.learnDeviceByEntity(entity1);
         IDevice d = deviceManager.learnDeviceByEntity(entity2);
         assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
-        // As (5L, 1) attachment point would be older than the topology
-        // update time, we won't get it as part of attachments.
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1)}, 
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1)},
                           d.getAttachmentPoints());
         Iterator<? extends IDevice> diter = 
                 deviceManager.queryClassDevices(d, null, null, 1, null, null);
