@@ -1,19 +1,19 @@
 /**
-*    Copyright 2011,2012 Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
+ *    Copyright 2011,2012 Big Switch Networks, Inc.
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
 
 package net.floodlightcontroller.devicemanager.internal;
 
@@ -69,7 +69,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
-            DeviceManagerImpl.DeviceUpdate.Change.*;
+DeviceManagerImpl.DeviceUpdate.Change.*;
 
 import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
@@ -85,12 +85,12 @@ import org.slf4j.LoggerFactory;
  * within the network.
  * @author readams
  */
-public class DeviceManagerImpl implements 
-        IDeviceService, IOFMessageListener,
-        IStorageSourceListener, IFloodlightModule,
-        IFlowReconcileListener, IInfoProvider, IHAListener {  
-    protected static Logger logger = 
-        LoggerFactory.getLogger(DeviceManagerImpl.class);
+public class DeviceManagerImpl implements
+IDeviceService, IOFMessageListener,
+IStorageSourceListener, IFloodlightModule,
+IFlowReconcileListener, IInfoProvider, IHAListener {
+    protected static Logger logger =
+            LoggerFactory.getLogger(DeviceManagerImpl.class);
 
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
@@ -98,25 +98,25 @@ public class DeviceManagerImpl implements
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
-    
+
     /**
      * Time in milliseconds before entities will expire
      */
     protected static final int ENTITY_TIMEOUT = 60*60*1000;
-    
+
     /**
      * Time in seconds between cleaning up old entities/devices
      */
     protected static final int ENTITY_CLEANUP_INTERVAL = 60*60;
-    
+
     /**
      * Attachment points on a broadcast domain will have lower priority
      * than attachment points in openflow domains.  This is the timeout
-     * for switching from a non-broadcast domain to a broadcast domain 
+     * for switching from a non-broadcast domain to a broadcast domain
      * attachment point.
      */
     protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
-    
+
     /**
      * This is the master device map that maps device IDs to {@link Device}
      * objects.
@@ -127,24 +127,24 @@ public class DeviceManagerImpl implements
      * Counter used to generate device keys
      */
     protected long deviceKeyCounter = 0;
-    
+
     /**
      * Lock for incrementing the device key counter
      */
     protected Object deviceKeyLock = new Object();
-    
+
     /**
      * This is the primary entity index that contains all entities
      */
     protected DeviceUniqueIndex primaryIndex;
-    
+
     /**
      * This stores secondary indices over the fields in the devices
      */
     protected Map<EnumSet<DeviceField>, DeviceIndex> secondaryIndexMap;
-     
+
     /**
-     * This map contains state for each of the {@ref IEntityClass} 
+     * This map contains state for each of the {@ref IEntityClass}
      * that exist
      */
     protected ConcurrentHashMap<IEntityClass, ClassState> classStateMap;
@@ -153,12 +153,12 @@ public class DeviceManagerImpl implements
      * This is the list of indices we want on a per-class basis
      */
     protected Set<EnumSet<DeviceField>> perClassIndices;
-    
+
     /**
      * The entity classifier currently in use
      */
     IEntityClassifier entityClassifier;
-    
+
     /**
      * Used to cache state about specific entity classes
      */
@@ -168,7 +168,7 @@ public class DeviceManagerImpl implements
          * The class index
          */
         protected DeviceUniqueIndex classIndex;
-        
+
         /**
          * This stores secondary indices over the fields in the device for the
          * class
@@ -181,23 +181,23 @@ public class DeviceManagerImpl implements
          */
         public ClassState(IEntityClass clazz) {
             EnumSet<DeviceField> keyFields = clazz.getKeyFields();
-            EnumSet<DeviceField> primaryKeyFields = 
+            EnumSet<DeviceField> primaryKeyFields =
                     entityClassifier.getKeyFields();
-            boolean keyFieldsMatchPrimary = 
+            boolean keyFieldsMatchPrimary =
                     primaryKeyFields.equals(keyFields);
-            
+
             if (!keyFieldsMatchPrimary)
                 classIndex = new DeviceUniqueIndex(keyFields);
-            
-            secondaryIndexMap = 
+
+            secondaryIndexMap =
                     new HashMap<EnumSet<DeviceField>, DeviceIndex>();
             for (EnumSet<DeviceField> fields : perClassIndices) {
-                secondaryIndexMap.put(fields, 
+                secondaryIndexMap.put(fields,
                                       new DeviceMultiIndex(fields));
             }
         }
     }
-   
+
     /**
      * Device manager event listeners
      */
@@ -210,22 +210,22 @@ public class DeviceManagerImpl implements
         protected enum Change {
             ADD, DELETE, CHANGE;
         }
-        
+
         /**
          * The affected device
          */
         protected IDevice device;
-        
+
         /**
          * The change that was made
          */
         protected Change change;
-        
+
         /**
          * If not added, then this is the list of fields changed
          */
         protected EnumSet<DeviceField> fieldsChanged;
-        
+
         public DeviceUpdate(IDevice device, Change change,
                             EnumSet<DeviceField> fieldsChanged) {
             super();
@@ -234,15 +234,15 @@ public class DeviceManagerImpl implements
             this.fieldsChanged = fieldsChanged;
         }
     }
-    
+
     /**
      * Comparator for finding the correct attachment point to use based on
      * the set of entities
      */
-    protected class AttachmentPointComparator 
-            implements Comparator<Entity> {
+    protected class AttachmentPointComparator
+    implements Comparator<Entity> {
 
-        
+
         public AttachmentPointComparator() {
             super();
         }
@@ -254,12 +254,12 @@ public class DeviceManagerImpl implements
             Long dpid = e.getSwitchDPID();
             Integer port = e.getSwitchPort();
             if (dpid != null && port != null &&
-                topology.isBroadcastDomainPort(dpid, port.shortValue())) {
+                    topology.isBroadcastDomainPort(dpid, port.shortValue())) {
                 return et - NBD_TO_BD_TIMEDIFF_MS;
             }
             return et;
         }
-        
+
         @Override
         public int compare(Entity e1, Entity e2) {
             int r = 0;
@@ -271,9 +271,9 @@ public class DeviceManagerImpl implements
             else if (swdpid2 == null)
                 r = 1;
             else {
-                Long d1ClusterId = 
+                Long d1ClusterId =
                         topology.getL2DomainId(swdpid1);
-                Long d2ClusterId = 
+                Long d2ClusterId =
                         topology.getL2DomainId(swdpid2);
                 r = d1ClusterId.compareTo(d2ClusterId);
             }
@@ -286,19 +286,19 @@ public class DeviceManagerImpl implements
             long e2ts = getEffTS(e2, e2.getActiveSince());
             return Long.valueOf(e1ts).compareTo(e2ts);
         }
-        
+
     }
-    
+
     /**
      * Comparator for sorting by cluster ID
      */
     public AttachmentPointComparator apComparator;
-    
+
     /**
      * Switch ports where attachment points shouldn't be learned
      */
-	private Set<SwitchPort> suppressAPs;
-    
+    private Set<SwitchPort> suppressAPs;
+
     /**
      * Periodic task to clean up expired entities
      */
@@ -314,15 +314,15 @@ public class DeviceManagerImpl implements
     }
 
     @Override
-    public IDevice findDevice(long macAddress, Short vlan, 
-                              Integer ipv4Address, Long switchDPID, 
+    public IDevice findDevice(long macAddress, Short vlan,
+                              Integer ipv4Address, Long switchDPID,
                               Integer switchPort) {
         if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
-        return findDeviceByEntity(new Entity(macAddress, vlan, 
-                                             ipv4Address, switchDPID, 
+        return findDeviceByEntity(new Entity(macAddress, vlan,
+                                             ipv4Address, switchDPID,
                                              switchPort, null));
     }
 
@@ -334,10 +334,10 @@ public class DeviceManagerImpl implements
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
         return findDestByEntity(source,
-                                new Entity(macAddress, 
-                                           vlan, 
-                                           ipv4Address, 
-                                           null, 
+                                new Entity(macAddress,
+                                           vlan,
+                                           ipv4Address,
+                                           null,
                                            null,
                                            null));
     }
@@ -353,21 +353,21 @@ public class DeviceManagerImpl implements
         if (perClass) {
             perClassIndices.add(keyFields);
         } else {
-            secondaryIndexMap.put(keyFields, 
+            secondaryIndexMap.put(keyFields,
                                   new DeviceMultiIndex(keyFields));
         }
     }
 
     @Override
     public Iterator<? extends IDevice> queryDevices(Long macAddress,
-                                                    Short vlan, 
+                                                    Short vlan,
                                                     Integer ipv4Address,
                                                     Long switchDPID,
                                                     Integer switchPort) {
         DeviceIndex index = null;
         if (secondaryIndexMap.size() > 0) {
-            EnumSet<DeviceField> keys = 
-                    getEntityKeys(macAddress, vlan, ipv4Address, 
+            EnumSet<DeviceField> keys =
+                    getEntityKeys(macAddress, vlan, ipv4Address,
                                   switchDPID, switchPort);
             index = secondaryIndexMap.get(keys);
         }
@@ -378,25 +378,25 @@ public class DeviceManagerImpl implements
             deviceIterator = deviceMap.values().iterator();
         } else {
             // index lookup
-            Entity entity = new Entity((macAddress == null ? 0 : macAddress), 
-                                       vlan, 
-                                       ipv4Address, 
-                                       switchDPID, 
+            Entity entity = new Entity((macAddress == null ? 0 : macAddress),
+                                       vlan,
+                                       ipv4Address,
+                                       switchDPID,
                                        switchPort,
                                        null);
-            deviceIterator = 
+            deviceIterator =
                     new DeviceIndexInterator(this, index.queryByEntity(entity));
         }
-        
-        DeviceIterator di = 
+
+        DeviceIterator di =
                 new DeviceIterator(deviceIterator,
                                    null,
                                    macAddress,
                                    vlan,
-                                   ipv4Address, 
-                                   switchDPID, 
+                                   ipv4Address,
+                                   switchDPID,
                                    switchPort);
-            return di;
+        return di;
     }
 
     @Override
@@ -407,27 +407,27 @@ public class DeviceManagerImpl implements
                                                          Long switchDPID,
                                                          Integer switchPort) {
         IEntityClass[] entityClasses = reference.getEntityClasses();
-        ArrayList<Iterator<Device>> iterators = 
+        ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
         for (IEntityClass clazz : entityClasses) {
             ClassState classState = getClassState(clazz);
-            
+
             DeviceIndex index = null;
             if (classState.secondaryIndexMap.size() > 0) {
-                EnumSet<DeviceField> keys = 
-                        getEntityKeys(macAddress, vlan, ipv4Address, 
+                EnumSet<DeviceField> keys =
+                        getEntityKeys(macAddress, vlan, ipv4Address,
                                       switchDPID, switchPort);
                 index = classState.secondaryIndexMap.get(keys);
             }
-         
+
             Iterator<Device> iter;
             if (index == null) {
                 index = classState.classIndex;
                 if (index == null) {
                     // scan all devices
-                    return new DeviceIterator(deviceMap.values().iterator(), 
-                                              entityClasses, 
-                                              macAddress, vlan, ipv4Address, 
+                    return new DeviceIterator(deviceMap.values().iterator(),
+                                              entityClasses,
+                                              macAddress, vlan, ipv4Address,
                                               switchDPID, switchPort);
                 } else {
                     // scan the entire class
@@ -435,14 +435,14 @@ public class DeviceManagerImpl implements
                 }
             } else {
                 // index lookup
-                Entity entity = 
-                        new Entity((macAddress == null ? 0 : macAddress), 
-                                   vlan, 
-                                   ipv4Address, 
-                                   switchDPID, 
+                Entity entity =
+                        new Entity((macAddress == null ? 0 : macAddress),
+                                   vlan,
+                                   ipv4Address,
+                                   switchDPID,
                                    switchPort,
                                    null);
-                iter = new DeviceIndexInterator(this, 
+                iter = new DeviceIndexInterator(this,
                                                 index.queryByEntity(entity));
             }
             iterators.add(iter);
@@ -460,9 +460,9 @@ public class DeviceManagerImpl implements
     public void setEntityClassifier(IEntityClassifier classifier) {
         entityClassifier = classifier;
     }
-    
+
     @Override
-    public void flushEntityCache(IEntityClass entityClass, 
+    public void flushEntityCache(IEntityClass entityClass,
                                  boolean reclassify) {
         // TODO Auto-generated method stub
     }
@@ -475,12 +475,12 @@ public class DeviceManagerImpl implements
     public Map<String, Object> getInfo(String type) {
         if (!"summary".equals(type))
             return null;
-        
+
         Map<String, Object> info = new HashMap<String, Object>();
         info.put("# hosts", deviceMap.size());
         return info;
     }
-    
+
     // ******************
     // IOFMessageListener
     // ******************
@@ -492,38 +492,38 @@ public class DeviceManagerImpl implements
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return ((type == OFType.PACKET_IN || type == OFType.FLOW_MOD) 
-        		&& name.equals("topology"));
+        return ((type == OFType.PACKET_IN || type == OFType.FLOW_MOD)
+                && name.equals("topology"));
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
         return false;
     }
-    
+
     @Override
-    public Command receive(IOFSwitch sw, OFMessage msg, 
+    public Command receive(IOFSwitch sw, OFMessage msg,
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                return this.processPacketInMessage(sw, 
+                return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
         }
 
-        logger.error("received an unexpected message {} from switch {}", 
+        logger.error("received an unexpected message {} from switch {}",
                      msg, sw);
         return Command.CONTINUE;
     }
-    
+
     // ***************
     // IFlowReconcileListener
     // ***************
     @Override
     public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList) {
         for (OFMatchReconcile ofm : ofmRcList) {
-        	// Extract source entity information
-            Entity srcEntity = 
-            	getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
+            // Extract source entity information
+            Entity srcEntity =
+                    getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
             if (srcEntity == null)
                 return Command.STOP;
 
@@ -540,7 +540,7 @@ public class DeviceManagerImpl implements
             Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
             logger.debug("DeviceManager dstEntity {}", dstEntity);
             if (dstEntity != null) {
-                Device dstDevice = 
+                Device dstDevice =
                         findDestByEntity(srcDevice, dstEntity);
                 logger.debug("DeviceManager dstDevice {}", dstDevice);
                 if (dstDevice != null)
@@ -549,27 +549,27 @@ public class DeviceManagerImpl implements
         }
         return Command.CONTINUE;
     }
-    
+
     // **********************
     // IStorageSourceListener
     // **********************
-    
+
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         // TODO Auto-generated method stub
-        
+
     }
 
     // *****************
     // IFloodlightModule
     // *****************
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l =
@@ -580,11 +580,11 @@ public class DeviceManagerImpl implements
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
-            getServiceImpls() {
+    getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m =
-            new HashMap<Class<? extends IFloodlightService>,
-                        IFloodlightService>();
+        IFloodlightService> m =
+        new HashMap<Class<? extends IFloodlightService>,
+        IFloodlightService>();
         // We are the class that implements the service
         m.put(IDeviceService.class, this);
         return m;
@@ -611,9 +611,9 @@ public class DeviceManagerImpl implements
 
         this.deviceListeners = new HashSet<IDeviceListener>();
         this.suppressAPs =
-        		Collections.synchronizedSet(new HashSet<SwitchPort>());
-        
-        this.floodlightProvider = 
+                Collections.synchronizedSet(new HashSet<SwitchPort>());
+
+        this.floodlightProvider =
                 fmc.getServiceImpl(IFloodlightProviderService.class);
         this.storageSource =
                 fmc.getServiceImpl(IStorageSourceService.class);
@@ -623,37 +623,37 @@ public class DeviceManagerImpl implements
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
     }
-    
+
     @Override
     public void startUp(FloodlightModuleContext fmc) {
         if (entityClassifier == null)
             setEntityClassifier(new DefaultEntityClassifier());
-        
+
         primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
         secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
-        
+
         deviceMap = new ConcurrentHashMap<Long, Device>();
-        classStateMap = 
+        classStateMap =
                 new ConcurrentHashMap<IEntityClass, ClassState>();
         apComparator = new AttachmentPointComparator();
-        
+
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
-        
+
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
                 cleanupEntities();
-                entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, 
+                entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
             }
         };
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         entityCleanupTask = new SingletonTask(ses, ecr);
-        entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL, 
+        entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                      TimeUnit.SECONDS);
-        
+
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
         } else {
@@ -677,9 +677,9 @@ public class DeviceManagerImpl implements
 
     @Override
     public void controllerNodeIPsChanged(
-                          Map<String, String> curControllerNodeIPs,
-                          Map<String, String> addedControllerNodeIPs,
-                          Map<String, String> removedControllerNodeIPs) {
+                                         Map<String, String> curControllerNodeIPs,
+                                         Map<String, String> addedControllerNodeIPs,
+                                         Map<String, String> removedControllerNodeIPs) {
         // no-op
     }
 
@@ -687,39 +687,39 @@ public class DeviceManagerImpl implements
     // Internal methods
     // ****************
 
-    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
+    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
                                              FloodlightContext cntx) {
-    	Ethernet eth = 
-            IFloodlightProviderService.bcStore.
-            get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-    
-	    // Extract source entity information
-	    Entity srcEntity = 
-	            getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
-	    if (srcEntity == null)
-	        return Command.STOP;
-	
-	    // Learn/lookup device information
-	    Device srcDevice = learnDeviceByEntity(srcEntity);
-	    if (srcDevice == null)
-	        return Command.STOP;
-	
-	    // Store the source device in the context
-	    fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
-	
-	    // Find the device matching the destination from the entity
-	    // classes of the source.
-	    Entity dstEntity = getDestEntityFromPacket(eth);
-	    if (dstEntity != null) {
-	        Device dstDevice = 
-	                findDestByEntity(srcDevice, dstEntity);
-	        if (dstDevice != null)
-	            fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
-	    }
-	
-	    return Command.CONTINUE;
+        Ethernet eth =
+                IFloodlightProviderService.bcStore.
+                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        // Extract source entity information
+        Entity srcEntity =
+                getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
+        if (srcEntity == null)
+            return Command.STOP;
+
+        // Learn/lookup device information
+        Device srcDevice = learnDeviceByEntity(srcEntity);
+        if (srcDevice == null)
+            return Command.STOP;
+
+        // Store the source device in the context
+        fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
+
+        // Find the device matching the destination from the entity
+        // classes of the source.
+        Entity dstEntity = getDestEntityFromPacket(eth);
+        if (dstEntity != null) {
+            Device dstDevice =
+                    findDestByEntity(srcDevice, dstEntity);
+            if (dstDevice != null)
+                fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
+        }
+
+        return Command.CONTINUE;
     }
-    
+
     /**
      * Check whether the given attachment point is valid given the current
      * topology
@@ -735,24 +735,24 @@ public class DeviceManagerImpl implements
         if (port == null || !sw.portEnabled(port)) return false;
         if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
             return false;
-        
-        // Check whether the port is a physical port. We should not learn 
+
+        // Check whether the port is a physical port. We should not learn
         // attachment points on "special" ports.
-        if (((switchPort & 0xff00) == 0xff00) && 
-             (switchPort != (short)0xfffe))
+        if (((switchPort & 0xff00) == 0xff00) &&
+                (switchPort != (short)0xfffe))
             return false;
-        
+
         if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
-        	return false;
-        
-        return true;            
+            return false;
+
+        return true;
     }
 
     private int getSrcNwAddr(Ethernet eth, long dlAddr) {
         if (eth.getPayload() instanceof ARP) {
             ARP arp = (ARP) eth.getPayload();
             if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP) &&
-                (Ethernet.toLong(arp.getSenderHardwareAddress()) == dlAddr)) {
+                    (Ethernet.toLong(arp.getSenderHardwareAddress()) == dlAddr)) {
                 return IPv4.toIPv4Address(arp.getSenderProtocolAddress());
             }
         } else if (eth.getPayload() instanceof IPv4) {
@@ -769,7 +769,7 @@ public class DeviceManagerImpl implements
         }
         return 0;
     }
-    
+
     /**
      * Parse an entity from an {@link Ethernet} packet.
      * @param eth the packet to parse
@@ -777,8 +777,8 @@ public class DeviceManagerImpl implements
      * @param pi the original packetin
      * @return the entity from the packet
      */
-    private Entity getSourceEntityFromPacket(Ethernet eth, 
-                                             long swdpid, 
+    private Entity getSourceEntityFromPacket(Ethernet eth,
+                                             long swdpid,
                                              int port) {
         byte[] dlAddrArr = eth.getSourceMACAddress();
         long dlAddr = Ethernet.toLong(dlAddrArr);
@@ -797,7 +797,7 @@ public class DeviceManagerImpl implements
             // as a key field.
             learnap = false;
         }
-       
+
         short vlan = eth.getVlanID();
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         return new Entity(dlAddr,
@@ -807,9 +807,9 @@ public class DeviceManagerImpl implements
                           (learnap ? port : null),
                           new Date());
     }
-    
+
     /**
-     * Get a (partial) entity for the destination from the packet. 
+     * Get a (partial) entity for the destination from the packet.
      * @param eth
      * @return
      */
@@ -827,7 +827,7 @@ public class DeviceManagerImpl implements
             IPv4 ipv4 = (IPv4) eth.getPayload();
             nwDst = ipv4.getDestinationAddress();
         }
-        
+
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
                           ((nwDst != 0) ? nwDst : null),
@@ -835,26 +835,26 @@ public class DeviceManagerImpl implements
                           null,
                           null);
     }
-    
+
     /**
      * Parse an entity from an OFMatchWithSwDpid.
      * @param ofmWithSwDpid
      * @return the entity from the packet
      */
     private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid, boolean isSource) {
-    	byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
+        byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
         int nwSrc = ofmWithSwDpid.getOfMatch().getNetworkSource();
         if (!isSource) {
-        	dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerDestination();
-        	nwSrc = ofmWithSwDpid.getOfMatch().getNetworkDestination();
+            dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerDestination();
+            nwSrc = ofmWithSwDpid.getOfMatch().getNetworkDestination();
         }
-        
+
         long dlAddr = Ethernet.toLong(dlAddrArr);
 
         // Ignore broadcast/multicast source
         if ((dlAddrArr[0] & 0x1) != 0)
             return null;
-        
+
         long swDpid = ofmWithSwDpid.getSwitchDataPathId();
         short inPort = ofmWithSwDpid.getOfMatch().getInputPort();
 
@@ -868,7 +868,7 @@ public class DeviceManagerImpl implements
             // as a key field.
             learnap = false;
         }
-       
+
         short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
@@ -886,7 +886,7 @@ public class DeviceManagerImpl implements
         Long deviceKey =  primaryIndex.findByEntity(entity);
         if (deviceKey == null) return null;
         return deviceMap.get(deviceKey);
-    }    
+    }
 
     /**
      * Get a destination device using entity fields that corresponds with
@@ -903,15 +903,15 @@ public class DeviceManagerImpl implements
         Device dstDevice = findDeviceByEntity(dstEntity);
 
         //if (dstDevice == null) {
-            // This could happen because:
-            // 1) no destination known, or a broadcast destination
-            // 2) if we have attachment point key fields since 
-            // attachment point information isn't available for
-            // destination devices.
-            // For the second case, we'll need to match up the 
-            // destination device with the class of the source 
-            // device.  
-            /*
+        // This could happen because:
+        // 1) no destination known, or a broadcast destination
+        // 2) if we have attachment point key fields since
+        // attachment point information isn't available for
+        // destination devices.
+        // For the second case, we'll need to match up the
+        // destination device with the class of the source
+        // device.
+        /*
                 ArrayList<Device> candidates = new ArrayList<Device>();
                 for (IEntityClass clazz : srcDevice.getEntityClasses()) {
                     Device c = findDeviceInClassByEntity(clazz, dstEntity);
@@ -921,18 +921,18 @@ public class DeviceManagerImpl implements
                 if (candidates.size() == 1) {
                     dstDevice = candidates.get(0);
                 } else if (candidates.size() > 1) {
-                    // ambiguous device.  A higher-order component will 
+                    // ambiguous device.  A higher-order component will
                     // need to deal with it by assigning priority
                     // XXX - TODO
                 }
-             */
+         */
         //}
 
         return dstDevice;
     }
 
     /**
-     * Look up a {@link Device} within a particular entity class based on 
+     * Look up a {@link Device} within a particular entity class based on
      * the provided {@link Entity}.
      * @param clazz the entity class to search for the entity
      * @param entity the entity to search for
@@ -943,12 +943,12 @@ public class DeviceManagerImpl implements
         throw new UnsupportedOperationException();
     }
      */
-    
+
     /**
      * Look up a {@link Device} based on the provided {@link Entity}.  Also
-     * learns based on the new entity, and will update existing devices as 
-     * required. 
-     * 
+     * learns based on the new entity, and will update existing devices as
+     * required.
+     *
      * @param entity the {@link Entity}
      * @return The {@link Device} object if found
      */
@@ -956,53 +956,53 @@ public class DeviceManagerImpl implements
         ArrayList<Long> deleteQueue = null;
         LinkedList<DeviceUpdate> deviceUpdates = null;
         Device device = null;
-        
+
         // we may need to restart the learning process if we detect
         // concurrent modification.  Note that we ensure that at least
         // one thread should always succeed so we don't get into infinite
         // starvation loops
         while (true) {
             deviceUpdates = null;
-            
+
             // Look up the fully-qualified entity to see if it already
             // exists in the primary entity index.
             Long deviceKey = primaryIndex.findByEntity(entity);
             Collection<IEntityClass> classes = null;
-            
+
             if (deviceKey == null) {
-                // If the entity does not exist in the primary entity index, 
-                // use the entity classifier for find the classes for the 
+                // If the entity does not exist in the primary entity index,
+                // use the entity classifier for find the classes for the
                 // entity. Look up the entity in each of the returned classes'
                 // class entity indexes.
                 classes = entityClassifier.classifyEntity(entity);
                 for (IEntityClass clazz : classes) {
                     ClassState classState = getClassState(clazz);
-                        
+
                     if (classState.classIndex != null) {
-                        deviceKey = 
+                        deviceKey =
                                 classState.classIndex.findByEntity(entity);
                     }
                 }
             }
             if (deviceKey != null) {
                 // If the primary or secondary index contains the entity
-                // use resulting device key to look up the device in the 
+                // use resulting device key to look up the device in the
                 // device map, and use the referenced Device below.
                 device = deviceMap.get(deviceKey);
                 if (device == null)
                     throw new IllegalStateException("Corrupted device index");
             } else {
-                // If the secondary index does not contain the entity, 
-                // create a new Device object containing the entity, and 
+                // If the secondary index does not contain the entity,
+                // create a new Device object containing the entity, and
                 // generate a new device ID
                 synchronized (deviceKeyLock) {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
                 device = allocateDevice(deviceKey, entity, classes);
-                
+
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
-                
+
                 // update indices
                 if (!updateIndices(device, deviceKey)) {
                     if (deleteQueue == null)
@@ -1010,17 +1010,17 @@ public class DeviceManagerImpl implements
                     deleteQueue.add(deviceKey);
                     continue;
                 }
-                
+
                 updateSecondaryIndices(entity, classes, deviceKey);
-                
+
                 // generate new device update
-                deviceUpdates = 
+                deviceUpdates =
                         updateUpdates(deviceUpdates,
                                       new DeviceUpdate(device, ADD, null));
-                
+
                 break;
             }
-            
+
             int entityindex = -1;
             if ((entityindex = device.entityIndex(entity)) >= 0) {
                 // update timestamp on the found entity
@@ -1028,88 +1028,88 @@ public class DeviceManagerImpl implements
                 if (lastSeen == null) lastSeen = new Date();
                 device.entities[entityindex].setLastSeenTimestamp(lastSeen);
                 break;
-            } else {                
+            } else {
                 Device newDevice = allocateDevice(device, entity, classes);
-                
+
                 // generate updates
-                EnumSet<DeviceField> changedFields = 
+                EnumSet<DeviceField> changedFields =
                         findChangedFields(device, entity);
                 if (changedFields.size() > 0)
-                    deviceUpdates = 
-                        updateUpdates(deviceUpdates,
-                                      new DeviceUpdate(device, CHANGE, 
-                                                       changedFields));
-                
+                    deviceUpdates =
+                    updateUpdates(deviceUpdates,
+                                  new DeviceUpdate(device, CHANGE,
+                                                   changedFields));
+
                 // update the device map with a replace call
                 boolean res = deviceMap.replace(deviceKey, device, newDevice);
-                // If replace returns false, restart the process from the 
-                // beginning (this implies another thread concurrently 
+                // If replace returns false, restart the process from the
+                // beginning (this implies another thread concurrently
                 // modified this Device).
                 if (!res)
                     continue;
-                
+
                 device = newDevice;
-                
+
                 // update indices
                 if (!updateIndices(device, deviceKey)) {
                     continue;
                 }
-                updateSecondaryIndices(entity, 
-                                       device.getEntityClasses(), 
+                updateSecondaryIndices(entity,
+                                       device.getEntityClasses(),
                                        deviceKey);
                 break;
             }
         }
-           
+
         if (deleteQueue != null) {
             for (Long l : deleteQueue) {
                 deviceMap.remove(l);
             }
         }
-        
+
         processUpdates(deviceUpdates);
 
         return device;
     }
 
-    protected EnumSet<DeviceField> findChangedFields(Device device, 
+    protected EnumSet<DeviceField> findChangedFields(Device device,
                                                      Entity newEntity) {
-        EnumSet<DeviceField> changedFields = 
-                EnumSet.of(DeviceField.IPV4, 
-                           DeviceField.VLAN, 
+        EnumSet<DeviceField> changedFields =
+                EnumSet.of(DeviceField.IPV4,
+                           DeviceField.VLAN,
                            DeviceField.SWITCH);
-        
+
         if (newEntity.getIpv4Address() == null)
             changedFields.remove(DeviceField.IPV4);
         if (newEntity.getVlan() == null)
             changedFields.remove(DeviceField.VLAN);
         if (newEntity.getSwitchDPID() == null ||
-            newEntity.getSwitchPort() == null)
+                newEntity.getSwitchPort() == null)
             changedFields.remove(DeviceField.SWITCH);
-        
+
         if (changedFields.size() == 0) return changedFields;
-        
+
         for (Entity entity : device.getEntities()) {
             if (newEntity.getIpv4Address() == null ||
-                (entity.getIpv4Address() != null &&
-                 entity.getIpv4Address().equals(newEntity.getIpv4Address())))
+                    (entity.getIpv4Address() != null &&
+                    entity.getIpv4Address().equals(newEntity.getIpv4Address())))
                 changedFields.remove(DeviceField.IPV4);
             if (newEntity.getVlan() == null ||
-                (entity.getVlan() != null &&
-                 entity.getVlan().equals(newEntity.getVlan())))
+                    (entity.getVlan() != null &&
+                    entity.getVlan().equals(newEntity.getVlan())))
                 changedFields.remove(DeviceField.VLAN);
             if (newEntity.getSwitchDPID() == null ||
-                newEntity.getSwitchPort() == null ||
-                (entity.getSwitchDPID() != null &&
-                 entity.getSwitchPort() != null &&
-                 entity.getSwitchDPID().equals(newEntity.getSwitchDPID()) &&
-                 entity.getSwitchPort().equals(newEntity.getSwitchPort())))
-                changedFields.remove(DeviceField.SWITCH);            
+                    newEntity.getSwitchPort() == null ||
+                    (entity.getSwitchDPID() != null &&
+                    entity.getSwitchPort() != null &&
+                    entity.getSwitchDPID().equals(newEntity.getSwitchDPID()) &&
+                    entity.getSwitchPort().equals(newEntity.getSwitchPort())))
+                changedFields.remove(DeviceField.SWITCH);
         }
-        
+
         return changedFields;
     }
-    
+
     /**
      * Send update notifications to listeners
      * @param updates the updates to process.
@@ -1147,26 +1147,26 @@ public class DeviceManagerImpl implements
         }
     }
 
-    private LinkedList<DeviceUpdate> 
-        updateUpdates(LinkedList<DeviceUpdate> list, DeviceUpdate update) {
+    private LinkedList<DeviceUpdate>
+    updateUpdates(LinkedList<DeviceUpdate> list, DeviceUpdate update) {
         if (update == null) return list;
         if (list == null)
             list = new LinkedList<DeviceUpdate>();
         list.add(update);
-        
+
         return list;
     }
-    
+
     /**
-     * Get the secondary index for a class.  Will return null if the 
-     * secondary index was created concurrently in another thread. 
+     * Get the secondary index for a class.  Will return null if the
+     * secondary index was created concurrently in another thread.
      * @param clazz the class for the index
      * @return
      */
     private ClassState getClassState(IEntityClass clazz) {
         ClassState classState = classStateMap.get(clazz);
         if (classState != null) return classState;
-        
+
         classState = new ClassState(clazz);
         ClassState r = classStateMap.putIfAbsent(clazz, classState);
         if (r != null) {
@@ -1175,7 +1175,7 @@ public class DeviceManagerImpl implements
         }
         return classState;
     }
-    
+
     /**
      * Update both the primary and class indices for the provided device.
      * If the update fails because of aEn concurrent update, will return false.
@@ -1188,17 +1188,17 @@ public class DeviceManagerImpl implements
             return false;
         }
         for (IEntityClass clazz : device.getEntityClasses()) {
-            ClassState classState = getClassState(clazz); 
+            ClassState classState = getClassState(clazz);
 
             if (classState.classIndex != null) {
-                if (!classState.classIndex.updateIndex(device, 
+                if (!classState.classIndex.updateIndex(device,
                                                        deviceKey))
                     return false;
             }
         }
         return true;
     }
-    
+
     /**
      * Update the secondary indices for the given entity and associated
      * entity classes
@@ -1206,8 +1206,8 @@ public class DeviceManagerImpl implements
      * @param entityClasses the entity classes for the entity
      * @param deviceKey the device key to set up
      */
-    private void updateSecondaryIndices(Entity entity, 
-                                        Collection<IEntityClass> entityClasses, 
+    private void updateSecondaryIndices(Entity entity,
+                                        Collection<IEntityClass> entityClasses,
                                         Long deviceKey) {
         for (DeviceIndex index : secondaryIndexMap.values()) {
             index.updateIndex(entity, deviceKey);
@@ -1219,7 +1219,7 @@ public class DeviceManagerImpl implements
             }
         }
     }
-    
+
     /**
      * Update the secondary indices for the given entity and associated
      * entity classes
@@ -1227,8 +1227,8 @@ public class DeviceManagerImpl implements
      * @param entityClasses the entity classes for the entity
      * @param deviceKey the device key to set up
      */
-    private void updateSecondaryIndices(Entity entity, 
-                                        IEntityClass[] entityClasses, 
+    private void updateSecondaryIndices(Entity entity,
+                                        IEntityClass[] entityClasses,
                                         Long deviceKey) {
         updateSecondaryIndices(entity, Arrays.asList(entityClasses), deviceKey);
     }
@@ -1245,9 +1245,9 @@ public class DeviceManagerImpl implements
         ArrayList<Entity> toKeep = new ArrayList<Entity>();
 
         Iterator<Device> diter = deviceMap.values().iterator();
-        LinkedList<DeviceUpdate> deviceUpdates = 
+        LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
-        
+
         while (diter.hasNext()) {
             Device d = diter.next();
 
@@ -1257,7 +1257,7 @@ public class DeviceManagerImpl implements
                 toKeep.clear();
                 for (Entity e : d.getEntities()) {
                     if (e.getLastSeenTimestamp() != null &&
-                        0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
+                            0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
                         // individual entity needs to be removed
                         toRemove.add(e);
                     } else {
@@ -1267,7 +1267,7 @@ public class DeviceManagerImpl implements
                 if (toRemove.size() == 0) {
                     break;
                 }
-                
+
                 for (Entity e : toRemove) {
                     removeEntity(e, d.getEntityClasses(), d.deviceKey, toKeep);
                 }
@@ -1277,13 +1277,13 @@ public class DeviceManagerImpl implements
                                                       toKeep,
                                                       d.entityClasses);
 
-                    EnumSet<DeviceField> changedFields = 
+                    EnumSet<DeviceField> changedFields =
                             EnumSet.noneOf(DeviceField.class);
                     for (Entity e : toRemove) {
                         changedFields.addAll(findChangedFields(newDevice, e));
                     }
                     if (changedFields.size() > 0)
-                        deviceUpdates.add(new DeviceUpdate(d, CHANGE, 
+                        deviceUpdates.add(new DeviceUpdate(d, CHANGE,
                                                            changedFields));
 
                     if (!deviceMap.replace(newDevice.getDeviceKey(),
@@ -1303,8 +1303,8 @@ public class DeviceManagerImpl implements
             }
         }
     }
-    
-    private void removeEntity(Entity removed, 
+
+    private void removeEntity(Entity removed,
                               IEntityClass[] classes,
                               Long deviceKey,
                               Collection<Entity> others) {
@@ -1317,22 +1317,22 @@ public class DeviceManagerImpl implements
                 index.removeEntityIfNeeded(removed, deviceKey, others);
             }
         }
-            
+
         primaryIndex.removeEntityIfNeeded(removed, deviceKey, others);
 
         for (IEntityClass clazz : classes) {
             ClassState classState = getClassState(clazz);
 
             if (classState.classIndex != null) {
-                classState.classIndex.removeEntityIfNeeded(removed, 
-                                                           deviceKey, 
+                classState.classIndex.removeEntityIfNeeded(removed,
+                                                           deviceKey,
                                                            others);
             }
         }
     }
 
     private EnumSet<DeviceField> getEntityKeys(Long macAddress,
-                                               Short vlan, 
+                                               Short vlan,
                                                Integer ipv4Address,
                                                Long switchDPID,
                                                Integer switchPort) {
@@ -1344,42 +1344,42 @@ public class DeviceManagerImpl implements
         if (switchPort != null) keys.add(DeviceField.PORT);
         return keys;
     }
-    
+
 
     protected Iterator<Device> queryClassByEntity(IEntityClass clazz,
-                                                EnumSet<DeviceField> keyFields,
-                                                Entity entity) {
+                                                  EnumSet<DeviceField> keyFields,
+                                                  Entity entity) {
         ClassState classState = getClassState(clazz);
         DeviceIndex index = classState.secondaryIndexMap.get(keyFields);
         if (index == null) return Collections.<Device>emptySet().iterator();
         return new DeviceIndexInterator(this, index.queryByEntity(entity));
     }
-    
+
     protected Device allocateDevice(Long deviceKey,
-                                    Entity entity, 
+                                    Entity entity,
                                     Collection<IEntityClass> entityClasses) {
         return new Device(this, deviceKey, entity, entityClasses);
     }
-    
+
     protected Device allocateDevice(Long deviceKey,
-                                    Collection<Entity> entities, 
+                                    Collection<Entity> entities,
                                     IEntityClass[] entityClasses) {
         return new Device(this, deviceKey, entities, entityClasses);
     }
-    
+
     protected Device allocateDevice(Device device,
-                                    Entity entity, 
+                                    Entity entity,
                                     Collection<IEntityClass> entityClasses) {
         return new Device(device, entity, entityClasses);
     }
 
-	@Override
-	public void addSuppressAPs(long swId, short port) {
-		suppressAPs.add(new SwitchPort(swId, port));
-	}
+    @Override
+    public void addSuppressAPs(long swId, short port) {
+        suppressAPs.add(new SwitchPort(swId, port));
+    }
 
-	@Override
-	public void removeSuppressAPs(long swId, short port) {
-		suppressAPs.remove(new SwitchPort(swId, port));
-	}
+    @Override
+    public void removeSuppressAPs(long swId, short port) {
+        suppressAPs.remove(new SwitchPort(swId, port));
+    }
 }
