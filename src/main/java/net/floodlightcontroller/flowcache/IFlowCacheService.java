@@ -23,9 +23,9 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public interface IFlowCacheService extends IFloodlightService {
 
     public static final String FLOWCACHE_APP_NAME = 
-        "com.bigswitch.floodlight.flowcache.appName";
+        "net.floodlightcontroller.flowcache.appName";
     public static final String FLOWCACHE_APP_INSTANCE_NAME = 
-        "com.bigswitch.floodlight.flowcache.appInstanceName";
+        "net.floodlightcontroller.flowcache.appInstanceName";
     
     /**
      * The Enum FCQueryType.
