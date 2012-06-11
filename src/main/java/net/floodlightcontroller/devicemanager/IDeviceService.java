@@ -42,13 +42,13 @@ public interface IDeviceService extends IFloodlightService {
      * The source device for the current packet-in, if applicable.
      */
     public static final String CONTEXT_SRC_DEVICE = 
-            "com.bigswitch.floodlight.devicemanager.srcDevice"; 
+            "net.floodlightcontroller.devicemanager.srcDevice"; 
 
     /**
      * The destination device for the current packet-in, if applicable.
      */
     public static final String CONTEXT_DST_DEVICE = 
-            "com.bigswitch.floodlight.devicemanager.dstDevice"; 
+            "net.floodlightcontroller.devicemanager.dstDevice"; 
 
     /**
      * A FloodlightContextStore object that can be used to interact with the 
