@@ -10,6 +10,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 
@@ -84,6 +86,16 @@ public class FlowReconcileManager
                 break;
             }
         }
+    }
+    
+    @Override
+    public void updateFlowForDestinationDevice(IDevice device, FCQueryEvType fcEvType){
+    	// NO-OP
+    }
+
+    @Override
+    public void updateFlowForSourceDevice(IDevice device, FCQueryEvType fcEvType){
+    	// NO-OP
     }
     
     // IFloodlightModule
