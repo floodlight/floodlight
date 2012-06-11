@@ -98,6 +98,21 @@ public class FlowReconcileManager
     	// NO-OP
     }
     
+    @Override
+    public void flowQueryGenericHandler(FlowCacheQueryResp flowResp) {
+        if (flowResp.queryObj.evType != FCQueryEvType.GET) {
+            OFMatchReconcile ofmRc = newOFMatchReconcile();
+            /* Re-provision these flows */
+            for (QRFlowCacheObj entry : flowResp.qrFlowCacheObjList) {
+                /* reconcile the flows in entry */
+                entry.toOFMatchReconcile(ofmRc, flowResp.queryObj.applInstName,
+                                                OFMatchReconcile.ReconcileAction.UPDATE_PATH);
+                reconcileFlow(ofmRc);
+            }
+        }
+        return;
+    }
+    
     // IFloodlightModule
 
     @Override
