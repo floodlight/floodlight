@@ -5,6 +5,8 @@
 package net.floodlightcontroller.flowcache;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
 
 public interface IFlowReconcileService extends IFloodlightService {
     /**
@@ -32,5 +34,36 @@ public interface IFlowReconcileService extends IFloodlightService {
      * @param ofmRcIn the ofm rc in
      */
     public void reconcileFlow(OFMatchReconcile ofmRcIn);
+    
+    /**
+     * Updates the flows to a device after the device moved to a new location
+     * <p>
+     * Queries the flow-cache to get all the flows destined to the given device.
+     * Reconciles each of these flows by potentially reprogramming them to its
+     * new attachment point
+     *
+     * @param device      device that has moved
+     * @param fcEvType    Event type that triggered the update
+     *
+     */
+    public void updateFlowForDestinationDevice(IDevice device, FCQueryEvType fcEvType);
+    
+    /**
+     * Updates the flows from a device
+     * <p>
+     * Queries the flow-cache to get all the flows source from the given device.
+     * Reconciles each of these flows by potentially reprogramming them to its
+     * new attachment point
+     *
+     * @param device      device where the flow originates
+     * @param fcEvType    Event type that triggered the update
+     *
+     */
+    public void updateFlowForSourceDevice(IDevice device, FCQueryEvType fcEvType);
 
+    /**
+     * Generic flow query handler to insert FlowMods into the reconcile pipeline.
+     * @param flowResp
+     */
+    public void flowQueryGenericHandler(FlowCacheQueryResp flowResp);
 }

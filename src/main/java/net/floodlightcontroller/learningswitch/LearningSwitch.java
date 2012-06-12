@@ -59,9 +59,7 @@ import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -79,6 +77,7 @@ public class LearningSwitch
     protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
     
+    // Stores the learned state for each switch
     protected Map<IOFSwitch, Map<MacVlanPair,Short>> macVlanToSwitchPortMap;
 
     // flow-mod - for use in the cookie
@@ -107,14 +106,6 @@ public class LearningSwitch
         this.floodlightProvider = floodlightProvider;
     }
     
-    public ICounterStoreService getCounterStore() {
-        return counterStore;
-    }
-    
-    public void setCounterStore(ICounterStoreService counterStore) {
-        this.counterStore = counterStore;
-    }
-
     @Override
     public String getName() {
         return "learningswitch";
@@ -200,6 +191,14 @@ public class LearningSwitch
         return macVlanToSwitchPortMap;
     }
     
+    /**
+     * Writes a OFFlowMod to a switch.
+     * @param sw The switch tow rite the flowmod to.
+     * @param command The FlowMod actions (add, delete, etc).
+     * @param bufferId The buffer ID if the switch has buffered the packet.
+     * @param match The OFMatch structure to write.
+     * @param outPort The switch port to output it to.
+     */
     private void writeFlowMod(IOFSwitch sw, short command, int bufferId,
             OFMatch match, short outPort) {
         // from openflow 1.0 spec - need to set these on a struct ofp_flow_mod:
@@ -262,6 +261,12 @@ public class LearningSwitch
         }
     }
     
+    /**
+     * Writes an OFPacketOut message to a switch.
+     * @param sw The switch to write the PacketOut to.
+     * @param packetInMessage The corresponding PacketIn.
+     * @param egressPort The switchport to output the PacketOut.
+     */
     private void writePacketOutForPacketIn(IOFSwitch sw, 
                                           OFPacketIn packetInMessage, 
                                           short egressPort) {
@@ -307,6 +312,15 @@ public class LearningSwitch
         }
     }
     
+    /**
+     * Processes a OFPacketIn message. If the switch has learned the MAC/VLAN to port mapping
+     * for the pair it will write a FlowMod for. If the mapping has not been learned the 
+     * we will flood the packet.
+     * @param sw
+     * @param pi
+     * @param cntx
+     * @return
+     */
     private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
         OFMatch match = new OFMatch();
@@ -368,32 +382,14 @@ public class LearningSwitch
         }
         return Command.CONTINUE;
     }
-        
-    public void removedSwitch(IOFSwitch sw) {
-        // delete the switch structures 
-        // they will get recreated on first packetin 
-        log.info("clearing macVlanToPortMap for switch {}", sw);
-        clearLearnedTable(sw);
-    }
-    
-    private Command processPortStatusMessage(IOFSwitch sw, OFPortStatus portStatusMessage) {
-        // FIXME This is really just an optimization, speeding up removal of flow
-        // entries for a disabled port; think about whether it's really needed
-        OFPhysicalPort port = portStatusMessage.getDesc();
-        log.info("received port status: " + portStatusMessage.getReason() + " for port " + port.getPortNumber());
-        // LOOK! should be using the reason enums - but how?
-        if (portStatusMessage.getReason() == 1 || // DELETED
-            (portStatusMessage.getReason() == 2 &&  // MODIFIED and is now down
-             ((port.getConfig() & OFPhysicalPort.OFPortConfig.OFPPC_PORT_DOWN.getValue()) > 1 ||
-              (port.getState() & OFPhysicalPort.OFPortState.OFPPS_LINK_DOWN.getValue()) > 1))) {
-            // then we should reset the switch data structures
-            // LOOK! we could be doing something more intelligent like
-            // extract out the macs just assigned to a port, but this is ok for now
-            this.removedSwitch(sw);
-        }
-        return Command.CONTINUE;
-    }
 
+    /**
+     * Processes a flow removed message. We will delete the learned MAC/VLAN mapping from
+     * the switch's table.
+     * @param sw The switch that sent the flow removed message.
+     * @param flowRemovedMessage The flow removed message.
+     * @return Whether to continue processing this message or stop.
+     */
     private Command processFlowRemovedMessage(IOFSwitch sw, OFFlowRemoved flowRemovedMessage) {
         if (flowRemovedMessage.getCookie() != LearningSwitch.LEARNING_SWITCH_COOKIE) {
             return Command.CONTINUE;
@@ -428,12 +424,13 @@ public class LearningSwitch
         return Command.CONTINUE;
     }
     
+    // IOFMessageListener
+    
+    @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
                 return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
-            case PORT_STATUS:
-                return this.processPortStatusMessage(sw, (OFPortStatus) msg);
             case FLOW_REMOVED:
                 return this.processFlowRemovedMessage(sw, (OFFlowRemoved) msg);
             case ERROR:
@@ -446,7 +443,6 @@ public class LearningSwitch
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        // TODO - change this
         return false;
     }
 
@@ -503,7 +499,6 @@ public class LearningSwitch
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        //floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         floodlightProvider.addOFMessageListener(OFType.ERROR, this);
         restApi.addRestletRoutable(new LearningSwitchWebRoutable());

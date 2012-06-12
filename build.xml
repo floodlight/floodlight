@@ -170,6 +170,7 @@
                 <fileset dir="${source-test}">
                     <exclude name="**/storage/tests/StorageTest.java"/>
                     <exclude name="**/test/Mock*"/>
+                    <exclude name="**/core/test/**"/>
                 </fileset>
             </batchtest>
         </junit>

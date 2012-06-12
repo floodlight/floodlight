@@ -33,12 +33,12 @@ public class EventHistoryTopologyLinkResource extends ServerResource {
         }
 
         try {
-            LinkDiscoveryManager topoManager =
+            LinkDiscoveryManager linkDiscoveryManager =
                (LinkDiscoveryManager)getContext().getAttributes().
                    get(ILinkDiscoveryService.class.getCanonicalName());
-            if (topoManager != null) {
+            if (linkDiscoveryManager != null) {
                 return new EventHistory<EventHistoryTopologyLink>(
-                                        topoManager.evHistTopologyLink, count);
+                                        linkDiscoveryManager.evHistTopologyLink, count);
             }
         } catch (ClassCastException e) {
             log.error(e.toString());

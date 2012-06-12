@@ -87,6 +87,10 @@ public class RestApiServer
             
             // Add everything in the module context to the rest
             for (Class<? extends IFloodlightService> s : fmlContext.getAllServices()) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Adding {} for service {} into context",
+                                 s.getCanonicalName(), fmlContext.getServiceImpl(s));
+                }
                 context.getAttributes().put(s.getCanonicalName(), 
                                             fmlContext.getServiceImpl(s));
             }

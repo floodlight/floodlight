@@ -20,6 +20,7 @@ public class EventHistoryTopologyLink {
     public int      dstPortState;
     public int      srcSwport;
     public int      dstSwport;
+    public String   linkType;
     public String   reason;
     
     @JsonProperty("Source-Switch")
@@ -47,6 +48,10 @@ public class EventHistoryTopologyLink {
     @JsonProperty("DstPort")
     public int getDstSwport() {
         return dstSwport;
+    }
+    @JsonProperty("LinkType")
+    public String getLinkType() {
+        return linkType;
     }
     @JsonProperty("Reason")
     public String getReason() {
