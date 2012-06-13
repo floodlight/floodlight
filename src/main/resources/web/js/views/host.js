@@ -42,7 +42,7 @@ window.HostListView = Backbone.View.extend({
         $(this.el).html(this.template({nhosts:hl.length}));
         _.each(this.model.models, function (h) {
             $(this.el).find('table.host-table > tbody')
-            	.append(new HostListItemView({model:h}).render().el);
+                .append(new HostListItemView({model:h}).render().el);
         }, this);
         return this;
     }
