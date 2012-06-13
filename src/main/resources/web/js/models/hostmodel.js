@@ -47,6 +47,7 @@ window.HostCollection = Backbone.Collection.extend({
                         h.swport = _.reduce(h['attachmentPoint'], function(memo, ap) {
                             return memo + ap.switchDPID + "-" + ap.port + " "}, "");
                         //console.log(h.swport);
+                        h.lastSeen = new Date(h.lastSeen).toLocaleString();
                         self.add(h, {silent: true});
                     }
                 });
