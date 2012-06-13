@@ -17,10 +17,10 @@
 window.Host = Backbone.Model.extend({
 
     defaults: {
-    	vlan: -1,
-    	seen: 'never',
-    	ip: ' ',
-    	swport: ' ',
+        vlan: -1,
+        seen: 'never',
+        ip: ' ',
+        swport: ' ',
     },
 
     // initialize:function () {}
@@ -42,12 +42,12 @@ window.HostCollection = Backbone.Collection.extend({
                 // console.log(data);
                 // data is a list of device hashes
                 _.each(data, function(h) {
-		    if (h['attachmentPoint'].length > 0) {
-			h.swport = _.reduce(h['attachmentPoint'], function(memo, ap) {
-			    return memo + ap.dpid + "-" + ap.port + " "}, "")
-			console.log(h.swport);
-			self.add(h, {silent: true});
-		    }
+                    if (h['attachmentPoint'].length > 0) {
+                        h.swport = _.reduce(h['attachmentPoint'], function(memo, ap) {
+                            return memo + ap.switchDPID + "-" + ap.port + " "}, "");
+                        //console.log(h.swport);
+                        self.add(h, {silent: true});
+                    }
                 });
                 self.trigger('add'); // batch redraws
             }
@@ -60,20 +60,11 @@ window.HostCollection = Backbone.Collection.extend({
     }
 
     /*
-    findByName:function (key) {
-        // TODO: Modify service to include firstName in search
-        var url = (key == '') ? '/host/' : "/host/search/" + key;
-        console.log('findByName: ' + key);
-        var self = this;
-        $.ajax({
-            url:url,
-            dataType:"json",
-            success:function (data) {
-                console.log("search success: " + data.length);
-                self.reset(data);
-            }
-        });
-    }
-    */
+	 * findByName:function (key) { // TODO: Modify service to include firstName
+	 * in search var url = (key == '') ? '/host/' : "/host/search/" + key;
+	 * console.log('findByName: ' + key); var self = this; $.ajax({ url:url,
+	 * dataType:"json", success:function (data) { console.log("search success: " +
+	 * data.length); self.reset(data); } }); }
+	 */
 
 });
