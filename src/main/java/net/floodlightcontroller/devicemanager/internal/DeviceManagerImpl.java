@@ -1037,7 +1037,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 if (changedFields.size() > 0)
                     deviceUpdates =
                     updateUpdates(deviceUpdates,
-                                  new DeviceUpdate(device, CHANGE,
+                                  new DeviceUpdate(newDevice, CHANGE,
                                                    changedFields));
 
                 // update the device map with a replace call

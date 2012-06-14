@@ -65,21 +65,21 @@ public class Ethernet extends BasePacket {
     }
     
     /**
-     * @return the destinationMACAddress as a byte array
+     * @return the destination MAC as a byte array
      */
     public byte[] getDestinationMACAddress() {
         return destinationMACAddress.toBytes();
     }
     
     /**
-     * @return the destinationMACAddress
+     * @return the destination MAC
      */
     public MACAddress getDestinationMAC() {
         return destinationMACAddress;
     }
 
     /**
-     * @param destinationMACAddress the destinationMACAddress to set
+     * @param destinationMACAddress the destination MAC to set
      */
     public Ethernet setDestinationMACAddress(byte[] destinationMACAddress) {
         this.destinationMACAddress = MACAddress.valueOf(destinationMACAddress);
@@ -87,7 +87,7 @@ public class Ethernet extends BasePacket {
     }
 
     /**
-     * @param destinationMACAddress the destinationMACAddress to set
+     * @param destinationMACAddress the destination MAC to set
      */
     public Ethernet setDestinationMACAddress(String destinationMACAddress) {
         this.destinationMACAddress = MACAddress.valueOf(destinationMACAddress);
@@ -95,21 +95,21 @@ public class Ethernet extends BasePacket {
     }
 
     /**
-     * @return the sourceMACAddress as a byte array
+     * @return the source MACAddress as a byte array
      */
     public byte[] getSourceMACAddress() {
         return sourceMACAddress.toBytes();
     }
     
     /**
-     * @return the sourceMACAddress
+     * @return the source MACAddress
      */
     public MACAddress getSourceMAC() {
         return sourceMACAddress;
     }
 
     /**
-     * @param sourceMACAddress the sourceMACAddress to set
+     * @param sourceMACAddress the source MAC to set
      */
     public Ethernet setSourceMACAddress(byte[] sourceMACAddress) {
         this.sourceMACAddress = MACAddress.valueOf(sourceMACAddress);
@@ -117,7 +117,7 @@ public class Ethernet extends BasePacket {
     }
 
     /**
-     * @param sourceMACAddress the sourceMACAddress to set
+     * @param sourceMACAddress the source MAC to set
      */
     public Ethernet setSourceMACAddress(String sourceMACAddress) {
         this.sourceMACAddress = MACAddress.valueOf(sourceMACAddress);
