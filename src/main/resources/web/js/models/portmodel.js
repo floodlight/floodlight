@@ -21,6 +21,8 @@ window.Port = Backbone.Model.extend({
 		receivePackets: 0,
 		transmitBytes: 0,
 		transmitPackets: 0,
+		dropped: 0,
+		errors: 0,
 	},
 	
     initialize:function () {
