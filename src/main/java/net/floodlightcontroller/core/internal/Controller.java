@@ -752,15 +752,7 @@ public class Controller implements IFloodlightProviderService,
                 } else {
                     log.info("Switch handshake successful: {}", sw);
                     
-                    if (sw.getRole() != Role.SLAVE) {
-                        // Only add the switch to the active switch list if 
-                        // we're not in the slave role. Note that if the role 
-                        // attribute is null, then that means that the switch 
-                        // doesn't support the role request messages, so in that
-                        // case we're effectively in the EQUAL role and the 
-                        // switch should be included in the active switch list.
-                        addSwitch(sw);
-                    
+                    if (sw.getRole() != Role.SLAVE) {                
                         // Delete all pre-existing flows for new connections to 
                         // the master
                         // FIXME: Need to think more about what the test should 
@@ -778,6 +770,14 @@ public class Controller implements IFloodlightProviderService,
                         // table for a newly connected switch is never
                         // flushed. Not sure how to handle that case though...
                         sw.clearAllFlowMods();
+                        
+                        // Only add the switch to the active switch list if 
+                        // we're not in the slave role. Note that if the role 
+                        // attribute is null, then that means that the switch 
+                        // doesn't support the role request messages, so in that
+                        // case we're effectively in the EQUAL role and the 
+                        // switch should be included in the active switch list.
+                        addSwitch(sw);
                     }
                 }
             }
