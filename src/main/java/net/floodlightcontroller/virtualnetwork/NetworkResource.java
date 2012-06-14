@@ -85,7 +85,7 @@ public class NetworkResource extends ServerResource {
         
         // We try to get the ID from the URI only if it's not
         // in the POST data 
-        if (network.guid != null) {
+        if (network.guid == null) {
 	        String guid = (String) getRequestAttributes().get("network");
 	        if ((guid != null) && (!guid.equals("null")))
 	        	network.guid = guid;
