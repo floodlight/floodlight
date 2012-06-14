@@ -19,14 +19,14 @@ window.Switch = Backbone.Model.extend({
     urlRoot:"/wm/core/switch/",
     
     defaults: {
-    	datapathDescription: '',
-    	hardwareDescription: '',
-    	manufacturerDescription: '',
-    	serialNumber: '',
-    	softwareDescription: '',
-    	flowCount: -1,
-    	packetCount: 0,
-    	byteCount: 0,
+        datapathDescription: '',
+        hardwareDescription: '',
+        manufacturerDescription: '',
+        serialNumber: '',
+        softwareDescription: '',
+        flowCount: ' ',
+        packetCount: ' ',
+        byteCount: ' ',
     },
 
     initialize:function () {
