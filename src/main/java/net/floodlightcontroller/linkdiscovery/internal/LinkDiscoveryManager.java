@@ -145,7 +145,7 @@ public class LinkDiscoveryManager
     
     protected SingletonTask sendLLDPTask;
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
-    		HexString.fromHexString("01:80:c2:00:00:00");
+    		HexString.fromHexString("01:80:c2:00:00:0e");
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
     // private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
     private static final String LLDP_BSN_DST_MAC_STRING = "ff:ff:ff:ff:ff:ff";
