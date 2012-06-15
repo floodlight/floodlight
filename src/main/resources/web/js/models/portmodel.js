@@ -16,15 +16,18 @@
 
 window.Port = Backbone.Model.extend({
 
-	defaults: {
-		receiveBytes: 0,
-		receivePackets: 0,
-		transmitBytes: 0,
-		transmitPackets: 0,
-	},
-	
+    defaults: {
+        name: '',
+        receiveBytes: 0,
+        receivePackets: 0,
+        transmitBytes: 0,
+        transmitPackets: 0,
+        dropped: 0,
+        errors: 0,
+    },
+
     initialize:function () {
-    	// TODO hook up associated hosts
+        // TODO hook up associated hosts
     }
 
 });
