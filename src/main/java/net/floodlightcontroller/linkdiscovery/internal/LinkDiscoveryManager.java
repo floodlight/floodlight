@@ -68,7 +68,6 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
-import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
@@ -140,7 +139,6 @@ public class LinkDiscoveryManager
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
-    protected IRoutingService routingEngine;
     protected IThreadPoolService threadPool;
     
     protected SingletonTask sendLLDPTask;
@@ -1230,13 +1228,6 @@ public class LinkDiscoveryManager
         return storageSource;
     }
 
-    /**
-     * @param routingEngine the storage source to use for persisting link info
-     */
-    public void setRoutingEngine(IRoutingService routingEngine) {
-        this.routingEngine = routingEngine;
-    }
-
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         return false;
@@ -1338,7 +1329,6 @@ public class LinkDiscoveryManager
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
-        l.add(IRoutingService.class);
         l.add(IThreadPoolService.class);
         return l;
     }
@@ -1348,7 +1338,6 @@ public class LinkDiscoveryManager
                       throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
-        routingEngine = context.getServiceImpl(IRoutingService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         
         // We create this here because there is no ordering guarantee
