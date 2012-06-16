@@ -622,13 +622,13 @@ public class TopologyInstance {
     // 
 
     protected boolean isInternalToOpenflowDomain(long switchid, short port) {
-        NodePortTuple npt = new NodePortTuple(switchid, port);
-        if (switchPortLinks.containsKey(npt)) return true;
-        return false;
+        return !isAttachmentPointPort(switchid, port);
     }
 
     public boolean isAttachmentPointPort(long switchid, short port) {
-        return !isInternalToOpenflowDomain(switchid, port);
+        NodePortTuple npt = new NodePortTuple(switchid, port);
+        if (switchPortLinks.containsKey(npt)) return false;
+        return true;
     }
 
     protected long getOpenflowDomainId(long switchId) {
