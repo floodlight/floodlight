@@ -17,4 +17,4 @@ net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
-net.floodlightcontroller.virtualnetwork.forwarding.VirtualNetworkFilter
+net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter

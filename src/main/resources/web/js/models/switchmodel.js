@@ -19,14 +19,14 @@ window.Switch = Backbone.Model.extend({
     urlRoot:"/wm/core/switch/",
     
     defaults: {
-    	datapathDescription: '',
-    	hardwareDescription: '',
-    	manufacturerDescription: '',
-    	serialNumber: '',
-    	softwareDescription: '',
-    	flowCount: -1,
-    	packetCount: 0,
-    	byteCount: 0,
+        datapathDescription: '',
+        hardwareDescription: '',
+        manufacturerDescription: '',
+        serialNumber: '',
+        softwareDescription: '',
+        flowCount: ' ',
+        packetCount: ' ',
+        byteCount: ' ',
     },
 
     initialize:function () {
@@ -49,47 +49,104 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " aggregate");
-		//console.log(data[self.id][0]);
+                //console.log(data[self.id][0]);
                 self.set(data[self.id][0]);
             }
         });
-    	self.trigger('add');
-    	this.ports = new PortCollection();
-    	this.flows = new FlowCollection();
-	this.loadPorts();
-	this.loadFlows();
+        self.trigger('add');
+        this.ports = new PortCollection();
+        this.flows = new FlowCollection();
+        //this.loadPorts();
+        //this.loadFlows();
     },
 
     fetch:function () {
-	this.initialize()
+        this.initialize()
     },
 
     loadPorts:function () {
-    	if (this.ports.length == 0) {
-	    	var self = this;
-	        //console.log("fetching switch " + this.id + " ports")
-	        $.ajax({
-	            url:hackBase + "/wm/core/switch/" + self.id + '/port/json',
-	            dataType:"json",
-	            success:function (data) {
-	                //console.log("fetched  switch " + self.id + " ports");
-	                // console.log(data[self.id]);
-	                // create port models
-	                // TODO maybe clean up the errors
-	                _.each(data[self.id], function(p) {
-	                	p.id = self.id+'-'+p.portNumber;
-	                	self.ports.add(p, {silent: true});
-	                	// console.log(p);
-	                });
-	                self.ports.trigger('add'); // batch redraws
-	            }
-	        });
-	        // TODO maybe load /features/json here
-    	}
+        var self = this;
+        //console.log("fetching switch " + this.id + " ports")
+        //console.log("fetching switch " + this.id + " features")
+        $.when($.ajax({
+            url:hackBase + "/wm/core/switch/" + self.id + '/port/json',
+            dataType:"json",
+            success:function (data) {
+                //console.log("fetched  switch " + self.id + " ports");
+                //console.log(data[self.id]);
+                // create port models
+                _.each(data[self.id], function(p) {
+                    p.id = self.id+'-'+p.portNumber;
+                    p.dropped = p.receiveDropped + p.transmitDropped;
+                    p.errors = p.receiveCRCErrors + p.receiveErrors + p.receiveOverrunErrors +
+                        p.receiveFrameErrors + p.transmitErrors;
+                    // this is a knda kludgy way to merge models
+                    var m = self.ports.get(p.id);
+                    if(m) {
+                        m.set(p, {silent: true});
+                    } else {
+                        self.ports.add(p, {silent: true});
+                    }
+                    //console.log(p);
+                });
+            }
+        }),
+        $.ajax({
+            url:hackBase + "/wm/core/switch/" + self.id + '/features/json',
+            dataType:"json",
+            success:function (data) {
+                //console.log("fetched  switch " + self.id + " features");
+                //console.log(data[self.id]);
+                // update port models
+                _.each(data[self.id].ports, function(p) {
+                    p.id = self.id+'-'+p.portNumber;
+                    if(p.name != p.portNumber) {
+                        p.name = p.portNumber + ' (' + p.name + ')';
+                    }
+                    p.status = '';
+                    p.status += (p.state & 1) ? 'DOWN' : 'UP';
+                    switch(p.currentFeatures & 0x7f) {
+                    case 1:
+                        p.status += ' 10 Mbps';
+                        break;
+                    case 2:
+                        p.status += ' 10 Mbps FDX';
+                        break;
+                    case 4:
+                        p.status += ' 100 Mbps';
+                        break;
+                    case 8:
+                        p.status += ' 100 Mbps FDX';
+                        break;
+                    case 16:
+                        p.status += ' 1 Gbps'; // RLY?
+                        break;
+                    case 32:
+                        p.status += ' 1 Gbps FDX';
+                        break;
+                    case 64:
+                        p.status += ' 10 Gbps FDX';
+                        break;
+                    }
+                    // TODO parse copper/fiber, autoneg, pause
+                    
+                    // this is a knda kludgy way to merge models
+                    var m = self.ports.get(p.id);
+                    if(m) {
+                        m.set(p, {silent: true});
+                    } else {
+                        self.ports.add(p, {silent: true});
+                    }
+                    //console.log(p);
+                });
+            }
+        })).done(function() {
+            self.ports.trigger('add'); // batch redraws
+        });
     },
     
     loadFlows:function () {
-    	var self = this;
+        var self = this;
         //console.log("fetching switch " + this.id + " flows")
         $.ajax({
             url:hackBase + "/wm/core/switch/" + self.id + '/flow/json',
@@ -100,21 +157,20 @@ window.Switch = Backbone.Model.extend({
                 // create flow models
                 var i = 0;
                 _.each(data[self.id], function(f) {
-                	f.id = self.id + '-' + i++;
-                	f.matchHTML = "src=<a href='/host/" + f.match.dataLayerSource + "'>" +
-                		f.match.dataLayerSource +
-                		"</a>, dst=<a href='/host/" + f.match.dataLayerDestination + "'>" +
-                		f.match.dataLayerDestination + 
-                		"</a>, port=" + f.match.inputPort; // FIXME
-                	f.actionText = f.actions[0].type + " " + f.actions[0].port; // FIXME
-                	// console.log(f);
-                	self.flows.add(f, {silent: true});
+                    f.id = self.id + '-' + i++;
+                    f.matchHTML = "src=<a href='/host/" + f.match.dataLayerSource + "'>" +
+                        f.match.dataLayerSource +
+                        "</a>, dst=<a href='/host/" + f.match.dataLayerDestination + "'>" +
+                        f.match.dataLayerDestination + 
+                        "</a>, port=" + f.match.inputPort; // FIXME
+                    f.actionText = f.actions[0].type + " " + f.actions[0].port; // FIXME
+                    // console.log(f);
+                    self.flows.add(f, {silent: true});
                 });
                 self.flows.trigger('add');
             }
         });
     },
-    
 });
 
 window.SwitchCollection = Backbone.Collection.extend({

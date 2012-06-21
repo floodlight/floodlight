@@ -1,4 +1,4 @@
-package net.floodlightcontroller.virtualnetwork.forwarding;
+package net.floodlightcontroller.virtualnetwork;
 
 import org.restlet.Context;
 import org.restlet.Restlet;
@@ -11,13 +11,15 @@ public class VirtualNetworkWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/tenants/{tenant}/networks/{network}", NetworkResource.class);
+        router.attach("/tenants/{tenant}/networks/{network}", NetworkResource.class); // PUT, GET, DELETE
+        router.attach("/tenants/{tenant}/networks", NetworkResource.class); // POST
         router.attach("/tenants/{tenant}/networks/{network}/ports/{port}/attachment", HostResource.class);
+        router.attachDefault(NoOp.class);
         return router;
     }
 
     @Override
     public String basePath() {
-        return "/quantum/1.0";
+        return "/quantum/v1.0";
     }
 }

@@ -43,14 +43,13 @@ window.TopologyView = Backbone.View.extend({
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
-            if (( host.attributes['network-addresses'].length > 0 ) && 
-                    ('ip' in host.attributes['network-addresses'][0])) {
-                host.name = host.attributes['network-addresses'][0]['ip'] + "\n" + host.id;
+            if (host.attributes['ipv4'].length > 0) {
+                host.name = host.attributes['ipv4'][0] + "\n" + host.id;
             } else {
                 host.name = host.id;
             }
             host.group = 2;
-            console.log(host);
+            //console.log(host);
           }
 
           var all_nodes = this.model.nodes.concat(this.hosts);
@@ -63,11 +62,11 @@ window.TopologyView = Backbone.View.extend({
 
           for (var i = 0; i < this.hosts.length; i++) {
             host = this.hosts[i];
-            for (var j = 0; j < host.attributes['attachment-points'].length; j++) {
+            for (var j = 0; j < host.attributes['attachmentPoint'].length; j++) {
               var link = {source:all_nodes_map[host.id],
-                      target:all_nodes_map[host.attributes['attachment-points'][j]['switch']],
+                      target:all_nodes_map[host.attributes['attachmentPoint'][j]['switchDPID']],
                       value:10};
-              console.log(link);
+              //console.log(link);
               if ( link.source && link.target) {
                   this.host_links.push(link);
               } else {
