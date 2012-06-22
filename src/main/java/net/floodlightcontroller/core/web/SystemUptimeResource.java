@@ -10,6 +10,7 @@ public class SystemUptimeResource extends ServerResource {
 		IFloodlightProviderService floodlightProvider = 
 			(IFloodlightProviderService)getContext().getAttributes().
 			get(IFloodlightProviderService.class.getCanonicalName());
-		return floodlightProvider.getSystemUptime();
+		return (System.currentTimeMillis() -
+				floodlightProvider.getSystemStartTime());
 	}
 }

@@ -194,9 +194,9 @@ public interface IFloodlightProviderService extends IFloodlightService {
    
    
    /**
-    * Return the controller uptime in  milliseconds
+    * Return the controller start time in  milliseconds
     * @return
     */
-   public long getSystemUptime();
+   public long getSystemStartTime();
 
 }

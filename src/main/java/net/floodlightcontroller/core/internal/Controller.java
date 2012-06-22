@@ -2101,10 +2101,8 @@ public class Controller implements IFloodlightProviderService,
     }
 
 	@Override
-	public long getSystemUptime() {
-		return (System.currentTimeMillis() - this.systemStartTime);
+	public long getSystemStartTime() {
+		return (this.systemStartTime);
 	}
-    
-    
 
 }
