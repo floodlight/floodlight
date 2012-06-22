@@ -293,10 +293,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 	}
 
 	@Override
-	public long getSystemUptime() {
+	public long getSystemStartTime() {
 		// TODO Auto-generated method stub
 		return 0;
 	}
-	
-	
+
 }
