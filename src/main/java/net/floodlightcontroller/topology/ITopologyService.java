@@ -1,12 +1,16 @@
 package net.floodlightcontroller.topology;
 
+import java.util.Date;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 
 public interface ITopologyService extends IFloodlightService  {
 
     public void addListener(ITopologyListener listener);
+
+    public Date getLastUpdateTime();
 
     /**
      * Query to determine if devices must be learned on a given switch port.
@@ -174,4 +178,20 @@ public interface ITopologyService extends IFloodlightService  {
      * destination pair.
      */
     public boolean isTunnelEnabled(long srcMac, long dstMac);
+
+    /**
+     * Returns a set of blocked ports.  The set of blocked
+     * ports is the union of all the blocked ports across all
+     * instances.
+     * @return
+     */
+    public Set<NodePortTuple> getBlockedPorts();
+    
+    /**
+     * ITopologyListener provides topologyChanged notification, 
+     * but not *what* the changes were.  
+     * This method returns the delta in the linkUpdates between the current and the previous topology instance.
+     * @return
+     */
+    public Set<LDUpdate> getLastLinkUpdates();
 }

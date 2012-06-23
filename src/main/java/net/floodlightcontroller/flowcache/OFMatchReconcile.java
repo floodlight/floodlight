@@ -25,7 +25,7 @@ public class OFMatchReconcile  {
 	     * for example when a host is moved or when a link goes down. */
 	    UPDATE_PATH,
 	    /* Flow is now in a different BVS */
-	    BVS_CHANGED,
+	    APP_INSTANCE_CHANGED,
 	    /* Delete the flow-mod - used to delete, for example, drop flow-mods
 	     * when the source and destination are in the same BVS after a 
 	     * configuration change */

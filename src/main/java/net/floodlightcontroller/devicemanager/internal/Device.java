@@ -1,19 +1,19 @@
 /**
-*    Copyright 2011,2012 Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
+ *    Copyright 2011,2012 Big Switch Networks, Inc.
+ *    Originally created by David Erickson, Stanford University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
 
 package net.floodlightcontroller.devicemanager.internal;
 
@@ -47,13 +47,13 @@ public class Device implements IDevice {
 
     protected Entity[] entities;
     protected IEntityClass[] entityClasses;
-    
+
     protected String macAddressString;
-    
+
     // ************
     // Constructors
     // ************
-    
+
     /**
      * Create a device from an entities
      * @param deviceManager the device manager for this device
@@ -63,18 +63,18 @@ public class Device implements IDevice {
      */
     public Device(DeviceManagerImpl deviceManager,
                   Long deviceKey,
-                  Entity entity, 
+                  Entity entity,
                   Collection<IEntityClass> entityClasses) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = new Entity[] {entity};
-        this.macAddressString = 
+        this.macAddressString =
                 HexString.toHexString(entity.getMacAddress(), 6);
-        this.entityClasses = 
+        this.entityClasses =
                 entityClasses.toArray(new IEntityClass[entityClasses.size()]);
         Arrays.sort(this.entities);
     }
-    
+
     /**
      * Create a device from a set of entities
      * @param deviceManager the device manager for this device
@@ -84,12 +84,12 @@ public class Device implements IDevice {
      */
     public Device(DeviceManagerImpl deviceManager,
                   Long deviceKey,
-                  Collection<Entity> entities, 
+                  Collection<Entity> entities,
                   IEntityClass[] entityClasses) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = entities.toArray(new Entity[entities.size()]);
-        this.macAddressString = 
+        this.macAddressString =
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
         this.entityClasses = entityClasses;
         Arrays.sort(this.entities);
@@ -107,18 +107,18 @@ public class Device implements IDevice {
                   Collection<IEntityClass> entityClasses) {
         this.deviceManager = device.deviceManager;
         this.deviceKey = device.deviceKey;
-        this.entities = Arrays.<Entity>copyOf(device.entities, 
+        this.entities = Arrays.<Entity>copyOf(device.entities,
                                               device.entities.length + 1);
         this.entities[this.entities.length - 1] = newEntity;
         Arrays.sort(this.entities);
 
-        this.macAddressString = 
+        this.macAddressString =
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
-        
+
         if (entityClasses != null &&
-            entityClasses.size() > device.entityClasses.length) {
+                entityClasses.size() > device.entityClasses.length) {
             IEntityClass[] classes = new IEntityClass[entityClasses.size()];
-            this.entityClasses = 
+            this.entityClasses =
                     entityClasses.toArray(classes);
         } else {
             // same actual array, not a copy
@@ -129,12 +129,12 @@ public class Device implements IDevice {
     // *******
     // IDevice
     // *******
-    
+
     @Override
     public Long getDeviceKey() {
         return deviceKey;
     }
-    
+
     @Override
     public long getMACAddress() {
         // we assume only one MAC per device for now.
@@ -172,7 +172,7 @@ public class Device implements IDevice {
     public Integer[] getIPv4Addresses() {
         // XXX - TODO we can cache this result.  Let's find out if this
         // is really a performance bottleneck first though.
-        
+
         if (entities.length == 1) {
             if (entities[0].getIpv4Address() != null) {
                 return new Integer[]{ entities[0].getIpv4Address() };
@@ -184,21 +184,21 @@ public class Device implements IDevice {
         TreeSet<Integer> vals = new TreeSet<Integer>();
         for (Entity e : entities) {
             if (e.getIpv4Address() == null) continue;
-            
+
             // We have an IP address only if among the devices within the class
             // we have the most recent entity with that IP.
             boolean validIP = true;
             for (IEntityClass clazz : entityClasses) {
-                Iterator<Device> devices = 
+                Iterator<Device> devices =
                         deviceManager.queryClassByEntity(clazz, ipv4Fields, e);
                 while (devices.hasNext()) {
                     Device d = devices.next();
                     for (Entity se : d.entities) {
-                        if (se.ipv4Address != null && 
-                            se.ipv4Address.equals(e.ipv4Address) &&
-                            se.lastSeenTimestamp != null &&
-                            0 < se.lastSeenTimestamp.
-                                    compareTo(e.lastSeenTimestamp)) {
+                        if (se.ipv4Address != null &&
+                                se.ipv4Address.equals(e.ipv4Address) &&
+                                se.lastSeenTimestamp != null &&
+                                0 < se.lastSeenTimestamp.
+                                compareTo(e.lastSeenTimestamp)) {
                             validIP = false;
                             break;
                         }
@@ -213,10 +213,10 @@ public class Device implements IDevice {
             if (validIP)
                 vals.add(e.getIpv4Address());
         }
-        
+
         return vals.toArray(new Integer[vals.size()]);
     }
-    
+
     @Override
     public SwitchPort[] getAttachmentPoints() {
         return getAttachmentPoints(false);
@@ -231,7 +231,7 @@ public class Device implements IDevice {
             Long dpid = entities[0].getSwitchDPID();
             Integer port = entities[0].getSwitchPort();
             if (dpid != null && port != null &&
-                deviceManager.isValidAttachmentPoint(dpid, port)) {
+                    deviceManager.isValidAttachmentPoint(dpid, port)) {
                 SwitchPort sp = new SwitchPort(dpid, port);
                 return new SwitchPort[] { sp };
             } else {
@@ -259,15 +259,15 @@ public class Device implements IDevice {
             Long dpid = cur.getSwitchDPID();
             Integer port = cur.getSwitchPort();
             if (dpid == null || port == null ||
-                !deviceManager.isValidAttachmentPoint(dpid, port) ||
-                (prev != null && 
-                topology.isConsistent(prev.getSwitchDPID().longValue(),
-                                      prev.getSwitchPort().shortValue(),
-                                      dpid.longValue(),
-                                      port.shortValue()))
-                )
+                    !deviceManager.isValidAttachmentPoint(dpid, port) ||
+                    (prev != null &&
+                    topology.isConsistent(prev.getSwitchDPID().longValue(),
+                                          prev.getSwitchPort().shortValue(),
+                                          dpid.longValue(),
+                                          port.shortValue()))
+                    )
                 continue;
-            long curCluster = 
+            long curCluster =
                     topology.getL2DomainId(cur.switchDPID);
             if (prevCluster != curCluster) {
                 prev = null;
@@ -279,27 +279,27 @@ public class Device implements IDevice {
                 }
             }
 
-            if (prev != null && 
-                !(dpid.equals(prev.getSwitchDPID()) &&
-                  port.equals(prev.getSwitchPort())) &&
-                !topology.isInSameBroadcastDomain(dpid.longValue(),
-                                                  port.shortValue(),
-                                                  prev.getSwitchDPID().longValue(),
-                                                  prev.getSwitchPort().shortValue()) &&
-                !topology.isConsistent(prev.getSwitchDPID().longValue(), 
-                                       prev.getSwitchPort().shortValue(), 
-                                       dpid.longValue(), port.shortValue())) {
-                long curActive = 
+            if (prev != null &&
+                    !(dpid.equals(prev.getSwitchDPID()) &&
+                            port.equals(prev.getSwitchPort())) &&
+                            !topology.isInSameBroadcastDomain(dpid.longValue(),
+                                                              port.shortValue(),
+                                                              prev.getSwitchDPID().longValue(),
+                                                              prev.getSwitchPort().shortValue()) &&
+                                                              !topology.isConsistent(prev.getSwitchDPID().longValue(),
+                                                                                     prev.getSwitchPort().shortValue(),
+                                                                                     dpid.longValue(), port.shortValue())) {
+                long curActive =
                         deviceManager.apComparator.
-                            getEffTS(cur, cur.getActiveSince());
+                        getEffTS(cur, cur.getActiveSince());
                 if (latestLastSeen > 0 &&
-                    curActive > 0 &&
-                    0 < Long.valueOf(latestLastSeen).compareTo(curActive)) {
+                        curActive > 0 &&
+                        0 < Long.valueOf(latestLastSeen).compareTo(curActive)) {
                     // If the previous and current are both active at the same
-                    // time (i.e. the last seen timestamp of previous is 
+                    // time (i.e. the last seen timestamp of previous is
                     // greater than active timestamp of current item, we want
                     // to suppress rapid flapping between the two points. We
-                    // choose arbitrarily based on criteria other than 
+                    // choose arbitrarily based on criteria other than
                     // timestamp; the compareTo for entity should fit the bill.
                     Entity block = prev;
                     if (0 < prev.compareTo(cur)) {
@@ -310,14 +310,14 @@ public class Device implements IDevice {
                         boolean alreadyBlocked = false;
                         for (SwitchPort bl : clusterBlocked) {
                             if (dpid.equals(bl.getSwitchDPID()) &&
-                                port.equals(bl.getPort())) {
+                                    port.equals(bl.getPort())) {
                                 alreadyBlocked = true;
                                 break;
                             }
                         }
                         if (!alreadyBlocked) {
-                            SwitchPort blap = 
-                                    new SwitchPort(block.getSwitchDPID(), 
+                            SwitchPort blap =
+                                    new SwitchPort(block.getSwitchDPID(),
                                                    block.getSwitchPort(),
                                                    DUPLICATE_DEVICE);
                             clusterBlocked.add(blap);
@@ -330,11 +330,11 @@ public class Device implements IDevice {
                     latestLastSeen = 0;
                 }
             }
-            
+
             prev = clentities[clEntIndex] = cur;
             prevCluster = curCluster;
 
-            long prevLastSeen = 
+            long prevLastSeen =
                     deviceManager.apComparator.
                     getEffTS(prev,
                              prev.getLastSeenTimestamp());
@@ -345,13 +345,13 @@ public class Device implements IDevice {
         if (clEntIndex < 0) {
             return new SwitchPort[0];
         }
-        
+
         ArrayList<SwitchPort> vals = new ArrayList<SwitchPort>(clEntIndex + 1);
         for (int i = 0; i <= clEntIndex; i++) {
             Entity e = clentities[i];
             if (e.getSwitchDPID() != null &&
-                e.getSwitchPort() != null) {
-                SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
+                    e.getSwitchPort() != null) {
+                SwitchPort sp = new SwitchPort(e.getSwitchDPID(),
                                                e.getSwitchPort());
                 vals.add(sp);
             }
@@ -369,12 +369,12 @@ public class Device implements IDevice {
         Date d = null;
         for (int i = 0; i < entities.length; i++) {
             if (d == null ||
-                entities[i].getLastSeenTimestamp().compareTo(d) > 0)
+                    entities[i].getLastSeenTimestamp().compareTo(d) > 0)
                 d = entities[i].getLastSeenTimestamp();
         }
         return d;
     }
-    
+
     // ***************
     // Getters/Setters
     // ***************
@@ -390,7 +390,7 @@ public class Device implements IDevice {
     // ***************
     // Utility Methods
     // ***************
-    
+
     /**
      * Check whether the device contains the specified entity
      * @param entity the entity to search for
@@ -399,7 +399,7 @@ public class Device implements IDevice {
     protected int entityIndex(Entity entity) {
         return Arrays.binarySearch(entities, entity);
     }
-    
+
     // ******
     // Object
     // ******

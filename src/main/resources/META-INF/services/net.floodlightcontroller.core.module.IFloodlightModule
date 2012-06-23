@@ -4,6 +4,7 @@ net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
 net.floodlightcontroller.topology.TopologyManager
 net.floodlightcontroller.forwarding.Forwarding
+net.floodlightcontroller.flowcache.FlowReconcileManager
 net.floodlightcontroller.core.OFMessageFilterManager
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
 net.floodlightcontroller.perfmon.PktInProcessingTime
@@ -16,4 +17,4 @@ net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
-net.floodlightcontroller.virtualnetwork.forwarding.VirtualNetworkFilter
+net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter

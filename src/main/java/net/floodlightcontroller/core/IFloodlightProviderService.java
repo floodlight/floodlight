@@ -191,5 +191,12 @@ public interface IFloodlightProviderService extends IFloodlightService {
     * @return
     */
    public Map<String, Object> getControllerInfo(String type);
+   
+   
+   /**
+    * Return the controller start time in  milliseconds
+    * @return
+    */
+   public long getSystemStartTime();
 
 }

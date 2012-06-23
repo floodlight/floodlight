@@ -1,14 +1,14 @@
-package net.floodlightcontroller.virtualnetwork.forwarding;
+package net.floodlightcontroller.virtualnetwork;
 
 import java.io.IOException;
 
 import net.floodlightcontroller.util.MACAddress;
-import net.floodlightcontroller.virtualnetwork.IVirtualNetworkService;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.MappingJsonFactory;
+import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Put;
 import org.slf4j.Logger;
@@ -64,7 +64,7 @@ public class HostResource extends org.restlet.resource.ServerResource {
     }
     
     @Put
-    public void addHost(String postData) {
+    public String addHost(String postData) {
         IVirtualNetworkService vns =
                 (IVirtualNetworkService)getContext().getAttributes().
                     get(IVirtualNetworkService.class.getCanonicalName());
@@ -77,15 +77,19 @@ public class HostResource extends org.restlet.resource.ServerResource {
             log.error("Could not parse JSON {}", e.getMessage());
         }
         vns.addHost(MACAddress.valueOf(host.mac), host.guid, host.port);
+        setStatus(Status.SUCCESS_OK);
+        return "{\"status\":\"ok\"}";
     }
     
     
     @Delete
-    public void deleteHost() {
+    public String deleteHost() {
         String port = (String) getRequestAttributes().get("port");
         IVirtualNetworkService vns =
                 (IVirtualNetworkService)getContext().getAttributes().
                     get(IVirtualNetworkService.class.getCanonicalName());
         vns.deleteHost(null, port);
+        setStatus(Status.SUCCESS_OK);
+        return "{\"status\":\"ok\"}";
     }
 }

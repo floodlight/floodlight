@@ -1,14 +1,14 @@
-package net.floodlightcontroller.virtualnetwork.forwarding;
+package net.floodlightcontroller.virtualnetwork;
 
 import java.io.IOException;
 
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.virtualnetwork.IVirtualNetworkService;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.MappingJsonFactory;
+import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
@@ -55,7 +55,15 @@ public class NetworkResource extends ServerResource {
                     if (field.equals("name")) {
                         network.name = jp.getText();
                     } else if (field.equals("gateway")) {
-                        network.gateway = jp.getText();
+                    	String gw = jp.getText();
+                    	if ((gw != null) && (!gw.equals("null")))
+                    		network.gateway = gw;
+                    } else if (field.equals("id")) {
+                    	network.guid = jp.getText();
+                    } else {
+                        log.warn("Unrecognized field {} in " +
+                        		"parsing network definition", 
+                        		jp.getText());
                     }
                 }
             }
@@ -67,15 +75,20 @@ public class NetworkResource extends ServerResource {
     
     @Put
     @Post
-    public void createNetwork(String postData) {        
-        String guid = (String) getRequestAttributes().get("network");
+    public String createNetwork(String postData) {        
         NetworkDefinition network = new NetworkDefinition();
-        network.guid = guid;
-        
         try {
             jsonToNetworkDefinition(postData, network);
         } catch (IOException e) {
             log.error("Could not parse JSON {}", e.getMessage());
+        }
+        
+        // We try to get the ID from the URI only if it's not
+        // in the POST data 
+        if (network.guid == null) {
+	        String guid = (String) getRequestAttributes().get("network");
+	        if ((guid != null) && (!guid.equals("null")))
+	        	network.guid = guid;
         }
         
         IVirtualNetworkService vns =
@@ -87,19 +100,24 @@ public class NetworkResource extends ServerResource {
             try {
                 gw = IPv4.toIPv4Address(network.gateway);
             } catch (IllegalArgumentException e) {
-                log.warn("Could not parse gateway {} as IP for network {}",
-                         network.name, network.gateway);
+                log.warn("Could not parse gateway {} as IP for network {}, setting as null",
+                         network.gateway, network.name);
+                network.gateway = null;
             }
         }
         vns.createNetwork(network.guid, network.name, gw);
+        setStatus(Status.SUCCESS_OK);
+        return "{\"status\":\"ok\"}";
     }
     
     @Delete
-    public void deleteNetwork() {
+    public String deleteNetwork() {
         IVirtualNetworkService vns =
                 (IVirtualNetworkService)getContext().getAttributes().
                     get(IVirtualNetworkService.class.getCanonicalName());
         String guid = (String) getRequestAttributes().get("network");
         vns.deleteNetwork(guid);
+        setStatus(Status.SUCCESS_OK);
+        return "{\"status\":\"ok\"}";
     }
 }

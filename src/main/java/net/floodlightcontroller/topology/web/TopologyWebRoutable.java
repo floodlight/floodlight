@@ -17,6 +17,7 @@ public class TopologyWebRoutable implements RestletRoutable {
         router.attach("/tunnellinks/json", TunnelLinksResource.class);
         router.attach("/switchclusters/json", SwitchClustersResource.class);
         router.attach("/broadcastdomainports/json", BroadcastDomainResource.class);
+        router.attach("/blockedports/json", BlockedPortsResource.class);
         return router;
     }
 

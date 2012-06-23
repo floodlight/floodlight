@@ -19,6 +19,7 @@ package net.floodlightcontroller.core.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -183,6 +184,18 @@ public class OFSwitchImpl implements IOFSwitch {
     
     // TODO: document the difference between the different write functions
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
+    	if (m instanceof OFFlowMod) {
+    	    byte[] bcast = new byte[] {-1, -1, -1, -1, -1, -1};
+    	    OFFlowMod fm = (OFFlowMod) m;
+    	    OFMatch match = fm.getMatch();
+            // Warn if programming a flow matching broadcast destination
+    	    if ((match.getWildcards() & OFMatch.OFPFW_DL_DST) == 0 &&
+    	            Arrays.equals(match.getDataLayerDestination(), bcast)) {
+    	    	log.warn("Programming flow with -1 destination addr");
+    	    	log.warn("swId {}, stack trace {}",
+                         stringId, new Exception().getStackTrace());
+    	    }
+    	}
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
         if (msg_buffer == null) {

@@ -3,6 +3,7 @@ package net.floodlightcontroller.topology;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,16 +84,20 @@ public class TopologyManager implements
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
-    protected ICounterStoreService counterStore;
     protected IRestApiService restApi;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
+    protected Set<LDUpdate> appliedUpdates;
+    
+    // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
     protected TopologyInstance currentInstanceWithoutTunnels;
+    
     protected SingletonTask newInstanceTask;
+    private Date lastUpdateTime;
 
     /**
      * Thread for recomputing topology.  The thread is always running, 
@@ -104,6 +109,7 @@ public class TopologyManager implements
             try {
 	            applyUpdates();
 	            createNewInstance();
+	            lastUpdateTime = new Date();
 	            informListeners();
             }
             catch (Exception e) {
@@ -141,6 +147,10 @@ public class TopologyManager implements
     //
     // ITopologyService interface methods
     //
+    @Override
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
 
     @Override
     public void addListener(ITopologyListener listener) {
@@ -409,6 +419,29 @@ public class TopologyManager implements
         return tunnelLinks.keySet();
     }
 
+    @Override
+    public Set<NodePortTuple> getBlockedPorts() {
+        Set<NodePortTuple> bp;
+        Set<NodePortTuple> blockedPorts =
+                new HashSet<NodePortTuple>();
+
+        // As we might have two topologies, simply get the union of
+        // both of them and send it.
+        bp = getCurrentInstance(true).getBlockedPorts();
+        if (bp != null)
+            blockedPorts.addAll(bp);
+
+        bp = getCurrentInstance(false).getBlockedPorts();
+        if (bp != null)
+            blockedPorts.addAll(bp);
+
+        return blockedPorts;
+    }
+
+    @Override
+    public Set<LDUpdate> getLastLinkUpdates() {
+    	return appliedUpdates;
+    }
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
@@ -538,7 +571,6 @@ public class TopologyManager implements
         m.put(ITopologyService.class, this);
         m.put(IRoutingService.class, this);
         return m;
-
     }
 
     @Override
@@ -561,8 +593,6 @@ public class TopologyManager implements
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider = 
                 context.getServiceImpl(IFloodlightProviderService.class);
-        counterStore = 
-                context.getServiceImpl(ICounterStoreService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
 
         switchPorts = new HashMap<Long,Set<Short>>();
@@ -571,7 +601,9 @@ public class TopologyManager implements
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
+        appliedUpdates = new HashSet<LDUpdate>();
 
+        lastUpdateTime = new Date();
     }
 
     @Override
@@ -579,9 +611,14 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        restApi.addRestletRoutable(new TopologyWebRoutable());
         newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addHAListener(this);
+        addRestletRoutable();
+    }
+    
+    protected void addRestletRoutable() {
+        restApi.addRestletRoutable(new TopologyWebRoutable());
     }
 
     // ****************
@@ -696,7 +733,7 @@ public class TopologyManager implements
     protected void doFloodBDDP(long pinSwitch, OFPacketIn pi, 
                                FloodlightContext cntx) {
 
-        TopologyInstance ti = this.currentInstanceWithoutTunnels;
+        TopologyInstance ti = getCurrentInstance(false);
 
         Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
         
@@ -760,10 +797,14 @@ public class TopologyManager implements
 
 
     public void applyUpdates() {
+    	appliedUpdates.clear();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
+        	boolean updateApplied = false;
+        	LDUpdate newUpdate = null;
             try {
                 update = ldUpdates.take();
+                newUpdate = new LDUpdate(update);
             } catch (Exception e) {
                 log.error("Error reading link discovery update.", e);
             }
@@ -782,13 +823,23 @@ public class TopologyManager implements
                     addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
                                     update.getDst(), update.getDstPort(), 
                                     update.getType());
+                    updateApplied = true;
                 } else  {
                     removeLink(update.getSrc(), update.getSrcPort(), 
                                update.getDst(), update.getDstPort());
+                    newUpdate = new LDUpdate(update);
+                    // set the update operation to remove
+                    newUpdate.setOperation(UpdateOperation.REMOVE);
+                    updateApplied = true;
                 }
             } else if (update.getOperation() == UpdateOperation.REMOVE) {
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
+                updateApplied = true;
+            }
+            
+            if (updateApplied) {
+            	appliedUpdates.add(newUpdate);
             }
         }
     }
@@ -967,6 +1018,7 @@ public class TopologyManager implements
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
         tunnelLinks.clear();
+        appliedUpdates.clear();
     }
     
     /**
@@ -974,10 +1026,7 @@ public class TopologyManager implements
     * send out updates.
     */
     private void clearCurrentTopology() {
-        switchPorts.clear();
-        switchPortLinks.clear();
-        portBroadcastDomainLinks.clear();
-        tunnelLinks.clear();
+        this.clear();
         createNewInstance();
     }
     

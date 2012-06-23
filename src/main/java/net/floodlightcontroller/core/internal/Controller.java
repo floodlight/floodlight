@@ -180,6 +180,9 @@ public class Controller implements IFloodlightProviderService,
     // A helper that handles sending and timeout handling for role requests
     protected RoleChanger roleChanger;
     
+    // Start time of the controller
+    protected long systemStartTime;
+    
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -470,6 +473,7 @@ public class Controller implements IFloodlightProviderService,
             } else {
                 log.error("Error while processing message from switch " + sw,
                           e.getCause());
+                ctx.getChannel().close();
             }
         }
 
@@ -653,8 +657,10 @@ public class Controller implements IFloodlightProviderService,
                         log.debug("This controller's role is null, " + 
                         		"not sending role request msg to {}",
                                 role, sw);
-                        addSwitch(sw);
+                        // Need to clear FlowMods before we add the switch
+                        // and dispatch updates otherwise we have a race condition.
                         sw.clearAllFlowMods();
+                        addSwitch(sw);
                         state.firstRoleReplyReceived = true;
                     }
                 }
@@ -704,6 +710,9 @@ public class Controller implements IFloodlightProviderService,
             if (!isActive && sw.isActive()) {
                 // Transition from SLAVE to MASTER.
                 
+                // Some switches don't seem to update us with port
+                // status messages while in slave role.
+                readSwitchPortStateFromStorage(sw);                
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
                 // attribute is null, then that means that the switch 
@@ -752,8 +761,8 @@ public class Controller implements IFloodlightProviderService,
             // Indicate that we have received a role reply message. 
             state.firstRoleReplyReceived = true;
         }
-        
-        protected boolean handleVendorMessage(OFVendor vendorMessage) {
+
+		protected boolean handleVendorMessage(OFVendor vendorMessage) {
             boolean shouldHandleMessage = false;
             int vendor = vendorMessage.getVendor();
             switch (vendor) {
@@ -889,10 +898,14 @@ public class Controller implements IFloodlightProviderService,
                                 else if (sw.role == null) {
                                     // Controller's role is master: add to
                                     // active 
-                                    addSwitch(sw);
                                     // TODO: check if clearing flow table is
                                     // right choice here.
+                                    // Need to clear FlowMods before we add the switch
+                                    // and dispatch updates otherwise we have a race condition.
+                                    // TODO: switch update is async. Won't we still have a potential
+                                    //       race condition? 
                                     sw.clearAllFlowMods();
+                                    addSwitch(sw);
                                 }
                             }
                         }
@@ -1264,6 +1277,7 @@ public class Controller implements IFloodlightProviderService,
         // No need to acquire the listener lock, since
         // this method is only called after netty has processed all
         // pending messages
+    	log.debug("removeSwitch: {}", sw);
         if (!this.activeSwitches.remove(sw.getId(), sw) || !sw.isConnected()) {
             log.debug("Not removing switch {}; already removed", sw);
             return;
@@ -1551,6 +1565,7 @@ public class Controller implements IFloodlightProviderService,
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
+    	log.debug("Update DB with inactiveSW {}", sw);
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();
@@ -1587,6 +1602,51 @@ public class Controller implements IFloodlightProviderService,
         portInfo.put(PORT_PEER_FEATURES, peerFeatures);
         storageSource.updateRowAsync(PORT_TABLE_NAME, portInfo);
     }
+    
+    /**
+     * Read switch port data from storage and write it into a switch object
+     * @param sw the switch to update
+     */
+    protected void readSwitchPortStateFromStorage(OFSwitchImpl sw) {
+        OperatorPredicate op = 
+                new OperatorPredicate(PORT_SWITCH, 
+                                      OperatorPredicate.Operator.EQ,
+                                      sw.getStringId());
+        IResultSet portResultSet = 
+                storageSource.executeQuery(PORT_TABLE_NAME,
+                                           null, op, null);
+        //Map<Short, OFPhysicalPort> oldports = 
+        //        new HashMap<Short, OFPhysicalPort>();
+        //oldports.putAll(sw.getPorts());
+
+        while (portResultSet.next()) {
+            try {
+                OFPhysicalPort p = new OFPhysicalPort();
+                p.setPortNumber((short)portResultSet.getInt(PORT_NUMBER));
+                p.setName(portResultSet.getString(PORT_NAME));
+                p.setConfig((int)portResultSet.getLong(PORT_CONFIG));
+                p.setState((int)portResultSet.getLong(PORT_STATE));
+                String portMac = portResultSet.getString(PORT_HARDWARE_ADDRESS);
+                p.setHardwareAddress(HexString.fromHexString(portMac));
+                p.setCurrentFeatures((int)portResultSet.
+                                     getLong(PORT_CURRENT_FEATURES));
+                p.setAdvertisedFeatures((int)portResultSet.
+                                        getLong(PORT_ADVERTISED_FEATURES));
+                p.setSupportedFeatures((int)portResultSet.
+                                       getLong(PORT_SUPPORTED_FEATURES));
+                p.setPeerFeatures((int)portResultSet.
+                                  getLong(PORT_PEER_FEATURES));
+                //oldports.remove(Short.valueOf(p.getPortNumber()));
+                sw.setPort(p);
+            } catch (NullPointerException e) {
+                // ignore
+            }
+        }
+
+        //for (Short portNum : oldports.keySet()) {
+        //    sw.deletePort(portNum);
+        //}
+	}
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
         String datapathIdString = sw.getStringId();
@@ -1769,6 +1829,7 @@ public class Controller implements IFloodlightProviderService,
         this.role = getInitialRole(configParams);
         this.roleChanger = new RoleChanger();
         initVendorMessages();
+        this.systemStartTime = System.currentTimeMillis();
     }
     
     /**
@@ -1938,5 +1999,10 @@ public class Controller implements IFloodlightProviderService,
             handleControllerNodeIPChanges();
         }
     }
+
+	@Override
+	public long getSystemStartTime() {
+		return (this.systemStartTime);
+	}
 
 }

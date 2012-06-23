@@ -68,7 +68,6 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
-import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
@@ -140,12 +139,17 @@ public class LinkDiscoveryManager
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
-    protected IRoutingService routingEngine;
     protected IThreadPoolService threadPool;
     
     protected SingletonTask sendLLDPTask;
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
-    		HexString.fromHexString("01:80:c2:00:00:00");
+    		HexString.fromHexString("01:80:c2:00:00:0e");
+    private static final byte[] LLDP_STANDARD_DST_MAC_STRING_00 =
+            HexString.fromHexString("01:80:c2:00:00:00");
+    private static final byte[] LLDP_STANDARD_DST_MAC_STRING_03 =
+            HexString.fromHexString("01:80:c2:00:00:03");
+    private static final byte[] LLDP_STANDARD_DST_MAC_STRING_0E =
+            HexString.fromHexString("01:80:c2:00:00:0e");
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
     // private static final String LLDP_BSN_DST_MAC_STRING = "5d:16:c7:00:00:01";
     private static final String LLDP_BSN_DST_MAC_STRING = "ff:ff:ff:ff:ff:ff";
@@ -346,24 +350,22 @@ public class LinkDiscoveryManager
 
     }
 
-    protected void sendLLDPs(SwitchPortTuple swt) {
+    protected void sendLLDPs(SwitchPortTuple swt, boolean isStandard) {
         IOFSwitch sw = swt.getSw();
 
         if (sw == null) return;
 
         OFPhysicalPort port = sw.getPort(swt.getPort());
         if (port != null) {
-            sendLLDPs(sw, port, true);
-            sendLLDPs(sw, port, false);
+            sendLLDPs(sw, port, isStandard);
         }
     }
 
-    protected void sendLLDPs(IOFSwitch sw) {
+    protected void sendLLDPs(IOFSwitch sw, boolean isStandard) {
     	
         if (sw.getEnabledPorts() != null) {
             for (OFPhysicalPort port : sw.getEnabledPorts()) {
-                sendLLDPs(sw, port, true);
-                sendLLDPs(sw, port, false);
+                sendLLDPs(sw, port, isStandard);
             }
         }
         sw.flush();
@@ -377,7 +379,11 @@ public class LinkDiscoveryManager
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         for (Entry<Long, IOFSwitch> entry : switches.entrySet()) {
             IOFSwitch sw = entry.getValue();
-            sendLLDPs(sw);
+            sendLLDPs(sw, true);
+        }
+        for (Entry<Long, IOFSwitch> entry : switches.entrySet()) {
+            IOFSwitch sw = entry.getValue();
+            sendLLDPs(sw, false);
         }
     }
 
@@ -548,13 +554,18 @@ public class LinkDiscoveryManager
             return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
         } else if (eth.getEtherType() == Ethernet.TYPE_LLDP)  {
             return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
-        } else if (eth.getEtherType() < 1500 &&
-        		   Arrays.equals(eth.getDestinationMACAddress(),
-        				   	     LLDP_STANDARD_DST_MAC_STRING)) {
-        	// drop any other link discovery/spanning tree protocols
-        	return Command.STOP;
+        } else if (eth.getEtherType() < 1500) {
+            if (Arrays.equals(eth.getDestinationMACAddress(),
+                              LLDP_STANDARD_DST_MAC_STRING_00) ||
+                Arrays.equals(eth.getDestinationMACAddress(),
+                              LLDP_STANDARD_DST_MAC_STRING_03) ||
+                Arrays.equals(eth.getDestinationMACAddress(),
+                              LLDP_STANDARD_DST_MAC_STRING_0E)) {
+                // drop any other link discovery/spanning tree protocols
+                return Command.STOP;
+            }
         }
-        
+
         return Command.CONTINUE;
     }
 
@@ -616,6 +627,7 @@ public class LinkDiscoveryManager
                                 lt.getSrc().getPort(),
                                 lt.getDst().getPort(),
                                 newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
+                                getLinkType(lt, newLinkInfo),
                                 EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
                 // Since the link info is already there, we need to
@@ -671,6 +683,7 @@ public class LinkDiscoveryManager
                                     lt.getSrc().getPort(),
                                     lt.getDst().getPort(),
                                     newLinkInfo.getSrcPortState(), newLinkInfo.getDstPortState(),
+                                    getLinkType(lt, newLinkInfo),
                                     EvAction.LINK_PORT_STATE_UPDATED,
                                     "LLDP Recvd");
                 }
@@ -721,6 +734,7 @@ public class LinkDiscoveryManager
                         lt.getSrc().getPort(),
                         lt.getDst().getPort(),
                         0, 0, // Port states
+                        ILinkDiscovery.LinkType.INVALID_LINK,
                         EvAction.LINK_DELETED, reason);
 
                 // remove link from 
@@ -849,7 +863,7 @@ public class LinkDiscoveryManager
         // It's probably overkill to send LLDP from all switches, but we don't
         // know which switches might be connected to the new switch.
         // Need to optimize when supporting a large number of switches.
-        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
+        sendLLDPTask.reschedule(2000, TimeUnit.MILLISECONDS);
         // Update event history
         evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
     }
@@ -1225,13 +1239,6 @@ public class LinkDiscoveryManager
         return storageSource;
     }
 
-    /**
-     * @param routingEngine the storage source to use for persisting link info
-     */
-    public void setRoutingEngine(IRoutingService routingEngine) {
-        this.routingEngine = routingEngine;
-    }
-
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         return false;
@@ -1333,7 +1340,6 @@ public class LinkDiscoveryManager
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
-        l.add(IRoutingService.class);
         l.add(IThreadPoolService.class);
         return l;
     }
@@ -1343,7 +1349,6 @@ public class LinkDiscoveryManager
                       throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
-        routingEngine = context.getServiceImpl(IRoutingService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         
         // We create this here because there is no ordering guarantee
@@ -1379,28 +1384,26 @@ public class LinkDiscoveryManager
         
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
+        // To be started by the first switch connection
         sendLLDPTask = new SingletonTask(ses, new Runnable() {
         	@Override
         	public void run() {
         		try {
         			sendLLDPs();
-
-        			if (!shuttingDown) {
-        				sendLLDPTask.reschedule(lldpFrequency,
-        						TimeUnit.MILLISECONDS);
-        			}
         		} catch (StorageException e) {
         			log.error("Storage exception in LLDP send timer; " + 
         					"terminating process", e);
         			floodlightProvider.terminate();
         		} catch (Exception e) {
         			log.error("Exception in LLDP send timer", e);
+        		} finally {
+        			if (!shuttingDown) {
+        				sendLLDPTask.reschedule(lldpFrequency,
+        						TimeUnit.MILLISECONDS);
+        			}
         		}
         	}
         });
-
-        // Setup sending out LLDPs
-        sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
 
         Runnable timeoutLinksTimer = new Runnable() {
             @Override
@@ -1487,6 +1490,7 @@ public class LinkDiscoveryManager
 
     private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
             short dstPort, int srcPortState, int dstPortState,
+            ILinkDiscovery.LinkType linkType,
             EvAction actn, String reason) {
         if (evTopoLink == null) {
             evTopoLink = new EventHistoryTopologyLink();
@@ -1498,6 +1502,21 @@ public class LinkDiscoveryManager
         evTopoLink.srcPortState = srcPortState;
         evTopoLink.dstPortState = dstPortState;
         evTopoLink.reason    = reason;
+        switch (linkType) {
+        case DIRECT_LINK:
+            evTopoLink.linkType = "DIRECT_LINK";
+            break;
+        case MULTIHOP_LINK:
+            evTopoLink.linkType = "MULTIHOP_LINK";
+            break;
+        case TUNNEL:
+            evTopoLink.linkType = "TUNNEL";
+            break;
+        case INVALID_LINK:
+        default:
+            evTopoLink.linkType = "Unknown";
+            break;
+        }
         evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
     }
 
