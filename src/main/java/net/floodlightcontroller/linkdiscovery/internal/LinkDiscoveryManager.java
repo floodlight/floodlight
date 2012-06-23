@@ -731,7 +731,7 @@ public class LinkDiscoveryManager
                         ILinkDiscovery.LinkType.INVALID_LINK,
                         EvAction.LINK_DELETED, reason);
 
-                // remove link from 
+                // remove link from storage.
                 removeLinkFromStorage(lt);
 
 
@@ -764,12 +764,11 @@ public class LinkDiscoveryManager
 
         SwitchPortTuple tuple =
                         new SwitchPortTuple(sw, ps.getDesc().getPortNumber());
-        boolean link_deleted  = false;
+        boolean linkDeleted  = false;
+        boolean linkInfoChanged = false;
 
         lock.writeLock().lock();
         try {
-            boolean topologyChanged = false;
-
             // if ps is a delete, or a modify where the port is down or
             // configured down
             if ((byte)OFPortReason.OFPPR_DELETE.ordinal() == ps.getReason() ||
@@ -788,26 +787,25 @@ public class LinkDiscoveryManager
                     }
                     eraseList.addAll(this.portLinks.get(tuple));
                     deleteLinks(eraseList, "Port Status Changed");
-                    topologyChanged = true;
-                    link_deleted    = true;
+                    linkDeleted = true;
                 }
             } else if (ps.getReason() ==
                                     (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
                 // If ps is a port modification and the port state has changed
                 // that affects links in the topology
                 if (this.portLinks.containsKey(tuple)) {
-                    for (LinkTuple link: this.portLinks.get(tuple)) {
-                        LinkInfo linkInfo = links.get(link);
+                    for (LinkTuple lt: this.portLinks.get(tuple)) {
+                        LinkInfo linkInfo = links.get(lt);
                         assert(linkInfo != null);
                         Integer updatedSrcPortState = null;
                         Integer updatedDstPortState = null;
-                        if (link.getSrc().equals(tuple) &&
+                        if (lt.getSrc().equals(tuple) &&
                                 (linkInfo.getSrcPortState() !=
                                                     ps.getDesc().getState())) {
                             updatedSrcPortState = ps.getDesc().getState();
                             linkInfo.setSrcPortState(updatedSrcPortState);
                         }
-                        if (link.getDst().equals(tuple) &&
+                        if (lt.getDst().equals(tuple) &&
                                 (linkInfo.getDstPortState() !=
                                                     ps.getDesc().getState())) {
                             updatedDstPortState = ps.getDesc().getState();
@@ -815,16 +813,21 @@ public class LinkDiscoveryManager
                         }
                         if ((updatedSrcPortState != null) ||
                                                 (updatedDstPortState != null)) {
-                            writeLink(link, linkInfo);
-                            topologyChanged = true;
+                            // The link is already known to link discovery
+                            // manager and the status has changed, therefore
+                            // send an LDUpdate.
+                            updates.add(new LDUpdate(lt, linkInfo.getSrcPortState(), 
+                                                     linkInfo.getDstPortState(), 
+                                                     getLinkType(lt, linkInfo), 
+                                                     UpdateOperation.ADD_OR_UPDATE));
+                            writeLink(lt, linkInfo);
+                            linkInfoChanged = true;
                         }
                     }
                 }
             }
 
-            if (topologyChanged) {
-                //updateClusters();
-            } else {
+            if (!linkDeleted && !linkInfoChanged){
                 if (log.isDebugEnabled()) {
                     log.debug("handlePortStatus: Switch {} port #{} reason {};"+
                             " no links to update/remove",
@@ -837,12 +840,12 @@ public class LinkDiscoveryManager
             lock.writeLock().unlock();
         }
 
-        if (!link_deleted) {
+        if (!linkDeleted) {
             // Send LLDP right away when port state is changed for faster
             // cluster-merge. If it is a link delete then there is not need
             // to send the LLDPs right away and instead we wait for the LLDPs
             // to be sent on the timer as it is normally done
-        	// do it outside the write-lock
+            // do it outside the write-lock
             sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
         }
         return Command.CONTINUE;
