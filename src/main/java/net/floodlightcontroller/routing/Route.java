@@ -20,6 +20,8 @@ package net.floodlightcontroller.routing;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.floodlightcontroller.topology.NodePortTuple;
+
 /**
  * Represents a route between two switches
  *
@@ -27,52 +29,18 @@ import java.util.List;
  */
 public class Route implements Comparable<Route> {
     protected RouteId id;
-    protected List<Link> path;
+    protected List<NodePortTuple> switchPorts;
 
-    public Route(RouteId id, List<Link> path) {
+    public Route(RouteId id, List<NodePortTuple> switchPorts) {
         super();
         this.id = id;
-        this.path = path;
+        this.switchPorts = switchPorts;
     }
 
     public Route(Long src, Long dst) {
         super();
         this.id = new RouteId(src, dst);
-        this.path = new ArrayList<Link>();
-    }
-
-    /**
-     * Concise way to instantiate a route.  The format of objects must be:
-     *  (Short/Integer outPort, Short/Integer inPort, Long dstDpid)*
-     * @param srcDpid
-     * @param objects
-     */
-    public Route(Long srcId, Object... routeElements) {
-        super();
-        this.path = new ArrayList<Link>();
-        if (routeElements.length % 3 > 0)
-            throw new RuntimeException("routeElements must be a multiple of 3");
-        long s; 
-        Short srcPort, dstPort;
-
-        s = srcId;
-        for (int i = 0; i < routeElements.length; i += 3) {
-            if (routeElements[i] instanceof Short)
-                srcPort = (Short) routeElements[i];
-            else
-                srcPort = ((Integer)routeElements[i]).shortValue();
-
-            if (routeElements[i+1] instanceof Short)
-                dstPort = (Short) routeElements[i+1];
-            else
-                dstPort = ((Integer)routeElements[i+1]).shortValue();
-
-            this.path.add(new Link(s, srcPort, ((Long) routeElements[i + 2]), dstPort));
-            
-            s = (Long) routeElements[i + 2];
-        }
-        this.id = new RouteId(srcId, (this.path.size() == 0) ? srcId
-                : this.path.get(this.path.size() - 1).getDst());
+        this.switchPorts = new ArrayList<NodePortTuple>();
     }
 
     /**
@@ -92,15 +60,15 @@ public class Route implements Comparable<Route> {
     /**
      * @return the path
      */
-    public List<Link> getPath() {
-        return path;
+    public List<NodePortTuple> getPath() {
+        return switchPorts;
     }
 
     /**
      * @param path the path to set
      */
-    public void setPath(List<Link> path) {
-        this.path = path;
+    public void setPath(List<NodePortTuple> switchPorts) {
+        this.switchPorts = switchPorts;
     }
 
     @Override
@@ -108,7 +76,7 @@ public class Route implements Comparable<Route> {
         final int prime = 5791;
         int result = 1;
         result = prime * result + ((id == null) ? 0 : id.hashCode());
-        result = prime * result + ((path == null) ? 0 : path.hashCode());
+        result = prime * result + ((switchPorts == null) ? 0 : switchPorts.hashCode());
         return result;
     }
 
@@ -126,17 +94,17 @@ public class Route implements Comparable<Route> {
                 return false;
         } else if (!id.equals(other.id))
             return false;
-        if (path == null) {
-            if (other.path != null)
+        if (switchPorts == null) {
+            if (other.switchPorts != null)
                 return false;
-        } else if (!path.equals(other.path))
+        } else if (!switchPorts.equals(other.switchPorts))
             return false;
         return true;
     }
 
     @Override
     public String toString() {
-        return "Route [id=" + id + ", path=" + path + "]";
+        return "Route [id=" + id + ", switchPorts=" + switchPorts + "]";
     }
 
     /**
@@ -144,6 +112,6 @@ public class Route implements Comparable<Route> {
      */
     @Override
     public int compareTo(Route o) {
-        return ((Integer)path.size()).compareTo(o.path.size());
+        return ((Integer)switchPorts.size()).compareTo(o.switchPorts.size());
     }
 }

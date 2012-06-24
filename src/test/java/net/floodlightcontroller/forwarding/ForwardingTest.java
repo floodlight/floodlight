@@ -49,11 +49,11 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.forwarding.Forwarding;
@@ -257,9 +257,13 @@ public class ForwardingTest extends FloodlightTestCase {
                 dstDevice1);
 
         Route route = new Route(1L, 2L);
-        route.setPath(new ArrayList<Link>());
-        route.getPath().add(new Link(1L, (short)3, 2L, (short)1));
-        expect(routingEngine.getRoute(1L, 2L)).andReturn(route).atLeastOnce();
+        List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
+        nptList.add(new NodePortTuple(1L, (short)1));
+        nptList.add(new NodePortTuple(1L, (short)3));
+        nptList.add(new NodePortTuple(2L, (short)1));
+        nptList.add(new NodePortTuple(2L, (short)3));
+        route.setPath(nptList);
+        expect(routingEngine.getRoute(1L, (short)1, 2L, (short)3)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods
         OFMatch match = new OFMatch();
@@ -337,8 +341,12 @@ public class ForwardingTest extends FloodlightTestCase {
             put(cntx, 
                 IDeviceService.CONTEXT_DST_DEVICE, 
                 dstDevice2);
-        expect(routingEngine.getRoute(1L, 1L)).andReturn(null).atLeastOnce();
-        
+
+        Route route = new  Route(1L, 1L);
+        route.getPath().add(new NodePortTuple(1L, (short)1));
+        route.getPath().add(new NodePortTuple(1L, (short)3));
+        expect(routingEngine.getRoute(1L, (short)1, 1L, (short)3)).andReturn(route).atLeastOnce();
+
         // Expected Flow-mods
         OFMatch match = new OFMatch();
         match.loadFromPacket(testPacketSerialized, (short) 1);
