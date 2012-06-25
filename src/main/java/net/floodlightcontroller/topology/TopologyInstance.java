@@ -1,5 +1,6 @@
 package net.floodlightcontroller.topology;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -602,19 +603,31 @@ public class TopologyInstance {
 
     protected Route getRoute(long srcId, short srcPort,
                              long dstId, short dstPort) {
+
+
+        // Return null the route source and desitnation are the
+        // same switchports.
+        if (srcId == dstId && srcPort == dstPort)
+            return null;
+
+        List<NodePortTuple> nptList;
         NodePortTuple npt;
         Route r = getRoute(srcId, dstId);
         if (r == null && srcId != dstId) return null;
 
-        RouteId id = new RouteId(srcId, dstId);
-
-        List<NodePortTuple> nptList= r.getPath();
+        if (r != null) {
+            nptList= r.getPath();
+        } else {
+            nptList = new ArrayList<NodePortTuple>();
+        }
         npt = new NodePortTuple(srcId, srcPort);
         nptList.add(0, npt); // add src port to the front
         npt = new NodePortTuple(dstId, dstPort);
         nptList.add(npt); // add dst port to the end
 
-        return new Route(id, nptList);
+        RouteId id = new RouteId(srcId, dstId);
+        r = new Route(id, nptList);
+        return r;
     }
 
     protected Route getRoute(long srcId, long dstId) {
