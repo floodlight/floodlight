@@ -616,7 +616,7 @@ public class TopologyInstance {
         if (r == null && srcId != dstId) return null;
 
         if (r != null) {
-            nptList= r.getPath();
+            nptList= new ArrayList<NodePortTuple>(r.getPath());
         } else {
             nptList = new ArrayList<NodePortTuple>();
         }

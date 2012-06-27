@@ -237,9 +237,7 @@ public abstract class ForwardingBase implements
                             new Object[] {indx,
                                           sw,
                                           fm.getMatch().getInputPort(),
-                                          ((OFActionOutput)
-                                                  fm.getActions()
-                                                  .get(0)).getPort() });
+                                          outPort });
                 }
                 sw.write(fm, cntx);
                 if (doFlush) {
@@ -248,11 +246,7 @@ public abstract class ForwardingBase implements
 
                 // Push the packet out the source switch
                 if (sw.getId() == pinSwitch) {
-                    pushPacket(sw,
-                               match,
-                               pi,
-                               ((OFActionOutput) fm.getActions().get(0)).getPort(),
-                               cntx);
+                    pushPacket(sw, match, pi, outPort, cntx);
                     srcSwitchIncluded = true;
                 }
             } catch (IOException e) {
@@ -300,7 +294,7 @@ public abstract class ForwardingBase implements
         // the packet-out should be ignored.
         if (pi.getInPort() == outport) {
             if (log.isDebugEnabled()) {
-                log.debug("Attemping to do packet-out to the same " + 
+                log.debug("Attempting to do packet-out to the same " + 
                           "interface as packet-in. Dropping packet. " + 
                           " SrcSwitch={}, match = {}, pi={}", 
                           new Object[]{sw, match, pi});
