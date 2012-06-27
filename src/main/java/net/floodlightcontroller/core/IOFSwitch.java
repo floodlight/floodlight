@@ -51,6 +51,7 @@ public interface IOFSwitch {
     /**
      * Writes to the OFMessage to the output stream.
      * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners
      * @param m   
      * @param bc  
      * @throws IOException  
@@ -60,6 +61,7 @@ public interface IOFSwitch {
     /**
      * Writes the list of messages to the output stream
      * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners.
      * @param msglist
      * @param bc
      * @throws IOException
@@ -73,7 +75,8 @@ public interface IOFSwitch {
     public void disconnectOutputStream();
 
     /**
-     *
+     * FIXME: remove getChannel(). All access to the channel should be through
+     *        wrapper functions in IOFSwitch
      * @return
      */
     public Channel getChannel();
@@ -215,12 +218,6 @@ public interface IOFSwitch {
     public Role getRole();
     
     /**
-     * Set the role of the controller for the switch
-     * @param role controller role
-     */
-    public void setRole(Role role);
-    
-    /**
      * Check if the controller is an active controller for the switch.
      * The controller is active if its role is MASTER or EQUAL.
      * @return whether the controller is active
@@ -238,6 +235,11 @@ public interface IOFSwitch {
      * @param transactionId the transaction ID
      */
     public void cancelStatisticsReply(int transactionId);
+    
+    /**
+     * Cancel all statistics replies
+     */
+    public void cancelAllStatisticsReplies();
 
     /**
      * Checks if a specific switch property exists for this switch
@@ -307,12 +309,4 @@ public interface IOFSwitch {
      */
      public void flush();
 
-     /**
-      * Get transaction id. for using in a message to be sent to the switch.
-      * The caller can use the transaction id as a key to maintain some
-      * meta data that can be retrieved based on the same message id. that
-      * would be returned in the response from the switch.
-      * @return transaction id to be passed in the sendStatsQuery() API.
-      */
-     public int getXid();
 }

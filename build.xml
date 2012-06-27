@@ -53,7 +53,6 @@
         <include name="logback-core-1.0.0.jar"/>
         <include name="jackson-core-asl-1.8.6.jar"/>
         <include name="jackson-mapper-asl-1.8.6.jar"/>
-        <include name="org.easymock_2.5.2.jar"/>
         <include name="slf4j-api-1.6.4.jar"/>
         <include name="org.restlet-2.1-RC1.jar"/>
         <include name="org.restlet.ext.jackson-2.1-RC1.jar"/>
@@ -88,7 +87,9 @@
 
     <patternset id="lib-test">
         <include name="junit-4.8.2.jar"/>
-        <include name="org.easymock_2.5.2.jar"/>
+        <include name="org.easymock-3.1.jar"/>
+		<include name="objenesis-1.2.jar"/>  <!-- required by easymock to mock classes -->
+		<include name="cglib-nodep-2.2.2.jar"/>    <!-- required by easymock to mock classes -->
     </patternset>
     <path id="classpath-test">
         <fileset dir="${lib}">
