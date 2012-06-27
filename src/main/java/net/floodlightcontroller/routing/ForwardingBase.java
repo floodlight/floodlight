@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -38,9 +37,9 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.openflow.protocol.OFFlowMod;
@@ -52,7 +51,6 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,9 +166,10 @@ public abstract class ForwardingBase implements
      */
     public boolean pushRoute(Route route, OFMatch match, 
                              Integer wildcard_hints,
-                             SwitchPort srcSwPort,
-                             SwitchPort dstSwPort, int bufferId,
-                             IOFSwitch srcSwitch, OFPacketIn pi, long cookie, 
+                             int bufferId,
+                             OFPacketIn pi,
+                             long pinSwitch,
+                             long cookie, 
                              FloodlightContext cntx,
                              boolean reqeustFlowRemovedNotifn,
                              boolean doFlush,
@@ -183,6 +182,7 @@ public abstract class ForwardingBase implements
         OFActionOutput action = new OFActionOutput();
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
+
         fm.setIdleTimeout((short)5)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(cookie)
@@ -191,116 +191,79 @@ public abstract class ForwardingBase implements
             .setActions(actions)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
-        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
-        IOFSwitch sw = switches.get(dstSwPort.getSwitchDPID());
-        ((OFActionOutput)fm.getActions().get(0)).
-            setPort((short)dstSwPort.getPort());
+        List<NodePortTuple> switchPortList = route.getPath();
 
-        if (route != null) {
-            for (int routeIndx = route.getPath().size() - 1; routeIndx >= 0; --routeIndx) {
-                Link link = route.getPath().get(routeIndx);
-                fm.setMatch(wildcard(match, sw, wildcard_hints));
-                fm.getMatch().setInputPort(link.getDstPort());
-                try {
-                    counterStore.updatePktOutFMCounterStore(sw, fm);
-                    if (log.isTraceEnabled()) {
-                        log.trace("Pushing Route flowmod routeIndx={} " + 
-                                  "sw={} inPort={} outPort={}",
-                                  new Object[] {routeIndx,
-                                                sw,
-                                                fm.getMatch().getInputPort(),
-                                                ((OFActionOutput)
-                                                        fm.getActions()
-                                                        .get(0)).getPort() });
-                    }
-                    sw.write(fm, cntx);
-                    if (doFlush) {
-                        sw.flush();
-                    }
-
-                    // Push the packet out the source switch
-                    if (sw.getId() == srcSwitch.getId()) {
-                        pushPacket(srcSwitch,
-                                   match,
-                                   pi,
-                                   ((OFActionOutput) fm.getActions().get(0)).getPort(),
-                                   cntx);
-                        srcSwitchIncluded = true;
-                    }
-                } catch (IOException e) {
-                    log.error("Failure writing flow mod", e);
+        for (int indx = switchPortList.size()-1; indx > 0; indx -= 2) {
+            // indx and indx-1 will always have the same switch DPID.
+            long switchDPID = switchPortList.get(indx).getNodeId();
+            IOFSwitch sw = floodlightProvider.getSwitches().get(switchDPID);
+            if (sw == null) {
+                if (log.isWarnEnabled()) {
+                    log.warn("Unable to push route, switch at DPID {} " +
+                            "not available", switchDPID);
                 }
-                try {
-                    fm = fm.clone();
-                } catch (CloneNotSupportedException e) {
-                    log.error("Failure cloning flow mod", e);
-                }
-
-                // setup for the next loop iteration
-                ((OFActionOutput)fm.getActions().get(0)).setPort(link.getSrcPort());
-                if (routeIndx > 0) {
-                    sw =
-                            floodlightProvider.getSwitches()
-                                              .get(route.getPath()
-                                                        .get(routeIndx - 1)
-                                                        .getDst());
-                } else {
-                    sw =
-                            floodlightProvider.getSwitches()
-                                              .get(route.getId().getSrc());
-                }
-                if (sw == null) {
-                    if (log.isWarnEnabled()) {
-                        log.warn("Unable to push route, switch at DPID {} not available",
-                                 (routeIndx > 0)
-                                         ? HexString.toHexString(route.getPath()
-                                                                      .get(routeIndx - 1)
-                                                                      .getDst())
-                                         : HexString.toHexString(route.getId()
-                                                                      .getSrc()));
-                    }
-                    return srcSwitchIncluded;
-                }
-            }
-        }
-
-        // set the original match for the first switch, and buffer id
-        fm.setMatch(match);
-        fm.setBufferId(bufferId);
-        fm.setMatch(wildcard(match, sw, wildcard_hints));
-        fm.getMatch().setInputPort((short) srcSwPort.getPort());
-        // Set the flag to request flow-mod removal notifications only for the
-        // source switch. The removal message is used to maintain the flow
-        // cache. Don't set the flag for ARP messages - TODO generalize check
-        if ((reqeustFlowRemovedNotifn)
-                && (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
-            fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
-            match.setWildcards(fm.getMatch().getWildcards());
-        }
-
-        try {
-            counterStore.updatePktOutFMCounterStore(sw, fm);
-            if (log.isDebugEnabled()) {
-                log.debug("pushRoute flowmod sw={} inPort={} outPort={}",
-                      new Object[] { sw, fm.getMatch().getInputPort(), 
-                                    ((OFActionOutput)fm.getActions().get(0)).getPort() });
-            }
-            sw.write(fm, cntx);
-            if (doFlush) {
-                sw.flush();
+                return srcSwitchIncluded;
             }
 
-            if (sw.getId() == srcSwitch.getId()) {
-                pushPacket(srcSwitch,
-                           match,
-                           pi,
-                           ((OFActionOutput) fm.getActions().get(0)).getPort(),
-                           cntx);
-                srcSwitchIncluded = true;
+            // set the match.
+            fm.setMatch(wildcard(match, sw, wildcard_hints));
+
+            // set buffer id if it is the source switch
+            if (1 == indx) {
+                //fm.setMatch(match);
+                fm.setBufferId(bufferId);
+                //fm.setMatch(wildcard(match, sw, wildcard_hints));
+                // Set the flag to request flow-mod removal notifications only for the
+                // source switch. The removal message is used to maintain the flow
+                // cache. Don't set the flag for ARP messages - TODO generalize check
+                if ((reqeustFlowRemovedNotifn)
+                        && (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
+                    fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+                    match.setWildcards(fm.getMatch().getWildcards());
+                }
             }
-            match = fm.getMatch();
-        } catch (IOException e) {
-            log.error("Failure writing flow mod", e);
+
+            short outPort = switchPortList.get(indx).getPortId();
+            short inPort = switchPortList.get(indx-1).getPortId();
+            // set input and output ports on the switch
+            fm.getMatch().setInputPort(inPort);
+            ((OFActionOutput)fm.getActions().get(0)).setPort(outPort);
+
+            try {
+                counterStore.updatePktOutFMCounterStore(sw, fm);
+                if (log.isTraceEnabled()) {
+                    log.trace("Pushing Route flowmod routeIndx={} " + 
+                            "sw={} inPort={} outPort={}",
+                            new Object[] {indx,
+                                          sw,
+                                          fm.getMatch().getInputPort(),
+                                          ((OFActionOutput)
+                                                  fm.getActions()
+                                                  .get(0)).getPort() });
+                }
+                sw.write(fm, cntx);
+                if (doFlush) {
+                    sw.flush();
+                }
+
+                // Push the packet out the source switch
+                if (sw.getId() == pinSwitch) {
+                    pushPacket(sw,
+                               match,
+                               pi,
+                               ((OFActionOutput) fm.getActions().get(0)).getPort(),
+                               cntx);
+                    srcSwitchIncluded = true;
+                }
+            } catch (IOException e) {
+                log.error("Failure writing flow mod", e);
+            }
+
+            try {
+                fm = fm.clone();
+            } catch (CloneNotSupportedException e) {
+                log.error("Failure cloning flow mod", e);
+            }
         }
 
         return srcSwitchIncluded;
