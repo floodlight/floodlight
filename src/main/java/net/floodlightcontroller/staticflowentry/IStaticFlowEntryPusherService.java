@@ -11,7 +11,7 @@ public interface IStaticFlowEntryPusherService extends IFloodlightService {
      * Adds a static flow.
      * @param name Name of the flow mod. Must be unique.
      * @param fm The flow to push.
-     * @param swDpid The switch DPID to push it to.
+     * @param swDpid The switch DPID to push it to, in 00:00:00:00:00:00:00:01 notation.
      */
     public void addFlow(String name, OFFlowMod fm, String swDpid);
     

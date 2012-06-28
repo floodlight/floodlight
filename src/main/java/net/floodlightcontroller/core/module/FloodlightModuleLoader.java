@@ -149,7 +149,7 @@ public class FloodlightModuleLoader {
                 prop.load(is);
             } catch (IOException e) {
                 logger.error("Error, could not load default modules");
-                e.printStackTrace();
+                logger.error(e.getMessage());
                 System.exit(1);
             }
         }
