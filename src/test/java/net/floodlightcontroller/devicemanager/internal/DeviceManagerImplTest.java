@@ -17,9 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -46,6 +44,7 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
@@ -108,21 +107,25 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
         flowReconcileMgr = new FlowReconcileManager();
+        DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
         fmc.addService(IDeviceService.class, deviceManager);
         storageSource = new MemoryStorageSource();
         fmc.addService(IStorageSourceService.class, storageSource);
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
+        fmc.addService(IEntityClassifierService.class, entityClassifier);
         tp.init(fmc);
         restApi.init(fmc);
         storageSource.init(fmc);
         deviceManager.init(fmc);
         flowReconcileMgr.init(fmc);
+        entityClassifier.init(fmc);
         storageSource.startUp(fmc);
         deviceManager.startUp(fmc);
         flowReconcileMgr.startUp(fmc);
         tp.startUp(fmc);
+        entityClassifier.startUp(fmc);
 
         IOFSwitch mockSwitch1 = makeSwitchMock(1L);
         IOFSwitch mockSwitch10 = makeSwitchMock(10L);
@@ -229,6 +232,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         public EnumSet<DeviceField> getKeyFields() {
             return testKeyFields;
         }
+
+        @Override
+        public String getName() {
+            return "TestEntityClass";
+        }
     }
 
     protected static IEntityClass testEC = new TestEntityClass();
@@ -236,11 +244,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     public static class TestEntityClassifier extends DefaultEntityClassifier {
 
         @Override
-        public Collection<IEntityClass> classifyEntity(Entity entity) {
+        public IEntityClass classifyEntity(Entity entity) {
             if (entity.switchDPID >= 10L) {
-                return Arrays.asList(testEC);
+                return testEC;
             }
-            return DefaultEntityClassifier.entityClasses;
+            return DefaultEntityClassifier.entityClass;
         }
 
         @Override
@@ -276,7 +284,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 createStrictMock(IDeviceListener.class);
 
         deviceManager.addListener(mockListener);
-        deviceManager.setEntityClassifier(new TestEntityClassifier());
+        deviceManager.entityClassifier= new TestEntityClassifier();
         deviceManager.startUp(null);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
@@ -314,8 +322,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d1 = deviceManager.learnDeviceByEntity(entity1);
         assertSame(d1, deviceManager.learnDeviceByEntity(entity1));
         assertSame(d1, deviceManager.findDeviceByEntity(entity1));
-        assertArrayEquals(new IEntityClass[]{ DefaultEntityClassifier.entityClass },
-                          d1.entityClasses);
+        assertEquals(DefaultEntityClassifier.entityClass ,
+                          d1.entityClass);
         assertArrayEquals(new Short[] { -1 }, d1.getVlanId());
         assertArrayEquals(new Integer[] { }, d1.getIPv4Addresses());
 
@@ -329,8 +337,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d2 = deviceManager.learnDeviceByEntity(entity2);
         assertFalse(d1.equals(d2));
         assertNotSame(d1, d2);
-        assertArrayEquals(new IEntityClass[]{ testEC },
-                          d2.entityClasses);
+        assertEquals(testEC, d2.entityClass);
         assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
         assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
 
@@ -343,8 +350,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device d3 = deviceManager.learnDeviceByEntity(entity3);
         assertNotSame(d2, d3);
-        assertArrayEquals(new IEntityClass[]{ testEC },
-                          d3.entityClasses);
+        assertEquals(testEC, d3.entityClass);
         assertArrayEquals(new Integer[] { 1 },
                           d3.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
@@ -363,8 +369,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device d4 = deviceManager.learnDeviceByEntity(entity4);
         assertNotSame(d1, d4);
-        assertArrayEquals(new IEntityClass[]{ DefaultEntityClassifier.entityClass },
-                          d4.entityClasses);
+        assertEquals(DefaultEntityClassifier.entityClass, d4.entityClass);
         assertArrayEquals(new Integer[] { 1 },
                           d4.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
@@ -699,7 +704,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                       1L,
                                       1,
                                       currentDate),
-                                      DefaultEntityClassifier.entityClasses);
+                                      DefaultEntityClassifier.entityClass);
 
         expect(mockTopology.isAllowed(EasyMock.anyLong(),
                                       EasyMock.anyShort())).
@@ -738,8 +743,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                       ipaddr,
                                       5L,
                                       2,
-                                      currentDate),
-                                      DefaultEntityClassifier.entityClasses);
+                                      currentDate));
 
         reset(mockTopology);
         expect(mockTopology.isAttachmentPointPort(anyLong(),

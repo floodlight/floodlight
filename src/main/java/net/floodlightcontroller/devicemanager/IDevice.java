@@ -80,10 +80,10 @@ public interface IDevice {
     public Date getLastSeen();
     
     /**
-     * Get the entity classes for the device.
-     * @return the entity classes
-     * @see IEntityClassifier
-     * @see IDeviceService#setEntityClassifier(IEntityClassifier)
+     * Get the entity class for the device.
+     * @return the entity class
+     * @see IEntityClassifierService
+     * @see IDeviceService#setEntityClassifier(IEntityClassifierService)
      */
-    public IEntityClass[] getEntityClasses();
+    public IEntityClass getEntityClass();
 }

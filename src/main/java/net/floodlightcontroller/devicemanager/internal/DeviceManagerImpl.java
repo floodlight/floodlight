@@ -18,7 +18,6 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,7 +49,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
-import net.floodlightcontroller.devicemanager.IEntityClassifier;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
@@ -157,7 +156,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     /**
      * The entity classifier currently in use
      */
-    IEntityClassifier entityClassifier;
+    IEntityClassifierService entityClassifier;
 
     /**
      * Used to cache state about specific entity classes
@@ -406,11 +405,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                          Integer ipv4Address,
                                                          Long switchDPID,
                                                          Integer switchPort) {
-        IEntityClass[] entityClasses = reference.getEntityClasses();
+        IEntityClass entityClass = reference.getEntityClass();
         ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
-        for (IEntityClass clazz : entityClasses) {
-            ClassState classState = getClassState(clazz);
+            ClassState classState = getClassState(entityClass);
 
             DeviceIndex index = null;
             if (classState.secondaryIndexMap.size() > 0) {
@@ -426,7 +424,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 if (index == null) {
                     // scan all devices
                     return new DeviceIterator(deviceMap.values().iterator(),
-                                              entityClasses,
+                                              new IEntityClass[] { entityClass },
                                               macAddress, vlan, ipv4Address,
                                               switchDPID, switchPort);
                 } else {
@@ -446,7 +444,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                 index.queryByEntity(entity));
             }
             iterators.add(iter);
-        }
 
         return new MultiIterator<Device>(iterators.iterator());
     }
@@ -454,11 +451,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     @Override
     public void addListener(IDeviceListener listener) {
         deviceListeners.add(listener);
-    }
-
-    @Override
-    public void setEntityClassifier(IEntityClassifier classifier) {
-        entityClassifier = classifier;
     }
 
     @Override
@@ -622,13 +614,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
+        this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
     }
 
     @Override
     public void startUp(FloodlightModuleContext fmc) {
-        if (entityClassifier == null)
-            setEntityClassifier(new DefaultEntityClassifier());
-
         primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
         secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
@@ -967,21 +957,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // Look up the fully-qualified entity to see if it already
             // exists in the primary entity index.
             Long deviceKey = primaryIndex.findByEntity(entity);
-            Collection<IEntityClass> classes = null;
+            IEntityClass entityClass = null;
 
             if (deviceKey == null) {
                 // If the entity does not exist in the primary entity index,
                 // use the entity classifier for find the classes for the
-                // entity. Look up the entity in each of the returned classes'
-                // class entity indexes.
-                classes = entityClassifier.classifyEntity(entity);
-                for (IEntityClass clazz : classes) {
-                    ClassState classState = getClassState(clazz);
+                // entity. Look up the entity in the returned class'
+                // class entity index.
+                entityClass = entityClassifier.classifyEntity(entity);
+                ClassState classState = getClassState(entityClass);
 
-                    if (classState.classIndex != null) {
-                        deviceKey =
-                                classState.classIndex.findByEntity(entity);
-                    }
+                if (classState.classIndex != null) {
+                    deviceKey =
+                            classState.classIndex.findByEntity(entity);
                 }
             }
             if (deviceKey != null) {
@@ -998,7 +986,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 synchronized (deviceKeyLock) {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
-                device = allocateDevice(deviceKey, entity, classes);
+                device = allocateDevice(deviceKey, entity, entityClass);
 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
@@ -1011,7 +999,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     continue;
                 }
 
-                updateSecondaryIndices(entity, classes, deviceKey);
+                updateSecondaryIndices(entity, entityClass, deviceKey);
 
                 // generate new device update
                 deviceUpdates =
@@ -1029,7 +1017,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 device.entities[entityindex].setLastSeenTimestamp(lastSeen);
                 break;
             } else {
-                Device newDevice = allocateDevice(device, entity, classes);
+                Device newDevice = allocateDevice(device, entity);
 
                 // generate updates
                 EnumSet<DeviceField> changedFields =
@@ -1055,7 +1043,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     continue;
                 }
                 updateSecondaryIndices(entity,
-                                       device.getEntityClasses(),
+                                       device.getEntityClass(),
                                        deviceKey);
                 break;
             }
@@ -1178,7 +1166,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     /**
      * Update both the primary and class indices for the provided device.
-     * If the update fails because of aEn concurrent update, will return false.
+     * If the update fails because of an concurrent update, will return false.
      * @param device the device to update
      * @param deviceKey the device key for the device
      * @return true if the update succeeded, false otherwise.
@@ -1187,50 +1175,34 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (!primaryIndex.updateIndex(device, deviceKey)) {
             return false;
         }
-        for (IEntityClass clazz : device.getEntityClasses()) {
-            ClassState classState = getClassState(clazz);
+        IEntityClass entityClass = device.getEntityClass();
+        ClassState classState = getClassState(entityClass);
 
-            if (classState.classIndex != null) {
-                if (!classState.classIndex.updateIndex(device,
-                                                       deviceKey))
-                    return false;
-            }
+        if (classState.classIndex != null) {
+            if (!classState.classIndex.updateIndex(device,
+                                                   deviceKey))
+                return false;
         }
-        return true;
+    return true;
     }
 
     /**
      * Update the secondary indices for the given entity and associated
      * entity classes
      * @param entity the entity to update
-     * @param entityClasses the entity classes for the entity
+     * @param entityClass the entity class for the entity
      * @param deviceKey the device key to set up
      */
     private void updateSecondaryIndices(Entity entity,
-                                        Collection<IEntityClass> entityClasses,
+                                        IEntityClass entityClass,
                                         Long deviceKey) {
         for (DeviceIndex index : secondaryIndexMap.values()) {
             index.updateIndex(entity, deviceKey);
         }
-        for (IEntityClass clazz : entityClasses) {
-            ClassState state = getClassState(clazz);
-            for (DeviceIndex index : state.secondaryIndexMap.values()) {
-                index.updateIndex(entity, deviceKey);
-            }
+        ClassState state = getClassState(entityClass);
+        for (DeviceIndex index : state.secondaryIndexMap.values()) {
+            index.updateIndex(entity, deviceKey);
         }
-    }
-
-    /**
-     * Update the secondary indices for the given entity and associated
-     * entity classes
-     * @param entity the entity to update
-     * @param entityClasses the entity classes for the entity
-     * @param deviceKey the device key to set up
-     */
-    private void updateSecondaryIndices(Entity entity,
-                                        IEntityClass[] entityClasses,
-                                        Long deviceKey) {
-        updateSecondaryIndices(entity, Arrays.asList(entityClasses), deviceKey);
     }
 
     /**
@@ -1269,13 +1241,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 }
 
                 for (Entity e : toRemove) {
-                    removeEntity(e, d.getEntityClasses(), d.deviceKey, toKeep);
+                    removeEntity(e, d.getEntityClass(), d.deviceKey, toKeep);
                 }
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
                                                       toKeep,
-                                                      d.entityClasses);
+                                                      d.entityClass);
 
                     EnumSet<DeviceField> changedFields =
                             EnumSet.noneOf(DeviceField.class);
@@ -1305,29 +1277,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     private void removeEntity(Entity removed,
-                              IEntityClass[] classes,
+                              IEntityClass entityClass,
                               Long deviceKey,
                               Collection<Entity> others) {
         for (DeviceIndex index : secondaryIndexMap.values()) {
             index.removeEntityIfNeeded(removed, deviceKey, others);
         }
-        for (IEntityClass clazz : classes) {
-            ClassState classState = getClassState(clazz);
-            for (DeviceIndex index : classState.secondaryIndexMap.values()) {
-                index.removeEntityIfNeeded(removed, deviceKey, others);
-            }
+        ClassState classState = getClassState(entityClass);
+        for (DeviceIndex index : classState.secondaryIndexMap.values()) {
+            index.removeEntityIfNeeded(removed, deviceKey, others);
         }
 
         primaryIndex.removeEntityIfNeeded(removed, deviceKey, others);
 
-        for (IEntityClass clazz : classes) {
-            ClassState classState = getClassState(clazz);
-
-            if (classState.classIndex != null) {
-                classState.classIndex.removeEntityIfNeeded(removed,
-                                                           deviceKey,
-                                                           others);
-            }
+        if (classState.classIndex != null) {
+            classState.classIndex.removeEntityIfNeeded(removed,
+                                                       deviceKey,
+                                                       others);
         }
     }
 
@@ -1357,20 +1323,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     protected Device allocateDevice(Long deviceKey,
                                     Entity entity,
-                                    Collection<IEntityClass> entityClasses) {
-        return new Device(this, deviceKey, entity, entityClasses);
+                                    IEntityClass entityClass) {
+        return new Device(this, deviceKey, entity, entityClass);
     }
 
     protected Device allocateDevice(Long deviceKey,
                                     Collection<Entity> entities,
-                                    IEntityClass[] entityClasses) {
-        return new Device(this, deviceKey, entities, entityClasses);
+                                    IEntityClass entityClass) {
+        return new Device(this, deviceKey, entities, entityClass);
     }
 
     protected Device allocateDevice(Device device,
-                                    Entity entity,
-                                    Collection<IEntityClass> entityClasses) {
-        return new Device(device, entity, entityClasses);
+                                    Entity entity) {
+        return new Device(device, entity);
     }
 
     @Override

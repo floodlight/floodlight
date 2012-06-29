@@ -67,37 +67,34 @@ public class DeviceIterator extends FilterIterator<Device> {
     protected boolean matches(Device value) {
         boolean match;
         if (entityClasses != null) {
-            IEntityClass[] classes = next.getEntityClasses();
-            if (classes == null) return false;
+            IEntityClass clazz = value.getEntityClass();
+            if (clazz == null) return false;
 
             match = false;
-            for (IEntityClass clazz : classes) {
-                for (IEntityClass entityClass : entityClasses) {
-                    if (clazz.equals(entityClass)) {
-                        match = true;
-                        break;
-                    }
+            for (IEntityClass entityClass : entityClasses) {
+                if (clazz.equals(entityClass)) {
+                    match = true;
+                    break;
                 }
-                if (match == true) break;
             }
             if (!match) return false;                
         }
         if (macAddress != null) {
-            if (macAddress.longValue() != next.getMACAddress())
+            if (macAddress.longValue() != value.getMACAddress())
                 return false;
         }
         if (vlan != null) {
-            Short[] vlans = next.getVlanId();
+            Short[] vlans = value.getVlanId();
             if (Arrays.binarySearch(vlans, vlan) < 0) 
                 return false;
         }
         if (ipv4Address != null) {
-            Integer[] ipv4Addresses = next.getIPv4Addresses();
+            Integer[] ipv4Addresses = value.getIPv4Addresses();
             if (Arrays.binarySearch(ipv4Addresses, ipv4Address) < 0) 
                 return false;
         }
         if (switchDPID != null || switchPort != null) {
-            SwitchPort[] sps = next.getAttachmentPoints();
+            SwitchPort[] sps = value.getAttachmentPoints();
             if (sps == null) return false;
             
             match = false;

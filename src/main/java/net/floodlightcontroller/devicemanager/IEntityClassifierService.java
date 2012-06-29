@@ -19,6 +19,8 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.Collection;
 import java.util.EnumSet;
+
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.internal.Entity;
 
@@ -30,32 +32,27 @@ import net.floodlightcontroller.devicemanager.internal.Entity;
  * 
  * @author readams
  */
-public interface IEntityClassifier {
+public interface IEntityClassifierService extends IFloodlightService {
     /**
-    * Classify the given entity into a set of classes.  It is important
-    * that the key fields returned by {@link IEntityClassifier#getKeyFields()}
+    * Classify the given entity into an IEntityClass.  It is important
+    * that the key fields returned by {@link IEntityClassifierService#getKeyFields()}
     * be sufficient for classifying entities.  That is, if two entities are
     * identical except for a field that is not a key field, they must be
     * assigned the same class.  Furthermore, entity classification must be
     * transitive: For all entities x, y, z, if x and y belong to a class c, and 
     * y and z belong class c, then x and z must belong to class c.
     * 
-    * <p>Note further that you must take steps to ensure you always return
-    * classes in some consistent ordering.  This could be achieved by sorting
-    * the returned collection before returning it.
-    * 
     * @param entity the entity to classify
-    * @return the IEntityClass resulting from the classification.  When
-    * iterating, must return results in a sorted order.
-    * @see IEntityClassifier#getKeyFields()
+    * @return the IEntityClass resulting from the classification.
+    * @see IEntityClassifierService#getKeyFields()
     */
-   Collection<IEntityClass> classifyEntity(Entity entity);
+   IEntityClass classifyEntity(Entity entity);
 
    /**
     * Return the most general list of fields that should be used as key 
     * fields.  If devices differ in any fields not listed here, they can
     * never be considered a different device by any {@link IEntityClass} 
-    * returned by {@link IEntityClassifier#classifyEntity}.  The key fields
+    * returned by {@link IEntityClassifierService#classifyEntity}.  The key fields
     * for an entity classifier must not change unless associated with a 
     * flush of all entity state.  The list of key fields must be the union
     * of all key fields that could be returned by
@@ -64,7 +61,7 @@ public interface IEntityClassifier {
     * @return a set containing the fields that should not be
     * wildcarded.  May be null to indicate that all fields are key fields.
     * @see {@link IEntityClass#getKeyFields()}
-    * @see {@link IEntityClassifier#classifyEntity}
+    * @see {@link IEntityClassifierService#classifyEntity}
     */
    EnumSet<DeviceField> getKeyFields();
 
@@ -83,7 +80,7 @@ public interface IEntityClassifier {
     * @param entity the entity to reclassify
     * @return the IEntityClass resulting from the classification
     */
-   Collection<IEntityClass> reclassifyEntity(IDevice curDevice,
+   IEntityClass reclassifyEntity(IDevice curDevice,
                                              Entity entity);
 
    /**
