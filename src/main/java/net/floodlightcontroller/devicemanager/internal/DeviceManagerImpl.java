@@ -408,43 +408,43 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         IEntityClass entityClass = reference.getEntityClass();
         ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
-            ClassState classState = getClassState(entityClass);
-
-            DeviceIndex index = null;
-            if (classState.secondaryIndexMap.size() > 0) {
-                EnumSet<DeviceField> keys =
-                        getEntityKeys(macAddress, vlan, ipv4Address,
-                                      switchDPID, switchPort);
-                index = classState.secondaryIndexMap.get(keys);
-            }
-
-            Iterator<Device> iter;
+        ClassState classState = getClassState(entityClass);
+        
+        DeviceIndex index = null;
+        if (classState.secondaryIndexMap.size() > 0) {
+            EnumSet<DeviceField> keys =
+                    getEntityKeys(macAddress, vlan, ipv4Address,
+                                  switchDPID, switchPort);
+            index = classState.secondaryIndexMap.get(keys);
+        }
+        
+        Iterator<Device> iter;
+        if (index == null) {
+            index = classState.classIndex;
             if (index == null) {
-                index = classState.classIndex;
-                if (index == null) {
-                    // scan all devices
-                    return new DeviceIterator(deviceMap.values().iterator(),
-                                              new IEntityClass[] { entityClass },
-                                              macAddress, vlan, ipv4Address,
-                                              switchDPID, switchPort);
-                } else {
-                    // scan the entire class
-                    iter = new DeviceIndexInterator(this, index.getAll());
-                }
+                // scan all devices
+                return new DeviceIterator(deviceMap.values().iterator(),
+                                          new IEntityClass[] { entityClass },
+                                          macAddress, vlan, ipv4Address,
+                                          switchDPID, switchPort);
             } else {
-                // index lookup
-                Entity entity =
-                        new Entity((macAddress == null ? 0 : macAddress),
-                                   vlan,
-                                   ipv4Address,
-                                   switchDPID,
-                                   switchPort,
-                                   null);
-                iter = new DeviceIndexInterator(this,
-                                                index.queryByEntity(entity));
+                // scan the entire class
+                iter = new DeviceIndexInterator(this, index.getAll());
             }
-            iterators.add(iter);
-
+        } else {
+            // index lookup
+            Entity entity =
+                    new Entity((macAddress == null ? 0 : macAddress),
+                               vlan,
+                               ipv4Address,
+                               switchDPID,
+                               switchPort,
+                               null);
+            iter = new DeviceIndexInterator(this,
+                                            index.queryByEntity(entity));
+        }
+        iterators.add(iter);
+        
         return new MultiIterator<Device>(iterators.iterator());
     }
 
@@ -779,7 +779,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         boolean learnap = true;
         if (!isValidAttachmentPoint(swdpid, (short)port)) {
-            // If this is an internal port or we otherwise don't want
+            // FIXME: If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
             // handle this case by labeling flows with something that
             // will give us the entity class.  For now, we'll do our
@@ -1302,6 +1302,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                Integer ipv4Address,
                                                Long switchDPID,
                                                Integer switchPort) {
+        // FIXME: vlan==null is a valid search. Need to handle this
+        // case correctly. Note that the code will still work correctly. 
+        // But we might do a full device search instead of using an index.
         EnumSet<DeviceField> keys = EnumSet.noneOf(DeviceField.class);
         if (macAddress != null) keys.add(DeviceField.MAC);
         if (vlan != null) keys.add(DeviceField.VLAN);
