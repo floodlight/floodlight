@@ -19,84 +19,84 @@ window.TopologyView = Backbone.View.extend({
         this.template = _.template(tpl.get('topology'));
         this.model.bind("change", this.render, this);
         this.hosts = this.options.hosts.models;
-        this.host_links = new Array();
+        this.host_links = [];
     },
 
     render:function (eventName) {
         $(this.el).html(this.template());
         // code from D3 force-directed graph example since there's no other docs
         var width = 900,
-          height = 600; // might as well make it square
+            height = 600;
         var color = d3.scale.category20();
         var force = d3.layout.force()
-            .charge(-240)
-            .linkDistance(100)
-            .size([width, height]);
+                             .charge(-240)
+                             .linkDistance(100)
+                             .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
-            .attr("width", width)
-            .attr("height", height);
+                    .attr("width", width)
+                    .attr("height", height);
         if(this.model.nodes) {
-          for (var i = 0; i < this.model.nodes.length; i++) {
-            this.model.nodes[i].group = 1;
-            this.model.nodes[i].id = this.model.nodes[i].name;
-          }
-
-          for (var i = 0; i < this.hosts.length; i++) {
-            host = this.hosts[i];
-            if (host.attributes['ipv4'].length > 0) {
-                host.name = host.attributes['ipv4'][0] + "\n" + host.id;
-            } else {
-                host.name = host.id;
+            for (var i = 0; i < this.model.nodes.length; i++) {
+                this.model.nodes[i].group = 1;
+                this.model.nodes[i].id = this.model.nodes[i].name;
             }
-            host.group = 2;
-            //console.log(host);
-          }
-
-          var all_nodes = this.model.nodes.concat(this.hosts);
-
-          var all_nodes_map = new Array();
-
-          _.each(all_nodes, function(n) {
-            all_nodes_map[n.id] = n;
-          });
-
-          for (var i = 0; i < this.hosts.length; i++) {
-            host = this.hosts[i];
-            for (var j = 0; j < host.attributes['attachmentPoint'].length; j++) {
-              var link = {source:all_nodes_map[host.id],
-                      target:all_nodes_map[host.attributes['attachmentPoint'][j]['switchDPID']],
-                      value:10};
-              //console.log(link);
-              if ( link.source && link.target) {
-                  this.host_links.push(link);
-              } else {
-                  console.log("Error: skipping link with undefined stuff!")
-              }
+            
+            for (var i = 0; i < this.hosts.length; i++) {
+                host = this.hosts[i];
+                if (host.attributes['ipv4'].length > 0) {
+                    host.name = host.attributes['ipv4'][0] + "\n" + host.id;
+                } else {
+                    host.name = host.id;
+                }
+                host.group = 2;
+                //console.log(host);
             }
-          }
-
-          var all_links = this.model.links.concat(this.host_links);
-
-          force.nodes(all_nodes).links(all_links).start();
-          var link = svg.selectAll("line.link").data(all_links).enter()
-                    .append("line").attr("class", "link")
-                    .style("stroke", function (d) { return "black"; });
-          var node = svg.selectAll("circle.node").data(all_nodes)
-                        .enter().append("circle")
-                        .attr("class", "node")
-                        .attr("r", 20)
-                        .style("fill", function(d) { return color(d.group); })
-                        .call(force.drag);
-          node.append("title").text(function(d) { return d.name; });
-          force.on("tick", function() {
+            
+            var all_nodes = this.model.nodes.concat(this.hosts);
+            
+            var all_nodes_map = [];
+            
+            _.each(all_nodes, function(n) {
+                all_nodes_map[n.id] = n;
+            });
+            
+            for (var i = 0; i < this.hosts.length; i++) {
+                host = this.hosts[i];
+                for (var j = 0; j < host.attributes['attachmentPoint'].length; j++) {
+                    var link = {source:all_nodes_map[host.id],
+                                target:all_nodes_map[host.attributes['attachmentPoint'][j]['switchDPID']],
+                                value:10};
+                    //console.log(link);
+                    if ( link.source && link.target) {
+                        this.host_links.push(link);
+                    } else {
+                        console.log("Error: skipping link with undefined stuff!")
+                    }
+                }
+            }
+            
+            var all_links = this.model.links.concat(this.host_links);
+            
+            force.nodes(all_nodes).links(all_links).start();
+            var link = svg.selectAll("line.link").data(all_links).enter()
+                          .append("line").attr("class", "link")
+                          .style("stroke", function (d) { return "black"; });
+            var node = svg.selectAll("circle.node").data(all_nodes)
+                          .enter().append("circle")
+                          .attr("class", "node")
+                          .attr("r", 20)
+                          .style("fill", function(d) { return color(d.group); })
+                          .call(force.drag);
+            node.append("title").text(function(d) { return d.name; });
+            force.on("tick", function() {
             link.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
-
+            
             node.attr("cx", function(d) { return d.x; })
                 .attr("cy", function(d) { return d.y; });
-          });
+            });
         }
         return this;
     }
