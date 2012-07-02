@@ -24,13 +24,12 @@ window.TopologyView = Backbone.View.extend({
 
     render:function (eventName) {
         $(this.el).html(this.template());
-        // code from D3 force-directed graph example since there's no other docs
         var width = 900,
             height = 600;
         var color = d3.scale.category20();
         var force = d3.layout.force()
-                             .charge(-240)
-                             .linkDistance(100)
+                             .charge(-500)
+                             .linkDistance(200)
                              .size([width, height]);
         var svg = d3.select("#topology-graph").append("svg")
                     .attr("width", width)
@@ -62,7 +61,8 @@ window.TopologyView = Backbone.View.extend({
             
             for (var i = 0; i < this.hosts.length; i++) {
                 host = this.hosts[i];
-                for (var j = 0; j < host.attributes['attachmentPoint'].length; j++) {
+                //for (var j = 0; j < host.attributes['attachmentPoint'].length; j++) {
+                for (var j = 0; j < 1; j++) { // FIXME hack to ignore multiple APs
                     var link = {source:all_nodes_map[host.id],
                                 target:all_nodes_map[host.attributes['attachmentPoint'][j]['switchDPID']],
                                 value:10};
@@ -81,21 +81,29 @@ window.TopologyView = Backbone.View.extend({
             var link = svg.selectAll("line.link").data(all_links).enter()
                           .append("line").attr("class", "link")
                           .style("stroke", function (d) { return "black"; });
-            var node = svg.selectAll("circle.node").data(all_nodes)
-                          .enter().append("circle")
+            var node = svg.selectAll(".node").data(all_nodes)
+                          .enter().append("g")
                           .attr("class", "node")
-                          .attr("r", 20)
-                          .style("fill", function(d) { return color(d.group); })
                           .call(force.drag);
+                          
+            node.append("image")
+                .attr("xlink:href", function (d) {return d.group==1 ? "/ui/img/switch.png" : "/ui/img/server.png"})
+                .attr("x", -16).attr("y", -16)
+                .attr("width", 32).attr("height", 32);
+            node.append("text").attr("dx", 20).attr("dy", ".35em")
+                .text(function(d) { return d.name });
+            node.on("click", function (d) {
+                // TODO we could add some functionality here
+                console.log('clicked '+d.name);
+            });
             node.append("title").text(function(d) { return d.name; });
             force.on("tick", function() {
-            link.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
-            
-            node.attr("cx", function(d) { return d.x; })
-                .attr("cy", function(d) { return d.y; });
+                link.attr("x1", function(d) { return d.source.x; })
+                    .attr("y1", function(d) { return d.source.y; })
+                    .attr("x2", function(d) { return d.target.x; })
+                    .attr("y2", function(d) { return d.target.y; });
+                node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+                
             });
         }
         return this;
