@@ -408,6 +408,10 @@ public class Controller
             } else {
                 log.error("Error while processing message from switch " + sw,
                           e.getCause());
+<<<<<<< HEAD
+=======
+                ctx.getChannel().close();
+>>>>>>> 368a5ae... Fix a NPE
             }
         }
 
@@ -888,39 +892,38 @@ public class Controller
     /**
      * flcontext_cache - Keep a thread local stack of contexts
      */
-	protected static final ThreadLocal<Stack<FloodlightContext>> flcontext_cache =
-		new ThreadLocal <Stack<FloodlightContext>> () {
-			@Override
-			protected Stack<FloodlightContext> initialValue() {
-				return new Stack<FloodlightContext>();
-			}
-		};
+    protected static final ThreadLocal<Stack<FloodlightContext>> flcontext_cache =
+        new ThreadLocal <Stack<FloodlightContext>> () {
+            @Override
+            protected Stack<FloodlightContext> initialValue() {
+                return new Stack<FloodlightContext>();
+            }
+        };
 
-	/**
-	 * flcontext_alloc - pop a context off the stack, if required create a new one
-	 * @return FloodlightContext
-	 */
-	protected static FloodlightContext flcontext_alloc() {
-		FloodlightContext flcontext = null;
+    /**
+     * flcontext_alloc - pop a context off the stack, if required create a new one
+     * @return FloodlightContext
+     */
+    protected static FloodlightContext flcontext_alloc() {
+        FloodlightContext flcontext = null;
 
-		if (flcontext_cache.get().empty()) {
-			flcontext = new FloodlightContext();
-		}
-		else {
-			flcontext = flcontext_cache.get().pop();
-		}
+        if (flcontext_cache.get().empty()) {
+            flcontext = new FloodlightContext();
+        } else {
+            flcontext = flcontext_cache.get().pop();
+        }
 
-		return flcontext;
-	}
+        return flcontext;
+    }
 
-	/**
-	 * flcontext_free - Free the context to the current thread
-	 * @param flcontext
-	 */
-	protected void flcontext_free(FloodlightContext flcontext) {
-		flcontext.getStorage().clear();
-		flcontext_cache.get().push(flcontext);
-	}
+    /**
+     * flcontext_free - Free the context to the current thread
+     * @param flcontext
+     */
+    protected void flcontext_free(FloodlightContext flcontext) {
+        flcontext.getStorage().clear();
+        flcontext_cache.get().push(flcontext);
+    }
 
     /**
      * Handle replies to certain OFMessages, and pass others off to listeners
@@ -1195,6 +1198,10 @@ public class Controller
         // No need to acquire the listener lock, since
         // this method is only called after netty has processed all
         // pending messages
+<<<<<<< HEAD
+=======
+        log.debug("removeSwitch: {}", sw);
+>>>>>>> 368a5ae... Fix a NPE
         if (!this.activeSwitches.remove(sw.getId(), sw) || !sw.isConnected()) {
             log.debug("Not removing switch {}; already removed", sw);
             return;
@@ -1234,7 +1241,7 @@ public class Controller
         ldd.addListener(type, listener);
         
         if (log.isDebugEnabled()) {
-        	logListeners(type, ldd);
+            logListeners(type, ldd);
         }
     }
 
@@ -1246,7 +1253,7 @@ public class Controller
         if (ldd != null) {
             ldd.removeListener(listener);
             if (log.isDebugEnabled()) {
-            	logListeners(type, ldd);
+                logListeners(type, ldd);
             }
         }
     }
@@ -1305,6 +1312,11 @@ public class Controller
         // inject the message as a netty upstream channel event so it goes
         // through the normal netty event processing, including being
         // handled 
+        if (sw == null) {
+            log.info("Failed to inject OFMessage {} onto a null switch", msg);
+            return false;
+        }
+
         if (!activeSwitches.containsKey(sw.getId())) return false;
         
         try {
@@ -1478,6 +1490,10 @@ public class Controller
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
+<<<<<<< HEAD
+=======
+        log.debug("Update DB with inactiveSW {}", sw);
+>>>>>>> 368a5ae... Fix a NPE
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();
@@ -1707,32 +1723,32 @@ public class Controller
         restApi.addRestletRoutable(new CoreWebRoutable());
     }
 
-	@Override
-	public void addInfoProvider(String type, IInfoProvider provider) {
-		if (!providerMap.containsKey(type)) {
-			providerMap.put(type, new ArrayList<IInfoProvider>());
-		}
-		providerMap.get(type).add(provider);
-	}
+    @Override
+    public void addInfoProvider(String type, IInfoProvider provider) {
+        if (!providerMap.containsKey(type)) {
+            providerMap.put(type, new ArrayList<IInfoProvider>());
+        }
+        providerMap.get(type).add(provider);
+    }
 
-	@Override
-	public void removeInfoProvider(String type, IInfoProvider provider) {
-		if (!providerMap.containsKey(type)) {
-			log.debug("Provider type {} doesn't exist.", type);
-			return;
-		}
-		
-		providerMap.get(type).remove(provider);
-	}
-	
-	public Map<String, Object> getControllerInfo(String type) {
-		if (!providerMap.containsKey(type)) return null;
-		
-		Map<String, Object> result = new LinkedHashMap<String, Object>();
-		for (IInfoProvider provider : providerMap.get(type)) {
-			result.putAll(provider.getInfo(type));
-		}
-		
-		return result;
-	}
+    @Override
+    public void removeInfoProvider(String type, IInfoProvider provider) {
+        if (!providerMap.containsKey(type)) {
+            log.debug("Provider type {} doesn't exist.", type);
+            return;
+        }
+
+        providerMap.get(type).remove(provider);
+    }
+
+    public Map<String, Object> getControllerInfo(String type) {
+        if (!providerMap.containsKey(type)) return null;
+
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        for (IInfoProvider provider : providerMap.get(type)) {
+            result.putAll(provider.getInfo(type));
+        }
+
+        return result;
+    }
 }

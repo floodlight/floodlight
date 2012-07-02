@@ -60,4 +60,12 @@ class OFChannelState {
     // of the conditions necessary to advance the handshake state to READY.
     protected boolean hasNxRoleReply = false;
     protected int nxRoleRequestXid;
+
+    @Override
+    public String toString() {
+        String str = "Handshake State: " + hsState +
+                " hasGetConfigReply: " + (hasGetConfigReply ? "True" : "False") +
+                " hasDescrption: " + (hasDescription ? "True" : "False");
+        return str;
+    }
 }
