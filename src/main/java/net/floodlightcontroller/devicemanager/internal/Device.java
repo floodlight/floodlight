@@ -183,11 +183,11 @@ public class Device implements IDevice {
             while (devices.hasNext()) {
                 Device d = devices.next();
                 for (Entity se : d.entities) {
-                    if (se.ipv4Address != null &&
-                            se.ipv4Address.equals(e.ipv4Address) &&
-                            se.lastSeenTimestamp != null &&
-                            0 < se.lastSeenTimestamp.
-                            compareTo(e.lastSeenTimestamp)) {
+                    if (se.getIpv4Address() != null &&
+                            se.getIpv4Address().equals(e.getIpv4Address()) &&
+                            se.getLastSeenTimestamp() != null &&
+                            0 < se.getLastSeenTimestamp().
+                            compareTo(e.getLastSeenTimestamp())) {
                         validIP = false;
                         break;
                     }
@@ -256,7 +256,7 @@ public class Device implements IDevice {
                     )
                 continue;
             long curCluster =
-                    topology.getL2DomainId(cur.switchDPID);
+                    topology.getL2DomainId(cur.getSwitchDPID());
             if (prevCluster != curCluster) {
                 prev = null;
                 latestLastSeen = 0;
@@ -367,10 +367,12 @@ public class Device implements IDevice {
     // Getters/Setters
     // ***************
 
+    @Override
     public IEntityClass getEntityClass() {
         return entityClass;
     }
 
+    @Override
     public Entity[] getEntities() {
         return entities;
     }

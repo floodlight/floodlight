@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
+
 /**
  * This is a thin wrapper around {@link Entity} that allows overriding
  * the behavior of {@link Object#hashCode()} and {@link Object#equals(Object)}

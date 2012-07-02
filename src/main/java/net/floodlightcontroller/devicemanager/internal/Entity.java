@@ -171,7 +171,7 @@ public class Entity implements Comparable<Entity> {
     public void setActiveSince(Date activeSince) {
         this.activeSince = activeSince;
     }
-
+    
     @Override
     public int hashCode() {
         if (hashCode != 0) return hashCode;
