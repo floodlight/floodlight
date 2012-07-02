@@ -39,6 +39,28 @@ public class OFActionOutput extends OFAction implements Cloneable {
         super.setLength((short) MINIMUM_LENGTH);
     }
 
+    /**
+     * Create an Output Action sending packets out the specified
+     * OpenFlow port.
+     *
+     * This is the most common creation pattern for OFActions.
+     *
+     * @param port
+     */
+
+    public OFActionOutput(short port) {
+        this(port, (short) 65535);
+    }
+
+    /**
+     * Create an Output Action specifying both the port AND
+     * the snaplen of the packet to send out that port.
+     * The length field is only meaningful when port == OFPort.OFPP_CONTROLLER
+     * @param port
+     * @param maxLength The maximum number of bytes of the packet to send.
+     * Most hardware only supports this value for OFPP_CONTROLLER
+     */
+
     public OFActionOutput(short port, short maxLength) {
         super();
         super.setType(OFActionType.OUTPUT);
