@@ -19,9 +19,8 @@ package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
 
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +41,7 @@ import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -60,27 +60,30 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
+import org.easymock.Capture;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelStateEvent;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
+import org.openflow.protocol.OFError.OFBadRequestCode;
+import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
-import org.openflow.protocol.OFError.OFBadRequestCode;
-import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.openflow.protocol.OFVendor;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.protocol.statistics.OFFlowStatisticsReply;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
+import org.openflow.util.HexString;
+import org.openflow.vendor.nicira.OFNiciraVendorData;
+import org.openflow.vendor.nicira.OFRoleReplyVendorData;
 
 /**
  *
@@ -144,6 +147,25 @@ public class ControllerTest extends FloodlightTestCase {
         if (moreReplies)
             sr.setFlags((short) 1);
         return sr;
+    }
+    
+    /* Set the mock expectations for sw when sw is passed to addSwitch */
+    protected void setupSwitchForAddSwitch(IOFSwitch sw, long dpid) {
+        String dpidString = HexString.toHexString(dpid);
+                
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setDatapathId(dpid);
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        
+        expect(sw.getId()).andReturn(dpid).anyTimes();
+        expect(sw.getStringId()).andReturn(dpidString).anyTimes();
+        expect(sw.getConnectedSince()).andReturn(new Date());
+        Channel channel = createMock(Channel.class);
+        expect(sw.getChannel()).andReturn(channel);
+        expect(channel.getRemoteAddress()).andReturn(null);
+        
+        expect(sw.getFeaturesReply()).andReturn(featuresReply).anyTimes();
+        expect(sw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
     }
     
     /**
@@ -267,11 +289,9 @@ public class ControllerTest extends FloodlightTestCase {
     @Test
     public void testOFStatisticsFuture() throws Exception {
         // Test for a single stats reply
-        MockFloodlightProvider mbp = new MockFloodlightProvider();
         IOFSwitch sw = createMock(IOFSwitch.class);
         sw.cancelStatisticsReply(1);
-        OFStatisticsFuture sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        OFStatisticsFuture sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         List<OFStatistics> stats;
@@ -284,14 +304,12 @@ public class ControllerTest extends FloodlightTestCase {
         stats = ff.getValue();
         verify(sw);
         assertEquals(10, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test multiple stats replies
         reset(sw);
         sw.cancelStatisticsReply(1);
 
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -304,13 +322,11 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(15, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test cancellation
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -322,13 +338,11 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(0, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
 
         // Test self timeout
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(mbp, tp, sw, 1, 1, TimeUnit.SECONDS);
-        mbp.addOFSwitchListener(sf);
+        sf = new OFStatisticsFuture(tp, sw, 1, 1, TimeUnit.SECONDS);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -339,7 +353,6 @@ public class ControllerTest extends FloodlightTestCase {
         stats = sf.get();
         verify(sw);
         assertEquals(0, stats.size());
-        assertEquals(0, mbp.getSwitchListeners().size());
     }
 
     @Test
@@ -685,8 +698,171 @@ public class ControllerTest extends FloodlightTestCase {
     }
     
     @Test
+    public void testSetRoleNull() {
+        try {
+            controller.setRole(null);
+            fail("Should have thrown an Exception");
+        }
+        catch (NullPointerException e) {
+            //exptected
+        }
+    }
+    
+    @Test 
+    public void testSetRole() {
+        controller.connectedSwitches.add(new OFSwitchImpl());
+        RoleChanger roleChanger = createMock(RoleChanger.class); 
+        roleChanger.submitRequest(controller.connectedSwitches, Role.SLAVE);
+        controller.roleChanger = roleChanger;
+        
+        assertEquals("Check that update queue is empty", 0, 
+                    controller.updates.size());
+        
+        replay(roleChanger);
+        controller.setRole(Role.SLAVE);
+        verify(roleChanger);
+        
+        Controller.IUpdate upd = controller.updates.poll();
+        assertNotNull("Check that update queue has an update", upd);
+        assertTrue("Check that update is HARoleUpdate", 
+                   upd instanceof Controller.HARoleUpdate);
+        Controller.HARoleUpdate roleUpd = (Controller.HARoleUpdate)upd;
+        assertSame(null, roleUpd.oldRole);
+        assertSame(Role.SLAVE, roleUpd.newRole);
+    }
+    
+    @Test
+    public void testCheckSwitchReady() {
+        OFChannelState state = new OFChannelState();
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        chdlr.sw = createMock(OFSwitchImpl.class);
+        
+        // Wrong current state 
+        // Should not go to READY
+        state.hsState = OFChannelState.HandshakeState.HELLO;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        replay(chdlr.sw);  // nothing called on sw
+        chdlr.checkSwitchReady();
+        verify(chdlr.sw);
+        assertSame(OFChannelState.HandshakeState.HELLO, state.hsState);
+        reset(chdlr.sw);
+        
+        // Have only config reply
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        state.hasDescription = false;
+        state.hasGetConfigReply = true;
+        replay(chdlr.sw); 
+        chdlr.checkSwitchReady();
+        verify(chdlr.sw);
+        assertSame(OFChannelState.HandshakeState.FEATURES_REPLY, state.hsState);
+        assertTrue(controller.connectedSwitches.isEmpty());
+        assertTrue(controller.activeSwitches.isEmpty());
+        reset(chdlr.sw);
+        
+        // Have only desc reply
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        state.hasDescription = true;
+        state.hasGetConfigReply = false;
+        replay(chdlr.sw); 
+        chdlr.checkSwitchReady();
+        verify(chdlr.sw);
+        assertSame(OFChannelState.HandshakeState.FEATURES_REPLY, state.hsState);
+        assertTrue(controller.connectedSwitches.isEmpty());
+        assertTrue(controller.activeSwitches.isEmpty());
+        reset(chdlr.sw);
+        
+        //////////////////////////////////////////
+        // Finally, everything is right. Should advance to READY
+        //////////////////////////////////////////
+        controller.roleChanger = createMock(RoleChanger.class);
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        // Role support disabled. Switch should be promoted to active switch
+        // list. 
+        setupSwitchForAddSwitch(chdlr.sw, 0L);
+        chdlr.sw.clearAllFlowMods();
+        replay(controller.roleChanger, chdlr.sw);
+        chdlr.checkSwitchReady();
+        verify(controller.roleChanger, chdlr.sw);
+        assertSame(OFChannelState.HandshakeState.READY, state.hsState);
+        assertSame(chdlr.sw, controller.activeSwitches.get(0L));
+        assertTrue(controller.connectedSwitches.contains(chdlr.sw));
+        assertTrue(state.firstRoleReplyReceived);
+        reset(chdlr.sw);
+        reset(controller.roleChanger);
+        controller.connectedSwitches.clear();
+        controller.activeSwitches.clear();
+        
+        
+        // Role support enabled. 
+        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
+        controller.role = Role.MASTER;
+        Capture<Collection<OFSwitchImpl>> swListCapture = 
+                    new Capture<Collection<OFSwitchImpl>>();
+        controller.roleChanger.submitRequest(capture(swListCapture), 
+                    same(Role.MASTER));
+        replay(controller.roleChanger, chdlr.sw);
+        chdlr.checkSwitchReady();
+        verify(controller.roleChanger, chdlr.sw);
+        assertSame(OFChannelState.HandshakeState.READY, state.hsState);
+        assertTrue(controller.activeSwitches.isEmpty());
+        assertTrue(controller.connectedSwitches.contains(chdlr.sw));
+        assertTrue(state.firstRoleReplyReceived);
+        Collection<OFSwitchImpl> swList = swListCapture.getValue();
+        assertEquals(1, swList.size());
+        assertTrue("swList must contain this switch", swList.contains(chdlr.sw));
+    }
+
+    
+    @Test
+    public void testChannelDisconnected() throws Exception {
+        OFChannelState state = new OFChannelState();
+        state.hsState = OFChannelState.HandshakeState.READY;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        chdlr.sw = createMock(OFSwitchImpl.class);
+        
+        // Switch is active 
+        expect(chdlr.sw.getId()).andReturn(0L).anyTimes();
+        expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:00")
+                    .anyTimes();
+        chdlr.sw.cancelAllStatisticsReplies();
+        chdlr.sw.setConnected(false);
+        expect(chdlr.sw.isConnected()).andReturn(true);
+        
+        controller.connectedSwitches.add(chdlr.sw);
+        controller.activeSwitches.put(0L, chdlr.sw);
+        
+        replay(chdlr.sw);
+        chdlr.channelDisconnected(null, null);
+        verify(chdlr.sw);
+        
+        // Switch is connected but not active
+        reset(chdlr.sw);
+        expect(chdlr.sw.getId()).andReturn(0L).anyTimes();
+        chdlr.sw.setConnected(false);
+        replay(chdlr.sw);
+        chdlr.channelDisconnected(null, null);
+        verify(chdlr.sw);
+        
+        // Not in ready state
+        state.hsState = HandshakeState.START;
+        reset(chdlr.sw);
+        replay(chdlr.sw);
+        chdlr.channelDisconnected(null, null);
+        verify(chdlr.sw);
+        
+        // Switch is null
+        state.hsState = HandshakeState.READY;
+        chdlr.sw = null;
+        chdlr.channelDisconnected(null, null);
+    }
+    
+    /*
+    @Test
     public void testRoleChangeForSerialFailoverSwitch() throws Exception {
-        IOFSwitch newsw = createMock(IOFSwitch.class);
+        OFSwitchImpl newsw = createMock(OFSwitchImpl.class);
         expect(newsw.getId()).andReturn(0L).anyTimes();
         expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
         Channel channel2 = createMock(Channel.class);
@@ -697,7 +873,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(newsw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(false);
         // switch is connected 
-        controller.connectedSwitches.put(0L, newsw);
+        controller.connectedSwitches.add(newsw);
 
         // the switch should get disconnected when role is changed to SLAVE
         expect(channel2.close()).andReturn(null);
@@ -706,42 +882,273 @@ public class ControllerTest extends FloodlightTestCase {
         controller.setRole(Role.SLAVE);
         verify(newsw,  channel2);
     }
+    */
 
     @Test
-    public void testSlaveRoleHandshakeForSerialFailoverSwitch() 
-            throws Exception {
-        controller.role = Role.SLAVE;
-        OFFeaturesReply featuresReply = new OFFeaturesReply();
-        featuresReply.setDatapathId(0L);
-        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+    public void testRoleNotSupportedError() throws Exception {
+        int xid = 424242;
         OFChannelState state = new OFChannelState();
-        state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
-        state.hasDescription = true;
-        state.hasGetConfigReply = true;
+        state.hsState = HandshakeState.READY;
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
-
+        chdlr.sw = createMock(OFSwitchImpl.class);
         Channel ch = createMock(Channel.class);
-        ChannelStateEvent e = createMock(ChannelStateEvent.class);
-        expect(e.getChannel()).andReturn(ch).anyTimes();
-        SocketAddress sa = new InetSocketAddress(45454);
-        expect(ch.getRemoteAddress()).andReturn(sa);
-        expect(ch.write(anyObject())).andReturn(null);
-
+        
         // the error returned when role request message is not supported by sw
-        OFMessage msg = new OFError();
+        OFError msg = new OFError();
         msg.setType(OFType.ERROR);
-        ((OFError) msg).setErrorType(OFErrorType.OFPET_BAD_REQUEST);
-        ((OFError) msg).setErrorCode(OFBadRequestCode.OFPBRC_BAD_VENDOR);
+        msg.setXid(xid);
+        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        msg.setErrorCode(OFBadRequestCode.OFPBRC_BAD_VENDOR);
         
         // the switch connection should get disconnected when the controller is
         // in SLAVE mode and the switch does not support role-request messages
+        state.firstRoleReplyReceived = false;
+        controller.role = Role.SLAVE;
+        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
+        chdlr.sw.deliverRoleRequestNotSupported(xid);
+        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
         expect(ch.close()).andReturn(null);
         
-        replay(ch, e);
-        chdlr.channelConnected(null, e);
-        chdlr.sw.setFeaturesReply(featuresReply);
+        replay(ch, chdlr.sw);
         chdlr.processOFMessage(msg);
-        verify(ch, e);
+        verify(ch, chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   state.firstRoleReplyReceived);
+        assertTrue("activeSwitches must be empty",
+                   controller.activeSwitches.isEmpty());
+        reset(ch, chdlr.sw);
         
+        // We are MASTER, the switch should be added to the list of active
+        // switches.
+        state.firstRoleReplyReceived = false;
+        controller.role = Role.MASTER;
+        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
+        chdlr.sw.deliverRoleRequestNotSupported(xid);
+        setupSwitchForAddSwitch(chdlr.sw, 0L);
+        chdlr.sw.clearAllFlowMods();
+        replay(ch, chdlr.sw);
+        
+        chdlr.processOFMessage(msg);
+        verify(ch, chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   state.firstRoleReplyReceived);
+        assertSame("activeSwitches must contain this switch",
+                   chdlr.sw, controller.activeSwitches.get(0L));
+        reset(ch, chdlr.sw);
+        
+        
+        // a different error messge
+        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
+        state.firstRoleReplyReceived = false;
+        controller.role = Role.MASTER;
+        controller.activeSwitches.clear();
+        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
+        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
+        expect(ch.close()).andReturn(null);
+        replay(ch, chdlr.sw);
+        
+        chdlr.processOFMessage(msg);
+        verify(ch, chdlr.sw);
+        assertFalse("state.firstRoleReplyReceived must be false",
+                   state.firstRoleReplyReceived);
+        assertTrue("activeSwitches must be empty", 
+                   controller.activeSwitches.isEmpty());
+        reset(ch, chdlr.sw);
     }
+    
+    
+    @Test 
+    public void testVendorMessageUnknown() throws Exception {
+        // Check behavior with an unknown vendor id
+        OFChannelState state = new OFChannelState();
+        state.hsState = HandshakeState.READY;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        OFVendor msg = new OFVendor();
+        msg.setVendor(0);
+        chdlr.processOFMessage(msg);
+    }
+    
+    
+    // Helper function.
+    protected Controller.OFChannelHandler getChannelHandlerForRoleReplyTest() {
+        OFChannelState state = new OFChannelState();
+        state.hsState = HandshakeState.READY;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        chdlr.sw = createMock(OFSwitchImpl.class);
+        return chdlr;
+    }
+    
+    // Helper function
+    protected OFVendor getRoleReplyMsgForRoleReplyTest(int xid, int nicira_role) {
+        OFVendor msg = new OFVendor();
+        msg.setXid(xid);
+        msg.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
+        OFRoleReplyVendorData roleReplyVendorData = 
+                new OFRoleReplyVendorData(OFRoleReplyVendorData.NXT_ROLE_REPLY);
+        msg.setVendorData(roleReplyVendorData);
+        roleReplyVendorData.setRole(nicira_role);
+        return msg;
+    }
+   
+    /** invalid role in role reply */
+    @Test 
+    public void testNiciraRoleReplyInvalidRole() 
+                    throws Exception {
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        Channel ch = createMock(Channel.class);
+        expect(chdlr.sw.getChannel()).andReturn(ch);
+        expect(ch.close()).andReturn(null);
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 232323);
+        replay(chdlr.sw, ch);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw, ch);
+    }
+    
+    /** First role reply message received: transition from slave to master */
+    @Test 
+    public void testNiciraRoleReplySlave2MasterFristTime() 
+                    throws Exception {
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
+                                       OFRoleReplyVendorData.NX_ROLE_MASTER);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
+        expect(chdlr.sw.isActive()).andReturn(true);
+        setupSwitchForAddSwitch(chdlr.sw, 1L);
+        chdlr.sw.clearAllFlowMods();
+        chdlr.state.firstRoleReplyReceived = false;
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertSame("activeSwitches must contain this switch",
+                   chdlr.sw, controller.activeSwitches.get(1L));
+    }
+    
+    
+    /** Not first role reply message received: transition from slave to master */
+    @Test 
+    public void testNiciraRoleReplySlave2MasterNotFristTime() 
+                    throws Exception {
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
+                                       OFRoleReplyVendorData.NX_ROLE_MASTER);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
+        expect(chdlr.sw.isActive()).andReturn(true);
+        setupSwitchForAddSwitch(chdlr.sw, 1L);
+        chdlr.state.firstRoleReplyReceived = true;
+        // Flow table shouldn't be wipe
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertSame("activeSwitches must contain this switch",
+                   chdlr.sw, controller.activeSwitches.get(1L));
+    }
+    
+    /** transition from slave to equal */
+    @Test 
+    public void testNiciraRoleReplySlave2Equal() 
+                    throws Exception {
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
+                                       OFRoleReplyVendorData.NX_ROLE_OTHER);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.EQUAL);
+        expect(chdlr.sw.isActive()).andReturn(true);
+        setupSwitchForAddSwitch(chdlr.sw, 1L);
+        chdlr.sw.clearAllFlowMods();
+        chdlr.state.firstRoleReplyReceived = false;
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertSame("activeSwitches must contain this switch",
+                   chdlr.sw, controller.activeSwitches.get(1L));
+    };
+    
+    @Test
+    /** Slave2Slave transition ==> no change */
+    public void testNiciraRoleReplySlave2Slave() throws Exception{
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
+                                       OFRoleReplyVendorData.NX_ROLE_SLAVE);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.SLAVE);
+        expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
+        expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
+                    .anyTimes();
+        expect(chdlr.sw.isActive()).andReturn(false);
+        // don't add switch to activeSwitches ==> slave2slave
+        chdlr.state.firstRoleReplyReceived = false;
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertTrue("activeSwitches must be empty", 
+                   controller.activeSwitches.isEmpty());
+    }
+    
+    @Test
+    /** Equal2Master transition ==> no change */
+    public void testNiciraRoleReplyEqual2Master() throws Exception{
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
+                                       OFRoleReplyVendorData.NX_ROLE_MASTER);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
+        expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
+        expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
+                    .anyTimes();
+        expect(chdlr.sw.isActive()).andReturn(true);
+        controller.activeSwitches.put(1L, chdlr.sw);
+        chdlr.state.firstRoleReplyReceived = false;
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertSame("activeSwitches must contain this switch",
+                   chdlr.sw, controller.activeSwitches.get(1L));
+    }
+    
+    @Test 
+    public void testNiciraRoleReplyMaster2Slave() 
+                    throws Exception {
+        int xid = 424242;
+        Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
+        OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
+                                       OFRoleReplyVendorData.NX_ROLE_SLAVE);
+        
+        chdlr.sw.deliverRoleReply(xid, Role.SLAVE);
+        expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
+        expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
+                    .anyTimes();
+        controller.activeSwitches.put(1L, chdlr.sw);
+        expect(chdlr.sw.isActive()).andReturn(false);
+        expect(chdlr.sw.isConnected()).andReturn(true);
+        chdlr.sw.cancelAllStatisticsReplies();
+        chdlr.state.firstRoleReplyReceived = false;
+        replay(chdlr.sw);
+        chdlr.processOFMessage(msg);
+        verify(chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be true", 
+                   chdlr.state.firstRoleReplyReceived);
+        assertTrue("activeSwitches must be empty", 
+                   controller.activeSwitches.isEmpty());
+    }
+    
+    
 }

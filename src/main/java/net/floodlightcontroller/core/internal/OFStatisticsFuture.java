@@ -21,13 +21,11 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFStatisticsReply;
-import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.statistics.OFStatistics;
 
@@ -37,19 +35,19 @@ import org.openflow.protocol.statistics.OFStatistics;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class OFStatisticsFuture extends
-        OFMessageFuture<OFStatisticsRequest, List<OFStatistics>> {
+        OFMessageFuture<List<OFStatistics>> {
 
     protected volatile boolean finished;
 
-    public OFStatisticsFuture(IFloodlightProviderService floodlightProvider, IThreadPoolService tp,
+    public OFStatisticsFuture(IThreadPoolService tp,
             IOFSwitch sw, int transactionId) {
-        super(floodlightProvider, tp, sw, OFType.STATS_REPLY, transactionId);
+        super(tp, sw, OFType.STATS_REPLY, transactionId);
         init();
     }
 
-    public OFStatisticsFuture(IFloodlightProviderService floodlightProvider, IThreadPoolService tp,
+    public OFStatisticsFuture(IThreadPoolService tp,
             IOFSwitch sw, int transactionId, long timeout, TimeUnit unit) {
-        super(floodlightProvider, tp, sw, OFType.STATS_REPLY, transactionId, timeout, unit);
+        super(tp, sw, OFType.STATS_REPLY, transactionId, timeout, unit);
         init();
     }
 

@@ -39,6 +39,7 @@ class OFChannelState {
 
         /**
          * We've received the features reply
+         * Waiting for Config and Description reply
          */
         FEATURES_REPLY,
 
@@ -53,11 +54,11 @@ class OFChannelState {
     protected boolean hasGetConfigReply = false;
     protected boolean hasDescription = false;
     
-    // The hasNxRoleReply flag doesn't mean that the switch supports the NX
-    // role messages, just that we've received an answer back from the 
-    // switch (possibly a bad vendor error) in response to our initial
-    // role request. It's used as a flag to indicate that we've met one
-    // of the conditions necessary to advance the handshake state to READY.
-    protected boolean hasNxRoleReply = false;
-    protected int nxRoleRequestXid;
+    // The firstRoleReplyRecevied flag indicates if we have received the
+    // first role reply message on this connection (in response to the 
+    // role request sent after the handshake). If role support is disabled
+    // on the controller we also set this flag to true. 
+    // The flag is used to decide if the flow table should be wiped
+    // @see Controller.handleRoleReplyMessage()
+    protected boolean firstRoleReplyReceived = false;
 }

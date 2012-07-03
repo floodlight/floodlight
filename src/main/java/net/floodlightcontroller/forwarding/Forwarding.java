@@ -160,9 +160,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                         (srcCluster != null) && 
                         (dstCluster != null)) {
                         Route route = 
-                                routingEngine.getRoute(srcDap.getSwitchDPID(), 
-                                                       dstDap.getSwitchDPID());
-                        if ((route != null) || validLocalHop(srcDap, dstDap)) {
+                                routingEngine.getRoute(srcDap.getSwitchDPID(),
+                                                       (short)srcDap.getPort(),
+                                                       dstDap.getSwitchDPID(),
+                                                       (short)dstDap.getPort());
+                        if (route != null) {
                             int bufferId = OFPacketOut.BUFFER_ID_NONE;
                             if (log.isTraceEnabled()) {
                                 log.trace("pushRoute match={} route={} " + 
@@ -173,9 +175,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             }
                             long cookie = 
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+                            
                             pushRoute(route, match, 0,
-                                      srcDap, dstDap, bufferId,
-                                      sw, pi, cookie, cntx, 
+                                      bufferId,
+                                      pi, sw.getId(), cookie, cntx, 
                                       requestFlowRemovedNotifn, false,
                                       OFFlowMod.OFPFC_ADD);
                         }
@@ -257,11 +260,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST &
             ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK;
         return match.clone().setWildcards(wildcards);
-    }
-
-    private boolean validLocalHop(SwitchPort srcTuple, SwitchPort dstTuple) {
-        return srcTuple.getSwitchDPID() == dstTuple.getSwitchDPID() &&
-               srcTuple.getPort() != dstTuple.getPort();
     }
 
     // IFloodlightModule methods

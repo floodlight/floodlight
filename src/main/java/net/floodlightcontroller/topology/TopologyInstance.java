@@ -1,9 +1,11 @@
 package net.floodlightcontroller.topology;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -534,16 +536,21 @@ public class TopologyInstance {
     }
 
     protected Route buildroute(RouteId id, long srcId, long dstId) {
-        LinkedList<Link> path =  new LinkedList<Link>();
+        NodePortTuple npt;
+
+        LinkedList<NodePortTuple> switchPorts =
+                new LinkedList<NodePortTuple>();
 
         if (destinationRootedTrees == null) return null;
         if (destinationRootedTrees.get(dstId) == null) return null;
 
-        Map<Long, Link> nexthoplinks = destinationRootedTrees.get(dstId).getLinks();
+        Map<Long, Link> nexthoplinks =
+                destinationRootedTrees.get(dstId).getLinks();
 
         if (!switches.contains(srcId) || !switches.contains(dstId)) {
             // This is a switch that is not connected to any other switch
-            // hence there was no update for links (and hence it is not in the network)
+            // hence there was no update for links (and hence it is not
+            // in the network)
             log.debug("buildroute: Standalone switch: {}", srcId);
 
             // The only possible non-null path for this case is
@@ -552,14 +559,19 @@ public class TopologyInstance {
         } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId)!=null)) {
             while (srcId != dstId) {
                 Link l = nexthoplinks.get(srcId);
-                path.addLast(l);
+
+                npt = new NodePortTuple(l.getSrc(), l.getSrcPort());
+                switchPorts.addLast(npt);
+                npt = new NodePortTuple(l.getDst(), l.getDstPort());
+                switchPorts.addLast(npt);
                 srcId = nexthoplinks.get(srcId).getDst();
             }
         }
         // else, no path exists, and path equals null
 
         Route result = null;
-        if (path != null && !path.isEmpty()) result = new Route(id, path);
+        if (switchPorts != null && !switchPorts.isEmpty()) 
+            result = new Route(id, switchPorts);
         if (log.isTraceEnabled()) {
             log.trace("buildroute: {}", result);
         }
@@ -591,9 +603,31 @@ public class TopologyInstance {
 
     protected Route getRoute(long srcId, short srcPort,
                              long dstId, short dstPort) {
-        // currently ignores source and dst ports.
-        // if needed we can get different paths.
-        return getRoute(srcId, dstId);
+
+
+        // Return null the route source and desitnation are the
+        // same switchports.
+        if (srcId == dstId && srcPort == dstPort)
+            return null;
+
+        List<NodePortTuple> nptList;
+        NodePortTuple npt;
+        Route r = getRoute(srcId, dstId);
+        if (r == null && srcId != dstId) return null;
+
+        if (r != null) {
+            nptList= new ArrayList<NodePortTuple>(r.getPath());
+        } else {
+            nptList = new ArrayList<NodePortTuple>();
+        }
+        npt = new NodePortTuple(srcId, srcPort);
+        nptList.add(0, npt); // add src port to the front
+        npt = new NodePortTuple(dstId, dstPort);
+        nptList.add(npt); // add dst port to the end
+
+        RouteId id = new RouteId(srcId, dstId);
+        r = new Route(id, nptList);
+        return r;
     }
 
     protected Route getRoute(long srcId, long dstId) {
