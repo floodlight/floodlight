@@ -592,6 +592,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         l.add(IRestApiService.class);
         l.add(IThreadPoolService.class);
         l.add(IFlowReconcileService.class);
+        l.add(IEntityClassifierService.class);
         return l;
     }
 
