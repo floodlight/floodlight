@@ -216,6 +216,10 @@ public class LinkDiscoveryManager
         return shuttingDown;
     }
     
+    protected ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info) {
+    	return LinkInfo.getLinkType(lt, info);
+    }
+    
     private void doUpdatesThread() throws InterruptedException {
         do {
             LDUpdate update = updates.take();
