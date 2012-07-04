@@ -25,6 +25,9 @@ public class LinkTupleSerializer extends JsonSerializer<LinkTuple> {
         jGen.writeStringField("dst-switch", HexString.toHexString(linkTuple.getDst().getSw().getId()));
         jGen.writeNumberField("src-port", linkTuple.getSrc().getPort());
         jGen.writeStringField("src-switch", HexString.toHexString(linkTuple.getSrc().getSw().getId()));
+        if (linkTuple.getType() != null) {
+            jGen.writeStringField("type", linkTuple.getType().toString());
+        }
         jGen.writeEndObject();
     }
     
