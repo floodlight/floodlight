@@ -3,6 +3,7 @@ package net.floodlightcontroller.firewall;
 import java.util.Collection;
 import java.util.Map;
 
+import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
@@ -20,6 +21,10 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.Set;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 
@@ -38,7 +43,7 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 	
 	@Override
 	public String getName() {
-		return "Firewall";
+		return "firewall";
 	}
 
 	@Override
@@ -108,16 +113,49 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
 		if (decision == null) {
-			logger.info("Routing decision not taken yet");
+			//logger.info("Routing decision not taken yet");
 		}
 		
-        Long sourceMACHash = Ethernet.toLong(eth.getSourceMACAddress());
+        /*Long sourceMACHash = Ethernet.toLong(eth.getSourceMACAddress());
         if (!macAddresses.contains(sourceMACHash)) {
             macAddresses.add(sourceMACHash);
             logger.info("MAC Address: {} seen on switch: {}",
                     HexString.toHexString(sourceMACHash),
                     sw.getId());
-        }
+        }*/
+		
+		IPacket pkt = (IPacket) eth.getPayload();
+		if (pkt != null && pkt instanceof IPv4) {
+			IPv4 p = (IPv4) pkt;
+			IPacket ppl = p.getPayload();
+			if (ppl != null && ppl instanceof TCP) {
+				TCP pp = (TCP) ppl;
+				if (pp.getSourcePort() == 80 || pp.getDestinationPort() == 80) {
+					if (decision == null) {
+						decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
+						decision.setWildcards(OFMatch.OFPFW_ALL
+								& ~OFMatch.OFPFW_DL_SRC
+			                    & ~OFMatch.OFPFW_IN_PORT
+			                    & ~OFMatch.OFPFW_DL_VLAN
+			                    & ~OFMatch.OFPFW_DL_DST
+			                    & ~OFMatch.OFPFW_DL_TYPE
+			                    & ~OFMatch.OFPFW_NW_PROTO
+			                    & ~OFMatch.OFPFW_TP_SRC
+			                    & ~OFMatch.OFPFW_NW_SRC_ALL
+			                    & ~OFMatch.OFPFW_NW_DST_ALL);
+						decision.addToContext(cntx);
+						//logger.info("took decision to drop packet");
+					}
+				}
+				logger.info("TCP SrcPort: {} DstPort: {}", pp.getSourcePort(), pp.getDestinationPort());
+			} else if (ppl != null && ppl instanceof ICMP) {
+				if (decision == null) {
+					decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
+					decision.addToContext(cntx);
+					//logger.info("took decision to drop ICMP packet");
+				}
+			}
+		}
         
         return Command.CONTINUE;
     }

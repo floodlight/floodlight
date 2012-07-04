@@ -63,6 +63,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
                                                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        
+        if (decision != null) {
+        	//log.info("Decision made for packet!");
+        	if (decision.getRoutingAction() == IRoutingDecision.RoutingAction.DROP) {
+        		log.info("dropping packet as per decision");
+        		doDropFlow(sw, pi, decision, cntx);
+        		return Command.CONTINUE;
+        	}
+        } else {
+        	//log.info("No decision found!");
+        }
+        
         if (eth.isBroadcast() || eth.isMulticast()) {
             // For now we treat multicast as broadcast
             doFlood(sw, pi, cntx);
@@ -71,6 +83,39 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         }
         
         return Command.CONTINUE;
+    }
+    
+    protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+    	// initialize match structure and populate it using the packet
+    	OFMatch match = new OFMatch();
+    	match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+    	if (decision.getWildcards() != null) {
+    		match.setWildcards(decision.getWildcards());
+    	}
+    	
+    	// Create flow-mod based on packet-in and src-switch
+        OFFlowMod fm =
+                (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                              .getMessage(OFType.FLOW_MOD);
+        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
+                                                            // drop
+        long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+        
+        fm.setCookie(cookie)
+          .setHardTimeout((short) 0)
+          .setIdleTimeout((short) 0)
+          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+          .setMatch(match)
+          .setActions(actions)
+          .setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
+
+        try {
+            log.debug("write drop flow-mod sw={} match={} flow-mod={}",
+                      new Object[] { sw, match, fm });
+            sw.write(fm, cntx);
+        } catch (IOException e) {
+            log.error("Failure writing drop flow mod", e);
+        }
     }
 
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
