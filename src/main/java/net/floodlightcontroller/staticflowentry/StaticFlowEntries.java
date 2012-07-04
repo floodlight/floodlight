@@ -1,6 +1,7 @@
 package net.floodlightcontroller.staticflowentry;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,6 +47,7 @@ public class StaticFlowEntries {
         int      len;
     }
     
+    private static byte[] zeroMac = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
     
     /**
      * This function generates a random hash for the bottom half of the cookie
@@ -131,22 +133,49 @@ public class StaticFlowEntries {
         OFMatch match = fm.getMatch();
         entry.put(StaticFlowEntryPusher.COLUMN_NAME, name);
         entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
-        entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, StaticFlowEntries.flowModActionsToString(fm.getActions()));
-        entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Short.toString(fm.getPriority()));
         entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
+        entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Short.toString(fm.getPriority()));
         entry.put(StaticFlowEntryPusher.COLUMN_WILDCARD, Integer.toString(match.getWildcards()));
-        entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Short.toString(match.getInputPort()));
-        entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, HexString.toHexString(match.getDataLayerSource()));
-        entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, HexString.toHexString(match.getDataLayerDestination()));
-        entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, Short.toString(match.getDataLayerVirtualLan()));
-        entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Short.toString(match.getDataLayerVirtualLanPriorityCodePoint()));
-        entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, Short.toString(match.getDataLayerType()));
-        entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Short.toString(match.getNetworkTypeOfService()));
-        entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.getNetworkProtocol()));
-        entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, IPv4.fromIPv4Address(match.getNetworkSource()));
-        entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, IPv4.fromIPv4Address(match.getNetworkDestination()));
-        entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, Short.toString(match.getTransportSource()));
-        entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, Short.toString(match.getTransportDestination()));
+        
+        if ((fm.getActions() != null) && (fm.getActions().size() > 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, StaticFlowEntries.flowModActionsToString(fm.getActions()));
+        
+        if (match.getInputPort() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Short.toString(match.getInputPort()));
+        
+        if (!Arrays.equals(match.getDataLayerSource(), zeroMac))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, HexString.toHexString(match.getDataLayerSource()));
+
+        if (!Arrays.equals(match.getDataLayerDestination(), zeroMac))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, HexString.toHexString(match.getDataLayerDestination()));
+        
+        if (match.getDataLayerVirtualLan() != -1)
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, Short.toString(match.getDataLayerVirtualLan()));
+        
+        if (match.getDataLayerVirtualLanPriorityCodePoint() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Short.toString(match.getDataLayerVirtualLanPriorityCodePoint()));
+        
+        if (match.getDataLayerType() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, Short.toString(match.getDataLayerType()));
+        
+        if (match.getNetworkTypeOfService() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Short.toString(match.getNetworkTypeOfService()));
+        
+        if (match.getNetworkProtocol() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.getNetworkProtocol()));
+        
+        if (match.getNetworkSource() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, IPv4.fromIPv4Address(match.getNetworkSource()));
+        
+        if (match.getNetworkDestination() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, IPv4.fromIPv4Address(match.getNetworkDestination()));
+        
+        if (match.getTransportSource() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, Short.toString(match.getTransportSource()));
+        
+        if (match.getTransportDestination() != 0)
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, Short.toString(match.getTransportDestination()));
+        
         return entry;
     }
     

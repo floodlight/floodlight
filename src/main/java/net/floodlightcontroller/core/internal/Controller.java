@@ -1394,6 +1394,11 @@ public class Controller implements IFloodlightProviderService,
     @Override
     public boolean injectOfMessage(IOFSwitch sw, OFMessage msg,
                                    FloodlightContext bc) {
+        if (sw == null) {
+            log.info("Failed to inject OFMessage {} onto a null switch", msg);
+            return false;
+        }
+        
         // FIXME: Do we need to be able to inject messages to switches
         // where we're the slave controller (i.e. they're connected but
         // not active)?
