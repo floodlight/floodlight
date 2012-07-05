@@ -21,7 +21,7 @@ public class LinksResource extends ServerResource {
                 for (LinkTuple lt : linkSet) {
                     LinkInfo info = topo.getLinkInfo(lt.getSrc(), true);
                     LinkTuple withType = new LinkTuple(lt.getSrc(), lt.getDst());
-                    withType.setType(LinkInfo.getLinkType(lt, info));
+                    withType.setType(topo.getLinkType(lt, info));
                     links.add(withType);
                 }
             }
