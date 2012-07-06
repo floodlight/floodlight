@@ -174,6 +174,9 @@ public class Controller implements IFloodlightProviderService,
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
     
+    // Start time of the controller
+    protected long systemStartTime;
+    
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -1931,6 +1934,7 @@ public class Controller implements IFloodlightProviderService,
         setConfigParams(configParams);
         this.role = getInitialRole(configParams);
         initVendorMessages();
+        this.systemStartTime = System.currentTimeMillis();
     }
     
     /**
@@ -2100,5 +2104,10 @@ public class Controller implements IFloodlightProviderService,
             handleControllerNodeIPChanges();
         }
     }
+
+	@Override
+	public long getSystemStartTime() {
+		return (this.systemStartTime);
+	}
 
 }
