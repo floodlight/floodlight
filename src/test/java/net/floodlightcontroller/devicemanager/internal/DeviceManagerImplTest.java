@@ -39,14 +39,13 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
-import static net.floodlightcontroller.devicemanager.IDeviceService.DeviceField.*;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
-import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.test.MockEntityClassifier;
+import net.floodlightcontroller.devicemanager.test.MockEntityClassifierMac;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
@@ -222,42 +221,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 .setTotalLength((short) this.testARPReplyPacket_3_Serialized.length);
     }
 
-    static EnumSet<DeviceField> testKeyFields;
-    static {
-        testKeyFields = EnumSet.of(MAC, VLAN, SWITCH, PORT);
-    }
 
-    public static class TestEntityClass implements IEntityClass {
-        @Override
-        public EnumSet<DeviceField> getKeyFields() {
-            return testKeyFields;
-        }
 
-        @Override
-        public String getName() {
-            return "TestEntityClass";
-        }
-    }
 
-    protected static IEntityClass testEC = new TestEntityClass();
-
-    public static class TestEntityClassifier extends DefaultEntityClassifier {
-
-        @Override
-        public IEntityClass classifyEntity(Entity entity) {
-            if (entity.switchDPID >= 10L) {
-                return testEC;
-            }
-            return DefaultEntityClassifier.entityClass;
-        }
-
-        @Override
-        public EnumSet<IDeviceService.DeviceField> getKeyFields() {
-            return testKeyFields;
-        }
-
-    }
-
+    
     @Test
     public void testLastSeen() throws Exception {
         Calendar c = Calendar.getInstance();
@@ -284,7 +251,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 createStrictMock(IDeviceListener.class);
 
         deviceManager.addListener(mockListener);
-        deviceManager.entityClassifier= new TestEntityClassifier();
+        deviceManager.entityClassifier= new MockEntityClassifier();
         deviceManager.startUp(null);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
@@ -337,7 +304,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d2 = deviceManager.learnDeviceByEntity(entity2);
         assertFalse(d1.equals(d2));
         assertNotSame(d1, d2);
-        assertEquals(testEC, d2.entityClass);
+        assertEquals(MockEntityClassifier.testEC, d2.entityClass);
         assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
         assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
 
@@ -350,7 +317,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device d3 = deviceManager.learnDeviceByEntity(entity3);
         assertNotSame(d2, d3);
-        assertEquals(testEC, d3.entityClass);
+        assertEquals(MockEntityClassifier.testEC, d3.entityClass);
         assertArrayEquals(new Integer[] { 1 },
                           d3.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
@@ -1188,5 +1155,103 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testDeviceClassQuery() throws Exception {
         doTestDeviceClassQuery();
+    }
+    
+    @Test
+    public void testFindDevice() {
+        boolean exceptionCaught;
+        deviceManager.entityClassifier= new MockEntityClassifierMac();
+        deviceManager.startUp(null);
+        
+        Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
+        Entity entity2 = new Entity(2L, (short)2, 2, 1L, 2, new Date());
+        
+        Entity entity3 = new Entity(3L, (short)1, 3, 2L, 1, new Date());
+        Entity entity4 = new Entity(4L, (short)2, 4, 2L, 2, new Date());
+        
+        Entity entity5 = new Entity(5L, (short)1, 5, 3L, 1, new Date());
+
+        IDevice d1 = deviceManager.learnDeviceByEntity(entity1);
+        IDevice d2 = deviceManager.learnDeviceByEntity(entity2);
+        IDevice d3 = deviceManager.learnDeviceByEntity(entity3);
+        IDevice d4 = deviceManager.learnDeviceByEntity(entity4);
+        IDevice d5 = deviceManager.learnDeviceByEntity(entity5);
+        
+        // Make sure the entity classifier worked as expected
+        assertEquals(MockEntityClassifierMac.testECMac1, d1.getEntityClass());
+        assertEquals(MockEntityClassifierMac.testECMac1, d2.getEntityClass());
+        assertEquals(MockEntityClassifierMac.testECMac2, d3.getEntityClass());
+        assertEquals(MockEntityClassifierMac.testECMac2, d4.getEntityClass());
+        assertEquals(DefaultEntityClassifier.entityClass,
+                     d5.getEntityClass());
+        
+        // Look up the device using findDevice() which uses only the primary
+        // index
+        assertEquals(d1, deviceManager.findDevice(entity1.getMacAddress(), 
+                                                  entity1.getVlan(),
+                                                  entity1.getIpv4Address(),
+                                                  entity1.getSwitchDPID(),
+                                                  entity1.getSwitchPort()));
+        // port changed. Device won't be found
+        assertEquals(null, deviceManager.findDevice(entity1.getMacAddress(), 
+                                                  entity1.getVlan(),
+                                                  entity1.getIpv4Address(),
+                                                  entity1.getSwitchDPID(),
+                                                  entity1.getSwitchPort()+1));
+        assertEquals(d2, deviceManager.findDeviceByEntity(entity2));
+        assertEquals(d3, deviceManager.findDevice(entity3.getMacAddress(), 
+                                                  entity3.getVlan(),
+                                                  entity3.getIpv4Address(),
+                                                  entity3.getSwitchDPID(),
+                                                  entity3.getSwitchPort()));
+        // switch and port not set. throws exception
+        exceptionCaught = false;
+        try {
+            assertEquals(null, deviceManager.findDevice(entity3.getMacAddress(), 
+                                                        entity3.getVlan(),
+                                                        entity3.getIpv4Address(),
+                                                        null,
+                                                        null));
+        } 
+        catch (IllegalArgumentException e) {
+            exceptionCaught = true;
+        }
+        if (!exceptionCaught)
+            fail("findDevice() did not throw IllegalArgumentException");
+        assertEquals(d4, deviceManager.findDeviceByEntity(entity4));
+        assertEquals(d5, deviceManager.findDevice(entity5.getMacAddress(), 
+                                                  entity5.getVlan(),
+                                                  entity5.getIpv4Address(),
+                                                  entity5.getSwitchDPID(),
+                                                  entity5.getSwitchPort()));
+        // switch and port not set. throws exception (swith/port are key 
+        // fields of IEntityClassifier but not d5.entityClass
+        exceptionCaught = false;
+        try {
+            assertEquals(d5, deviceManager.findDevice(entity5.getMacAddress(), 
+                                                      entity5.getVlan(),
+                                                      entity5.getIpv4Address(),
+                                                      null,
+                                                      null));
+        } 
+        catch (IllegalArgumentException e) {
+            exceptionCaught = true;
+        }
+        if (!exceptionCaught)
+            fail("findDevice() did not throw IllegalArgumentException");
+        
+        // Now look up destination devices
+        assertEquals(d1, deviceManager.findDestDevice(d2, 
+                                                  entity1.getMacAddress(), 
+                                                  entity1.getVlan(),
+                                                  entity1.getIpv4Address()));
+        assertEquals(d1, deviceManager.findDestDevice(d2, 
+                                                  entity1.getMacAddress(), 
+                                                  entity1.getVlan(),
+                                                  null));
+        assertEquals(null, deviceManager.findDestDevice(d2, 
+                                                  entity1.getMacAddress(), 
+                                                  (short) -1,
+                                                  0));
     }
 }

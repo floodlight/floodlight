@@ -156,7 +156,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     /**
      * The entity classifier currently in use
      */
-    IEntityClassifierService entityClassifier;
+    protected IEntityClassifierService entityClassifier;
 
     /**
      * Used to cache state about specific entity classes
@@ -315,30 +315,36 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     @Override
     public IDevice findDevice(long macAddress, Short vlan,
                               Integer ipv4Address, Long switchDPID,
-                              Integer switchPort) {
+                              Integer switchPort)
+                              throws IllegalArgumentException {
         if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
-        return findDeviceByEntity(new Entity(macAddress, vlan,
-                                             ipv4Address, switchDPID,
-                                             switchPort, null));
+        Entity e = new Entity(macAddress, vlan, ipv4Address, switchDPID,
+                              switchPort, null);
+        if (!allKeyFieldsPresent(e, entityClassifier.getKeyFields())) {
+            throw new IllegalArgumentException("Not all key fields specified."
+                      + " Required fields: " + entityClassifier.getKeyFields());
+        }
+        return findDeviceByEntity(e);
     }
 
     @Override
     public IDevice findDestDevice(IDevice source, long macAddress,
-                                  Short vlan, Integer ipv4Address) {
+                                  Short vlan, Integer ipv4Address) 
+                                  throws IllegalArgumentException {
         if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
-        return findDestByEntity(source,
-                                new Entity(macAddress,
-                                           vlan,
-                                           ipv4Address,
-                                           null,
-                                           null,
-                                           null));
+        Entity e = new Entity(macAddress, vlan, ipv4Address,
+                              null, null, null);
+        if (!allKeyFieldsPresent(e, source.getEntityClass().getKeyFields())) {
+            throw new IllegalArgumentException("Not all key fields specified."
+                      + " Required fields: " + entityClassifier.getKeyFields());
+        }
+        return findDestByEntity(source, e);
     }
 
     @Override
@@ -701,13 +707,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         // Find the device matching the destination from the entity
         // classes of the source.
         Entity dstEntity = getDestEntityFromPacket(eth);
+        Device dstDevice = null;
         if (dstEntity != null) {
-            Device dstDevice =
+            dstDevice =
                     findDestByEntity(srcDevice, dstEntity);
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
         }
 
+       if (logger.isTraceEnabled()) {
+           logger.trace("Received PI: {} on switch {}, port {} *** eth={}" +
+           		     " *** srcDev={} *** dstDev={} *** ",
+           		     new Object[] { pi, sw.getStringId(), pi.getInPort(), eth,
+           		                    srcDevice, dstDevice }
+	       );
+       }
         return Command.CONTINUE;
     }
 
@@ -739,6 +753,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return true;
     }
 
+    /**
+     * Get IP address from packet if the packet is either an ARP 
+     * or a DHCP packet
+     * @param eth
+     * @param dlAddr
+     * @return
+     */
     private int getSrcNwAddr(Ethernet eth, long dlAddr) {
         if (eth.getPayload() instanceof ARP) {
             ARP arp = (ARP) eth.getPayload();
@@ -778,24 +799,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if ((dlAddrArr[0] & 0x1) != 0)
             return null;
 
-        boolean learnap = true;
-        if (!isValidAttachmentPoint(swdpid, (short)port)) {
-            // FIXME: If this is an internal port or we otherwise don't want
-            // to learn on these ports.  In the future, we should
-            // handle this case by labeling flows with something that
-            // will give us the entity class.  For now, we'll do our
-            // best assuming attachment point information isn't used
-            // as a key field.
-            learnap = false;
-        }
-
         short vlan = eth.getVlanID();
         int nwSrc = getSrcNwAddr(eth, dlAddr);
         return new Entity(dlAddr,
                           ((vlan >= 0) ? vlan : null),
                           ((nwSrc != 0) ? nwSrc : null),
-                          (learnap ? swdpid : null),
-                          (learnap ? port : null),
+                          swdpid,
+                          port,
                           new Date());
     }
 
@@ -869,7 +879,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           new Date());
     }
     /**
-     * Look up a {@link Device} based on the provided {@link Entity}.
+     * Look up a {@link Device} based on the provided {@link Entity}. We only
+     * look for a exact match in the primary index. This implies that all
+     * key field of the current IEntityClassifier must be present in the 
+     * entity for the lookup to succeed.
      * @param entity the entity to search for
      * @return The {@link Device} object if found
      */
@@ -893,34 +906,26 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                       Entity dstEntity) {
         Device dstDevice = findDeviceByEntity(dstEntity);
 
-        //if (dstDevice == null) {
-        // This could happen because:
-        // 1) no destination known, or a broadcast destination
-        // 2) if we have attachment point key fields since
-        // attachment point information isn't available for
-        // destination devices.
-        // For the second case, we'll need to match up the
-        // destination device with the class of the source
-        // device.
-        /*
-                ArrayList<Device> candidates = new ArrayList<Device>();
-                for (IEntityClass clazz : srcDevice.getEntityClasses()) {
-                    Device c = findDeviceInClassByEntity(clazz, dstEntity);
-                    if (c != null)
-                        candidates.add(c);
-                }
-                if (candidates.size() == 1) {
-                    dstDevice = candidates.get(0);
-                } else if (candidates.size() > 1) {
-                    // ambiguous device.  A higher-order component will
-                    // need to deal with it by assigning priority
-                    // XXX - TODO
-                }
-         */
-        //}
-
+        if (dstDevice == null) {
+            // This could happen because:
+            // 1) no destination known, or a broadcast destination
+            // 2) if we have attachment point key fields since
+            // attachment point information isn't available for
+            // destination devices.
+            // For the second case, we'll need to match up the
+            // destination device with the class of the source
+            // device.
+            ClassState classState = getClassState(source.getEntityClass());
+            if (classState.classIndex == null) {
+                return null;
+            }
+            Long deviceKey = classState.classIndex.findByEntity(dstEntity);
+            if (deviceKey == null) return null;
+            return deviceMap.get(deviceKey);
+        }
         return dstDevice;
     }
+    
 
     /**
      * Look up a {@link Device} within a particular entity class based on
@@ -1134,6 +1139,41 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 }
             }
         }
+    }
+    
+    /**
+     * Check if the entity e has all the keyFields set. Returns false if not
+     * @param e entity to check 
+     * @param keyFields the key fields to check e against
+     * @return
+     */
+    protected boolean allKeyFieldsPresent(Entity e, EnumSet<DeviceField> keyFields) {
+        for (DeviceField f : keyFields) {
+            switch (f) {
+                case MAC:
+                    // MAC address is always present
+                    break;
+                case IPV4:
+                    if (e.ipv4Address == null) return false;
+                    break;
+                case SWITCH:
+                    if (e.switchDPID == null) return false;
+                    break;
+                case PORT:
+                    if (e.switchPort == null) return false;
+                    break;
+                case VLAN:
+                    // FIXME: vlan==null is ambiguous: it can mean: not present
+                    // or untagged
+                    //if (e.vlan == null) return false;
+                    break;
+                default:
+                    // we should never get here. unless somebody extended 
+                    // DeviceFields
+                    throw new IllegalStateException();
+            }
+        }
+        return true;
     }
 
     private LinkedList<DeviceUpdate>

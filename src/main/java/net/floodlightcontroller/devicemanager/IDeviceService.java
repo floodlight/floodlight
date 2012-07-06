@@ -80,10 +80,13 @@ public interface IDeviceService extends IFloodlightService {
      * @param switchPort the switch port
      * @return an {@link IDevice} or null if no device is found.
      * @see IDeviceManager#setEntityClassifier(IEntityClassifierService)
+     * @throws IllegalArgumentException if not all key fields of the
+     * current {@link IEntityClassifierService} are specified.
      */
     public IDevice findDevice(long macAddress, Short vlan,
                               Integer ipv4Address, Long switchDPID,
-                              Integer switchPort);
+                              Integer switchPort)
+                              throws IllegalArgumentException;
     
     /**
      * Get a destination device using entity fields that corresponds with
@@ -99,10 +102,13 @@ public interface IDeviceService extends IFloodlightService {
      * @return an {@link IDevice} or null if no device is found.
      * @see IDeviceService#findDevice(long, Short, Integer, Long, 
      * Integer)
+     * @throws IllegalArgumentException if not all key fields of the
+     * source's {@link IEntityClass} are specified.
      */
     public IDevice findDestDevice(IDevice source,
                                   long macAddress, Short vlan,
-                                  Integer ipv4Address);
+                                  Integer ipv4Address)
+                                  throws IllegalArgumentException;
 
     /**
      * Get an unmodifiable collection view over all devices currently known.

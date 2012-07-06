@@ -7,6 +7,7 @@ import java.util.Set;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
@@ -16,6 +17,18 @@ import net.floodlightcontroller.devicemanager.internal.Entity;
  * @author readams
  */
 public class MockDeviceManager extends DeviceManagerImpl {
+    /**
+     * Set a new IEntityClassifier
+     * Use this as a quick way to use a particular entity classifier in a 
+     * single test without having to setup the full FloodlightModuleContext
+     * again.
+     * @param ecs 
+     */
+    public void setEntityClassifier(IEntityClassifierService ecs) {
+        this.entityClassifier = ecs;
+        this.startUp(null);
+    }
+    
     /**
      * Learn a device using the given characteristics. 
      * @param macAddress the MAC

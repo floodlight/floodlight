@@ -415,6 +415,7 @@ public class Device implements IDevice {
 
     @Override
     public String toString() {
-        return "Device [entities=" + Arrays.toString(entities) + "]";
+        return "Device [entityClass=" + entityClass.getName() +
+                " entities=" + Arrays.toString(entities) + "]";
     }
 }
