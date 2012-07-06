@@ -46,45 +46,51 @@ class RestApi(object):
 usage_desc =  """
 Command descriptions: 
 
-    host <MAC>
-
-    link
-
+    host [debug]
+    link [tunnellinks]
+    port <blocked | broadcast>
     memory
-    
     switch
-
-    switch_stats [port, queue, flow, aggregate, desc, table, features, host]
-    
-    per_switch_stats [DPID] [port, queue, flow, aggregate, desc, table, features, host]
-
-    """
+    switchclusters
+    counter [DPID] <name>
+    switch_stats [DPID] <port | queue | flow | aggregate | desc | table | features | host>
+"""
 
 def lookupPath(cmd):
     path = ''
 
     numargs = len(args.otherargs)
-        
-    if args.cmd == 'switch_stats' and numargs == 1:
-        path = '/wm/core/switch/all/'+args.otherargs[0]+'/json'
-    elif args.cmd == 'per_switch_stats' and numargs == 2:
-        path = '/wm/core/switch/'+args.ortherargs[0]+'/'+args.otherargs[1]+'/json'
+
+    if args.cmd == 'switch_stats':
+        if numargs == 1:
+            path = '/wm/core/switch/all/'+args.otherargs[0]+'/json'
+        elif numargs == 2:
+            path = '/wm/core/switch/'+args.otherargs[0]+'/'+args.otherargs[1]+'/json'
     elif args.cmd == 'switch':
         path = '/wm/core/controller/switches/json'
-    elif args.cmd == 'counter' and numargs == 1:
-        path = '/wm/core/counter/'+args.otherargs[0]+'/json'
-    elif args.cmd == 'switch_counter' and numargs == 2:
-        path = '/wm/core/counter/'+args.otherargs[0]+'/'+otherargs[1]+'/json'
+    elif args.cmd == 'counter':
+        if numargs == 1:
+            path = '/wm/core/counter/'+args.otherargs[0]+'/json'
+        elif numargs == 2:
+            path = '/wm/core/counter/'+args.otherargs[0]+'/'+args.otherargs[1]+'/json'
     elif args.cmd == 'memory':
         path = '/wm/core/memory/json'
     elif args.cmd == 'link':
-        path = '/wm/topology/links/json'
+        if numargs == 0:
+            path = '/wm/topology/links/json'
+        elif numargs == 1:
+            path = '/wm/topology/'+args.otherargs[0]+'/json'
+    elif args.cmd == 'port' and numargs == 1:
+        if args.otherargs[0] == "blocked":
+            path = '/wm/topology/blockedports/json'
+        elif args.otherargs[0] == "broadcast":
+            path = '/wm/topology/broadcastdomainports/json'
     elif args.cmd == 'switchclusters':
         path = '/wm/topology/switchclusters/json'
     elif args.cmd == 'host':
-        if len(args.otherargs) == 0:
-            args.otherargs.append("all")
-        path = '/wm/devicemanager/device/'+args.otherargs[0]+'/json'
+        path = '/wm/device/'
+        if len(args.otherargs) == 1 and args.otherargs[0] == 'debug':
+            path = '/wm/device/debug'
     else:
         print usage_desc
         path = ''
