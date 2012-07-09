@@ -340,9 +340,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address,
                               null, null, null);
-        if (!allKeyFieldsPresent(e, source.getEntityClass().getKeyFields())) {
-            throw new IllegalArgumentException("Not all key fields specified."
-                      + " Required fields: " + entityClassifier.getKeyFields());
+        if (!allKeyFieldsPresent(e, source.getEntityClass().getKeyFields()) ||
+                source == null) {
+            throw new IllegalArgumentException("Not all key fields and/or "
+                    + " no source device specified. Required fields: " + 
+                    entityClassifier.getKeyFields());
         }
         return findDestByEntity(source, e);
     }
@@ -993,6 +995,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
                 device = allocateDevice(deviceKey, entity, entityClass);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("New device created: {} deviceKey={}", 
+                                 device, deviceKey);
+                }
 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);

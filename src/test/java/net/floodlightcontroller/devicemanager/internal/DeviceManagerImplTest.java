@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
@@ -304,6 +305,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d2 = deviceManager.learnDeviceByEntity(entity2);
         assertFalse(d1.equals(d2));
         assertNotSame(d1, d2);
+        assertNotSame(d1.getDeviceKey(), d2.getDeviceKey());
         assertEquals(MockEntityClassifier.testEC, d2.entityClass);
         assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
         assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
@@ -317,6 +319,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device d3 = deviceManager.learnDeviceByEntity(entity3);
         assertNotSame(d2, d3);
+        assertEquals(d2.getDeviceKey(), d3.getDeviceKey());
         assertEquals(MockEntityClassifier.testEC, d3.entityClass);
         assertArrayEquals(new Integer[] { 1 },
                           d3.getIPv4Addresses());
@@ -336,6 +339,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device d4 = deviceManager.learnDeviceByEntity(entity4);
         assertNotSame(d1, d4);
+        assertEquals(d1.getDeviceKey(), d4.getDeviceKey());
         assertEquals(DefaultEntityClassifier.entityClass, d4.entityClass);
         assertArrayEquals(new Integer[] { 1 },
                           d4.getIPv4Addresses());
@@ -378,6 +382,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         replay(mockListener);
 
         Device d7 = deviceManager.learnDeviceByEntity(entity7);
+        assertNotSame(d6, d7);
+        assertEquals(d6.getDeviceKey(), d7.getDeviceKey());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(50L, 3) },
                           d7.getAttachmentPoints());
         assertArrayEquals(new Short[] { (short) 4 },
@@ -1253,5 +1259,94 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   entity1.getMacAddress(), 
                                                   (short) -1,
                                                   0));
+    }
+    
+    @Test
+    public void testGetIPv4Addresses() {
+        // Looks like Date is only 1s granularity
+        
+        Entity e1 = new Entity(1L, (short)1, null, null, null, new Date(2000));
+        Device d1 = deviceManager.learnDeviceByEntity(e1);
+        assertArrayEquals(new Integer[0], d1.getIPv4Addresses());
+        
+        
+        Entity e2 = new Entity(2L, (short)2, 2, null, null, new Date(2000));
+        Device d2 = deviceManager.learnDeviceByEntity(e2);
+        d2 = deviceManager.learnDeviceByEntity(e2);
+        assertArrayEquals(new Integer[] { 2 }, d2.getIPv4Addresses());
+        // More than one entity
+        Entity e2b = new Entity(2L, (short)2, null, 2L, 2, new Date(3000));
+        d2 = deviceManager.learnDeviceByEntity(e2b);
+        assertEquals(2, d2.entities.length);
+        assertArrayEquals(new Integer[] { 2 }, d2.getIPv4Addresses());
+        // and now add an entity with an IP
+        Entity e2c = new Entity(2L, (short)2, 2, 2L, 3, new Date(3000));
+        d2 = deviceManager.learnDeviceByEntity(e2c);
+        assertArrayEquals(new Integer[] { 2 }, d2.getIPv4Addresses());
+        assertEquals(3, d2.entities.length);
+        
+        // Other devices with different IPs shouldn't interfere
+        Entity e3 = new Entity(3L, (short)3, 3, null, null, new Date(4000));
+        Entity e3b = new Entity(3L, (short)3, 3, 3L, 3, new Date(4400));
+        Device d3 = deviceManager.learnDeviceByEntity(e3);
+        d3 = deviceManager.learnDeviceByEntity(e3b);
+        assertArrayEquals(new Integer[] { 2 }, d2.getIPv4Addresses());
+        assertArrayEquals(new Integer[] { 3 }, d3.getIPv4Addresses());
+        
+        // Add another IP to d3
+        Entity e3c = new Entity(3L, (short)3, 33, 3L, 3, new Date(4400));
+        d3 = deviceManager.learnDeviceByEntity(e3c);
+        Integer[] ips = d3.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 3, 33 }, ips);
+        
+        // Add another device that also claims IP2 but is older than e2
+        Entity e4 = new Entity(4L, (short)4, 2, null, null, new Date(1000));
+        Entity e4b = new Entity(4L, (short)4, null, 4L, 4, new Date(1000));
+        Device d4 = deviceManager.learnDeviceByEntity(e4);
+        assertArrayEquals(new Integer[] { 2 }, d2.getIPv4Addresses());
+        assertArrayEquals(new Integer[0],  d4.getIPv4Addresses());
+        // add another entity to d4
+        d4 = deviceManager.learnDeviceByEntity(e4b);
+        assertArrayEquals(new Integer[0], d4.getIPv4Addresses());
+        
+        // Make e4 and e4a newer
+        Entity e4c = new Entity(4L, (short)4, 2, null, null, new Date(5000));
+        Entity e4d = new Entity(4L, (short)4, null, 4L, 5, new Date(5000));
+        d4 = deviceManager.learnDeviceByEntity(e4c);
+        d4 = deviceManager.learnDeviceByEntity(e4d);
+        assertArrayEquals(new Integer[0], d2.getIPv4Addresses());
+        // FIXME: d4 should not return IP4
+        assertArrayEquals(new Integer[] { 2 }, d4.getIPv4Addresses());
+        
+        // Add another newer entity to d2 but with different IP
+        Entity e2d = new Entity(2L, (short)2, 22, 4L, 6, new Date(6000));
+        d2 = deviceManager.learnDeviceByEntity(e2d);
+        assertArrayEquals(new Integer[] { 22 }, d2.getIPv4Addresses());
+        assertArrayEquals(new Integer[] { 2 }, d4.getIPv4Addresses());
+
+        // new IP for d2,d4 but with same timestamp. Both devices get the IP
+        Entity e2e = new Entity(2L, (short)2, 42, 2L, 4, new Date(7000));
+        d2 = deviceManager.learnDeviceByEntity(e2e);
+        ips= d2.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 22, 42 }, ips);
+        Entity e4e = new Entity(4L, (short)4, 42, 4L, 7, new Date(7000));
+        d4 = deviceManager.learnDeviceByEntity(e4e);
+        ips= d4.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 2, 42 }, ips);
+        
+        // add a couple more IPs
+        Entity e2f = new Entity(2L, (short)2, 4242, 2L, 5, new Date(8000));
+        d2 = deviceManager.learnDeviceByEntity(e2f);
+        ips= d2.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 22, 42, 4242 }, ips);
+        Entity e4f = new Entity(4L, (short)4, 4242, 4L, 8, new Date(9000));
+        d4 = deviceManager.learnDeviceByEntity(e4f);
+        ips= d4.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 2, 42, 4242 }, ips);
     }
 }

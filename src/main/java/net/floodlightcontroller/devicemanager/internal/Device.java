@@ -27,7 +27,6 @@ import java.util.TreeSet;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
-
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -163,14 +162,6 @@ public class Device implements IDevice {
         // XXX - TODO we can cache this result.  Let's find out if this
         // is really a performance bottleneck first though.
 
-        if (entities.length == 1) {
-            if (entities[0].getIpv4Address() != null) {
-                return new Integer[]{ entities[0].getIpv4Address() };
-            } else {
-                return new Integer[0];
-            }
-        }
-        
         TreeSet<Integer> vals = new TreeSet<Integer>();
         for (Entity e : entities) {
             if (e.getIpv4Address() == null) continue;
@@ -182,6 +173,8 @@ public class Device implements IDevice {
                     deviceManager.queryClassByEntity(entityClass, ipv4Fields, e);
             while (devices.hasNext()) {
                 Device d = devices.next();
+                if (deviceKey.equals(d.getDeviceKey())) 
+                    continue;
                 for (Entity se : d.entities) {
                     if (se.getIpv4Address() != null &&
                             se.getIpv4Address().equals(e.getIpv4Address()) &&
@@ -195,8 +188,6 @@ public class Device implements IDevice {
                 if (!validIP)
                     break;
             }
-            if (!validIP)
-                break;
             
             if (validIP)
                 vals.add(e.getIpv4Address());
