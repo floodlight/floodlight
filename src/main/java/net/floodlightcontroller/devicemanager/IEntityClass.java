@@ -28,7 +28,7 @@ import net.floodlightcontroller.devicemanager.internal.Device;
  * class. A set of entities are considered to be the same device if and only 
  * if they belong to the same entity class and they match on all key fields 
  * for that entity class. A field is effectively wildcarded by not including 
- * it in the list of key fields returned by {@link IEntityClassifier} and/or 
+ * it in the list of key fields returned by {@link IEntityClassifierService} and/or 
  * {@link IEntityClass}.
  * 
  * Note that if you're not using static objects, you'll need to override
@@ -49,5 +49,11 @@ public interface IEntityClass {
      * be wildcarded.  May be null to indicate that all fields are key fields.
      */
     EnumSet<DeviceField> getKeyFields();
+    
+    /**
+     * Returns a user-friendly, unique name for this EntityClass
+     * @return the name of the entity class
+     */
+    String getName();
 }
 

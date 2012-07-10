@@ -40,6 +40,8 @@ public class DeviceSerializer extends JsonSerializer<Device> {
             JsonProcessingException {
         jGen.writeStartObject();
         
+        jGen.writeStringField("entityClass", device.getEntityClass().getName());
+        
         jGen.writeArrayFieldStart("mac");
         jGen.writeString(HexString.toHexString(device.getMACAddress(), 6));
         jGen.writeEndArray();
@@ -50,9 +52,9 @@ public class DeviceSerializer extends JsonSerializer<Device> {
         jGen.writeEndArray();
 
         jGen.writeArrayFieldStart("vlan");
-        for (Short ip : device.getVlanId())
-            if (ip >= 0)
-                jGen.writeNumber(ip);
+        for (Short vlan : device.getVlanId())
+            if (vlan >= 0)
+                jGen.writeNumber(vlan);
         jGen.writeEndArray();
         jGen.writeArrayFieldStart("attachmentPoint");
         for (SwitchPort ap : device.getAttachmentPoints(true)) {
