@@ -67,10 +67,14 @@ public interface IDeviceService extends IFloodlightService {
     public IDevice getDevice(Long deviceKey);
     
     /**
-     * Search for a device exactly matching the provided device fields.
+     * Search for a device exactly matching the provided device fields. This 
+     * is the same lookup process that is used for packet_in processing and 
+     * device learning. Thus, findDevice() can be used to match flow entries
+     * from switches to devices. 
      * Only the key fields as defined by the {@link IEntityClassifierService} will
-     * be important in this search. All key fields MUST be supplied, otherwise
-     * use queryDevices().
+     * be important in this search. All key fields MUST be supplied. 
+     * 
+     *{@link queryDevices()} might be more appropriate!
      * 
      * @param macAddress The MAC address
      * @param vlan the VLAN. Null means no VLAN and is valid even if VLAN is a 

@@ -1171,6 +1171,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
         Entity entity2 = new Entity(2L, (short)2, 2, 1L, 2, new Date());
+        Entity entity2b = new Entity(22L, (short)2, 2, 1L, 2, new Date());
         
         Entity entity3 = new Entity(3L, (short)1, 3, 2L, 1, new Date());
         Entity entity4 = new Entity(4L, (short)2, 4, 2L, 2, new Date());
@@ -1198,13 +1199,25 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   entity1.getIpv4Address(),
                                                   entity1.getSwitchDPID(),
                                                   entity1.getSwitchPort()));
-        // port changed. Device won't be found
-        assertEquals(null, deviceManager.findDevice(entity1.getMacAddress(), 
+        // port changed. Device will be found through class index
+        assertEquals(d1, deviceManager.findDevice(entity1.getMacAddress(), 
                                                   entity1.getVlan(),
                                                   entity1.getIpv4Address(),
                                                   entity1.getSwitchDPID(),
                                                   entity1.getSwitchPort()+1));
+        // VLAN changed. No device matches
+        assertEquals(null, deviceManager.findDevice(entity1.getMacAddress(), 
+                                                  (short)42,
+                                                  entity1.getIpv4Address(),
+                                                  entity1.getSwitchDPID(),
+                                                  entity1.getSwitchPort()));
+        assertEquals(null, deviceManager.findDevice(entity1.getMacAddress(), 
+                                                  null,
+                                                  entity1.getIpv4Address(),
+                                                  entity1.getSwitchDPID(),
+                                                  entity1.getSwitchPort()));
         assertEquals(d2, deviceManager.findDeviceByEntity(entity2));
+        assertEquals(null, deviceManager.findDeviceByEntity(entity2b));
         assertEquals(d3, deviceManager.findDevice(entity3.getMacAddress(), 
                                                   entity3.getVlan(),
                                                   entity3.getIpv4Address(),

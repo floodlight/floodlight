@@ -340,8 +340,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address,
                               null, null, null);
-        if (!allKeyFieldsPresent(e, source.getEntityClass().getKeyFields()) ||
-                source == null) {
+        if (source == null || 
+                !allKeyFieldsPresent(e, source.getEntityClass().getKeyFields())) {
             throw new IllegalArgumentException("Not all key fields and/or "
                     + " no source device specified. Required fields: " + 
                     entityClassifier.getKeyFields());
@@ -881,15 +881,33 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           new Date());
     }
     /**
-     * Look up a {@link Device} based on the provided {@link Entity}. We only
-     * look for a exact match in the primary index. This implies that all
-     * key field of the current IEntityClassifier must be present in the 
-     * entity for the lookup to succeed.
+     * Look up a {@link Device} based on the provided {@link Entity}. We first
+     * check the primary index. If we do not find an entry there we classify
+     * the device into its IEntityClass and query the classIndex. 
+     * This implies that all key field of the current IEntityClassifier must 
+     * be present in the entity for the lookup to succeed!
      * @param entity the entity to search for
      * @return The {@link Device} object if found
      */
     protected Device findDeviceByEntity(Entity entity) {
-        Long deviceKey =  primaryIndex.findByEntity(entity);
+        // Look up the fully-qualified entity to see if it already
+        // exists in the primary entity index.
+        Long deviceKey = primaryIndex.findByEntity(entity);
+        IEntityClass entityClass = null;
+
+        if (deviceKey == null) {
+            // If the entity does not exist in the primary entity index,
+            // use the entity classifier for find the classes for the
+            // entity. Look up the entity in the returned class'
+            // class entity index.
+            entityClass = entityClassifier.classifyEntity(entity);
+            ClassState classState = getClassState(entityClass);
+
+            if (classState.classIndex != null) {
+                deviceKey =
+                        classState.classIndex.findByEntity(entity);
+            }
+        }
         if (deviceKey == null) return null;
         return deviceMap.get(deviceKey);
     }
@@ -906,9 +924,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected Device findDestByEntity(IDevice source,
                                       Entity dstEntity) {
-        Device dstDevice = findDeviceByEntity(dstEntity);
-
-        if (dstDevice == null) {
+        
+        // Look  up the fully-qualified entity to see if it 
+        // exists in the primary entity index
+        Long deviceKey = primaryIndex.findByEntity(dstEntity);
+        
+        if (deviceKey == null) {
             // This could happen because:
             // 1) no destination known, or a broadcast destination
             // 2) if we have attachment point key fields since
@@ -921,11 +942,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (classState.classIndex == null) {
                 return null;
             }
-            Long deviceKey = classState.classIndex.findByEntity(dstEntity);
-            if (deviceKey == null) return null;
-            return deviceMap.get(deviceKey);
+            deviceKey = classState.classIndex.findByEntity(dstEntity);
         }
-        return dstDevice;
+        if (deviceKey == null) return null;
+        return deviceMap.get(deviceKey);
     }
     
 
