@@ -36,19 +36,18 @@ public class MockDevice extends Device {
     public MockDevice(DeviceManagerImpl deviceManager,
                       Long deviceKey,
                       Entity entity, 
-                      Collection<IEntityClass> entityClasses)  {
-        super(deviceManager, deviceKey, entity, entityClasses);
+                      IEntityClass entityClass)  {
+        super(deviceManager, deviceKey, entity, entityClass);
     }
 
-    public MockDevice(Device device, Entity newEntity,
-                      Collection<IEntityClass> entityClasses) {
-        super(device, newEntity, entityClasses);
+    public MockDevice(Device device, Entity newEntity) {
+        super(device, newEntity);
     }
     
     public MockDevice(DeviceManagerImpl deviceManager, Long deviceKey,
                       Collection<Entity> entities,
-                      IEntityClass[] entityClasses) {
-        super(deviceManager, deviceKey, entities, entityClasses);
+                      IEntityClass entityClass) {
+        super(deviceManager, deviceKey, entities, entityClass);
     }
 
     @Override
