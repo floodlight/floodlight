@@ -456,9 +456,9 @@ public class IPv4 extends BasePacket {
 
     /**
      * Accepts an IPv4 address of the form xxx.xxx.xxx.xxx, ie 192.168.0.1 and
-     * returns the corresponding byte array
-     * @param ipAddress
-     * @return
+     * returns the corresponding byte array.
+     * @param ipAddress The IP address in the form xx.xxx.xxx.xxx.
+     * @return The IP address separated into bytes
      */
     public static byte[] toIPv4AddressBytes(String ipAddress) {
         String[] octets = ipAddress.split("\\.");
@@ -471,6 +471,20 @@ public class IPv4 extends BasePacket {
             result[i] = Integer.valueOf(octets[i]).byteValue();
         }
         return result;
+    }
+    
+    /**
+     * Accepts an IPv4 address in the form of an integer and
+     * returns the corresponding byte array.
+     * @param ipAddress The IP address as an integer.
+     * @return The IP address separated into bytes.
+     */
+    public static byte[] toIPv4AddressBytes(int ipAddress) {
+    	return new byte[] {
+                (byte)(ipAddress >>> 24),
+                (byte)(ipAddress >>> 16),
+                (byte)(ipAddress >>> 8),
+                (byte)ipAddress};
     }
 
     /* (non-Javadoc)
