@@ -22,6 +22,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.test.PacketFactory;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
+import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -88,16 +90,19 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         FlowReconcileManager frm = new FlowReconcileManager();
         MockThreadPoolService tps = new MockThreadPoolService();
         vns = new VirtualNetworkFilter();
+        DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         fmc.addService(IDeviceService.class, deviceService);
         fmc.addService(IFlowReconcileService.class, frm);
         fmc.addService(IThreadPoolService.class, tps);
+        fmc.addService(IEntityClassifierService.class, entityClassifier);
         tps.init(fmc);
         frm.init(fmc);
         deviceService.init(fmc);
         restApi.init(fmc);
         getMockFloodlightProvider().init(fmc);
+        entityClassifier.init(fmc);
         tps.startUp(fmc);
         vns.init(fmc);
         frm.startUp(fmc);
@@ -105,6 +110,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         restApi.startUp(fmc);
         getMockFloodlightProvider().startUp(fmc);
         vns.startUp(fmc);
+        entityClassifier.startUp(fmc);
         
         // Mock switches
         //fastWilcards mocked as this constant

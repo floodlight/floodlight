@@ -92,15 +92,6 @@ public class LinkInfo {
     public void setDstPortState(int dstPortState) {
         this.dstPortState = dstPortState;
     }
-    
-    public static ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info) {
-        if (info.getUnicastValidTime() != null) {
-            return ILinkDiscovery.LinkType.DIRECT_LINK;
-        } else if (info.getMulticastValidTime()  != null) {
-            return ILinkDiscovery.LinkType.MULTIHOP_LINK;
-        }
-        return ILinkDiscovery.LinkType.INVALID_LINK;
-    }
 
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()

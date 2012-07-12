@@ -19,6 +19,9 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.Date;
 
+import net.floodlightcontroller.devicemanager.internal.Entity;
+
+
 /**
  * Represents an independent device on the network.  A device consists of a 
  * set of entities, and all the information known about a given device comes
@@ -80,10 +83,15 @@ public interface IDevice {
     public Date getLastSeen();
     
     /**
-     * Get the entity classes for the device.
-     * @return the entity classes
-     * @see IEntityClassifier
-     * @see IDeviceService#setEntityClassifier(IEntityClassifier)
+     * Get the entity class for the device.
+     * @return the entity class
+     * @see IEntityClassifierService
      */
-    public IEntityClass[] getEntityClasses();
+    public IEntityClass getEntityClass();
+    
+    /**
+     * Get the list of entities for this device
+     * @return
+     */
+    public Entity[] getEntities();
 }

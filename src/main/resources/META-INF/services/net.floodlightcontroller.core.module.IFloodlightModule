@@ -18,3 +18,4 @@ net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter
+net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier

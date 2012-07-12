@@ -17,22 +17,31 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
-import net.floodlightcontroller.devicemanager.IEntityClassifier;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 
 /**
  * This is a default entity classifier that simply classifies all
  * entities into a fixed entity class, with key fields of MAC and VLAN.
  * @author readams
  */
-public class DefaultEntityClassifier implements IEntityClassifier {
+public class DefaultEntityClassifier implements
+        IEntityClassifierService,
+        IFloodlightModule 
+{
     /**
      * A default fixed entity class
      */
@@ -40,6 +49,11 @@ public class DefaultEntityClassifier implements IEntityClassifier {
         @Override
         public EnumSet<IDeviceService.DeviceField> getKeyFields() {
             return keyFields;
+        }
+
+        @Override
+        public String getName() {
+            return "DefaultEntityClass";
         }
     }
     
@@ -49,20 +63,15 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     }
     protected static IEntityClass entityClass = new DefaultEntityClass();
     
-    public static Collection<IEntityClass> entityClasses;
-    static {
-        entityClasses = Arrays.asList(entityClass);
+    @Override
+    public IEntityClass classifyEntity(Entity entity) {
+        return entityClass;
     }
 
     @Override
-    public Collection<IEntityClass> classifyEntity(Entity entity) {
-        return entityClasses;
-    }
-
-    @Override
-    public Collection<IEntityClass> reclassifyEntity(IDevice curDevice,
+    public IEntityClass reclassifyEntity(IDevice curDevice,
                                                      Entity entity) {
-        return entityClasses;
+        return entityClass;
     }
 
     @Override
@@ -74,5 +83,42 @@ public class DefaultEntityClassifier implements IEntityClassifier {
     @Override
     public EnumSet<DeviceField> getKeyFields() {
         return keyFields;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IEntityClassifierService.class);
+        return l;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+        new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IEntityClassifierService.class, this);
+        return m;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>>
+            getModuleDependencies() {
+        // No dependencies
+        return null;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+                                                 throws FloodlightModuleException {
+        // no-op
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // no-op
     }
 }

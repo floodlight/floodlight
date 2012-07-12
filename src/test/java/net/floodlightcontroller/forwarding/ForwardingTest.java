@@ -38,11 +38,13 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -103,6 +105,7 @@ public class ForwardingTest extends FloodlightTestCase {
         flowReconcileMgr = new FlowReconcileManager();
         routingEngine = createMock(IRoutingService.class);
         topology = createMock(ITopologyService.class);
+        DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
         
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -114,15 +117,18 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(ICounterStoreService.class, new CounterStore());
         fmc.addService(IDeviceService.class, deviceManager);
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
+        fmc.addService(IEntityClassifierService.class, entityClassifier);
 
         threadPool.init(fmc);
         forwarding.init(fmc);
         deviceManager.init(fmc);
         flowReconcileMgr.init(fmc);
+        entityClassifier.init(fmc);
         threadPool.startUp(fmc);
         deviceManager.startUp(fmc);
         forwarding.startUp(fmc);
         flowReconcileMgr.startUp(fmc);
+        entityClassifier.startUp(fmc);
         
         // Mock switches
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);

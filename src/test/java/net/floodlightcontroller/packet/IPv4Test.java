@@ -35,8 +35,13 @@ import org.junit.Test;
 public class IPv4Test {
     @Test
     public void testToIPv4Address() {
-        int expected = 0xc0a80001;
-        assertEquals(expected, IPv4.toIPv4Address("192.168.0.1"));
+        int intIp = 0xc0a80001;
+        String stringIp = "192.168.0.1";
+        byte[] byteIp = new byte[] {(byte)192, (byte)168, (byte)0, (byte)1};
+        assertEquals(intIp, IPv4.toIPv4Address(stringIp));
+        assertEquals(intIp, IPv4.toIPv4Address(byteIp));
+        assertTrue(Arrays.equals(byteIp, IPv4.toIPv4AddressBytes(intIp)));
+        assertTrue(Arrays.equals(byteIp, IPv4.toIPv4AddressBytes(stringIp)));
     }
 
     @Test

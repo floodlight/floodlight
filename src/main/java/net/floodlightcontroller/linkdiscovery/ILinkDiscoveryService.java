@@ -44,7 +44,15 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @return linkTuple
      */
     public LinkInfo getLinkInfo(SwitchPortTuple idPort, boolean isSrcPort);
-    
+
+    /**
+     * Get the link type of the link tuple based on link info.
+     * @param linkTuple
+     * @param linkInfo
+     * @return linkType
+     */
+    public ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info);
+
     /**
      * Retrieves a map of all known link connections between OpenFlow switches
      * and the associated info (valid time, port states) for the link.
