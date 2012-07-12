@@ -82,14 +82,14 @@
     <path id="classpath-cobertura">
         <fileset dir="${lib}">
             <patternset refid="lib-cobertura"/>
-	</fileset>
+    </fileset>
     </path>
 
     <patternset id="lib-test">
         <include name="junit-4.8.2.jar"/>
         <include name="org.easymock-3.1.jar"/>
-		<include name="objenesis-1.2.jar"/>  <!-- required by easymock to mock classes -->
-		<include name="cglib-nodep-2.2.2.jar"/>    <!-- required by easymock to mock classes -->
+        <include name="objenesis-1.2.jar"/>  <!-- required by easymock to mock classes -->
+        <include name="cglib-nodep-2.2.2.jar"/>    <!-- required by easymock to mock classes -->
     </patternset>
     <path id="classpath-test">
         <fileset dir="${lib}">
@@ -109,21 +109,21 @@
 
     <target name="compile" depends="init">
         <javac includeAntRuntime="false" 
-	       classpathref="classpath" 
-	       debug="true" 
-	       srcdir="${source}:${thrift.out.dir}"
-	       destdir="${build}">
+           classpathref="classpath" 
+           debug="true" 
+           srcdir="${source}:${thrift.out.dir}"
+           destdir="${build}">
         </javac>
     </target>
 
     <target name="compile-tests" depends="compile-test"/>
     <target name="compile-test" depends="compile">
-    	<fileset dir="${resources}"/>
+        <fileset dir="${resources}"/>
         <javac includeAntRuntime="false" debug="true" 
-	       srcdir="${source-test}"
-	       classpath="${build}"
-	       classpathref="classpath-test"
-	       destdir="${build-test}"/>
+           srcdir="${source-test}"
+           classpath="${build}"
+           classpathref="classpath-test"
+           destdir="${build-test}"/>
     </target>
 
     <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
@@ -139,6 +139,15 @@
         <exec executable="thrift" dir="${basedir}" failonerror="true">
             <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
         </exec>
+        <!-- Get rid of annoying warnings in thrift java: at annotations -->
+        <echo message="Adding @SuppressWarning annotations"/>
+        <replaceregexp byline="true">
+            <regexp pattern="^public "/>
+            <substitution expression='@SuppressWarnings("all") public '/>
+            <fileset id="thrift.output.files" dir="${thrift.out.dir}/..">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
     </target>
 
     <target name="clean">
@@ -156,10 +165,10 @@
     <target name="tests" depends="test"/>
     <target name="test" depends="compile-test">
         <junit fork="true" forkmode="once"
-	       failureproperty="junit.failure"
-	       printsummary="on">
-  	    <sysproperty key="net.sourceforge.cobertura.datafile"
-			 file="${target}/cobertura.ser" />
+           failureproperty="junit.failure"
+           printsummary="on">
+        <sysproperty key="net.sourceforge.cobertura.datafile"
+             file="${target}/cobertura.ser" />
             <classpath>
                 <pathelement location="${build-coverage}"/>
                 <pathelement location="${build}"/>
@@ -185,22 +194,22 @@
     </target>
     <target name="instrument" depends="compile,compile-test,clean-instrument">
       <cobertura-instrument datafile="${target}/cobertura.ser"
-			    todir="${build-coverage}"
-			    classpathref="classpath-cobertura">
-	<fileset dir="${build}">
-	  <include name="**/*.class"/>
-	</fileset>
+                todir="${build-coverage}"
+                classpathref="classpath-cobertura">
+    <fileset dir="${build}">
+      <include name="**/*.class"/>
+    </fileset>
       </cobertura-instrument>
     </target>
     <target name="coverage-report">
         <cobertura-report format="html"
-			  datafile="${target}/cobertura.ser"
-			  destdir="${coverage-output}"
-			  srcdir="${source}"/>
+              datafile="${target}/cobertura.ser"
+              destdir="${coverage-output}"
+              srcdir="${source}"/>
         <cobertura-report format="xml"
-			  datafile="${target}/cobertura.ser"
-			  destdir="${coverage-output}"
-			  srcdir="${source}"/>
+              datafile="${target}/cobertura.ser"
+              destdir="${coverage-output}"
+              srcdir="${source}"/>
     </target>
     <target name="coverage" depends="instrument,test,coverage-report"/>
 
@@ -211,7 +220,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
-        	<fileset dir="${resources}"/>
+            <fileset dir="${resources}"/>
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
@@ -224,7 +233,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build-test}"/>
-        	<fileset dir="${resources}"/>
+            <fileset dir="${resources}"/>
             <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
                 <patternset refid="lib-cobertura"/>
