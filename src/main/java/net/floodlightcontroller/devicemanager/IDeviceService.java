@@ -67,27 +67,36 @@ public interface IDeviceService extends IFloodlightService {
     public IDevice getDevice(Long deviceKey);
     
     /**
-     * Search for a device using exactly matching the provided device fields.
-     * Only the key fields as defined by the {@link IEntityClassifier} will
-     * be important in this search.
+     * Search for a device exactly matching the provided device fields. This 
+     * is the same lookup process that is used for packet_in processing and 
+     * device learning. Thus, findDevice() can be used to match flow entries
+     * from switches to devices. 
+     * Only the key fields as defined by the {@link IEntityClassifierService} will
+     * be important in this search. All key fields MUST be supplied. 
+     * 
+     *{@link queryDevices()} might be more appropriate!
      * 
      * @param macAddress The MAC address
-     * @param vlan the VLAN
+     * @param vlan the VLAN. Null means no VLAN and is valid even if VLAN is a 
+     *        key field.
      * @param ipv4Address the ipv4 address
      * @param switchDPID the switch DPID
      * @param switchPort the switch port
      * @return an {@link IDevice} or null if no device is found.
-     * @see IDeviceManager#setEntityClassifier(IEntityClassifier)
+     * @see IDeviceManager#setEntityClassifier(IEntityClassifierService)
+     * @throws IllegalArgumentException if not all key fields of the
+     * current {@link IEntityClassifierService} are specified.
      */
     public IDevice findDevice(long macAddress, Short vlan,
                               Integer ipv4Address, Long switchDPID,
-                              Integer switchPort);
+                              Integer switchPort)
+                              throws IllegalArgumentException;
     
     /**
      * Get a destination device using entity fields that corresponds with
      * the given source device.  The source device is important since
      * there could be ambiguity in the destination device without the
-     * attachment point information.
+     * attachment point information. 
      * 
      * @param source the source device.  The returned destination will be
      * in the same entity class as the source.
@@ -97,10 +106,13 @@ public interface IDeviceService extends IFloodlightService {
      * @return an {@link IDevice} or null if no device is found.
      * @see IDeviceService#findDevice(long, Short, Integer, Long, 
      * Integer)
+     * @throws IllegalArgumentException if not all key fields of the
+     * source's {@link IEntityClass} are specified.
      */
     public IDevice findDestDevice(IDevice source,
                                   long macAddress, Short vlan,
-                                  Integer ipv4Address);
+                                  Integer ipv4Address)
+                                  throws IllegalArgumentException;
 
     /**
      * Get an unmodifiable collection view over all devices currently known.
@@ -177,16 +189,7 @@ public interface IDeviceService extends IFloodlightService {
      */
     public void addListener(IDeviceListener listener);
     
-    /**
-     * Set the entity classifier for the device manager to use to
-     * differentiate devices on the network.  If no classifier is set,
-     * the {@link DefaultEntityClassifer} will be used.  This should be 
-     * registered in the application initialization phase before startup.
-     * 
-     * @param classifier the classifier to set.
-     */
-    public void setEntityClassifier(IEntityClassifier classifier);
-
+    
     /**
      * Flush and/or reclassify all entities in a class
      *

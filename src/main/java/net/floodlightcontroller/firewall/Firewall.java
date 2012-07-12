@@ -2,7 +2,9 @@ package net.floodlightcontroller.firewall;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.openflow.protocol.OFMatch;
@@ -42,6 +44,7 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 	protected IRoutingService routingEngine;
 	protected static Logger logger;
 	protected ArrayList<FirewallRule> rules;
+	protected boolean enabled;
 	
 	
 	@Override
@@ -57,8 +60,7 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		// TODO Auto-generated method stub
-		return false;
+		return (type.equals(OFType.PACKET_IN) && name.equals("forwarding"));
 	}
 
 	@Override
@@ -87,30 +89,41 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 	    rules = new ArrayList<FirewallRule>();
 	    logger = LoggerFactory.getLogger(Firewall.class);
+	    enabled = true;
 	    
 	    // insert rule to allow ICMP traffic
 	    FirewallRule rule = new FirewallRule();
 	    rule.proto_type = "ICMP";
+	    rule.priority = 1;
 	    this.rules.add(rule);
 	    // insert rule to allow TCP traffic destined to port 80
 	    rule = new FirewallRule();
 	    rule.proto_type = "TCP";
-	    rule.proto_dstport = "80";
+	    rule.proto_dstport = 80;
+	    rule.priority = 2;
 	    this.rules.add(rule);
 	    // insert rule to allow TCP traffic originating from port 80
 	    rule = new FirewallRule();
 	    rule.proto_type = "TCP";
-	    rule.proto_srcport = "80";
+	    rule.proto_srcport = 80;
+	    rule.priority = 3;
 	    this.rules.add(rule);
+
+	    // now sort the rules
+	    Collections.sort(this.rules);
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
-		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+		if (this.enabled == true) {
+			floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+		}
 	}
 
 	@Override
 	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+		if (this.enabled == false) return Command.CONTINUE;
+		
 		switch (msg.getType()) {
 	        case PACKET_IN:
 	            IRoutingDecision decision = null;
@@ -127,6 +140,28 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
         return Command.CONTINUE;
 	}
 	
+	protected void enableFirewall() {
+		// check if the firewall module is not listening for events, if not, then start listening (enable it)
+		List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
+		if (listeners != null && listeners.contains(this) == false) {
+			// enable firewall, i.e. listen for packet-in events
+			floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+		}
+		// TODO - re-insert flow entries corresponding to firewall rules
+		this.enabled = true;
+	}
+	
+	protected void disableFirewall() {
+		// check if the firewall module is listening for events, if yes, then remove it from listeners (disable it)
+		List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
+		if (listeners != null && listeners.contains(this) == true) {
+			// disable firewall, i.e. stop listening for packet-in events
+			floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
+		}
+		// TODO - remove all flow entries corresponding to firewall rules
+		this.enabled = false;
+	}
+	
 	protected FirewallRule matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		FirewallRule matched_rule = null;
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -135,23 +170,22 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		TCP pkt_tcp = null;
 		UDP pkt_udp = null;
 		ICMP pkt_icmp = null;
-		int proto_src = -1;
-		int proto_dst = -1;
-		
-		if (!(pkt instanceof IPv4)) {
-			return null;
-		}
-		pkt_ip = (IPv4) pkt;
-		if (pkt_ip.getPayload() instanceof TCP) {
-			pkt_tcp = (TCP)pkt_ip.getPayload();
-			proto_src = pkt_tcp.getSourcePort() & 0xffff;
-			proto_dst = pkt_tcp.getDestinationPort() & 0xffff;
-		} else if (pkt_ip.getPayload() instanceof UDP) {
-			pkt_udp = (UDP)pkt_ip.getPayload();
-			proto_src = pkt_udp.getSourcePort() & 0xffff;
-			proto_dst = pkt_udp.getDestinationPort() & 0xffff;
-		} else if (pkt_ip.getPayload() instanceof ICMP) {
-			pkt_icmp = (ICMP)pkt_ip.getPayload();
+		short proto_src = 0;
+		short proto_dst = 0;
+
+		if (pkt instanceof IPv4) {
+			pkt_ip = (IPv4) pkt;
+			if (pkt_ip.getPayload() instanceof TCP) {
+				pkt_tcp = (TCP)pkt_ip.getPayload();
+				proto_src = pkt_tcp.getSourcePort();
+				proto_dst = pkt_tcp.getDestinationPort();
+			} else if (pkt_ip.getPayload() instanceof UDP) {
+				pkt_udp = (UDP)pkt_ip.getPayload();
+				proto_src = pkt_udp.getSourcePort();
+				proto_dst = pkt_udp.getDestinationPort();
+			} else if (pkt_ip.getPayload() instanceof ICMP) {
+				pkt_icmp = (ICMP)pkt_ip.getPayload();
+			}
 		}
 		
 		Iterator<FirewallRule> iter = this.rules.iterator();
@@ -165,57 +199,48 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 			// now perform matching
 			
 			// switchID matches?
-			if (rule.switchid.length() > 0 && rule.switchid.equalsIgnoreCase(sw.getStringId()) == false) continue;
+			if (rule.switchid != -1 && rule.switchid != sw.getId()) continue;
 			
 			// inport matches?
-			if (rule.src_inport != -1 && rule.src_inport != (int)pi.getInPort()) continue;
+			if (rule.src_inport != -1 && rule.src_inport != pi.getInPort()) continue;
+			logger.info("switch inport matched");
 			
 			// mac address (src and dst) match?
-			if (rule.src_mac != "ANY" && rule.src_mac.equalsIgnoreCase(eth.getSourceMAC().toString()) == false) continue;
-			if (rule.dst_mac != "ANY" && rule.dst_mac.equalsIgnoreCase(eth.getDestinationMAC().toString()) == false) continue;
+			if (rule.src_mac != -1 && rule.src_mac != eth.getSourceMAC().toLong()) continue;
+			if (rule.dst_mac != -1 && rule.dst_mac != eth.getDestinationMAC().toLong()) continue;
+			logger.info("mac addresses matched");
+			
+			logger.info("Protocol: {}", pkt.getClass().getName());
 			
 			// protocol type matches?
-			if (!rule.proto_type.equals("ANY")) {
+			if (rule.proto_type.equals("ANY") == false) {
 				if (rule.proto_type.equals("TCP") && pkt_tcp == null) continue;
 				if (rule.proto_type.equals("UDP") && pkt_udp == null) continue;
 				if (rule.proto_type.equals("ICMP") && pkt_icmp == null) continue;
+			} else {
+				// if we have a non-IPv4 packet and packet matches SWITCH, INPORT and MAC criteria (if specified)
+				// and the rule has "ANY" specified on protocol, then allow this packet/flow through firewall
+				if (pkt_ip == null) {
+					return rule;
+				}
 			}
+			logger.info("protocol matched");
+			
+			// protocol specific fields
 			
 			// ip addresses (src and dst) match?
-			/*
-			if (rule.src_ip.equals("ANY") == false) {
-				String[] ipparts = rule.src_ip.split("/");
-				String rule_ipaddr = ipparts[0].trim();
-				int rule_iprng = 32;
-				if (ipparts.length == 2) {
-					try {
-						rule_iprng = Integer.parseInt(ipparts[1].trim());
-					} catch (Exception exp) {
-						rule_iprng = 32;
-					}
-				}
-				int rule_ipint = IPv4.toIPv4Address(rule_ipaddr);
-				int pkt_ipint = pkt_ip.getSourceAddress();
-				if (rule_iprng < 32) {
-					rule_ipint = rule_ipint >> rule_iprng;
-					pkt_ipint = pkt_ipint >> rule_iprng;
-					rule_ipint = rule_ipint << rule_iprng;
-					pkt_ipint = pkt_ipint << rule_iprng;
-				}
-				//byte[] rule_ipbytes = ByteBuffer.allocate(4).putInt(rule_ipint).array();
-				//byte[] pkt_ipbytes = ByteBuffer.allocate(4).putInt(pkt_ip.getSourceAddress()).array();
-				//for (int i = 0; i < Math.floor(rule_iprng/8); i++) {
-				//	//
-				//}
-			}
-			*/
+			if (rule.src_ip.equals("ANY") == false && this.matchIPAddresses(rule.src_ip, pkt_ip.getSourceAddress()) == false) continue;
+			if (rule.dst_ip.equals("ANY") == false && this.matchIPAddresses(rule.dst_ip, pkt_ip.getDestinationAddress()) == false) continue;
+			logger.info("ip address matched");
 			
+			// TCP/UDP source and destination ports match?
 			if (pkt_tcp != null || pkt_udp != null) {
-				int val = Integer.parseInt(rule.proto_srcport);
-				if (val != -1 && val != proto_src) continue;
-				val = Integer.parseInt(rule.proto_dstport);
-				if (val != -1 && val != proto_dst) continue;
+				// does the source port match?
+				if (rule.proto_srcport != 0 && rule.proto_srcport != proto_src) continue;
+				// does the destination port match?
+				if (rule.proto_dstport != 0 && rule.proto_dstport != proto_dst) continue;
 			}
+			logger.info("tcp/udp ports matched");
 			
 			// match found - i.e. no "continue" statement above got executed
 			matched_rule = rule;
@@ -225,22 +250,79 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		return matched_rule;
 	}
 	
+	protected boolean matchIPAddresses(String ruleIPOrPrefix, int packetAddress) {
+		boolean matched = true;
+		
+		// as ruleIPOrPrefix can also be a prefix rather than an absolute address
+		// split it over "/" to get the bit range
+		String[] ipparts = ruleIPOrPrefix.split("/");
+		String rule_ipaddr = ipparts[0].trim();
+		int rule_iprng = 0;
+		if (ipparts.length == 2) {
+			try {
+				rule_iprng = 32 - Integer.parseInt(ipparts[1].trim());
+			} catch (Exception exp) {
+				rule_iprng = 0;
+			}
+		}
+		// convert ip address string to int for matching
+		int rule_ipint = IPv4.toIPv4Address(rule_ipaddr);
+		int pkt_ipint = packetAddress;
+		// if there's a subnet range (bits to be wildcarded > 0)
+		if (rule_iprng > 0) {
+			// right shift bits to remove rule_iprng of LSB that are to be wildcarded
+			rule_ipint = rule_ipint >> rule_iprng;
+			pkt_ipint = pkt_ipint >> rule_iprng;
+			// now left shift to return to normal range, except that the rule_iprng number of LSB
+			// are now zeroed
+			rule_ipint = rule_ipint << rule_iprng;
+			pkt_ipint = pkt_ipint << rule_iprng;
+		}
+		// check if we have a match
+		if (rule_ipint != pkt_ipint) matched = false;
+		
+		return matched;
+	}
+	
+	/*
+	protected boolean matchPortRange(String rulePortRange, int packetPort) {
+		boolean matched = true;
+		int lower = -1, upper = -1;
+		
+		// is it a range? if yes, get the lower and upper bound
+		if (rulePortRange.indexOf("-") < 0) {
+			lower = upper = -1;
+			String[] prt_parts = rulePortRange.split("-");
+			try {
+				lower = Integer.parseInt(prt_parts[0].trim());
+			} catch (Exception exp) {
+				lower = -1;
+			}
+			upper = lower;
+			if (prt_parts.length == 2) {
+				try {
+					upper = Integer.parseInt(prt_parts[1].trim());
+				} catch (Exception exp) {
+					upper = lower;
+				}
+			}
+		} else {
+			lower = Integer.parseInt(rulePortRange);
+			upper = lower;
+		}
+		// does the port fall in the specified port range?
+		if (packetPort < lower || packetPort > upper) matched = false;
+		
+		return matched;
+	}
+	*/
+	
 	public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		
-		IPacket pkt = (IPacket) eth.getPayload();
-		if (!(pkt instanceof IPv4)) {
-			// Not an IP packet, Firewall only works for IP packets, so simply ignore
-			logger.info("not an IP packet, etherType {}, let it go!", eth.getEtherType() & 0xffff);
+		if (eth.getEtherType() != Ethernet.TYPE_IPv4) {
 			return Command.CONTINUE;
 		}
-		/*
-		IPv4 ipkt = (IPv4)pkt;
-		int intaddr = ipkt.getSourceAddress();
-		int intaddr2 = intaddr >> 8;
-		intaddr2 = intaddr2 << 8;
-		logger.info("IP1 {}, IP2 {}", intaddr, intaddr2);
-		*/
 		
 		// check if we have a matching rule for this packet/flow
 		// and no decision is taken yet
@@ -248,16 +330,21 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 			FirewallRule rule = this.matchWithRule(sw, pi, cntx);
 			if (rule == null) {
 				decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
-				decision.setWildcards(OFMatch.OFPFW_ALL
+				int wildcards = OFMatch.OFPFW_ALL
 						& ~OFMatch.OFPFW_DL_SRC
 	                    & ~OFMatch.OFPFW_IN_PORT
 	                    & ~OFMatch.OFPFW_DL_VLAN
 	                    & ~OFMatch.OFPFW_DL_DST
-	                    & ~OFMatch.OFPFW_DL_TYPE
-	                    & ~OFMatch.OFPFW_NW_PROTO
-	                    & ~OFMatch.OFPFW_TP_SRC
-	                    & ~OFMatch.OFPFW_NW_SRC_ALL
-	                    & ~OFMatch.OFPFW_NW_DST_ALL);
+	                    & ~OFMatch.OFPFW_DL_TYPE;
+				if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
+					wildcards = wildcards
+						& ~OFMatch.OFPFW_NW_PROTO
+		                & ~OFMatch.OFPFW_TP_SRC
+		                & ~OFMatch.OFPFW_TP_DST
+		                & ~OFMatch.OFPFW_NW_SRC_ALL
+		                & ~OFMatch.OFPFW_NW_DST_ALL;
+				}
+				decision.setWildcards(wildcards);
 				decision.addToContext(cntx);
 				logger.info("no firewall rule found to allow this packet/flow, blocking packet/flow");
 			} else {

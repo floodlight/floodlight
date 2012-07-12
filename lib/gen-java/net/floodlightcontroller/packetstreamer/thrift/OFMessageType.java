@@ -14,7 +14,7 @@ import org.apache.thrift.TEnum;
  * OFMessage type
  * 
  */
-public enum OFMessageType implements org.apache.thrift.TEnum {
+@SuppressWarnings("all") public enum OFMessageType implements org.apache.thrift.TEnum {
   HELLO(0),
   ERROR(1),
   ECHO_REQUEST(2),

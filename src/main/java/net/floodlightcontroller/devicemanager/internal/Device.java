@@ -27,7 +27,6 @@ import java.util.TreeSet;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
-
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -46,7 +45,7 @@ public class Device implements IDevice {
     protected DeviceManagerImpl deviceManager;
 
     protected Entity[] entities;
-    protected IEntityClass[] entityClasses;
+    protected IEntityClass entityClass;
 
     protected String macAddressString;
 
@@ -59,19 +58,18 @@ public class Device implements IDevice {
      * @param deviceManager the device manager for this device
      * @param deviceKey the unique identifier for this device object
      * @param entity the initial entity for the device
-     * @param entityClasses the entity classes associated with the entity
+     * @param entityClass the entity classes associated with the entity
      */
     public Device(DeviceManagerImpl deviceManager,
                   Long deviceKey,
                   Entity entity,
-                  Collection<IEntityClass> entityClasses) {
+                  IEntityClass entityClass) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = new Entity[] {entity};
         this.macAddressString =
                 HexString.toHexString(entity.getMacAddress(), 6);
-        this.entityClasses =
-                entityClasses.toArray(new IEntityClass[entityClasses.size()]);
+        this.entityClass = entityClass;
         Arrays.sort(this.entities);
     }
 
@@ -80,18 +78,18 @@ public class Device implements IDevice {
      * @param deviceManager the device manager for this device
      * @param deviceKey the unique identifier for this device object
      * @param entities the initial entities for the device
-     * @param entityClasses the entity classes associated with the entity
+     * @param entityClass the entity class associated with the entities
      */
     public Device(DeviceManagerImpl deviceManager,
                   Long deviceKey,
                   Collection<Entity> entities,
-                  IEntityClass[] entityClasses) {
+                  IEntityClass entityClass) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = entities.toArray(new Entity[entities.size()]);
         this.macAddressString =
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
-        this.entityClasses = entityClasses;
+        this.entityClass = entityClass;
         Arrays.sort(this.entities);
     }
 
@@ -99,12 +97,11 @@ public class Device implements IDevice {
      * Construct a new device consisting of the entities from the old device
      * plus an additional entity
      * @param device the old device object
-     * @param newEntity the entity to add
-     * @param entityClasses the entity classes associated with the entities
+     * @param newEntity the entity to add. newEntity must be have the same
+     *        entity class as device
      */
     public Device(Device device,
-                  Entity newEntity,
-                  Collection<IEntityClass> entityClasses) {
+                  Entity newEntity) {
         this.deviceManager = device.deviceManager;
         this.deviceKey = device.deviceKey;
         this.entities = Arrays.<Entity>copyOf(device.entities,
@@ -115,15 +112,7 @@ public class Device implements IDevice {
         this.macAddressString =
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
 
-        if (entityClasses != null &&
-                entityClasses.size() > device.entityClasses.length) {
-            IEntityClass[] classes = new IEntityClass[entityClasses.size()];
-            this.entityClasses =
-                    entityClasses.toArray(classes);
-        } else {
-            // same actual array, not a copy
-            this.entityClasses = device.entityClasses;
-        }
+        this.entityClass = device.entityClass;
     }
 
     // *******
@@ -173,43 +162,33 @@ public class Device implements IDevice {
         // XXX - TODO we can cache this result.  Let's find out if this
         // is really a performance bottleneck first though.
 
-        if (entities.length == 1) {
-            if (entities[0].getIpv4Address() != null) {
-                return new Integer[]{ entities[0].getIpv4Address() };
-            } else {
-                return new Integer[0];
-            }
-        }
-
         TreeSet<Integer> vals = new TreeSet<Integer>();
         for (Entity e : entities) {
             if (e.getIpv4Address() == null) continue;
-
+            
             // We have an IP address only if among the devices within the class
             // we have the most recent entity with that IP.
             boolean validIP = true;
-            for (IEntityClass clazz : entityClasses) {
-                Iterator<Device> devices =
-                        deviceManager.queryClassByEntity(clazz, ipv4Fields, e);
-                while (devices.hasNext()) {
-                    Device d = devices.next();
-                    for (Entity se : d.entities) {
-                        if (se.ipv4Address != null &&
-                                se.ipv4Address.equals(e.ipv4Address) &&
-                                se.lastSeenTimestamp != null &&
-                                0 < se.lastSeenTimestamp.
-                                compareTo(e.lastSeenTimestamp)) {
-                            validIP = false;
-                            break;
-                        }
-                    }
-                    if (!validIP)
+            Iterator<Device> devices =
+                    deviceManager.queryClassByEntity(entityClass, ipv4Fields, e);
+            while (devices.hasNext()) {
+                Device d = devices.next();
+                if (deviceKey.equals(d.getDeviceKey())) 
+                    continue;
+                for (Entity se : d.entities) {
+                    if (se.getIpv4Address() != null &&
+                            se.getIpv4Address().equals(e.getIpv4Address()) &&
+                            se.getLastSeenTimestamp() != null &&
+                            0 < se.getLastSeenTimestamp().
+                            compareTo(e.getLastSeenTimestamp())) {
+                        validIP = false;
                         break;
+                    }
                 }
                 if (!validIP)
                     break;
             }
-
+            
             if (validIP)
                 vals.add(e.getIpv4Address());
         }
@@ -268,7 +247,7 @@ public class Device implements IDevice {
                     )
                 continue;
             long curCluster =
-                    topology.getL2DomainId(cur.switchDPID);
+                    topology.getL2DomainId(cur.getSwitchDPID());
             if (prevCluster != curCluster) {
                 prev = null;
                 latestLastSeen = 0;
@@ -379,10 +358,12 @@ public class Device implements IDevice {
     // Getters/Setters
     // ***************
 
-    public IEntityClass[] getEntityClasses() {
-        return entityClasses;
+    @Override
+    public IEntityClass getEntityClass() {
+        return entityClass;
     }
 
+    @Override
     public Entity[] getEntities() {
         return entities;
     }
@@ -425,6 +406,7 @@ public class Device implements IDevice {
 
     @Override
     public String toString() {
-        return "Device [entities=" + Arrays.toString(entities) + "]";
+        return "Device [entityClass=" + entityClass.getName() +
+                " entities=" + Arrays.toString(entities) + "]";
     }
 }

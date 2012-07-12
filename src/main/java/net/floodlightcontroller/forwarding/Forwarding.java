@@ -103,7 +103,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         
         fm.setCookie(cookie)
           .setHardTimeout((short) 0)
-          .setIdleTimeout((short) 0)
+          .setIdleTimeout((short) 5)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
           .setMatch(match)
           .setActions(actions)

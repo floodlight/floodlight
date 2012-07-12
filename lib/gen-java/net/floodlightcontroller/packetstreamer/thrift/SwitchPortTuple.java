@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A struct that defines switch port tuple
  */
-public class SwitchPortTuple implements org.apache.thrift.TBase<SwitchPortTuple, SwitchPortTuple._Fields>, java.io.Serializable, Cloneable {
+@SuppressWarnings("all") public class SwitchPortTuple implements org.apache.thrift.TBase<SwitchPortTuple, SwitchPortTuple._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("SwitchPortTuple");
 
   private static final org.apache.thrift.protocol.TField DPID_FIELD_DESC = new org.apache.thrift.protocol.TField("dpid", org.apache.thrift.protocol.TType.I64, (short)1);
