@@ -20,7 +20,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Message implements org.apache.thrift.TBase<Message, Message._Fields>, java.io.Serializable, Cloneable {
+@SuppressWarnings("all") public class Message implements org.apache.thrift.TBase<Message, Message._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Message");
 
   private static final org.apache.thrift.protocol.TField SESSION_IDS_FIELD_DESC = new org.apache.thrift.protocol.TField("sessionIDs", org.apache.thrift.protocol.TType.LIST, (short)1);
