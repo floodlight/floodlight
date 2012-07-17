@@ -527,8 +527,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (srcEntity == null)
                 return Command.STOP;
 
-            // Learn/lookup device information
-            Device srcDevice = learnDeviceByEntity(srcEntity);
+            // Find the device by source entity
+            Device srcDevice = findDeviceByEntity(srcEntity);
             if (srcDevice == null)
                 return Command.STOP;
 

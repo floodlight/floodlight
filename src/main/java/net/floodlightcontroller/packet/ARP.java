@@ -31,6 +31,8 @@ public class ARP extends BasePacket {
 
     public static short OP_REQUEST = 0x1;
     public static short OP_REPLY = 0x2;
+    public static short OP_RARP_REQUEST = 0x3;
+    public static short OP_RARP_REPLY = 0x4;
 
     protected short hardwareType;
     protected short protocolType;
