@@ -193,7 +193,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
         this.testARPReplyPacket_3_Serialized = testARPReplyPacket_3.serialize();
-
+        
         // Build the PacketIn
         this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.
                 getOFMessageFactory().getMessage(OFType.PACKET_IN))
@@ -391,7 +391,19 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         assertEquals(4, deviceManager.getAllDevices().size());
         verify(mockListener);
+        
+        
+        reset(mockListener);
+        replay(mockListener);
+        
+        deviceManager.entityClassifier = new MockEntityClassifierMac();
+        deviceManager.startUp(null);
+        Entity entityNoClass = new Entity(5L, (short)1, 5, -1L, 1, new Date());
+        assertEquals(null, deviceManager.learnDeviceByEntity(entityNoClass));
+        
+        verify(mockListener);
     }
+    
 
     @Test
     public void testAttachmentPointLearning() throws Exception {
@@ -1177,6 +1189,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity4 = new Entity(4L, (short)2, 4, 2L, 2, new Date());
         
         Entity entity5 = new Entity(5L, (short)1, 5, 3L, 1, new Date());
+        
 
         IDevice d1 = deviceManager.learnDeviceByEntity(entity1);
         IDevice d2 = deviceManager.learnDeviceByEntity(entity2);
@@ -1258,6 +1271,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
         if (!exceptionCaught)
             fail("findDevice() did not throw IllegalArgumentException");
+        
+        
+        Entity entityNoClass = new Entity(5L, (short)1, 5, -1L, 1, new Date());
+        assertEquals(null, deviceManager.findDeviceByEntity(entityNoClass));
+        
         
         // Now look up destination devices
         assertEquals(d1, deviceManager.findDestDevice(d2, 
