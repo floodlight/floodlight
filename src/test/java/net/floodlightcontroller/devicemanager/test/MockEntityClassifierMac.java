@@ -44,6 +44,8 @@ public class MockEntityClassifierMac extends DefaultEntityClassifier {
             return testECMac1;
         } else if (entity.getSwitchDPID() == 2L) {
             return testECMac2;
+        } else if (entity.getSwitchDPID() == -1L) {
+            return null;
         }
         return DefaultEntityClassifier.entityClass;
     }
