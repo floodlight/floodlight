@@ -373,12 +373,23 @@ public class Controller
         @Override
         public void channelDisconnected(ChannelHandlerContext ctx,
                                         ChannelStateEvent e) throws Exception {
-            log.info("Disconnected switch {}", this);
-            if (sw != null && state.hsState == HandshakeState.READY) {
-                if (sw.getRole() != Role.SLAVE)
-                    removeSwitch(sw);
-                connectedSwitches.remove(sw.getId());
-                sw.setConnected(false);
+            log.info("Disconnecting switch {}", this);
+            if (sw == null) {
+            	log.info("Disconnecting a null switch");
+            } else {
+	            if (state.hsState == HandshakeState.READY) {
+	                if (sw.getRole() != Role.SLAVE) {
+	                    removeSwitch(sw);
+	                } else {
+	                	log.info("DB is not updated for disconnected slave-role switch, {}",
+	                			HexString.toHexString(sw.getId()));
+	                }
+	                connectedSwitches.remove(sw.getId());
+	                sw.setConnected(false);
+	            } else {
+	            	log.info("Disconnecting a switch without successfully complete handshake, {}", 
+	            			HexString.toHexString(sw.getId()));
+	            }
             }
         }
 
@@ -564,6 +575,7 @@ public class Controller
             // We need to keep track of all of the switches that are connected
             // to the controller, in any role, so that we can later send the role
             // request messages when the controller role changes.
+            log.info("Switch {} is added to activeSwitch list", HexString.toHexString(sw.getId()));
             connectedSwitches.put(sw.getId(), sw);
             
             // Send a role request if role support is enabled for the controller
@@ -605,7 +617,7 @@ public class Controller
                     connectedSwitches.remove(sw.getId());
                     sw.getChannel().close();
                 } else {
-                    log.info("Switch handshake successful: {}", sw);
+                    log.info("Switch handshake successful: {}, role {}", sw, sw.getRole());
                     
                     if (sw.getRole() != Role.SLAVE) {
                         // Only add the switch to the active switch list if we're not in the slave role.
@@ -675,7 +687,7 @@ public class Controller
                     }
                 } else if (!isActive) {
                     addSwitch(sw);
-                    log.debug("Added master switch {} to active switch list",
+                    log.info("Added master switch {} to active switch list",
                              HexString.toHexString(sw.getId()));
                 }
             }
@@ -880,7 +892,7 @@ public class Controller
             sw.setPort(port);
             if (updateStorage)
                 updatePortInfo(sw, port);
-            log.debug("Port #{} modified for {}", portNumber, sw);
+            log.debug("Port #{} modified for {}, reason {}", new Object[] {portNumber, sw, port});
         } else if (m.getReason() == (byte)OFPortReason.OFPPR_ADD.ordinal()) {
             sw.setPort(port);
             if (updateStorage)
@@ -1143,6 +1155,7 @@ public class Controller
     protected void addSwitch(IOFSwitch sw) {
         // TODO: is it safe to modify the HashMap without holding 
         // the old switch's lock?
+    	log.info("Add switch {}", HexString.toHexString(sw.getId()));
         OFSwitchImpl oldSw = (OFSwitchImpl) this.activeSwitches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
@@ -1206,7 +1219,7 @@ public class Controller
         // pending messages
         log.debug("removeSwitch: {}", sw);
         if (!this.activeSwitches.remove(sw.getId(), sw) || !sw.isConnected()) {
-            log.debug("Not removing switch {}; already removed", sw);
+            log.info("Not removing switch {}; already removed", sw);
             return;
         }
             
@@ -1483,6 +1496,7 @@ public class Controller
         switchInfo.put(SWITCH_ACTIONS, actions);
         switchInfo.put(SWITCH_ACTIVE, Boolean.TRUE);
         
+        log.info("Update DB with activeSW {}", HexString.toHexString(sw.getId()));
         // Update the switch
         storageSource.updateRowAsync(SWITCH_TABLE_NAME, switchInfo);
         
@@ -1493,7 +1507,7 @@ public class Controller
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
-        log.debug("Update DB with inactiveSW {}", sw);
+        log.info("Update DB with inactiveSW {}", HexString.toHexString(sw.getId()));
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();

@@ -1013,6 +1013,9 @@ public class DeviceManagerImpl implements IDeviceManagerService, IOFMessageListe
 
             if ((vlan == null && srcDevice.getVlanId() != null) ||
                     (vlan != null && !vlan.equals(srcDevice.getVlanId()))) {
+            	log.info("Device {} vlan changed from {} to {} pktin at {}",
+            			new Object[] {srcDevice.getDlAddrString(), srcDevice.getVlanId(),
+            			vlan, switchPort});
                 updateDeviceVlan = true;
             }
 
