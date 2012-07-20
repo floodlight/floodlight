@@ -76,7 +76,7 @@ public interface IFloodlightProviderService extends IFloodlightService {
     public Map<OFType, List<IOFMessageListener>> getListeners();
 
     /**
-     * Returns a list of all actively connected OpenFlow switches. This doesn't
+     * Returns an unmodifiable map of all actively connected OpenFlow switches. This doesn't
      * contain switches that are connected but the controller's in the slave role.
      * @return the set of actively connected switches
      */
