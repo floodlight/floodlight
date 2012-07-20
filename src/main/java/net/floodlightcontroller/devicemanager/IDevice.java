@@ -19,8 +19,6 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.Date;
 
-import net.floodlightcontroller.devicemanager.internal.Entity;
-
 
 /**
  * Represents an independent device on the network.  A device consists of a 
@@ -89,9 +87,4 @@ public interface IDevice {
      */
     public IEntityClass getEntityClass();
     
-    /**
-     * Get the list of entities for this device
-     * @return
-     */
-    public Entity[] getEntities();
 }

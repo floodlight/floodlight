@@ -363,7 +363,6 @@ public class Device implements IDevice {
         return entityClass;
     }
 
-    @Override
     public Entity[] getEntities() {
         return entities;
     }
