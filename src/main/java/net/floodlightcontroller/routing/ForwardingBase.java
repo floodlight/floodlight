@@ -488,40 +488,6 @@ public abstract class ForwardingBase implements
 
     }
 
-    /**
-     * @param floodlightProvider the floodlightProvider to set
-     */
-    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
-    }
-
-    /**
-     * @param routingEngine the routingEngine to set
-     */
-    public void setRoutingEngine(IRoutingService routingEngine) {
-        this.routingEngine = routingEngine;
-    }
-
-    /**
-     * @param deviceManager
-     *            the deviceManager to set
-     */
-    public void setDeviceManager(IDeviceService deviceManager) {
-        this.deviceManager = deviceManager;
-    }
-
-    /**
-     * @param topology
-     *            the topology to set
-     */
-    public void setTopology(ITopologyService topology) {
-        this.topology = topology;
-    }
-
-    public void setCounterStore(ICounterStoreService counterStore) {
-        this.counterStore = counterStore;
-    }
-
     @Override
     public void deviceAdded(IDevice device) {
         // NOOP
