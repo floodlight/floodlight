@@ -365,22 +365,27 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get nw_tos
+     * OFMatch stores the ToS bits as top 6-bits, so right shift by 2 bits
+     * before returning the value
      * 
-     * @return
+     * @return : 6-bit DSCP value (0-63)
      */
     public byte getNetworkTypeOfService() {
-        return this.networkTypeOfService;
+        return (byte) (this.networkTypeOfService >> 2);
     }
 
     /**
      * Set nw_tos
+     * OFMatch stores the ToS bits as top 6-bits, so left shift by 2 bits
+     * before storing the value
      * 
-     * @param networkTypeOfService
+     * @param networkTypeOfService : 6-bit DSCP value (0-63)
      */
     public OFMatch setNetworkTypeOfService(byte networkTypeOfService) {
-        this.networkTypeOfService = networkTypeOfService;
+        this.networkTypeOfService = (byte)(networkTypeOfService << 2);
         return this;
     }
+    
 
     /**
      * Get tp_dst
@@ -760,7 +765,7 @@ public class OFMatch implements Cloneable, Serializable {
         if ((wildcards & OFPFW_NW_PROTO) == 0)
             str += "," + STR_NW_PROTO + "=" + this.networkProtocol;
         if ((wildcards & OFPFW_NW_TOS) == 0)
-            str += "," + STR_NW_TOS + "=" + this.networkTypeOfService;
+            str += "," + STR_NW_TOS + "=" + this.getNetworkTypeOfService();
 
         // l4
         if ((wildcards & OFPFW_TP_DST) == 0)
@@ -881,7 +886,7 @@ public class OFMatch implements Cloneable, Serializable {
                 this.networkProtocol = U8.t(Short.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_NW_PROTO;
             } else if (values[0].equals(STR_NW_TOS)) {
-                this.networkTypeOfService = U8.t(Short.valueOf(values[1]));
+                this.setNetworkTypeOfService(U8.t(Short.valueOf(values[1])));
                 this.wildcards &= ~OFPFW_NW_TOS;
             } else if (values[0].equals(STR_TP_DST)) {
                 this.transportDestination = U16.t(Integer.valueOf(values[1]));
