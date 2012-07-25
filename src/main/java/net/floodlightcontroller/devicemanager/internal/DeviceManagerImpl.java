@@ -49,6 +49,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -86,7 +87,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener,
-IStorageSourceListener, IFloodlightModule,
+IStorageSourceListener, IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -461,12 +462,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         deviceListeners.add(listener);
     }
 
-    @Override
-    public void flushEntityCache(IEntityClass entityClass,
-                                 boolean reclassify) {
-        // TODO Auto-generated method stub
-    }
-
     // *************
     // IInfoProvider
     // *************
@@ -643,7 +638,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
-                cleanupEntities();
+                cleanupEntities(false);
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
             }
@@ -1280,9 +1275,40 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
+     * Flush and/or reclassify all entities in a class
+     *
+     * @param entityClass the class to flush.  If null, flush all classes
+     * @param reclassify if true, begin an asynchronous task to reclassify the
+     * flushed entities
+     */
+    private void flushEntityCache (IEntityClass entityClass,
+                                   boolean reclassify) {
+        if (reclassify) return; // TODO
+        
+        if (entityClass == null) {
+            cleanupEntities(true);
+        } else {
+            // TODO
+        }
+    }
+
+    // *********************
+    // IEntityClassListener
+    // *********************
+    @Override
+    public void entityClassChanged (Set<String> entityClassNames) {
+
+        /*
+         * Flush the entire device entity cache for now.
+         */
+        flushEntityCache(null, false);
+        return;
+    }
+
+    /**
      * Clean up expired entities/devices
      */
-    protected void cleanupEntities() {
+    protected void cleanupEntities(boolean forceExpiry) {
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
         Date cutoff = c.getTime();
@@ -1302,8 +1328,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 toRemove.clear();
                 toKeep.clear();
                 for (Entity e : d.getEntities()) {
-                    if (e.getLastSeenTimestamp() != null &&
-                            0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
+                    if (forceExpiry ||
+                            (e.getLastSeenTimestamp() != null &&
+                             0 > e.getLastSeenTimestamp().compareTo(cutoff))) {
                         // individual entity needs to be removed
                         toRemove.add(e);
                     } else {
