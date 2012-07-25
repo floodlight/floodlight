@@ -1158,17 +1158,17 @@ public class ControllerTest extends FloodlightTestCase {
      */
     @Test
     public void testRemoveActiveSwitch() {
-    	IOFSwitch sw = EasyMock.createNiceMock(IOFSwitch.class);
-    	boolean exceptionThrown = false;
-    	expect(sw.getId()).andReturn(1L).anyTimes();
-    	replay(sw);
-    	getController().activeSwitches.put(sw.getId(), sw);
-    	try {
-    		getController().getSwitches().remove(1L);
-    	} catch (UnsupportedOperationException e) {
-    		exceptionThrown = true;
-    	}
-    	assertTrue(exceptionThrown);
-    	verify(sw);
+        IOFSwitch sw = EasyMock.createNiceMock(IOFSwitch.class);
+        boolean exceptionThrown = false;
+        expect(sw.getId()).andReturn(1L).anyTimes();
+        replay(sw);
+        getController().activeSwitches.put(sw.getId(), sw);
+        try {
+            getController().getSwitches().remove(1L);
+        } catch (UnsupportedOperationException e) {
+            exceptionThrown = true;
+        }
+        assertTrue(exceptionThrown);
+        verify(sw);
     }
 }
