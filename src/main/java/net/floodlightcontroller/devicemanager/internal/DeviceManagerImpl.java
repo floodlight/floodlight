@@ -786,7 +786,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param pi the original packetin
      * @return the entity from the packet
      */
-    private Entity getSourceEntityFromPacket(Ethernet eth,
+    protected Entity getSourceEntityFromPacket(Ethernet eth,
                                              long swdpid,
                                              int port) {
         byte[] dlAddrArr = eth.getSourceMACAddress();
@@ -811,7 +811,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param eth
      * @return
      */
-    private Entity getDestEntityFromPacket(Ethernet eth) {
+    protected Entity getDestEntityFromPacket(Ethernet eth) {
         byte[] dlAddrArr = eth.getDestinationMACAddress();
         long dlAddr = Ethernet.toLong(dlAddrArr);
         short vlan = eth.getVlanID();
