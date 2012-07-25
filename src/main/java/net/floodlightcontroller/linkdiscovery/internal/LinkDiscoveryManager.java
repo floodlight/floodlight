@@ -522,7 +522,7 @@ public class LinkDiscoveryManager
 
         OFPhysicalPort physicalPort = remoteSwitch.getPort(remotePort);
         int srcPortState = (physicalPort != null) ? physicalPort.getState() : 0;
-        physicalPort = sw.getPort(remotePort);
+        physicalPort = sw.getPort(pi.getInPort());
         int dstPortState = (physicalPort != null) ? physicalPort.getState() : 0;
 
         // Store the time of update to this link, and push it out to routingEngine
