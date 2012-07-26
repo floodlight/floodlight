@@ -17,10 +17,7 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Collection;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -34,18 +31,10 @@ import org.restlet.resource.ServerResource;
  */
 public class ControllerSwitchesResource extends ServerResource {
     @Get("json")
-    public List<Map<String, String>> retrieve() {
-        List<Map<String, String>> switchIds = new ArrayList<Map<String, String>>();
+    public Collection<IOFSwitch> retrieve() {
         IFloodlightProviderService floodlightProvider = 
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
-        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
-
-        for (IOFSwitch s: switches.values()) {
-            Map<String, String> m = new HashMap<String, String>();
-            m.put("dpid", s.getStringId());
-            switchIds.add(m);
-        }
-        return switchIds;
+        return floodlightProvider.getSwitches().values();
     }
 }

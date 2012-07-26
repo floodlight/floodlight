@@ -18,8 +18,10 @@
 package net.floodlightcontroller.core.internal;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -37,11 +39,14 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.types.MacVlanPair;
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -82,8 +87,6 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
     protected Map<Short, OFPhysicalPort> ports;
-    protected Long switchClusterId;
-    protected Map<MacVlanPair,Short> macVlanToPortMap;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected boolean connected;
@@ -132,7 +135,6 @@ public class OFSwitchImpl implements IOFSwitch {
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
         this.ports = new ConcurrentHashMap<Short, OFPhysicalPort>();
-        this.switchClusterId = null;
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
@@ -241,27 +243,20 @@ public class OFSwitchImpl implements IOFSwitch {
         channel.close();
     }
 
+    @JsonIgnore
     public OFFeaturesReply getFeaturesReply() {
         return this.featuresReply;
     }
     
-    public void setSwitchClusterId(Long id) {
-        this.switchClusterId = id;
-    }
-    
-    public Long getSwitchClusterId() {
-        return switchClusterId;
-    }
-
     public synchronized void setFeaturesReply(OFFeaturesReply featuresReply) {
         this.featuresReply = featuresReply;
         for (OFPhysicalPort port : featuresReply.getPorts()) {
             ports.put(port.getPortNumber(), port);
         }
-        this.switchClusterId = featuresReply.getDatapathId();
         this.stringId = HexString.toHexString(featuresReply.getDatapathId());
     }
 
+    @JsonIgnore
     public synchronized List<OFPhysicalPort> getEnabledPorts() {
         List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
         for (OFPhysicalPort port : ports.values()) {
@@ -280,8 +275,14 @@ public class OFSwitchImpl implements IOFSwitch {
         ports.put(port.getPortNumber(), port);
     }
     
+    @JsonIgnore
     public Map<Short, OFPhysicalPort> getPorts() {
         return ports;
+    }
+    
+    @JsonProperty("ports")
+    public Collection<OFPhysicalPort> getPortCollection() {
+        return ports.values();
     }
 
     public synchronized void deletePort(short portNumber) {
@@ -306,12 +307,15 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     @Override
+    @JsonSerialize(using=DPIDSerializer.class)
+    @JsonProperty("dpid")
     public long getId() {
         if (this.featuresReply == null)
             throw new RuntimeException("Features reply has not yet been set");
         return this.featuresReply.getDatapathId();
     }
 
+    @JsonIgnore
     @Override
     public String getStringId() {
         return stringId;
@@ -335,6 +339,7 @@ public class OFSwitchImpl implements IOFSwitch {
         return connectedSince;
     }
 
+    @JsonIgnore
     @Override
     public int getNextTransactionId() {
         return this.transactionIdSource.incrementAndGet();
@@ -409,6 +414,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.threadPool = tp;
     }
 
+    @JsonIgnore
     @Override
     public synchronized boolean isConnected() {
         return connected;
@@ -424,6 +430,7 @@ public class OFSwitchImpl implements IOFSwitch {
         return role;
     }
     
+    @JsonIgnore
     @Override
     public boolean isActive() {
         return (role != Role.SLAVE);
@@ -469,6 +476,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    @JsonIgnore
     public Map<Short, Long> getPortBroadcastHits() {
     	return this.portBroadcastCacheHitMap;
     }
@@ -516,6 +524,15 @@ public class OFSwitchImpl implements IOFSwitch {
     @JsonIgnore
     public Lock getListenerWriteLock() {
         return listenerLock.writeLock();
+    }
+
+    /**
+     * Get the IP Address for the switch
+     * @return the inet address
+     */
+    @JsonSerialize(using=ToStringSerializer.class)
+    public SocketAddress getInetAddress() {
+        return channel.getRemoteAddress();
     }
     
     /**
