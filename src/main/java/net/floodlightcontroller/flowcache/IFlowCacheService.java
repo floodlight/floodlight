@@ -6,7 +6,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
@@ -26,18 +25,6 @@ public interface IFlowCacheService extends IFloodlightService {
         "net.floodlightcontroller.flowcache.appName";
     public static final String FLOWCACHE_APP_INSTANCE_NAME = 
         "net.floodlightcontroller.flowcache.appInstanceName";
-    
-    /**
-     * The Enum FCQueryType.
-     */
-    public enum FCQueryType {
-        APPLINSTNAME,           // The APPLINSTNAME.
-        APPLINSTNAME_VLAN,      // The APPLINSTNAM e_ vlan.
-        ALLAPP_DESTDEVICE,      // The destdevice for all application.
-        ALLAPP_SRCDEVICE,       // The source device for all application.
-        ALLAPP_SRCDEVICE_DESTDEVICE,    // The APPLINSTNAM srcdevic destdevice.
-        UNKNOWN,                // The UNKNOWN.
-    }
 
     /**
      * The flow cache query event type indicating the event that triggered the
@@ -96,71 +83,6 @@ public interface IFlowCacheService extends IFloodlightService {
      * 
      */
     public void submitFlowCacheQuery(FCQueryObj query);
-
-    /**
-     * Get a new flow cache query object populated with the supplied parameters.
-     * The query type field id populated automatically based on the parameters
-     * passed.
-     *
-     * @param fcQueryCaller the caller of this API
-     * @param applInstName the application instance name
-     * @param callerOpaqueData opaque data passed by the caller which is 
-     *        returned unchanged in the corresponding callback.
-     * @return a new initialized flow cache query object
-     */
-    public FCQueryObj newFCQueryObj(IFlowQueryHandler fcQueryHandler,
-            String        applInstName,
-            String        callerName,
-            FCQueryEvType evType,
-            Object        callerOpaqueObj);
-
-    /**
-     * Get a new flow cache query object populated with the supplied parameters.
-     * The query type field id populated automatically based on the parameters
-     * passed.
-     *
-     * @param fcQueryCaller the caller of this API
-     * @param applInstName the application instance name
-     * @param vlan VLAN ID
-     * @param callerOpaqueData opaque data passed by the caller which is 
-     *        returned unchanged in the corresponding callback.
-     * @return a new initialized flow cache query object
-     */
-    public FCQueryObj newFCQueryObj(IFlowQueryHandler fcQueryHandler,
-            String        applInstName,
-            short         vlan,
-            String        callerName,
-            FCQueryEvType evType,
-            Object        callerOpaqueObj);
-
-    /**
-     * Get a new flow cache query object populated with the supplied parameters.
-     * The query type field id populated automatically based on the parameters
-     * passed.
-     *
-     * @param fcQueryCaller the caller of this API
-     * @param applInstName the application instance name
-     * @param srcDevice source device object
-     * @param dstDevice destination device object
-     * @param callerOpaqueData opaque data passed by the caller which is 
-     *        returned unchanged in the corresponding callback.
-     * @return a new initialized flow cache query object
-     */
-    public FCQueryObj newFCQueryObj(IFlowQueryHandler fcQueryHandler,
-            IDevice        srcDevice,
-            IDevice        dstDevice,
-            String        callerName,
-            FCQueryEvType evType,
-            Object        callerOpaqueObj);
-
-    /**
-     * Get a new flow cache query object populated with the supplied parameters.
-     * The query type field id populated automatically based on the parameters
-     * passed.
-     *
-     * @return a new uninitialized flow cache query object
-     */
-    public FCQueryObj newFCQueryObj();
 
     /**
      * Deactivates all flows in the flow cache for which the source switch
@@ -244,18 +166,6 @@ public interface IFlowCacheService extends IFloodlightService {
      * in the current application instance.
      */
     public boolean moveFlowToDifferentApplInstName(OFMatchReconcile ofMRc);
-
-    /**
-     * Move all the flows from their current application instance to a 
-     * different application instance. This API can be used when all flows in 
-     * an application instance move to a different application instance when 
-     * the application instance configuration changes.
-     * 
-     * @param curApplInstName current application instance name
-     * @param newApplInstName new application instance name
-     */
-    public void moveFlowToDifferentApplInstName(String curApplInstName,
-            String newApplInstName);
 
     /**
      * Delete all flow from the specified switch
