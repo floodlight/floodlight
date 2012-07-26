@@ -113,7 +113,19 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
 
             return ofm;
         } catch (Exception e) {
-            throw new MessageParseException(e);
+            /* Write the offending data along with the error message */
+            data.resetReaderIndex();
+            int len = data.readableBytes();
+            StringBuffer sb = new StringBuffer();
+                for (int i=0 ; i<len; i++) {
+                    sb.append(String.format(" %02x", data.getUnsignedByte(i)));
+                    if (i%16 == 15) sb.append("\n");
+                }
+                String msg =
+                        "Message Parse Error for packet: " +  sb.toString() +
+                        "\nException: " + e.toString();
+
+                throw new MessageParseException(msg, e);
         }
     }
 
