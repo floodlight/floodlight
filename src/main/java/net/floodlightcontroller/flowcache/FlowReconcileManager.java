@@ -33,10 +33,6 @@ public class FlowReconcileManager
      * need to be reconciled with the current configuration of the controller.
      */
     protected ListenerDispatcher<OFType, IFlowReconcileListener> flowReconcileListeners;
-    
-    public OFMatchReconcile newOFMatchReconcile() {
-        return new OFMatchReconcile();
-    }
 
     @Override
     public synchronized void addFlowReconcileListener(IFlowReconcileListener listener) {
@@ -89,19 +85,23 @@ public class FlowReconcileManager
     }
     
     @Override
-    public void updateFlowForDestinationDevice(IDevice device, FCQueryEvType fcEvType){
+    public void updateFlowForDestinationDevice(IDevice device,
+    		                                   IFlowQueryHandler handler,
+    		                                   FCQueryEvType fcEvType) {
     	// NO-OP
     }
 
     @Override
-    public void updateFlowForSourceDevice(IDevice device, FCQueryEvType fcEvType){
+    public void updateFlowForSourceDevice(IDevice device,
+                                          IFlowQueryHandler handler,
+                                          FCQueryEvType fcEvType) {
     	// NO-OP
     }
     
     @Override
     public void flowQueryGenericHandler(FlowCacheQueryResp flowResp) {
         if (flowResp.queryObj.evType != FCQueryEvType.GET) {
-            OFMatchReconcile ofmRc = newOFMatchReconcile();
+            OFMatchReconcile ofmRc = new OFMatchReconcile();;
             /* Re-provision these flows */
             for (QRFlowCacheObj entry : flowResp.qrFlowCacheObjList) {
                 /* reconcile the flows in entry */

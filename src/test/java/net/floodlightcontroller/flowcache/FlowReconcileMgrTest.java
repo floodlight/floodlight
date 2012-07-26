@@ -18,17 +18,6 @@ import org.junit.Test;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 
-/**
- * The Class FlowCacheTest. Tests flow cache operations for
- * (a) adding a flow to the flow cache when flow mod is programmed
- * (b) Deleting a flow from flow cache when flow mod removal mesg is received
- * (c) Reprogramming a flow based on flows queried from flow cache when a
- *     device is moved.
- * (d) Reprogramming a flow based on flows queried from flow cache when a
- *     link goes down.
- *
- * @author subrata
- */
 public class FlowReconcileMgrTest extends FloodlightTestCase {
 
     protected MockFloodlightProvider mockFloodlightProvider;
@@ -81,7 +70,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         flowReconcileMgr.addFlowReconcileListener(r2);
         flowReconcileMgr.addFlowReconcileListener(r3);
         
-        OFMatchReconcile ofmRcIn = flowReconcileMgr.newOFMatchReconcile();
+        OFMatchReconcile ofmRcIn = new OFMatchReconcile();
         try {
             flowReconcileMgr.reconcileFlow(ofmRcIn);
         } catch (RuntimeException e) {

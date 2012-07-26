@@ -4,7 +4,6 @@ import java.util.Arrays;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryType;
 
 
 /**
@@ -14,8 +13,6 @@ public class FCQueryObj {
 
     /** The caller of the flow cache query. */
     public IFlowQueryHandler fcQueryHandler;
-    /** The query type. */
-    public FCQueryType queryType;
     /** The application instance name. */
     public String applInstName;
     /** The vlan Id. */
@@ -36,14 +33,37 @@ public class FCQueryObj {
     /**
      * Instantiates a new flow cache query object
      */
-    public FCQueryObj() {
-        queryType = FCQueryType.UNKNOWN;
+    public FCQueryObj(IFlowQueryHandler fcQueryHandler,
+            String        applInstName,
+            Short         vlan,
+            IDevice       srcDevice,
+            IDevice       dstDevice,
+            String        callerName,
+            FCQueryEvType evType,
+            Object        callerOpaqueObj) {
+        this.fcQueryHandler    = fcQueryHandler;
+        this.applInstName     = applInstName;
+        this.srcDevice        = srcDevice;
+        this.dstDevice        = dstDevice;
+        this.callerName       = callerName;
+        this.evType           = evType;
+        this.callerOpaqueObj  = callerOpaqueObj;
+        
+        if (vlan != null) {
+        	this.vlans = new Short[] { vlan };
+        } else {
+	        if (srcDevice != null) {
+	        	this.vlans = srcDevice.getVlanId();
+	        } else if (dstDevice != null) {
+	            this.vlans = dstDevice.getVlanId();
+	        }
+        }
     }
 
     @Override
     public String toString() {
         return "FCQueryObj [fcQueryCaller=" + fcQueryHandler
-                + ", queryType=" + queryType + ", applInstName="
+                + ", applInstName="
                 + applInstName + ", vlans=" + Arrays.toString(vlans)
                 + ", dstDevice=" + dstDevice + ", srcDevice="
                 + srcDevice + ", callerName=" + callerName + ", evType="
