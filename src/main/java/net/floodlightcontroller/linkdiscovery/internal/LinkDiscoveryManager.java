@@ -1550,6 +1550,7 @@ public class LinkDiscoveryManager
         switch(newRole) {
             case MASTER:
                 if (oldRole == Role.SLAVE) {
+                    clearAllLinks();
                     log.debug("Sending LLDPs " +
                             "to HA change from SLAVE->MASTER");
                     sendLLDPs();
