@@ -634,11 +634,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
+        entityClassifier.addListener(this);
 
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
-                cleanupEntities(false, null);
+                cleanupEntities(null, false);
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
             }
@@ -1288,19 +1289,15 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param reclassify if true, begin an asynchronous task to reclassify the
      * flushed entities
      */
-    private void flushEntityCache (IEntityClass entityClass, boolean reclassify,
-                                   Set<String> entityClassChanged) {
+    private void flushEntityCache (Set<String> entityClassChangedSet,
+                                   boolean reclassify) {
         if (reclassify) return; // TODO
-        
-        if (entityClass == null) {
 
-            /*
-             * XXX This can be running at the same time by timer thread.
-             */
-            cleanupEntities(true, entityClassChanged);
-        } else {
-            // TODO
-        }
+        /*
+         * TODO This can be running at the same time by timer thread. Check
+         * and make sure that this is thread safe.
+         */
+        cleanupEntities(entityClassChangedSet, true);
     }
 
     // *********************
@@ -1312,15 +1309,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         /*
          * Flush the entire device entity cache for now.
          */
-        flushEntityCache(null, false, entityClassNames);
+        flushEntityCache(entityClassNames, false);
         return;
     }
 
     /**
      * Clean up expired entities/devices
+     *
+     * @param[in] forceCleanup ForceCleanup of entities irrespective of age
+     * @param[in] specificEntities Cleanup only a specific set of entities
      */
-    protected void cleanupEntities(boolean forceCleanup,
-                                   Set<String> specificEntities) {
+    protected void cleanupEntities (Set<String> specificEntities,
+                                    boolean forceCleanup) {
+
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
         Date cutoff = c.getTime();
