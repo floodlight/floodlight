@@ -858,8 +858,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if ((dlAddrArr[0] & 0x1) != 0)
             return null;
 
-        long swDpid = ofmWithSwDpid.getSwitchDataPathId();
-        short inPort = ofmWithSwDpid.getOfMatch().getInputPort();
+        Long swDpid = null;
+        Short inPort = null;
+        
+        if (isSource) {
+        	swDpid = ofmWithSwDpid.getSwitchDataPathId();
+        	inPort = ofmWithSwDpid.getOfMatch().getInputPort();
+        }
 
         boolean learnap = true;
         if (!isValidAttachmentPoint(swDpid, inPort)) {
