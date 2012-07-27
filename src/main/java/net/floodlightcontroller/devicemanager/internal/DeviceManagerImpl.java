@@ -867,7 +867,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
 
         boolean learnap = true;
-        if (!isValidAttachmentPoint(swDpid, inPort)) {
+        if (swDpid == null ||
+        		inPort == null ||
+        		!isValidAttachmentPoint(swDpid, inPort)) {
             // If this is an internal port or we otherwise don't want
             // to learn on these ports.  In the future, we should
             // handle this case by labeling flows with something that
