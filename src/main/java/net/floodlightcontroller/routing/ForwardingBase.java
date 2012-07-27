@@ -20,9 +20,9 @@ package net.floodlightcontroller.routing;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -35,6 +35,7 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
@@ -341,20 +342,20 @@ public abstract class ForwardingBase implements
         }
     }
 
+    
     /**
      * Write packetout message to sw with output actions to one or more
      * output ports with inPort/outPorts passed in.
-     * Note that the packet in could be from a different switch.
-     * @param pi
+     * @param packetData
      * @param sw
      * @param inPort
      * @param ports
      * @param cntx
      */
-    public void PacketOutMultiPort(OFPacketIn pi,
+    public void packetOutMultiPort(byte[] packetData,
                                    IOFSwitch sw,
                                    short inPort,
-                                   HashSet<Integer> outPorts,
+                                   Set<Integer> outPorts,
                                    FloodlightContext cntx) {
         //setting actions
         List<OFAction> actions = new ArrayList<OFAction>();
@@ -381,7 +382,6 @@ public abstract class ForwardingBase implements
         // data (note buffer_id is always BUFFER_ID_NONE) and length
         short poLength = (short)(po.getActionsLength() + 
                 OFPacketOut.MINIMUM_LENGTH);
-        byte[] packetData = pi.getPacketData();
         poLength += packetData.length;
         po.setPacketData(packetData);
         po.setLength(poLength);
@@ -390,14 +390,40 @@ public abstract class ForwardingBase implements
             counterStore.updatePktOutFMCounterStore(sw, po);
             if (log.isTraceEnabled()) {
                 log.trace("write broadcast packet on switch-id={} " + 
-                        "interaces={} packet-in={} packet-out={}",
-                        new Object[] {sw.getId(), outPorts, pi, po});
+                        "interfaces={} packet-out={}",
+                        new Object[] {sw.getId(), outPorts, po});
             }
             sw.write(po, cntx);
 
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
         }
+    }
+    
+    /** 
+     * @see packetOutMultiPort
+     * Accepts a PacketIn instead of raw packet data. Note that the inPort
+     * and switch can be different than the packet in switch/port
+     */
+    public void packetOutMultiPort(OFPacketIn pi,
+                                   IOFSwitch sw,
+                                   short inPort,
+                                   Set<Integer> outPorts,
+                                   FloodlightContext cntx) {
+        packetOutMultiPort(pi.getPacketData(), sw, inPort, outPorts, cntx);
+    }
+    
+    /** 
+     * @see packetOutMultiPort
+     * Accepts an IPacket instead of raw packet data. Note that the inPort
+     * and switch can be different than the packet in switch/port
+     */
+    public void packetOutMultiPort(IPacket packet,
+                                   IOFSwitch sw,
+                                   short inPort,
+                                   Set<Integer> outPorts,
+                                   FloodlightContext cntx) {
+        packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
     }
 
     protected boolean isInBroadcastCache(IOFSwitch sw, OFPacketIn pi,
