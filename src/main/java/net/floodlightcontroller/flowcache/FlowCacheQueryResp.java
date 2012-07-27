@@ -16,6 +16,12 @@ public class FlowCacheQueryResp {
      * query. 
      */
     public boolean     moreFlag;
+    
+    /**
+     * Set to true if the response has been sent to handler
+     */
+    public boolean     hasSent;
+    
     /** 
      * The flow list. If there are large number of flows to be returned
      * then they may be returned in multiple callbacks.
@@ -32,6 +38,7 @@ public class FlowCacheQueryResp {
         qrFlowCacheObjList = new ArrayList<QRFlowCacheObj>();
         queryObj    = query;
         moreFlag    = false;
+        hasSent     = false;
     }
 
     /* (non-Javadoc)
@@ -39,12 +46,8 @@ public class FlowCacheQueryResp {
      */
     @Override
     public String toString() {
-        String s = queryObj.toString();
-        if (moreFlag) {
-            s += "; moreFlasg=True";
-        } else {
-            s += "; moreFlag=False";
-        }
+        String s = queryObj.toString() + "; moreFlasg=" + moreFlag +
+                   "; hasSent=" + hasSent;
         s += "; FlowCount=" + Integer.toString(qrFlowCacheObjList.size());
         return s;
     }
