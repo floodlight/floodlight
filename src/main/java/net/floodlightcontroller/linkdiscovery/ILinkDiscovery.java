@@ -29,25 +29,18 @@ public interface ILinkDiscovery {
             this.operation = operation;
         }
 
-        public LDUpdate(LinkTuple lt, int srcPortState,
-                      int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
-            this(lt.getSrc().getSw().getId(), lt.getSrc().getPort(),
-                 srcPortState, lt.getDst().getSw().getId(), lt.getDst().getPort(),
-                 dstPortState, type, operation);
+        public LDUpdate(LDUpdate old) {
+            this.src = old.src;
+            this.srcPort = old.srcPort;
+            this.srcPortState = old.srcPortState;
+            this.dst = old.dst;
+            this.dstPort = old.dstPort;
+            this.dstPortState = old.dstPortState;
+            this.srcType = old.srcType;
+            this.type = old.type;
+            this.operation = old.operation;
         }
 
-        public LDUpdate(LDUpdate old) {
-        	this.src = old.src;
-        	this.srcPort = old.srcPort;
-        	this.srcPortState = old.srcPortState;
-        	this.dst = old.dst;
-        	this.dstPort = old.dstPort;
-        	this.dstPortState = old.dstPortState;
-        	this.srcType = old.srcType;
-        	this.type = old.type;
-        	this.operation = old.operation;
-        }
-        
         // For updtedSwitch(sw)
         public LDUpdate(long switchId, SwitchType stype) {
             this.operation = UpdateOperation.SWITCH_UPDATED;

@@ -17,78 +17,52 @@
 
 package net.floodlightcontroller.linkdiscovery;
 
-/**
- *
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
- */
-
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.topology.NodePortTuple;
 
-/**
- *
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
- */
+
 public interface ILinkDiscoveryService extends IFloodlightService {
-    /**
-     * Get the link that either sources from the port or terminates
-     * at the port. isSrcPort determines which of the two links is
-     * returned.
-     * @param idPort
-     * @param isSrcPort true for link that sources from idPort.
-     * @return linkTuple
-     */
-    public LinkInfo getLinkInfo(SwitchPortTuple idPort, boolean isSrcPort);
-
-    /**
-     * Get the link type of the link tuple based on link info.
-     * @param linkTuple
-     * @param linkInfo
-     * @return linkType
-     */
-    public ILinkDiscovery.LinkType getLinkType(LinkTuple lt, LinkInfo info);
-
     /**
      * Retrieves a map of all known link connections between OpenFlow switches
      * and the associated info (valid time, port states) for the link.
+     */
+    public Map<Link, LinkInfo> getLinks();
+
+    /**
+     * Returns link type of a given link
+     * @param info
      * @return
      */
-    public Map<LinkTuple, LinkInfo> getLinks();
-    
+    public ILinkDiscovery.LinkType getLinkType(LinkInfo info);
+
     /**
      * Returns an unmodifiable map from switch id to a set of all links with it 
      * as an endpoint.
      */
-    public Map<IOFSwitch, Set<LinkTuple>> getSwitchLinks();
-    
+    public Map<Long, Set<Link>> getSwitchLinks();
+
     /**
      * Adds a listener to listen for ILinkDiscoveryService messages
      * @param listener The listener that wants the notifications
      */
     public void addListener(ILinkDiscoveryListener listener);
-    
+
     /**
      * Retrieves a set of all switch ports on which lldps are suppressed.
-     * @return
      */
-    public Set<SwitchPortTuple> getSuppressLLDPsInfo();
-    
+    public Set<NodePortTuple> getSuppressLLDPsInfo();
+
     /**
      * Adds a switch port to suppress lldp set
-     * @param sw
-     * @param port
      */
-    public void AddToSuppressLLDPs(IOFSwitch sw, short port);
-    
+    public void AddToSuppressLLDPs(long sw, short port);
+
     /**
      * Removes a switch port from suppress lldp set
-     * @param sw
-     * @param port
      */
-    public void RemoveFromSuppressLLDPs(IOFSwitch sw, short port);
+    public void RemoveFromSuppressLLDPs(long sw, short port);
 }
