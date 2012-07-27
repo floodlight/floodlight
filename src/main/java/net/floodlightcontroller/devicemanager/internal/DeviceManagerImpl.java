@@ -49,6 +49,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -86,7 +87,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener,
-IStorageSourceListener, IFloodlightModule,
+IStorageSourceListener, IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -461,12 +462,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         deviceListeners.add(listener);
     }
 
-    @Override
-    public void flushEntityCache(IEntityClass entityClass,
-                                 boolean reclassify) {
-        // TODO Auto-generated method stub
-    }
-
     // *************
     // IInfoProvider
     // *************
@@ -639,11 +634,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
+        entityClassifier.addListener(this);
 
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
-                cleanupEntities();
+                cleanupEntities(null, false);
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
             }
@@ -1287,9 +1283,45 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
-     * Clean up expired entities/devices
+     * Flush and/or reclassify all entities in a class
+     *
+     * @param entityClass the class to flush.  If null, flush all classes
+     * @param reclassify if true, begin an asynchronous task to reclassify the
+     * flushed entities
      */
-    protected void cleanupEntities() {
+    private void flushEntityCache (Set<String> entityClassChangedSet,
+                                   boolean reclassify) {
+        if (reclassify) return; // TODO
+
+        /*
+         * TODO This can be running at the same time by timer thread. Check
+         * and make sure that this is thread safe.
+         */
+        cleanupEntities(entityClassChangedSet, true);
+    }
+
+    // *********************
+    // IEntityClassListener
+    // *********************
+    @Override
+    public void entityClassChanged (Set<String> entityClassNames) {
+
+        /*
+         * Flush the entire device entity cache for now.
+         */
+        flushEntityCache(entityClassNames, false);
+        return;
+    }
+
+    /**
+     * Clean up expired entities/devices
+     *
+     * @param[in] forceCleanup ForceCleanup of entities irrespective of age
+     * @param[in] specificEntities Cleanup only a specific set of entities
+     */
+    protected void cleanupEntities (Set<String> specificEntities,
+                                    boolean forceCleanup) {
+
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
         Date cutoff = c.getTime();
@@ -1304,13 +1336,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         while (diter.hasNext()) {
             Device d = diter.next();
 
+            /*
+             * If we are cleaning entities for a specific set of devices,
+             * skip if not applicable.
+             */
+            if (specificEntities != null && d.getEntityClass() != null &&
+               !specificEntities.contains(d.getEntityClass().getName())) {
+                continue;
+            }
+
             while (true) {
                 deviceUpdates.clear();
                 toRemove.clear();
                 toKeep.clear();
                 for (Entity e : d.getEntities()) {
-                    if (e.getLastSeenTimestamp() != null &&
-                            0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
+                    if (forceCleanup ||
+                        (e.getLastSeenTimestamp() != null &&
+                         0 > e.getLastSeenTimestamp().compareTo(cutoff))) {
                         // individual entity needs to be removed
                         toRemove.add(e);
                     } else {
