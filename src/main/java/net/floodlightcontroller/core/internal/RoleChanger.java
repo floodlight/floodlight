@@ -160,7 +160,7 @@ public class RoleChanger {
         public void run() {
             RoleChangeTask t;
             boolean interrupted = false;
-            log.debug("RoleRequestWorker thread started");
+            log.trace("RoleRequestWorker thread started");
             try {
                 while (true) {
                     try {

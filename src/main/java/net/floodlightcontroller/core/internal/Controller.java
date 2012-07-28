@@ -249,8 +249,8 @@ public class Controller implements IFloodlightProviderService,
             this.added = added;
         }
         public void dispatch() {
-            if (log.isDebugEnabled()) {
-                log.debug("Dispatching switch update {} {}",
+            if (log.isTraceEnabled()) {
+                log.trace("Dispatching switch update {} {}",
                         sw, added);
             }
             if (switchListeners != null) {
@@ -275,8 +275,8 @@ public class Controller implements IFloodlightProviderService,
             this.newRole = newRole;
         }
         public void dispatch() {
-            if (log.isDebugEnabled()) {
-                log.debug("Dispatching HA Role update newRole = {}, oldRole = {}",
+            if (log.isTraceEnabled()) {
+                log.trace("Dispatching HA Role update newRole = {}, oldRole = {}",
                           newRole, oldRole);
             }
             if (haListeners != null) {
@@ -304,8 +304,8 @@ public class Controller implements IFloodlightProviderService,
             this.removedControllerNodeIPs = removedControllerNodeIPs;
         }
         public void dispatch() {
-            if (log.isDebugEnabled()) {
-                log.debug("Dispatching HA Controller Node IP update "
+            if (log.isTraceEnabled()) {
+                log.trace("Dispatching HA Controller Node IP update "
                         + "curIPs = {}, addedIPs = {}, removedIPs = {}",
                         new Object[] { curControllerNodeIPs, addedControllerNodeIPs,
                             removedControllerNodeIPs }
@@ -811,8 +811,8 @@ public class Controller implements IFloodlightProviderService,
             
             switch (m.getType()) {
                 case HELLO:
-                    if (log.isDebugEnabled())
-                        log.debug("HELLO from {}", sw);
+                    if (log.isTraceEnabled())
+                        log.trace("HELLO from {}", sw);
                     
                     if (state.hsState.equals(HandshakeState.START)) {
                         state.hsState = HandshakeState.HELLO;
@@ -831,8 +831,8 @@ public class Controller implements IFloodlightProviderService,
                 case ECHO_REPLY:
                     break;
                 case FEATURES_REPLY:
-                    if (log.isDebugEnabled())
-                        log.debug("Features Reply from {}", sw);
+                    if (log.isTraceEnabled())
+                        log.trace("Features Reply from {}", sw);
                     
                     if (state.hsState.equals(HandshakeState.HELLO)) {
                         sw.setFeaturesReply((OFFeaturesReply) m);
@@ -847,8 +847,8 @@ public class Controller implements IFloodlightProviderService,
                     }
                     break;
                 case GET_CONFIG_REPLY:
-                    if (log.isDebugEnabled())
-                        log.debug("Get config reply from {}", sw);
+                    if (log.isTraceEnabled())
+                        log.trace("Get config reply from {}", sw);
                     
                     if (!state.hsState.equals(HandshakeState.FEATURES_REPLY)) {
                         String em = "Unexpected GET_CONFIG_REPLY from " + sw;
@@ -856,7 +856,7 @@ public class Controller implements IFloodlightProviderService,
                     }
                     OFGetConfigReply cr = (OFGetConfigReply) m;
                     if (cr.getMissSendLength() == (short)0xffff) {
-                        log.debug("Config Reply from {} confirms " + 
+                        log.trace("Config Reply from {} confirms " + 
                                   "miss length set to 0xffff", sw);
                     } else {
                         log.warn("Config Reply from {} has " +
@@ -1795,17 +1795,17 @@ public class Controller implements IFloodlightProviderService,
         if (ofPort != null) {
             this.openFlowPort = Integer.parseInt(ofPort);
         }
-        log.info("OpenFlow port set to {}", this.openFlowPort);
+        log.debug("OpenFlow port set to {}", this.openFlowPort);
         String threads = configParams.get("workerthreads");
         if (threads != null) {
             this.workerThreads = Integer.parseInt(threads);
         }
-        log.info("Number of worker threads set to {}", this.workerThreads);
+        log.debug("Number of worker threads set to {}", this.workerThreads);
         String controllerId = configParams.get("controllerid");
         if (controllerId != null) {
             this.controllerId = controllerId;
         }
-        log.info("ControllerId set to {}", this.controllerId);
+        log.debug("ControllerId set to {}", this.controllerId);
     }
 
     private void initVendorMessages() {
@@ -1855,7 +1855,6 @@ public class Controller implements IFloodlightProviderService,
      * Startup all of the controller's components
      */
     public void startupComponents() {
-        log.debug("Doing controller internal setup");
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);
         storageSource.createTable(SWITCH_TABLE_NAME, null);
@@ -1884,7 +1883,6 @@ public class Controller implements IFloodlightProviderService,
                 }
             }
         }
-        log.info("Connected to storage source");
        
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
