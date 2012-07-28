@@ -1227,9 +1227,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         // Write only direct links.  Do not write links to external
         // L2 network.
-        if (type != LinkType.DIRECT_LINK && type != LinkType.TUNNEL) {
-            return;
-        }
+        // if (type != LinkType.DIRECT_LINK && type != LinkType.TUNNEL) {
+        //    return;
+        // }
 
         Map<String, Object> rowValues = new HashMap<String, Object>();
         String id = getLinkId(lt);
