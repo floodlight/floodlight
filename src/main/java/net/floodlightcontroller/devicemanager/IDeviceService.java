@@ -189,17 +189,6 @@ public interface IDeviceService extends IFloodlightService {
      */
     public void addListener(IDeviceListener listener);
     
-    
-    /**
-     * Flush and/or reclassify all entities in a class
-     *
-     * @param entityClass the class to flush.  If null, flush all classes
-     * @param reclassify if true, begin an asynchronous task to reclassify the
-     * flushed entities
-     */
-    public void flushEntityCache(IEntityClass entityClass,
-                                 boolean reclassify);
-
     /**
      * Specify points in the network where attachment points are not to
      * be learned.

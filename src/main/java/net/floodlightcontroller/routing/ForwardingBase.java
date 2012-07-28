@@ -47,11 +47,9 @@ import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -534,29 +532,6 @@ public abstract class ForwardingBase implements
 
     @Override
     public void deviceMoved(IDevice device) {
-        // Build flow mod to delete based on destination mac == device mac
-        OFMatch match = new OFMatch();
-        match.setDataLayerDestination(Ethernet.toByteArray(device.getMACAddress()));
-        match.setWildcards(OFMatch.OFPFW_ALL ^ OFMatch.OFPFW_DL_DST);
-        long cookie =
-                AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-        OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
-            .getMessage(OFType.FLOW_MOD))
-            .setCommand(OFFlowMod.OFPFC_DELETE)
-            .setOutPort((short) OFPort.OFPP_NONE.getValue())
-            .setMatch(match)
-            .setCookie(cookie)
-            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
-
-        // Flush to all switches
-        for (IOFSwitch outSw : floodlightProvider.getSwitches().values()) {
-            try {
-                outSw.write(fm, null);
-            } catch (IOException e) {
-                log.error("Failure sending flow mod delete for moved device",
-                          e);
-            }
-        }
     }
 
     @Override

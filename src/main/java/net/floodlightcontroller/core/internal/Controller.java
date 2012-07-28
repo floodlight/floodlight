@@ -656,7 +656,7 @@ public class Controller implements IFloodlightProviderService,
                         // If role is MASTER we will promote switch to active
                         // list when we receive the switch's role reply messages
                         log.debug("This controller's role is {}, " + 
-                        		"sending initial role request msg to {}",
+                                "sending initial role request msg to {}",
                                 role, sw);
                         Collection<OFSwitchImpl> swList = new ArrayList<OFSwitchImpl>(1);
                         swList.add(sw);
@@ -666,7 +666,7 @@ public class Controller implements IFloodlightProviderService,
                         // Role supported not enabled on controller (for now)
                         // automatically promote switch to active state. 
                         log.debug("This controller's role is null, " + 
-                        		"not sending role request msg to {}",
+                                "not sending role request msg to {}",
                                 role, sw);
                         // Need to clear FlowMods before we add the switch
                         // and dispatch updates otherwise we have a race condition.
@@ -773,7 +773,7 @@ public class Controller implements IFloodlightProviderService,
             state.firstRoleReplyReceived = true;
         }
 
-		protected boolean handleVendorMessage(OFVendor vendorMessage) {
+        protected boolean handleVendorMessage(OFVendor vendorMessage) {
             boolean shouldHandleMessage = false;
             int vendor = vendorMessage.getVendor();
             switch (vendor) {
@@ -815,7 +815,9 @@ public class Controller implements IFloodlightProviderService,
             
             switch (m.getType()) {
                 case HELLO:
-                    log.debug("HELLO from {}", sw);
+                    if (log.isDebugEnabled())
+                        log.debug("HELLO from {}", sw);
+                    
                     if (state.hsState.equals(HandshakeState.START)) {
                         state.hsState = HandshakeState.HELLO;
                         sendHelloConfiguration();
@@ -833,7 +835,9 @@ public class Controller implements IFloodlightProviderService,
                 case ECHO_REPLY:
                     break;
                 case FEATURES_REPLY:
-                    log.debug("Features Reply from {}", sw);
+                    if (log.isDebugEnabled())
+                        log.debug("Features Reply from {}", sw);
+                    
                     if (state.hsState.equals(HandshakeState.HELLO)) {
                         sw.setFeaturesReply((OFFeaturesReply) m);
                         sendFeatureReplyConfiguration();
@@ -847,6 +851,9 @@ public class Controller implements IFloodlightProviderService,
                     }
                     break;
                 case GET_CONFIG_REPLY:
+                    if (log.isDebugEnabled())
+                        log.debug("Get config reply from {}", sw);
+                    
                     if (!state.hsState.equals(HandshakeState.FEATURES_REPLY)) {
                         String em = "Unexpected GET_CONFIG_REPLY from " + sw;
                         throw new SwitchStateException(em);
@@ -1288,7 +1295,7 @@ public class Controller implements IFloodlightProviderService,
         // No need to acquire the listener lock, since
         // this method is only called after netty has processed all
         // pending messages
-    	log.debug("removeSwitch: {}", sw);
+        log.debug("removeSwitch: {}", sw);
         if (!this.activeSwitches.remove(sw.getId(), sw) || !sw.isConnected()) {
             log.debug("Not removing switch {}; already removed", sw);
             return;
@@ -1581,7 +1588,7 @@ public class Controller implements IFloodlightProviderService,
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
-    	log.debug("Update DB with inactiveSW {}", sw);
+        log.debug("Update DB with inactiveSW {}", sw);
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();
@@ -1662,7 +1669,7 @@ public class Controller implements IFloodlightProviderService,
         //for (Short portNum : oldports.keySet()) {
         //    sw.deletePort(portNum);
         //}
-	}
+    }
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
         String datapathIdString = sw.getStringId();
@@ -1702,11 +1709,11 @@ public class Controller implements IFloodlightProviderService,
                     roleString = properties.getProperty("floodlight.role");
                 }
                 catch (IOException exc) {
-                	// Don't treat it as an error if the file specified by the
-                	// rolepath property doesn't exist. This lets us enable the
-                	// HA mechanism by just creating/setting the floodlight.role
-                	// property in that file without having to modify the
-                	// floodlight properties.
+                    // Don't treat it as an error if the file specified by the
+                    // rolepath property doesn't exist. This lets us enable the
+                    // HA mechanism by just creating/setting the floodlight.role
+                    // property in that file without having to modify the
+                    // floodlight properties.
                 }
             }
         }
@@ -2016,9 +2023,9 @@ public class Controller implements IFloodlightProviderService,
         }
     }
 
-	@Override
-	public long getSystemStartTime() {
-		return (this.systemStartTime);
-	}
+    @Override
+    public long getSystemStartTime() {
+        return (this.systemStartTime);
+    }
 
 }

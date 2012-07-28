@@ -84,4 +84,8 @@ public class NodePortTuple {
             return false;
         return true;
     }
+    
+    public String toKeyString() {
+        return (HexString.toHexString(nodeId)+ "|" + portId);
+    }
 }
