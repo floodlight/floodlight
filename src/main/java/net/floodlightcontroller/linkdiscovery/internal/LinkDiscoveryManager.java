@@ -169,10 +169,14 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     protected SingletonTask discoveryTask;
     protected final int DISCOVERY_TASK_INTERVAL = 1; 
-    protected final int LINK_TIMEOUT = 3; // timeout as part of LLDP process.
-    protected final int LLDP_TO_KNOWN_INTERVAL= 1; // LLDP frequency for known links
+    protected final int LINK_TIMEOUT = 35; // timeout as part of LLDP process.
     protected final int LLDP_TO_ALL_INTERVAL = 15 ; //15 seconds.
     protected long lldpClock = 0;
+
+    // This value is intentionally kept higher than LLDP_TO_ALL_INTERVAL.
+    // If we want to identify link failures faster, we could decrease this
+    // value to a small number, say 1 or 2 sec.
+    protected final int LLDP_TO_KNOWN_INTERVAL= 20; // LLDP frequency for known links
 
     protected LLDPTLV controllerTLV;
     protected ReentrantReadWriteLock lock;
@@ -848,21 +852,25 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
                 dstNpt  =new NodePortTuple(lt.getDst(), lt.getDstPort());
 
-                this.switchLinks.get(lt.getSrc()).remove(lt);
-                this.switchLinks.get(lt.getDst()).remove(lt);
-                if (this.switchLinks.containsKey(lt.getSrc()) &&
-                        this.switchLinks.get(lt.getSrc()).isEmpty())
+                switchLinks.get(lt.getSrc()).remove(lt);
+                switchLinks.get(lt.getDst()).remove(lt);
+                if (switchLinks.containsKey(lt.getSrc()) &&
+                        switchLinks.get(lt.getSrc()).isEmpty())
                     this.switchLinks.remove(lt.getSrc());
                 if (this.switchLinks.containsKey(lt.getDst()) &&
                         this.switchLinks.get(lt.getDst()).isEmpty())
                     this.switchLinks.remove(lt.getDst());
 
-                this.portLinks.get(srcNpt).remove(lt);
-                if (this.portLinks.get(srcNpt).isEmpty())
-                    this.portLinks.remove(srcNpt);
-                this.portLinks.get(dstNpt).remove(lt);
-                if (this.portLinks.get(dstNpt).isEmpty())
-                    this.portLinks.remove(dstNpt);
+                if (this.portLinks.get(srcNpt) != null) {
+                    this.portLinks.get(srcNpt).remove(lt);
+                    if (this.portLinks.get(srcNpt).isEmpty())
+                        this.portLinks.remove(srcNpt);
+                }
+                if (this.portLinks.get(dstNpt) != null) {
+                    this.portLinks.get(dstNpt).remove(lt);
+                    if (this.portLinks.get(dstNpt).isEmpty())
+                        this.portLinks.remove(dstNpt);
+                }
 
                 this.links.remove(lt);
                 updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(), 0,
@@ -1203,13 +1211,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @return The storage key as a String
      */
     private String getLinkId(Link lt) {
-        IOFSwitch srcSw = floodlightProvider.getSwitches().get(lt.getSrc());
-        IOFSwitch dstSw = floodlightProvider.getSwitches().get(lt.getDst());
-
-        String srcDpid = srcSw.getStringId();
-        String dstDpid = dstSw.getStringId();
-        return srcDpid + "-" + lt.getSrcPort() + "-" + dstDpid + "-"
-                + lt.getDstPort();
+        return HexString.toHexString(lt.getSrc()) +
+                "-" + lt.getSrcPort() + "-" +
+                HexString.toHexString(lt.getDst())+
+                "-" + lt.getDstPort();
     }
 
     /**
@@ -1218,19 +1223,22 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param linkInfo The LinkInfo to write
      */
     void writeLink(Link lt, LinkInfo linkInfo) {
-        IOFSwitch srcSw, dstSw;
-        srcSw = floodlightProvider.getSwitches().get(lt.getSrc());
-        dstSw = floodlightProvider.getSwitches().get(lt.getDst());
+        LinkType type = getLinkType(lt, linkInfo);
+
+        // Write only direct links.  Do not write links to external
+        // L2 network.
+        if (type != LinkType.DIRECT_LINK && type != LinkType.TUNNEL) {
+            return;
+        }
 
         Map<String, Object> rowValues = new HashMap<String, Object>();
         String id = getLinkId(lt);
         rowValues.put(LINK_ID, id);
         rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
-        String srcDpid = srcSw.getStringId();
+        String srcDpid = HexString.toHexString(lt.getSrc());
         rowValues.put(LINK_SRC_SWITCH, srcDpid);
         rowValues.put(LINK_SRC_PORT, lt.getSrcPort());
 
-        LinkType type = getLinkType(lt, linkInfo);
         if (type == LinkType.DIRECT_LINK)
             rowValues.put(LINK_TYPE, "internal");
         else if (type == LinkType.MULTIHOP_LINK) 
@@ -1253,7 +1261,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
             rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
         }
-        String dstDpid = dstSw.getStringId();
+        String dstDpid = HexString.toHexString(lt.getDst());
         rowValues.put(LINK_DST_SWITCH, dstDpid);
         rowValues.put(LINK_DST_PORT, lt.getDstPort());
         if (linkInfo.linkStpBlocked()) {
