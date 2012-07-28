@@ -533,11 +533,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // Find the device matching the destination from the entity
             // classes of the source.
             Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
-            logger.debug("DeviceManager dstEntity {}", dstEntity);
+            logger.trace("DeviceManager dstEntity {}", dstEntity);
             if (dstEntity != null) {
                 Device dstDevice =
                         findDestByEntity(srcDevice, dstEntity);
-                logger.debug("DeviceManager dstDevice {}", dstDevice);
+                logger.trace("DeviceManager dstDevice {}", dstDevice);
                 if (dstDevice != null)
                     fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
             }
@@ -1025,8 +1025,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
                 device = allocateDevice(deviceKey, entity, entityClass);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("New device created: {} deviceKey={}", 
+                if (logger.isTraceEnabled()) {
+                    logger.trace("New device created: {} deviceKey={}", 
                                  device, deviceKey);
                 }
 
