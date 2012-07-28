@@ -369,6 +369,10 @@ public class Controller implements IFloodlightProviderService,
             Role oldRole = this.role;
             this.role = role;
             
+            if (role == Role.MASTER) {
+                updateAllInactiveSwitchInfo();
+            }
+            
             log.debug("Submitting role change request to role {}", role);
             roleChanger.submitRequest(connectedSwitches, role);
             
