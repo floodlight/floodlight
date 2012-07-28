@@ -29,6 +29,7 @@ public class Link {
     private long dst;
     private short dstPort;
 
+
     public Link(long srcId, short srcPort, long dstId, short dstPort) {
         this.src = srcId;
         this.srcPort = srcPort;
@@ -36,7 +37,14 @@ public class Link {
         this.dstPort = dstPort;
     }
 
-    
+    // Convenience method
+    public Link(long srcId, int srcPort, long dstId, int dstPort) {
+        this.src = srcId;
+        this.srcPort = (short) srcPort;
+        this.dst = dstId;
+        this.dstPort = (short) dstPort;
+    }
+
     @JsonProperty("src-switch")
     @JsonSerialize(using=DPIDSerializer.class)
     public long getSrc() {

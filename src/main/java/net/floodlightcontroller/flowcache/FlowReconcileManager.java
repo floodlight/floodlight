@@ -38,14 +38,14 @@ public class FlowReconcileManager
     public synchronized void addFlowReconcileListener(IFlowReconcileListener listener) {
         flowReconcileListeners.addListener(OFType.FLOW_MOD, listener);
 
-        if (logger.isDebugEnabled()) {
+        if (logger.isTraceEnabled()) {
             StringBuffer sb = new StringBuffer();
-            sb.append("FlowReconcileManager FlowMod Listeners: ");
+            sb.append("FlowMod listeners: ");
             for (IFlowReconcileListener l : flowReconcileListeners.getOrderedListeners()) {
                 sb.append(l.getName());
                 sb.append(",");
             }
-            logger.debug(sb.toString());
+            logger.trace(sb.toString());
         }
     }
 
@@ -66,7 +66,7 @@ public class FlowReconcileManager
      */
     public void reconcileFlow(OFMatchReconcile ofmRcIn) {
         if (logger.isTraceEnabled()) {
-            logger.trace("Reconciliating flow: {}", ofmRcIn.toString());
+            logger.trace("Reconciling flow: {}", ofmRcIn.toString());
         }
         ArrayList<OFMatchReconcile> ofmRcList =
                                             new ArrayList<OFMatchReconcile>();
@@ -75,7 +75,7 @@ public class FlowReconcileManager
         IFlowReconcileListener.Command retCmd;
         for (IFlowReconcileListener flowReconciler : flowReconcileListeners.getOrderedListeners()) {
             if (logger.isTraceEnabled()) {
-                logger.trace("Reconciliatng flow: call listener {}", flowReconciler.getName());
+                logger.trace("Reconciling flow: call listener {}", flowReconciler.getName());
             }
             retCmd = flowReconciler.reconcileFlows(ofmRcList);
             if (retCmd == IFlowReconcileListener.Command.STOP) {
