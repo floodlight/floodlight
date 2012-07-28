@@ -31,11 +31,13 @@ public class BSN extends BasePacket {
 	public static final int BSN_MAGIC = 0x20000604;
 	public static final short BSN_VERSION_CURRENT = 0x0;
 	public static final short BSN_TYPE_PROBE = 0x1;
+	public static final short BSN_TYPE_BDDP  = 0x2;
 	public static Map<Short, Class<? extends IPacket>> typeClassMap;
 	
     static {
         typeClassMap = new HashMap<Short, Class<? extends IPacket>>();
         typeClassMap.put(BSN_TYPE_PROBE, BSNPROBE.class);
+        typeClassMap.put(BSN_TYPE_BDDP, LLDP.class);
     }
 
 	protected short type;
