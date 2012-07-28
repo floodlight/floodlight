@@ -76,8 +76,8 @@ public class FloodlightModuleLoader {
 	            = ServiceLoader.load(IFloodlightModule.class, cl);
 	        // Iterate for each module, iterate through and add it's services
 	        for (IFloodlightModule m : moduleLoader) {
-	            if (logger.isDebugEnabled()) {
-	                logger.debug("Found module " + m.getClass().getName());
+	            if (logger.isTraceEnabled()) {
+	                logger.trace("Found module " + m.getClass().getName());
 	            }
 
 	            // Set up moduleNameMap
@@ -169,7 +169,7 @@ public class FloodlightModuleLoader {
 	 */
 	public IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop) 
             throws FloodlightModuleException {
-        logger.debug("Starting module loader");
+        logger.trace("Starting module loader");
         findAllModules(configMods);
         
         Collection<IFloodlightModule> moduleSet = new ArrayList<IFloodlightModule>();
