@@ -87,8 +87,8 @@ public class RestApiServer
             
             // Add everything in the module context to the rest
             for (Class<? extends IFloodlightService> s : fmlContext.getAllServices()) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Adding {} for service {} into context",
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Adding {} for service {} into context",
                                  s.getCanonicalName(), fmlContext.getServiceImpl(s));
                 }
                 context.getAttributes().put(s.getCanonicalName(), 
@@ -178,7 +178,7 @@ public class RestApiServer
         if (port != null) {
             restPort = Integer.parseInt(port);
         }
-        logger.info("REST port set to {}", restPort);
+        logger.debug("REST port set to {}", restPort);
     }
 
     @Override

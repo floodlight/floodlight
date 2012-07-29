@@ -21,16 +21,16 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
+import net.floodlightcontroller.core.web.serializers.ByteArrayMACSerializer;
+import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.openflow.protocol.serializers.OFPhysicalPortJSONSerializer;
 
 /**
  * Represents ofp_phy_port
  * @author David Erickson (daviderickson@cs.stanford.edu) - Mar 25, 2010
  */
-@JsonSerialize(using=OFPhysicalPortJSONSerializer.class)
 public class OFPhysicalPort {
     public static int MINIMUM_LENGTH = 48;
     public static int OFP_ETH_ALEN = 6;
@@ -221,6 +221,7 @@ public class OFPhysicalPort {
     /**
      * @return the portNumber
      */
+    @JsonSerialize(using=UShortSerializer.class)
     public short getPortNumber() {
         return portNumber;
     }
@@ -235,6 +236,7 @@ public class OFPhysicalPort {
     /**
      * @return the hardwareAddress
      */
+    @JsonSerialize(using=ByteArrayMACSerializer.class)
     public byte[] getHardwareAddress() {
         return hardwareAddress;
     }

@@ -624,13 +624,6 @@ public class TopologyManager implements
     // ****************
     // Internal methods
     // ****************
-    public static boolean isTunnelEnabled(FloodlightContext cntx) {
-        if (cntx == null) return false;
-        Boolean flag = (Boolean) cntx.getStorage().get(CONTEXT_TUNNEL_ENABLED);
-        if (flag == null || flag == false) return false;
-        return true;
-    }
-
     protected Command dropFilter(IOFSwitch sw, OFPacketIn pi, 
                                              FloodlightContext cntx) {
         Command result = Command.CONTINUE;
@@ -655,13 +648,7 @@ public class TopologyManager implements
         return result;
     }
 
-    protected void checkTunnelUsage(IOFSwitch sw, OFPacketIn pi, 
-                                    FloodlightContext cntx) {
-        // tunnels are disabled.
-        cntx.getStorage().put(CONTEXT_TUNNEL_ENABLED, false);
-    }
     
-
     /** 
      * TODO This method must be moved to a layer below forwarding
      * so that anyone can use it.
@@ -789,7 +776,6 @@ public class TopologyManager implements
         } else {
             // if the packet is BDDP, then send flood it on all the external 
             // switch ports in the same openflow domain.
-            checkTunnelUsage(sw, pi, cntx);
             return dropFilter(sw, pi, cntx);
         }
         return Command.STOP;
@@ -1053,11 +1039,6 @@ public class TopologyManager implements
 
     public TopologyInstance getCurrentInstance() {
         return this.getCurrentInstance(true);
-    }
-
-    @Override
-    public boolean isTunnelEnabled(long srcMac, long dstMac) {
-        return false;
     }
 }
 

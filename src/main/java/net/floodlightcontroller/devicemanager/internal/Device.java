@@ -311,7 +311,7 @@ public class Device implements IDevice {
             }
 
             prev = clentities[clEntIndex] = cur;
-            prevCluster = curCluster;
+            prevCluster = topology.getL2DomainId(prev.getSwitchDPID());
 
             long prevLastSeen =
                     deviceManager.apComparator.
@@ -363,7 +363,6 @@ public class Device implements IDevice {
         return entityClass;
     }
 
-    @Override
     public Entity[] getEntities() {
         return entities;
     }

@@ -104,6 +104,9 @@ public class IndexedEntity {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         IndexedEntity other = (IndexedEntity) obj;
+        
+        if (!keyFields.equals(other.keyFields))
+            return false;
 
         for (IDeviceService.DeviceField f : keyFields) {
             switch (f) {

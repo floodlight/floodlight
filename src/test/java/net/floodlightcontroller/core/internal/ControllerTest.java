@@ -61,6 +61,7 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.easymock.Capture;
+import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
@@ -1150,5 +1151,24 @@ public class ControllerTest extends FloodlightTestCase {
                    controller.activeSwitches.isEmpty());
     }
     
-    
+    /**
+     * Tests that you can't remove a switch from the active
+     * switch list.
+     * @throws Exception
+     */
+    @Test
+    public void testRemoveActiveSwitch() {
+        IOFSwitch sw = EasyMock.createNiceMock(IOFSwitch.class);
+        boolean exceptionThrown = false;
+        expect(sw.getId()).andReturn(1L).anyTimes();
+        replay(sw);
+        getController().activeSwitches.put(sw.getId(), sw);
+        try {
+            getController().getSwitches().remove(1L);
+        } catch (UnsupportedOperationException e) {
+            exceptionThrown = true;
+        }
+        assertTrue(exceptionThrown);
+        verify(sw);
+    }
 }
