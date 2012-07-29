@@ -354,6 +354,10 @@ public class Controller implements IFloodlightProviderService,
     @Override
     public void setRole(Role role) {
         if (role == null) throw new NullPointerException("Role can not be null.");
+        if (role == Role.MASTER && this.role == Role.SLAVE) {
+            // Reset db state to Inactive for all switches. 
+            updateAllInactiveSwitchInfo();
+        }
         
         // Need to synchronize to ensure a reliable ordering on role request
         // messages send and to ensure the list of connected switches is stable
@@ -1483,6 +1487,9 @@ public class Controller implements IFloodlightProviderService,
     // **************
 
     protected void updateAllInactiveSwitchInfo() {
+        if (role == Role.SLAVE) {
+            return;
+        }
         String controllerId = getControllerId();
         String[] switchColumns = { SWITCH_DATAPATH_ID,
                                    SWITCH_CONTROLLER_ID,
@@ -1540,6 +1547,9 @@ public class Controller implements IFloodlightProviderService,
     }
     
     protected void updateActiveSwitchInfo(IOFSwitch sw) {
+        if (role == Role.SLAVE) {
+            return;
+        }
         // Obtain the row info for the switch
         Map<String, Object> switchInfo = new HashMap<String, Object>();
         String datapathIdString = sw.getStringId();
@@ -1584,6 +1594,9 @@ public class Controller implements IFloodlightProviderService,
     }
     
     protected void updateInactiveSwitchInfo(IOFSwitch sw) {
+        if (role == Role.SLAVE) {
+            return;
+        }
         log.debug("Update DB with inactiveSW {}", sw);
         // Update the controller info in the storage source to be inactive
         Map<String, Object> switchInfo = new HashMap<String, Object>();
@@ -1595,6 +1608,9 @@ public class Controller implements IFloodlightProviderService,
     }
 
     protected void updatePortInfo(IOFSwitch sw, OFPhysicalPort port) {
+        if (role == Role.SLAVE) {
+            return;
+        }
         String datapathIdString = sw.getStringId();
         Map<String, Object> portInfo = new HashMap<String, Object>();
         int portNumber = U16.f(port.getPortNumber());
@@ -1668,6 +1684,9 @@ public class Controller implements IFloodlightProviderService,
     }
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
+        if (role == Role.SLAVE) {
+            return;
+        }
         String datapathIdString = sw.getStringId();
         String id = datapathIdString + "|" + portNumber;
         storageSource.deleteRowAsync(PORT_TABLE_NAME, id);
