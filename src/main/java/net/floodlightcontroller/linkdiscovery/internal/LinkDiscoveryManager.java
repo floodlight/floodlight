@@ -271,6 +271,30 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return ILinkDiscovery.LinkType.INVALID_LINK;
     }
 
+    private void doUpdatesThread() throws InterruptedException {
+        do {
+            LDUpdate update = updates.take();
+
+            if (linkDiscoveryAware != null) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+                              new Object[]{update.getOperation(),
+                                           HexString.toHexString(update.getSrc()), update.getSrcPort(),
+                                           HexString.toHexString(update.getDst()), update.getDstPort(),
+                                           linkDiscoveryAware});
+                }
+                try {
+                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                    lda.linkDiscoveryUpdate(update);
+                    }
+                }
+                catch (Exception e) {
+                    log.error("Error in link discovery updates loop", e);
+                }
+            }
+        } while (updates.peek() != null);
+    }
+
     private boolean isLLDPSuppressed(long sw, short portNumber) {
         return this.suppressLLDPs.contains(new NodePortTuple(sw, portNumber));
     }
@@ -1567,6 +1591,19 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
             }
         });
+
+        updatesThread = new Thread(new Runnable () {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        doUpdatesThread();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }}, "Topology Updates");
+        updatesThread.start();
 
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
