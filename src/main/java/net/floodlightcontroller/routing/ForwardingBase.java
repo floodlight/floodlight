@@ -181,6 +181,7 @@ public abstract class ForwardingBase implements
                 (OFFlowMod) floodlightProvider.getOFMessageFactory()
                                               .getMessage(OFType.FLOW_MOD);
         OFActionOutput action = new OFActionOutput();
+        action.setMaxLength((short)0xffff);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
@@ -211,9 +212,6 @@ public abstract class ForwardingBase implements
 
             // set buffer id if it is the source switch
             if (1 == indx) {
-                //fm.setMatch(match);
-                fm.setBufferId(bufferId);
-                //fm.setMatch(wildcard(match, sw, wildcard_hints));
                 // Set the flag to request flow-mod removal notifications only for the
                 // source switch. The removal message is used to maintain the flow
                 // cache. Don't set the flag for ARP messages - TODO generalize check
@@ -247,6 +245,8 @@ public abstract class ForwardingBase implements
 
                 // Push the packet out the source switch
                 if (sw.getId() == pinSwitch) {
+                    // TODO: Instead of doing a packetOut here we could also 
+                    // send a flowMod with bufferId set.... 
                     pushPacket(sw, match, pi, outPort, cntx);
                     srcSwitchIncluded = true;
                 }
@@ -270,6 +270,72 @@ public abstract class ForwardingBase implements
             return match.clone().setWildcards(wildcard_hints.intValue());
         }
         return match.clone();
+    }
+    
+    /**
+     * Pushes a packet-out to a switch. If bufferId != BUFFER_ID_NONE we 
+     * assume that the packetOut switch is the same as the packetIn switch
+     * and we will use the bufferId 
+     * Caller needs to make sure that inPort and outPort differs
+     * @param packet    packet data to send
+     * @param sw        switch from which packet-out is sent
+     * @param bufferId  bufferId
+     * @param inPort    input port
+     * @param outPort   output port
+     * @param cntx      context of the packet
+     */
+    public void pushPacket(IPacket packet, 
+                           IOFSwitch sw,
+                           int bufferId,
+                           short inPort,
+                           short outPort, 
+                           FloodlightContext cntx) {
+        
+        
+        if (log.isTraceEnabled()) {
+            log.trace("PacketOut srcSwitch={} inPort={} outPort={}", 
+                      new Object[] {sw, inPort, outPort});
+        }
+
+        OFPacketOut po =
+                (OFPacketOut) floodlightProvider.getOFMessageFactory()
+                                                .getMessage(OFType.PACKET_OUT);
+
+        // set actions
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(new OFActionOutput(outPort, (short) 0xffff));
+
+        po.setActions(actions)
+          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        short poLength =
+                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
+
+        // set buffer_id, in_port
+        po.setBufferId(bufferId);
+        po.setInPort(inPort);
+
+        // set data - only if buffer_id == -1
+        if (po.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
+            if (packet == null) {
+                log.error("BufferId is set but no packet data is null. " +
+                		"Cannot send packetOut. " +
+                        "srcSwitch={} inPort={} outPort={}",
+                        new Object[] {sw, inPort, outPort});
+                return;
+            }
+            byte[] packetData = packet.serialize();
+            poLength += packetData.length;
+            po.setPacketData(packetData);
+        }
+
+        po.setLength(poLength);
+
+        try {
+            counterStore.updatePktOutFMCounterStore(sw, po);
+            sw.write(po, cntx);
+        } catch (IOException e) {
+            log.error("Failure writing packet out", e);
+        }
     }
 
     /**
