@@ -98,5 +98,11 @@ public interface IEntityClassifierService extends IFloodlightService {
    void deviceUpdate(IDevice oldDevice, 
                      Collection<? extends IDevice> newDevices);
 
+   /**
+    * Adds a listener to listen for IEntityClassifierServices notifications
+    *
+    * @param listener The listener that wants the notifications
+    */
+   public void addListener(IEntityClassListener listener);
 }
 

@@ -28,6 +28,7 @@ import org.openflow.util.U16;
 import junit.framework.TestCase;
 
 public class BasicFactoryTest extends TestCase {
+
     public void testCreateAndParse() throws MessageParseException {
         BasicFactory factory = new BasicFactory();
         OFMessage m = factory.getMessage(OFType.HELLO);
@@ -45,5 +46,35 @@ public class BasicFactoryTest extends TestCase {
         TestCase.assertNotNull(message);
         TestCase.assertEquals(message.size(), 1);
         TestCase.assertTrue(message.get(0).getType() == OFType.ECHO_REQUEST);
+    }
+
+    public void testInvalidMsgParse() throws MessageParseException {
+        BasicFactory factory = new BasicFactory();
+        OFMessage m = factory.getMessage(OFType.HELLO);
+        m.setVersion((byte) 1);
+        m.setType(OFType.ECHO_REQUEST);
+        m.setLength(U16.t(16));
+        m.setXid(0xdeadbeef);
+        ChannelBuffer bb = ChannelBuffers.dynamicBuffer();
+        m.writeTo(bb);
+        List<OFMessage> message = factory.parseMessage(bb);
+        TestCase.assertNull(message);
+    }
+
+    public void testCurrouptedMsgParse() throws MessageParseException {
+        BasicFactory factory = new BasicFactory();
+        OFMessage m = factory.getMessage(OFType.HELLO);
+        m.setVersion((byte) 1);
+        m.setType(OFType.ERROR);
+        m.setLength(U16.t(8));
+        m.setXid(0xdeadbeef);
+        ChannelBuffer bb = ChannelBuffers.dynamicBuffer();
+        m.writeTo(bb);
+        try {
+                factory.parseMessage(bb);
+        }
+        catch(Exception e) {
+                TestCase.assertEquals(MessageParseException.class, e.getClass());
+        }
     }
 }

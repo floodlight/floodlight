@@ -31,6 +31,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 
 /**
@@ -46,6 +47,12 @@ public class DefaultEntityClassifier implements
      * A default fixed entity class
      */
     protected static class DefaultEntityClass implements IEntityClass {
+        String name;
+
+        public DefaultEntityClass(String name) {
+            this.name = name;
+        }
+
         @Override
         public EnumSet<IDeviceService.DeviceField> getKeyFields() {
             return keyFields;
@@ -53,7 +60,11 @@ public class DefaultEntityClassifier implements
 
         @Override
         public String getName() {
-            return "DefaultEntityClass";
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
         }
     }
     
@@ -61,7 +72,16 @@ public class DefaultEntityClassifier implements
     static {
         keyFields = EnumSet.of(DeviceField.MAC, DeviceField.VLAN);
     }
-    protected static IEntityClass entityClass = new DefaultEntityClass();
+    protected static DefaultEntityClass entityClass =
+        new DefaultEntityClass("DefaultEntityClass");
+
+    public void setClassifierName (String name) {
+        entityClass.setName(name);
+    }
+
+    public String getClassifierName (String name) {
+        return entityClass.getName();
+    }
     
     @Override
     public IEntityClass classifyEntity(Entity entity) {
@@ -120,5 +140,11 @@ public class DefaultEntityClassifier implements
     @Override
     public void startUp(FloodlightModuleContext context) {
         // no-op
+    }
+
+    @Override
+    public void addListener(IEntityClassListener listener) {
+        // no-op
+        
     }
 }
