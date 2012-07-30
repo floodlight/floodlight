@@ -380,7 +380,7 @@ public abstract class ForwardingBase implements
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(new OFActionOutput(outport, (short) 0));
+        actions.add(new OFActionOutput(outport, (short) 0xffff));
 
         po.setActions(actions)
           .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
