@@ -1380,4 +1380,30 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Arrays.sort(ips);
         assertArrayEquals(new Integer[] { 2, 42, 4242 }, ips);
     }
+    
+    // TODO: this test should really go into a separate class that collects
+    // unit tests for Device
+    @Test
+    public void testGetSwitchPortVlanId() {
+            Entity entity1 = new Entity(1L, (short)1, null, 10L, 1, new Date());
+            Entity entity2 = new Entity(1L, null, null, 10L, 1, new Date());
+            Entity entity3 = new Entity(1L, (short)3, null,  1L, 1, new Date());
+            Entity entity4 = new Entity(1L, (short)42, null,  1L, 1, new Date());
+            Entity[] entities = new Entity[] { entity1, entity2, 
+                                               entity3, entity4
+                                             };
+            Device d = new Device(null,1L, Arrays.asList(entities), null);
+            SwitchPort swp1x1 = new SwitchPort(1L, 1);
+            SwitchPort swp1x2 = new SwitchPort(1L, 2);
+            SwitchPort swp2x1 = new SwitchPort(2L, 1);
+            SwitchPort swp10x1 = new SwitchPort(10L, 1);
+            assertArrayEquals(new Short[] { -1, 1}, 
+                              d.getSwitchPortVlanIds(swp10x1));
+            assertArrayEquals(new Short[] { 3, 42}, 
+                              d.getSwitchPortVlanIds(swp1x1));
+            assertArrayEquals(new Short[0],
+                              d.getSwitchPortVlanIds(swp1x2));
+            assertArrayEquals(new Short[0],
+                              d.getSwitchPortVlanIds(swp2x1));
+    }
 }
