@@ -74,7 +74,8 @@ public class BasicFactoryTest extends TestCase {
                 factory.parseMessage(bb);
         }
         catch(Exception e) {
-                TestCase.assertEquals(MessageParseException.class, e.getClass());
+            TestCase.assertEquals(MessageParseException.class, e.getClass());
         }
     }
+
 }
