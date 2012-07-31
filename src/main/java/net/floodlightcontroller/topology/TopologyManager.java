@@ -616,7 +616,7 @@ public class TopologyManager implements
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
     }
-    
+
     protected void addRestletRoutable() {
         restApi.addRestletRoutable(new TopologyWebRoutable());
     }
@@ -624,31 +624,35 @@ public class TopologyManager implements
     // ****************
     // Internal methods
     // ****************
-    protected Command dropFilter(IOFSwitch sw, OFPacketIn pi, 
+    /**
+     * If the packet-in switch port is disabled for all data traffic, then
+     * the packet will be dropped.  Otherwise, the packet will follow the
+     * normal processing chain.
+     * @param sw
+     * @param pi
+     * @param cntx
+     * @return
+     */
+    protected Command dropFilter(long sw, OFPacketIn pi,
                                              FloodlightContext cntx) {
         Command result = Command.CONTINUE;
-        Ethernet eth = 
-                IFloodlightProviderService.bcStore.
-                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        short port = pi.getInPort();
 
-        if (isAllowed(sw.getId(), pi.getInPort()) == false) {
-            if (eth.getEtherType() == Ethernet.TYPE_BDDP ||
-                (eth.isBroadcast() == false && eth.isMulticast() == false)) {
-                result = Command.CONTINUE;
-            } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("Ignoring packet because of topology " + 
-                              "restriction on switch={}, port={}", 
-                              new Object[] {sw.getStringId(), 
-                                            pi.getInPort()});
-                }
+        // If the input port is not allowed for data traffic, drop everything.
+        // BDDP packets will not reach this stage.
+        if (isAllowed(sw, port) == false) {
+            if (log.isTraceEnabled()) {
+                log.trace("Ignoring packet because of topology " +
+                        "restriction on switch={}, port={}", sw, port);
                 result = Command.STOP;
             }
         }
+
+        // if sufficient information is available, then drop broadcast
+        // packets here as well.
         return result;
     }
 
-    
     /** 
      * TODO This method must be moved to a layer below forwarding
      * so that anyone can use it.
@@ -723,9 +727,10 @@ public class TopologyManager implements
         TopologyInstance ti = getCurrentInstance(false);
 
         Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
-        
-        if (switches == null) // this implies that there are no links connected to the switches
+
+        if (switches == null)
         {
+            // indicates no links are connected to the switches
             switches = new HashSet<Long>();
             switches.add(pinSwitch);
         }
@@ -774,9 +779,7 @@ public class TopologyManager implements
         if (eth.getEtherType() == Ethernet.TYPE_BDDP) {
             doFloodBDDP(sw.getId(), pi, cntx);
         } else {
-            // if the packet is BDDP, then send flood it on all the external 
-            // switch ports in the same openflow domain.
-            return dropFilter(sw, pi, cntx);
+            return dropFilter(sw.getId(), pi, cntx);
         }
         return Command.STOP;
     }
@@ -823,7 +826,7 @@ public class TopologyManager implements
                            update.getDst(), update.getDstPort());
                 updateApplied = true;
             }
-            
+
             if (updateApplied) {
             	appliedUpdates.add(newUpdate);
             }
