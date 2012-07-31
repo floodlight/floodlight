@@ -275,6 +275,15 @@ public class Controller implements IFloodlightProviderService,
             this.newRole = newRole;
         }
         public void dispatch() {
+            // Make sure that old and new roles are different.
+            if (oldRole == newRole) {
+                if (log.isTraceEnabled()) {
+                    log.trace("HA role update ignored as the old and " +
+                              "new roles are the same. newRole = {}" +
+                              "oldRole = {}", newRole, oldRole);
+                }
+                return;
+            }
             if (log.isTraceEnabled()) {
                 log.trace("Dispatching HA Role update newRole = {}, oldRole = {}",
                           newRole, oldRole);
