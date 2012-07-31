@@ -212,6 +212,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected BlockingQueue<LDUpdate> updates;
     protected Thread updatesThread;
 
+    protected Role currentRole;
+
     /** 
      * Get the LLDP sending period in seconds.
      * @return LLDP sending period in seconds.
@@ -1409,6 +1411,66 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
+        log.info("XXX: rowsModified = {}", tableName);
+        if (tableName.equals(LINK_TABLE_NAME)) {
+            if (currentRole == Role.SLAVE) {
+                log.info("XXX: got link update in slave mode. Update stuff !!!");
+                for(Object key: rowKeys) {
+                    IResultSet resultSet = null;
+                    try {
+                        resultSet = storageSource.getRow(tableName, key);
+                        for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                            Map<String, Object> rowValues = it.next().getRow();
+
+                            Long lldpValidTime = null, bddpValidTime = null, firstSeenTime = null;
+                            if (rowValues.get(LINK_VALID_TIME) != null) {
+                                lldpValidTime = Long.decode((String)rowValues.get(LINK_VALID_TIME));
+                                firstSeenTime = lldpValidTime;
+                            }
+                            if (lldpValidTime == null) {
+                                log.info("XXX: read null unicast time");
+                                // FIXME: for now just set firstSeenTime to current time.
+                                firstSeenTime = System.currentTimeMillis();
+                            }
+                            String srcDpid = (String)rowValues.get(LINK_SRC_SWITCH);
+                            Short srcPort = Short.decode((String)rowValues.get(LINK_SRC_PORT));
+                            LinkType type;
+                            String typeStr = (String)rowValues.get(LINK_TYPE);
+                            if (typeStr.equals("internal")) {
+                                type = LinkType.DIRECT_LINK;
+                            }
+                            else if (typeStr.equals("external")) {
+                                type = LinkType.MULTIHOP_LINK;
+                            }
+                            else if (typeStr.equals("tunnel")) {
+                                type = LinkType.TUNNEL;
+                            }
+                            Integer srcPortState = Integer.valueOf((String)rowValues.get(LINK_SRC_PORT_STATE));
+                            String destDpid = (String)rowValues.get(LINK_DST_SWITCH);
+                            Short destPort = Short.decode((String)rowValues.get(LINK_DST_PORT));
+                            Integer destPortState = Integer.valueOf((String)rowValues.get(LINK_DST_PORT_STATE));
+                            log.info("read from cassandra, srcDpid = {}", srcDpid);
+                            log.info("read from cassandra, srcPort = {}", srcPort);
+                            log.info("read from cassandra, destDpid = {}", destDpid);
+                            log.info("read from cassandra, destPort = {}", destPort);
+                            Link lt = new Link(HexString.toLong(srcDpid), srcPort, HexString.toLong(destDpid), destPort);
+                            LinkInfo newLinkInfo =
+                                new LinkInfo(firstSeenTime, lldpValidTime, bddpValidTime, srcPortState, destPortState);
+                            addOrUpdateLink(lt, newLinkInfo);
+                        }
+                    }
+                    finally {
+                        if (resultSet != null) {
+                            resultSet.close();
+                        }
+                    }
+                }
+            }
+            else {
+                log.info("XXX: got link update in active mode. Ignore !!!");
+            }
+            return;
+        }
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
         for(Object key: rowKeys) {
@@ -1541,8 +1603,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // Register for storage updates for the switch table
         try {
             storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
+            storageSource.addListener(LINK_TABLE_NAME, this);
         } catch (StorageException ex) {
-            log.error("Error in installing listener for switch table - {}", SWITCH_CONFIG_TABLE_NAME);
+            log.error("Error in installing listener for switch/link table - {}", SWITCH_CONFIG_TABLE_NAME);
         }
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
@@ -1687,15 +1750,16 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
                 break;
             case SLAVE:
-                log.debug("Clearing links due to " +
-                        "HA change to SLAVE");
-                switchLinks.clear();
-                links.clear();
-                portLinks.clear();
-                portBroadcastDomainLinks.clear();
-                discoverOnAllPorts();
+                //log.debug("Clearing links due to " +
+                //        "HA change to SLAVE");
+                //switchLinks.clear();
+                //links.clear();
+                //portLinks.clear();
+                //portBroadcastDomainLinks.clear();
+                //discoverOnAllPorts();
                 break;
         }
+        currentRole = newRole;
     }
 
     @Override
