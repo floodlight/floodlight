@@ -906,13 +906,13 @@ public class Controller implements IFloodlightProviderService,
                         // case and we don't want to log those spurious errors.
                         shouldLogError = !isBadVendorError;
                         if (isBadVendorError) {
-                            if (!state.firstRoleReplyReceived) {
+                            if (state.firstRoleReplyReceived) {
                                 log.warn("Received ERROR from sw {} that "
                                           +"indicates roles are not supported "
                                           +"but we have received a valid "
                                           +"role reply earlier", sw);
+                                state.firstRoleReplyReceived = false;
                             }
-                            state.firstRoleReplyReceived = true;
                             sw.deliverRoleRequestNotSupported(error.getXid());
                             synchronized(roleChanger) {
                                 if (sw.role == null && Controller.this.role==Role.SLAVE) {
