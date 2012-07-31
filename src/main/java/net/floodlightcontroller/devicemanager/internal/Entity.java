@@ -213,7 +213,7 @@ public class Entity implements Comparable<Entity> {
 
     @Override
     public String toString() {
-        return "Entity [macAddress=" + HexString.toHexString(macAddress)
+        return "Entity [macAddress=" + HexString.toHexString(macAddress, 6)
                + ", ipv4Address="
                + IPv4.fromIPv4Address(ipv4Address==null ? 0 : ipv4Address.intValue()) + ", vlan=" + vlan + ", switchDPID="
                + switchDPID + ", switchPort=" + switchPort + "]";

@@ -103,6 +103,29 @@ public interface ILinkDiscovery {
     };
 
     public enum LinkType {
-        INVALID_LINK, DIRECT_LINK, MULTIHOP_LINK, TUNNEL
+        INVALID_LINK {
+        	@Override
+        	public String toString() {
+        		return "invalid";
+        	}
+        }, 
+        DIRECT_LINK{
+        	@Override
+        	public String toString() {
+        		return "internal";
+        	}
+        }, 
+        MULTIHOP_LINK {
+        	@Override
+        	public String toString() {
+        		return "external";
+        	}
+        }, 
+        TUNNEL {
+        	@Override
+        	public String toString() {
+        		return "tunnel";
+        	}
+        }
     };
 }

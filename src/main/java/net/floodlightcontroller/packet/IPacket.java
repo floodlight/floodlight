@@ -63,4 +63,10 @@ public interface IPacket {
      * @return the deserialized data
      */
     public IPacket deserialize(byte[] data, int offset, int length);
+    
+    /** Clone this packet and its payload packet but not its parent. 
+     * 
+     * @return
+     */
+    public Object clone();
 }
