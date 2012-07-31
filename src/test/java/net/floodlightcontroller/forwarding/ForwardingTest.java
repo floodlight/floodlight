@@ -215,7 +215,7 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOut.setBufferId(this.packetIn.getBufferId())
             .setInPort(this.packetIn.getInPort());
         List<OFAction> poactions = new ArrayList<OFAction>();
-        poactions.add(new OFActionOutput((short) 3, (short) 0));
+        poactions.add(new OFActionOutput((short) 3, (short) 0xffff));
         packetOut.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
             .setPacketData(testPacketSerialized)
@@ -274,7 +274,7 @@ public class ForwardingTest extends FloodlightTestCase {
         // Expected Flow-mods
         OFMatch match = new OFMatch();
         match.loadFromPacket(testPacketSerialized, (short) 1);
-        OFActionOutput action = new OFActionOutput((short)3, (short)0);
+        OFActionOutput action = new OFActionOutput((short)3, (short)0xffff);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
@@ -310,9 +310,9 @@ public class ForwardingTest extends FloodlightTestCase {
         
         for (OFMessage m: msglist) {
             if (m instanceof OFFlowMod) 
-                assertTrue(m.equals(fm1));
+                assertEquals(fm1, m);
             else if (m instanceof OFPacketOut)
-                assertTrue(m.equals(packetOut)); 
+                assertEquals(packetOut, m);
         }
         
         OFMessage m = wc2.getValue();
@@ -356,7 +356,7 @@ public class ForwardingTest extends FloodlightTestCase {
         // Expected Flow-mods
         OFMatch match = new OFMatch();
         match.loadFromPacket(testPacketSerialized, (short) 1);
-        OFActionOutput action = new OFActionOutput((short)3, (short)0);
+        OFActionOutput action = new OFActionOutput((short)3, (short)0xffff);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 

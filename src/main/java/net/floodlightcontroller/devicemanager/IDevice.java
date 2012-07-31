@@ -73,6 +73,14 @@ public interface IDevice {
      * @return an array containing all unique attachment points for the device
      */
     public SwitchPort[] getAttachmentPoints(boolean includeError);
+
+    /**
+     * Returns all unique VLAN IDs for the device that were observed on 
+     * the given switch port
+     * @param swp the switch port to query
+     * @return an array containing the unique VLAN IDs
+     */
+    public Short[] getSwitchPortVlanIds(SwitchPort swp);
     
     /**
      * Get the most recent timestamp for this device
