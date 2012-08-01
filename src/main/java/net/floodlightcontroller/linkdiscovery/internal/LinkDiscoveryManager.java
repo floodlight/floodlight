@@ -357,6 +357,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
                              boolean isReverse) {
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) {
+        	return;
+        }
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
         if (isLLDPSuppressed(sw, port)) {
