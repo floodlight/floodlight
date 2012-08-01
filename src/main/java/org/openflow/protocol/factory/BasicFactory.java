@@ -115,17 +115,12 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
         } catch (Exception e) {
             /* Write the offending data along with the error message */
             data.resetReaderIndex();
-            int len = data.readableBytes();
-            StringBuffer sb = new StringBuffer();
-                for (int i=0 ; i<len; i++) {
-                    sb.append(String.format(" %02x", data.getUnsignedByte(i)));
-                    if (i%16 == 15) sb.append("\n");
-                }
-                String msg =
-                        "Message Parse Error for packet: " +  sb.toString() +
-                        "\nException: " + e.toString();
+            String msg =
+                    "Message Parse Error for packet:" +  dumpBuffer(data) +
+                    "\nException: " + e.toString();
+            data.resetReaderIndex();
 
-                throw new MessageParseException(msg, e);
+            throw new MessageParseException(msg, e);
         }
     }
 
@@ -281,6 +276,19 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
         vendorData.readFrom(data, length);
         
         return vendorData;
+    }
+
+    public static String dumpBuffer(ChannelBuffer data) {
+        // NOTE: Reads all the bytes in buffer from current read offset.
+        // Set/Reset ReaderIndex if you want to read from a different location
+        int len = data.readableBytes();
+        StringBuffer sb = new StringBuffer();
+        for (int i=0 ; i<len; i++) {
+            if (i%32 == 0) sb.append("\n");
+            if (i%4 == 0) sb.append(" ");
+            sb.append(String.format("%02x", data.getUnsignedByte(i)));
+        }
+        return sb.toString();
     }
 
 }
