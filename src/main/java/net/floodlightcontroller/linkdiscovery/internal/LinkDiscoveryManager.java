@@ -271,6 +271,30 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return ILinkDiscovery.LinkType.INVALID_LINK;
     }
 
+    private void doUpdatesThread() throws InterruptedException {
+        do {
+            LDUpdate update = updates.take();
+
+            if (linkDiscoveryAware != null) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+                              new Object[]{update.getOperation(),
+                                           HexString.toHexString(update.getSrc()), update.getSrcPort(),
+                                           HexString.toHexString(update.getDst()), update.getDstPort(),
+                                           linkDiscoveryAware});
+                }
+                try {
+                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                    lda.linkDiscoveryUpdate(update);
+                    }
+                }
+                catch (Exception e) {
+                    log.error("Error in link discovery updates loop", e);
+                }
+            }
+        } while (updates.peek() != null);
+    }
+
     private boolean isLLDPSuppressed(long sw, short portNumber) {
         return this.suppressLLDPs.contains(new NodePortTuple(sw, portNumber));
     }
@@ -602,17 +626,23 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
 
         if (!remoteSwitch.portEnabled(remotePort)) {
-            log.debug("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
+            if (log.isTraceEnabled()) {
+                log.trace("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
+            }
             return Command.STOP;
         }
         if (suppressLLDPs.contains(new NodePortTuple(remoteSwitch.getId(), 
                                                      remotePort))) {
-            log.debug("Ignoring link with suppressed src port: switch {} port {}",
+            if (log.isTraceEnabled()) {
+                log.trace("Ignoring link with suppressed src port: switch {} port {}",
                       remoteSwitch, remotePort);
+            }
             return Command.STOP;
         }
         if (!iofSwitch.portEnabled(pi.getInPort())) {
-            log.debug("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
+            if (log.isTraceEnabled()) {
+                log.trace("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
+            }
             return Command.STOP;
         }
 
@@ -805,8 +835,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
                 if (linkChanged) {
                     updateOperation = UpdateOperation.ADD_OR_UPDATE;
-                    if (log.isDebugEnabled()) {
-                        log.debug("Updated link {}", lt);
+                    if (log.isTraceEnabled()) {
+                        log.trace("Updated link {}", lt);
                     }
                     // Add to event history
                     evHistTopoLink(lt.getSrc(),
@@ -890,8 +920,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 removeLinkFromStorage(lt);
 
 
-                if (log.isDebugEnabled()) {
-                    log.debug("Deleted link {}", lt);
+                if (log.isTraceEnabled()) {
+                    log.trace("Deleted link {}", lt);
                 }
             }
         } finally {
@@ -911,8 +941,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
         if (iofSwitch == null) return Command.CONTINUE;
 
-        if (log.isDebugEnabled()) {
-            log.debug("handlePortStatus: Switch {} port #{} reason {}; " +
+        if (log.isTraceEnabled()) {
+            log.trace("handlePortStatus: Switch {} port #{} reason {}; " +
                     "config is {} state is {}",
                     new Object[] {iofSwitch.getStringId(),
                                   ps.getDesc().getPortNumber(),
@@ -979,8 +1009,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
 
             if (!linkDeleted && !linkInfoChanged){
-                if (log.isDebugEnabled()) {
-                    log.debug("handlePortStatus: Switch {} port #{} reason {};"+
+                if (log.isTraceEnabled()) {
+                    log.trace("handlePortStatus: Switch {} port #{} reason {};"+
                             " no links to update/remove",
                             new Object[] {HexString.toHexString(sw),
                                           ps.getDesc().getPortNumber(),
@@ -1037,8 +1067,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         lock.writeLock().lock();
         try {
             if (switchLinks.containsKey(sw)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Handle switchRemoved. Switch {}; removing links {}",
+                if (log.isTraceEnabled()) {
+                    log.trace("Handle switchRemoved. Switch {}; removing links {}",
                               HexString.toHexString(sw), switchLinks.get(sw));
                 }
                 // add all tuples with an endpoint on this switch to erase list
@@ -1058,8 +1088,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected void deleteLinksOnPort(NodePortTuple npt, String reason) {
         List<Link> eraseList = new ArrayList<Link>();
         if (this.portLinks.containsKey(npt)) {
-            if (log.isDebugEnabled()) {
-                log.debug("handlePortStatus: Switch {} port #{} " +
+            if (log.isTraceEnabled()) {
+                log.trace("handlePortStatus: Switch {} port #{} " +
                         "removing links {}",
                         new Object[] {HexString.toHexString(npt.getNodeId()),
                                       npt.getPortId(),
@@ -1438,8 +1468,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     updated_switches.add(sw);
                 }
             } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("Update for switch which has no entry in switch " +
+                if (log.isTraceEnabled()) {
+                    log.trace("Update for switch which has no entry in switch " +
                             "list (dpid={}), a delete action.", (String)key);
                 }
             }
@@ -1449,15 +1479,15 @@ IFloodlightModule, IInfoProvider, IHAListener {
             // Set SWITCH_IS_CORE_SWITCH to it's inverse value
             if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
                 sw.removeAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
-                if (log.isDebugEnabled()) {
-                    log.debug("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
+                if (log.isTraceEnabled()) {
+                    log.trace("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
                 }
                 updates.add(new LDUpdate(sw.getId(), SwitchType.BASIC_SWITCH));
             }
             else {
                 sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, new Boolean(true));
-                if (log.isDebugEnabled()) {
-                    log.debug("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
+                if (log.isTraceEnabled()) {
+                    log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
                 }
                 updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH));
             }
@@ -1567,6 +1597,19 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
             }
         });
+
+        updatesThread = new Thread(new Runnable () {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        doUpdatesThread();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }}, "Topology Updates");
+        updatesThread.start();
 
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
@@ -1680,15 +1723,19 @@ IFloodlightModule, IInfoProvider, IHAListener {
             case MASTER:
                 if (oldRole == Role.SLAVE) {
                     clearAllLinks();
-                    log.debug("Sending LLDPs " +
-                            "to HA change from SLAVE->MASTER");
+                    if (log.isTraceEnabled()) {
+                        log.trace("Sending LLDPs " +
+                                "to HA change from SLAVE->MASTER");
+                    }
                     clearAllLinks();
                     discoverLinks();
                 }
                 break;
             case SLAVE:
-                log.debug("Clearing links due to " +
-                        "HA change to SLAVE");
+                if (log.isTraceEnabled()) {
+                    log.trace("Clearing links due to " +
+                            "HA change to SLAVE");
+                }
                 switchLinks.clear();
                 links.clear();
                 portLinks.clear();

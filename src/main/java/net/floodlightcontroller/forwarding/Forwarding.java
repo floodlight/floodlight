@@ -291,11 +291,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        this.setFloodlightProvider(context.getServiceImpl(IFloodlightProviderService.class));
-        this.setDeviceManager(context.getServiceImpl(IDeviceService.class));
-        this.setRoutingEngine(context.getServiceImpl(IRoutingService.class));
-        this.setTopology(context.getServiceImpl(ITopologyService.class));
-        this.setCounterStore(context.getServiceImpl(ICounterStoreService.class));
+        this.floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        this.deviceManager = context.getServiceImpl(IDeviceService.class);
+        this.routingEngine = context.getServiceImpl(IRoutingService.class);
+        this.topology = context.getServiceImpl(ITopologyService.class);
+        this.counterStore = context.getServiceImpl(ICounterStoreService.class);
     }
 
     @Override

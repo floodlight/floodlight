@@ -116,7 +116,7 @@ public class LinkInfo {
         result = prime * result + ((firstSeenTime == null) ? 0 : firstSeenTime.hashCode());
         result = prime * result + ((lastLldpReceivedTime == null) ? 0 : lastLldpReceivedTime.hashCode());
         result = prime * result + ((lastBddpReceivedTime == null) ? 0 : lastBddpReceivedTime.hashCode());
-        result = prime * result + ((srcPortState == null) ? 0 : lastLldpReceivedTime.hashCode());
+        result = prime * result + ((srcPortState == null) ? 0 : srcPortState.hashCode());
         result = prime * result + ((dstPortState == null) ? 0 : dstPortState.hashCode());
         return result;
     }
