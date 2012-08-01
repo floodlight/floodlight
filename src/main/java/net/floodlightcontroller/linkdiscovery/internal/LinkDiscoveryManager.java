@@ -1255,6 +1255,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param linkInfo The LinkInfo to write
      */
     void writeLink(Link lt, LinkInfo linkInfo) {
+        if (currentRole == Role.SLAVE) {
+            return;
+        }
         LinkType type = getLinkType(lt, linkInfo);
 
         // Write only direct links.  Do not write links to external
