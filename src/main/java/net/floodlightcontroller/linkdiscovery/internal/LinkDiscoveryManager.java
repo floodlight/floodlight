@@ -24,6 +24,7 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1249,6 +1250,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 "-" + lt.getDstPort();
     }
 
+    private Link getLinkTupleFromId(String id)
+    {
+        String[] tokens = id.split("-");
+        Link lt = new Link(HexString.toLong(tokens[0]), Short.parseShort(tokens[1]), HexString.toLong(tokens[2]), Short.parseShort(tokens[3]));
+        return lt;
+    }
+
     /**
      * Writes a LinkTuple and corresponding LinkInfo to storage
      * @param lt The LinkTuple to write
@@ -1389,6 +1397,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param lt The LinkTuple to delete.
      */
     void removeLinkFromStorage(Link lt) {
+        if (currentRole == Role.SLAVE) {
+            return;
+        }
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
     }
@@ -1561,7 +1572,21 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-        // Ignore delete events, the switch delete will do the right thing on it's own
+        if (tableName.equals(LINK_TABLE_NAME) == false) {
+            return;
+        }
+        if (currentRole != Role.SLAVE) {
+            return;
+        }
+        for(Object obj : rowKeys) {
+            if (!(obj instanceof String)) {
+                log.error("tried to delete non-string key {}; ignoring", obj);
+                continue;
+            }
+            Link lt = getLinkTupleFromId((String) obj);
+            log.info("XXX: Delete link from MASTER {}", (String) obj);
+            deleteLinks(Arrays.asList(lt), "Deleted on MASTER");
+        }
     }
 
     // IFloodlightModule classes
