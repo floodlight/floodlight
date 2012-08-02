@@ -46,7 +46,6 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/counter/{counterTitle}/json", CounterResource.class);
         router.attach("/counter/{switchId}/{counterName}/json", SwitchCounterResource.class);
         router.attach("/counter/categories/{switchId}/{counterName}/{layer}/json", SwitchCounterCategoriesResource.class);
-        router.attach("/memory/json", ControllerMemoryResource.class);
         router.attach("/packettrace/json", PacketTraceResource.class);
         // Get the last {count} events from the event histories
         router.attach("/event-history/topology-switch/{count}/json",
@@ -60,6 +59,7 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/role/json", ControllerRoleResource.class);
         router.attach("/health/json", HealthCheckResource.class);
         router.attach("/system/uptime/json", SystemUptimeResource.class);
+        router.attach("/system/resources/json", SystemResourcesResource.class);
         return router;
     }
 }
