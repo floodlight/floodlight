@@ -3,6 +3,7 @@ package net.floodlightcontroller.firewall;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -30,18 +31,24 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryWebRoutable;
+import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.topology.ITopologyService;
 
 import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class Firewall implements IOFMessageListener, IFloodlightModule {
+public class Firewall implements IFirewallService, IOFMessageListener, IFloodlightModule {
 
 	protected IFloodlightProviderService floodlightProvider;
 	protected IRoutingService routingEngine;
+	protected IStorageSourceService storageSource;
+    protected IRestApiService restApi;
 	protected static Logger logger;
 	protected ArrayList<FirewallRule> rules;
 	protected boolean enabled;
@@ -65,14 +72,21 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
-		return null;
+		Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFirewallService.class);
+        return l;
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
-		return null;
+		Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IFirewallService.class, this);
+        return m;
 	}
 
 	@Override
@@ -80,16 +94,36 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		Collection<Class<? extends IFloodlightService>> l =
 		        new ArrayList<Class<? extends IFloodlightService>>();
 		    l.add(IFloodlightProviderService.class);
+		    l.add(IStorageSourceService.class);
+	        l.add(IRestApiService.class);
 		    return l;
 	}
+	
+	public IFloodlightProviderService getFloodlightProvider() {
+        return floodlightProvider;
+    }
+
+    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
+        this.floodlightProvider = floodlightProvider;
+    }
+
+    public void setStorageSource(IStorageSourceService storageSource) {
+        this.storageSource = storageSource;
+    }
 
 	@Override
 	public void init(FloodlightModuleContext context)
 			throws FloodlightModuleException {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+		storageSource = context.getServiceImpl(IStorageSourceService.class);
+		restApi = context.getServiceImpl(IRestApiService.class);
 	    rules = new ArrayList<FirewallRule>();
 	    logger = LoggerFactory.getLogger(Firewall.class);
-	    enabled = true;
+	    // start disabled
+	    enabled = false;
+	    
+	    // assumes no switches connected at startup()
+        //rules = readRulesFromStorage();
 	    
 	    // insert rule to allow ICMP traffic
 	    FirewallRule rule = new FirewallRule();
@@ -115,7 +149,10 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
-		if (this.enabled == true) {
+		// initialize REST interface
+        restApi.addRestletRoutable(new FirewallWebRoutable());
+		// start firewall if enabled at bootup
+        if (this.enabled == true) {
 			floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
 		}
 	}
@@ -140,7 +177,8 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
         return Command.CONTINUE;
 	}
 	
-	protected void enableFirewall() {
+	@Override
+	public void enableFirewall() {
 		// check if the firewall module is not listening for events, if not, then start listening (enable it)
 		List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
 		if (listeners != null && listeners.contains(this) == false) {
@@ -151,7 +189,8 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		this.enabled = true;
 	}
 	
-	protected void disableFirewall() {
+	@Override
+	public void disableFirewall() {
 		// check if the firewall module is listening for events, if yes, then remove it from listeners (disable it)
 		List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
 		if (listeners != null && listeners.contains(this) == true) {
@@ -160,6 +199,11 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		}
 		// TODO - remove all flow entries corresponding to firewall rules
 		this.enabled = false;
+	}
+	
+	@Override
+	public List<FirewallRule> getRules() {
+		return this.rules;
 	}
 	
 	protected FirewallRule matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
@@ -284,43 +328,11 @@ public class Firewall implements IOFMessageListener, IFloodlightModule {
 		return matched;
 	}
 	
-	/*
-	protected boolean matchPortRange(String rulePortRange, int packetPort) {
-		boolean matched = true;
-		int lower = -1, upper = -1;
-		
-		// is it a range? if yes, get the lower and upper bound
-		if (rulePortRange.indexOf("-") < 0) {
-			lower = upper = -1;
-			String[] prt_parts = rulePortRange.split("-");
-			try {
-				lower = Integer.parseInt(prt_parts[0].trim());
-			} catch (Exception exp) {
-				lower = -1;
-			}
-			upper = lower;
-			if (prt_parts.length == 2) {
-				try {
-					upper = Integer.parseInt(prt_parts[1].trim());
-				} catch (Exception exp) {
-					upper = lower;
-				}
-			}
-		} else {
-			lower = Integer.parseInt(rulePortRange);
-			upper = lower;
-		}
-		// does the port fall in the specified port range?
-		if (packetPort < lower || packetPort > upper) matched = false;
-		
-		return matched;
-	}
-	*/
-	
 	public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		
-		if (eth.getEtherType() != Ethernet.TYPE_IPv4) {
+		if (eth.getEtherType() == Ethernet.TYPE_ARP || eth.isBroadcast() == true) {
+			logger.info("allowing ARP and L2 broadcast traffic");
 			return Command.CONTINUE;
 		}
 		

@@ -15,24 +15,30 @@
 
 package net.floodlightcontroller.linkdiscovery;
 
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
+
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 
 public class LinkInfo {
-    public enum PortBroadcastState {
-        PBS_BLOCK,
-        PBS_FORWARD,
-    };
 
-    /**
-     * The term unicastValidTime may be slightly misleading here.
-     * The standard LLDP destination MAC address that is currently
-     * used is also a multicast address, however since this address
-     * is specified in the standard, we expect all switches to
-     * absorb this packet, thus making the standard LLDP packet
-     * traverse only one link.
-     */
-    protected Long unicastValidTime;
-    protected Long multicastValidTime;
+    public LinkInfo(Long firstSeenTime,
+                    Long lastLldpReceivedTime,
+                    Long lastBddpReceivedTime,
+                    int srcPortState,
+                    int dstPortState) {
+        super();
+        this.srcPortState = srcPortState;
+        this.dstPortState = dstPortState;
+        this.firstSeenTime = firstSeenTime;
+        this.lastLldpReceivedTime = lastLldpReceivedTime;
+        this.lastBddpReceivedTime = lastBddpReceivedTime;
+    }
+
+    protected Integer srcPortState;
+    protected Integer dstPortState;
+    protected Long firstSeenTime;
+    protected Long lastLldpReceivedTime; /* Standard LLLDP received time */
+    protected Long lastBddpReceivedTime; /* Modified LLDP received time  */
 
     /** The port states stored here are topology's last knowledge of
      * the state of the port. This mostly mirrors the state
@@ -43,38 +49,36 @@ public class LinkInfo {
      * it can determine if the port state has changed and therefore
      * requires the new state to be written to storage.
      */
-    protected Integer srcPortState;
-    protected Integer dstPortState;
 
-    public LinkInfo(Long unicastValidTime,
-                    Long broadcastValidTime,
-                    Integer srcPortState,
-                    Integer dstPortState) {
-        this.unicastValidTime = unicastValidTime;
-        this.multicastValidTime = broadcastValidTime;
-        this.srcPortState = srcPortState;
-        this.dstPortState = dstPortState;
-    }
+
 
     public boolean linkStpBlocked() {
         return ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue()) ||
             ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue());
     }
 
+    public Long getFirstSeenTime() {
+        return firstSeenTime;
+    }
+
+    public void setFirstSeenTime(Long firstSeenTime) {
+        this.firstSeenTime = firstSeenTime;
+    }
+
     public Long getUnicastValidTime() {
-        return unicastValidTime;
+        return lastLldpReceivedTime;
     }
 
     public void setUnicastValidTime(Long unicastValidTime) {
-        this.unicastValidTime = unicastValidTime;
+        this.lastLldpReceivedTime = unicastValidTime;
     }
 
     public Long getMulticastValidTime() {
-        return multicastValidTime;
+        return lastBddpReceivedTime;
     }
 
     public void setMulticastValidTime(Long multicastValidTime) {
-        this.multicastValidTime = multicastValidTime;
+        this.lastBddpReceivedTime = multicastValidTime;
     }
 
     public Integer getSrcPortState() {
@@ -93,6 +97,15 @@ public class LinkInfo {
         this.dstPortState = dstPortState;
     }
 
+    public LinkType getLinkType() {
+        if (lastLldpReceivedTime != null) {
+            return LinkType.DIRECT_LINK;
+        } else if (lastBddpReceivedTime != null) {
+            return LinkType.MULTIHOP_LINK;
+        }
+        return LinkType.INVALID_LINK;
+    }
+
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */
@@ -100,9 +113,10 @@ public class LinkInfo {
     public int hashCode() {
         final int prime = 5557;
         int result = 1;
-        result = prime * result + ((unicastValidTime == null) ? 0 : unicastValidTime.hashCode());
-        result = prime * result + ((multicastValidTime == null) ? 0 : multicastValidTime.hashCode());
-        result = prime * result + ((srcPortState == null) ? 0 : unicastValidTime.hashCode());
+        result = prime * result + ((firstSeenTime == null) ? 0 : firstSeenTime.hashCode());
+        result = prime * result + ((lastLldpReceivedTime == null) ? 0 : lastLldpReceivedTime.hashCode());
+        result = prime * result + ((lastBddpReceivedTime == null) ? 0 : lastBddpReceivedTime.hashCode());
+        result = prime * result + ((srcPortState == null) ? 0 : srcPortState.hashCode());
         result = prime * result + ((dstPortState == null) ? 0 : dstPortState.hashCode());
         return result;
     }
@@ -120,16 +134,22 @@ public class LinkInfo {
             return false;
         LinkInfo other = (LinkInfo) obj;
 
-        if (unicastValidTime == null) {
-            if (other.unicastValidTime != null)
+        if (firstSeenTime == null) {
+            if (other.firstSeenTime != null)
                 return false;
-        } else if (!unicastValidTime.equals(other.unicastValidTime))
+        } else if (!firstSeenTime.equals(other.firstSeenTime))
             return false;
 
-        if (multicastValidTime == null) {
-            if (other.multicastValidTime != null)
+        if (lastLldpReceivedTime == null) {
+            if (other.lastLldpReceivedTime != null)
                 return false;
-        } else if (!multicastValidTime.equals(other.multicastValidTime))
+        } else if (!lastLldpReceivedTime.equals(other.lastLldpReceivedTime))
+            return false;
+
+        if (lastBddpReceivedTime == null) {
+            if (other.lastBddpReceivedTime != null)
+                return false;
+        } else if (!lastBddpReceivedTime.equals(other.lastBddpReceivedTime))
             return false;
 
         if (srcPortState == null) {
@@ -147,13 +167,14 @@ public class LinkInfo {
         return true;
     }
 
+
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */
     @Override
     public String toString() {
-        return "LinkInfo [unicastValidTime=" + ((unicastValidTime == null) ? "null" : unicastValidTime)
-                + ", multicastValidTime=" + ((multicastValidTime == null) ? "null" : multicastValidTime)
+        return "LinkInfo [unicastValidTime=" + ((lastLldpReceivedTime == null) ? "null" : lastLldpReceivedTime)
+                + ", multicastValidTime=" + ((lastBddpReceivedTime == null) ? "null" : lastBddpReceivedTime)
                 + ", srcPortState=" + ((srcPortState == null) ? "null" : srcPortState)
                 + ", dstPortState=" + ((dstPortState == null) ? "null" : srcPortState)
                 + "]";

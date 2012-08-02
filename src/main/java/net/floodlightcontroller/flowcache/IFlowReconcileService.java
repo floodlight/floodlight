@@ -43,10 +43,13 @@ public interface IFlowReconcileService extends IFloodlightService {
      * new attachment point
      *
      * @param device      device that has moved
+     * @param handler	  handler to process the flows
      * @param fcEvType    Event type that triggered the update
      *
      */
-    public void updateFlowForDestinationDevice(IDevice device, FCQueryEvType fcEvType);
+    public void updateFlowForDestinationDevice(IDevice device,
+            IFlowQueryHandler handler,
+    		FCQueryEvType fcEvType);
     
     /**
      * Updates the flows from a device
@@ -56,10 +59,13 @@ public interface IFlowReconcileService extends IFloodlightService {
      * new attachment point
      *
      * @param device      device where the flow originates
+     * @param handler	  handler to process the flows
      * @param fcEvType    Event type that triggered the update
      *
      */
-    public void updateFlowForSourceDevice(IDevice device, FCQueryEvType fcEvType);
+    public void updateFlowForSourceDevice(IDevice device,
+            IFlowQueryHandler handler,
+    		FCQueryEvType fcEvType);
 
     /**
      * Generic flow query handler to insert FlowMods into the reconcile pipeline.

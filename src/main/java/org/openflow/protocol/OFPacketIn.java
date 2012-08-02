@@ -30,7 +30,7 @@ import org.openflow.util.U8;
  * @author David Erickson (daviderickson@cs.stanford.edu) - Feb 8, 2010
  */
 public class OFPacketIn extends OFMessage {
-    public static int MINIMUM_LENGTH = 18;
+    public static short MINIMUM_LENGTH = 18;
 
     public enum OFPacketInReason {
         NO_MATCH, ACTION

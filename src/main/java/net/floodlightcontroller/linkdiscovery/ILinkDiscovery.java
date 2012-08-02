@@ -29,25 +29,18 @@ public interface ILinkDiscovery {
             this.operation = operation;
         }
 
-        public LDUpdate(LinkTuple lt, int srcPortState,
-                      int dstPortState, ILinkDiscovery.LinkType type, UpdateOperation operation) {
-            this(lt.getSrc().getSw().getId(), lt.getSrc().getPort(),
-                 srcPortState, lt.getDst().getSw().getId(), lt.getDst().getPort(),
-                 dstPortState, type, operation);
+        public LDUpdate(LDUpdate old) {
+            this.src = old.src;
+            this.srcPort = old.srcPort;
+            this.srcPortState = old.srcPortState;
+            this.dst = old.dst;
+            this.dstPort = old.dstPort;
+            this.dstPortState = old.dstPortState;
+            this.srcType = old.srcType;
+            this.type = old.type;
+            this.operation = old.operation;
         }
 
-        public LDUpdate(LDUpdate old) {
-        	this.src = old.src;
-        	this.srcPort = old.srcPort;
-        	this.srcPortState = old.srcPortState;
-        	this.dst = old.dst;
-        	this.dstPort = old.dstPort;
-        	this.dstPortState = old.dstPortState;
-        	this.srcType = old.srcType;
-        	this.type = old.type;
-        	this.operation = old.operation;
-        }
-        
         // For updtedSwitch(sw)
         public LDUpdate(long switchId, SwitchType stype) {
             this.operation = UpdateOperation.SWITCH_UPDATED;
@@ -110,6 +103,29 @@ public interface ILinkDiscovery {
     };
 
     public enum LinkType {
-        INVALID_LINK, DIRECT_LINK, MULTIHOP_LINK, TUNNEL
+        INVALID_LINK {
+        	@Override
+        	public String toString() {
+        		return "invalid";
+        	}
+        }, 
+        DIRECT_LINK{
+        	@Override
+        	public String toString() {
+        		return "internal";
+        	}
+        }, 
+        MULTIHOP_LINK {
+        	@Override
+        	public String toString() {
+        		return "external";
+        	}
+        }, 
+        TUNNEL {
+        	@Override
+        	public String toString() {
+        		return "tunnel";
+        	}
+        }
     };
 }

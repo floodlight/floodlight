@@ -39,9 +39,22 @@ public class OFMessageDecoder extends FrameDecoder {
     @Override
     protected Object decode(ChannelHandlerContext ctx, Channel channel,
                             ChannelBuffer buffer) throws Exception {
-        List<OFMessage> message =
-            factory.parseMessage(buffer);
+        if (!channel.isConnected()) {
+            // In testing, I see decode being called AFTER decode last.
+            // This check avoids that from reading curroupted frames
+            return null;
+        }
+
+        List<OFMessage> message = factory.parseMessage(buffer);
         return message;
+    }
+
+    @Override
+    protected Object decodeLast(ChannelHandlerContext ctx, Channel channel,
+                            ChannelBuffer buffer) throws Exception {
+        // This is not strictly needed atthis time. It is used to detect
+        // connection reset detection from netty (for debug)
+        return null;
     }
 
 }

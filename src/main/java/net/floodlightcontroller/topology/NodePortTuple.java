@@ -1,7 +1,6 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
-import net.floodlightcontroller.linkdiscovery.SwitchPortTuple;
 
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -26,18 +25,10 @@ public class NodePortTuple {
         this.nodeId = nodeId;
         this.portId = portId;
     }
-    
-    /**
-     * Creates a NodePortTuple from the same information
-     * in a SwitchPortTuple
-     * @param swt
-     */
-    public NodePortTuple(SwitchPortTuple swt) {
-        if (swt.getSw() != null)
-            this.nodeId = swt.getSw().getId();
-        else
-            this.nodeId = 0;
-        this.portId = swt.getPort();
+
+    public NodePortTuple(long nodeId, int portId) {
+        this.nodeId = nodeId;
+        this.portId = (short) portId;
     }
 
     @JsonProperty("switch")
@@ -83,5 +74,9 @@ public class NodePortTuple {
         if (portId != other.portId)
             return false;
         return true;
+    }
+    
+    public String toKeyString() {
+        return (HexString.toHexString(nodeId)+ "|" + portId);
     }
 }

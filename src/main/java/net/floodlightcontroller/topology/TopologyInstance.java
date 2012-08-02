@@ -144,14 +144,14 @@ public class TopologyInstance {
     }
 
     public void printTopology() {
-        log.debug("-----------------------------------------------");
-        log.debug("Links: {}",this.switchPortLinks);
-        log.debug("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.debug("tunnelPorts: {}", tunnelPorts);
-        log.debug("clusters: {}", clusters);
-        log.debug("destinationRootedTrees: {}", destinationRootedTrees);
-        log.debug("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.debug("-----------------------------------------------");
+        log.trace("-----------------------------------------------");
+        log.trace("Links: {}",this.switchPortLinks);
+        log.trace("broadcastDomainPorts: {}", broadcastDomainPorts);
+        log.trace("tunnelPorts: {}", tunnelPorts);
+        log.trace("clusters: {}", clusters);
+        log.trace("destinationRootedTrees: {}", destinationRootedTrees);
+        log.trace("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+        log.trace("-----------------------------------------------");
     }
 
     protected void addLinksToOpenflowDomains() {

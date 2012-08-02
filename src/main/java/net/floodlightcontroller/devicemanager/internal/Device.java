@@ -33,6 +33,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import static net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus.*;
+import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
@@ -311,7 +312,7 @@ public class Device implements IDevice {
             }
 
             prev = clentities[clEntIndex] = cur;
-            prevCluster = curCluster;
+            prevCluster = topology.getL2DomainId(prev.getSwitchDPID());
 
             long prevLastSeen =
                     deviceManager.apComparator.
@@ -342,6 +343,21 @@ public class Device implements IDevice {
 
         return vals.toArray(new SwitchPort[vals.size()]);
     }
+    
+    @Override
+    public Short[] getSwitchPortVlanIds(SwitchPort swp) {
+        TreeSet<Short> vals = new TreeSet<Short>();
+        for (Entity e : entities) {
+            if (e.switchDPID == swp.getSwitchDPID() 
+                    && e.switchPort == swp.getPort()) {
+                if (e.getVlan() == null)
+                    vals.add(Ethernet.VLAN_UNTAGGED);
+                else
+                    vals.add(e.getVlan());
+            }
+        }
+        return vals.toArray(new Short[vals.size()]);
+    }
 
     @Override
     public Date getLastSeen() {
@@ -363,7 +379,6 @@ public class Device implements IDevice {
         return entityClass;
     }
 
-    @Override
     public Entity[] getEntities() {
         return entities;
     }
