@@ -611,7 +611,7 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
+        newInstanceTask.reschedule(1, TimeUnit.MICROSECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
