@@ -19,10 +19,12 @@ package net.floodlightcontroller.devicemanager.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.TreeSet;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.AttachmentPoint;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
@@ -45,9 +47,10 @@ public class MockDevice extends Device {
     }
     
     public MockDevice(DeviceManagerImpl deviceManager, Long deviceKey,
+                      List<AttachmentPoint> aps,
                       Collection<Entity> entities,
                       IEntityClass entityClass) {
-        super(deviceManager, deviceKey, entities, entityClass);
+        super(deviceManager, deviceKey, aps, entities, entityClass);
     }
 
     @Override

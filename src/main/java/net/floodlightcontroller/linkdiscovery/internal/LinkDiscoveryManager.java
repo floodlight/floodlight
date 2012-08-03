@@ -284,8 +284,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                            linkDiscoveryAware});
                 }
                 try {
-                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
-                    lda.linkDiscoveryUpdate(update);
+                    for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                        lda.linkDiscoveryUpdate(update);
                     }
                 }
                 catch (Exception e) {
@@ -374,7 +374,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
                       sw, port);
         }
         LLDP lldp;
-
         Ethernet ethernet;
 
         if (isStandard) {
