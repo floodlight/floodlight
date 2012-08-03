@@ -2,12 +2,15 @@ package net.floodlightcontroller.devicemanager.test;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
+import net.floodlightcontroller.devicemanager.internal.AttachmentPoint;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
@@ -55,7 +58,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
             ipv4Address = null;
         IDevice res =  learnDeviceByEntity(new Entity(macAddress, vlan, 
                                                       ipv4Address, switchDPID, 
-                                                      switchPort, null));
+                                                      switchPort, new Date()));
         deviceListeners = listeners;
         return res;
     }
@@ -85,9 +88,10 @@ public class MockDeviceManager extends DeviceManagerImpl {
     
     @Override
     protected Device allocateDevice(Long deviceKey,
-                                    Collection<Entity> entities, 
+                                    List<AttachmentPoint> aps,
+                                    Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new MockDevice(this, deviceKey, entities, entityClass);
+        return new MockDevice(this, deviceKey, aps, entities, entityClass);
     }
     
     @Override

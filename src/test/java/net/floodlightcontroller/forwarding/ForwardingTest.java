@@ -21,6 +21,7 @@ import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.anyLong;
@@ -106,7 +107,7 @@ public class ForwardingTest extends FloodlightTestCase {
         routingEngine = createMock(IRoutingService.class);
         topology = createMock(ITopologyService.class);
         DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
-        
+
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, 
@@ -188,6 +189,14 @@ public class ForwardingTest extends FloodlightTestCase {
                     getDestinationAddress();
 
         currentDate = new Date();
+        expect(topology.isAttachmentPointPort(1L, (short)1))
+                                              .andReturn(true)
+                                              .anyTimes();
+        expect(topology.isAttachmentPointPort(2L, (short)3))
+                                              .andReturn(true)
+                                              .anyTimes();
+        replay(topology);
+
         srcDevice = 
                 deviceManager.learnEntity(Ethernet.toLong(dataLayerSource), 
                                           null, networkSource,
@@ -296,6 +305,9 @@ public class ForwardingTest extends FloodlightTestCase {
         sw2.write(capture(wc2), capture(bc2));
         expectLastCall().anyTimes(); 
 
+        reset(topology);
+        expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
+        expect(topology.getL2DomainId(2L)).andReturn(1L).anyTimes();
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
@@ -333,7 +345,12 @@ public class ForwardingTest extends FloodlightTestCase {
                 ((IPv4)((Ethernet)testPacket).getPayload()).
                     getDestinationAddress();
         deviceManager.startUp(null);
-        
+
+        reset(topology);
+        expect(topology.isAttachmentPointPort(EasyMock.anyLong(), EasyMock.anyShort()))
+        .andReturn(true).anyTimes();
+        replay(topology);
+
         srcDevice = 
                 deviceManager.learnEntity(Ethernet.toLong(dataLayerSource), 
                                           null, networkSource,
@@ -376,7 +393,9 @@ public class ForwardingTest extends FloodlightTestCase {
         sw1.write(fm1, cntx);
         sw1.write(packetOut, cntx);
         
+        reset(topology);
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
+        expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);
@@ -391,7 +410,12 @@ public class ForwardingTest extends FloodlightTestCase {
         // expect no Flow-mod or packet out
                 
         // Reset mocks, trigger the packet in, and validate results
+        reset(topology);
         expect(topology.isIncomingBroadcastAllowed(1L, (short)1)).andReturn(true).anyTimes();
+        expect(topology.isAttachmentPointPort(EasyMock.anyLong(),
+                                              EasyMock.anyShort()))
+                                              .andReturn(true)
+                                              .anyTimes();
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);
