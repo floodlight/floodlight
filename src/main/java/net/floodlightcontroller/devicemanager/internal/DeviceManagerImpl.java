@@ -75,7 +75,6 @@ DeviceManagerImpl.DeviceUpdate.Change.*;
 import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -748,17 +747,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {
-        //IOFSwitch sw = floodlightProvider.getSwitches().get(switchDPID);
-        //if (sw == null) return false;
-        //OFPhysicalPort port = sw.getPort((short)switchPort);
-        //if (port == null || !sw.portEnabled(port)) return false;
         if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
-            return false;
-
-        // Check whether the port is a physical port. We should not learn
-        // attachment points on "special" ports.
-        if (((switchPort & 0xff00) == 0xff00) &&
-                (switchPort != (short)0xfffe))
             return false;
 
         if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
