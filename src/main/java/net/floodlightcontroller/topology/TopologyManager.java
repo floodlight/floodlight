@@ -624,7 +624,7 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        newInstanceTask.reschedule(1, TimeUnit.MICROSECONDS);
+        clearCurrentTopology();
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
@@ -1022,7 +1022,7 @@ public class TopologyManager implements
         tunnelLinks.clear();
         appliedUpdates.clear();
     }
-    
+
     /**
     * Clears the current topology. Note that this does NOT
     * send out updates.
@@ -1030,8 +1030,9 @@ public class TopologyManager implements
     private void clearCurrentTopology() {
         this.clear();
         createNewInstance();
+        lastUpdateTime = new Date();
     }
-    
+
     /**
      * Getters.  No Setters.
      */
