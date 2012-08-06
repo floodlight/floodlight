@@ -166,9 +166,22 @@ public class TopologyManager implements
     public boolean isAttachmentPointPort(long switchid, short port, 
                                          boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.isAttachmentPointPort(switchid, port);
+
+        // if the port is not attachment point port according to
+        // topology instance, then return false
+        if (ti.isAttachmentPointPort(switchid, port) == false)
+                return false;
+
+        // Check whether the port is a physical port. We should not learn
+        // attachment points on "special" ports.
+        if ((port & 0xff00) == 0xff00 && port != (short)0xfffe) return false;
+
+        // Make sure that the port is enabled.
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchid);
+        if (sw == null) return false;
+        return (sw.portEnabled(port));
     }
-    
+
     public long getOpenflowDomainId(long switchId) {
         return getOpenflowDomainId(switchId, true);
     }
