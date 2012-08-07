@@ -1,7 +1,6 @@
 package net.floodlightcontroller.virtualnetwork;
 
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.*;
 
 import java.util.List;
 
@@ -36,6 +35,7 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter;
 
@@ -89,6 +89,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         deviceService = new MockDeviceManager();
         FlowReconcileManager frm = new FlowReconcileManager();
         MockThreadPoolService tps = new MockThreadPoolService();
+        ITopologyService topology = createMock(ITopologyService.class);
         vns = new VirtualNetworkFilter();
         DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
         fmc.addService(IRestApiService.class, restApi);
@@ -97,6 +98,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         fmc.addService(IFlowReconcileService.class, frm);
         fmc.addService(IThreadPoolService.class, tps);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
+        fmc.addService(ITopologyService.class, topology);
         tps.init(fmc);
         frm.init(fmc);
         deviceService.init(fmc);
@@ -111,7 +113,10 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         getMockFloodlightProvider().startUp(fmc);
         vns.startUp(fmc);
         entityClassifier.startUp(fmc);
-        
+
+        topology.addListener(deviceService);
+        expectLastCall().times(1);
+        replay(topology);
         // Mock switches
         //fastWilcards mocked as this constant
         int fastWildcards = 
