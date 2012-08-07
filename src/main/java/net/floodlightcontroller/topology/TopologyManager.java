@@ -616,7 +616,7 @@ public class TopologyManager implements
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new HashSet<LDUpdate>();
 
-        lastUpdateTime = new Date();
+        clearCurrentTopology();
     }
 
     @Override
@@ -624,7 +624,6 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        clearCurrentTopology();
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
