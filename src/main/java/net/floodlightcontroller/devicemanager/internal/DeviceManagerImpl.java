@@ -58,6 +58,8 @@ import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -67,6 +69,7 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
@@ -86,7 +89,7 @@ import org.slf4j.LoggerFactory;
  * @author readams
  */
 public class DeviceManagerImpl implements
-IDeviceService, IOFMessageListener,
+IDeviceService, IOFMessageListener, ITopologyListener,
 IStorageSourceListener, IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
@@ -648,6 +651,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
+        topology.addListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
         entityClassifier.addListener(this);
 
@@ -747,7 +751,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {
-        if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
+        if (topology.isAttachmentPointPort(switchDPID,
+                                           (short)switchPort) == false)
             return false;
 
         if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
@@ -1066,15 +1071,22 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         device.entities[entityindex].getSwitchPort() != null) {
                     long sw = device.entities[entityindex].getSwitchDPID();
                     short port = device.entities[entityindex].getSwitchPort().shortValue();
-                    device.updateAttachmentPoint(sw, port, lastSeen.getTime());
+                    boolean moved =
+                            device.updateAttachmentPoint(sw,
+                                                         port,
+                                                         lastSeen.getTime());
+                    if (moved)
+                        sendDeviceMovedNotification(device);;
                 }
                 break;
             } else {
                 Device newDevice = allocateDevice(device, entity);
                 if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
-                    newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
-                                                    entity.getSwitchPort().shortValue(),
-                                                    entity.getLastSeenTimestamp().getTime());
+                    boolean moved =
+                            newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
+                                                            entity.getSwitchPort().shortValue(),
+                                                            entity.getLastSeenTimestamp().getTime());
+                    if (moved) sendDeviceMovedNotification(newDevice);
                 }
 
                 // generate updates
@@ -1180,7 +1192,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     break;
                                 case SWITCH:
                                 case PORT:
-                                    listener.deviceMoved(update.device);
+                                    //listener.deviceMoved(update.device);
                                     break;
                                 case VLAN:
                                     listener.deviceVlanChanged(update.device);
@@ -1492,4 +1504,52 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     public void removeSuppressAPs(long swId, short port) {
         suppressAPs.remove(new SwitchPort(swId, port));
     }
+
+    /**
+     * Topology listener method.
+     */
+    @Override
+    public void topologyChanged() {
+        List<LDUpdate> updateList = topology.getLastLinkUpdates();
+        for(LDUpdate u: updateList) {
+            if (u.getOperation() == UpdateOperation.SWITCH_REMOVED) {
+                processSwitchRemoved(u.getSrc());
+            } else if (u.getOperation() == UpdateOperation.PORT_DOWN) {
+                processPortDown(u.getSrc(), u.getSrcPort());
+            }
+        }
+    }
+
+    private void processSwitchRemoved(long sw) {
+        Iterator<Device> diter = deviceMap.values().iterator();
+        while (diter.hasNext()) {
+            Device d = diter.next();
+            if (d.deleteAttachmentPoint(sw)) {
+                // update device attachment point changed.
+                sendDeviceMovedNotification(d);
+            }
+        }
+    }
+
+    private void processPortDown(long sw, short port) {
+        Iterator<Device> diter = deviceMap.values().iterator();
+        while (diter.hasNext()) {
+            Device d = diter.next();
+            if (d.deleteAttachmentPoint(sw, port)) {
+                // update device attachment point changed.
+                sendDeviceMovedNotification(d);
+            }
+        }
+    }
+
+    /**
+     * Send update notifications to listeners
+     * @param updates the updates to process.
+     */
+    protected void sendDeviceMovedNotification(Device d) {
+        for (IDeviceListener listener : deviceListeners) {
+            listener.deviceMoved(d);
+        }
+    }
+
 }

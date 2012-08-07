@@ -718,6 +718,20 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return Command.CONTINUE;
     }
 
+    protected UpdateOperation getUpdateOperation(int srcPortState,
+                                                 int dstPortState) {
+        boolean added =
+                (((srcPortState &
+                   OFPortState.OFPPS_STP_MASK.getValue()) !=
+                   OFPortState.OFPPS_STP_BLOCK.getValue()) &&
+                ((dstPortState &
+                  OFPortState.OFPPS_STP_MASK.getValue()) !=
+                  OFPortState.OFPPS_STP_BLOCK.getValue()));
+
+        if (added) return UpdateOperation.LINK_UPDATED;
+        return UpdateOperation.LINK_REMOVED;
+    }
+
     @Override
     public LinkType getLinkType(LinkInfo info) {
 
@@ -779,7 +793,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     addLinkToBroadcastDomain(lt);
 
                 writeLink(lt, newInfo);
-                updateOperation = UpdateOperation.ADD_OR_UPDATE;
+                updateOperation = UpdateOperation.LINK_UPDATED;
                 linkChanged = true;
 
                 // Add to event history
@@ -836,7 +850,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 writeLink(lt, newInfo);
 
                 if (linkChanged) {
-                    updateOperation = UpdateOperation.ADD_OR_UPDATE;
+                    updateOperation = getUpdateOperation(newInfo.getSrcPortState(),
+                                                         newInfo.getDstPortState());
                     if (log.isTraceEnabled()) {
                         log.trace("Updated link {}", lt);
                     }
@@ -853,10 +868,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
 
             if (linkChanged) {
+                // find out if the link was added or removed here.
                 updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
-                                         newInfo.getSrcPortState(),
                                          lt.getDst(), lt.getDstPort(),
-                                         newInfo.getDstPortState(),
                                          getLinkType(lt, newInfo),
                                          updateOperation));
             }
@@ -905,9 +919,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
 
                 this.links.remove(lt);
-                updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(), 0,
-                                         lt.getDst(), lt.getDstPort(), 0,
-                                         null, UpdateOperation.REMOVE));
+                updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
+                                         lt.getDst(), lt.getDstPort(),
+                                         null, UpdateOperation.LINK_REMOVED));
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc(),
@@ -966,6 +980,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     ((byte)OFPortReason.OFPPR_MODIFY.ordinal() ==
                     ps.getReason() && !portEnabled(ps.getDesc()))) {
                 deleteLinksOnPort(npt, "Port Status Changed");
+                LDUpdate update = new LDUpdate(sw, port, UpdateOperation.PORT_DOWN);
+                updates.add(update);
                 linkDeleted = true;
                 } 
             else if (ps.getReason() ==
@@ -997,12 +1013,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                             // The link is already known to link discovery
                             // manager and the status has changed, therefore
                             // send an LDUpdate.
+                            UpdateOperation operation =
+                                    getUpdateOperation(linkInfo.getSrcPortState(),
+                                                       linkInfo.getDstPortState());
                             updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
-                                                     linkInfo.getSrcPortState(),
                                                      lt.getDst(), lt.getDstPort(),
-                                                     linkInfo.getDstPortState(), 
                                                      getLinkType(lt, linkInfo),
-                                                     UpdateOperation.ADD_OR_UPDATE));
+                                                     operation));
                             writeLink(lt, linkInfo);
                             linkInfoChanged = true;
                         }
@@ -1076,6 +1093,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 // add all tuples with an endpoint on this switch to erase list
                 eraseList.addAll(switchLinks.get(sw));
                 deleteLinks(eraseList, "Switch Removed");
+
+                // Send a switch removed update
+                LDUpdate update = new LDUpdate(sw, null, UpdateOperation.SWITCH_REMOVED);
+                updates.add(update);
             }
         } finally {
             lock.writeLock().unlock();
@@ -1148,12 +1169,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         info.getMulticastValidTime() == null){
                     eraseList.add(entry.getKey());
                 } else if (linkChanged) {
+                    UpdateOperation operation;
+                    operation = getUpdateOperation(info.getSrcPortState(),
+                                                   info.getDstPortState());
                     updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
-                                             info.getSrcPortState(),
                                              lt.getDst(), lt.getDstPort(),
-                                             info.getDstPortState(), 
                                              getLinkType(lt, info),
-                                             UpdateOperation.ADD_OR_UPDATE));
+                                             operation));
                 }
             }
 
@@ -1484,14 +1506,16 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 if (log.isTraceEnabled()) {
                     log.trace("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
                 }
-                updates.add(new LDUpdate(sw.getId(), SwitchType.BASIC_SWITCH));
+                updates.add(new LDUpdate(sw.getId(), SwitchType.BASIC_SWITCH,
+                                         UpdateOperation.SWITCH_UPDATED));
             }
             else {
                 sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, new Boolean(true));
                 if (log.isTraceEnabled()) {
                     log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
                 }
-                updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH));
+                updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH,
+                                         UpdateOperation.SWITCH_UPDATED));
             }
         }
     }
