@@ -62,10 +62,6 @@ public class DefaultEntityClassifier implements
         public String getName() {
             return name;
         }
-
-        public void setName(String name) {
-            this.name = name;
-        }
     }
     
     protected static EnumSet<DeviceField> keyFields;
@@ -75,14 +71,6 @@ public class DefaultEntityClassifier implements
     protected static DefaultEntityClass entityClass =
         new DefaultEntityClass("DefaultEntityClass");
 
-    public void setClassifierName (String name) {
-        entityClass.setName(name);
-    }
-
-    public String getClassifierName (String name) {
-        return entityClass.getName();
-    }
-    
     @Override
     public IEntityClass classifyEntity(Entity entity) {
         return entityClass;

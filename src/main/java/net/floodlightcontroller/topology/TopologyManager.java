@@ -166,9 +166,22 @@ public class TopologyManager implements
     public boolean isAttachmentPointPort(long switchid, short port, 
                                          boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.isAttachmentPointPort(switchid, port);
+
+        // if the port is not attachment point port according to
+        // topology instance, then return false
+        if (ti.isAttachmentPointPort(switchid, port) == false)
+                return false;
+
+        // Check whether the port is a physical port. We should not learn
+        // attachment points on "special" ports.
+        if ((port & 0xff00) == 0xff00 && port != (short)0xfffe) return false;
+
+        // Make sure that the port is enabled.
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchid);
+        if (sw == null) return false;
+        return (sw.portEnabled(port));
     }
-    
+
     public long getOpenflowDomainId(long switchId) {
         return getOpenflowDomainId(switchId, true);
     }
@@ -603,7 +616,7 @@ public class TopologyManager implements
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new HashSet<LDUpdate>();
 
-        lastUpdateTime = new Date();
+        clearCurrentTopology();
     }
 
     @Override
@@ -611,7 +624,6 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
@@ -1009,7 +1021,7 @@ public class TopologyManager implements
         tunnelLinks.clear();
         appliedUpdates.clear();
     }
-    
+
     /**
     * Clears the current topology. Note that this does NOT
     * send out updates.
@@ -1017,8 +1029,9 @@ public class TopologyManager implements
     private void clearCurrentTopology() {
         this.clear();
         createNewInstance();
+        lastUpdateTime = new Date();
     }
-    
+
     /**
      * Getters.  No Setters.
      */

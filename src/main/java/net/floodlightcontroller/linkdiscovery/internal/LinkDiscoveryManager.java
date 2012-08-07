@@ -287,8 +287,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                            linkDiscoveryAware});
                 }
                 try {
-                for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
-                    lda.linkDiscoveryUpdate(update);
+                    for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
+                        lda.linkDiscoveryUpdate(update);
                     }
                 }
                 catch (Exception e) {
@@ -360,6 +360,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
                              boolean isReverse) {
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) {
+        	return;
+        }
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
         if (isLLDPSuppressed(sw, port)) {
@@ -374,7 +377,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
                       sw, port);
         }
         LLDP lldp;
-
         Ethernet ethernet;
 
         if (isStandard) {
