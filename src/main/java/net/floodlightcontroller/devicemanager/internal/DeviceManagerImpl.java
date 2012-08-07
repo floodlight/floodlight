@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -74,7 +75,6 @@ DeviceManagerImpl.DeviceUpdate.Change.*;
 import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,14 +108,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Time in seconds between cleaning up old entities/devices
      */
     protected static final int ENTITY_CLEANUP_INTERVAL = 60*60;
-
-    /**
-     * Attachment points on a broadcast domain will have lower priority
-     * than attachment points in openflow domains.  This is the timeout
-     * for switching from a non-broadcast domain to a broadcast domain
-     * attachment point.
-     */
-    protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
 
     /**
      * This is the master device map that maps device IDs to {@link Device}
@@ -236,59 +228,82 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
-     * Comparator for finding the correct attachment point to use based on
-     * the set of entities
+     * AttachmentPointComparator
+     * 
+     * Compares two attachment points and returns the latest one.
+     * It is assumed that the two attachment points are in the same
+     * L2 domain.
+     * 
+     * @author srini
      */
     protected class AttachmentPointComparator
-    implements Comparator<Entity> {
-
-
+    implements Comparator<AttachmentPoint> {
         public AttachmentPointComparator() {
             super();
         }
 
-        protected long getEffTS(Entity e, Date ts) {
-            if (ts == null)
-                return 0;
-            long et = ts.getTime();
-            Long dpid = e.getSwitchDPID();
-            Integer port = e.getSwitchPort();
-            if (dpid != null && port != null &&
-                    topology.isBroadcastDomainPort(dpid, port.shortValue())) {
-                return et - NBD_TO_BD_TIMEDIFF_MS;
-            }
-            return et;
-        }
-
         @Override
-        public int compare(Entity e1, Entity e2) {
-            int r = 0;
+        public int compare(AttachmentPoint oldAP, AttachmentPoint newAP) {
 
-            Long swdpid1 = e1.getSwitchDPID();
-            Long swdpid2 = e2.getSwitchDPID();
-            if (swdpid1 == null)
-                r = swdpid2 == null ? 0 : -1;
-            else if (swdpid2 == null)
-                r = 1;
-            else {
-                Long d1ClusterId =
-                        topology.getL2DomainId(swdpid1);
-                Long d2ClusterId =
-                        topology.getL2DomainId(swdpid2);
-                r = d1ClusterId.compareTo(d2ClusterId);
-            }
-            if (r != 0) return r;
+            //First compare based on L2 domain ID; 
+            long oldSw = oldAP.getSw();
+            short oldPort = oldAP.getPort();
+            long newSw = newAP.getSw();
+            short newPort = newAP.getPort();
 
-            // the ordering of active times is a more
-            // representative of the causal relationship
-            // than lastSeen time.
-            long e1ts = getEffTS(e1, e1.getActiveSince());
-            long e2ts = getEffTS(e2, e2.getActiveSince());
-            return Long.valueOf(e1ts).compareTo(e2ts);
+            long oldDomain = topology.getL2DomainId(oldSw);
+            long newDomain = topology.getL2DomainId(newSw);
+
+            if (oldDomain < newDomain) return -1;
+            else if (oldDomain > newDomain) return 1;
+
+            // We expect that the last seen of the new AP is higher than
+            // old AP, if it is not, just reverse and send the negative
+            // of the result.
+            if (oldAP.getLastSeen() > newAP.getLastSeen())
+                return -compare(newAP, oldAP);
+
+
+            // If newAP is inconsistent with the oldAP
+            // and the newAP is not a broadcast domain.
+            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
+                    !topology.isBroadcastDomainPort(newSw, newPort))
+                return 1;
+
+            // If newAP is inconsistent with the oldAP and
+            // oldAP belongs to broadcast domain and
+            // newAP belongs to broadcast domain and
+            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
+            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
+                    topology.isBroadcastDomainPort(oldSw, oldPort) &&
+                    topology.isBroadcastDomainPort(newSw, newPort) &&
+                    newAP.getLastSeen() > oldAP.getLastSeen() + 
+                        AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT)
+                return 1;
+
+            // If newAP is inconsistent with the oldAP and
+            // oldAP does not to broadcast domain and
+            // newAP belongs to broadcast domain and
+            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
+            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
+                    !topology.isBroadcastDomainPort(oldSw, oldPort) &&
+                    topology.isBroadcastDomainPort(newSw, newPort) &&
+                    newAP.getLastSeen() > oldAP.getLastSeen() + 
+                        AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT)
+                return 1;
+
+            // If newAP is inconsistent with the oldAP and
+            // oldAP does not to broadcast domain and
+            // newAP belongs to broadcast domain and
+            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
+            if (topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
+                    newAP.getLastSeen() > oldAP.getLastSeen() +
+                        AttachmentPoint.CONSISTENT_TIMEOUT)
+                return 1;
+
+            return -1;
         }
-
     }
-
     /**
      * Comparator for sorting by cluster ID
      */
@@ -732,17 +747,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchDPID);
-        if (sw == null) return false;
-        OFPhysicalPort port = sw.getPort((short)switchPort);
-        if (port == null || !sw.portEnabled(port)) return false;
         if (topology.isAttachmentPointPort(switchDPID, (short)switchPort) == false)
-            return false;
-
-        // Check whether the port is a physical port. We should not learn
-        // attachment points on "special" ports.
-        if (((switchPort & 0xff00) == 0xff00) &&
-                (switchPort != (short)0xfffe))
             return false;
 
         if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
@@ -1057,9 +1062,20 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 Date lastSeen = entity.getLastSeenTimestamp();
                 if (lastSeen == null) lastSeen = new Date();
                 device.entities[entityindex].setLastSeenTimestamp(lastSeen);
+                if (device.entities[entityindex].getSwitchDPID() != null &&
+                        device.entities[entityindex].getSwitchPort() != null) {
+                    long sw = device.entities[entityindex].getSwitchDPID();
+                    short port = device.entities[entityindex].getSwitchPort().shortValue();
+                    device.updateAttachmentPoint(sw, port, lastSeen.getTime());
+                }
                 break;
             } else {
                 Device newDevice = allocateDevice(device, entity);
+                if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
+                    newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
+                                                    entity.getSwitchPort().shortValue(),
+                                                    entity.getLastSeenTimestamp().getTime());
+                }
 
                 // generate updates
                 EnumSet<DeviceField> changedFields =
@@ -1369,6 +1385,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
+                                                      d.attachmentPoints,
                                                       toKeep,
                                                       d.entityClass);
 
@@ -1453,10 +1470,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return new Device(this, deviceKey, entity, entityClass);
     }
 
+    // TODO: FIX THIS.
     protected Device allocateDevice(Long deviceKey,
+                                    List<AttachmentPoint> aps,
                                     Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new Device(this, deviceKey, entities, entityClass);
+        return new Device(this, deviceKey, aps, entities, entityClass);
     }
 
     protected Device allocateDevice(Device device,

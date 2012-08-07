@@ -290,6 +290,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     public synchronized boolean portEnabled(short portNumber) {
+        if (ports.get(portNumber) == null) return false;
         return portEnabled(ports.get(portNumber));
     }
     
