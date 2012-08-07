@@ -129,7 +129,6 @@ public class Device implements IDevice {
     protected boolean updateAttachmentPoint(long sw, short port, long lastSeen){
         ITopologyService topology = deviceManager.topology;
 
-        // 
         if (!deviceManager.isValidAttachmentPoint(sw, port)) return false;
 
         AttachmentPoint newAP = new AttachmentPoint(sw, port, lastSeen);
@@ -193,6 +192,31 @@ public class Device implements IDevice {
         return true;
     }
 
+    public boolean deleteAttachmentPoint(long sw) {
+        boolean deletedFlag = false;
+        if (this.attachmentPoints == null) return false;
+
+        ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
+        apList.addAll(this.attachmentPoints);
+        ArrayList<AttachmentPoint> modifiedList = new ArrayList<AttachmentPoint>();
+
+        for(AttachmentPoint ap: apList) {
+            if (ap.getSw() == sw) {
+                deletedFlag = true;
+                continue;
+            }
+            modifiedList.add(ap);
+        }
+
+        if (deletedFlag) {
+            this.attachmentPoints = modifiedList;
+            return true;
+        }
+
+        return false;
+    }
+
+
     @Override
     public SwitchPort[] getAttachmentPoints() {
         return getAttachmentPoints(false);
@@ -200,10 +224,11 @@ public class Device implements IDevice {
 
     @Override
     public SwitchPort[] getAttachmentPoints(boolean includeError) {
+        SwitchPort [] returnSwitchPorts = new SwitchPort[] {};
 
         Map<Long, AttachmentPoint> apMap = getAPMap();
-        if (apMap == null) return null;
-        if (apMap.isEmpty()) return null;
+        if (apMap == null) return returnSwitchPorts;
+        if (apMap.isEmpty()) return returnSwitchPorts;
 
         List<SwitchPort> sp = new ArrayList<SwitchPort>();
         for(AttachmentPoint ap: apMap.values()) {
