@@ -58,8 +58,6 @@ import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -1511,33 +1509,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     @Override
     public void topologyChanged() {
-        List<LDUpdate> updateList = topology.getLastLinkUpdates();
-        for(LDUpdate u: updateList) {
-            if (u.getOperation() == UpdateOperation.SWITCH_REMOVED) {
-                processSwitchRemoved(u.getSrc());
-            } else if (u.getOperation() == UpdateOperation.PORT_DOWN) {
-                processPortDown(u.getSrc(), u.getSrcPort());
-            }
-        }
-    }
-
-    private void processSwitchRemoved(long sw) {
         Iterator<Device> diter = deviceMap.values().iterator();
         while (diter.hasNext()) {
             Device d = diter.next();
-            if (d.deleteAttachmentPoint(sw)) {
-                // update device attachment point changed.
-                sendDeviceMovedNotification(d);
-            }
-        }
-    }
-
-    private void processPortDown(long sw, short port) {
-        Iterator<Device> diter = deviceMap.values().iterator();
-        while (diter.hasNext()) {
-            Device d = diter.next();
-            if (d.deleteAttachmentPoint(sw, port)) {
-                // update device attachment point changed.
+            if (d.updateAttachmentPoint()) {
                 sendDeviceMovedNotification(d);
             }
         }
@@ -1552,5 +1527,4 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             listener.deviceMoved(d);
         }
     }
-
 }
