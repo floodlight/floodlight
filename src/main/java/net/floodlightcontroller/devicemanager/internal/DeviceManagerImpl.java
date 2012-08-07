@@ -651,7 +651,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
-        topology.addListener(this);
+        if (topology != null)
+            topology.addListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
         entityClassifier.addListener(this);
 
