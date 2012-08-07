@@ -127,20 +127,31 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	    
 	    // insert rule to allow ICMP traffic
 	    FirewallRule rule = new FirewallRule();
-	    rule.proto_type = "ICMP";
+	    rule.proto_type = IPv4.PROTOCOL_ICMP;
+	    rule.wildcard_proto_type = false;
 	    rule.priority = 1;
 	    this.rules.add(rule);
 	    // insert rule to allow TCP traffic destined to port 80
 	    rule = new FirewallRule();
-	    rule.proto_type = "TCP";
+	    rule.proto_type = IPv4.PROTOCOL_TCP;
+	    rule.wildcard_proto_type = false;
 	    rule.proto_dstport = 80;
 	    rule.priority = 2;
+	    rule.is_denyrule = true;
 	    this.rules.add(rule);
 	    // insert rule to allow TCP traffic originating from port 80
 	    rule = new FirewallRule();
-	    rule.proto_type = "TCP";
+	    rule.proto_type = IPv4.PROTOCOL_TCP;
+	    rule.wildcard_proto_type = false;
 	    rule.proto_srcport = 80;
 	    rule.priority = 3;
+	    rule.is_denyrule = true;
+	    this.rules.add(rule);
+	    // insert rule to allow TCP traffic
+	    rule = new FirewallRule();
+	    rule.proto_type = IPv4.PROTOCOL_TCP;
+	    rule.wildcard_proto_type = false;
+	    rule.priority = 4;
 	    this.rules.add(rule);
 
 	    // now sort the rules
@@ -185,7 +196,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			// enable firewall, i.e. listen for packet-in events
 			floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
 		}
-		// TODO - re-insert flow entries corresponding to firewall rules
 		this.enabled = true;
 	}
 	
@@ -197,7 +207,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			// disable firewall, i.e. stop listening for packet-in events
 			floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
 		}
-		// TODO - remove all flow entries corresponding to firewall rules
 		this.enabled = false;
 	}
 	
@@ -206,7 +215,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 		return this.rules;
 	}
 	
-	protected FirewallRule matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+	protected List<Object> matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		FirewallRule matched_rule = null;
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		IPacket pkt = (IPacket) eth.getPayload();
@@ -216,6 +225,9 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 		ICMP pkt_icmp = null;
 		short proto_src = 0;
 		short proto_dst = 0;
+		int wildcards_drop = OFMatch.OFPFW_ALL;
+		int wildcards_allow = OFMatch.OFPFW_ALL;
+		
 
 		if (pkt instanceof IPv4) {
 			pkt_ip = (IPv4) pkt;
@@ -243,29 +255,58 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			// now perform matching
 			
 			// switchID matches?
-			if (rule.switchid != -1 && rule.switchid != sw.getId()) continue;
+			if (rule.wildcard_switchid == false && rule.switchid != sw.getId()) continue;
 			
 			// inport matches?
-			if (rule.src_inport != -1 && rule.src_inport != pi.getInPort()) continue;
+			if (rule.wildcard_src_inport == false && rule.src_inport != pi.getInPort()) continue;
+			if (rule.is_denyrule) {
+				wildcards_allow &= ~OFMatch.OFPFW_IN_PORT;
+			} else {
+				wildcards_drop &= ~OFMatch.OFPFW_IN_PORT;
+			}
 			logger.info("switch inport matched");
 			
 			// mac address (src and dst) match?
-			if (rule.src_mac != -1 && rule.src_mac != eth.getSourceMAC().toLong()) continue;
-			if (rule.dst_mac != -1 && rule.dst_mac != eth.getDestinationMAC().toLong()) continue;
+			if (rule.wildcard_src_mac == false && rule.src_mac != eth.getSourceMAC().toLong()) continue;
+			if (rule.is_denyrule) {
+				wildcards_allow &= ~OFMatch.OFPFW_DL_SRC;
+			} else {
+				wildcards_drop &= ~OFMatch.OFPFW_DL_SRC;
+			}
+			if (rule.wildcard_dst_mac == false && rule.dst_mac != eth.getDestinationMAC().toLong()) continue;
+			if (rule.is_denyrule) {
+				wildcards_allow &= ~OFMatch.OFPFW_DL_DST;
+			} else {
+				wildcards_drop &= ~OFMatch.OFPFW_DL_DST;
+			}
 			logger.info("mac addresses matched");
 			
 			logger.info("Protocol: {}", pkt.getClass().getName());
 			
 			// protocol type matches?
-			if (rule.proto_type.equals("ANY") == false) {
-				if (rule.proto_type.equals("TCP") && pkt_tcp == null) continue;
-				if (rule.proto_type.equals("UDP") && pkt_udp == null) continue;
-				if (rule.proto_type.equals("ICMP") && pkt_icmp == null) continue;
+			if (rule.wildcard_proto_type == false) {
+				if (rule.proto_type == IPv4.PROTOCOL_TCP && pkt_tcp == null) continue;
+				if (rule.proto_type == IPv4.PROTOCOL_UDP && pkt_udp == null) continue;
+				if (rule.proto_type == IPv4.PROTOCOL_ICMP && pkt_icmp == null) continue;
+				if (rule.is_denyrule) {
+					wildcards_allow &= ~OFMatch.OFPFW_DL_TYPE;
+					wildcards_allow &= ~OFMatch.OFPFW_NW_PROTO;
+				} else {
+					wildcards_drop &= ~OFMatch.OFPFW_DL_TYPE;
+					wildcards_drop &= ~OFMatch.OFPFW_NW_PROTO;
+				}
 			} else {
 				// if we have a non-IPv4 packet and packet matches SWITCH, INPORT and MAC criteria (if specified)
-				// and the rule has "ANY" specified on protocol, then allow this packet/flow through firewall
+				// and the rule has "ANY" specified on protocol, then make decision for this packet/flow
 				if (pkt_ip == null) {
-					return rule;
+					List<Object> ret = new ArrayList<Object>();
+					ret.add(rule);
+					if (rule.is_denyrule) {
+						ret.add(new Integer(wildcards_drop));
+					} else {
+						ret.add(new Integer(wildcards_allow));
+					}
+					return ret;
 				}
 			}
 			logger.info("protocol matched");
@@ -273,16 +314,40 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			// protocol specific fields
 			
 			// ip addresses (src and dst) match?
-			if (rule.src_ip.equals("ANY") == false && this.matchIPAddresses(rule.src_ip, pkt_ip.getSourceAddress()) == false) continue;
-			if (rule.dst_ip.equals("ANY") == false && this.matchIPAddresses(rule.dst_ip, pkt_ip.getDestinationAddress()) == false) continue;
+			if (rule.wildcard_src_ip == false && this.matchIPAddress(rule.src_ip_prefix, rule.src_ip_bits, pkt_ip.getSourceAddress()) == false) continue;
+			if (rule.is_denyrule) {
+				wildcards_allow &= ~OFMatch.OFPFW_NW_SRC_ALL;
+				wildcards_allow |= (rule.src_ip_bits << OFMatch.OFPFW_NW_SRC_SHIFT);
+			} else {
+				wildcards_drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
+				wildcards_drop |= (rule.src_ip_bits << OFMatch.OFPFW_NW_SRC_SHIFT);
+			}
+			if (rule.wildcard_dst_ip == false && this.matchIPAddress(rule.dst_ip_prefix, rule.dst_ip_bits, pkt_ip.getDestinationAddress()) == false) continue;
+			if (rule.is_denyrule) {
+				wildcards_allow &= ~OFMatch.OFPFW_NW_DST_ALL;
+				wildcards_allow |= (rule.dst_ip_bits << OFMatch.OFPFW_NW_DST_SHIFT);
+			} else {
+				wildcards_drop &= ~OFMatch.OFPFW_NW_DST_ALL;
+				wildcards_drop |= (rule.dst_ip_bits << OFMatch.OFPFW_NW_DST_SHIFT);
+			}
 			logger.info("ip address matched");
 			
 			// TCP/UDP source and destination ports match?
 			if (pkt_tcp != null || pkt_udp != null) {
 				// does the source port match?
 				if (rule.proto_srcport != 0 && rule.proto_srcport != proto_src) continue;
+				if (rule.is_denyrule) {
+					wildcards_allow &= ~OFMatch.OFPFW_TP_SRC;
+				} else {
+					wildcards_drop &= ~OFMatch.OFPFW_TP_SRC;
+				}
 				// does the destination port match?
 				if (rule.proto_dstport != 0 && rule.proto_dstport != proto_dst) continue;
+				if (rule.is_denyrule) {
+					wildcards_allow &= ~OFMatch.OFPFW_TP_DST;
+				} else {
+					wildcards_drop &= ~OFMatch.OFPFW_TP_DST;
+				}
 			}
 			logger.info("tcp/udp ports matched");
 			
@@ -291,26 +356,21 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			break;
 		}
 		
-		return matched_rule;
+		List<Object> ret = new ArrayList<Object>();
+		ret.add(matched_rule);
+		if (rule == null || rule.is_denyrule) {
+			ret.add(new Integer(wildcards_drop));
+		} else {
+			ret.add(new Integer(wildcards_allow));
+		}
+		return ret;
 	}
 	
-	protected boolean matchIPAddresses(String ruleIPOrPrefix, int packetAddress) {
+	protected boolean matchIPAddress(int rulePrefix, int ruleBits, int packetAddress) {
 		boolean matched = true;
 		
-		// as ruleIPOrPrefix can also be a prefix rather than an absolute address
-		// split it over "/" to get the bit range
-		String[] ipparts = ruleIPOrPrefix.split("/");
-		String rule_ipaddr = ipparts[0].trim();
-		int rule_iprng = 0;
-		if (ipparts.length == 2) {
-			try {
-				rule_iprng = 32 - Integer.parseInt(ipparts[1].trim());
-			} catch (Exception exp) {
-				rule_iprng = 0;
-			}
-		}
-		// convert ip address string to int for matching
-		int rule_ipint = IPv4.toIPv4Address(rule_ipaddr);
+		int rule_iprng = 32 - ruleBits;
+		int rule_ipint = rulePrefix;
 		int pkt_ipint = packetAddress;
 		// if there's a subnet range (bits to be wildcarded > 0)
 		if (rule_iprng > 0) {
@@ -339,27 +399,28 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 		// check if we have a matching rule for this packet/flow
 		// and no decision is taken yet
 		if (decision == null) {
-			FirewallRule rule = this.matchWithRule(sw, pi, cntx);
-			if (rule == null) {
-				decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
-				int wildcards = OFMatch.OFPFW_ALL
-						& ~OFMatch.OFPFW_DL_SRC
-	                    & ~OFMatch.OFPFW_IN_PORT
-	                    & ~OFMatch.OFPFW_DL_VLAN
-	                    & ~OFMatch.OFPFW_DL_DST
-	                    & ~OFMatch.OFPFW_DL_TYPE;
-				if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
-					wildcards = wildcards
-						& ~OFMatch.OFPFW_NW_PROTO
-		                & ~OFMatch.OFPFW_TP_SRC
-		                & ~OFMatch.OFPFW_TP_DST
-		                & ~OFMatch.OFPFW_NW_SRC_ALL
-		                & ~OFMatch.OFPFW_NW_DST_ALL;
+			List<Object> match_ret = this.matchWithRule(sw, pi, cntx);
+			FirewallRule rule = (FirewallRule)match_ret.get(0);
+			if (rule != null) {
+				String ruleInfo = "priority: " + (new Integer(rule.priority)).toString();
+				ruleInfo += ", protocol: " + (new Integer(rule.proto_type)).toString();
+				ruleInfo += ", deny rule? ";
+				if (rule.is_denyrule) {
+					ruleInfo += "yes";
+				} else {
+					ruleInfo += "no";
 				}
-				decision.setWildcards(wildcards);
+				logger.info("Rule - {}", ruleInfo);
+			}
+			if (rule == null || rule.is_denyrule == true) {
+				decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
+				decision.setWildcards(((Integer)match_ret.get(1)).intValue());
 				decision.addToContext(cntx);
 				logger.info("no firewall rule found to allow this packet/flow, blocking packet/flow");
 			} else {
+				decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+				decision.setWildcards(((Integer)match_ret.get(1)).intValue());
+				decision.addToContext(cntx);
 				logger.info("rule matched, allowing traffic");
 			}
 		}

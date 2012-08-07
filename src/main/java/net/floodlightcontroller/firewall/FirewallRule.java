@@ -13,22 +13,36 @@ public class FirewallRule implements Comparable {
 	public int dst_ip_prefix;
 	public int dst_ip_bits;
 	public long switchid;
-	public int priority = -1;
+	public boolean wildcard_src_inport;
+	public boolean wildcard_src_mac;
+	public boolean wildcard_src_ip;
+	public boolean wildcard_proto_type;
+	public boolean wildcard_dst_mac;
+	public boolean wildcard_dst_ip;
+	public boolean wildcard_switchid;
+	public int priority = 0;
 	public boolean is_denyrule;
 
 	public FirewallRule() {
-		this.src_inport = -1;
-		this.src_mac = -1;
+		this.src_inport = 1;
+		this.src_mac = 0;
 		this.src_ip_prefix = 0;
 		this.src_ip_bits = 32;
 		this.proto_type = 0;
 		this.proto_srcport = 0;
 		this.proto_dstport = 0;
-		this.dst_mac = -1;
+		this.dst_mac = 0;
 		this.dst_ip_prefix = 0;
 		this.dst_ip_bits = 32;
-		this.switchid = -1;
-		this.priority = -1;
+		this.switchid = 0;
+		this.wildcard_src_inport = true;
+		this.wildcard_src_mac = true;
+		this.wildcard_src_ip = true;
+		this.wildcard_proto_type = true;
+		this.wildcard_dst_mac = true;
+		this.wildcard_dst_ip = true;
+		this.wildcard_switchid = true;
+		this.priority = 0;
 		this.is_denyrule = false;
 	}
 	
