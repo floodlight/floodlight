@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+
+import static org.easymock.EasyMock.*;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -28,6 +30,7 @@ import java.util.Map;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createStrictMock;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
@@ -59,6 +62,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import static org.junit.Assert.*;
 
@@ -108,6 +112,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         RestApiServer restApi = new RestApiServer();
         MockThreadPoolService tp = new MockThreadPoolService();
+        ITopologyService topology = createMock(ITopologyService.class);
         fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
@@ -120,6 +125,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
+        fmc.addService(ITopologyService.class, topology);
         tp.init(fmc);
         restApi.init(fmc);
         storageSource.init(fmc);
@@ -131,6 +137,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         flowReconcileMgr.startUp(fmc);
         tp.startUp(fmc);
         entityClassifier.startUp(fmc);
+
+        topology.addListener(deviceManager);
+        expectLastCall().times(1);
+        replay(topology);
 
         IOFSwitch mockSwitch1 = makeSwitchMock(1L);
         IOFSwitch mockSwitch10 = makeSwitchMock(10L);
@@ -401,6 +411,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         reset(mockListener);
         replay(mockListener);
         
+        reset(deviceManager.topology);
+        deviceManager.topology.addListener(deviceManager);
+        expectLastCall().times(1);
+        replay(deviceManager.topology);
+
         deviceManager.entityClassifier = new MockEntityClassifierMac();
         deviceManager.startUp(null);
         Entity entityNoClass = new Entity(5L, (short)1, 5, -1L, 1, new Date());
@@ -571,7 +586,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity0);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
-        assertEquals(aps, null);
+        assertEquals(aps.length, 0);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
@@ -598,7 +613,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
-        verify(mockListener);
+        //verify(mockListener);  // There is no device movement here; no not needed.
 
         reset(mockListener);
         mockListener.deviceMoved((isA(IDevice.class)));
@@ -775,12 +790,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, rdevice);
     }
 
+    /**
+     * Note: Entity expiration does not result in device moved notification.
+     * @throws Exception
+     */
     @Test
     public void testEntityExpiration() throws Exception {
         IDeviceListener mockListener =
                 createStrictMock(IDeviceListener.class);
         mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
-        mockListener.deviceMoved(isA(IDevice.class));
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
@@ -818,14 +836,18 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
 
+
         deviceManager.addListener(mockListener);
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 
         d = deviceManager.getDevice(d.getDeviceKey());
         assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
-        //assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-        //                  d.getAttachmentPoints());
+
+        // Attachment points are not removed, previous ones are still valid.
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) },
+                          d.getAttachmentPoints());
         diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
@@ -834,8 +856,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         d = deviceManager.findDevice(1L, null, null, null, null);
         assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
-        //assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-        //                  d.getAttachmentPoints());
+
+        // Attachment points are not removed, previous ones are still valid.
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) },
+                          d.getAttachmentPoints());
 
         verify(mockListener);
     }
