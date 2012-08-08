@@ -103,6 +103,16 @@ public class Device implements IDevice {
         List<AttachmentPoint>oldAP =
                 new ArrayList<AttachmentPoint>(attachmentPoints);
 
+        // Remove invalid attachment points before sorting.
+        List<AttachmentPoint>tempAP =
+                new ArrayList<AttachmentPoint>();
+        for(AttachmentPoint ap: oldAP) {
+            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort())){
+                tempAP.add(ap);
+            }
+        }
+        oldAP = tempAP;
+
         Collections.sort(oldAP, deviceManager.apComparator);
 
         // Map of attachment point by L2 domain Id.
