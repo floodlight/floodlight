@@ -83,10 +83,38 @@ public interface ILinkDiscovery {
         
         @Override
         public String toString() {
-            return "LDUpdate [src=" + src + ", srcPort=" + srcPort
-                   + ", dst=" + dst + ", dstPort=" + dstPort
-                   + ", srcType=" + srcType + ", type=" + type + ", operation="
-                   + operation + "]";
+            String operationString = null;
+            if (operation == UpdateOperation.LINK_REMOVED) {
+                operationString = "Link Removed";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort
+                        + ", dst=" + dst + ", dstPort=" + dstPort
+                        + ", type=" + type + "]";
+            } else if (operation == UpdateOperation.LINK_UPDATED) {
+                operationString = "Link Updated";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort
+                        + ", dst=" + dst + ", dstPort=" + dstPort
+                        + ", type=" + type + "]";
+            } else if (operation == UpdateOperation.PORT_DOWN) {
+                operationString = "Port Down";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort + "]";
+            } else if (operation == UpdateOperation.PORT_UP) {
+                operationString = "Port Up";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort + "]";
+            } else if (operation == UpdateOperation.SWITCH_REMOVED) {
+                operationString = "Switch Removed";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + "]";
+            } else if (operation == UpdateOperation.SWITCH_UPDATED) {
+                operationString = "Switch Updated";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + "]";
+            } else {
+                return "LDUpdate: Unknown update.";
+            }
         }
     }
 
