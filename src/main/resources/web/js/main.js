@@ -47,8 +47,8 @@ var AppRouter = Backbone.Router.extend({
     },
 
     topology:function () {
-    	//console.log("switching to topology view");
-    	var topo = new Topology();
+        //console.log("switching to topology view");
+        var topo = new Topology();
         $('#content').html(new TopologyView({model:topo, hosts:hl}).render().el);
         // TODO factor this code out
         $('ul.nav > li').removeClass('active');
@@ -56,30 +56,30 @@ var AppRouter = Backbone.Router.extend({
     },
     
     switchDetails:function (id) {
-    	//console.log("switching [sic] to single switch view");
-    	var sw = swl.get(id);
-    	$('#content').html(new SwitchView({model:sw}).render().el);
+        //console.log("switching [sic] to single switch view");
+        var sw = swl.get(id);
+        $('#content').html(new SwitchView({model:sw}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/switches"]').parent().addClass('active');
     },
     
     switchList:function () {
-    	//console.log("switching [sic] to switch list view");
+        //console.log("switching [sic] to switch list view");
         $('#content').html(new SwitchListView({model:swl}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/switches"]').parent().addClass('active');
     },
 
     hostDetails:function (id) {
-    	//console.log("switching to single host view");
-    	var h = hl.get(id);
-    	$('#content').html(new HostView({model:h}).render().el);
+        //console.log("switching to single host view");
+        var h = hl.get(id);
+        $('#content').html(new HostView({model:h}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/hosts"]').parent().addClass('active');
     },
     
     hostList:function () {
-    	//console.log("switching to host list view");
+        //console.log("switching to host list view");
         $('#content').html(new HostListView({model:hl}).render().el);
         $('ul.nav > li').removeClass('active');
         $('li > a[href*="/hosts"]').parent().addClass('active');
@@ -99,21 +99,21 @@ tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-lis
         
         $(document).ready(function () {
             // trigger Backbone routing when clicking on links, thanks to Atinux and pbnv
-	    app.navigate("", true);
+            app.navigate("", true);
 
-                window.document.addEventListener('click', function(e) {
-        	    e = e || window.event
-        	    var target = e.target || e.srcElement
-        	    if ( target.nodeName.toLowerCase() === 'a' ) {
-        	        e.preventDefault()
-        	        var uri = target.getAttribute('href')
-        	        app.navigate(uri.substr(1), true)
-        	    }
-        	});
-        	window.addEventListener('popstate', function(e) {
-        	    app.navigate(location.pathname.substr(1), true);
-        	});
-	    
+            window.document.addEventListener('click', function(e) {
+                e = e || window.event
+                var target = e.target || e.srcElement
+                if ( target.nodeName.toLowerCase() === 'a' ) {
+                    e.preventDefault()
+                    var uri = target.getAttribute('href')
+                    app.navigate(uri.substr(1), true)
+                }
+            });
+            window.addEventListener('popstate', function(e) {
+                app.navigate(location.pathname.substr(1), true);
+            });
+
         });
     });
 

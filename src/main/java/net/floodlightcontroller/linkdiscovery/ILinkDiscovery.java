@@ -2,29 +2,25 @@ package net.floodlightcontroller.linkdiscovery;
 
 public interface ILinkDiscovery {
 
-    public static enum UpdateOperation {ADD_OR_UPDATE, REMOVE, SWITCH_UPDATED};
+    public static enum UpdateOperation {LINK_UPDATED, LINK_REMOVED, SWITCH_UPDATED, SWITCH_REMOVED, PORT_UP, PORT_DOWN};
 
     public class LDUpdate {
         protected long src;
         protected short srcPort;
-        protected int srcPortState;
         protected long dst;
         protected short dstPort;
-        protected int dstPortState;
         protected SwitchType srcType;
         protected LinkType type;
         protected UpdateOperation operation;
 
-        public LDUpdate(long src, short srcPort, int srcPortState,
-                      long dst, short dstPort, int dstPortState,
+        public LDUpdate(long src, short srcPort,
+                      long dst, short dstPort,
                       ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
             this.srcPort = srcPort;
-            this.srcPortState = srcPortState;
             this.dst = dst;
             this.dstPort = dstPort;
-            this.dstPortState = dstPortState;
             this.type = type;
             this.operation = operation;
         }
@@ -32,20 +28,25 @@ public interface ILinkDiscovery {
         public LDUpdate(LDUpdate old) {
             this.src = old.src;
             this.srcPort = old.srcPort;
-            this.srcPortState = old.srcPortState;
             this.dst = old.dst;
             this.dstPort = old.dstPort;
-            this.dstPortState = old.dstPortState;
             this.srcType = old.srcType;
             this.type = old.type;
             this.operation = old.operation;
         }
 
         // For updtedSwitch(sw)
-        public LDUpdate(long switchId, SwitchType stype) {
-            this.operation = UpdateOperation.SWITCH_UPDATED;
+        public LDUpdate(long switchId, SwitchType stype, UpdateOperation oper ){
+            this.operation = oper;
             this.src = switchId;
             this.srcType = stype;
+        }
+
+        // For port up or port down.
+        public LDUpdate(long sw, short port, UpdateOperation operation) {
+            this.src = sw;
+            this.srcPort = port;
+            this.operation = operation;
         }
 
         public long getSrc() {
@@ -56,20 +57,12 @@ public interface ILinkDiscovery {
             return srcPort;
         }
 
-        public int getSrcPortState() {
-            return srcPortState;
-        }
-
         public long getDst() {
             return dst;
         }
 
         public short getDstPort() {
             return dstPort;
-        }
-
-        public int getDstPortState() {
-            return dstPortState;
         }
 
         public SwitchType getSrcType() {
@@ -90,11 +83,38 @@ public interface ILinkDiscovery {
         
         @Override
         public String toString() {
-            return "LDUpdate [src=" + src + ", srcPort=" + srcPort
-                   + ", srcPortState=" + srcPortState + ", dst=" + dst
-                   + ", dstPort=" + dstPort + ", dstPortState=" + dstPortState
-                   + ", srcType=" + srcType + ", type=" + type + ", operation="
-                   + operation + "]";
+            String operationString = null;
+            if (operation == UpdateOperation.LINK_REMOVED) {
+                operationString = "Link Removed";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort
+                        + ", dst=" + dst + ", dstPort=" + dstPort
+                        + ", type=" + type + "]";
+            } else if (operation == UpdateOperation.LINK_UPDATED) {
+                operationString = "Link Updated";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort
+                        + ", dst=" + dst + ", dstPort=" + dstPort
+                        + ", type=" + type + "]";
+            } else if (operation == UpdateOperation.PORT_DOWN) {
+                operationString = "Port Down";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort + "]";
+            } else if (operation == UpdateOperation.PORT_UP) {
+                operationString = "Port Up";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + ", srcPort=" + srcPort + "]";
+            } else if (operation == UpdateOperation.SWITCH_REMOVED) {
+                operationString = "Switch Removed";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + "]";
+            } else if (operation == UpdateOperation.SWITCH_UPDATED) {
+                operationString = "Switch Updated";
+                return "LDUpdate [operation=" + operationString +
+                        "src=" + src + "]";
+            } else {
+                return "LDUpdate: Unknown update.";
+            }
         }
     }
 

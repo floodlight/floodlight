@@ -19,8 +19,8 @@ window.Topology = Backbone.Model.extend({
     url:"/wm/topology/links/json",
     
     defaults:{
-    	nodes: [],
-    	links: [],
+        nodes: [],
+        links: [],
     },
 
     initialize:function () {
@@ -34,19 +34,25 @@ window.Topology = Backbone.Model.extend({
                 // console.log(data);
                 self.nodes = {};
                 self.links = [];
+
                 // step 1: build unique array of switch IDs
+                /* this doesn't work if there's only one switch,
+                   because there are no switch-switch links
                 _.each(data, function (l) {
-                	self.nodes[l['src-switch']] = true;
-                	self.nodes[l['dst-switch']] = true;
+                    self.nodes[l['src-switch']] = true;
+                    self.nodes[l['dst-switch']] = true;
                 });
                 // console.log(self.nodes);
                 var nl = _.keys(self.nodes);
+                */
+                var nl = swl.pluck('id');
                 self.nodes = _.map(nl, function (n) {return {name:n}});
+
                 // step 2: build array of links in format D3 expects
                 _.each(data, function (l) {
-                	self.links.push({source:nl.indexOf(l['src-switch']),
-                					 target:nl.indexOf(l['dst-switch']),
-                					 value:10});
+                    self.links.push({source:nl.indexOf(l['src-switch']),
+                                     target:nl.indexOf(l['dst-switch']),
+                                     value:10});
                 });
                 // console.log(self.nodes);
                 // console.log(self.links);

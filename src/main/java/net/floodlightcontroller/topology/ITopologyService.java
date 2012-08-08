@@ -1,6 +1,7 @@
 package net.floodlightcontroller.topology;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -188,5 +189,5 @@ public interface ITopologyService extends IFloodlightService  {
      * This method returns the delta in the linkUpdates between the current and the previous topology instance.
      * @return
      */
-    public Set<LDUpdate> getLastLinkUpdates();
+    public List<LDUpdate> getLastLinkUpdates();
 }
