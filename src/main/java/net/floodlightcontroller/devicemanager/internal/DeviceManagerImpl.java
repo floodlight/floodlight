@@ -58,6 +58,7 @@ import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -1510,9 +1511,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     @Override
     public void topologyChanged() {
         Iterator<Device> diter = deviceMap.values().iterator();
+        List<LDUpdate> updateList = topology.getLastLinkUpdates();
+        if (updateList != null) {
+            if (logger.isTraceEnabled()) {
+                for(LDUpdate update: updateList) {
+                    logger.trace("Topo update: {}", update);
+                }
+            }
+        }
+
         while (diter.hasNext()) {
             Device d = diter.next();
             if (d.updateAttachmentPoint()) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Attachment point changed for device: {}", d);
+                }
                 sendDeviceMovedNotification(d);
             }
         }

@@ -732,6 +732,15 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return UpdateOperation.LINK_REMOVED;
     }
 
+    protected UpdateOperation getUpdateOperation(int srcPortState) {
+        boolean portUp = ((srcPortState &
+                OFPortState.OFPPS_STP_MASK.getValue()) !=
+                OFPortState.OFPPS_STP_BLOCK.getValue());
+
+        if (portUp) return UpdateOperation.PORT_UP;
+        else return UpdateOperation.PORT_DOWN;
+    }
+
     @Override
     public LinkType getLinkType(LinkInfo info) {
 
@@ -988,6 +997,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
                 // If ps is a port modification and the port state has changed
                 // that affects links in the topology
+
                 if (this.portLinks.containsKey(npt)) {
                     for (Link lt: this.portLinks.get(npt)) {
                         LinkInfo linkInfo = links.get(lt);
@@ -1025,6 +1035,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         }
                     }
                 }
+
+                UpdateOperation operation =
+                        getUpdateOperation(ps.getDesc().getState());
+                updates.add(new LDUpdate(sw, port, operation));
             }
 
             if (!linkDeleted && !linkInfoChanged){
@@ -1357,50 +1371,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 resultSet.close();
         }
         return validTime;
-    }
-
-    public void writeLinkInfo(Link lt, LinkInfo linkInfo) {
-        if (linkInfo.getUnicastValidTime() != null) {
-            Map<String, Object> rowValues = new HashMap<String, Object>();
-            String id = getLinkId(lt);
-            rowValues.put(LINK_ID, id);
-            //LinkInfo linkInfo = links.get(lt);
-            if (linkInfo.getUnicastValidTime() != null)
-                rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
-            if (linkInfo.getSrcPortState() != null) {
-                if (linkInfo != null && linkInfo.linkStpBlocked()) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("writeLinkInfo, link {}, info {}, srcPortState Blocked",
-                                  lt, linkInfo);
-                    }
-                    rowValues.put(LINK_SRC_PORT_STATE,
-                                  OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-                } else {
-                    if (log.isTraceEnabled()) {
-                        log.trace("writeLinkInfo, link {}, info {}",
-                                  new Object[]{ lt, linkInfo});
-                    }
-                    rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
-                }
-            }
-            if (linkInfo.getDstPortState() != null) {
-                if (linkInfo != null && linkInfo.linkStpBlocked()) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("writeLinkInfo, link {}, info {}, dstPortState Blocked",
-                                  lt, linkInfo);
-                    }
-                    rowValues.put(LINK_DST_PORT_STATE,
-                                  OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-                } else {
-                    if (log.isTraceEnabled()) {
-                        log.trace("writeLinkInfo, link {}, info {}",
-                                  new Object[]{ lt, linkInfo});
-                    }
-                    rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
-                }
-            }
-            storageSource.updateRowAsync(LINK_TABLE_NAME, id, rowValues);
-        }
     }
 
     /**
