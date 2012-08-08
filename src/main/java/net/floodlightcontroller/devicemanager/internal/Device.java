@@ -37,6 +37,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
@@ -452,7 +453,22 @@ public class Device implements IDevice {
 
     @Override
     public String toString() {
-        return "Device [entityClass=" + entityClass.getName() +
-                " entities=" + Arrays.toString(entities) + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("Device [entityClass=");
+        builder.append(entityClass.getName());
+        builder.append(", MAC=");
+        builder.append(macAddressString);
+        builder.append(", IPs=[");
+        boolean isFirst = true;
+        for (Integer ip: getIPv4Addresses()) {
+            if (!isFirst)
+                builder.append(", ");
+            isFirst = false;
+            builder.append(IPv4.fromIPv4Address(ip));
+        }
+        builder.append("], APs=");
+        builder.append(Arrays.toString(getAttachmentPoints(true)));
+        builder.append("]");
+        return builder.toString();
     }
 }

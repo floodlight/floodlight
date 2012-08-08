@@ -228,6 +228,15 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             this.change = change;
             this.fieldsChanged = fieldsChanged;
         }
+
+        @Override
+        public String toString() {
+            String devIdStr = device.getEntityClass().getName() + "::" +
+                    device.getMACAddressString();
+            return "DeviceUpdate [device=" + devIdStr + ", change=" + change
+                   + ", fieldsChanged=" + fieldsChanged + "]";
+        }
+        
     }
 
     /**
@@ -551,13 +560,17 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // Find the device matching the destination from the entity
             // classes of the source.
             Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
-            logger.trace("DeviceManager dstEntity {}", dstEntity);
+            Device dstDevice = null;
             if (dstEntity != null) {
-                Device dstDevice =
-                        findDestByEntity(srcDevice, dstEntity);
-                logger.trace("DeviceManager dstDevice {}", dstDevice);
+                dstDevice = findDestByEntity(srcDevice, dstEntity);
                 if (dstDevice != null)
                     fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
+            }
+            if (logger.isTraceEnabled()) {
+                logger.trace("Reconciling flow: match={}, srcDev={}, " 
+                		     + "dstEntity={}, dstDev={}",
+                		     new Object[] { ofm.ofmWithSwDpid, srcDevice, 
+                		                    dstEntity, dstDevice } );
             }
         }
         return Command.CONTINUE;
@@ -1177,6 +1190,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (updates == null) return;
         DeviceUpdate update = null;
         while (null != (update = updates.poll())) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Dispatching device update: {}", update);
+            }
             for (IDeviceListener listener : deviceListeners) {
                 switch (update.change) {
                     case ADD:
