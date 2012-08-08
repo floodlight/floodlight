@@ -62,11 +62,11 @@ window.HostCollection = Backbone.Collection.extend({
     }
 
     /*
-	 * findByName:function (key) { // TODO: Modify service to include firstName
-	 * in search var url = (key == '') ? '/host/' : "/host/search/" + key;
-	 * console.log('findByName: ' + key); var self = this; $.ajax({ url:url,
-	 * dataType:"json", success:function (data) { console.log("search success: " +
-	 * data.length); self.reset(data); } }); }
-	 */
+     * findByName:function (key) { // TODO: Modify service to include firstName
+     * in search var url = (key == '') ? '/host/' : "/host/search/" + key;
+     * console.log('findByName: ' + key); var self = this; $.ajax({ url:url,
+     * dataType:"json", success:function (data) { console.log("search success: " +
+     * data.length); self.reset(data); } }); }
+     */
 
 });
