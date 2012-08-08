@@ -16,13 +16,13 @@
 
 window.Flow = Backbone.Model.extend({
 
-	defaults: {
-		receiveBytes: 0,
-		receivePackets: 0,
-		transmitBytes: 0,
-		transmitPackets: 0,
-	},
-	
+    defaults: {
+        receiveBytes: 0,
+        receivePackets: 0,
+        transmitBytes: 0,
+        transmitPackets: 0,
+    },
+
     // initialize:function () {}
 
 });
