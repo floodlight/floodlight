@@ -19,6 +19,7 @@ public class FirewallWebRoutable implements RestletRoutable {
     public Router getRestlet(Context context) {
         Router router = new Router(context);
         router.attach("/{op}/json", FirewallResource.class);
+        router.attach("/rules/json", FirewallRulesResource.class);
         return router;
     }
 

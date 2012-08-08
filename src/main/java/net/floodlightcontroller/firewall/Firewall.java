@@ -124,38 +124,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	    
 	    // assumes no switches connected at startup()
         //rules = readRulesFromStorage();
-	    
-	    // insert rule to allow ICMP traffic
-	    FirewallRule rule = new FirewallRule();
-	    rule.proto_type = IPv4.PROTOCOL_ICMP;
-	    rule.wildcard_proto_type = false;
-	    rule.priority = 1;
-	    this.rules.add(rule);
-	    // insert rule to allow TCP traffic destined to port 80
-	    rule = new FirewallRule();
-	    rule.proto_type = IPv4.PROTOCOL_TCP;
-	    rule.wildcard_proto_type = false;
-	    rule.proto_dstport = 80;
-	    rule.priority = 2;
-	    rule.is_denyrule = true;
-	    this.rules.add(rule);
-	    // insert rule to allow TCP traffic originating from port 80
-	    rule = new FirewallRule();
-	    rule.proto_type = IPv4.PROTOCOL_TCP;
-	    rule.wildcard_proto_type = false;
-	    rule.proto_srcport = 80;
-	    rule.priority = 3;
-	    rule.is_denyrule = true;
-	    this.rules.add(rule);
-	    // insert rule to allow TCP traffic
-	    rule = new FirewallRule();
-	    rule.proto_type = IPv4.PROTOCOL_TCP;
-	    rule.wildcard_proto_type = false;
-	    rule.priority = 4;
-	    this.rules.add(rule);
-
-	    // now sort the rules
-	    Collections.sort(this.rules);
 	}
 
 	@Override
@@ -213,6 +181,32 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	@Override
 	public List<FirewallRule> getRules() {
 		return this.rules;
+	}
+	
+	@Override
+	public void addRule(FirewallRule rule) {
+		this.rules.add(rule);
+		// now re-sort the rules
+	    Collections.sort(this.rules);
+	}
+	
+	@Override
+	public void deleteRule(int ruleid) {
+		boolean found = false;
+		Iterator<FirewallRule> iter = this.rules.iterator();
+		while (iter.hasNext()) {
+			FirewallRule r = iter.next();
+			if (r.ruleid == ruleid) {
+				// found the rule, now remove it
+				iter.remove();
+				found = true;
+				break;
+			}
+		}
+		// now re-sort the rules if we deleted one
+		if (found) {
+			Collections.sort(this.rules);
+		}
 	}
 	
 	protected List<Object> matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {

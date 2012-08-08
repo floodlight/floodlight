@@ -21,4 +21,14 @@ public interface IFirewallService extends IFloodlightService {
      * @return List of all rules
      */
 	public List<FirewallRule> getRules();
+	
+	/**
+     * Adds a new Firewall rule
+     */
+	public void addRule(FirewallRule rule);
+	
+	/**
+     * Deletes a Firewall rule
+     */
+	public void deleteRule(int ruleid);
 }
