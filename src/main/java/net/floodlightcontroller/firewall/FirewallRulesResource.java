@@ -26,16 +26,11 @@ public class FirewallRulesResource extends ServerResource {
     
     @Get("json")
     public Object handleRequest() {
-    	String op = (String) getRequestAttributes().get("op");
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
                     get(IFirewallService.class.getCanonicalName());
         
-        if (op.equalsIgnoreCase("all")) {
-        	return firewall.getRules();
-        }
-        
-        return "{\"status\" : \"failure\", \"details\" : \"invalid operation\"}";
+        return firewall.getRules();
     }
     
     /**
@@ -44,7 +39,7 @@ public class FirewallRulesResource extends ServerResource {
      * @param fmJson The Firewall rule entry in JSON format.
      * @return A string status message
      */
-    @Post("json")
+    @Post
     public String store(String fmJson) {
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
@@ -76,7 +71,7 @@ public class FirewallRulesResource extends ServerResource {
      * @param fmJson The Firewall rule entry in JSON format.
      * @return A string status message
      */
-    @Delete("json")
+    @Delete
     public String remove(String fmJson) {
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
@@ -95,7 +90,7 @@ public class FirewallRulesResource extends ServerResource {
     	Iterator<FirewallRule> iter = firewall.getRules().iterator();
     	while (iter.hasNext()) {
     		FirewallRule r = iter.next();
-    		if (r.ruleid == rule.ruleid) {
+    		if (r.ruleid.equalsIgnoreCase(rule.ruleid)) {
     			exists = true;
     			break;
     		}
@@ -145,7 +140,7 @@ public class FirewallRulesResource extends ServerResource {
             
             String tmp;
             if (n == "ruleid") {
-                rule.ruleid = Integer.parseInt(jp.getText());
+                rule.ruleid = jp.getText();
             } else if (n == "switchid") {
             		tmp = jp.getText();
             		if (tmp.equalsIgnoreCase("-1") == false) {

@@ -31,8 +31,8 @@ public class FirewallResource extends ServerResource {
         } else if (op.equalsIgnoreCase("disable")) {
         	firewall.disableFirewall();
         	return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
-        } else if (op.equalsIgnoreCase("rules")) {
-        	return firewall.getRules();
+        } else if (op.equalsIgnoreCase("storageRules")) {
+        	return firewall.getStorageRules();
         }
         
         return "{\"status\" : \"failure\", \"details\" : \"invalid operation\"}";

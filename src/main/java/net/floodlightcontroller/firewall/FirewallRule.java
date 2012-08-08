@@ -1,7 +1,7 @@
 package net.floodlightcontroller.firewall;
 
 public class FirewallRule implements Comparable {
-	public int ruleid;
+	public String ruleid;
 	public short src_inport;
 	public long src_mac;
 	public int src_ip_prefix;
@@ -34,7 +34,7 @@ public class FirewallRule implements Comparable {
 		this.dst_mac = 0;
 		this.dst_ip_prefix = 0;
 		this.dst_ip_bits = 32;
-		this.switchid = 0;
+		this.switchid = -1;
 		this.wildcard_src_inport = true;
 		this.wildcard_src_mac = true;
 		this.wildcard_src_ip = true;

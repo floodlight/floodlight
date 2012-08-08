@@ -1,6 +1,5 @@
 package net.floodlightcontroller.firewall;
 
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,8 +22,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.Set;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
@@ -34,13 +31,14 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryWebRoutable;
+import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
+import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.storage.StorageException;
 
-import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.UUID;
 
 
 public class Firewall implements IFirewallService, IOFMessageListener, IFloodlightModule {
@@ -52,6 +50,36 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	protected static Logger logger;
 	protected ArrayList<FirewallRule> rules;
 	protected boolean enabled;
+	
+	public static final String TABLE_NAME = "controller_firewallrules";
+    public static final String COLUMN_RULEID = "ruleid";
+    public static final String COLUMN_SWITCHID = "switchid";
+    public static final String COLUMN_SRC_INPORT = "src_inport";
+    public static final String COLUMN_SRC_IP_PREFIX = "src_ip_prefix";
+    public static final String COLUMN_SRC_IP_BITS = "src_ip_bits";
+    public static final String COLUMN_SRC_MAC = "src_mac";
+    public static final String COLUMN_PROTO_TYPE = "proto_type";
+    public static final String COLUMN_PROTO_SRCPORT = "proto_srcport";
+    public static final String COLUMN_PROTO_DSTPORT = "proto_dstport";
+    public static final String COLUMN_DST_IP_PREFIX = "dst_ip_prefix";
+    public static final String COLUMN_DST_IP_BITS = "dst_ip_bits";
+    public static final String COLUMN_DST_MAC = "dst_mac";
+    public static final String COLUMN_WILDCARD_SWITCHID = "wildcard_switchid";
+    public static final String COLUMN_WILDCARD_SRC_INPORT = "wildcard_src_inport";
+    public static final String COLUMN_WILDCARD_SRC_MAC = "wildcard_src_mac";
+    public static final String COLUMN_WILDCARD_SRC_IP = "wildcard_src_ip";
+    public static final String COLUMN_WILDCARD_PROTO_TYPE = "wildcard_proto_type";
+    public static final String COLUMN_WILDCARD_DST_MAC = "wildcard_dst_mac";
+    public static final String COLUMN_WILDCARD_DST_IP = "wildcard_dst_ip";
+    public static final String COLUMN_PRIORITY = "priority";
+    public static final String COLUMN_IS_DENYRULE = "is_denyrule";
+    public static String ColumnNames[] = { COLUMN_RULEID, COLUMN_SWITCHID,
+    	    COLUMN_SRC_INPORT, COLUMN_SRC_MAC, COLUMN_SRC_IP_PREFIX, COLUMN_SRC_IP_BITS,
+    	    COLUMN_PROTO_TYPE, COLUMN_PROTO_SRCPORT, COLUMN_PROTO_DSTPORT,
+    	    COLUMN_DST_MAC, COLUMN_DST_IP_PREFIX, COLUMN_DST_IP_BITS,
+    	    COLUMN_WILDCARD_SWITCHID, COLUMN_WILDCARD_SRC_INPORT, COLUMN_WILDCARD_SRC_MAC,
+    	    COLUMN_WILDCARD_SRC_IP, COLUMN_WILDCARD_PROTO_TYPE, COLUMN_WILDCARD_DST_MAC,
+    	    COLUMN_WILDCARD_DST_IP, COLUMN_PRIORITY, COLUMN_IS_DENYRULE };
 	
 	
 	@Override
@@ -110,6 +138,106 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     public void setStorageSource(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
     }
+    
+    protected ArrayList<FirewallRule> readRulesFromStorage() {
+    	ArrayList<FirewallRule> l = new ArrayList<FirewallRule>();
+    	
+        try {
+            Map<String, Object> row;
+            // null1=no predicate, null2=no ordering
+            IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
+                    ColumnNames, null, null);
+            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                row = it.next().getRow();
+                // now, parse row
+                FirewallRule r = new FirewallRule();
+                if (!row.containsKey(COLUMN_RULEID) || !row.containsKey(COLUMN_SWITCHID)) {
+                    logger.error(
+                            "skipping entry with missing required 'ruleid' or 'switchid' entry: {}",
+                            row);
+                    return l;
+                }
+                // most error checking done with ClassCastException
+                try {
+                    // first, snag the required entries, for debugging info
+                	r.ruleid = (String)row.get(COLUMN_RULEID);
+                    r.switchid = Long.parseLong((String)row.get(COLUMN_SWITCHID));
+                    
+                    for (String key : row.keySet()) {
+                        if (row.get(key) == null)
+                            continue;
+                        if ( key.equals(COLUMN_RULEID) || key.equals(COLUMN_SWITCHID) || key.equals("id")) {
+                            continue; // already handled
+                        } else if ( key.equals(COLUMN_SRC_INPORT)) {
+                        	r.src_inport = Short.parseShort((String)row.get(COLUMN_SRC_INPORT));
+                        } else if ( key.equals(COLUMN_SRC_MAC)) {
+                        	r.src_mac = Long.parseLong((String)row.get(COLUMN_SRC_MAC));
+                        } else if ( key.equals(COLUMN_SRC_IP_PREFIX)) {
+                        	r.src_ip_prefix = Integer.parseInt((String)row.get(COLUMN_SRC_IP_PREFIX));
+                        } else if ( key.equals(COLUMN_SRC_IP_BITS)) {
+                        	r.src_ip_bits = Integer.parseInt((String)row.get(COLUMN_SRC_IP_BITS));
+                        } else if ( key.equals(COLUMN_PROTO_TYPE)) {
+                        	r.proto_type = Short.parseShort((String)row.get(COLUMN_PROTO_TYPE));
+                        } else if ( key.equals(COLUMN_PROTO_SRCPORT)) {
+                        	r.proto_srcport = Short.parseShort((String)row.get(COLUMN_PROTO_SRCPORT));
+                        } else if ( key.equals(COLUMN_PROTO_DSTPORT)) {
+                        	r.proto_dstport = Short.parseShort((String)row.get(COLUMN_PROTO_DSTPORT));
+                        } else if ( key.equals(COLUMN_DST_MAC)) {
+                        	r.dst_mac = Long.parseLong((String)row.get(COLUMN_DST_MAC));
+                        } else if ( key.equals(COLUMN_DST_IP_PREFIX)) {
+                        	r.dst_ip_prefix = Integer.parseInt((String)row.get(COLUMN_DST_IP_PREFIX));
+                        } else if ( key.equals(COLUMN_DST_IP_BITS)) {
+                        	r.dst_ip_bits = Integer.parseInt((String)row.get(COLUMN_DST_IP_BITS));
+                        } else if ( key.equals(COLUMN_WILDCARD_SWITCHID)) {
+                        	r.wildcard_switchid = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_SWITCHID));
+                        } else if ( key.equals(COLUMN_WILDCARD_SRC_INPORT)) {
+                        	r.wildcard_src_inport = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_SRC_INPORT));
+                        } else if ( key.equals(COLUMN_WILDCARD_SRC_MAC)) {
+                        	r.wildcard_src_mac = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_SRC_MAC));
+                        } else if ( key.equals(COLUMN_WILDCARD_SRC_IP)) {
+                        	r.wildcard_src_ip = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_SRC_IP));
+                        } else if ( key.equals(COLUMN_WILDCARD_PROTO_TYPE)) {
+                        	r.wildcard_proto_type = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_PROTO_TYPE));
+                        } else if ( key.equals(COLUMN_WILDCARD_DST_MAC)) {
+                        	r.wildcard_dst_mac = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_DST_MAC));
+                        } else if ( key.equals(COLUMN_WILDCARD_DST_IP)) {
+                        	r.wildcard_dst_ip = Boolean.parseBoolean((String)row.get(COLUMN_WILDCARD_DST_IP));
+                        } else if ( key.equals(COLUMN_PRIORITY)) {
+                        	r.priority = Integer.parseInt((String)row.get(COLUMN_PRIORITY));
+                        } else if ( key.equals(COLUMN_IS_DENYRULE)) {
+                        	r.is_denyrule = Boolean.parseBoolean((String)row.get(COLUMN_IS_DENYRULE));
+                        }
+                    }
+                } catch (ClassCastException e) {
+                    if (!r.ruleid.equals(""))
+                        logger.error(
+                                "skipping rule {} with bad data : "
+                                        + e.getMessage(), r.ruleid);
+                    else
+                        logger.error("skipping rule with bad data: {} :: {} ",
+                                e.getMessage(), e.getStackTrace());
+                }
+                l.add(r);
+            }
+        } catch (StorageException e) {
+            logger.error("failed to access storage: {}", e.getMessage());
+            // if the table doesn't exist, then wait to populate later via
+            // setStorageSource()
+        }
+        
+        // now, sort the list based on priorities
+        Collections.sort(l);
+    	
+    	return l;
+    }
+    
+    /**
+     * used for debugging and unittests
+     * @return the number of rules
+     */
+    public int countRules() {
+        return this.rules.size();
+    }
 
 	@Override
 	public void init(FloodlightModuleContext context)
@@ -117,13 +245,10 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		storageSource = context.getServiceImpl(IStorageSourceService.class);
 		restApi = context.getServiceImpl(IRestApiService.class);
-	    rules = new ArrayList<FirewallRule>();
+		rules = new ArrayList<FirewallRule>();
 	    logger = LoggerFactory.getLogger(Firewall.class);
 	    // start disabled
 	    enabled = false;
-	    
-	    // assumes no switches connected at startup()
-        //rules = readRulesFromStorage();
 	}
 
 	@Override
@@ -134,6 +259,10 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         if (this.enabled == true) {
 			floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
 		}
+        // storage, create table and read rules
+        storageSource.createTable(TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(TABLE_NAME, COLUMN_RULEID);
+        this.rules = readRulesFromStorage();
 	}
 
 	@Override
@@ -184,19 +313,61 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	}
 	
 	@Override
-	public void addRule(FirewallRule rule) {
-		this.rules.add(rule);
-		// now re-sort the rules
-	    Collections.sort(this.rules);
+	public List<Map<String, Object>> getStorageRules() {
+		ArrayList<Map<String, Object>> l = new ArrayList<Map<String, Object>>();
+		try {
+			// null1=no predicate, null2=no ordering
+	        IResultSet resultSet = storageSource.executeQuery(TABLE_NAME, ColumnNames, null, null);
+	        for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+	        	l.add(it.next().getRow());
+	        }
+		} catch (StorageException e) {
+            logger.error("failed to access storage: {}", e.getMessage());
+            // if the table doesn't exist, then wait to populate later via
+            // setStorageSource()
+        }
+        return l;
 	}
 	
 	@Override
-	public void deleteRule(int ruleid) {
+	public void addRule(FirewallRule rule) {
+		rule.ruleid = UUID.randomUUID().toString();
+		this.rules.add(rule);
+		// now re-sort the rules
+	    Collections.sort(this.rules);
+	    // add rule to database
+	    Map<String, Object> entry = new HashMap<String, Object>();
+	    entry.put(COLUMN_RULEID, rule.ruleid);
+	    entry.put(COLUMN_SWITCHID, Long.toString(rule.switchid));
+	    entry.put(COLUMN_SRC_INPORT, Short.toString(rule.src_inport));
+	    entry.put(COLUMN_SRC_MAC, Long.toString(rule.src_mac));
+	    entry.put(COLUMN_SRC_IP_PREFIX, Integer.toString(rule.src_ip_prefix));
+	    entry.put(COLUMN_SRC_IP_BITS, Integer.toString(rule.src_ip_bits));
+	    entry.put(COLUMN_PROTO_TYPE, Short.toString(rule.proto_type));
+	    entry.put(COLUMN_PROTO_SRCPORT, Integer.toString(rule.proto_srcport));
+	    entry.put(COLUMN_PROTO_DSTPORT, Integer.toString(rule.proto_dstport));
+	    entry.put(COLUMN_DST_MAC, Long.toString(rule.dst_mac));
+	    entry.put(COLUMN_DST_IP_PREFIX, Integer.toString(rule.dst_ip_prefix));
+	    entry.put(COLUMN_DST_IP_BITS, Integer.toString(rule.dst_ip_bits));
+	    entry.put(COLUMN_WILDCARD_SWITCHID, Boolean.toString(rule.wildcard_switchid));
+	    entry.put(COLUMN_WILDCARD_SRC_INPORT, Boolean.toString(rule.wildcard_src_inport));
+	    entry.put(COLUMN_WILDCARD_SRC_MAC, Boolean.toString(rule.wildcard_src_mac));
+	    entry.put(COLUMN_WILDCARD_SRC_IP, Boolean.toString(rule.wildcard_src_ip));
+	    entry.put(COLUMN_WILDCARD_PROTO_TYPE, Boolean.toString(rule.wildcard_proto_type));
+	    entry.put(COLUMN_WILDCARD_DST_MAC, Boolean.toString(rule.wildcard_dst_mac));
+	    entry.put(COLUMN_WILDCARD_DST_IP, Boolean.toString(rule.wildcard_dst_ip));
+	    entry.put(COLUMN_PRIORITY, Integer.toString(rule.priority));
+	    entry.put(COLUMN_IS_DENYRULE, Boolean.toString(rule.is_denyrule));
+	    storageSource.insertRowAsync(TABLE_NAME, entry);
+	}
+	
+	@Override
+	public void deleteRule(String ruleid) {
 		boolean found = false;
 		Iterator<FirewallRule> iter = this.rules.iterator();
 		while (iter.hasNext()) {
 			FirewallRule r = iter.next();
-			if (r.ruleid == ruleid) {
+			if (r.ruleid.equalsIgnoreCase(ruleid)) {
 				// found the rule, now remove it
 				iter.remove();
 				found = true;
@@ -207,6 +378,8 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 		if (found) {
 			Collections.sort(this.rules);
 		}
+		// delete from database
+		storageSource.deleteRowAsync(TABLE_NAME, ruleid);
 	}
 	
 	protected List<Object> matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
