@@ -22,7 +22,7 @@ window.StatusView = Backbone.View.extend({
     },
 
     render:function (eventName) {
-    	// console.log("rendering status");
+        // console.log("rendering status");
         $(this.el).html(this.template(this.model.toJSON()));
         //$(this.el).html(this.template());
         return this;
