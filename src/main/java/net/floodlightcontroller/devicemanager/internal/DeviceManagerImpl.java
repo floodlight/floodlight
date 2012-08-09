@@ -91,6 +91,17 @@ public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
 IStorageSourceListener, IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
+    
+    private static final String ENTITY_TABLE_NAME = "controller_devicemgr";
+    private static final String ENTITY_ID = "id";
+    private static final String ENTITY_MAC = "mac";
+    private static final String ENTITY_IPV4 = "ipv4";
+    private static final String ENTITY_VLAN = "vlan";
+    private static final String ENTITY_SWITCH_DPID = "switch_dpid";
+    private static final String ENTITY_SWITCH_PORT = "switch_port";
+    private static final String ENTITY_LAST_SEEN = "last_seen";
+    private static final String ENTITY_ACTIVE_SINCE = "activity_since";
+    
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -667,12 +678,39 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         entityCleanupTask = new SingletonTask(ses, ecr);
         entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                      TimeUnit.SECONDS);
+        
+        storageSource.createTable(ENTITY_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(ENTITY_TABLE_NAME, ENTITY_ID);
 
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
         } else {
             logger.error("Could not instantiate REST API");
         }
+    }
+    
+    void writeEntity(Entity e) {
+        if (currentRole == Role.SLAVE) {
+            return;
+        }
+        LinkType type = getLinkType(lt, linkInfo);
+
+        // Write only direct links.  Do not write links to external
+        // L2 network.
+        // if (type != LinkType.DIRECT_LINK && type != LinkType.TUNNEL) {
+        //    return;
+        // }
+
+        Map<String, Object> rowValues = new HashMap<String, Object>();
+        rowValues.put(ENTITY_ID, e.getEntityId());
+        rowValues.put(ENTITY_MAC, HexString.toHexString(e.getMacAddress));
+        rowValues.put(ENTITY_IPV4, e.getIpv4Address());
+        rowValues.put(ENTITY_VLAN, e.getVlan());
+        rowValues.put(ENTITY_SWITCH_DPID, e.getSwitchDPID());
+        rowValues.put(ENTITY_PORT, e.getSwitchPort());
+    //private static final String ENTITY_LAST_SEEN = "last_seen";
+    //private static final String ENTITY_ACTIVE_SINCE = "activity_since";
+        storageSource.updateRowAsync(ENTITY_TABLE_NAME, rowValues);
     }
 
     // ***************
