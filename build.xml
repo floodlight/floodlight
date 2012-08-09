@@ -181,6 +181,7 @@
                     <exclude name="**/storage/tests/StorageTest.java"/>
                     <exclude name="**/test/Mock*"/>
                     <exclude name="**/core/test/**"/>
+                    <exclude name="**/core/module/**"/>
                 </fileset>
             </batchtest>
         </junit>
