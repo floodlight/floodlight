@@ -40,7 +40,6 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.OFType;
@@ -90,7 +89,7 @@ public class TopologyManager implements
     protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
-    protected Set<LDUpdate> appliedUpdates;
+    protected List<LDUpdate> appliedUpdates;
     
     // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
@@ -107,10 +106,13 @@ public class TopologyManager implements
         @Override 
         public void run() {
             try {
-	            applyUpdates();
-	            createNewInstance();
-	            lastUpdateTime = new Date();
-	            informListeners();
+                boolean recomputeFlag = false;
+                recomputeFlag = applyUpdates();
+                if (recomputeFlag) {
+                    createNewInstance();
+                }
+                lastUpdateTime = new Date();
+                informListeners();
             }
             catch (Exception e) {
                 log.error("Error in topology instance task thread", e);
@@ -452,7 +454,7 @@ public class TopologyManager implements
     }
 
     @Override
-    public Set<LDUpdate> getLastLinkUpdates() {
+    public List<LDUpdate> getLastLinkUpdates() {
     	return appliedUpdates;
     }
     ////////////////////////////////////////////////////////////////////////
@@ -614,9 +616,8 @@ public class TopologyManager implements
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-        appliedUpdates = new HashSet<LDUpdate>();
-
-        lastUpdateTime = new Date();
+        appliedUpdates = new ArrayList<LDUpdate>();
+        clearCurrentTopology();
     }
 
     @Override
@@ -624,7 +625,6 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
         linkDiscovery.addListener(this);
-        newInstanceTask.reschedule(1, TimeUnit.MICROSECONDS);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
@@ -798,52 +798,41 @@ public class TopologyManager implements
     }
 
 
-    public void applyUpdates() {
-    	appliedUpdates.clear();
+    public boolean applyUpdates() {
+
+        boolean topologyRecomputeRequired = false;
+        appliedUpdates.clear();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
-        	boolean updateApplied = false;
-        	LDUpdate newUpdate = null;
             try {
                 update = ldUpdates.take();
-                newUpdate = new LDUpdate(update);
             } catch (Exception e) {
                 log.error("Error reading link discovery update.", e);
             }
             if (log.isTraceEnabled()) {
                 log.trace("Applying update: {}", update);
             }
-            if (update.getOperation() == UpdateOperation.ADD_OR_UPDATE) {
-                boolean added = 
-                        (((update.getSrcPortState() & 
-                           OFPortState.OFPPS_STP_MASK.getValue()) != 
-                           OFPortState.OFPPS_STP_BLOCK.getValue()) &&
-                        ((update.getDstPortState() & 
-                          OFPortState.OFPPS_STP_MASK.getValue()) != 
-                          OFPortState.OFPPS_STP_BLOCK.getValue()));
-                if (added) {
-                    addOrUpdateLink(update.getSrc(), update.getSrcPort(), 
-                                    update.getDst(), update.getDstPort(), 
-                                    update.getType());
-                    updateApplied = true;
-                } else  {
-                    removeLink(update.getSrc(), update.getSrcPort(), 
-                               update.getDst(), update.getDstPort());
-                    newUpdate = new LDUpdate(update);
-                    // set the update operation to remove
-                    newUpdate.setOperation(UpdateOperation.REMOVE);
-                    updateApplied = true;
-                }
-            } else if (update.getOperation() == UpdateOperation.REMOVE) {
+            if (update.getOperation() == UpdateOperation.LINK_UPDATED) {
+                addOrUpdateLink(update.getSrc(), update.getSrcPort(),
+                                update.getDst(), update.getDstPort(),
+                                update.getType());
+                topologyRecomputeRequired = true;
+            } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
-                updateApplied = true;
+                topologyRecomputeRequired = true;
+            } else if (update.getOperation() == UpdateOperation.SWITCH_REMOVED) {
+                topologyRecomputeRequired = removeSwitch(update.getSrc());
+            } else if (update.getOperation() == UpdateOperation.PORT_DOWN) {
+                topologyRecomputeRequired = removeSwitchPort(update.getSrc(),
+                                                             update.getSrcPort());
             }
 
-            if (updateApplied) {
-            	appliedUpdates.add(newUpdate);
-            }
+            // Add to the list of applied updates.
+            appliedUpdates.add(update);
         }
+
+        return topologyRecomputeRequired;
     }
 
     /**
@@ -904,10 +893,23 @@ public class TopologyManager implements
         switchPorts.get(s).add(p);
     }
 
-    public void removeSwitch(long sid) {
+    public boolean removeSwitchPort(long sw, short port) {
+
+        Set<Link> linksToRemove = new HashSet<Link>();
+        NodePortTuple npt = new NodePortTuple(sw, port);
+        if (switchPortLinks.containsKey(npt) == false) return false;
+
+        linksToRemove.addAll(switchPortLinks.get(npt));
+        for(Link link: linksToRemove) {
+            removeLink(link);
+        }
+        return true;
+    }
+
+    public boolean removeSwitch(long sid) {
         // Delete all the links in the switch, switch and all 
         // associated data should be deleted.
-        if (switchPorts.containsKey(sid) == false) return;
+        if (switchPorts.containsKey(sid) == false) return false;
 
         Set<Link> linksToRemove = new HashSet<Link>();
         for(Short p: switchPorts.get(sid)) {
@@ -915,9 +917,12 @@ public class TopologyManager implements
             linksToRemove.addAll(switchPortLinks.get(n1));
         }
 
+        if (linksToRemove.isEmpty()) return false;
+
         for(Link link: linksToRemove) {
             removeLink(link);
         }
+        return true;
     }
 
     private boolean addLinkToStructure(Map<NodePortTuple, 
@@ -1022,7 +1027,7 @@ public class TopologyManager implements
         tunnelLinks.clear();
         appliedUpdates.clear();
     }
-    
+
     /**
     * Clears the current topology. Note that this does NOT
     * send out updates.
@@ -1030,8 +1035,9 @@ public class TopologyManager implements
     private void clearCurrentTopology() {
         this.clear();
         createNewInstance();
+        lastUpdateTime = new Date();
     }
-    
+
     /**
      * Getters.  No Setters.
      */

@@ -185,8 +185,10 @@ window.SwitchCollection = Backbone.Collection.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch list: " + data.length);
-                // console.log(data);
-                _.each(data, function(sw) {self.add({id: sw['dpid']})});
+                //console.log(data);
+                _.each(data, function(sw) {self.add({id: sw['dpid'],
+                                                     inetAddress: sw.inetAddress,
+                                                     connectedSince: new Date(sw.connectedSince).toLocaleString()})});
             }
         });
     },
