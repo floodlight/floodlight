@@ -173,6 +173,7 @@
                 <pathelement location="${build-coverage}"/>
                 <pathelement location="${build}"/>
                 <pathelement location="${build-test}"/>
+                <pathelement location="${floodlight-jar}"/>
                 <path refid="classpath-test"/>
             </classpath>
             <formatter type="brief" usefile="true" />
