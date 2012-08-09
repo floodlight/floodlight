@@ -271,6 +271,23 @@ public class OFFlowStatisticsReply implements OFStatistics, OFActionFactoryAware
     }
 
     @Override
+    public String toString() {
+    	String str = "match=" + this.match;
+    	str += " tableId=" + this.tableId;
+    	str += " durationSeconds=" + this.durationSeconds;
+    	str += " durationNanoseconds=" + this.durationNanoseconds;
+    	str += " priority=" + this.priority;
+    	str += " idleTimeout=" + this.idleTimeout;
+    	str += " hardTimeout=" + this.hardTimeout;
+    	str += " cookie=" + this.cookie;
+    	str += " packetCount=" + this.packetCount;
+    	str += " byteCount=" + this.byteCount;
+    	str += " action=" + this.actions;
+    	
+    	return str;
+    }
+    
+    @Override
     public int hashCode() {
         final int prime = 419;
         int result = 1;
