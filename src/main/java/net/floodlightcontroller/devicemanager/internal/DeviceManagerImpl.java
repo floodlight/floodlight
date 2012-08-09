@@ -520,6 +520,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             case PACKET_IN:
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
+            default:
+            	break;
         }
 
         logger.error("received an unexpected message {} from switch {}",
@@ -686,6 +688,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 logger.debug("Resetting device state because of role change");
                 startUp(null);
                 break;
+            default:
+            	break;
         }
     }
 
@@ -1197,6 +1201,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                 case VLAN:
                                     listener.deviceVlanChanged(update.device);
                                     break;
+                                default:
+                                	logger.error("Unknown device field changed {}",
+                                				update.fieldsChanged.toString());
+                                	break;
                             }
                         }
                         break;

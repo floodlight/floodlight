@@ -69,16 +69,18 @@ public class CountSeries {
   public static final long dateSpanToMilliseconds(DateSpan ds) {
     long delta = 1;
     switch(ds) {
-    case WEEKS:
-      delta *= 7;
-    case DAYS:
-      delta *= 24;
-    case HOURS:
-      delta *= 60;
-    case MINUTES:
-      delta *= 60;
-    case SECONDS:
-      delta *= 1000;
+	    case WEEKS:
+	    	delta *= 7;
+	    case DAYS:
+	    	delta *= 24;
+	    case HOURS:
+	    	delta *= 60;
+	    case MINUTES:
+	    	delta *= 60;
+	    case SECONDS:
+	    	delta *= 1000;
+	    default:
+	    	break;
     }
     return delta;
   }
