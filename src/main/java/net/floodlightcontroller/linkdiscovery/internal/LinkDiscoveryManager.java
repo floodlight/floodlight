@@ -312,9 +312,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         if (lldpClock == 0) {
             discoverOnAllPorts();
-            return;
-        } else {
-            discoverOnKnownLinkPorts();
         }
     }
 
@@ -1698,6 +1695,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }}, "Topology Updates");
         updatesThread.start();
 
+        discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
