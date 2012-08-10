@@ -1585,7 +1585,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 } catch (Exception e) {
                     log.error("Exception in LLDP send timer.", e);
                 } finally {
-                    if (!shuttingDown) {
+                    if (!shuttingDown &&
+                            floodlightProvider.getRole() == Role.MASTER) {
                         discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
                                                 TimeUnit.SECONDS);
                     }
@@ -1606,7 +1607,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }}, "Topology Updates");
         updatesThread.start();
 
-        discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
+        if (floodlightProvider.getRole() == Role.MASTER)
+            discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
@@ -1712,19 +1714,17 @@ IFloodlightModule, IInfoProvider, IHAListener {
     }
 
     // IHARoleListener
-
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
         switch(newRole) {
             case MASTER:
                 if (oldRole == Role.SLAVE) {
-                    clearAllLinks();
                     if (log.isTraceEnabled()) {
                         log.trace("Sending LLDPs " +
                                 "to HA change from SLAVE->MASTER");
                     }
                     clearAllLinks();
-                    discoverLinks();
+                    discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 }
                 break;
             case SLAVE:
