@@ -70,7 +70,8 @@ public abstract class ForwardingBase implements
     
     // for broadcast loop suppression
     protected boolean broadcastCacheFeature = true;
-    public final int prime = 2633;  // for hash calculation
+    public final int prime1 = 2633;  // for hash calculation
+    public final static int prime2 = 4357;  // for hash calculation
     public TimedCache<Long> broadcastCache =
     		new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
 
@@ -506,8 +507,8 @@ public abstract class ForwardingBase implements
             		IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         
         Long broadcastHash;
-        broadcastHash = topology.getL2DomainId(sw.getId())
-        		* prime + eth.hashCode();
+        broadcastHash = topology.getL2DomainId(sw.getId()) * prime1 +
+                        pi.getInPort() * prime2 + eth.hashCode();
         if (broadcastCache.update(broadcastHash)) {
             sw.updateBroadcastCache(broadcastHash, pi.getInPort());
             return true;
@@ -521,16 +522,15 @@ public abstract class ForwardingBase implements
         
         // If the feature is disabled, always return false;
         if (!broadcastCacheFeature) return false;
-        
+
         // Get the hash of the Ethernet packet.
         Ethernet eth =
                 IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // some FORWARD_OR_FLOOD packets are unicast with unknown destination mac
-        // if (eth.isBroadcast() || eth.isMulticast())
-            return sw.updateBroadcastCache(new Long(eth.hashCode()), pi.getInPort());
+        long hash =  pi.getInPort() * prime2 + eth.hashCode();
 
-        // return false;
+        // some FORWARD_OR_FLOOD packets are unicast with unknown destination mac
+        return sw.updateBroadcastCache(hash, pi.getInPort());
     }
 
     public static boolean
