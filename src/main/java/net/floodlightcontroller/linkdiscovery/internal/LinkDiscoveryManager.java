@@ -786,11 +786,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 switchLinks.get(lt.getDst()).add(lt);
 
                 // index both ends by switch:port
-                if (!portLinks.containsKey(lt.getSrc()))
+                if (!portLinks.containsKey(srcNpt))
                     portLinks.put(srcNpt, new HashSet<Link>());
                 portLinks.get(srcNpt).add(lt);
 
-                if (!portLinks.containsKey(lt.getDst()))
+                if (!portLinks.containsKey(dstNpt))
                     portLinks.put(dstNpt, new HashSet<Link>());
                 portLinks.get(dstNpt).add(lt);
 
