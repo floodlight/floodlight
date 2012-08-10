@@ -33,6 +33,7 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -70,7 +71,8 @@ public abstract class ForwardingBase implements
     
     // for broadcast loop suppression
     protected boolean broadcastCacheFeature = true;
-    public final int prime = 2633;  // for hash calculation
+    public final int prime  = 2633;  // for hash calculation
+    public final int prime2 = 4357;  // for hash calculation
     public TimedCache<Long> broadcastCache =
     		new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
 
@@ -490,6 +492,24 @@ public abstract class ForwardingBase implements
         packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
     }
 
+    protected Long getPacketHash (FloodlightContext cntx, Ethernet eth,
+                                  Long seed) {
+        String address_space_name = "default";
+
+        IDevice srcDev = IDeviceService.fcStore.get(
+                              cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+
+        if (srcDev != null) {
+            IEntityClass entityClass = srcDev.getEntityClass();
+
+            if (entityClass != null) {
+                address_space_name = entityClass.getName();
+            }
+        }
+
+        return seed + prime2 * address_space_name.hashCode() + eth.hashCode();
+    }
+
     protected boolean isInBroadcastCache(IOFSwitch sw, OFPacketIn pi,
     		FloodlightContext cntx) {
         // Get the cluster id of the switch.
@@ -503,9 +523,8 @@ public abstract class ForwardingBase implements
             IFloodlightProviderService.bcStore.get(cntx,
             		IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         
-        Long broadcastHash;
-        broadcastHash = topology.getL2DomainId(sw.getId())
-        		* prime + eth.hashCode();
+        Long broadcastHash = getPacketHash(cntx, eth,
+                               topology.getL2DomainId(sw.getId()) * prime);
         if (broadcastCache.update(broadcastHash)) {
             sw.updateBroadcastCache(broadcastHash, pi.getInPort());
             return true;
@@ -519,14 +538,15 @@ public abstract class ForwardingBase implements
         
         // If the feature is disabled, always return false;
         if (!broadcastCacheFeature) return false;
-        
-        // Get the hash of the Ethernet packet.
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
+        // Get the hash of the Ethernet packet.
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        Long hash = getPacketHash(cntx, eth, new Long(0));
         // some FORWARD_OR_FLOOD packets are unicast with unknown destination mac
         // if (eth.isBroadcast() || eth.isMulticast())
-            return sw.updateBroadcastCache(new Long(eth.hashCode()), pi.getInPort());
+        return sw.updateBroadcastCache(hash, pi.getInPort());
 
         // return false;
     }
