@@ -355,6 +355,9 @@ public class DHCP extends BasePacket {
 
     @Override
     public byte[] serialize() {
+        // not guaranteed to retain length/exact format
+        resetChecksum();
+
         // minimum size 240 including magic cookie, options generally padded to 300
         int optionsLength = 0;
         for (DHCPOption option : this.options) {
