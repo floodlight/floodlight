@@ -300,6 +300,8 @@ public class VirtualNetworkFilter
         switch (msg.getType()) {
             case PACKET_IN:
                 return processPacketIn(sw, (OFPacketIn)msg, cntx);
+            default:
+            	break;
         }
         log.warn("Received unexpected message {}", msg);
         return Command.CONTINUE;

@@ -97,10 +97,30 @@ public class ForwardingTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
 
-        // Mock context
         cntx = new FloodlightContext();
+        
+        // Module loader setup
+        /*
+        Collection<Class<? extends IFloodlightModule>> mods = new ArrayList<Class<? extends IFloodlightModule>>();
+        Collection<IFloodlightService> mockedServices = new ArrayList<IFloodlightService>();
+        mods.add(Forwarding.class);
+        routingEngine = createMock(IRoutingService.class);
+        topology = createMock(ITopologyService.class);
+        mockedServices.add(routingEngine);
+        mockedServices.add(topology);
+        FloodlightTestModuleLoader fml = new FloodlightTestModuleLoader();
+        fml.setupModules(mods, mockedServices);
+        mockFloodlightProvider =
+        		(MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
+        deviceManager =
+        		(MockDeviceManager) fml.getModuleByName(MockDeviceManager.class);
+        threadPool =
+        		(MockThreadPoolService) fml.getModuleByName(MockThreadPoolService.class);
+        forwarding =
+        		(Forwarding) fml.getModuleByName(Forwarding.class);
+        */
         mockFloodlightProvider = getMockFloodlightProvider();
-        forwarding = getForwarding();
+        forwarding = new Forwarding();
         threadPool = new MockThreadPoolService();
         deviceManager = new MockDeviceManager();
         flowReconcileMgr = new FlowReconcileManager();
@@ -249,10 +269,6 @@ public class ForwardingTest extends FloodlightTestCase {
             put(cntx, 
                 IDeviceService.CONTEXT_SRC_DEVICE,
                 srcDevice);
-    }
-
-    private Forwarding getForwarding() {
-        return new Forwarding();
     }
 
     @Test

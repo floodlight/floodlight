@@ -87,9 +87,9 @@ public class FloodlightTestCase extends TestCase {
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
     }
-
+    
     @Test
-    public void testSanity() {
-        assertTrue(true);
+    public void testSanity() throws Exception {
+    	assertTrue(true);
     }
 }

@@ -97,6 +97,12 @@ public class UDP extends BasePacket {
         return this;
     }
 
+    @Override
+    public void resetChecksum() {
+        this.checksum = 0;
+        super.resetChecksum();
+    }
+
     /**
      * Serializes the packet. Will compute and set the following fields if they
      * are set to specific values at the time serialize is called:

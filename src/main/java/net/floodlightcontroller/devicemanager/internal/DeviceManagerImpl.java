@@ -54,6 +54,7 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -482,6 +483,46 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         
         return new MultiIterator<Device>(iterators.iterator());
     }
+    
+    protected Iterator<Device> getDeviceIteratorForQuery(Long macAddress,
+    		Short vlan,
+    		Integer ipv4Address,
+    		Long switchDPID,
+    		Integer switchPort) {
+    	DeviceIndex index = null;
+    	if (secondaryIndexMap.size() > 0) {
+    		EnumSet<DeviceField> keys =
+    				getEntityKeys(macAddress, vlan, ipv4Address,
+    						switchDPID, switchPort);
+    		index = secondaryIndexMap.get(keys);
+    	}
+
+    	Iterator<Device> deviceIterator = null;
+    	if (index == null) {
+    		// Do a full table scan
+    		deviceIterator = deviceMap.values().iterator();
+    	} else {
+    		// index lookup
+    		Entity entity = new Entity((macAddress == null ? 0 : macAddress),
+    				vlan,
+    				ipv4Address,
+    				switchDPID,
+    				switchPort,
+    				null);
+    		deviceIterator =
+    				new DeviceIndexInterator(this, index.queryByEntity(entity));
+    	}
+
+    	DeviceIterator di =
+    			new DeviceIterator(deviceIterator,
+    					null,
+    					macAddress,
+    					vlan,
+    					ipv4Address,
+    					switchDPID,
+    					switchPort);
+    	return di;
+    }
 
     @Override
     public void addListener(IDeviceListener listener) {
@@ -529,6 +570,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             case PACKET_IN:
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
+            default:
+            	break;
         }
 
         logger.error("received an unexpected message {} from switch {}",
@@ -699,6 +742,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 logger.debug("Resetting device state because of role change");
                 startUp(null);
                 break;
+            default:
+            	break;
         }
     }
 
@@ -1213,6 +1258,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                 case VLAN:
                                     listener.deviceVlanChanged(update.device);
                                     break;
+                                default:
+                                	logger.error("Unknown device field changed {}",
+                                				update.fieldsChanged.toString());
+                                	break;
                             }
                         }
                         break;
