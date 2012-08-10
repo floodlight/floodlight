@@ -543,6 +543,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg, cntx);
             case PORT_STATUS:
                 return this.handlePortStatus(sw.getId(), (OFPortStatus) msg);
+            default:
+            	break;
         }
 
         log.error("Received an unexpected message {} from switch {}", msg, sw);
@@ -1736,6 +1738,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 portBroadcastDomainLinks.clear();
                 discoverOnAllPorts();
                 break;
+			default:
+				break;
         }
     }
 

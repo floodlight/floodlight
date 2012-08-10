@@ -525,6 +525,8 @@ public class TopologyManager implements
             case PACKET_IN:
                 return this.processPacketInMessage(sw, 
                                                    (OFPacketIn) msg, cntx);
+            default:
+            	break;
         }
 
         log.error("received an unexpected message {} from switch {}", 
@@ -551,6 +553,8 @@ public class TopologyManager implements
                         "HA change to SLAVE");
                 clearCurrentTopology();
                 break;
+            default:
+            	break;
         }
     }
 
