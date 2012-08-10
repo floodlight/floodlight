@@ -71,7 +71,7 @@ public abstract class ForwardingBase implements
     // for broadcast loop suppression
     protected boolean broadcastCacheFeature = true;
     public final int prime1 = 2633;  // for hash calculation
-    public final int prime2 = 4357;  // for hash calculation
+    public final static int prime2 = 4357;  // for hash calculation
     public TimedCache<Long> broadcastCache =
     		new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
 
