@@ -209,6 +209,11 @@ public class IPv4 extends BasePacket {
         this.checksum = checksum;
         return this;
     }
+    @Override
+    public void resetChecksum() {
+        this.checksum = 0;
+        super.resetChecksum();
+    }
 
     /**
      * @return the sourceAddress
