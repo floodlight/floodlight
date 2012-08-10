@@ -1585,10 +1585,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 } catch (Exception e) {
                     log.error("Exception in LLDP send timer.", e);
                 } finally {
-                    if (!shuttingDown &&
-                            floodlightProvider.getRole() == Role.MASTER) {
-                        discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
+                    if (!shuttingDown) {
+                        // null role implies HA mode is not enabled.
+                         Role role = floodlightProvider.getRole();
+                         if (role == null || role == Role.MASTER) {
+                             discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
                                                 TimeUnit.SECONDS);
+                         }
                     }
                 }
             }
@@ -1607,8 +1610,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }}, "Topology Updates");
         updatesThread.start();
 
-        if (floodlightProvider.getRole() == Role.MASTER)
-            discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
+        // null role implies HA mode is not enabled.
+        Role role = floodlightProvider.getRole();
+        if (role == null || role == Role.MASTER)
+            discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
