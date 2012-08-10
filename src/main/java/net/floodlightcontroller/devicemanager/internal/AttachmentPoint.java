@@ -28,10 +28,9 @@ public class AttachmentPoint {
 
     // Timeout for moving attachment points from OF/broadcast
     // domain to another.
-    protected static long NBD_TO_BD_TIMEDIFF_MS = 300000; // 5 minutes
-    public static final long OPENFLOW_TO_EXTERNAL_TIMEOUT = 5000;  // 5 seconds
     public static final long EXTERNAL_TO_EXTERNAL_TIMEOUT = 5000;  // 5 seconds
-    public static final long CONSISTENT_TIMEOUT = 5000;            // 5 seconds
+    public static final long OPENFLOW_TO_EXTERNAL_TIMEOUT = 30000; // 30 seconds
+    public static final long CONSISTENT_TIMEOUT = 30000;           // 30 seconds
 
     public AttachmentPoint(long sw, short port, long lastSeen) {
         super();

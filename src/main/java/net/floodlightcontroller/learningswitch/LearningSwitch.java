@@ -436,6 +436,8 @@ public class LearningSwitch
             case ERROR:
                 log.info("received an error {} from switch {}", (OFError) msg, sw);
                 return Command.CONTINUE;
+            default:
+            	break;
         }
         log.error("received an unexpected message {} from switch {}", msg, sw);
         return Command.CONTINUE;

@@ -103,6 +103,16 @@ public class Device implements IDevice {
         List<AttachmentPoint>oldAP =
                 new ArrayList<AttachmentPoint>(attachmentPoints);
 
+        // Remove invalid attachment points before sorting.
+        List<AttachmentPoint>tempAP =
+                new ArrayList<AttachmentPoint>();
+        for(AttachmentPoint ap: oldAP) {
+            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort())){
+                tempAP.add(ap);
+            }
+        }
+        oldAP = tempAP;
+
         Collections.sort(oldAP, deviceManager.apComparator);
 
         // Map of attachment point by L2 domain Id.
@@ -124,6 +134,29 @@ public class Device implements IDevice {
 
         if (apMap.isEmpty()) return null;
         return apMap;
+    }
+
+    protected boolean updateAttachmentPoint() {
+        if (this.attachmentPoints == null) return false;
+
+        List<AttachmentPoint> oldAPList =
+                new ArrayList<AttachmentPoint>(this.attachmentPoints);
+        Map<Long, AttachmentPoint> apMap = getAPMap();
+
+        if (apMap == null) {
+            this.attachmentPoints = null;
+            return true;
+        }
+
+        List<AttachmentPoint> newAPList =
+                new ArrayList<AttachmentPoint>(apMap.values());
+
+        // Since we did not add any new attachment points, it is sufficient
+        // to compare only the lengths.
+        if (oldAPList.size() == newAPList.size()) return false;
+
+        this.attachmentPoints = newAPList;
+        return true;
     }
 
     protected boolean updateAttachmentPoint(long sw, short port, long lastSeen){
@@ -234,7 +267,8 @@ public class Device implements IDevice {
         for(AttachmentPoint ap: apMap.values()) {
             SwitchPort swport = new SwitchPort(ap.getSw(),
                                                ap.getPort());
-            sp.add(swport);
+            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort()))
+                sp.add(swport);
         }
         return sp.toArray(new SwitchPort[sp.size()]);
     }

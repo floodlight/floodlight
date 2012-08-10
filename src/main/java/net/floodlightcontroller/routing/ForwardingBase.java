@@ -141,6 +141,8 @@ public abstract class ForwardingBase implements
                                                    (OFPacketIn) msg,
                                                    decision,
                                                    cntx);
+            default:
+            	break;
         }
         log.error("received an unexpected message {} from switch {}",
                   msg,

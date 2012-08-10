@@ -59,7 +59,6 @@ import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
@@ -521,6 +520,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             case PACKET_IN:
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
+            default:
+            	break;
         }
 
         logger.error("received an unexpected message {} from switch {}",
@@ -651,7 +652,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
-        topology.addListener(this);
+        if (topology != null)
+            topology.addListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
         entityClassifier.addListener(this);
 
@@ -686,6 +688,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 logger.debug("Resetting device state because of role change");
                 startUp(null);
                 break;
+            default:
+            	break;
         }
     }
 
@@ -1197,6 +1201,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                 case VLAN:
                                     listener.deviceVlanChanged(update.device);
                                     break;
+                                default:
+                                	logger.error("Unknown device field changed {}",
+                                				update.fieldsChanged.toString());
+                                	break;
                             }
                         }
                         break;
@@ -1510,33 +1518,22 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     @Override
     public void topologyChanged() {
+        Iterator<Device> diter = deviceMap.values().iterator();
         List<LDUpdate> updateList = topology.getLastLinkUpdates();
-        for(LDUpdate u: updateList) {
-            if (u.getOperation() == UpdateOperation.SWITCH_REMOVED) {
-                processSwitchRemoved(u.getSrc());
-            } else if (u.getOperation() == UpdateOperation.PORT_DOWN) {
-                processPortDown(u.getSrc(), u.getSrcPort());
+        if (updateList != null) {
+            if (logger.isTraceEnabled()) {
+                for(LDUpdate update: updateList) {
+                    logger.trace("Topo update: {}", update);
+                }
             }
         }
-    }
 
-    private void processSwitchRemoved(long sw) {
-        Iterator<Device> diter = deviceMap.values().iterator();
         while (diter.hasNext()) {
             Device d = diter.next();
-            if (d.deleteAttachmentPoint(sw)) {
-                // update device attachment point changed.
-                sendDeviceMovedNotification(d);
-            }
-        }
-    }
-
-    private void processPortDown(long sw, short port) {
-        Iterator<Device> diter = deviceMap.values().iterator();
-        while (diter.hasNext()) {
-            Device d = diter.next();
-            if (d.deleteAttachmentPoint(sw, port)) {
-                // update device attachment point changed.
+            if (d.updateAttachmentPoint()) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Attachment point changed for device: {}", d);
+                }
                 sendDeviceMovedNotification(d);
             }
         }
@@ -1551,5 +1548,4 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             listener.deviceMoved(d);
         }
     }
-
 }
