@@ -66,7 +66,6 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -89,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
-IStorageSourceListener, IFloodlightModule, IEntityClassListener,
+IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -617,21 +616,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return Command.CONTINUE;
     }
 
-    // **********************
-    // IStorageSourceListener
-    // **********************
-
-    @Override
-    public void rowsModified(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
 
     // *****************
     // IFloodlightModule
