@@ -202,7 +202,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * A device update event to be dispatched
      */
     protected static class DeviceUpdate {
-        protected enum Change {
+        public enum Change {
             ADD, DELETE, CHANGE;
         }
 
