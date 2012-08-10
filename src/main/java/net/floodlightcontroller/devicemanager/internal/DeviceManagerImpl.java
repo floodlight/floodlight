@@ -78,6 +78,8 @@ import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
+import org.openflow.util.HexString;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +103,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     private static final String ENTITY_SWITCH_PORT = "switch_port";
     private static final String ENTITY_LAST_SEEN = "last_seen";
     private static final String ENTITY_ACTIVE_SINCE = "activity_since";
+
+    protected Role currentRole;
     
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -693,7 +697,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (currentRole == Role.SLAVE) {
             return;
         }
-        LinkType type = getLinkType(lt, linkInfo);
 
         // Write only direct links.  Do not write links to external
         // L2 network.
@@ -703,11 +706,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         Map<String, Object> rowValues = new HashMap<String, Object>();
         rowValues.put(ENTITY_ID, e.getEntityId());
-        rowValues.put(ENTITY_MAC, HexString.toHexString(e.getMacAddress));
+        rowValues.put(ENTITY_MAC, HexString.toHexString(e.getMacAddress()));
         rowValues.put(ENTITY_IPV4, e.getIpv4Address());
         rowValues.put(ENTITY_VLAN, e.getVlan());
         rowValues.put(ENTITY_SWITCH_DPID, e.getSwitchDPID());
-        rowValues.put(ENTITY_PORT, e.getSwitchPort());
+        rowValues.put(ENTITY_SWITCH_PORT, e.getSwitchPort());
     //private static final String ENTITY_LAST_SEEN = "last_seen";
     //private static final String ENTITY_ACTIVE_SINCE = "activity_since";
         storageSource.updateRowAsync(ENTITY_TABLE_NAME, rowValues);
@@ -725,6 +728,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 startUp(null);
                 break;
         }
+        currentRole = newRole;
     }
 
     @Override

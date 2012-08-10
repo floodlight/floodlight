@@ -218,6 +218,13 @@ public class Entity implements Comparable<Entity> {
                + IPv4.fromIPv4Address(ipv4Address==null ? 0 : ipv4Address.intValue()) + ", vlan=" + vlan + ", switchDPID="
                + switchDPID + ", switchPort=" + switchPort + "]";
     }
+    
+    public String getEntityId() {
+        return HexString.toHexString(macAddress, 6) +
+                "-" + vlan + "-" +
+                HexString.toHexString(switchDPID, 8)+
+                "-" + switchPort;
+    }
 
     @Override
     public int compareTo(Entity o) {
