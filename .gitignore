@@ -8,3 +8,5 @@
 target
 thrift
 logback.xml
+*.swp
+*.pyc
