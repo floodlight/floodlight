@@ -211,12 +211,28 @@ public class Entity implements Comparable<Entity> {
         return true;
     }
 
+    
+    
     @Override
     public String toString() {
-        return "Entity [macAddress=" + HexString.toHexString(macAddress, 6)
-               + ", ipv4Address="
-               + IPv4.fromIPv4Address(ipv4Address==null ? 0 : ipv4Address.intValue()) + ", vlan=" + vlan + ", switchDPID="
-               + switchDPID + ", switchPort=" + switchPort + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("Entity [macAddress=");
+        builder.append(HexString.toHexString(macAddress, 6));
+        builder.append(", ipv4Address=");
+        builder.append(IPv4.fromIPv4Address(ipv4Address==null ?
+                       0 : ipv4Address.intValue()));
+        builder.append(", vlan=");
+        builder.append(vlan);
+        builder.append(", switchDPID=");
+        builder.append(switchDPID);
+        builder.append(", switchPort=");
+        builder.append(switchPort);
+        builder.append(", lastSeenTimestamp=");
+        builder.append(lastSeenTimestamp.getTime());
+        builder.append(", activeSince=");
+        builder.append(activeSince.getTime());
+        builder.append("]");
+        return builder.toString();
     }
     
     public String getEntityId() {

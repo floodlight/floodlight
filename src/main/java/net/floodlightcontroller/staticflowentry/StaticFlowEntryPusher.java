@@ -625,6 +625,8 @@ public class StaticFlowEntryPusher
                 entry2dpid.clear();
                 entriesFromStorage.clear();
                 break;
+            default:
+            	break;
         }
     }
     

@@ -19,6 +19,7 @@ package net.floodlightcontroller.core.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -199,28 +200,31 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // TODO Auto-generated method stub
-        return null;
+    	Collection<Class<? extends IFloodlightService>> services =
+                new ArrayList<Class<? extends IFloodlightService>>(1);
+        services.add(IFloodlightProviderService.class);
+        return services;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        // TODO Auto-generated method stub
-        return null;
+    	Map<Class<? extends IFloodlightService>,
+        	IFloodlightService> m = 
+            	new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+    	m.put(IFloodlightProviderService.class, this);
+    	return m;
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>>
             getModuleDependencies() {
-        // TODO Auto-generated method stub
-        return null;
+    	return null;
     }
     
     @Override
-    public
-            void
-            init(FloodlightModuleContext context)
+    public void init(FloodlightModuleContext context)
                                                  throws FloodlightModuleException {
         // TODO Auto-generated method stub
         

@@ -546,6 +546,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg, cntx);
             case PORT_STATUS:
                 return this.handlePortStatus(sw.getId(), (OFPortStatus) msg);
+            default:
+            	break;
         }
 
         log.error("Received an unexpected message {} from switch {}", msg, sw);
@@ -789,11 +791,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 switchLinks.get(lt.getDst()).add(lt);
 
                 // index both ends by switch:port
-                if (!portLinks.containsKey(lt.getSrc()))
+                if (!portLinks.containsKey(srcNpt))
                     portLinks.put(srcNpt, new HashSet<Link>());
                 portLinks.get(srcNpt).add(lt);
 
-                if (!portLinks.containsKey(lt.getDst()))
+                if (!portLinks.containsKey(dstNpt))
                     portLinks.put(dstNpt, new HashSet<Link>());
                 portLinks.get(dstNpt).add(lt);
 
@@ -1674,7 +1676,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 } catch (Exception e) {
                     log.error("Exception in LLDP send timer.", e);
                 } finally {
-                    if (!shuttingDown) {
+                    if (!shuttingDown &&
+                            floodlightProvider.getRole() == Role.MASTER) {
                         discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
                                                 TimeUnit.SECONDS);
                     }
@@ -1695,7 +1698,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }}, "Topology Updates");
         updatesThread.start();
 
-        discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
+        if (floodlightProvider.getRole() == Role.MASTER)
+            discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
@@ -1801,23 +1805,23 @@ IFloodlightModule, IInfoProvider, IHAListener {
     }
 
     // IHARoleListener
-
     @Override
     public void roleChanged(Role oldRole, Role newRole) {
         switch(newRole) {
             case MASTER:
                 if (oldRole == Role.SLAVE) {
-                    clearAllLinks();
                     if (log.isTraceEnabled()) {
                         log.trace("Sending LLDPs " +
                                 "to HA change from SLAVE->MASTER");
                     }
                     clearAllLinks();
-                    discoverLinks();
+                    discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 }
                 break;
             case SLAVE:
                 break;
+			default:
+				break;
         }
         currentRole = newRole;
     }
