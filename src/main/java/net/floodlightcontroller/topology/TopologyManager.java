@@ -106,11 +106,8 @@ public class TopologyManager implements
         @Override 
         public void run() {
             try {
-                boolean recomputeFlag = false;
-                recomputeFlag = applyUpdates();
-                if (recomputeFlag) {
-                    createNewInstance();
-                }
+                applyUpdates();
+                createNewInstance();
                 lastUpdateTime = new Date();
                 informListeners();
             }
@@ -798,9 +795,8 @@ public class TopologyManager implements
     }
 
 
-    public boolean applyUpdates() {
+    public void applyUpdates() {
 
-        boolean topologyRecomputeRequired = false;
         appliedUpdates.clear();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
@@ -816,23 +812,18 @@ public class TopologyManager implements
                 addOrUpdateLink(update.getSrc(), update.getSrcPort(),
                                 update.getDst(), update.getDstPort(),
                                 update.getType());
-                topologyRecomputeRequired = true;
             } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
-                topologyRecomputeRequired = true;
             } else if (update.getOperation() == UpdateOperation.SWITCH_REMOVED) {
-                topologyRecomputeRequired = removeSwitch(update.getSrc());
+                removeSwitch(update.getSrc());
             } else if (update.getOperation() == UpdateOperation.PORT_DOWN) {
-                topologyRecomputeRequired = removeSwitchPort(update.getSrc(),
-                                                             update.getSrcPort());
+                removeSwitchPort(update.getSrc(), update.getSrcPort());
             }
 
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
-
-        return topologyRecomputeRequired;
     }
 
     /**
