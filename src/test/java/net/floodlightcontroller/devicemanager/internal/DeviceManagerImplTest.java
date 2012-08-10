@@ -19,13 +19,17 @@ package net.floodlightcontroller.devicemanager.internal;
 
 
 import static org.easymock.EasyMock.*;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.easymock.EasyMock.expectLastCall;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -779,12 +783,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, rdevice);
     }
 
+    
     /**
      * Note: Entity expiration does not result in device moved notification.
      * @throws Exception
      */
-    @Test
-    public void testEntityExpiration() throws Exception {
+    public void doTestEntityExpiration() throws Exception {
         IDeviceListener mockListener =
                 createStrictMock(IDeviceListener.class);
         mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
@@ -854,8 +858,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         verify(mockListener);
     }
 
-    @Test
-    public void testDeviceExpiration() throws Exception {
+    public void doTestDeviceExpiration() throws Exception {
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -DeviceManagerImpl.ENTITY_TIMEOUT-1);
         Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
@@ -895,7 +898,104 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         r = deviceManager.findDevice(1L, null, null, null, null);
         assertNull(r);
     }
-
+    
+    /*
+     * A ConcurrentHashMap for devices (deviceMap) that can be used to test 
+     * code that specially handles concurrent modification situations. In
+     * particular, we overwrite values() and will replace / remove all the
+     * elements returned by values. 
+     * 
+     * The remove flag in the constructor specifies if devices returned by 
+     * values() should be removed or replaced.
+     */
+    protected static class ConcurrentlyModifiedDeviceMap
+                            extends ConcurrentHashMap<Long, Device> {
+        private static final long serialVersionUID = 7784938535441180562L;
+        protected boolean remove;
+        public ConcurrentlyModifiedDeviceMap(boolean remove) {
+            super();
+            this.remove = remove;
+        }
+        
+        @Override
+        public Collection<Device> values() {
+            // Get the values from the real map and copy them since
+            // the collection returned by values can reflect changed
+            Collection<Device> devs = new ArrayList<Device>(super.values());
+            for (Device d: devs) {
+                if (remove) {
+                    // We remove the device from the underlying map 
+                    super.remove(d.getDeviceKey());
+                } else {
+                    super.remove(d.getDeviceKey());
+                    // We add a different Device instance with the same
+                    // key to the map. We'll do some hackery so the device
+                    // is different enough to compare differently in equals 
+                    // but otherwise looks the same.
+                    // It's ugly but it works. 
+                    Entity[] curEntities = new Entity[d.getEntities().length];
+                    int i = 0;
+                    // clone entities
+                    for (Entity e: d.getEntities()) {
+                        curEntities[i] = new Entity (e.macAddress,
+                                                     e.vlan,
+                                                     e.ipv4Address,
+                                                     e.switchDPID,
+                                                     e.switchPort,
+                                                     e.lastSeenTimestamp);
+                        if (e.vlan == null) 
+                            curEntities[i].vlan = (short)1;
+                        else 
+                            curEntities[i].vlan = (short)((e.vlan + 1 % 4095)+1);
+                        i++;
+                    }
+                    Device newDevice = new Device(d, curEntities[0]);
+                    newDevice.entities = curEntities;
+                    assertEquals(false, newDevice.equals(d));
+                    super.put(newDevice.getDeviceKey(), newDevice);
+                }
+            }
+            return devs; 
+        }
+    }
+   
+    @Test
+    public void testEntityExpiration() throws Exception {
+        doTestEntityExpiration();
+    }
+    
+    @Test
+    public void testDeviceExpiration() throws Exception {
+        doTestDeviceExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent modification
+     * occurs. 
+     */
+    @Test
+    public void testEntityExpirationConcurrentModification() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(false);
+        doTestEntityExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent remove
+     * occurs. 
+     */
+    @Test
+    public void testDeviceExpirationConcurrentRemove() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(true);
+        doTestDeviceExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent modification
+     * occurs. 
+     */
+    @Test
+    public void testDeviceExpirationConcurrentModification() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(false);
+        doTestDeviceExpiration();
+    }
+    
     /*
     @Test
     public void testAttachmentPointFlapping() throws Exception {

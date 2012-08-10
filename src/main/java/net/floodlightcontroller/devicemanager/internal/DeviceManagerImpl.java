@@ -54,7 +54,6 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -1479,13 +1478,25 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                            d,
                                            newDevice)) {
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                     }
                 } else {
                     deviceUpdates.add(new DeviceUpdate(d, DELETE, null));
                     if (!deviceMap.remove(d.getDeviceKey(), d))
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                 }
                 processUpdates(deviceUpdates);
                 break;
