@@ -740,17 +740,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
         else return UpdateOperation.PORT_DOWN;
     }
 
-    @Override
-    public LinkType getLinkType(LinkInfo info) {
-
-        if (info.getUnicastValidTime() != null)
-            return LinkType.DIRECT_LINK;
-        else if (info.getMulticastValidTime() != null)
-            return LinkType.MULTIHOP_LINK;
-
-        return LinkType.INVALID_LINK;
-    }
-
     protected boolean addOrUpdateLink(Link lt, LinkInfo newInfo) {
 
         NodePortTuple srcNpt, dstNpt;

@@ -37,7 +37,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @param info
      * @return
      */
-    public ILinkDiscovery.LinkType getLinkType(LinkInfo info);
+    public ILinkDiscovery.LinkType getLinkType(Link lt, LinkInfo info);
 
     /**
      * Returns an unmodifiable map from switch id to a set of all links with it 
