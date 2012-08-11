@@ -1508,6 +1508,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                        others);
         }
     }
+    
+    /**
+     * method to delete a given device, remove all entities first and then
+     * finally delete the device itself.
+     * @param device
+     */
+    protected void deleteDevice(Device device) {
+    	ArrayList<Entity> emptyToKeep = new ArrayList<Entity>();
+    	for (Entity entity : device.getEntities()) {
+    		this.removeEntity(entity, device.getEntityClass(), 
+    				device.getDeviceKey(), emptyToKeep);
+    	}
+    	if (!deviceMap.remove(device.getDeviceKey(), device)) {
+    		logger.info("device map does not have this device -" + 
+    	                 device.toString());
+    	}
+    }
 
     private EnumSet<DeviceField> getEntityKeys(Long macAddress,
                                                Short vlan,
