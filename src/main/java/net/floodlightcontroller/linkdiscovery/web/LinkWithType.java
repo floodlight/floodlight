@@ -21,18 +21,25 @@ import net.floodlightcontroller.routing.Link;
 public class LinkWithType extends JsonSerializer<LinkWithType> {
     public long srcSwDpid;
     public short srcPort;
+    public int srcPortState;
     public long dstSwDpid;
     public short dstPort;
+    public int dstPortState;
     public LinkType type;
 
     // Do NOT delete this, it's required for the serializer
     public LinkWithType() {}
     
-    public LinkWithType(Link link, LinkType type) {
+    public LinkWithType(Link link,
+                        int srcPortState,
+                        int dstPortState,
+                        LinkType type) {
         this.srcSwDpid = link.getSrc();
         this.srcPort = link.getSrcPort();
+        this.srcPortState = srcPortState;
         this.dstSwDpid = link.getDst();
         this.dstPort = link.getDstPort();
+        this.dstPortState = dstPortState;
         this.type = type;
     }
 
@@ -43,8 +50,10 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
 		jgen.writeStartObject();
 		jgen.writeStringField("src-switch", HexString.toHexString(lwt.srcSwDpid));
 		jgen.writeNumberField("src-port", lwt.srcPort);
+		jgen.writeNumberField("src-port-state", lwt.srcPortState);
 		jgen.writeStringField("dst-switch", HexString.toHexString(lwt.dstSwDpid));
 		jgen.writeNumberField("dst-port", lwt.dstPort);
+		jgen.writeNumberField("dst-port-state", lwt.dstPortState);
 		jgen.writeStringField("type", lwt.type.toString());
 		jgen.writeEndObject();
 	}
