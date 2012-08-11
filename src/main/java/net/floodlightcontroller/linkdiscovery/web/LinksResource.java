@@ -25,7 +25,7 @@ public class LinksResource extends ServerResource {
             links.putAll(ld.getLinks());
             for (Link link: links.keySet()) {
                 LinkInfo info = links.get(link);
-                LinkWithType lwt = new LinkWithType(link, ld.getLinkType(info));
+                LinkWithType lwt = new LinkWithType(link, ld.getLinkType(link, info));
                 returnLinkSet.add(lwt);
             }
         }
