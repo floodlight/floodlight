@@ -54,7 +54,6 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -67,7 +66,6 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -90,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
-IStorageSourceListener, IFloodlightModule, IEntityClassListener,
+IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -618,21 +616,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return Command.CONTINUE;
     }
 
-    // **********************
-    // IStorageSourceListener
-    // **********************
-
-    @Override
-    public void rowsModified(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
 
     // *****************
     // IFloodlightModule
@@ -1479,13 +1462,25 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                            d,
                                            newDevice)) {
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                     }
                 } else {
                     deviceUpdates.add(new DeviceUpdate(d, DELETE, null));
                     if (!deviceMap.remove(d.getDeviceKey(), d))
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                 }
                 processUpdates(deviceUpdates);
                 break;
