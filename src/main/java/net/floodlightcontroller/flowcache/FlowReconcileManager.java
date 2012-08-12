@@ -33,6 +33,10 @@ public class FlowReconcileManager
      * need to be reconciled with the current configuration of the controller.
      */
     protected ListenerDispatcher<OFType, IFlowReconcileListener> flowReconcileListeners;
+    
+    /** Config to enable or disable flowReconcile */
+    protected static final String EnableConfigKey = "enable";
+    protected boolean flowReconcileEnabled;
 
     @Override
     public synchronized void addFlowReconcileListener(IFlowReconcileListener listener) {
@@ -65,6 +69,10 @@ public class FlowReconcileManager
      * @param ofmRcIn the ofm rc in
      */
     public void reconcileFlow(OFMatchReconcile ofmRcIn) {
+    	if (!flowReconcileEnabled) {
+    		return;
+    	}
+    	
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: {}", ofmRcIn.toString());
         }
@@ -145,6 +153,17 @@ public class FlowReconcileManager
             throws FloodlightModuleException {
         flowReconcileListeners = 
                 new ListenerDispatcher<OFType, IFlowReconcileListener>();
+        
+        Map<String, String> configParam = context.getConfigParams(this);
+        String enableValue = configParam.get(EnableConfigKey);
+        // Set flowReconcile default to true
+        flowReconcileEnabled = true;
+        if (enableValue != null &&
+            enableValue.equalsIgnoreCase("false")) {
+            flowReconcileEnabled = false;
+        }
+        
+        logger.debug("FlowReconcile is {}", flowReconcileEnabled);
     }
 
     @Override
