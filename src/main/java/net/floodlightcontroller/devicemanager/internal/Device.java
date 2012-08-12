@@ -37,6 +37,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
@@ -94,6 +95,61 @@ public class Device implements IDevice {
         }
     }
 
+    /**
+     * Create a device from a set of entities
+     * @param deviceManager the device manager for this device
+     * @param deviceKey the unique identifier for this device object
+     * @param entities the initial entities for the device
+     * @param entityClass the entity class associated with the entities
+     */
+    public Device(DeviceManagerImpl deviceManager,
+                  Long deviceKey,
+                  Collection<AttachmentPoint> attachmentPoints,
+                  Collection<Entity> entities,
+                  IEntityClass entityClass) {
+        this.deviceManager = deviceManager;
+        this.deviceKey = deviceKey;
+        this.entities = entities.toArray(new Entity[entities.size()]);
+        if (attachmentPoints == null) {
+            this.attachmentPoints = null;
+        } else {
+            this.attachmentPoints =
+                    new ArrayList<AttachmentPoint>(attachmentPoints);
+        }
+        this.macAddressString =
+                HexString.toHexString(this.entities[0].getMacAddress(), 6);
+        this.entityClass = entityClass;
+        Arrays.sort(this.entities);
+    }
+
+    /**
+     * Construct a new device consisting of the entities from the old device
+     * plus an additional entity
+     * @param device the old device object
+     * @param newEntity the entity to add. newEntity must be have the same
+     *        entity class as device
+     */
+    public Device(Device device,
+                  Entity newEntity) {
+        this.deviceManager = device.deviceManager;
+        this.deviceKey = device.deviceKey;
+        this.entities = Arrays.<Entity>copyOf(device.entities,
+                                              device.entities.length + 1);
+        this.entities[this.entities.length - 1] = newEntity;
+        Arrays.sort(this.entities);
+    
+        if (device.attachmentPoints != null) {
+            this.attachmentPoints =
+                    new ArrayList<AttachmentPoint>(device.attachmentPoints);
+        } else 
+            this.attachmentPoints = null;
+    
+        this.macAddressString =
+                HexString.toHexString(this.entities[0].getMacAddress(), 6);
+    
+        this.entityClass = device.entityClass;
+    }
+
     private Map<Long, AttachmentPoint> getAPMap() {
 
         if (attachmentPoints == null) return null;
@@ -102,6 +158,16 @@ public class Device implements IDevice {
         // Get the old attachment points and sort them.
         List<AttachmentPoint>oldAP =
                 new ArrayList<AttachmentPoint>(attachmentPoints);
+
+        // Remove invalid attachment points before sorting.
+        List<AttachmentPoint>tempAP =
+                new ArrayList<AttachmentPoint>();
+        for(AttachmentPoint ap: oldAP) {
+            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort())){
+                tempAP.add(ap);
+            }
+        }
+        oldAP = tempAP;
 
         Collections.sort(oldAP, deviceManager.apComparator);
 
@@ -263,60 +329,7 @@ public class Device implements IDevice {
         return sp.toArray(new SwitchPort[sp.size()]);
     }
 
-    /**
-     * Create a device from a set of entities
-     * @param deviceManager the device manager for this device
-     * @param deviceKey the unique identifier for this device object
-     * @param entities the initial entities for the device
-     * @param entityClass the entity class associated with the entities
-     */
-    public Device(DeviceManagerImpl deviceManager,
-                  Long deviceKey,
-                  Collection<AttachmentPoint> attachmentPoints,
-                  Collection<Entity> entities,
-                  IEntityClass entityClass) {
-        this.deviceManager = deviceManager;
-        this.deviceKey = deviceKey;
-        this.entities = entities.toArray(new Entity[entities.size()]);
-        if (attachmentPoints == null) {
-            this.attachmentPoints = null;
-        } else {
-            this.attachmentPoints =
-                    new ArrayList<AttachmentPoint>(attachmentPoints);
-        }
-        this.macAddressString =
-                HexString.toHexString(this.entities[0].getMacAddress(), 6);
-        this.entityClass = entityClass;
-        Arrays.sort(this.entities);
-    }
-
-    /**
-     * Construct a new device consisting of the entities from the old device
-     * plus an additional entity
-     * @param device the old device object
-     * @param newEntity the entity to add. newEntity must be have the same
-     *        entity class as device
-     */
-    public Device(Device device,
-                  Entity newEntity) {
-        this.deviceManager = device.deviceManager;
-        this.deviceKey = device.deviceKey;
-        this.entities = Arrays.<Entity>copyOf(device.entities,
-                                              device.entities.length + 1);
-        this.entities[this.entities.length - 1] = newEntity;
-        Arrays.sort(this.entities);
-
-        if (device.attachmentPoints != null) {
-            this.attachmentPoints =
-                    new ArrayList<AttachmentPoint>(device.attachmentPoints);
-        } else 
-            this.attachmentPoints = null;
-
-        this.macAddressString =
-                HexString.toHexString(this.entities[0].getMacAddress(), 6);
-
-        this.entityClass = device.entityClass;
-    }
+    
 
     // *******
     // IDevice
@@ -476,7 +489,22 @@ public class Device implements IDevice {
 
     @Override
     public String toString() {
-        return "Device [entityClass=" + entityClass.getName() +
-                " entities=" + Arrays.toString(entities) + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("Device [entityClass=");
+        builder.append(entityClass.getName());
+        builder.append(", MAC=");
+        builder.append(macAddressString);
+        builder.append(", IPs=[");
+        boolean isFirst = true;
+        for (Integer ip: getIPv4Addresses()) {
+            if (!isFirst)
+                builder.append(", ");
+            isFirst = false;
+            builder.append(IPv4.fromIPv4Address(ip));
+        }
+        builder.append("], APs=");
+        builder.append(Arrays.toString(getAttachmentPoints(true)));
+        builder.append("]");
+        return builder.toString();
     }
 }

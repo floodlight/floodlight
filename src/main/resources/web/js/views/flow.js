@@ -48,7 +48,7 @@ window.FlowListItemView = Backbone.View.extend({
 // TODO throughput (bps) and pps sparklines would be nice here
 // TODO hovering over a MAC address could show a compact view of that host
 window.FlowListView = Backbone.View.extend({
-	
+
     initialize:function () {
         this.template = _.template(tpl.get('flow-list'));
         this.model.bind("change", this.render, this);
@@ -56,11 +56,11 @@ window.FlowListView = Backbone.View.extend({
     },
 
     render:function (eventName) {
-    	// console.log("rendering flow list view: " + this.model.models.length);
+        // console.log("rendering flow list view: " + this.model.models.length);
         $(this.el).html(this.template({nflows:this.model.length}));
         _.each(this.model.models, function (f) {
             $(this.el).find('table.flow-table > tbody')
-            	.append(new FlowListItemView({model:f}).render().el);
+                .append(new FlowListItemView({model:f}).render().el);
         }, this);
         return this;
     },

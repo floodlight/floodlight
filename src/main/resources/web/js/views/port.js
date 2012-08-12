@@ -49,7 +49,7 @@ window.PortListItemView = Backbone.View.extend({
 
 // TODO throughput sparklines would be nice here
 window.PortListView = Backbone.View.extend({
-	
+
     initialize:function () {
         this.template = _.template(tpl.get('port-list'));
         this.model.bind("change", this.render, this);
@@ -57,11 +57,11 @@ window.PortListView = Backbone.View.extend({
     },
 
     render:function (eventName) {
-    	// console.log("rendering port list view");
+        // console.log("rendering port list view");
         $(this.el).html(this.template({nports:this.model.length}));
         _.each(this.model.models, function (p) {
             $(this.el).find('table.port-table > tbody')
-            	.append(new PortListItemView({model:p}).render().el);
+                .append(new PortListItemView({model:p}).render().el);
         }, this);
         return this;
     },

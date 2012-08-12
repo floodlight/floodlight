@@ -114,6 +114,13 @@ public class TCP extends BasePacket {
         this.checksum = checksum;
         return this;
     }
+    
+    @Override
+    public void resetChecksum() {
+        this.checksum = 0;
+        super.resetChecksum();
+    }
+    
     public short getUrgentPointer(short urgentPointer) {
         return this.urgentPointer;
     }

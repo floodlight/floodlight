@@ -66,7 +66,6 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -89,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
-IStorageSourceListener, IFloodlightModule, IEntityClassListener,
+IFloodlightModule, IEntityClassListener,
 IFlowReconcileListener, IInfoProvider, IHAListener {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
@@ -201,7 +200,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * A device update event to be dispatched
      */
     protected static class DeviceUpdate {
-        protected enum Change {
+        public enum Change {
             ADD, DELETE, CHANGE;
         }
 
@@ -227,6 +226,15 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             this.change = change;
             this.fieldsChanged = fieldsChanged;
         }
+
+        @Override
+        public String toString() {
+            String devIdStr = device.getEntityClass().getName() + "::" +
+                    device.getMACAddressString();
+            return "DeviceUpdate [device=" + devIdStr + ", change=" + change
+                   + ", fieldsChanged=" + fieldsChanged + "]";
+        }
+        
     }
 
     /**
@@ -473,6 +481,46 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         
         return new MultiIterator<Device>(iterators.iterator());
     }
+    
+    protected Iterator<Device> getDeviceIteratorForQuery(Long macAddress,
+    		Short vlan,
+    		Integer ipv4Address,
+    		Long switchDPID,
+    		Integer switchPort) {
+    	DeviceIndex index = null;
+    	if (secondaryIndexMap.size() > 0) {
+    		EnumSet<DeviceField> keys =
+    				getEntityKeys(macAddress, vlan, ipv4Address,
+    						switchDPID, switchPort);
+    		index = secondaryIndexMap.get(keys);
+    	}
+
+    	Iterator<Device> deviceIterator = null;
+    	if (index == null) {
+    		// Do a full table scan
+    		deviceIterator = deviceMap.values().iterator();
+    	} else {
+    		// index lookup
+    		Entity entity = new Entity((macAddress == null ? 0 : macAddress),
+    				vlan,
+    				ipv4Address,
+    				switchDPID,
+    				switchPort,
+    				null);
+    		deviceIterator =
+    				new DeviceIndexInterator(this, index.queryByEntity(entity));
+    	}
+
+    	DeviceIterator di =
+    			new DeviceIterator(deviceIterator,
+    					null,
+    					macAddress,
+    					vlan,
+    					ipv4Address,
+    					switchDPID,
+    					switchPort);
+    	return di;
+    }
 
     @Override
     public void addListener(IDeviceListener listener) {
@@ -520,6 +568,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             case PACKET_IN:
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
+            default:
+            	break;
         }
 
         logger.error("received an unexpected message {} from switch {}",
@@ -550,33 +600,22 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // Find the device matching the destination from the entity
             // classes of the source.
             Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
-            logger.trace("DeviceManager dstEntity {}", dstEntity);
+            Device dstDevice = null;
             if (dstEntity != null) {
-                Device dstDevice =
-                        findDestByEntity(srcDevice, dstEntity);
-                logger.trace("DeviceManager dstDevice {}", dstDevice);
+                dstDevice = findDestByEntity(srcDevice, dstEntity);
                 if (dstDevice != null)
                     fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
+            }
+            if (logger.isTraceEnabled()) {
+                logger.trace("Reconciling flow: match={}, srcDev={}, " 
+                		     + "dstEntity={}, dstDev={}",
+                		     new Object[] { ofm.ofmWithSwDpid, srcDevice, 
+                		                    dstEntity, dstDevice } );
             }
         }
         return Command.CONTINUE;
     }
 
-    // **********************
-    // IStorageSourceListener
-    // **********************
-
-    @Override
-    public void rowsModified(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-        // TODO Auto-generated method stub
-
-    }
 
     // *****************
     // IFloodlightModule
@@ -686,6 +725,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 logger.debug("Resetting device state because of role change");
                 startUp(null);
                 break;
+            default:
+            	break;
         }
     }
 
@@ -1176,6 +1217,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (updates == null) return;
         DeviceUpdate update = null;
         while (null != (update = updates.poll())) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Dispatching device update: {}", update);
+            }
             for (IDeviceListener listener : deviceListeners) {
                 switch (update.change) {
                     case ADD:
@@ -1197,6 +1241,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                 case VLAN:
                                     listener.deviceVlanChanged(update.device);
                                     break;
+                                default:
+                                	logger.error("Unknown device field changed {}",
+                                				update.fieldsChanged.toString());
+                                	break;
                             }
                         }
                         break;
@@ -1414,13 +1462,25 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                            d,
                                            newDevice)) {
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                     }
                 } else {
                     deviceUpdates.add(new DeviceUpdate(d, DELETE, null));
                     if (!deviceMap.remove(d.getDeviceKey(), d))
                         // concurrent modification; try again
-                        continue;
+                        // need to use device that is the map now for the next
+                        // iteration
+                        d = deviceMap.get(d.getDeviceKey());
+                        if (null != d)
+                            continue;
+                        else
+                            break;
                 }
                 processUpdates(deviceUpdates);
                 break;
@@ -1447,6 +1507,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                        deviceKey,
                                                        others);
         }
+    }
+    
+    /**
+     * method to delete a given device, remove all entities first and then
+     * finally delete the device itself.
+     * @param device
+     */
+    protected void deleteDevice(Device device) {
+    	ArrayList<Entity> emptyToKeep = new ArrayList<Entity>();
+    	for (Entity entity : device.getEntities()) {
+    		this.removeEntity(entity, device.getEntityClass(), 
+    				device.getDeviceKey(), emptyToKeep);
+    	}
+    	if (!deviceMap.remove(device.getDeviceKey(), device)) {
+    		logger.info("device map does not have this device -" + 
+    	                 device.toString());
+    	}
     }
 
     private EnumSet<DeviceField> getEntityKeys(Long macAddress,
