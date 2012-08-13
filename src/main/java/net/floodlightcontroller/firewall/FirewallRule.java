@@ -1,7 +1,9 @@
 package net.floodlightcontroller.firewall;
 
+import java.util.Arrays;
+
 public class FirewallRule implements Comparable {
-	public String ruleid;
+	public int ruleid;
 	public short src_inport;
 	public long src_mac;
 	public int src_ip_prefix;
@@ -44,6 +46,16 @@ public class FirewallRule implements Comparable {
 		this.wildcard_switchid = true;
 		this.priority = 32767;
 		this.is_denyrule = false;
+		this.ruleid = this.genID();
+	}
+	
+	public int genID() {
+		int uid = this.hashCode();
+		if (uid <= 0) {
+			uid = Math.abs(uid);
+			uid *= 15551;
+		}
+		return uid;
 	}
 	
 	public int compareTo(Object rule) {
@@ -72,4 +84,31 @@ public class FirewallRule implements Comparable {
 		}
 		return true;
 	}
+	
+	@Override
+    public int hashCode() {
+        final int prime = 2521;
+        int result = super.hashCode();
+        result = prime * result + src_inport;
+        result = prime * result + (int)src_mac;
+        result = prime * result + src_ip_prefix;
+        result = prime * result + src_ip_bits;
+        result = prime * result + proto_type;
+        result = prime * result + proto_srcport;
+        result = prime * result + proto_dstport;
+        result = prime * result + (int)dst_mac;
+        result = prime * result + dst_ip_prefix;
+        result = prime * result + dst_ip_bits;
+        result = prime * result + (int)switchid;
+        result = prime * result + priority;
+        result = prime * result + (new Boolean(is_denyrule)).hashCode();
+        result = prime * result + (new Boolean(wildcard_switchid)).hashCode();
+        result = prime * result + (new Boolean(wildcard_src_inport)).hashCode();
+        result = prime * result + (new Boolean(wildcard_src_ip)).hashCode();
+        result = prime * result + (new Boolean(wildcard_src_mac)).hashCode();
+        result = prime * result + (new Boolean(wildcard_proto_type)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dst_ip)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dst_mac)).hashCode();
+        return result;
+    }
 }

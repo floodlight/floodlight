@@ -39,5 +39,5 @@ public interface IFirewallService extends IFloodlightService {
 	/**
      * Deletes a Firewall rule
      */
-	public void deleteRule(String ruleid);
+	public void deleteRule(int ruleid);
 }

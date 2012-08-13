@@ -160,7 +160,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                 // most error checking done with ClassCastException
                 try {
                     // first, snag the required entries, for debugging info
-                	r.ruleid = (String)row.get(COLUMN_RULEID);
+                	r.ruleid = Integer.parseInt((String)row.get(COLUMN_RULEID));
                     r.switchid = Long.parseLong((String)row.get(COLUMN_SWITCHID));
                     
                     for (String key : row.keySet()) {
@@ -209,13 +209,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                         }
                     }
                 } catch (ClassCastException e) {
-                    if (!r.ruleid.equals(""))
-                        logger.error(
-                                "skipping rule {} with bad data : "
-                                        + e.getMessage(), r.ruleid);
-                    else
-                        logger.error("skipping rule with bad data: {} :: {} ",
-                                e.getMessage(), e.getStackTrace());
+                    logger.error("skipping rule {} with bad data : " + e.getMessage(), r.ruleid);
                 }
                 l.add(r);
             }
@@ -331,7 +325,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	
 	@Override
 	public void addRule(FirewallRule rule) {
-		rule.ruleid = UUID.randomUUID().toString();
+		rule.ruleid = rule.genID();
 		this.rules.add(rule);
 		// now re-sort the rules
 	    Collections.sort(this.rules);
@@ -358,16 +352,16 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	    entry.put(COLUMN_WILDCARD_DST_IP, Boolean.toString(rule.wildcard_dst_ip));
 	    entry.put(COLUMN_PRIORITY, Integer.toString(rule.priority));
 	    entry.put(COLUMN_IS_DENYRULE, Boolean.toString(rule.is_denyrule));
-	    storageSource.insertRowAsync(TABLE_NAME, entry);
+	    storageSource.insertRow(TABLE_NAME, entry);
 	}
 	
 	@Override
-	public void deleteRule(String ruleid) {
+	public void deleteRule(int ruleid) {
 		boolean found = false;
 		Iterator<FirewallRule> iter = this.rules.iterator();
 		while (iter.hasNext()) {
 			FirewallRule r = iter.next();
-			if (r.ruleid.equalsIgnoreCase(ruleid)) {
+			if (r.ruleid == ruleid) {
 				// found the rule, now remove it
 				iter.remove();
 				found = true;
@@ -379,7 +373,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 			Collections.sort(this.rules);
 		}
 		// delete from database
-		storageSource.deleteRowAsync(TABLE_NAME, ruleid);
+		storageSource.deleteRow(TABLE_NAME, ruleid);
 	}
 	
 	protected List<Object> matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
@@ -558,8 +552,12 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
 	public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		
+		// TODO - add a check for a case where L2 is broadcast and L3 is unicast, i.e. malformed packet, deny it
+		
 		if (eth.getEtherType() == Ethernet.TYPE_ARP || eth.isBroadcast() == true) {
 			logger.info("allowing ARP and L2 broadcast traffic");
+			decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+			decision.addToContext(cntx);
 			return Command.CONTINUE;
 		}
 		

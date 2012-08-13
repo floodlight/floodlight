@@ -90,7 +90,7 @@ public class FirewallRulesResource extends ServerResource {
     	Iterator<FirewallRule> iter = firewall.getRules().iterator();
     	while (iter.hasNext()) {
     		FirewallRule r = iter.next();
-    		if (r.ruleid.equalsIgnoreCase(rule.ruleid)) {
+    		if (r.ruleid == rule.ruleid) {
     			exists = true;
     			break;
     		}
@@ -140,7 +140,7 @@ public class FirewallRulesResource extends ServerResource {
             
             String tmp;
             if (n == "ruleid") {
-                rule.ruleid = jp.getText();
+                rule.ruleid = Integer.parseInt((String)jp.getText());
             } else if (n == "switchid") {
             		tmp = jp.getText();
             		if (tmp.equalsIgnoreCase("-1") == false) {
