@@ -177,7 +177,7 @@ window.Switch = Backbone.Model.extend({
                         f.match.dataLayerSource + "</a>, ";
                     }
                     if(!(f.match.wildcards & (1<<3))) { // dest MAC
-                        f.matchHTML =+ "dest=<a href='/host/" + f.match.dataLayerDestination + "'>" +
+                        f.matchHTML += "dest=<a href='/host/" + f.match.dataLayerDestination + "'>" +
                         f.match.dataLayerDestination + "</a>, ";
                     }
                     if(!(f.match.wildcards & (1<<4))) { // Ethertype
