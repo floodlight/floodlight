@@ -308,6 +308,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         lldpClock = (lldpClock + 1)% LLDP_TO_ALL_INTERVAL;
 
         if (lldpClock == 0) {
+            log.debug("Sending LLDP out on all ports.");
             discoverOnAllPorts();
         }
     }
@@ -355,7 +356,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
         if (iofSwitch == null) {
-        	return;
+            return;
         }
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
@@ -365,6 +366,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
              */
             return;
         }
+
+        log.info("Sending LLDPs");
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -544,7 +547,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             case PORT_STATUS:
                 return this.handlePortStatus(sw.getId(), (OFPortStatus) msg);
             default:
-            	break;
+                break;
         }
 
         log.error("Received an unexpected message {} from switch {}", msg, sw);
@@ -1578,8 +1581,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         // null role implies HA mode is not enabled.
                          Role role = floodlightProvider.getRole();
                          if (role == null || role == Role.MASTER) {
+                             log.debug("Rescheduling discovery task as role = {}", role);
                              discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
                                                 TimeUnit.SECONDS);
+                         } else {
+                             log.debug("Stopped LLDP rescheduling due to role = {}.", role);
                          }
                     }
                 }
@@ -1601,8 +1607,12 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         // null role implies HA mode is not enabled.
         Role role = floodlightProvider.getRole();
-        if (role == null || role == Role.MASTER)
+        if (role == null || role == Role.MASTER) {
+            log.debug("Setup: Rescheduling discovery task. role = {}", role);
             discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
+        } else {
+                log.debug("Setup: Not scheduling LLDP as role = {}.", role);
+        }
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
@@ -1718,6 +1728,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                 "to HA change from SLAVE->MASTER");
                     }
                     clearAllLinks();
+                    log.debug("Role Change to Master: Rescheduling discovery task.");
                     discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 }
                 break;
@@ -1732,8 +1743,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 portBroadcastDomainLinks.clear();
                 discoverOnAllPorts();
                 break;
-			default:
-				break;
+            default:
+                break;
         }
     }
 
