@@ -726,7 +726,7 @@ public class OFMatch implements Cloneable, Serializable {
      */
     @Override
     public String toString() {
-        String str = "wildcard=0x" + Integer.toHexString(this.wildcards);
+        String str = "";
 
         // l1
         if ((wildcards & OFPFW_IN_PORT) == 0)
