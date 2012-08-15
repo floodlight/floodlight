@@ -1162,7 +1162,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         if (deleteQueue != null) {
             for (Long l : deleteQueue) {
+                Device dev = deviceMap.get(l);
+                this.deleteDevice(dev);
                 deviceMap.remove(l);
+
+                // generate new device update
+                deviceUpdates =
+                        updateUpdates(deviceUpdates,
+                                      new DeviceUpdate(dev, DELETE, null));
             }
         }
 
