@@ -483,6 +483,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // Send standard LLDPs
         for (long sw: switches) {
             IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+            if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
                 for (OFPhysicalPort p : iofSwitch.getEnabledPorts()) {
                     // sends only forward LLDPs and BDDPs
@@ -493,6 +494,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         for (long sw: switches) {
             IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+            if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
                 for (OFPhysicalPort p : iofSwitch.getEnabledPorts()) {
                     // sends only forward LLDPs and BDDPs
