@@ -45,11 +45,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -183,6 +185,14 @@ public class Controller implements IFloodlightProviderService,
     // Start time of the controller
     protected long systemStartTime;
     
+     /* Periodic task to clean up staleSwitches
+     */
+    public SingletonTask switchCleanupTask;
+    /**
+     * Time in milliseconds before entities will expire
+     */
+    protected static final int SWITCH_CLEANUP_INTERVAL = 60*60*1000;
+
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -1897,6 +1907,19 @@ public class Controller implements IFloodlightProviderService,
         storageSource.setTablePrimaryKeyName(CONTROLLER_INTERFACE_TABLE_NAME, 
                                              CONTROLLER_INTERFACE_ID);
         storageSource.addListener(CONTROLLER_INTERFACE_TABLE_NAME, this);
+        
+        Runnable scr = new Runnable() {
+            @Override
+            public void run() {
+                //cleanupSwitches(null, false);
+                switchCleanupTask.reschedule(SWITCH_CLEANUP_INTERVAL,
+                                             TimeUnit.SECONDS);
+            }
+        };
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
+        switchCleanupTask = new SingletonTask(ses, scr);
+        switchCleanupTask.reschedule(SWITCH_CLEANUP_INTERVAL,
+                                     TimeUnit.SECONDS);
         
         while (true) {
             try {
