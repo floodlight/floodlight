@@ -65,7 +65,10 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.storage.IStorageSourceListener;
+import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -91,7 +94,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
 IFloodlightModule, IEntityClassListener,
-IFlowReconcileListener, IInfoProvider, IHAListener {
+IFlowReconcileListener, IInfoProvider, IHAListener, IStorageSourceListener {
     
     private static final String ENTITY_TABLE_NAME = "controller_devicemgr";
     private static final String ENTITY_ID = "id";
@@ -724,6 +727,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         
         storageSource.createTable(ENTITY_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(ENTITY_TABLE_NAME, ENTITY_ID);
+        // Register for storage updates for the switch table
+        try {
+            storageSource.addListener(ENTITY_TABLE_NAME, this);
+        } catch (StorageException ex) {
+            logger.error("Error in installing listener for entity table - {}", ENTITY_TABLE_NAME);
+        }
 
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
@@ -733,6 +742,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
     
     void writeEntity(Entity e) {
+        // disable code for now.
+        return;
+        /*
         if (currentRole == Role.SLAVE) {
             return;
         }
@@ -750,10 +762,45 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         rowValues.put(ENTITY_VLAN, e.getVlan());
         rowValues.put(ENTITY_SWITCH_DPID, e.getSwitchDPID());
         rowValues.put(ENTITY_SWITCH_PORT, e.getSwitchPort());
-    //private static final String ENTITY_LAST_SEEN = "last_seen";
-    //private static final String ENTITY_ACTIVE_SINCE = "activity_since";
+        rowValues.put(ENTITY_LAST_SEEN, e.getLastSeenTimestamp());
         storageSource.updateRowAsync(ENTITY_TABLE_NAME, rowValues);
+        */
     }
+    
+    public void rowsModified(String tableName, Set<Object> rowKeys) {
+        logger.info("XXX: rowsModified = {}", tableName);
+        if (currentRole == Role.MASTER) return;
+        if (currentRole == Role.SLAVE) return;
+        logger.info("XXX: got link update in slave mode. Update stuff !!!");
+        for(Object key: rowKeys) {
+            IResultSet resultSet = null;
+            try {
+                resultSet = storageSource.getRow(tableName, key);
+                for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                    Map<String, Object> rowValues = it.next().getRow();
+                    
+                    Entity e = new Entity(HexString.toLong((String)rowValues.get(ENTITY_MAC)),
+                                    (Short)rowValues.get(ENTITY_VLAN),
+                                    (Integer)rowValues.get(ENTITY_IPV4),
+                                    (Long)rowValues.get(ENTITY_SWITCH_DPID),
+                                    (Integer)rowValues.get(ENTITY_SWITCH_PORT),
+                                    (Date)rowValues.get(ENTITY_LAST_SEEN));
+                    learnDeviceByEntity(e);
+                }
+            }
+            finally {
+                if (resultSet != null) {
+                    resultSet.close();
+                }
+            }
+        }
+        return;
+    }
+    
+    public void rowsDeleted(String tableName, Set<Object> rowKeys) {
+        return;
+    }
+
 
     // ***************
     // IHAListener
@@ -1160,6 +1207,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                          lastSeen.getTime());
                     if (moved)
                         sendDeviceMovedNotification(device);;
+                    if (isValidAttachmentPoint(sw, port)) {
+                        writeEntity(entity);
+                    }
                 }
                 break;
             } else {
@@ -1170,6 +1220,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                             entity.getSwitchPort().shortValue(),
                                                             entity.getLastSeenTimestamp().getTime());
                     if (moved) sendDeviceMovedNotification(newDevice);
+                    if (isValidAttachmentPoint(entity.getSwitchDPID(), entity.getSwitchPort().shortValue())) {
+                        writeEntity(entity);
+                    }
                 }
 
                 // generate updates
