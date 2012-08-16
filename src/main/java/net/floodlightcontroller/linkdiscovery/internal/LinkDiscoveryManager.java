@@ -129,7 +129,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
     private static final String LINK_DST_SWITCH = "dst_switch_id";
     private static final String LINK_DST_PORT = "dst_port";
     private static final String LINK_DST_PORT_STATE = "dst_port_state";
-    private static final String LINK_VALID_TIME = "valid_time";
+    private static final String LINK_LLDP_VALID_TIME = "lldp_valid_time";
+    private static final String LINK_BDDP_VALID_TIME = "bddp_valid_time";
+    private static final String LINK_FIRST_SEEN_TIME = "first_seen_time";
     private static final String LINK_TYPE = "link_type";
 
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
@@ -1306,7 +1308,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
         Map<String, Object> rowValues = new HashMap<String, Object>();
         String id = getLinkId(lt);
         rowValues.put(LINK_ID, id);
-        rowValues.put(LINK_VALID_TIME, linkInfo.getUnicastValidTime());
+        rowValues.put(LINK_LLDP_VALID_TIME, linkInfo.getUnicastValidTime());
+        rowValues.put(LINK_BDDP_VALID_TIME, linkInfo.getMulticastValidTime());
+        rowValues.put(LINK_FIRST_SEEN_TIME, linkInfo.getFirstSeenTime());
         String srcDpid = HexString.toHexString(lt.getSrc());
         rowValues.put(LINK_SRC_SWITCH, srcDpid);
         rowValues.put(LINK_SRC_PORT, lt.getSrcPort());
@@ -1351,30 +1355,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
             rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
         }
         storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
-    }
-
-    public Long readLinkValidTime(Link lt) {
-        // FIXME: We're not currently using this right now, but if we start
-        // to use this again, we probably shouldn't use it in its current
-        // form, because it's doing synchronous storage calls. Depending
-        // on the context this may still be OK, but if it's being called
-        // on the packet in processing thread it should be reworked to
-        // use asynchronous storage calls.
-        Long validTime = null;
-        IResultSet resultSet = null;
-        try {
-            String[] columns = { LINK_VALID_TIME };
-            String id = getLinkId(lt);
-            resultSet = storageSource.executeQuery(LINK_TABLE_NAME, columns,
-                                                   new OperatorPredicate(LINK_ID, OperatorPredicate.Operator.EQ, id), null);
-            if (resultSet.next())
-                validTime = resultSet.getLong(LINK_VALID_TIME);
-        }
-        finally {
-            if (resultSet != null)
-                resultSet.close();
-        }
-        return validTime;
     }
 
     /**
@@ -1438,11 +1418,76 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return false;
     }
 
+    protected void updateLinkFromRowMap(Map<String, Object> rowValues)
+    {
+        Long lldpValidTime = null, bddpValidTime = null, firstSeenTime = null;
+        if (rowValues.get(LINK_LLDP_VALID_TIME) != null) {
+            lldpValidTime = Long.decode((String)rowValues.get(LINK_LLDP_VALID_TIME));
+        }
+        if (rowValues.get(LINK_BDDP_VALID_TIME) != null) {
+            bddpValidTime = Long.decode((String)rowValues.get(LINK_BDDP_VALID_TIME));
+        }
+        if (rowValues.get(LINK_FIRST_SEEN_TIME) != null) {
+            firstSeenTime = Long.decode((String)rowValues.get(LINK_FIRST_SEEN_TIME));
+        }
+        String srcDpid = (String)rowValues.get(LINK_SRC_SWITCH);
+        Short srcPort = Short.decode((String)rowValues.get(LINK_SRC_PORT));
+        LinkType type;
+        String typeStr = (String)rowValues.get(LINK_TYPE);
+        if (typeStr.equals("internal")) {
+            type = LinkType.DIRECT_LINK;
+        }
+        else if (typeStr.equals("external")) {
+            type = LinkType.MULTIHOP_LINK;
+        }
+        else if (typeStr.equals("tunnel")) {
+            type = LinkType.TUNNEL;
+        }
+        Integer srcPortState = Integer.valueOf((String)rowValues.get(LINK_SRC_PORT_STATE));
+        String destDpid = (String)rowValues.get(LINK_DST_SWITCH);
+        Short destPort = Short.decode((String)rowValues.get(LINK_DST_PORT));
+        Integer destPortState = Integer.valueOf((String)rowValues.get(LINK_DST_PORT_STATE));
+        log.info("read from cassandra, srcDpid = {}", srcDpid);
+        log.info("read from cassandra, srcPort = {}", srcPort);
+        log.info("read from cassandra, destDpid = {}", destDpid);
+        log.info("read from cassandra, destPort = {}", destPort);
+        Link lt = new Link(HexString.toLong(srcDpid), srcPort, HexString.toLong(destDpid), destPort);
+        LinkInfo newLinkInfo =
+            new LinkInfo(firstSeenTime, lldpValidTime, bddpValidTime, srcPortState, destPortState);
+        addOrUpdateLink(lt, newLinkInfo);
+    }
+
+    protected void readLinksFromStorage(Set<Object> rowKeys) {
+        IResultSet resultSet = null;
+        try {
+            if (rowKeys == null)  {
+                resultSet = storageSource.executeQuery(LINK_TABLE_NAME, null, null, null);
+            }
+            else {
+                Object rowKey = (rowKeys.toArray())[0];
+                resultSet = storageSource.getRow(LINK_TABLE_NAME, rowKey);
+            }
+            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                Map<String, Object> rowValues = it.next().getRow();
+                updateLinkFromRowMap(rowValues);
+            }
+        }
+        finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+        }
+        return;
+    }
+
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
         log.info("XXX: rowsModified = {}", tableName);
         if (tableName.equals(LINK_TABLE_NAME)) {
             if (currentRole == Role.SLAVE) {
+                readLinksFromStorage(rowKeys);
+       
+                /*
                 log.info("XXX: got link update in slave mode. Update stuff !!!");
                 for(Object key: rowKeys) {
                     IResultSet resultSet = null;
@@ -1494,10 +1539,14 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         }
                     }
                 }
+                */
             }
             else {
                 log.info("XXX: got link update in active mode. Ignore !!!");
             }
+            return;
+        }
+        if (currentRole == Role.SLAVE) {
             return;
         }
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
@@ -1636,23 +1685,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        // Create our storage tables
-        if (storageSource == null) {
-            log.warn("No storage source found.");
-            return;
-        }
-
-        storageSource.createTable(LINK_TABLE_NAME, null);
-        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
-        storageSource.deleteMatchingRows(LINK_TABLE_NAME, null);
-        // Register for storage updates for the switch table
-        try {
-            storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
-            storageSource.addListener(LINK_TABLE_NAME, this);
-        } catch (StorageException ex) {
-            log.error("Error in installing listener for switch/link table - {}", SWITCH_CONFIG_TABLE_NAME);
-        }
-
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         // To be started by the first switch connection
@@ -1713,6 +1745,24 @@ IFloodlightModule, IInfoProvider, IHAListener {
         floodlightProvider.addInfoProvider("summary", this);
 
         setControllerTLV();
+        
+        // Create our storage tables
+        if (storageSource == null) {
+            log.warn("No storage source found.");
+            return;
+        }
+
+        storageSource.createTable(LINK_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
+        storageSource.deleteMatchingRows(LINK_TABLE_NAME, null);
+        // Register for storage updates for the switch table
+        try {
+            storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
+            storageSource.addListener(LINK_TABLE_NAME, this);
+        } catch (StorageException ex) {
+            log.error("Error in installing listener for switch/link table - {}", SWITCH_CONFIG_TABLE_NAME);
+        }
+        readLinksFromStorage(null);
     }
 
     // ****************************************************
@@ -1818,7 +1868,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         log.trace("Sending LLDPs " +
                                 "to HA change from SLAVE->MASTER");
                     }
-                    clearAllLinks();
+                    //clearAllLinks();
                     log.debug("Role Change to Master: Rescheduling discovery task.");
                     discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 }
