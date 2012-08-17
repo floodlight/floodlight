@@ -367,8 +367,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
             return;
         }
 
-        log.info("Sending LLDPs");
-
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                       sw, port);
