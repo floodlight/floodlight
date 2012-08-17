@@ -102,6 +102,15 @@ public abstract class DeviceIndex {
             IndexedEntity oio = new IndexedEntity(keyFields, o);
             if (oio.equals(ie)) return;
         }
-        removeEntity(entity, deviceKey);
+
+        Iterator<Long> keyiter = this.queryByEntity(entity);
+        while (keyiter.hasNext()) {
+                Long key = keyiter.next();
+                if (key.equals(deviceKey)) {
+                    removeEntity(entity, deviceKey);
+                    break;
+                }
+        }
     }
+
 }
