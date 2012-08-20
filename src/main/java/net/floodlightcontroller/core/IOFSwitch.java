@@ -47,6 +47,7 @@ public interface IOFSwitch {
     public static final String PROP_REQUIRES_L3_MATCH = "requiresL3Match";
     public static final String PROP_SUPPORTS_OFPP_TABLE = "supportsOfppTable";
     public static final String PROP_SUPPORTS_OFPP_FLOOD = "supportsOfppFlood";
+    public static final String PROP_SUPPORTS_NETMASK_TBL = "supportsNetmaskTbl";
     
     /**
      * Writes to the OFMessage to the output stream.
