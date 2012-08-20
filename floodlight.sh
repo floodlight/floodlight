@@ -16,20 +16,20 @@ JVM_OPTS="$JVM_OPTS -Dpython.security.respectJavaAccessibility=false"
 
 # Create a logback file if required
 [ -f ${FL_LOGBACK} ] || cat <<EOF_LOGBACK >${FL_LOGBACK}
-    <configuration scan="true">
-      <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+<configuration scan="true">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-          <pattern>%level [%logger:%thread] %msg%n</pattern>
+            <pattern>%level [%logger:%thread] %msg%n</pattern>
         </encoder>
-      </appender>
-      <root level="INFO">
+    </appender>
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
-      </root>
-      <logger name="org" level="WARN"/>
-      <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
-      <logger name="net.floodlightcontroller" level="INFO"/>
-      <logger name="net.floodlightcontroller.logging" level="ERROR"/>
-    </configuration>
+    </root>
+    <logger name="org" level="WARN"/>
+    <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
+    <logger name="net.floodlightcontroller" level="INFO"/>
+    <logger name="net.floodlightcontroller.logging" level="ERROR"/>
+</configuration>
 EOF_LOGBACK
 
 echo "Starting floodlight server ..."
