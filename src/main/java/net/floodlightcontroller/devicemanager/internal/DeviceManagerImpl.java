@@ -1076,9 +1076,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
                 device = allocateDevice(deviceKey, entity, entityClass);
-                if (logger.isTraceEnabled()) {
-                    logger.trace("New device created: {} deviceKey={}", 
-                                 device, deviceKey);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("New device created: {} deviceKey={}, entity={}",
+                                 new Object[]{device, deviceKey, entity});
                 }
 
                 // Add the new device to the primary map with a simple put
@@ -1112,12 +1112,26 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         device.entities[entityindex].getSwitchPort() != null) {
                     long sw = device.entities[entityindex].getSwitchDPID();
                     short port = device.entities[entityindex].getSwitchPort().shortValue();
+
                     boolean moved =
                             device.updateAttachmentPoint(sw,
                                                          port,
                                                          lastSeen.getTime());
-                    if (moved)
-                        sendDeviceMovedNotification(device);;
+
+                    if (moved) {
+                        sendDeviceMovedNotification(device);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Device moved: attachment points {}," +
+                                    "entities {}", device.attachmentPoints,
+                                    device.entities);
+                        }
+                    } else {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Device attachment point udpated: attachment points {}," +
+                                    "entities {}", device.attachmentPoints,
+                                    device.entities);
+                        }
+                    }
                 }
                 break;
             } else {
@@ -1127,7 +1141,20 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                             newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
                                                             entity.getSwitchPort().shortValue(),
                                                             entity.getLastSeenTimestamp().getTime());
-                    if (moved) sendDeviceMovedNotification(newDevice);
+                    if (moved) {
+                        sendDeviceMovedNotification(device);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Device moved: attachment points {}," +
+                                    "entities {}", device.attachmentPoints,
+                                    device.entities);
+                        }
+                    } else {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Device attachment point udpated: attachment points {}," +
+                                    "entities {}", device.attachmentPoints,
+                                    device.entities);
+                        }
+                    }
                 }
 
                 // generate updates
@@ -1604,11 +1631,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             }
         }
 
+        logger.debug("Triggering update to attachment points due to topology change.");
+
         while (diter.hasNext()) {
             Device d = diter.next();
             if (d.updateAttachmentPoint()) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Attachment point changed for device: {}", d);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Attachment point changed for device: {}", d);
                 }
                 sendDeviceMovedNotification(d);
             }
