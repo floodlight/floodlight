@@ -40,6 +40,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.util.MACAddress;
 
 /**
@@ -59,7 +60,6 @@ public class VirtualNetworkFilter
     implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener, IDeviceListener {
     protected static Logger log = LoggerFactory.getLogger(VirtualNetworkFilter.class);
     
-    private final short FLOW_MOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     private final short APP_ID = 20;
     
     // Our dependencies
@@ -425,8 +425,8 @@ public class VirtualNetworkFilter
         List<OFAction> actions = new ArrayList<OFAction>(); // no actions = drop
         long cookie = AppCookie.makeCookie(APP_ID, 0);
         fm.setCookie(cookie)
-        .setIdleTimeout(FLOW_MOD_DEFAULT_IDLE_TIMEOUT)
-        .setHardTimeout((short) 0)
+        .setIdleTimeout(ForwardingBase.FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+        .setHardTimeout(ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT)
         .setBufferId(OFPacketOut.BUFFER_ID_NONE)
         .setMatch(match)
         .setActions(actions)
