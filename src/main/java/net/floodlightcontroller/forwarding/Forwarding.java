@@ -296,13 +296,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);
         this.counterStore = context.getServiceImpl(ICounterStoreService.class);
+        
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        String idleTimeout = configOptions.get("idletimeout");
+        if (idleTimeout != null) {
+            FLOWMOD_DEFAULT_IDLE_TIMEOUT = Short.parseShort(idleTimeout);
+        }
+        
+        String hardTimeout = configOptions.get("hardtimeout");
+        if (hardTimeout != null) {
+            FLOWMOD_DEFAULT_HARD_TIMEOUT = Short.parseShort(hardTimeout);
+        }
+        log.debug("FlowMod idle timeout set to {} seconds", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        log.debug("FlowMod hard timeout set to {} seconds", FLOWMOD_DEFAULT_HARD_TIMEOUT);
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        if (log.isDebugEnabled()) {
-            log.debug("Starting " + this.getClass().getCanonicalName());
-        }
         super.startUp();
     }
 }
