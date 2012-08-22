@@ -54,14 +54,15 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ForwardingBase implements
-    IOFMessageListener,
-    IDeviceListener {
-    protected static Logger log =
+public abstract class ForwardingBase 
+	implements IOFMessageListener, IDeviceListener {
+    
+	protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
 
-    public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 5; // in seconds
-
+    public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+    public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+    
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceService deviceManager;
     protected IRoutingService routingEngine;
@@ -96,7 +97,7 @@ public abstract class ForwardingBase implements
     /**
      * Adds a listener for devicemanager and registers for PacketIns.
      */
-    public void startUp() {
+    protected void startUp() {
         deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
@@ -186,7 +187,8 @@ public abstract class ForwardingBase implements
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        fm.setIdleTimeout((short)5)
+        fm.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+        	.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(cookie)
             .setCommand(flowModCommand)
@@ -562,7 +564,8 @@ public abstract class ForwardingBase implements
                      & ~OFMatch.OFPFW_IN_PORT);
         fm.setCookie(cookie)
           .setHardTimeout((short) hardTimeout)
-          .setIdleTimeout((short) 5)
+          .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+          .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
           .setMatch(match)
           .setActions(actions)
