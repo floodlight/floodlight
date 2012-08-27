@@ -792,7 +792,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 if (newInfo.getUnicastValidTime() == null)
                     addLinkToBroadcastDomain(lt);
 
-                writeLink(lt, newInfo);
+                writeLinkToStorage(lt, newInfo);
                 updateOperation = UpdateOperation.LINK_UPDATED;
                 linkChanged = true;
 
@@ -847,7 +847,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 // Write changes to storage. This will always write the updated
                 // valid time, plus the port states if they've changed (i.e. if
                 // they weren't set to null in the previous block of code.
-                writeLink(lt, newInfo);
+                writeLinkToStorage(lt, newInfo);
 
                 if (linkChanged) {
                     updateOperation = getUpdateOperation(newInfo.getSrcPortState(),
@@ -1021,7 +1021,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                                      lt.getDst(), lt.getDstPort(),
                                                      getLinkType(lt, linkInfo),
                                                      operation));
-                            writeLink(lt, linkInfo);
+                            writeLinkToStorage(lt, linkInfo);
                             linkInfoChanged = true;
                         }
                     }
@@ -1281,7 +1281,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param lt The LinkTuple to write
      * @param linkInfo The LinkInfo to write
      */
-    void writeLink(Link lt, LinkInfo linkInfo) {
+    protected void writeLinkToStorage(Link lt, LinkInfo linkInfo) {
         LinkType type = getLinkType(lt, linkInfo);
 
         // Write only direct links.  Do not write links to external
@@ -1368,7 +1368,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * Removes a link from storage using an asynchronous call.
      * @param lt The LinkTuple to delete.
      */
-    void removeLinkFromStorage(Link lt) {
+    protected void removeLinkFromStorage(Link lt) {
         String id = getLinkId(lt);
         storageSource.deleteRowAsync(LINK_TABLE_NAME, id);
     }

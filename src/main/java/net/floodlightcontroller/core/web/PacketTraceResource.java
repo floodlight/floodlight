@@ -104,8 +104,10 @@ public class PacketTraceResource extends ServerResource {
             setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
         } else {
             log.debug ("Call setupFilter: sid:{} filter:{}, period:{}", 
-                        new Object[] {fp.getSessionId(), filter, fp.getPeriod()});
-            sid = manager.setupFilter(fp.getSessionId(), filter, fp.getPeriod());
+                        new Object[] {fp.getSessionId(), filter, 
+                                      fp.getPeriod()*1000});
+            sid = manager.setupFilter(fp.getSessionId(), filter, 
+                                      fp.getPeriod()*1000);
             output.setSessionId(sid);
             setStatus(Status.SUCCESS_OK);
         }

@@ -1403,7 +1403,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     	Iterator<Device> diter = deviceMap.values().iterator();
     	while (diter.hasNext()) {
             Device d = diter.next();
-            reclassifyDevice(d);
+            if (d.getEntityClass() != null && 
+            		entityClassNames.contains(d.getEntityClass().getName()))
+            	reclassifyDevice(d);
     	}
     }
 
