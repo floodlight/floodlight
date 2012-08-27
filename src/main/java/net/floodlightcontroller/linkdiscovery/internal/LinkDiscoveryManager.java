@@ -1581,11 +1581,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         // null role implies HA mode is not enabled.
                          Role role = floodlightProvider.getRole();
                          if (role == null || role == Role.MASTER) {
-                             log.trace("Rescheduling discovery task as role = {}", role);
+                             // log.trace("Rescheduling discovery task as role = {}", role);
                              discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL,
                                                 TimeUnit.SECONDS);
                          } else {
-                             log.trace("Stopped LLDP rescheduling due to role = {}.", role);
+                             // log.trace("Stopped LLDP rescheduling due to role = {}.", role);
                          }
                     }
                 }
@@ -1608,10 +1608,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // null role implies HA mode is not enabled.
         Role role = floodlightProvider.getRole();
         if (role == null || role == Role.MASTER) {
-            log.trace("Setup: Rescheduling discovery task. role = {}", role);
+            // log.trace("Setup: Rescheduling discovery task. role = {}", role);
             discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
         } else {
-                log.trace("Setup: Not scheduling LLDP as role = {}.", role);
+                // log.trace("Setup: Not scheduling LLDP as role = {}.", role);
         }
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);

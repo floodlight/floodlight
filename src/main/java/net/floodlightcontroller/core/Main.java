@@ -14,6 +14,12 @@ import net.floodlightcontroller.restserver.IRestApiService;
  * @author alexreimers
  */
 public class Main {
+    
+    private static IFloodlightModuleContext moduleContext;
+    
+    public static IFloodlightModuleContext floodlightContextGet () {
+        return moduleContext;
+    }
 
     /**
      * Main method to load configuration and modules
@@ -36,7 +42,7 @@ public class Main {
         
         // Load modules
         FloodlightModuleLoader fml = new FloodlightModuleLoader();
-        IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
+        moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
         // Run REST server
         IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
         restApi.run();
