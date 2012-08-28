@@ -156,7 +156,6 @@ public abstract class ForwardingBase
      * @param match OpenFlow fields to match on
      * @param srcSwPort Source switch port for the first hop
      * @param dstSwPort Destination switch port for final hop
-     * @param bufferId BufferId of the original PacketIn
      * @param cookie The cookie to set in each flow_mod
      * @param cntx The floodlight context
      * @param reqeustFlowRemovedNotifn if set to true then the switch would
@@ -169,7 +168,6 @@ public abstract class ForwardingBase
      */
     public boolean pushRoute(Route route, OFMatch match, 
                              Integer wildcard_hints,
-                             int bufferId,
                              OFPacketIn pi,
                              long pinSwitch,
                              long cookie, 
@@ -352,7 +350,7 @@ public abstract class ForwardingBase
      * @param outport   output port
      * @param cntx      context of the packet
      */
-    public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
+    protected void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
                            short outport, FloodlightContext cntx) {
         
         if (pi == null) {
@@ -390,11 +388,20 @@ public abstract class ForwardingBase
         short poLength =
                 (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
 
-        // set buffer_id, in_port
-        po.setBufferId(pi.getBufferId());
+        // If the switch doens't support buffering set the buffer id to be none
+        // otherwise it'll be the the buffer id of the PacketIn
+        if (sw.getFeaturesReply().getBuffers() == 0) {
+            // We set the PI buffer id here so we don't have to check again below
+            pi.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+            po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        } else {
+            po.setBufferId(pi.getBufferId());
+        }
+
         po.setInPort(pi.getInPort());
 
-        // set data - only if buffer_id == -1
+        // If the buffer id is none or the switch doesn's support buffering
+        // we send the data with the packet out
         if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
             poLength += packetData.length;
