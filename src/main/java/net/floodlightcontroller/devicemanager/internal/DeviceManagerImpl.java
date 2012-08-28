@@ -54,6 +54,7 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -697,7 +698,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
-                cleanupEntities(null, false);
+                cleanupEntities();
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
             }
@@ -1392,45 +1393,25 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
     }
 
-    /**
-     * Flush and/or reclassify all entities in a class
-     *
-     * @param entityClass the class to flush.  If null, flush all classes
-     * @param reclassify if true, begin an asynchronous task to reclassify the
-     * flushed entities
-     */
-    private void flushEntityCache (Set<String> entityClassChangedSet,
-                                   boolean reclassify) {
-        if (reclassify) return; // TODO
-
-        /*
-         * TODO This can be running at the same time by timer thread. Check
-         * and make sure that this is thread safe.
-         */
-        cleanupEntities(entityClassChangedSet, true);
-    }
-
     // *********************
     // IEntityClassListener
     // *********************
     @Override
     public void entityClassChanged (Set<String> entityClassNames) {
-
-        /*
-         * Flush the entire device entity cache for now.
-         */
-        flushEntityCache(entityClassNames, false);
-        return;
+    	/* iterate through the devices, reclassify the devices that belong
+    	 * to these entity class names
+    	 */
+    	Iterator<Device> diter = deviceMap.values().iterator();
+    	while (diter.hasNext()) {
+            Device d = diter.next();
+            reclassifyDevice(d);
+    	}
     }
 
     /**
      * Clean up expired entities/devices
-     *
-     * @param[in] forceCleanup ForceCleanup of entities irrespective of age
-     * @param[in] specificEntities Cleanup only a specific set of entities
      */
-    protected void cleanupEntities (Set<String> specificEntities,
-                                    boolean forceCleanup) {
+    protected void cleanupEntities () {
 
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
@@ -1446,23 +1427,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         while (diter.hasNext()) {
             Device d = diter.next();
 
-            /*
-             * If we are cleaning entities for a specific set of devices,
-             * skip if not applicable.
-             */
-            if (specificEntities != null && d.getEntityClass() != null &&
-               !specificEntities.contains(d.getEntityClass().getName())) {
-                continue;
-            }
-
             while (true) {
                 deviceUpdates.clear();
                 toRemove.clear();
                 toKeep.clear();
                 for (Entity e : d.getEntities()) {
-                    if (forceCleanup ||
-                        (e.getLastSeenTimestamp() != null &&
-                         0 > e.getLastSeenTimestamp().compareTo(cutoff))) {
+                    if (e.getLastSeenTimestamp() != null &&
+                         0 > e.getLastSeenTimestamp().compareTo(cutoff)) {
                         // individual entity needs to be removed
                         toRemove.add(e);
                     } else {
@@ -1522,7 +1493,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
     }
 
-    private void removeEntity(Entity removed,
+    protected void removeEntity(Entity removed,
                               IEntityClass entityClass,
                               Long deviceKey,
                               Collection<Entity> others) {
@@ -1605,6 +1576,28 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     Entity entity) {
         return new Device(device, entity);
     }
+    
+    protected Device allocateDevice(Device device, Set <Entity> entities) {
+    	List <AttachmentPoint> newPossibleAPs = 
+    			new ArrayList<AttachmentPoint>();
+    	List <AttachmentPoint> newAPs = 
+    			new ArrayList<AttachmentPoint>();
+    	for (Entity entity : entities) { 
+    		if (entity.switchDPID != null && entity.switchPort != null) {
+    			AttachmentPoint aP = 
+    					new AttachmentPoint(entity.switchDPID.longValue(), 
+    							entity.switchPort.shortValue(), 0);
+    			newPossibleAPs.add(aP);
+    		}
+    	}
+    	for (AttachmentPoint oldAP : device.attachmentPoints) {
+    		if (newPossibleAPs.contains(oldAP)) {
+    			newAPs.add(oldAP);
+    		}
+    	}
+    	return new Device(this, device.getDeviceKey(),newAPs, 
+    			entities, device.getEntityClass());
+    }
 
     @Override
     public void addSuppressAPs(long swId, short port) {
@@ -1653,4 +1646,74 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             listener.deviceMoved(d);
         }
     }
+    
+    /**
+     * this method will reclassify and reconcile a device - possibilities
+     * are - create new device(s), remove entities from this device. If the 
+     * device entity class did not change then it returns false else true.
+     * @param device
+     */
+    protected boolean reclassifyDevice(Device device)
+    {
+        // first classify all entities of this device
+        LinkedList<DeviceUpdate> deviceUpdates =
+                new LinkedList<DeviceUpdate>();
+        
+        Set <Entity> entitiesRetained = new HashSet <Entity>();
+        Set <Entity> entitiesRemoved = new HashSet <Entity>();
+        for (Entity entity : device.getEntities()) {
+            IEntityClass entityClass = 
+                    this.entityClassifier.classifyEntity(entity);
+            if (entityClass == null && device.getEntityClass() == null) {
+                entitiesRetained.add(entity);                
+                continue;
+            }
+            if (entityClass != null && device.getEntityClass() != null) {
+                if (entityClass.getName().
+                        contentEquals(device.getEntityClass().getName())) 
+                    entitiesRetained.add(entity);
+                else
+                    entitiesRemoved.add(entity);
+                continue;
+            }
+            entitiesRemoved.add(entity);
+        }
+        if (entitiesRemoved.isEmpty()) {
+            // no change in classification, so NOP
+            return false;
+        }
+                
+        for (Entity entity : entitiesRemoved) {
+            // remove this entity from this device
+            this.removeEntity(entity, device.getEntityClass(), 
+                              device.getDeviceKey(), entitiesRetained);
+            Device newDevice = this.learnDeviceByEntity(entity);
+            if (newDevice != null) 
+                deviceUpdates.add(new DeviceUpdate(newDevice, 
+                                                   DeviceUpdate.Change.ADD, 
+                                                   null));
+        }
+        
+        if (entitiesRetained.isEmpty()) {
+            this.deleteDevice(device);
+            deviceUpdates.add(new DeviceUpdate(device, 
+                                               DeviceUpdate.Change.DELETE, null
+                                               ));
+        } else {
+            EnumSet<DeviceField> changedFields =
+                    EnumSet.noneOf(DeviceField.class);
+            Device modDevice = null;
+            modDevice = allocateDevice(device, entitiesRetained);
+            for (Entity entity : entitiesRemoved) {
+                changedFields.addAll(findChangedFields(modDevice, entity));
+            }
+            deviceUpdates.add(new DeviceUpdate(modDevice, 
+                                               DeviceUpdate.Change.CHANGE, 
+                                               changedFields));
+        }
+        if (!deviceUpdates.isEmpty())
+            processUpdates(deviceUpdates);
+        return true;
+    }
+
 }
