@@ -39,11 +39,14 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl.ClassState;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifierMac;
+import net.floodlightcontroller.devicemanager.test.MockFlexEntityClassifier;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
@@ -1613,5 +1616,127 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                               d.getSwitchPortVlanIds(swp1x2));
             assertArrayEquals(new Short[0],
                               d.getSwitchPortVlanIds(swp2x1));
+    }
+    
+    @Test
+    public void testReclassifyDevice() {
+    	MockFlexEntityClassifier flexClassifier = 
+    			new MockFlexEntityClassifier();
+        deviceManager.entityClassifier= flexClassifier;
+        deviceManager.startUp(null);
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(anyLong())).andReturn(1L).anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort()))
+                                         .andReturn(false)
+                                         .anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort()))
+                                                  .andReturn(false)
+                                                  .anyTimes();
+        replay(mockTopology);
+        
+        //flexClassifier.createTestEntityClass("Class1");
+        
+        Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
+        Entity entity1b = new Entity(1L, (short)2, 1, 1L, 1, new Date());
+        Entity entity2 = new Entity(2L, (short)1, 2, 2L, 2, new Date());
+        Entity entity2b = new Entity(2L, (short)2, 2, 2L, 2, new Date());
+        
+        
+        Device d1 = deviceManager.learnDeviceByEntity(entity1);
+        Device d2 = deviceManager.learnDeviceByEntity(entity2);
+        Device d1b = deviceManager.learnDeviceByEntity(entity1b);
+        Device d2b = deviceManager.learnDeviceByEntity(entity2b);
+        
+        d1 = deviceManager.getDeviceIteratorForQuery(entity1.getMacAddress(), 
+        				entity1.getVlan(), entity1.getIpv4Address(), 
+        				entity1.getSwitchDPID(), entity1.getSwitchPort())
+        				.next();
+        d1b = deviceManager.getDeviceIteratorForQuery(entity1b.getMacAddress(), 
+				entity1b.getVlan(), entity1b.getIpv4Address(), 
+				entity1b.getSwitchDPID(), entity1b.getSwitchPort()).next();
+        
+        assertEquals(d1, d1b);
+        
+        d2 = deviceManager.getDeviceIteratorForQuery(entity2.getMacAddress(), 
+				entity2.getVlan(), entity2.getIpv4Address(), 
+				entity2.getSwitchDPID(), entity2.getSwitchPort()).next();
+        d2b = deviceManager.getDeviceIteratorForQuery(entity2b.getMacAddress(), 
+				entity2b.getVlan(), entity2b.getIpv4Address(), 
+				entity2b.getSwitchDPID(), entity2b.getSwitchPort()).next();
+        assertEquals(d2, d2b);
+        
+        IEntityClass eC1 = flexClassifier.createTestEntityClass("C1");
+        IEntityClass eC2 = flexClassifier.createTestEntityClass("C2");
+        
+        flexClassifier.addVlanEntities((short)1, eC1);
+        flexClassifier.addVlanEntities((short)2, eC1);
+        
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        
+        d1 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1));
+        d1b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1b));
+        
+        assertEquals(d1, d1b);
+        
+        d2 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2));
+        d2b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2b));
+        
+        assertEquals(d2, d2b);
+        				
+        flexClassifier.addVlanEntities((short)1, eC2);
+        
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        d1 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1));
+        d1b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1b));
+        d2 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2));
+        d2b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2b));
+        
+        assertNotSame(d1, d1b);
+       
+        assertNotSame(d2, d2b);
+        
+        flexClassifier.addVlanEntities((short)1, eC1);
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        ClassState classState = deviceManager.classStateMap.get(eC1);
+
+        Long deviceKey1 = null;
+        Long deviceKey1b = null;
+        Long deviceKey2 = null;
+        Long deviceKey2b = null;
+
+        deviceKey1 =
+        		classState.classIndex.findByEntity(entity1);
+        deviceKey1b =
+        		classState.classIndex.findByEntity(entity1b);
+        deviceKey2 =
+        		classState.classIndex.findByEntity(entity2);
+        deviceKey2b =
+        		classState.classIndex.findByEntity(entity2b);
+
+        assertEquals(deviceKey1, deviceKey1b);
+        
+        assertEquals(deviceKey2, deviceKey2b);
+
+
     }
 }
