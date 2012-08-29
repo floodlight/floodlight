@@ -165,7 +165,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                                        dstDap.getSwitchDPID(),
                                                        (short)dstDap.getPort());
                         if (route != null) {
-                            int bufferId = OFPacketOut.BUFFER_ID_NONE;
                             if (log.isTraceEnabled()) {
                                 log.trace("pushRoute match={} route={} " + 
                                           "destination={}:{}",
@@ -176,10 +175,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             long cookie = 
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             
-                            pushRoute(route, match, 0,
-                                      bufferId,
-                                      pi, sw.getId(), cookie, cntx, 
-                                      requestFlowRemovedNotifn, false,
+                            pushRoute(route, match, 0, pi, sw.getId(), cookie, 
+                                      cntx, requestFlowRemovedNotifn, false,
                                       OFFlowMod.OFPFC_ADD);
                         }
                     }
