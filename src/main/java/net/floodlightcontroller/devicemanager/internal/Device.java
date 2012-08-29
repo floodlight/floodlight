@@ -490,7 +490,9 @@ public class Device implements IDevice {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("Device [entityClass=");
+        builder.append("Device [deviceKey=");
+        builder.append(deviceKey);
+        builder.append(", entityClass=");
         builder.append(entityClass.getName());
         builder.append(", MAC=");
         builder.append(macAddressString);

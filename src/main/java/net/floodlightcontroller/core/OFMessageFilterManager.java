@@ -77,9 +77,9 @@ public class OFMessageFilterManager
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
     protected Timer timer = null;
 
-    protected final int MAX_FILTERS=5;
-    protected final long MAX_FILTER_TIME= 300000;  // maximum filter time is 5 minutes.
-    protected final int TIMER_INTERVAL = 1000;  // 1 second time interval.
+    protected int MAX_FILTERS=5;
+    protected long MAX_FILTER_TIME= 300000;  // maximum filter time is 5 minutes.
+    protected int TIMER_INTERVAL = 1000;  // 1 second time interval.
 
     public static final String SUCCESS                     = "0";
     public static final String FILTER_SETUP_FAILED         = "-1001"; 
@@ -131,16 +131,16 @@ public class OFMessageFilterManager
         return s;  // the return string is the session ID.
     }
 
-    public String setupFilter(String sid, ConcurrentHashMap<String,String> f, int deltaInSecond) {
+    public String setupFilter(String sid, ConcurrentHashMap<String,String> f, int deltaInMilliSeconds) {
 
         if (sid == null) {
             // Delta in filter needs to be milliseconds
-            log.debug("Adding new filter: {} for {} seconds", f, deltaInSecond);
-            return addFilter(f, deltaInSecond * 1000);
+            log.debug("Adding new filter: {} for {} ms", f, deltaInMilliSeconds);
+            return addFilter(f, deltaInMilliSeconds);
         } else {// this is the session id.
             // we will ignore the hash map features.
-            if (deltaInSecond > 0)  
-                return refreshFilter(sid, deltaInSecond * 1000);
+            if (deltaInMilliSeconds > 0)  
+                return refreshFilter(sid, deltaInMilliSeconds);
             else 
                 return deleteFilter(sid);
         }
