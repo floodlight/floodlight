@@ -77,6 +77,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 case NONE:
                     // don't do anything
                     return Command.CONTINUE;
+                case FORWARD_OR_FLOOD:
                 case FORWARD:
                     doForwardFlow(sw, pi, cntx, false);
                     return Command.CONTINUE;
