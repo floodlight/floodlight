@@ -453,7 +453,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     protected boolean IPIsBroadcast(int IPAddress) {
         // inverted subnet mask
         int inv_subnet_mask = ~this.subnet_mask;
-
         return ((IPAddress & inv_subnet_mask) == inv_subnet_mask);
     }
 
@@ -470,11 +469,15 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                 allowBroadcast = false;
             }
             if (allowBroadcast == true) {
-                logger.info("allowing broadcast traffic");
-                decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+                if (logger.isTraceEnabled())
+                    logger.trace("Allowing broadcast traffic for PacketIn={}", pi);
+                
+                decision = new FirewallDecision(IRoutingDecision.RoutingAction.MULTICAST);
                 decision.addToContext(cntx);
             } else {
-                logger.info("blocking malformed broadcast traffic");
+                if (logger.isTraceEnabled())
+                    logger.trace("Blocking malformed broadcast traffic for PacketIn={}", pi);
+                
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
                 decision.addToContext(cntx);
             }
@@ -482,40 +485,39 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         }
         /* ARP response (unicast) can be let through without filtering through rules by uncommenting the code below */
         /*
-		else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
-			logger.info("allowing ARP traffic");
-			decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
-			decision.addToContext(cntx);
-			return Command.CONTINUE;
-		}
-         */
+        else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+            logger.info("allowing ARP traffic");
+            decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+            decision.addToContext(cntx);
+            return Command.CONTINUE;
+        }
+        */
 
         // check if we have a matching rule for this packet/flow
         // and no decision is taken yet
         if (decision == null) {
             RuleWildcardsPair match_ret = this.matchWithRule(sw, pi, cntx);
             FirewallRule rule = match_ret.rule;
-            /*if (rule != null) {
-                String ruleInfo = "priority: " + (new Integer(rule.priority)).toString();
-                ruleInfo += ", protocol: " + (new Integer(rule.proto_type)).toString();
-                ruleInfo += ", deny rule? ";
-                if (rule.is_denyrule) {
-                    ruleInfo += "yes";
-                } else {
-                    ruleInfo += "no";
-                }
-                logger.info("Rule - {}", ruleInfo);
-            }*/
-            if (rule == null || rule.is_denyrule == true) {
+
+            if (rule == null || rule.is_denyrule) {
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
                 decision.setWildcards(match_ret.wildcards);
                 decision.addToContext(cntx);
-                logger.info("no firewall rule found to allow this packet/flow, blocking packet/flow");
+                if (logger.isTraceEnabled()) {
+                    if (rule == null)
+                        logger.trace("No firewall rule found for PacketIn={}, blocking flow",
+                                    pi);
+                    else if (rule.is_denyrule) {
+                        logger.trace("Deny rule={} match for PacketIn={}",
+                                     rule, pi);
+                    }
+                }
             } else {
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
                 decision.setWildcards(match_ret.wildcards);
                 decision.addToContext(cntx);
-                logger.info("rule matched, allowing traffic");
+                if (logger.isTraceEnabled())
+                    logger.trace("Allow rule={} match for PacketIn={}", rule, pi);
             }
         }
 
