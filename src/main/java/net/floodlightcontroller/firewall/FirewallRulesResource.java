@@ -15,11 +15,8 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-import net.floodlightcontroller.firewall.Firewall;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-
 
 public class FirewallRulesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(FirewallRulesResource.class);

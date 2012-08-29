@@ -9,8 +9,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
-
-public class FirewallRule implements Comparable {
+public class FirewallRule implements Comparable<FirewallRule> {
     public int ruleid;
     public short src_inport;
     public long src_mac;
@@ -78,7 +77,7 @@ public class FirewallRule implements Comparable {
      * negative if less than 'rule'
      * greater than zero if greater priority rule than 'rule'
      */
-    public int compareTo(Object rule) {
+    public int compareTo(FirewallRule rule) {
         return this.priority - ((FirewallRule)rule).priority;
     }
 

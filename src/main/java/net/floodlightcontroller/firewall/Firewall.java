@@ -33,7 +33,6 @@ import net.floodlightcontroller.storage.StorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class Firewall implements IFirewallService, IOFMessageListener, IFloodlightModule {
 
     protected IFloodlightProviderService floodlightProvider;
@@ -273,6 +272,9 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                             decision,
                             cntx);
                 }
+                break;
+            default:
+            	break;
         }
 
         return Command.CONTINUE;
