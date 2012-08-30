@@ -333,7 +333,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         }
         // add rule to database
         Map<String, Object> entry = new HashMap<String, Object>();
-        entry.put(COLUMN_RULEID, rule.ruleid);
+        entry.put(COLUMN_RULEID, Integer.toString(rule.ruleid));
         entry.put(COLUMN_SWITCHID, Long.toString(rule.switchid));
         entry.put(COLUMN_SRC_INPORT, Short.toString(rule.src_inport));
         entry.put(COLUMN_SRC_MAC, Long.toString(rule.src_mac));
@@ -369,7 +369,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
             }
         }
         // delete from database
-        storageSource.deleteRow(TABLE_NAME, ruleid);
+        storageSource.deleteRow(TABLE_NAME, Integer.toString(ruleid));
     }
 
     /**

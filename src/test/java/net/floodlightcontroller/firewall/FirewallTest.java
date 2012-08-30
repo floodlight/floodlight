@@ -221,6 +221,47 @@ public class FirewallTest extends FloodlightTestCase {
         // no rules to match, so firewall should deny
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
     }
+    
+    @Test
+    public void testReadRulesFromStorage() throws Exception {
+        // add 2 rules first
+        FirewallRule rule = new FirewallRule();
+        rule.src_inport = 2;
+        rule.src_mac = MACAddress.valueOf("00:00:00:00:00:01").toLong();
+        rule.dst_mac = MACAddress.valueOf("00:00:00:00:00:02").toLong();
+        rule.priority = 1;
+        rule.is_denyrule = true;
+        firewall.addRule(rule);
+        rule = new FirewallRule();
+        rule.src_inport = 3;
+        rule.src_mac = MACAddress.valueOf("00:00:00:00:00:02").toLong();
+        rule.dst_mac = MACAddress.valueOf("00:00:00:00:00:01").toLong();
+        rule.proto_type = IPv4.PROTOCOL_TCP;
+        rule.wildcard_proto_type = false;
+        rule.proto_dstport = 80;
+        rule.priority = 2;
+        rule.is_denyrule = false;
+        firewall.addRule(rule);
+
+        List<FirewallRule> rules = firewall.readRulesFromStorage();
+        // verify rule 1
+        FirewallRule r = rules.get(0);
+        assertEquals(r.src_inport, 2);
+        assertEquals(r.priority, 1);
+        assertEquals(r.src_mac, MACAddress.valueOf("00:00:00:00:00:01").toLong());
+        assertEquals(r.dst_mac, MACAddress.valueOf("00:00:00:00:00:02").toLong());
+        assertEquals(r.is_denyrule, true);
+        // verify rule 2
+        r = rules.get(1);
+        assertEquals(r.src_inport, 3);
+        assertEquals(r.priority, 2);
+        assertEquals(r.src_mac, MACAddress.valueOf("00:00:00:00:00:02").toLong());
+        assertEquals(r.dst_mac, MACAddress.valueOf("00:00:00:00:00:01").toLong());
+        assertEquals(r.proto_type, IPv4.PROTOCOL_TCP);
+        assertEquals(r.proto_dstport, 80);
+        assertEquals(r.wildcard_proto_type, false);
+        assertEquals(r.is_denyrule, false);
+    }
 
     @Test
     public void testRuleInsertionIntoStorage() throws Exception {
@@ -233,7 +274,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         List<Map<String, Object>> rulesFromStorage = firewall.getStorageRules();
         assertEquals(1, rulesFromStorage.size());
-        assertEquals(rulesFromStorage.get(0).get("ruleid"), rule.ruleid);
+        assertEquals(Integer.parseInt((String)rulesFromStorage.get(0).get("ruleid")), rule.ruleid);
     }
 
     @Test
@@ -248,7 +289,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         List<Map<String, Object>> rulesFromStorage = firewall.getStorageRules();
         assertEquals(1, rulesFromStorage.size());
-        assertEquals(rulesFromStorage.get(0).get("ruleid"), rid);
+        assertEquals(Integer.parseInt((String)rulesFromStorage.get(0).get("ruleid")), rid);
 
         // delete rule
         firewall.deleteRule(rid);
