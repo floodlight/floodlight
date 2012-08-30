@@ -62,9 +62,9 @@ public class FirewallRule implements Comparable<FirewallRule> {
      */
     public int genID() {
         int uid = this.hashCode();
-        if (uid <= 0) {
+        if (uid < 0) {
             uid = Math.abs(uid);
-            uid *= 15551;
+            uid = uid * 15551;
         }
         return uid;
     }
