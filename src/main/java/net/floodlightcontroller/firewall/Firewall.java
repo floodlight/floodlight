@@ -33,7 +33,6 @@ import net.floodlightcontroller.storage.StorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class Firewall implements IFirewallService, IOFMessageListener, IFloodlightModule {
 
     protected IFloodlightProviderService floodlightProvider;
@@ -41,7 +40,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     protected IStorageSourceService storageSource;
     protected IRestApiService restApi;
     protected static Logger logger;
-    protected ArrayList<FirewallRule> rules;
+    protected List<FirewallRule> rules; // protected by synchornized
     protected boolean enabled;
     protected int subnet_mask = IPv4.toIPv4Address("255.255.255.0");
 
@@ -120,19 +119,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         l.add(IRestApiService.class);
         return l;
     }
-
-    public IFloodlightProviderService getFloodlightProvider() {
-        return floodlightProvider;
-    }
-
-    public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
-    }
-
-    public void setStorageSource(IStorageSourceService storageSource) {
-        this.storageSource = storageSource;
-    }
-
+    
     /**
      * Reads the rules from the storage and creates a sorted arraylist of FirewallRule
      * from them.
@@ -224,14 +211,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         return l;
     }
 
-    /**
-     * used for debugging and unittests
-     * @return the number of rules
-     */
-    public int countRules() {
-        return this.rules.size();
-    }
-
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
@@ -255,12 +234,14 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         // storage, create table and read rules
         storageSource.createTable(TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(TABLE_NAME, COLUMN_RULEID);
-        this.rules = readRulesFromStorage();
+        synchronized (rules) {
+            this.rules = readRulesFromStorage();
+        }
     }
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        if (this.enabled == false) return Command.CONTINUE;
+        if (!this.enabled) return Command.CONTINUE;
 
         switch (msg.getType()) {
             case PACKET_IN:
@@ -273,6 +254,9 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                             decision,
                             cntx);
                 }
+                break;
+            default:
+            	break;
         }
 
         return Command.CONTINUE;
@@ -282,7 +266,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     public void enableFirewall() {
         // check if the firewall module is not listening for events, if not, then start listening (enable it)
         List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
-        if (listeners != null && listeners.contains(this) == false) {
+        if ((listeners != null) && (!listeners.contains(this))) {
             // enable firewall, i.e. listen for packet-in events
             floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         }
@@ -293,7 +277,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     public void disableFirewall() {
         // check if the firewall module is listening for events, if yes, then remove it from listeners (disable it)
         List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
-        if (listeners != null && listeners.contains(this) == true) {
+        if ((listeners != null) && (listeners.contains(this))) {
             // disable firewall, i.e. stop listening for packet-in events
             floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
         }
@@ -334,7 +318,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     }
 
     @Override
-    public void addRule(FirewallRule rule) {
+    public synchronized void addRule(FirewallRule rule) {
         rule.ruleid = rule.genID();
         int i = 0;
         // locate the position of the new rule in the sorted arraylist
@@ -374,7 +358,7 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     }
 
     @Override
-    public void deleteRule(int ruleid) {
+    public synchronized void deleteRule(int ruleid) {
         Iterator<FirewallRule> iter = this.rules.iterator();
         while (iter.hasNext()) {
             FirewallRule r = iter.next();
@@ -417,18 +401,19 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         WildcardsPair wildcards = new WildcardsPair();
 
-        Iterator<FirewallRule> iter = this.rules.iterator();
-
-        FirewallRule rule = null;
-        // iterate through list to find a matching firewall rule
-        while (iter.hasNext()) {
-            // get next rule from list
-            rule = iter.next();
-
-            // check if rule matches
-            if (rule.matchesFlow(sw.getId(), pi.getInPort(), eth, wildcards) == true) {
-                matched_rule = rule;
-                break;
+        synchronized (rules) {
+            Iterator<FirewallRule> iter = this.rules.iterator();
+            FirewallRule rule = null;
+            // iterate through list to find a matching firewall rule
+            while (iter.hasNext()) {
+                // get next rule from list
+                rule = iter.next();
+    
+                // check if rule matches
+                if (rule.matchesFlow(sw.getId(), pi.getInPort(), eth, wildcards) == true) {
+                    matched_rule = rule;
+                    break;
+                }
             }
         }
 
@@ -451,7 +436,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     protected boolean IPIsBroadcast(int IPAddress) {
         // inverted subnet mask
         int inv_subnet_mask = ~this.subnet_mask;
-
         return ((IPAddress & inv_subnet_mask) == inv_subnet_mask);
     }
 
@@ -468,11 +452,15 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
                 allowBroadcast = false;
             }
             if (allowBroadcast == true) {
-                logger.info("allowing broadcast traffic");
-                decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+                if (logger.isTraceEnabled())
+                    logger.trace("Allowing broadcast traffic for PacketIn={}", pi);
+                
+                decision = new FirewallDecision(IRoutingDecision.RoutingAction.MULTICAST);
                 decision.addToContext(cntx);
             } else {
-                logger.info("blocking malformed broadcast traffic");
+                if (logger.isTraceEnabled())
+                    logger.trace("Blocking malformed broadcast traffic for PacketIn={}", pi);
+                
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
                 decision.addToContext(cntx);
             }
@@ -480,40 +468,39 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
         }
         /* ARP response (unicast) can be let through without filtering through rules by uncommenting the code below */
         /*
-		else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
-			logger.info("allowing ARP traffic");
-			decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
-			decision.addToContext(cntx);
-			return Command.CONTINUE;
-		}
-         */
+        else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+            logger.info("allowing ARP traffic");
+            decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+            decision.addToContext(cntx);
+            return Command.CONTINUE;
+        }
+        */
 
         // check if we have a matching rule for this packet/flow
         // and no decision is taken yet
         if (decision == null) {
             RuleWildcardsPair match_ret = this.matchWithRule(sw, pi, cntx);
             FirewallRule rule = match_ret.rule;
-            /*if (rule != null) {
-                String ruleInfo = "priority: " + (new Integer(rule.priority)).toString();
-                ruleInfo += ", protocol: " + (new Integer(rule.proto_type)).toString();
-                ruleInfo += ", deny rule? ";
-                if (rule.is_denyrule) {
-                    ruleInfo += "yes";
-                } else {
-                    ruleInfo += "no";
-                }
-                logger.info("Rule - {}", ruleInfo);
-            }*/
-            if (rule == null || rule.is_denyrule == true) {
+
+            if (rule == null || rule.is_denyrule) {
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.DROP);
                 decision.setWildcards(match_ret.wildcards);
                 decision.addToContext(cntx);
-                logger.info("no firewall rule found to allow this packet/flow, blocking packet/flow");
+                if (logger.isTraceEnabled()) {
+                    if (rule == null)
+                        logger.trace("No firewall rule found for PacketIn={}, blocking flow",
+                                    pi);
+                    else if (rule.is_denyrule) {
+                        logger.trace("Deny rule={} match for PacketIn={}",
+                                     rule, pi);
+                    }
+                }
             } else {
                 decision = new FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
                 decision.setWildcards(match_ret.wildcards);
                 decision.addToContext(cntx);
-                logger.info("rule matched, allowing traffic");
+                if (logger.isTraceEnabled())
+                    logger.trace("Allow rule={} match for PacketIn={}", rule, pi);
             }
         }
 

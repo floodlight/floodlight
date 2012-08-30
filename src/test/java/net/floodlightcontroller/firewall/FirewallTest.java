@@ -1,6 +1,5 @@
 package net.floodlightcontroller.firewall;
 
-import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
@@ -217,7 +216,7 @@ public class FirewallTest extends FloodlightTestCase {
         firewall.receive(sw, this.packetIn, cntx);
         verify(sw);
 
-        assertEquals(0, firewall.countRules());
+        assertEquals(0, firewall.rules.size());
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         // no rules to match, so firewall should deny
@@ -315,7 +314,7 @@ public class FirewallTest extends FloodlightTestCase {
         firewall.receive(sw, this.packetIn, cntx);
         verify(sw);
 
-        assertEquals(1, firewall.countRules());
+        assertEquals(1, firewall.rules.size());
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertNull(decision);
@@ -378,7 +377,7 @@ public class FirewallTest extends FloodlightTestCase {
         rule.priority = 2;
         firewall.addRule(rule);
 
-        assertEquals(2, firewall.countRules());
+        assertEquals(2, firewall.rules.size());
 
         // packet destined to TCP port 80 - should be allowed
 
@@ -417,7 +416,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         // broadcast-ARP traffic should be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
         
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -451,7 +450,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         // broadcast traffic should be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
     }
 
     @Test

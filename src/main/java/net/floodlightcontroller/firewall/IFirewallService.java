@@ -1,6 +1,5 @@
 package net.floodlightcontroller.firewall;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

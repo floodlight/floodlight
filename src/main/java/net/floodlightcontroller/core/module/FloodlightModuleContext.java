@@ -71,6 +71,19 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	        retMap = new HashMap<String, String>();
 	        configParams.put(module.getClass(), retMap);
 	    }
+
+	    // also add any configuration parameters for superclasses, but
+	    // only if more specific configuration does not override it
+	    for (Class<? extends IFloodlightModule> c : configParams.keySet()) {
+	        if (c.isInstance(module)) {
+	            for (Map.Entry<String, String> ent : configParams.get(c).entrySet()) {
+	                if (!retMap.containsKey(ent.getKey())) {
+	                    retMap.put(ent.getKey(), ent.getValue());
+	                }
+	            }
+	        }
+	    }
+
 	    return retMap;
 	}
 	

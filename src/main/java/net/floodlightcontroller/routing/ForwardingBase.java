@@ -54,14 +54,15 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ForwardingBase implements
-    IOFMessageListener,
-    IDeviceListener {
-    protected static Logger log =
+public abstract class ForwardingBase 
+	implements IOFMessageListener, IDeviceListener {
+    
+	protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
 
-    public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 5; // in seconds
-
+    public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+    public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+    
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceService deviceManager;
     protected IRoutingService routingEngine;
@@ -96,7 +97,7 @@ public abstract class ForwardingBase implements
     /**
      * Adds a listener for devicemanager and registers for PacketIns.
      */
-    public void startUp() {
+    protected void startUp() {
         deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
@@ -155,7 +156,6 @@ public abstract class ForwardingBase implements
      * @param match OpenFlow fields to match on
      * @param srcSwPort Source switch port for the first hop
      * @param dstSwPort Destination switch port for final hop
-     * @param bufferId BufferId of the original PacketIn
      * @param cookie The cookie to set in each flow_mod
      * @param cntx The floodlight context
      * @param reqeustFlowRemovedNotifn if set to true then the switch would
@@ -168,7 +168,6 @@ public abstract class ForwardingBase implements
      */
     public boolean pushRoute(Route route, OFMatch match, 
                              Integer wildcard_hints,
-                             int bufferId,
                              OFPacketIn pi,
                              long pinSwitch,
                              long cookie, 
@@ -186,7 +185,8 @@ public abstract class ForwardingBase implements
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        fm.setIdleTimeout((short)5)
+        fm.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+        	.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
             .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCookie(cookie)
             .setCommand(flowModCommand)
@@ -350,7 +350,7 @@ public abstract class ForwardingBase implements
      * @param outport   output port
      * @param cntx      context of the packet
      */
-    public void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
+    protected void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
                            short outport, FloodlightContext cntx) {
         
         if (pi == null) {
@@ -388,11 +388,20 @@ public abstract class ForwardingBase implements
         short poLength =
                 (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
 
-        // set buffer_id, in_port
-        po.setBufferId(pi.getBufferId());
+        // If the switch doens't support buffering set the buffer id to be none
+        // otherwise it'll be the the buffer id of the PacketIn
+        if (sw.getFeaturesReply().getBuffers() == 0) {
+            // We set the PI buffer id here so we don't have to check again below
+            pi.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+            po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        } else {
+            po.setBufferId(pi.getBufferId());
+        }
+
         po.setInPort(pi.getInPort());
 
-        // set data - only if buffer_id == -1
+        // If the buffer id is none or the switch doesn's support buffering
+        // we send the data with the packet out
         if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
             poLength += packetData.length;
@@ -562,7 +571,8 @@ public abstract class ForwardingBase implements
                      & ~OFMatch.OFPFW_IN_PORT);
         fm.setCookie(cookie)
           .setHardTimeout((short) hardTimeout)
-          .setIdleTimeout((short) 5)
+          .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+          .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
           .setMatch(match)
           .setActions(actions)
