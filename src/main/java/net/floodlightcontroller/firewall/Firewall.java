@@ -263,25 +263,18 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     }
 
     @Override
-    public void enableFirewall() {
-        // check if the firewall module is not listening for events, if not, then start listening (enable it)
+    public void enableFirewall(boolean enabled) {
+        logger.info("Setting firewall to {}", enabled);
+        this.enabled = enabled;
+        // add/remove ourself as a packetin listener
         List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
         if ((listeners != null) && (!listeners.contains(this))) {
-            // enable firewall, i.e. listen for packet-in events
-            floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+            if (enabled) {
+                floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+            } else {
+                floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
+            }
         }
-        this.enabled = true;
-    }
-
-    @Override
-    public void disableFirewall() {
-        // check if the firewall module is listening for events, if yes, then remove it from listeners (disable it)
-        List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
-        if ((listeners != null) && (listeners.contains(this))) {
-            // disable firewall, i.e. stop listening for packet-in events
-            floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-        }
-        this.enabled = false;
     }
 
     @Override

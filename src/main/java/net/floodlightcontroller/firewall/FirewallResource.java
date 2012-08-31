@@ -23,10 +23,10 @@ public class FirewallResource extends ServerResource {
                 get(IFirewallService.class.getCanonicalName());
 
         if (op.equalsIgnoreCase("enable")) {
-            firewall.enableFirewall();
+            firewall.enableFirewall(true);
             return "{\"status\" : \"success\", \"details\" : \"firewall running\"}";
         } else if (op.equalsIgnoreCase("disable")) {
-            firewall.disableFirewall();
+            firewall.enableFirewall(false);
             return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
         } else if (op.equalsIgnoreCase("storageRules")) {
             return firewall.getStorageRules();

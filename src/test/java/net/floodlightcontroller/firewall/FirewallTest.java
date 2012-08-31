@@ -209,7 +209,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testNoRules() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
         // simulate a packet-in event
         this.setPacketIn(tcpPacket);
         firewall.receive(sw, this.packetIn, cntx);
@@ -322,7 +322,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testSimpleAllowRule() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
 
         // add TCP rule
         FirewallRule rule = new FirewallRule();
@@ -360,7 +360,7 @@ public class FirewallTest extends FloodlightTestCase {
 
     @Test
     public void testOverlappingRules() throws Exception {
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
 
         // add TCP port 80 (destination only) allow rule
         FirewallRule rule = new FirewallRule();
@@ -403,7 +403,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testARP() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
 
         // no rules inserted so all traffic other than broadcast and ARP-request-broadcast should be blocked
 
@@ -434,7 +434,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testIPBroadcast() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
         
         // set subnet mask for IP broadcast
         firewall.setSubnetMask("255.255.255.0");
@@ -455,7 +455,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testMalformedIPBroadcast() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
 
         // no rules inserted so all traffic other than broadcast and ARP-request-broadcast should be blocked
 
@@ -473,7 +473,7 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void testLayer2Rule() throws Exception {
         // enable firewall first
-        firewall.enableFirewall();
+        firewall.enableFirewall(true);
 
         // add L2 rule
         FirewallRule rule = new FirewallRule();

@@ -8,14 +8,10 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public interface IFirewallService extends IFloodlightService {
 
     /**
-     * Enables the Firewall module
+     * Enables/disables the firewall.
+     * @param enable Whether to enable or disable the firewall.
      */
-    public void enableFirewall();
-
-    /**
-     * Disables the Firewall module
-     */
-    public void disableFirewall();
+    public void enableFirewall(boolean enable);
 
     /**
      * Returns all of the firewall rules
