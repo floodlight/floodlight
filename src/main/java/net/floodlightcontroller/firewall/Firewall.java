@@ -266,15 +266,6 @@ public class Firewall implements IFirewallService, IOFMessageListener, IFloodlig
     public void enableFirewall(boolean enabled) {
         logger.info("Setting firewall to {}", enabled);
         this.enabled = enabled;
-        // add/remove ourself as a packetin listener
-        List<IOFMessageListener> listeners = floodlightProvider.getListeners().get(OFType.PACKET_IN);
-        if ((listeners != null) && (!listeners.contains(this))) {
-            if (enabled) {
-                floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-            } else {
-                floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-            }
-        }
     }
 
     @Override
