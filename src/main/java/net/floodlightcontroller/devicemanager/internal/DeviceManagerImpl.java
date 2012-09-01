@@ -1126,7 +1126,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     device.entities);
                         }
                     } else {
-                        if (false && logger.isDebugEnabled()) {
+                        if (logger.isDebugEnabled()) {
                             logger.debug("Device attachment point udpated: attachment points {}," +
                                     "entities {}", device.attachmentPoints,
                                     device.entities);
@@ -1149,7 +1149,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     device.entities);
                         }
                     } else {
-                        if (false && logger.isDebugEnabled()) {
+                        if (logger.isDebugEnabled()) {
                             logger.debug("Device attachment point udpated: attachment points {}," +
                                     "entities {}", device.attachmentPoints,
                                     device.entities);

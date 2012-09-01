@@ -39,7 +39,6 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.storage.web.StorageWebRoutable;
 
 import org.slf4j.Logger;
@@ -486,8 +485,7 @@ public abstract class AbstractStorageSource
             IFloodlightService> m = 
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightService>();
-        // m.put(IStorageSourceService.class, this);
-        m.put(IStorageSourceService.class, new MemoryStorageSource());
+        m.put(IStorageSourceService.class, this);
         return m;
     }
     
