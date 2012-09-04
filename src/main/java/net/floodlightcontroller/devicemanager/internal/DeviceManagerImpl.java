@@ -1596,6 +1596,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     			newAPs.add(oldAP);
     		}
     	}
+    	if (newAPs.isEmpty())
+    		newAPs = null;
     	return new Device(this, device.getDeviceKey(),newAPs, 
     			entities, device.getEntityClass());
     }
@@ -1656,65 +1658,85 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean reclassifyDevice(Device device)
     {
-        // first classify all entities of this device
-        LinkedList<DeviceUpdate> deviceUpdates =
-                new LinkedList<DeviceUpdate>();
-        
-        Set <Entity> entitiesRetained = new HashSet <Entity>();
-        Set <Entity> entitiesRemoved = new HashSet <Entity>();
-        for (Entity entity : device.getEntities()) {
-            IEntityClass entityClass = 
-                    this.entityClassifier.classifyEntity(entity);
-            if (entityClass == null && device.getEntityClass() == null) {
-                entitiesRetained.add(entity);                
-                continue;
-            }
-            if (entityClass != null && device.getEntityClass() != null) {
-                if (entityClass.getName().
-                        contentEquals(device.getEntityClass().getName())) 
-                    entitiesRetained.add(entity);
-                else
-                    entitiesRemoved.add(entity);
-                continue;
-            }
-            entitiesRemoved.add(entity);
-        }
-        if (entitiesRemoved.isEmpty()) {
-            // no change in classification, so NOP
-            return false;
-        }
-                
-        for (Entity entity : entitiesRemoved) {
-            // remove this entity from this device
-            this.removeEntity(entity, device.getEntityClass(), 
-                              device.getDeviceKey(), entitiesRetained);
-            Device newDevice = this.learnDeviceByEntity(entity);
-            if (newDevice != null) 
-                deviceUpdates.add(new DeviceUpdate(newDevice, 
-                                                   DeviceUpdate.Change.ADD, 
-                                                   null));
-        }
-        
-        if (entitiesRetained.isEmpty()) {
-            this.deleteDevice(device);
-            deviceUpdates.add(new DeviceUpdate(device, 
-                                               DeviceUpdate.Change.DELETE, null
-                                               ));
-        } else {
-            EnumSet<DeviceField> changedFields =
-                    EnumSet.noneOf(DeviceField.class);
-            Device modDevice = null;
-            modDevice = allocateDevice(device, entitiesRetained);
-            for (Entity entity : entitiesRemoved) {
-                changedFields.addAll(findChangedFields(modDevice, entity));
-            }
-            deviceUpdates.add(new DeviceUpdate(modDevice, 
-                                               DeviceUpdate.Change.CHANGE, 
-                                               changedFields));
-        }
-        if (!deviceUpdates.isEmpty())
-            processUpdates(deviceUpdates);
-        return true;
+    	// first classify all entities of this device
+    	LinkedList<DeviceUpdate> deviceUpdates =
+    			new LinkedList<DeviceUpdate>();
+
+    	Set <Entity> entitiesRetained = new HashSet <Entity>();
+    	Set <Entity> entitiesRemoved = new HashSet <Entity>();
+    	for (Entity entity : device.getEntities()) {
+    		IEntityClass entityClass = 
+    				this.entityClassifier.classifyEntity(entity);
+    		if (entityClass == null && device.getEntityClass() == null) {
+    			entitiesRetained.add(entity);                
+    			continue;
+    		}
+    		if (entityClass != null && device.getEntityClass() != null) {
+    			if (entityClass.getName().
+    					contentEquals(device.getEntityClass().getName())) {
+    				entitiesRetained.add(entity);
+    			} else {
+    				entitiesRemoved.add(entity);
+    			}
+    			continue;
+    		}
+    		entitiesRemoved.add(entity);
+    	}
+    	if (entitiesRemoved.isEmpty()) {
+    		// no change in classification, so NOP
+    		return false;
+    	}
+
+    	for (Entity entity : entitiesRemoved) {
+    		// remove this entity from this device
+    		this.removeEntity(entity, device.getEntityClass(), 
+    				device.getDeviceKey(), entitiesRetained);
+
+    		Device newDevice = this.learnDeviceByEntity(entity);
+    		if (newDevice != null) 
+    			deviceUpdates.add(new DeviceUpdate(newDevice, 
+    					DeviceUpdate.Change.ADD, 
+    					null));
+
+    	}
+
+    	if (entitiesRetained.isEmpty()) {
+    		this.deleteDevice(device);
+    		deviceMap.remove(device);
+    		deviceUpdates.add(new DeviceUpdate(device, 
+    				DeviceUpdate.Change.DELETE, null
+    				));
+    	} else {
+    		EnumSet<DeviceField> changedFields =
+    				EnumSet.noneOf(DeviceField.class);
+    		Device modDevice = null;
+    		modDevice = allocateDevice(device, entitiesRetained);
+    		// Add the new device to the primary map with a simple put
+    		deviceMap.put(device.getDeviceKey(), modDevice);
+
+    		// update indices
+    		while (true) {
+    			if (updateIndices(modDevice, device.getDeviceKey())) {
+    				break;
+    			}
+    			// TODO
+    		}
+
+    		for (Entity entity : entitiesRemoved) {
+    			EnumSet<DeviceField> changes = 
+    					findChangedFields(modDevice, entity);
+    			for (DeviceField change : changes) {
+    				logger.debug("change - " + change);
+    			}
+    			changedFields.addAll(changes);
+    		}
+    		deviceUpdates.add(new DeviceUpdate(modDevice, 
+    				DeviceUpdate.Change.CHANGE, 
+    				changedFields));
+    	}
+    	if (!deviceUpdates.isEmpty())
+    		processUpdates(deviceUpdates);
+    	return true;
     }
 
 }
