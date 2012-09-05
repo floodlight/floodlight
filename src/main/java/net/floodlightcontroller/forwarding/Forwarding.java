@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.forwarding;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,17 +59,90 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     @Override
-    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, 
+                                          FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
-                                                       IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        if (eth.isBroadcast() || eth.isMulticast()) {
-            // For now we treat multicast as broadcast
-            doFlood(sw, pi, cntx);
+                                   IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        
+        // If a decision has been made we obey it
+        // otherwise we just forward
+        if (decision != null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Forwaring decision={} was made for PacketIn={}",
+                        decision.getRoutingAction().toString(),
+                        pi);
+            }
+            
+            switch(decision.getRoutingAction()) {
+                case NONE:
+                    // don't do anything
+                    return Command.CONTINUE;
+                case FORWARD_OR_FLOOD:
+                case FORWARD:
+                    doForwardFlow(sw, pi, cntx, false);
+                    return Command.CONTINUE;
+                case MULTICAST:
+                    // treat as broadcast
+                    doFlood(sw, pi, cntx);
+                    return Command.CONTINUE;
+                case DROP:
+                    doDropFlow(sw, pi, decision, cntx);
+                    return Command.CONTINUE;
+                default:
+                    log.error("Unexpected decision made for this packet-in={}",
+                            pi, decision.getRoutingAction());
+                    return Command.CONTINUE;
+            }
         } else {
-            doForwardFlow(sw, pi, cntx, false);
+            if (log.isTraceEnabled()) {
+                log.trace("No decision was made for PacketIn={}, forwarding",
+                        pi);
+            }
+            
+            if (eth.isBroadcast() || eth.isMulticast()) {
+                // For now we treat multicast as broadcast
+                doFlood(sw, pi, cntx);
+            } else {
+                doForwardFlow(sw, pi, cntx, false);
+            }
         }
         
         return Command.CONTINUE;
+    }
+    
+    protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+        // initialize match structure and populate it using the packet
+        OFMatch match = new OFMatch();
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+        if (decision.getWildcards() != null) {
+            match.setWildcards(decision.getWildcards());
+        }
+        
+        // Create flow-mod based on packet-in and src-switch
+        OFFlowMod fm =
+                (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                              .getMessage(OFType.FLOW_MOD);
+        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
+                                                            // drop
+        long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+        
+        fm.setCookie(cookie)
+          .setHardTimeout((short) 0)
+          .setIdleTimeout((short) 5)
+          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+          .setMatch(match)
+          .setActions(actions)
+          .setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
+
+        try {
+            if (log.isDebugEnabled()) {
+                log.debug("write drop flow-mod sw={} match={} flow-mod={}",
+                          new Object[] { sw, match, fm });
+            }
+            sw.write(fm, cntx);
+        } catch (IOException e) {
+            log.error("Failure writing drop flow mod", e);
+        }
     }
 
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
