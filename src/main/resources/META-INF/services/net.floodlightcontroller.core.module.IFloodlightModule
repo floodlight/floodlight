@@ -22,3 +22,4 @@ net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier
 net.floodlightcontroller.devicemanager.test.MockDeviceManager
 net.floodlightcontroller.core.test.MockFloodlightProvider
 net.floodlightcontroller.core.test.MockThreadPoolService
+net.floodlightcontroller.firewall.Firewall
