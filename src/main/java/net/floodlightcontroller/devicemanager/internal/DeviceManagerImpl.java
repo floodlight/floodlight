@@ -1191,7 +1191,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             for (Long l : deleteQueue) {
                 Device dev = deviceMap.get(l);
                 this.deleteDevice(dev);
-                deviceMap.remove(l);
+                
 
                 // generate new device update
                 deviceUpdates =
@@ -1403,7 +1403,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     	Iterator<Device> diter = deviceMap.values().iterator();
     	while (diter.hasNext()) {
             Device d = diter.next();
-            if (d.getEntityClass() != null && 
+            if (d.getEntityClass() == null ||
             		entityClassNames.contains(d.getEntityClass().getName()))
             	reclassifyDevice(d);
     	}
@@ -1673,7 +1673,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     		}
     		if (entityClass != null && device.getEntityClass() != null) {
     			if (entityClass.getName().
-    					contentEquals(device.getEntityClass().getName())) {
+    					equals(device.getEntityClass().getName())) {
     				entitiesRetained.add(entity);
     			} else {
     				entitiesRemoved.add(entity);
@@ -1702,7 +1702,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     	if (entitiesRetained.isEmpty()) {
     		this.deleteDevice(device);
-    		deviceMap.remove(device);
+    		
     		deviceUpdates.add(new DeviceUpdate(device, 
     				DeviceUpdate.Change.DELETE, null
     				));
