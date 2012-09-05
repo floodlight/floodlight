@@ -790,7 +790,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param switchPort the port
      * @return true if it's a valid attachment point
      */
-    protected boolean isValidAttachmentPoint(long switchDPID,
+    public boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {
         if (topology.isAttachmentPointPort(switchDPID,
                                            (short)switchPort) == false)

@@ -330,6 +330,8 @@ public class ForwardingTest extends FloodlightTestCase {
         reset(topology);
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(topology.getL2DomainId(2L)).andReturn(1L).anyTimes();
+        expect(topology.isAttachmentPointPort(1L,  (short)1)).andReturn(true).anyTimes();
+        expect(topology.isAttachmentPointPort(2L,  (short)3)).andReturn(true).anyTimes();
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
@@ -418,6 +420,8 @@ public class ForwardingTest extends FloodlightTestCase {
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
+        expect(topology.isAttachmentPointPort(1L,  (short)1)).andReturn(true).anyTimes();
+        expect(topology.isAttachmentPointPort(1L,  (short)3)).andReturn(true).anyTimes();
 
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, sw2, routingEngine, topology);
