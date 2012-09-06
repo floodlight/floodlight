@@ -22,6 +22,7 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -86,7 +87,16 @@ public class OFSwitchImpl implements IOFSwitch {
     protected String stringId;
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
-    protected Map<Short, OFPhysicalPort> ports;
+    // Lock to protect modification of the port maps. We only need to 
+    // synchronize on modifications. For read operations we are fine since
+    // we rely on ConcurrentMaps which works for our use case.
+    private Object portLock;
+    // Map port numbers to the appropriate OFPhysicalPort
+    protected ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
+    // Map port names to the appropriate OFPhyiscalPort
+    // XXX: The OF spec doesn't specify if port names need to be unique but
+    //      according it's always the case in practice. 
+    protected ConcurrentHashMap<String, OFPhysicalPort> portsByName;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected boolean connected;
@@ -134,7 +144,9 @@ public class OFSwitchImpl implements IOFSwitch {
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
-        this.ports = new ConcurrentHashMap<Short, OFPhysicalPort>();
+        this.portLock = new Object();
+        this.portsByNumber = new ConcurrentHashMap<Short, OFPhysicalPort>();
+        this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
@@ -145,7 +157,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.pendingRoleRequests = new LinkedList<OFSwitchImpl.PendingRoleRequestEntry>();
         
         // Defaults properties for an ideal switch
-        this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
+        this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
     }
@@ -175,16 +187,19 @@ public class OFSwitchImpl implements IOFSwitch {
         return this.attributes.containsKey(name);
     }
         
+    @Override
     @JsonIgnore
     public Channel getChannel() {
         return this.channel;
     }
 
+    @JsonIgnore
     public void setChannel(Channel channel) {
         this.channel = channel;
     }
     
     // TODO: document the difference between the different write functions
+    @Override
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
     	if (m instanceof OFFlowMod) {
     	    byte[] bcast = new byte[] {-1, -1, -1, -1, -1, -1};
@@ -215,6 +230,7 @@ public class OFSwitchImpl implements IOFSwitch {
         }
     }
 
+    @Override
     public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
@@ -239,61 +255,107 @@ public class OFSwitchImpl implements IOFSwitch {
         this.channel.write(msglist);
     }
     
+    @Override
     public void disconnectOutputStream() {
         channel.close();
     }
 
+    @Override
     @JsonIgnore
     public OFFeaturesReply getFeaturesReply() {
         return this.featuresReply;
     }
     
-    public synchronized void setFeaturesReply(OFFeaturesReply featuresReply) {
-        this.featuresReply = featuresReply;
-        for (OFPhysicalPort port : featuresReply.getPorts()) {
-            ports.put(port.getPortNumber(), port);
+    @Override
+    @JsonIgnore
+    public void setFeaturesReply(OFFeaturesReply featuresReply) {
+        synchronized(portLock) {
+            this.featuresReply = featuresReply;
+            for (OFPhysicalPort port : featuresReply.getPorts()) {
+                setPort(port);
+            }
+            this.stringId = HexString.toHexString(featuresReply.getDatapathId());
         }
-        this.stringId = HexString.toHexString(featuresReply.getDatapathId());
     }
 
+    @Override
     @JsonIgnore
-    public synchronized List<OFPhysicalPort> getEnabledPorts() {
+    public Collection<OFPhysicalPort> getEnabledPorts() {
         List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
-        for (OFPhysicalPort port : ports.values()) {
+        for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
                 result.add(port);
             }
         }
         return result;
     }
-
-    public synchronized OFPhysicalPort getPort(short portNumber) {
-        return ports.get(portNumber);
-    }
-
-    public synchronized void setPort(OFPhysicalPort port) {
-        ports.put(port.getPortNumber(), port);
-    }
     
+    @Override
     @JsonIgnore
-    public Map<Short, OFPhysicalPort> getPorts() {
-        return ports;
+    public Collection<Short> getEnabledPortNumbers() {
+        List<Short> result = new ArrayList<Short>();
+        for (OFPhysicalPort port : portsByNumber.values()) {
+            if (portEnabled(port)) {
+                result.add(port.getPortNumber());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public OFPhysicalPort getPort(short portNumber) {
+        return portsByNumber.get(portNumber);
     }
     
+    @Override
+    public OFPhysicalPort getPort(String portName) {
+        return portsByName.get(portName);
+    }
+
+    @Override
+    @JsonIgnore
+    public void setPort(OFPhysicalPort port) {
+        synchronized(portLock) {
+            portsByNumber.put(port.getPortNumber(), port);
+            portsByName.put(port.getName(), port);
+        }
+    }
+    
+    @Override
     @JsonProperty("ports")
-    public Collection<OFPhysicalPort> getPortCollection() {
-        return ports.values();
-    }
-
-    public synchronized void deletePort(short portNumber) {
-        ports.remove(portNumber);
-    }
-
-    public synchronized boolean portEnabled(short portNumber) {
-        if (ports.get(portNumber) == null) return false;
-        return portEnabled(ports.get(portNumber));
+    public Collection<OFPhysicalPort> getPorts() {
+        return Collections.unmodifiableCollection(portsByNumber.values());
     }
     
+    @Override
+    public void deletePort(short portNumber) {
+        synchronized(portLock) {
+            portsByName.remove(portsByNumber.get(portNumber).getName());
+            portsByNumber.remove(portNumber);
+        }
+    }
+    
+    @Override
+    public void deletePort(String portName) {
+        synchronized(portLock) {
+            portsByNumber.remove(portsByName.get(portName).getPortNumber());
+            portsByName.remove(portName);
+        }
+    }
+
+    @Override
+    public boolean portEnabled(short portNumber) {
+        if (portsByNumber.get(portNumber) == null) return false;
+        return portEnabled(portsByNumber.get(portNumber));
+    }
+    
+    @Override
+    public boolean portEnabled(String portName) {
+        if (portsByName.get(portName) == null) return false;
+        return portEnabled(portsByName.get(portName));
+    }
+    
+    @Override
     public boolean portEnabled(OFPhysicalPort port) {
         if (port == null)
             return false;
@@ -407,10 +469,12 @@ public class OFSwitchImpl implements IOFSwitch {
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
+    @JsonIgnore
     public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
+    @JsonIgnore
     public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
     }
@@ -422,6 +486,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    @JsonIgnore
     public synchronized void setConnected(boolean connected) {
         this.connected = connected;
     }
@@ -438,6 +503,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     @Override
+    @JsonIgnore
     public void setSwitchProperties(OFDescriptionStatistics description) {
         if (switchFeatures != null) {
             switchFeatures.setFromDescription(this, description);
@@ -483,6 +549,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
 
+    @Override
     public void flush() {
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);

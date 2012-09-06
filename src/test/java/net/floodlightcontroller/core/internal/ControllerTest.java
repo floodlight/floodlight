@@ -166,7 +166,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(channel.getRemoteAddress()).andReturn(null);
         
         expect(sw.getFeaturesReply()).andReturn(featuresReply).anyTimes();
-        expect(sw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
+        expect(sw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
     }
     
     /**
@@ -504,7 +504,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(newsw.getChannel()).andReturn(channel2);
         expect(channel2.getRemoteAddress()).andReturn(null);
         expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
-        expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
+        expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
         controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 

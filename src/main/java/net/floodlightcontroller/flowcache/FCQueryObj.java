@@ -69,4 +69,49 @@ public class FCQueryObj {
                 + srcDevice + ", callerName=" + callerName + ", evType="
                 + evType + ", callerOpaqueObj=" + callerOpaqueObj + "]";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        FCQueryObj other = (FCQueryObj) obj;
+        if (applInstName == null) {
+            if (other.applInstName != null)
+                return false;
+        } else if (!applInstName.equals(other.applInstName))
+            return false;
+        if (callerName == null) {
+            if (other.callerName != null)
+                return false;
+        } else if (!callerName.equals(other.callerName))
+            return false;
+        if (callerOpaqueObj == null) {
+            if (other.callerOpaqueObj != null)
+                return false;
+        } else if (!callerOpaqueObj.equals(other.callerOpaqueObj))
+            return false;
+        if (dstDevice == null) {
+            if (other.dstDevice != null)
+                return false;
+        } else if (!dstDevice.equals(other.dstDevice))
+            return false;
+        if (evType != other.evType)
+            return false;
+        if (fcQueryHandler != other.fcQueryHandler)
+            return false;
+        if (srcDevice == null) {
+            if (other.srcDevice != null)
+                return false;
+        } else if (!srcDevice.equals(other.srcDevice))
+            return false;
+        if (!Arrays.equals(vlans, other.vlans))
+            return false;
+        return true;
+    }
+    
+    
 }

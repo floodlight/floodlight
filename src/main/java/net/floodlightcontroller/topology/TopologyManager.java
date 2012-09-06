@@ -752,9 +752,11 @@ public class TopologyManager implements
         for(long sid: switches) {
             IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
             if (sw == null) continue;
+            Collection<Short> enabledPorts = sw.getEnabledPortNumbers();
+            if (enabledPorts == null)
+                continue;
             Set<Short> ports = new HashSet<Short>();
-            if (sw.getPorts() == null) continue;
-            ports.addAll(sw.getPorts().keySet());
+            ports.addAll(enabledPorts);
 
             // all the ports known to topology // without tunnels.
             // out of these, we need to choose only those that are 

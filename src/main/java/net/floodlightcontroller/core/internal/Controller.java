@@ -1597,7 +1597,7 @@ public class Controller implements IFloodlightProviderService,
         storageSource.updateRowAsync(SWITCH_TABLE_NAME, switchInfo);
         
         // Update the ports
-        for (OFPhysicalPort port: sw.getPorts().values()) {
+        for (OFPhysicalPort port: sw.getPorts()) {
             updatePortInfo(sw, port);
         }
     }
