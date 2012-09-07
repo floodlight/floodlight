@@ -278,7 +278,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // and the newAP is not a broadcast domain.
             if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
                     !topology.isBroadcastDomainPort(newSw, newPort))
-                return 1;
+                return -1;
 
             // If newAP is inconsistent with the oldAP and
             // oldAP belongs to broadcast domain and
@@ -289,7 +289,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     topology.isBroadcastDomainPort(newSw, newPort) &&
                     newAP.getLastSeen() > oldAP.getLastSeen() + 
                         AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT)
-                return 1;
+                return -1;
 
             // If newAP is inconsistent with the oldAP and
             // oldAP does not to broadcast domain and
@@ -300,7 +300,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     topology.isBroadcastDomainPort(newSw, newPort) &&
                     newAP.getLastSeen() > oldAP.getLastSeen() + 
                         AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT)
-                return 1;
+                return -1;
 
             // If newAP is inconsistent with the oldAP and
             // oldAP does not to broadcast domain and
@@ -309,9 +309,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
                     newAP.getLastSeen() > oldAP.getLastSeen() +
                         AttachmentPoint.CONSISTENT_TIMEOUT)
-                return 1;
+                return -1;
 
-            return -1;
+            return 1;
         }
     }
     /**
