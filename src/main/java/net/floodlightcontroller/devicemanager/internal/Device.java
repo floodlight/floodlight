@@ -255,7 +255,7 @@ public class Device implements IDevice {
         }
 
         int x = deviceManager.apComparator.compare(oldAP, newAP);
-        if (x > 0) {
+        if (x < 0) {
             // newAP replaces oldAP.
             apMap.put(id, newAP);
             this.attachmentPoints =
