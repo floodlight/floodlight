@@ -1071,7 +1071,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             } else {
                 // If the secondary index does not contain the entity,
                 // create a new Device object containing the entity, and
-                // generate a new device ID
+                // generate a new device ID. However, we first check if 
+                // the entity is allowed (e.g., for spoofing protection)
+                if (!isEntityAllowed(entity, entityClass)) {
+                    return null;
+                }
                 synchronized (deviceKeyLock) {
                     deviceKey = Long.valueOf(deviceKeyCounter++);
                 }
@@ -1102,6 +1106,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 break;
             }
 
+            if (!isEntityAllowed(entity, device.getEntityClass())) {
+                return null;
+            }
             int entityindex = -1;
             if ((entityindex = device.entityIndex(entity)) >= 0) {
                 // update timestamp on the found entity
@@ -1203,6 +1210,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         processUpdates(deviceUpdates);
 
         return device;
+    }
+
+    protected boolean isEntityAllowed(Entity entity, IEntityClass entityClass) {
+        return true;
     }
 
     protected EnumSet<DeviceField> findChangedFields(Device device,
