@@ -22,21 +22,38 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 public class AttachmentPoint {
-    long sw;
+    long  sw;
     short port;
-    long lastSeen;
+    long  activeSince;
+    long  lastSeen;
 
     // Timeout for moving attachment points from OF/broadcast
     // domain to another.
+    public static final long INACTIVITY_INTERVAL = 30000; // 30 seconds
     public static final long EXTERNAL_TO_EXTERNAL_TIMEOUT = 5000;  // 5 seconds
     public static final long OPENFLOW_TO_EXTERNAL_TIMEOUT = 30000; // 30 seconds
     public static final long CONSISTENT_TIMEOUT = 30000;           // 30 seconds
 
+    public AttachmentPoint(long sw, short port, long activeSince,
+                           long lastSeen) {
+        this.sw = sw;
+        this.port = port;
+        this.activeSince = activeSince;
+        this.lastSeen = lastSeen;
+    }
+
     public AttachmentPoint(long sw, short port, long lastSeen) {
-        super();
         this.sw = sw;
         this.port = port;
         this.lastSeen = lastSeen;
+        this.activeSince = lastSeen;
+    }
+
+    public AttachmentPoint(AttachmentPoint ap) {
+        this.sw = ap.sw;
+        this.port = ap.port;
+        this.activeSince = ap.activeSince;
+        this.lastSeen = ap.lastSeen;
     }
 
     public long getSw() {
@@ -51,13 +68,25 @@ public class AttachmentPoint {
     public void setPort(short port) {
         this.port = port;
     }
+    public long getActiveSince() {
+        return activeSince;
+    }
+    public void setActiveSince(long activeSince) {
+        this.activeSince = activeSince;
+    }
     public long getLastSeen() {
         return lastSeen;
     }
     public void setLastSeen(long lastSeen) {
-        this.lastSeen = lastSeen;
+        if (this.lastSeen + INACTIVITY_INTERVAL < lastSeen)
+            this.activeSince = lastSeen;
+        if (this.lastSeen < lastSeen)
+            this.lastSeen = lastSeen;
     }
 
+    /**
+     *  Hash is generated using only switch and port
+     */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -68,7 +97,7 @@ public class AttachmentPoint {
     }
 
     /**
-     * Compares only the switch and port.
+     * Compares only the switch and port
      */
     @Override
     public boolean equals(Object obj) {
@@ -84,5 +113,12 @@ public class AttachmentPoint {
         if (sw != other.sw)
             return false;
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return "AttachmentPoint [sw=" + sw + ", port=" + port
+               + ", activeSince=" + activeSince + ", lastSeen=" + lastSeen
+               + "]";
     }
 }
