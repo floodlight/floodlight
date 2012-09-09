@@ -43,6 +43,7 @@ import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl.ClassState;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifierMac;
@@ -134,8 +135,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         tp.startUp(fmc);
         entityClassifier.startUp(fmc);
 
+        reset(topology);
         topology.addListener(deviceManager);
-        expectLastCall().times(1);
+        expectLastCall().anyTimes();
         replay(topology);
 
         IOFSwitch mockSwitch1 = makeSwitchMock(1L);
@@ -801,6 +803,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   anyShort())).
                                                   andReturn(true).anyTimes();
 
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(5L, (short)1)).andReturn(false).anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(5L).anyTimes();
         expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
@@ -999,7 +1003,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         doTestDeviceExpiration();
     }
     
-    /*
+
     @Test
     public void testAttachmentPointFlapping() throws Exception {
         Calendar c = Calendar.getInstance();
@@ -1018,16 +1022,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(true).anyTimes();
         expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
         andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 10L, (short)1)).
+        andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 10L, (short)1)).
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(10L, (short)1, 1L, (short)1)).
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 1L, (short)1)).
         andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(10L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
 
         Date topologyUpdateTime = new Date();
         expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
         anyTimes();
+
 
         replay(mockTopology);
         deviceManager.topology = mockTopology;
@@ -1036,44 +1045,46 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity1a = new Entity(1L, null, 1, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 10L, 1, c.getTime());
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1a.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity3.setLastSeenTimestamp(c.getTime());
 
-        deviceManager.learnDeviceByEntity(entity1);
-        deviceManager.learnDeviceByEntity(entity1a);
-        deviceManager.learnDeviceByEntity(entity2);
-        IDevice d = deviceManager.learnDeviceByEntity(entity3);
+
+
+        IDevice d;
+        d = deviceManager.learnDeviceByEntity(entity1);
+        d = deviceManager.learnDeviceByEntity(entity1a);
+        d = deviceManager.learnDeviceByEntity(entity2);
+        d = deviceManager.learnDeviceByEntity(entity3);
 
         // all entities are active, so entity3 should win
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
                           d.getAttachmentPoints());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
-                                                                           d.getAttachmentPoints(true));
+
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),},
+                              d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/4);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         // all are still active; entity3 should still win
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
                           d.getAttachmentPoints());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1,
+                                                            ErrorStatus.DUPLICATE_DEVICE),
+                                                            new SwitchPort(10L, 1,
+                                                                           ErrorStatus.DUPLICATE_DEVICE) },
                                                                            d.getAttachmentPoints(true));
 
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+2000);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         assertEquals(entity1.getActiveSince(), entity1.getLastSeenTimestamp());
         // entity1 should now be the only active entity
@@ -1081,32 +1092,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
                           d.getAttachmentPoints(true));
-
-        deviceManager.startUp(null);
-        c = Calendar.getInstance();
-        entity1.setActiveSince(c.getTime());
-        entity1.setLastSeenTimestamp(c.getTime());
-        d = deviceManager.learnDeviceByEntity(entity1);
-
-        // entity1 is only entity
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-                          d.getAttachmentPoints());
-
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
-        entity2.setActiveSince(c.getTime());
-        entity2.setLastSeenTimestamp(c.getTime());
-        d = deviceManager.learnDeviceByEntity(entity2);
-
-        // entity2 is strictly later
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) },
-                          d.getAttachmentPoints());
-
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
-        entity1.setLastSeenTimestamp(c.getTime());
-
-        // entity 1 is strictly later
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-                          d.getAttachmentPoints());
     }
 
 
@@ -1152,8 +1137,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 5L, 1, c.getTime());
         Entity entity4 = new Entity(1L, null, null, 5L, 2, c.getTime());
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
@@ -1171,27 +1156,36 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                              new SwitchPort(5L, 2) },
                                              d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2),
+                                             new SwitchPort(5L, 2)},
+                                             d.getAttachmentPoints(true));
+
+        c.add(Calendar.MILLISECOND, 1);
+        entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
+
+        // all entities are active, so entities 2,4 should win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 2) },
+                                             d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
                                              new SwitchPort(5L, 2),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
-                                                                           d.getAttachmentPoints(true));
+                                             new SwitchPort(1L, 2, ErrorStatus.DUPLICATE_DEVICE)},
+                                             d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         // entities 3,4 are still in conflict, but 1 should be resolved
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
                                              new SwitchPort(5L, 2) },
                                              d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
-                                             new SwitchPort(5L, 2),
-                                             new SwitchPort(5L, 1,
-                                                            DUPLICATE_DEVICE) },
-                                                            d.getAttachmentPoints(true));
+                                             new SwitchPort(5L, 2)},
+                                             d.getAttachmentPoints(true));
 
         entity3.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity3);
 
         // no conflicts, 1 and 3 will win
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
@@ -1202,7 +1196,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                              d.getAttachmentPoints(true));
 
     }
-    */
 
     protected void doTestDeviceQuery() throws Exception {
         Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
@@ -1603,7 +1596,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
             Entity[] entities = new Entity[] { entity1, entity2, 
                                                entity3, entity4
                                              };
-            Device d = new Device(null,1L, null,  Arrays.asList(entities), null);
+            Device d = new Device(null,1L, null, null, Arrays.asList(entities), null);
             SwitchPort swp1x1 = new SwitchPort(1L, 1);
             SwitchPort swp1x2 = new SwitchPort(1L, 2);
             SwitchPort swp2x1 = new SwitchPort(2L, 1);

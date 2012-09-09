@@ -48,9 +48,10 @@ public class MockDevice extends Device {
     
     public MockDevice(DeviceManagerImpl deviceManager, Long deviceKey,
                       List<AttachmentPoint> aps,
+                      List<AttachmentPoint> trueAPs,
                       Collection<Entity> entities,
                       IEntityClass entityClass) {
-        super(deviceManager, deviceKey, aps, entities, entityClass);
+        super(deviceManager, deviceKey, aps, trueAPs, entities, entityClass);
     }
 
     @Override
