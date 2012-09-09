@@ -258,11 +258,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             //First compare based on L2 domain ID; 
             long oldSw = oldAP.getSw();
             short oldPort = oldAP.getPort();
+            long oldDomain = topology.getL2DomainId(oldSw);
+            boolean oldBD = topology.isBroadcastDomainPort(oldSw, oldPort);
+
             long newSw = newAP.getSw();
             short newPort = newAP.getPort();
-
-            long oldDomain = topology.getL2DomainId(oldSw);
             long newDomain = topology.getL2DomainId(newSw);
+            boolean newBD = topology.isBroadcastDomainPort(newSw, newPort);
 
             if (oldDomain < newDomain) return -1;
             else if (oldDomain > newDomain) return 1;
@@ -270,47 +272,29 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // We expect that the last seen of the new AP is higher than
             // old AP, if it is not, just reverse and send the negative
             // of the result.
-            if (oldAP.getLastSeen() > newAP.getLastSeen())
+            if (oldAP.getActiveSince() > newAP.getActiveSince())
                 return -compare(newAP, oldAP);
 
+            long activeOffset = 0;
+            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort)) {
+                if (newBD && oldBD) {
+                    activeOffset = AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT;
+                }
+                else if (newBD && !oldBD){
+                    activeOffset = AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT;
+                }
 
-            // If newAP is inconsistent with the oldAP
-            // and the newAP is not a broadcast domain.
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    !topology.isBroadcastDomainPort(newSw, newPort))
+            } else {
+                // The attachment point is consistent.
+                activeOffset = AttachmentPoint.CONSISTENT_TIMEOUT;
+            }
+
+
+            if ((newAP.getActiveSince() > oldAP.getLastSeen() + activeOffset) ||
+                    (newAP.getLastSeen() > oldAP.getLastSeen() +
+                            AttachmentPoint.INACTIVITY_INTERVAL)) {
                 return -1;
-
-            // If newAP is inconsistent with the oldAP and
-            // oldAP belongs to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    topology.isBroadcastDomainPort(oldSw, oldPort) &&
-                    topology.isBroadcastDomainPort(newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() + 
-                        AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT)
-                return -1;
-
-            // If newAP is inconsistent with the oldAP and
-            // oldAP does not to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    !topology.isBroadcastDomainPort(oldSw, oldPort) &&
-                    topology.isBroadcastDomainPort(newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() + 
-                        AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT)
-                return -1;
-
-            // If newAP is inconsistent with the oldAP and
-            // oldAP does not to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() +
-                        AttachmentPoint.CONSISTENT_TIMEOUT)
-                return -1;
-
+            }
             return 1;
         }
     }
@@ -1451,6 +1435,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
+                                                      d.oldAPs,
                                                       d.attachmentPoints,
                                                       toKeep,
                                                       d.entityClass);
@@ -1568,9 +1553,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     // TODO: FIX THIS.
     protected Device allocateDevice(Long deviceKey,
                                     List<AttachmentPoint> aps,
+                                    List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new Device(this, deviceKey, aps, entities, entityClass);
+        return new Device(this, deviceKey, aps, trueAPs, entities, entityClass);
     }
 
     protected Device allocateDevice(Device device,
@@ -1598,8 +1584,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     	}
     	if (newAPs.isEmpty())
     		newAPs = null;
-    	return new Device(this, device.getDeviceKey(),newAPs, 
+        Device d = new Device(this, device.getDeviceKey(),newAPs, null,
     			entities, device.getEntityClass());
+        d.updateAttachmentPoint();
+        return d;
     }
 
     @Override
