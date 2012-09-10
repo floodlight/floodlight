@@ -291,7 +291,6 @@ entity.getLastSeenTimestamp().getTime());
      */
     protected boolean updateAttachmentPoint() {
         boolean moved = false;
-        boolean oldFlag = false;
 
         List<AttachmentPoint> oldAPList = new ArrayList<AttachmentPoint>();
         if (oldAPs != null) oldAPList.addAll(oldAPs);
@@ -300,15 +299,9 @@ entity.getLastSeenTimestamp().getTime());
         if (attachmentPoints != null) apList.addAll(attachmentPoints);
         Map<Long, AttachmentPoint> newMap = getAPMap(apList);
 
-        if (newMap == null) {
+        if (newMap == null || newMap.size() != apList.size()) {
             moved = true;
-        } else if (newMap.size() != apList.size()) {
-            apList.removeAll(newMap.values());
-            oldAPList.addAll(apList);
-            moved = true;
-            oldFlag = true;
         }
-        oldFlag = oldFlag || removeExpiredAttachmentPoints(oldAPList);
 
         // Prepare the new attachment point list.
         if (moved) {
@@ -318,10 +311,8 @@ entity.getLastSeenTimestamp().getTime());
             this.attachmentPoints = newAPList;
         }
 
-        // update the oldAPs if needed.
-        if (oldFlag) {
-            this.oldAPs = oldAPList;
-        }
+        // Set the oldAPs to null.
+        this.oldAPs = null;
         return moved;
     }
 
@@ -525,9 +516,14 @@ entity.getLastSeenTimestamp().getTime());
         if (!includeError)
             return sp.toArray(new SwitchPort[sp.size()]);
 
+
         List<AttachmentPoint> oldAPList;
         oldAPList = new ArrayList<AttachmentPoint>();
+
         if (oldAPs != null) oldAPList.addAll(oldAPs);
+
+        if (removeExpiredAttachmentPoints(oldAPList))
+            this.oldAPs = oldAPList;
 
         List<AttachmentPoint> dupList;
         dupList = this.getDuplicateAttachmentPoints(oldAPList, apMap);
