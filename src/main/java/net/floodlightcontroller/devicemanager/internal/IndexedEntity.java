@@ -2,6 +2,9 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.EnumSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
@@ -16,7 +19,8 @@ public class IndexedEntity {
     protected EnumSet<DeviceField> keyFields;
     protected Entity entity;
     private int hashCode = 0;
-    
+    protected static Logger logger =
+            LoggerFactory.getLogger(IndexedEntity.class);
     /**
      * Create a new {@link IndexedEntity} for the given {@link Entity} using 
      * the provided key fields.
@@ -58,40 +62,51 @@ public class IndexedEntity {
     
     @Override
     public int hashCode() {
-        if (hashCode != 0) return hashCode;
+    	
+        if (hashCode != 0) {
+        	logger.debug("Hash code for IE with E -" + this.entity + " is" + 
+                         hashCode);
+        	return hashCode;
+        }
 
         final int prime = 31;
         hashCode = 1;
+        logger.debug("Computing Hash code for IE with E -" + this.entity);
         for (DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
                         + (int) (entity.macAddress ^ 
                                 (entity.macAddress >>> 32));
+                    logger.debug("MAC is keyfield");
                     break;
                 case IPV4:
                     hashCode = prime * hashCode
                         + ((entity.ipv4Address == null) 
                             ? 0 
                             : entity.ipv4Address.hashCode());
+                    logger.debug("IPV4 is keyfield");
                     break;
                 case SWITCH:
                     hashCode = prime * hashCode
                         + ((entity.switchDPID == null) 
                             ? 0 
                             : entity.switchDPID.hashCode());
+                    logger.debug("SWITCH is keyfield");
                     break;
                 case PORT:
                     hashCode = prime * hashCode
                         + ((entity.switchPort == null) 
                             ? 0 
                             : entity.switchPort.hashCode());
+                    logger.debug("PORT is keyfield");
                     break;
                 case VLAN:
                     hashCode = prime * hashCode 
                         + ((entity.vlan == null) 
                             ? 0 
                             : entity.vlan.hashCode());
+                    logger.debug("VLAN is keyfield");
                     break;
             }
         }
@@ -105,34 +120,41 @@ public class IndexedEntity {
         if (getClass() != obj.getClass()) return false;
         IndexedEntity other = (IndexedEntity) obj;
         
+        logger.debug("Equals of IE called for this - " + this.entity + 
+        		     " and that-" + other.entity);
         if (!keyFields.equals(other.keyFields))
             return false;
 
         for (IDeviceService.DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
+                	logger.debug("Equals of IE keyfields has MAC set");
                     if (entity.macAddress != other.entity.macAddress)
                         return false;
                     break;
                 case IPV4:
+                	logger.debug("Equals of IE keyfields has IPV4 set");
                     if (entity.ipv4Address == null) {
                         if (other.entity.ipv4Address != null) return false;
                     } else if (!entity.ipv4Address.
                             equals(other.entity.ipv4Address)) return false;
                     break;
                 case SWITCH:
+                	logger.debug("Equals of IE keyfields has SWITCH set");
                     if (entity.switchDPID == null) {
                         if (other.entity.switchDPID != null) return false;
                     } else if (!entity.switchDPID.
                             equals(other.entity.switchDPID)) return false;
                     break;
                 case PORT:
+                	logger.debug("Equals of IE keyfields has PORT set");
                     if (entity.switchPort == null) {
                         if (other.entity.switchPort != null) return false;
                     } else if (!entity.switchPort.
                             equals(other.entity.switchPort)) return false;
                     break;
                 case VLAN:
+                	logger.debug("Equals of IE keyfields has VLAN set");
                     if (entity.vlan == null) {
                         if (other.entity.vlan != null) return false;
                     } else if (!entity.vlan.

@@ -1672,98 +1672,47 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean reclassifyDevice(Device device)
     {
-    	// first classify all entities of this device
-    	if (device == null) {
-    		logger.debug("In reclassify for null device");
-    		return false;
-    	}
-    	logger.debug("In reclassify for device - " + device.toString());
-    	LinkedList<DeviceUpdate> deviceUpdates =
-    			new LinkedList<DeviceUpdate>();
-
-    	Set <Entity> entitiesRetained = new HashSet <Entity>();
-    	Set <Entity> entitiesRemoved = new HashSet <Entity>();
-    	for (Entity entity : device.getEntities()) {
-    		IEntityClass entityClass = 
-    				this.entityClassifier.classifyEntity(entity);
-    		if (entityClass == null || device.getEntityClass() == null) {
-    			if (logger.isDebugEnabled())
-    				logger.debug("In reclassify, to remove entity - " + entity);
-    			entitiesRemoved.add(entity);                
-    			continue;
-    		}
-    		if (entityClass.getName().
-    				equals(device.getEntityClass().getName())) {
-    			if (logger.isDebugEnabled())
-    				logger.debug("In reclassify, to retain entity - " + entity);
-    			entitiesRetained.add(entity);
-    			continue;
-    		}
-    		if (logger.isDebugEnabled())
-    			logger.debug("In reclassify, to remove entity - " + entity);
-    		entitiesRemoved.add(entity);
-    	}
-    	if (entitiesRemoved.isEmpty()) {
-    		// no change in classification, so NOP
-    		if (logger.isDebugEnabled())
-    			logger.debug("In reclassify NOP for device - " + device.toString());
-    		return false;
-    	}
-
-    	for (Entity entity : entitiesRemoved) {
-    		// remove this entity from this device
-    		if (logger.isDebugEnabled())
-    			logger.debug("In reclassify, remove entity - " + entity);
-    		this.removeEntity(entity, device.getEntityClass(), 
-    				device.getDeviceKey(), entitiesRetained);
-
-    		Device newDevice = this.learnDeviceByEntity(entity);
-    		if (newDevice == null) {
-    			if (logger.isDebugEnabled())
-    				logger.info("In reclassify, learn device by entity failed for "
-    					+ entity);
-    		}
-    	}
-
-    	if (entitiesRetained.isEmpty()) {
-    		if (logger.isDebugEnabled())
-    			logger.debug("In reclassify, delete device - " + device.toString());
-    		if (!deviceMap.remove(device.getDeviceKey(), device)) {
-    			if (logger.isDebugEnabled())
-    				logger.info("device map does not have this device -" + 
-    			                 device.toString());
-    		} else {
-    			deviceUpdates.add(new DeviceUpdate(device, 
-    					DeviceUpdate.Change.DELETE, null));
-    		}
-    	} else {
-    		EnumSet<DeviceField> changedFields =
-    				EnumSet.noneOf(DeviceField.class);
-    		Device modDevice = null;
-    		modDevice = allocateDevice(device, entitiesRetained);
-    		// Add the new device to the primary map with a simple put
-    		if (deviceMap.replace(device.getDeviceKey(), device, modDevice) == 
-    				false)
-    			if (logger.isDebugEnabled())
-    				logger.debug("In reclassify, failed to replace device map with"
-    					+ " mod device for old device - " + device.toString());
-
-    		for (Entity entity : entitiesRemoved) {
-    			EnumSet<DeviceField> changes = 
-    					findChangedFields(modDevice, entity);
-    			for (DeviceField change : changes) {
-    				if (logger.isDebugEnabled())
-    					logger.debug("change - " + change);
-    			}
-    			changedFields.addAll(changes);
-    		}
-    		deviceUpdates.add(new DeviceUpdate(modDevice, 
-    				DeviceUpdate.Change.CHANGE, 
-    				changedFields));
-    	}
-    	if (!deviceUpdates.isEmpty())
-    		processUpdates(deviceUpdates);
-    	return true;
-    }
-
+        // first classify all entities of this device
+        if (device == null) {
+            logger.debug("In reclassify for null device");
+            return false;
+        }
+        boolean needToReclassify = false;
+        for (Entity entity : device.entities) {
+            IEntityClass entityClass = 
+                    this.entityClassifier.classifyEntity(entity);
+            if (entityClass == null || device.getEntityClass() == null) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Reclassify because of entity - " + entity);
+                needToReclassify = true;                
+                break;
+            }
+            if (!entityClass.getName().
+                    equals(device.getEntityClass().getName())) {
+                if (logger.isDebugEnabled())
+                    logger.debug("In reclassify, because ofentity - " + entity);
+                needToReclassify = true;
+                break;
+            }
+        }
+        if (needToReclassify == false) {
+            if (logger.isDebugEnabled())
+                logger.debug("NOP for reclassify of -" + device);
+            return false;
+        }
+            
+        LinkedList<DeviceUpdate> deviceUpdates =
+                new LinkedList<DeviceUpdate>();
+        logger.debug("In reclassify for device - " + device.toString());
+        // delete this device and then re-learn all the entities
+        this.deleteDevice(device);
+        deviceUpdates.add(new DeviceUpdate(device, 
+                DeviceUpdate.Change.DELETE, null));
+        if (!deviceUpdates.isEmpty())
+            processUpdates(deviceUpdates);
+        for (Entity entity: device.entities ) {
+            this.learnDeviceByEntity(entity);
+        }
+        return true;
+    }   
 }
