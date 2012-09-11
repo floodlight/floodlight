@@ -352,11 +352,15 @@ public abstract class ForwardingBase
      */
     protected void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
                            short outport, FloodlightContext cntx) {
-        
+
         if (pi == null) {
             return;
+        } else if (pi.getInPort() == outport){
+            log.warn("Packet out not sent as the outport matches inport. {}",
+                     pi);
+            return;
         }
-        
+
         // The assumption here is (sw) is the switch that generated the 
         // packet-in. If the input port is the same as output port, then
         // the packet-out should be ignored.
@@ -369,7 +373,7 @@ public abstract class ForwardingBase
                 return;
             }
         }
-        
+
         if (log.isTraceEnabled()) {
             log.trace("PacketOut srcSwitch={} match={} pi={}", 
                       new Object[] {sw, match, pi});
