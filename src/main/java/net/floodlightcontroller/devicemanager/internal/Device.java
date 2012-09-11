@@ -291,24 +291,14 @@ entity.getLastSeenTimestamp().getTime());
      */
     protected boolean updateAttachmentPoint() {
         boolean moved = false;
-        boolean oldFlag = false;
-
-        List<AttachmentPoint> oldAPList = new ArrayList<AttachmentPoint>();
-        if (oldAPs != null) oldAPList.addAll(oldAPs);
 
         List<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
         if (attachmentPoints != null) apList.addAll(attachmentPoints);
         Map<Long, AttachmentPoint> newMap = getAPMap(apList);
 
-        if (newMap == null) {
+        if (newMap == null || newMap.size() != apList.size()) {
             moved = true;
-        } else if (newMap.size() != apList.size()) {
-            apList.removeAll(newMap.values());
-            oldAPList.addAll(apList);
-            moved = true;
-            oldFlag = true;
         }
-        oldFlag = oldFlag || removeExpiredAttachmentPoints(oldAPList);
 
         // Prepare the new attachment point list.
         if (moved) {
@@ -316,12 +306,12 @@ entity.getLastSeenTimestamp().getTime());
                     new ArrayList<AttachmentPoint>();
             if (newMap != null) newAPList.addAll(newMap.values());
             this.attachmentPoints = newAPList;
+            log.debug("DEVICE_MOVE: Old AttachmentPoints: {}," +
+                    "New AttachmentPoints: {}", apList, newAPList);
         }
 
-        // update the oldAPs if needed.
-        if (oldFlag) {
-            this.oldAPs = oldAPList;
-        }
+        // Set the oldAPs to null.
+        this.oldAPs = null;
         return moved;
     }
 
@@ -339,6 +329,7 @@ entity.getLastSeenTimestamp().getTime());
         ITopologyService topology = deviceManager.topology;
         List<AttachmentPoint> oldAPList;
         List<AttachmentPoint> apList;
+        boolean oldAPFlag = false;
 
         if (!deviceManager.isValidAttachmentPoint(sw, port)) return false;
         AttachmentPoint newAP = new AttachmentPoint(sw, port, lastSeen);
@@ -356,6 +347,8 @@ entity.getLastSeenTimestamp().getTime());
             newAP = oldAPList.remove(index);
             newAP.setLastSeen(lastSeen);
             this.oldAPs = oldAPList;
+            oldAPFlag = true;
+            log.debug("DEVICE_MOVE: OldAPs changed for device: {}", oldAPList);
         }
 
         // newAP now contains the new attachment point.
@@ -365,6 +358,7 @@ entity.getLastSeenTimestamp().getTime());
         if (apMap == null || apMap.isEmpty()) {
             apList.add(newAP);
             attachmentPoints = apList;
+            log.debug("DEVICE_MOVE: First attachmentpoint point for device: {}", apList);
             return true;
         }
 
@@ -377,6 +371,8 @@ entity.getLastSeenTimestamp().getTime());
             apList.addAll(apMap.values());
             apList.add(newAP);
             this.attachmentPoints = apList;
+            log.debug("DEVICE_MOVE: First access point in L2 domain. {}",
+                      apList);
             return true; // new AP found on an L2 island.
         }
 
@@ -397,6 +393,8 @@ entity.getLastSeenTimestamp().getTime());
             apMap.put(id, newAP);
             this.attachmentPoints =
                     new ArrayList<AttachmentPoint>(apMap.values());
+            log.debug("DEVICE_MOVED: Attachment point changed to: {}," +
+                    "putting previous in oldAP: {}", newAP, oldAP);
 
             oldAPList = new ArrayList<AttachmentPoint>();
             if (oldAPs != null) oldAPList.addAll(oldAPs);
@@ -404,9 +402,14 @@ entity.getLastSeenTimestamp().getTime());
             this.oldAPs = oldAPList;
             return true; // attachment point changed.
         } else {
+            // retain oldAP  as is.  Put the newAP in oldAPs for flagging
+            // possible duplicates.
             oldAPList = new ArrayList<AttachmentPoint>();
             if (oldAPs != null) oldAPList.addAll(oldAPs);
-            oldAPList.add(oldAP);
+	    // Add ot oldAPList only if it was picked up from the oldAPList
+            if (oldAPFlag) oldAPList.add(newAP);
+            log.debug("DEVICE_MOVED: New attachment point {} does not" +
+                    " replace already existing one {}.", newAP, oldAP);
             this.oldAPs = oldAPList;
         }
 
@@ -525,9 +528,16 @@ entity.getLastSeenTimestamp().getTime());
         if (!includeError)
             return sp.toArray(new SwitchPort[sp.size()]);
 
+        log.debug("DEVICE_APS: Getting all attachment points: APs: {}, oldAPs: {}",
+                  this.attachmentPoints, this.oldAPs);
+
         List<AttachmentPoint> oldAPList;
         oldAPList = new ArrayList<AttachmentPoint>();
+
         if (oldAPs != null) oldAPList.addAll(oldAPs);
+
+        if (removeExpiredAttachmentPoints(oldAPList))
+            this.oldAPs = oldAPList;
 
         List<AttachmentPoint> dupList;
         dupList = this.getDuplicateAttachmentPoints(oldAPList, apMap);
@@ -539,6 +549,7 @@ entity.getLastSeenTimestamp().getTime());
                     sp.add(swport);
             }
         }
+        log.debug("DEVICE_APS: Duplicate APs: {}", sp);
         return sp.toArray(new SwitchPort[sp.size()]);
     }
 
