@@ -1710,7 +1710,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         flexClassifier.addVlanEntities((short)1, eC1);
         deviceManager.reclassifyDevice(d1);
         deviceManager.reclassifyDevice(d2);
-        ClassState classState = deviceManager.classStateMap.get(eC1);
+        ClassState classState = deviceManager.classStateMap.get(eC1.getName());
 
         Long deviceKey1 = null;
         Long deviceKey1b = null;
