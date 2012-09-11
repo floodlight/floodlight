@@ -329,6 +329,7 @@ entity.getLastSeenTimestamp().getTime());
         ITopologyService topology = deviceManager.topology;
         List<AttachmentPoint> oldAPList;
         List<AttachmentPoint> apList;
+        boolean oldAPFlag = false;
 
         if (!deviceManager.isValidAttachmentPoint(sw, port)) return false;
         AttachmentPoint newAP = new AttachmentPoint(sw, port, lastSeen);
@@ -346,6 +347,7 @@ entity.getLastSeenTimestamp().getTime());
             newAP = oldAPList.remove(index);
             newAP.setLastSeen(lastSeen);
             this.oldAPs = oldAPList;
+            oldAPFlag = true;
             log.debug("DEVICE_MOVE: OldAPs changed for device: {}", oldAPList);
         }
 
@@ -404,7 +406,8 @@ entity.getLastSeenTimestamp().getTime());
             // possible duplicates.
             oldAPList = new ArrayList<AttachmentPoint>();
             if (oldAPs != null) oldAPList.addAll(oldAPs);
-            oldAPList.add(newAP);
+	    // Add ot oldAPList only if it was picked up from the oldAPList
+            if (oldAPFlag) oldAPList.add(newAP);
             log.debug("DEVICE_MOVED: New attachment point {} does not" +
                     " replace already existing one {}.", newAP, oldAP);
             this.oldAPs = oldAPList;
