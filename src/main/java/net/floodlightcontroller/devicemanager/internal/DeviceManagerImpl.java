@@ -277,6 +277,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
             long activeOffset = 0;
             if (!topology.isConsistent(oldSw, oldPort, newSw, newPort)) {
+                if (!newBD && oldBD) {
+                    return -1;
+                }
                 if (newBD && oldBD) {
                     activeOffset = AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT;
                 }
