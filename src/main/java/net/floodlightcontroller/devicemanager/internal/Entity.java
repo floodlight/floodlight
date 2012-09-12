@@ -228,9 +228,9 @@ public class Entity implements Comparable<Entity> {
         builder.append(", switchPort=");
         builder.append(switchPort);
         builder.append(", lastSeenTimestamp=");
-        builder.append(lastSeenTimestamp.getTime());
+        builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
         builder.append(", activeSince=");
-        builder.append(activeSince.getTime());
+        builder.append(activeSince == null? "null" : activeSince.getTime());
         builder.append("]");
         return builder.toString();
     }

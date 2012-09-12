@@ -89,9 +89,10 @@ public class MockDeviceManager extends DeviceManagerImpl {
     @Override
     protected Device allocateDevice(Long deviceKey,
                                     List<AttachmentPoint> aps,
+                                    List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new MockDevice(this, deviceKey, aps, entities, entityClass);
+        return new MockDevice(this, deviceKey, aps, trueAPs, entities, entityClass);
     }
     
     @Override

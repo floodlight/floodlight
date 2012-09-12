@@ -51,7 +51,7 @@ public class DeviceUniqueIndexTest extends TestCase {
         List<Entity> d1Entities = new ArrayList<Entity>(2);
         d1Entities.add(e1a);
         d1Entities.add(e1b);
-        d1 = new Device(null, Long.valueOf(1), null, d1Entities, null);
+        d1 = new Device(null, Long.valueOf(1), null, null, d1Entities, null);
         
         // e2 and e2 alt match in MAC and VLAN
         e2 = new Entity(2L, (short)2, 2, 2L, 2, new Date());
@@ -145,7 +145,7 @@ public class DeviceUniqueIndexTest extends TestCase {
         // all key fields are null
         idx2.updateIndex(e4, 4L);
         assertEquals(null, idx2.findByEntity(e4));
-        Device d4 = new Device(null, 4L, null, Collections.<Entity>singleton(e4), null);
+        Device d4 = new Device(null, 4L, null, null, Collections.<Entity>singleton(e4), null);
         idx2.updateIndex(d4, 4L);
         assertEquals(null, idx2.findByEntity(e4));
         

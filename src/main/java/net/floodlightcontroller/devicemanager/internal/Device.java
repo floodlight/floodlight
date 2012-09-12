@@ -31,11 +31,15 @@ import java.util.TreeSet;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -46,6 +50,9 @@ import net.floodlightcontroller.topology.ITopologyService;
  */
 @JsonSerialize(using=DeviceSerializer.class)
 public class Device implements IDevice {
+    protected static Logger log =
+            LoggerFactory.getLogger(Device.class);
+
     protected Long deviceKey;
     protected DeviceManagerImpl deviceManager;
 
@@ -54,6 +61,14 @@ public class Device implements IDevice {
 
     protected String macAddressString;
 
+    /**
+     * These are the old attachment points for the device that were
+     * valid no more than INACTIVITY_TIME ago.
+     */
+    protected List<AttachmentPoint> oldAPs;
+    /**
+     * The current attachment points for the device.
+     */
     protected List<AttachmentPoint> attachmentPoints;
     // ************
     // Constructors
@@ -77,6 +92,8 @@ public class Device implements IDevice {
                 HexString.toHexString(entity.getMacAddress(), 6);
         this.entityClass = entityClass;
         Arrays.sort(this.entities);
+
+        this.oldAPs = null;
         this.attachmentPoints = null;
 
         if (entity.getSwitchDPID() != null &&
@@ -85,10 +102,10 @@ public class Device implements IDevice {
             short port = entity.getSwitchPort().shortValue();
 
             if (deviceManager.isValidAttachmentPoint(sw, port)) {
+                AttachmentPoint ap;
+                ap = new AttachmentPoint(sw, port,
+entity.getLastSeenTimestamp().getTime());
 
-                AttachmentPoint ap = 
-                        new AttachmentPoint(sw, port,
-                                            entity.getLastSeenTimestamp().getTime());
                 this.attachmentPoints = new ArrayList<AttachmentPoint>();
                 this.attachmentPoints.add(ap);
             }
@@ -104,15 +121,20 @@ public class Device implements IDevice {
      */
     public Device(DeviceManagerImpl deviceManager,
                   Long deviceKey,
+                  Collection<AttachmentPoint> oldAPs,
                   Collection<AttachmentPoint> attachmentPoints,
                   Collection<Entity> entities,
                   IEntityClass entityClass) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = entities.toArray(new Entity[entities.size()]);
-        if (attachmentPoints == null) {
-            this.attachmentPoints = null;
-        } else {
+        this.oldAPs = null;
+        this.attachmentPoints = null;
+        if (oldAPs != null) {
+            this.oldAPs =
+                    new ArrayList<AttachmentPoint>(oldAPs);
+        }
+        if (attachmentPoints != null) {
             this.attachmentPoints =
                     new ArrayList<AttachmentPoint>(attachmentPoints);
         }
@@ -137,27 +159,37 @@ public class Device implements IDevice {
                                               device.entities.length + 1);
         this.entities[this.entities.length - 1] = newEntity;
         Arrays.sort(this.entities);
-    
+        this.oldAPs = null;
+        if (device.oldAPs != null) {
+            this.oldAPs =
+                    new ArrayList<AttachmentPoint>(device.oldAPs);
+        }
+        this.attachmentPoints = null;
         if (device.attachmentPoints != null) {
             this.attachmentPoints =
                     new ArrayList<AttachmentPoint>(device.attachmentPoints);
-        } else 
-            this.attachmentPoints = null;
-    
+        }
+
         this.macAddressString =
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
-    
+
         this.entityClass = device.entityClass;
     }
 
-    private Map<Long, AttachmentPoint> getAPMap() {
+    /**
+     * Given a list of attachment points (apList), the procedure would return
+     * a map of attachment points for each L2 domain.  L2 domain id is the key.
+     * @param apList
+     * @return
+     */
+    private Map<Long, AttachmentPoint> getAPMap(List<AttachmentPoint> apList) {
 
-        if (attachmentPoints == null) return null;
+        if (apList == null) return null;
         ITopologyService topology = deviceManager.topology;
 
         // Get the old attachment points and sort them.
-        List<AttachmentPoint>oldAP =
-                new ArrayList<AttachmentPoint>(attachmentPoints);
+        List<AttachmentPoint>oldAP = new ArrayList<AttachmentPoint>();
+        if (apList != null) oldAP.addAll(apList);
 
         // Remove invalid attachment points before sorting.
         List<AttachmentPoint>tempAP =
@@ -178,57 +210,156 @@ public class Device implements IDevice {
             AttachmentPoint ap = oldAP.get(i);
             // if this is not a valid attachment point, continue
             if (!deviceManager.isValidAttachmentPoint(ap.getSw(),
-                                                     ap.getPort()))
+                                                      ap.getPort()))
                 continue;
 
             long id = topology.getL2DomainId(ap.getSw());
-            AttachmentPoint possibleDuplicate = apMap.put(id, ap);
-            if (possibleDuplicate == null) continue;
-
-            // Add logic to check for duplicate device.
+            apMap.put(id, ap);
         }
 
         if (apMap.isEmpty()) return null;
         return apMap;
     }
 
-    protected boolean updateAttachmentPoint() {
-        if (this.attachmentPoints == null) return false;
+    /**
+     * Remove all attachment points that are older than INACTIVITY_INTERVAL
+     * from the list.
+     * @param apList
+     * @return
+     */
+    private boolean removeExpiredAttachmentPoints(List<AttachmentPoint>apList) {
 
-        List<AttachmentPoint> oldAPList =
-                new ArrayList<AttachmentPoint>(this.attachmentPoints);
-        Map<Long, AttachmentPoint> apMap = getAPMap();
+        List<AttachmentPoint> expiredAPs = new ArrayList<AttachmentPoint>();
 
-        if (apMap == null) {
-            this.attachmentPoints = null;
-            return true;
+        if (apList == null) return false;
+
+        for(AttachmentPoint ap: apList) {
+            if (ap.getLastSeen() + AttachmentPoint.INACTIVITY_INTERVAL <
+                    System.currentTimeMillis())
+                expiredAPs.add(ap);
         }
-
-        List<AttachmentPoint> newAPList =
-                new ArrayList<AttachmentPoint>(apMap.values());
-
-        // Since we did not add any new attachment points, it is sufficient
-        // to compare only the lengths.
-        if (oldAPList.size() == newAPList.size()) return false;
-
-        this.attachmentPoints = newAPList;
-        return true;
+        if (expiredAPs.size() > 0) {
+            apList.removeAll(expiredAPs);
+            return true;
+        } else return false;
     }
 
+    /**
+     * Get a list of duplicate attachment points, given a list of old attachment
+     * points and one attachment point per L2 domain. Given a true attachment
+     * point in the L2 domain, say trueAP, another attachment point in the
+     * same L2 domain, say ap, is duplicate if:
+     * 1. ap is inconsistent with trueAP, and
+     * 2. active time of ap is after that of trueAP; and
+     * 3. last seen time of ap is within the last INACTIVITY_INTERVAL
+     * @param oldAPList
+     * @param apMap
+     * @return
+     */
+    List<AttachmentPoint> getDuplicateAttachmentPoints(List<AttachmentPoint>oldAPList,
+                                                       Map<Long, AttachmentPoint>apMap) {        ITopologyService topology = deviceManager.topology;
+        List<AttachmentPoint> dupAPs = new ArrayList<AttachmentPoint>();
+        long timeThreshold = System.currentTimeMillis() -
+                AttachmentPoint.INACTIVITY_INTERVAL;
+
+        if (oldAPList == null || apMap == null)
+            return dupAPs;
+
+        for(AttachmentPoint ap: oldAPList) {
+            long id = topology.getL2DomainId(ap.getSw());
+            AttachmentPoint trueAP = apMap.get(id);
+
+            if (trueAP == null) continue;
+            boolean c = (topology.isConsistent(trueAP.getSw(), trueAP.getPort(),
+                                              ap.getSw(), ap.getPort()));
+            boolean active = (ap.getActiveSince() > trueAP.getActiveSince());
+            boolean last = ap.getLastSeen() > timeThreshold;
+            if (!c && active && last) {
+                dupAPs.add(ap);
+            }
+        }
+
+        return dupAPs;
+    }
+
+    /**
+     * Update the known attachment points.  This method is called whenever
+     * topology changes. The method returns true if there's any change to
+     * the list of attachment points -- which indicates a possible device
+     * move.
+     * @return
+     */
+    protected boolean updateAttachmentPoint() {
+        boolean moved = false;
+
+        List<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
+        if (attachmentPoints != null) apList.addAll(attachmentPoints);
+        Map<Long, AttachmentPoint> newMap = getAPMap(apList);
+
+        if (newMap == null || newMap.size() != apList.size()) {
+            moved = true;
+        }
+
+        // Prepare the new attachment point list.
+        if (moved) {
+            List<AttachmentPoint> newAPList =
+                    new ArrayList<AttachmentPoint>();
+            if (newMap != null) newAPList.addAll(newMap.values());
+            this.attachmentPoints = newAPList;
+            log.debug("DEVICE_MOVE: Old AttachmentPoints: {}," +
+                    "New AttachmentPoints: {}", apList, newAPList);
+        }
+
+        // Set the oldAPs to null.
+        this.oldAPs = null;
+        return moved;
+    }
+
+    /**
+     * Update the list of attachment points given that a new packet-in
+     * was seen from (sw, port) at time (lastSeen).  The return value is true
+     * if there was any change to the list of attachment points for the device
+     * -- which indicates a device move.
+     * @param sw
+     * @param port
+     * @param lastSeen
+     * @return
+     */
     protected boolean updateAttachmentPoint(long sw, short port, long lastSeen){
         ITopologyService topology = deviceManager.topology;
+        List<AttachmentPoint> oldAPList;
+        List<AttachmentPoint> apList;
+        boolean oldAPFlag = false;
 
         if (!deviceManager.isValidAttachmentPoint(sw, port)) return false;
-
         AttachmentPoint newAP = new AttachmentPoint(sw, port, lastSeen);
-        Map<Long, AttachmentPoint> apMap = getAPMap();
 
+        //Copy the oldAP and ap list.
+        apList = new ArrayList<AttachmentPoint>();
+        if (attachmentPoints != null) apList.addAll(attachmentPoints);
+        oldAPList = new ArrayList<AttachmentPoint>();
+        if (oldAPs != null) oldAPList.addAll(oldAPs);
+
+        // if the sw, port is in old AP, remove it from there
+        // and update the lastSeen in that object.
+        if (oldAPList.contains(newAP)) {
+            int index = oldAPList.indexOf(newAP);
+            newAP = oldAPList.remove(index);
+            newAP.setLastSeen(lastSeen);
+            this.oldAPs = oldAPList;
+            oldAPFlag = true;
+            log.debug("DEVICE_MOVE: OldAPs changed for device: {}", oldAPList);
+        }
+
+        // newAP now contains the new attachment point.
+
+        // Get the APMap is null or empty.
+        Map<Long, AttachmentPoint> apMap = getAPMap(apList);
         if (apMap == null || apMap.isEmpty()) {
-            // Device just got added.
-            List<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
             apList.add(newAP);
-            this.attachmentPoints = apList;
-            return true;  // device added
+            attachmentPoints = apList;
+            log.debug("DEVICE_MOVE: First attachmentpoint point for device: {}", apList);
+            return true;
         }
 
         long id = topology.getL2DomainId(sw);
@@ -236,10 +367,12 @@ public class Device implements IDevice {
 
         if (oldAP == null) // No attachment on this L2 domain.
         {
-            List<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
+            apList = new ArrayList<AttachmentPoint>();
             apList.addAll(apMap.values());
             apList.add(newAP);
             this.attachmentPoints = apList;
+            log.debug("DEVICE_MOVE: First access point in L2 domain. {}",
+                      apList);
             return true; // new AP found on an L2 island.
         }
 
@@ -255,46 +388,104 @@ public class Device implements IDevice {
         }
 
         int x = deviceManager.apComparator.compare(oldAP, newAP);
-        if (x > 0) {
+        if (x < 0) {
             // newAP replaces oldAP.
             apMap.put(id, newAP);
             this.attachmentPoints =
                     new ArrayList<AttachmentPoint>(apMap.values());
+            log.debug("DEVICE_MOVED: Attachment point changed to: {}," +
+                    "putting previous in oldAP: {}", newAP, oldAP);
+
+            oldAPList = new ArrayList<AttachmentPoint>();
+            if (oldAPs != null) oldAPList.addAll(oldAPs);
+            oldAPList.add(oldAP);
+            this.oldAPs = oldAPList;
             return true; // attachment point changed.
+        } else {
+            // retain oldAP  as is.  Put the newAP in oldAPs for flagging
+            // possible duplicates.
+            oldAPList = new ArrayList<AttachmentPoint>();
+            if (oldAPs != null) oldAPList.addAll(oldAPs);
+	    // Add ot oldAPList only if it was picked up from the oldAPList
+            if (oldAPFlag) oldAPList.add(newAP);
+            log.debug("DEVICE_MOVED: New attachment point {} does not" +
+                    " replace already existing one {}.", newAP, oldAP);
+            this.oldAPs = oldAPList;
         }
 
-        return false; // something weird.
+        return false;
     }
 
+    /**
+     * Delete (sw,port) from the list of list of attachment points
+     * and oldAPs.
+     * @param sw
+     * @param port
+     * @return
+     */
     public boolean deleteAttachmentPoint(long sw, short port) {
         AttachmentPoint ap = new AttachmentPoint(sw, port, 0);
 
-        if (this.attachmentPoints == null) return false;
+        if (this.oldAPs != null) {
+            ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
+            apList.addAll(this.oldAPs);
+            int index = apList.indexOf(ap);
+            if (index > 0) {
+                apList.remove(index);
+                this.oldAPs = apList;
+            }
+        }
 
-        ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
-        apList.addAll(this.attachmentPoints);
-        int index = apList.indexOf(ap);
-        if (index < 0) return false;
-
-        apList.remove(index);
-        this.attachmentPoints = apList;
-        return true;
+        if (this.attachmentPoints != null) {
+            ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
+            apList.addAll(this.attachmentPoints);
+            int index = apList.indexOf(ap);
+            if (index > 0) {
+                apList.remove(index);
+                this.attachmentPoints = apList;
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean deleteAttachmentPoint(long sw) {
-        boolean deletedFlag = false;
-        if (this.attachmentPoints == null) return false;
+        boolean deletedFlag;
+        ArrayList<AttachmentPoint> apList;
+        ArrayList<AttachmentPoint> modifiedList;
 
-        ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
-        apList.addAll(this.attachmentPoints);
-        ArrayList<AttachmentPoint> modifiedList = new ArrayList<AttachmentPoint>();
+        // Delete the APs on switch sw in oldAPs.
+        deletedFlag = false;
+        apList = new ArrayList<AttachmentPoint>();
+        if (this.oldAPs != null)
+            apList.addAll(this.oldAPs);
+        modifiedList = new ArrayList<AttachmentPoint>();
 
         for(AttachmentPoint ap: apList) {
             if (ap.getSw() == sw) {
                 deletedFlag = true;
-                continue;
+            } else {
+                modifiedList.add(ap);
             }
-            modifiedList.add(ap);
+        }
+
+        if (deletedFlag) {
+            this.oldAPs = modifiedList;
+        }
+
+        // Delete the APs on switch sw in attachmentPoints.
+        deletedFlag = false;
+        apList = new ArrayList<AttachmentPoint>();
+        if (this.attachmentPoints != null)
+            apList.addAll(this.attachmentPoints);
+        modifiedList = new ArrayList<AttachmentPoint>();
+
+        for(AttachmentPoint ap: apList) {
+            if (ap.getSw() == sw) {
+                deletedFlag = true;
+            } else {
+                modifiedList.add(ap);
+            }
         }
 
         if (deletedFlag) {
@@ -313,23 +504,54 @@ public class Device implements IDevice {
 
     @Override
     public SwitchPort[] getAttachmentPoints(boolean includeError) {
-        SwitchPort [] returnSwitchPorts = new SwitchPort[] {};
-
-        Map<Long, AttachmentPoint> apMap = getAPMap();
-        if (apMap == null) return returnSwitchPorts;
-        if (apMap.isEmpty()) return returnSwitchPorts;
-
         List<SwitchPort> sp = new ArrayList<SwitchPort>();
-        for(AttachmentPoint ap: apMap.values()) {
-            SwitchPort swport = new SwitchPort(ap.getSw(),
-                                               ap.getPort());
-            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort()))
-                sp.add(swport);
+        SwitchPort [] returnSwitchPorts = new SwitchPort[] {};
+        if (attachmentPoints == null) return returnSwitchPorts;
+        if (attachmentPoints.isEmpty()) return returnSwitchPorts;
+
+
+        // copy ap list.
+        List<AttachmentPoint> apList;
+        apList = new ArrayList<AttachmentPoint>();
+        if (attachmentPoints != null) apList.addAll(attachmentPoints);
+        // get AP map.
+        Map<Long, AttachmentPoint> apMap = getAPMap(apList);
+
+        if (apMap != null) {
+            for(AttachmentPoint ap: apMap.values()) {
+                SwitchPort swport = new SwitchPort(ap.getSw(),
+                                                   ap.getPort());
+                    sp.add(swport);
+            }
         }
+
+        if (!includeError)
+            return sp.toArray(new SwitchPort[sp.size()]);
+
+        log.debug("DEVICE_APS: Getting all attachment points: APs: {}, oldAPs: {}",
+                  this.attachmentPoints, this.oldAPs);
+
+        List<AttachmentPoint> oldAPList;
+        oldAPList = new ArrayList<AttachmentPoint>();
+
+        if (oldAPs != null) oldAPList.addAll(oldAPs);
+
+        if (removeExpiredAttachmentPoints(oldAPList))
+            this.oldAPs = oldAPList;
+
+        List<AttachmentPoint> dupList;
+        dupList = this.getDuplicateAttachmentPoints(oldAPList, apMap);
+        if (dupList != null) {
+            for(AttachmentPoint ap: dupList) {
+                SwitchPort swport = new SwitchPort(ap.getSw(),
+                                                   ap.getPort(),
+                                                   ErrorStatus.DUPLICATE_DEVICE);
+                    sp.add(swport);
+            }
+        }
+        log.debug("DEVICE_APS: Duplicate APs: {}", sp);
         return sp.toArray(new SwitchPort[sp.size()]);
     }
-
-    
 
     // *******
     // IDevice
@@ -404,7 +626,7 @@ public class Device implements IDevice {
                 if (!validIP)
                     break;
             }
-            
+
             if (validIP)
                 vals.add(e.getIpv4Address());
         }
