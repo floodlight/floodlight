@@ -257,7 +257,8 @@ entity.getLastSeenTimestamp().getTime());
      * @return
      */
     List<AttachmentPoint> getDuplicateAttachmentPoints(List<AttachmentPoint>oldAPList,
-                                                       Map<Long, AttachmentPoint>apMap) {        ITopologyService topology = deviceManager.topology;
+                                                       Map<Long, AttachmentPoint>apMap) {
+        ITopologyService topology = deviceManager.topology;
         List<AttachmentPoint> dupAPs = new ArrayList<AttachmentPoint>();
         long timeThreshold = System.currentTimeMillis() -
                 AttachmentPoint.INACTIVITY_INTERVAL;
@@ -380,8 +381,9 @@ entity.getLastSeenTimestamp().getTime());
         // we need to compare oldAP and newAP.
         if (oldAP.equals(newAP)) {
             // nothing to do here. just the last seen has to be changed.
-            if (newAP.lastSeen > oldAP.lastSeen)
-                apMap.put(id, newAP);
+            if (newAP.lastSeen > oldAP.lastSeen) {
+                oldAP.setLastSeen(newAP.lastSeen);
+            }
             this.attachmentPoints =
                     new ArrayList<AttachmentPoint>(apMap.values());
             return false; // nothing to do here.
