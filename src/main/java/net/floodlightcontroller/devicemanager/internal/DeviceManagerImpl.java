@@ -1015,8 +1015,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @return The {@link Device} object if found
      */
     protected Device learnDeviceByEntity(Entity entity) {
-    	if (logger.isDebugEnabled())
-    		logger.debug("In learn device by entity for - " + entity);
         ArrayList<Long> deleteQueue = null;
         LinkedList<DeviceUpdate> deviceUpdates = null;
         Device device = null;
@@ -1034,45 +1032,26 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             IEntityClass entityClass = null;
 
             if (deviceKey == null) {
-            	if (logger.isDebugEnabled())
-            		logger.debug("In learn dev by entity, PIndex not present for -"
-                             + entity);
                 // If the entity does not exist in the primary entity index,
                 // use the entity classifier for find the classes for the
                 // entity. Look up the entity in the returned class'
                 // class entity index.
                 entityClass = entityClassifier.classifyEntity(entity);
-                if (logger.isDebugEnabled())
-                	logger.debug("In learn dev by entity, class for entity -" +
-                                 entityClass);
                 if (entityClass == null) {
                     // could not classify entity. No device
                     return null;
                 }
-                if (logger.isDebugEnabled())
-                	logger.debug("In learn dev by entity, class for entity -" +
-                		         entityClass.getName());
                 ClassState classState = getClassState(entityClass);
 
                 if (classState.classIndex != null) {
                     deviceKey =
                             classState.classIndex.findByEntity(entity);
-                    if (logger.isDebugEnabled())
-                    	logger.debug("In learn dev by entity, devicekey in class- "
-                    		     + entityClass.getName() + " is -" + deviceKey);
-                } else {
-                	if (logger.isDebugEnabled())
-                		logger.debug("In learn dev by entity, classState classIndex"
-                			     + " is NULL for class -" + entityClass);
                 }
             }
             if (deviceKey != null) {
                 // If the primary or secondary index contains the entity
                 // use resulting device key to look up the device in the
                 // device map, and use the referenced Device below.
-            	if (logger.isDebugEnabled())
-            		logger.debug("In learn dev by entity, device key -" + 
-                             deviceKey.toString());
                 device = deviceMap.get(deviceKey);
                 if (device == null)
                     throw new IllegalStateException("Corrupted device index");
@@ -1135,9 +1114,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         }
                     } else {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point udpated: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
+                            logger.debug("Device attachment point updated: " + 
+                                         "attachment points {}," +
+                                         "entities {}", device.attachmentPoints,
+                                         device.entities);
                         }
                     }
                 }
@@ -1158,9 +1138,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         }
                     } else {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point udpated: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
+                            logger.debug("Device attachment point updated: " + 
+                                         "attachment points {}," +
+                                         "entities {}", device.attachmentPoints,
+                                         device.entities);
                         }
                     }
                 }
@@ -1209,9 +1190,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
 
         processUpdates(deviceUpdates);
-        if (logger.isDebugEnabled())
-        	logger.debug("In learn dev by entity, done and returning for entity -"
-        		         + entity);
 
         return device;
     }
@@ -1644,8 +1622,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             }
         }
 
-        logger.debug("Triggering update to attachment points due to topology change.");
-
         while (diter.hasNext()) {
             Device d = diter.next();
             if (d.updateAttachmentPoint()) {
@@ -1685,28 +1661,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             IEntityClass entityClass = 
                     this.entityClassifier.classifyEntity(entity);
             if (entityClass == null || device.getEntityClass() == null) {
-                if (logger.isDebugEnabled())
-                    logger.debug("Reclassify because of entity - " + entity);
                 needToReclassify = true;                
                 break;
             }
             if (!entityClass.getName().
                     equals(device.getEntityClass().getName())) {
-                if (logger.isDebugEnabled())
-                    logger.debug("In reclassify, because ofentity - " + entity);
                 needToReclassify = true;
                 break;
             }
         }
         if (needToReclassify == false) {
-            if (logger.isDebugEnabled())
-                logger.debug("NOP for reclassify of -" + device);
             return false;
         }
             
         LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
-        logger.debug("In reclassify for device - " + device.toString());
         // delete this device and then re-learn all the entities
         this.deleteDevice(device);
         deviceUpdates.add(new DeviceUpdate(device, 
