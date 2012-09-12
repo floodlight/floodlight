@@ -1172,7 +1172,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                              new SwitchPort(1L, 2, ErrorStatus.DUPLICATE_DEVICE)},
                                              d.getAttachmentPoints(true));
 
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
         entity1.setLastSeenTimestamp(c.getTime());
         d = deviceManager.learnDeviceByEntity(entity1);
 
