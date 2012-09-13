@@ -1123,27 +1123,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 }
                 break;
             } else {
+                boolean moved = false;
                 Device newDevice = allocateDevice(device, entity);
                 if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
-                    boolean moved =
-                            newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
+                    moved = newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
                                                             entity.getSwitchPort().shortValue(),
                                                             entity.getLastSeenTimestamp().getTime());
-                    if (moved) {
-                        sendDeviceMovedNotification(device);
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device moved: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
-                        }
-                    } else {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point updated: " + 
-                                         "attachment points {}," +
-                                         "entities {}", device.attachmentPoints,
-                                         device.entities);
-                        }
-                    }
                 }
 
                 // generate updates
@@ -1172,6 +1157,22 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 updateSecondaryIndices(entity,
                                        device.getEntityClass(),
                                        deviceKey);
+
+                if (moved) {
+                    sendDeviceMovedNotification(device);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Device moved: attachment points {}," +
+                                "entities {}", device.attachmentPoints,
+                                device.entities);
+                    }
+                } else {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Device attachment point updated: " +
+                                     "attachment points {}," +
+                                     "entities {}", device.attachmentPoints,
+                                     device.entities);
+                    }
+                }
                 break;
             }
         }
