@@ -140,7 +140,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * This map contains state for each of the {@ref IEntityClass}
      * that exist
      */
-    protected ConcurrentHashMap<IEntityClass, ClassState> classStateMap;
+    protected ConcurrentHashMap<String, ClassState> classStateMap;
 
     /**
      * This is the list of indices we want on a per-class basis
@@ -258,11 +258,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             //First compare based on L2 domain ID; 
             long oldSw = oldAP.getSw();
             short oldPort = oldAP.getPort();
+            long oldDomain = topology.getL2DomainId(oldSw);
+            boolean oldBD = topology.isBroadcastDomainPort(oldSw, oldPort);
+
             long newSw = newAP.getSw();
             short newPort = newAP.getPort();
-
-            long oldDomain = topology.getL2DomainId(oldSw);
             long newDomain = topology.getL2DomainId(newSw);
+            boolean newBD = topology.isBroadcastDomainPort(newSw, newPort);
 
             if (oldDomain < newDomain) return -1;
             else if (oldDomain > newDomain) return 1;
@@ -270,48 +272,33 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // We expect that the last seen of the new AP is higher than
             // old AP, if it is not, just reverse and send the negative
             // of the result.
-            if (oldAP.getLastSeen() > newAP.getLastSeen())
+            if (oldAP.getActiveSince() > newAP.getActiveSince())
                 return -compare(newAP, oldAP);
 
+            long activeOffset = 0;
+            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort)) {
+                if (!newBD && oldBD) {
+                    return -1;
+                }
+                if (newBD && oldBD) {
+                    activeOffset = AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT;
+                }
+                else if (newBD && !oldBD){
+                    activeOffset = AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT;
+                }
 
-            // If newAP is inconsistent with the oldAP
-            // and the newAP is not a broadcast domain.
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    !topology.isBroadcastDomainPort(newSw, newPort))
-                return 1;
+            } else {
+                // The attachment point is consistent.
+                activeOffset = AttachmentPoint.CONSISTENT_TIMEOUT;
+            }
 
-            // If newAP is inconsistent with the oldAP and
-            // oldAP belongs to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    topology.isBroadcastDomainPort(oldSw, oldPort) &&
-                    topology.isBroadcastDomainPort(newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() + 
-                        AttachmentPoint.EXTERNAL_TO_EXTERNAL_TIMEOUT)
-                return 1;
 
-            // If newAP is inconsistent with the oldAP and
-            // oldAP does not to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (!topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    !topology.isBroadcastDomainPort(oldSw, oldPort) &&
-                    topology.isBroadcastDomainPort(newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() + 
-                        AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT)
-                return 1;
-
-            // If newAP is inconsistent with the oldAP and
-            // oldAP does not to broadcast domain and
-            // newAP belongs to broadcast domain and
-            // newLastSeen > oldLastSeen + EXT_TO_EXT_TIMEOUT
-            if (topology.isConsistent(oldSw, oldPort, newSw, newPort) &&
-                    newAP.getLastSeen() > oldAP.getLastSeen() +
-                        AttachmentPoint.CONSISTENT_TIMEOUT)
-                return 1;
-
-            return -1;
+            if ((newAP.getActiveSince() > oldAP.getLastSeen() + activeOffset) ||
+                    (newAP.getLastSeen() > oldAP.getLastSeen() +
+                            AttachmentPoint.INACTIVITY_INTERVAL)) {
+                return -1;
+            }
+            return 1;
         }
     }
     /**
@@ -684,7 +671,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         deviceMap = new ConcurrentHashMap<Long, Device>();
         classStateMap =
-                new ConcurrentHashMap<IEntityClass, ClassState>();
+                new ConcurrentHashMap<String, ClassState>();
         apComparator = new AttachmentPointComparator();
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
@@ -790,7 +777,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param switchPort the port
      * @return true if it's a valid attachment point
      */
-    protected boolean isValidAttachmentPoint(long switchDPID,
+    public boolean isValidAttachmentPoint(long switchDPID,
                                              int switchPort) {
         if (topology.isAttachmentPointPort(switchDPID,
                                            (short)switchPort) == false)
@@ -1134,34 +1121,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         }
                     } else {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point udpated: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
+                            logger.debug("Device attachment point updated: " + 
+                                         "attachment points {}," +
+                                         "entities {}", device.attachmentPoints,
+                                         device.entities);
                         }
                     }
                 }
                 break;
             } else {
+                boolean moved = false;
                 Device newDevice = allocateDevice(device, entity);
                 if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
-                    boolean moved =
-                            newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
+                    moved = newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
                                                             entity.getSwitchPort().shortValue(),
                                                             entity.getLastSeenTimestamp().getTime());
-                    if (moved) {
-                        sendDeviceMovedNotification(device);
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device moved: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
-                        }
-                    } else {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point udpated: attachment points {}," +
-                                    "entities {}", device.attachmentPoints,
-                                    device.entities);
-                        }
-                    }
                 }
 
                 // generate updates
@@ -1190,6 +1164,22 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 updateSecondaryIndices(entity,
                                        device.getEntityClass(),
                                        deviceKey);
+
+                if (moved) {
+                    sendDeviceMovedNotification(device);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Device moved: attachment points {}," +
+                                "entities {}", device.attachmentPoints,
+                                device.entities);
+                    }
+                } else {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Device attachment point updated: " +
+                                     "attachment points {}," +
+                                     "entities {}", device.attachmentPoints,
+                                     device.entities);
+                    }
+                }
                 break;
             }
         }
@@ -1198,7 +1188,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             for (Long l : deleteQueue) {
                 Device dev = deviceMap.get(l);
                 this.deleteDevice(dev);
-                deviceMap.remove(l);
+                
 
                 // generate new device update
                 deviceUpdates =
@@ -1350,11 +1340,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @return
      */
     private ClassState getClassState(IEntityClass clazz) {
-        ClassState classState = classStateMap.get(clazz);
+        ClassState classState = classStateMap.get(clazz.getName());
         if (classState != null) return classState;
 
         classState = new ClassState(clazz);
-        ClassState r = classStateMap.putIfAbsent(clazz, classState);
+        ClassState r = classStateMap.putIfAbsent(clazz.getName(), classState);
         if (r != null) {
             // concurrent add
             return r;
@@ -1414,7 +1404,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     	Iterator<Device> diter = deviceMap.values().iterator();
     	while (diter.hasNext()) {
             Device d = diter.next();
-            if (d.getEntityClass() != null && 
+            if (d.getEntityClass() == null ||
             		entityClassNames.contains(d.getEntityClass().getName()))
             	reclassifyDevice(d);
     	}
@@ -1462,6 +1452,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
+                                                      d.oldAPs,
                                                       d.attachmentPoints,
                                                       toKeep,
                                                       d.entityClass);
@@ -1579,9 +1570,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     // TODO: FIX THIS.
     protected Device allocateDevice(Long deviceKey,
                                     List<AttachmentPoint> aps,
+                                    List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new Device(this, deviceKey, aps, entities, entityClass);
+        return new Device(this, deviceKey, aps, trueAPs, entities, entityClass);
     }
 
     protected Device allocateDevice(Device device,
@@ -1602,15 +1594,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     			newPossibleAPs.add(aP);
     		}
     	}
-    	for (AttachmentPoint oldAP : device.attachmentPoints) {
-    		if (newPossibleAPs.contains(oldAP)) {
-    			newAPs.add(oldAP);
+    	if (device.attachmentPoints != null) {
+    		for (AttachmentPoint oldAP : device.attachmentPoints) {
+    			if (newPossibleAPs.contains(oldAP)) {
+    				newAPs.add(oldAP);
+    			}
     		}
     	}
     	if (newAPs.isEmpty())
     		newAPs = null;
-    	return new Device(this, device.getDeviceKey(),newAPs, 
+        Device d = new Device(this, device.getDeviceKey(),newAPs, null,
     			entities, device.getEntityClass());
+        d.updateAttachmentPoint();
+        return d;
     }
 
     @Override
@@ -1637,8 +1633,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 }
             }
         }
-
-        logger.debug("Triggering update to attachment points due to topology change.");
 
         while (diter.hasNext()) {
             Device d = diter.next();
@@ -1669,85 +1663,40 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      */
     protected boolean reclassifyDevice(Device device)
     {
-    	// first classify all entities of this device
-    	LinkedList<DeviceUpdate> deviceUpdates =
-    			new LinkedList<DeviceUpdate>();
-
-    	Set <Entity> entitiesRetained = new HashSet <Entity>();
-    	Set <Entity> entitiesRemoved = new HashSet <Entity>();
-    	for (Entity entity : device.getEntities()) {
-    		IEntityClass entityClass = 
-    				this.entityClassifier.classifyEntity(entity);
-    		if (entityClass == null && device.getEntityClass() == null) {
-    			entitiesRetained.add(entity);                
-    			continue;
-    		}
-    		if (entityClass != null && device.getEntityClass() != null) {
-    			if (entityClass.getName().
-    					contentEquals(device.getEntityClass().getName())) {
-    				entitiesRetained.add(entity);
-    			} else {
-    				entitiesRemoved.add(entity);
-    			}
-    			continue;
-    		}
-    		entitiesRemoved.add(entity);
-    	}
-    	if (entitiesRemoved.isEmpty()) {
-    		// no change in classification, so NOP
-    		return false;
-    	}
-
-    	for (Entity entity : entitiesRemoved) {
-    		// remove this entity from this device
-    		this.removeEntity(entity, device.getEntityClass(), 
-    				device.getDeviceKey(), entitiesRetained);
-
-    		Device newDevice = this.learnDeviceByEntity(entity);
-    		if (newDevice != null) 
-    			deviceUpdates.add(new DeviceUpdate(newDevice, 
-    					DeviceUpdate.Change.ADD, 
-    					null));
-
-    	}
-
-    	if (entitiesRetained.isEmpty()) {
-    		this.deleteDevice(device);
-    		deviceMap.remove(device);
-    		deviceUpdates.add(new DeviceUpdate(device, 
-    				DeviceUpdate.Change.DELETE, null
-    				));
-    	} else {
-    		EnumSet<DeviceField> changedFields =
-    				EnumSet.noneOf(DeviceField.class);
-    		Device modDevice = null;
-    		modDevice = allocateDevice(device, entitiesRetained);
-    		// Add the new device to the primary map with a simple put
-    		deviceMap.put(device.getDeviceKey(), modDevice);
-
-    		// update indices
-    		while (true) {
-    			if (updateIndices(modDevice, device.getDeviceKey())) {
-    				break;
-    			}
-    			// TODO
-    		}
-
-    		for (Entity entity : entitiesRemoved) {
-    			EnumSet<DeviceField> changes = 
-    					findChangedFields(modDevice, entity);
-    			for (DeviceField change : changes) {
-    				logger.debug("change - " + change);
-    			}
-    			changedFields.addAll(changes);
-    		}
-    		deviceUpdates.add(new DeviceUpdate(modDevice, 
-    				DeviceUpdate.Change.CHANGE, 
-    				changedFields));
-    	}
-    	if (!deviceUpdates.isEmpty())
-    		processUpdates(deviceUpdates);
-    	return true;
-    }
-
+        // first classify all entities of this device
+        if (device == null) {
+            logger.debug("In reclassify for null device");
+            return false;
+        }
+        boolean needToReclassify = false;
+        for (Entity entity : device.entities) {
+            IEntityClass entityClass = 
+                    this.entityClassifier.classifyEntity(entity);
+            if (entityClass == null || device.getEntityClass() == null) {
+                needToReclassify = true;                
+                break;
+            }
+            if (!entityClass.getName().
+                    equals(device.getEntityClass().getName())) {
+                needToReclassify = true;
+                break;
+            }
+        }
+        if (needToReclassify == false) {
+            return false;
+        }
+            
+        LinkedList<DeviceUpdate> deviceUpdates =
+                new LinkedList<DeviceUpdate>();
+        // delete this device and then re-learn all the entities
+        this.deleteDevice(device);
+        deviceUpdates.add(new DeviceUpdate(device, 
+                DeviceUpdate.Change.DELETE, null));
+        if (!deviceUpdates.isEmpty())
+            processUpdates(deviceUpdates);
+        for (Entity entity: device.entities ) {
+            this.learnDeviceByEntity(entity);
+        }
+        return true;
+    }   
 }
