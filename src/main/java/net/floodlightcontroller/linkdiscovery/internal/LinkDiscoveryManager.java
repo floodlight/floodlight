@@ -360,6 +360,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
+        if (ofpPort == null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Null physical port. sw={}, port={}", sw, port);
+            }
+            return;
+        }
+
         if (isLLDPSuppressed(sw, port)) {
             /* Dont send LLDPs out of this port as suppressLLDPs set
              * 
