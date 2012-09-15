@@ -770,6 +770,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   .anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(1L).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)1, 5L, (short)2)).
+               andReturn(false).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockTopology);
@@ -1498,6 +1500,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   EasyMock.anyShort()))
                                                   .andReturn(false)
                                                   .anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(EasyMock.anyLong(),
+                                                    EasyMock.anyShort(),
+                                                    EasyMock.anyLong(),
+                                                    EasyMock.anyShort())).
+                                                    andReturn(false).anyTimes();
         replay(mockTopology);
 
         Entity e1 = new Entity(1L, (short)1, null, null, null, new Date(2000));
