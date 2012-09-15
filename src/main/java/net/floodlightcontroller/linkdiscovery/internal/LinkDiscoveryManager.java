@@ -1107,6 +1107,16 @@ IFloodlightModule, IInfoProvider, IHAListener {
             lock.writeLock().unlock();
         }
     }
+    
+    /**
+     * We don't react the port changed notifications here. we listen for 
+     * OFPortStatus messages directly. Might consider using this notifier
+     * instead
+     */
+    @Override
+    public void switchPortChanged(Long switchId) {
+        // no-op
+    }
 
     /** 
      * Delete links incident on a given switch port.

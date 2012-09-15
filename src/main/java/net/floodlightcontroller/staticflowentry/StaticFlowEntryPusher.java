@@ -320,6 +320,11 @@ public class StaticFlowEntryPusher
         // do NOT delete from our internal state; we're tracking the rules,
         // not the switches
     }
+    
+    @Override
+    public void switchPortChanged(Long switchId) {
+        // no-op
+    }
 
     /**
      * This handles both rowInsert() and rowUpdate()

@@ -238,27 +238,39 @@ public class Controller implements IFloodlightProviderService,
          */
         public void dispatch();
     }
+    public enum SwitchUpdateType {
+        ADDED,
+        REMOVED,
+        PORTCHANGED
+    }
     /**
      * Update message indicating a switch was added or removed 
      */
     protected class SwitchUpdate implements IUpdate {
         public IOFSwitch sw;
-        public boolean added;
-        public SwitchUpdate(IOFSwitch sw, boolean added) {
+        public SwitchUpdateType switchUpdateType;
+        public SwitchUpdate(IOFSwitch sw, SwitchUpdateType switchUpdateType) {
             this.sw = sw;
-            this.added = added;
+            this.switchUpdateType = switchUpdateType;
         }
         public void dispatch() {
             if (log.isTraceEnabled()) {
                 log.trace("Dispatching switch update {} {}",
-                        sw, added);
+                        sw, switchUpdateType);
             }
             if (switchListeners != null) {
                 for (IOFSwitchListener listener : switchListeners) {
-                    if (added)
-                        listener.addedSwitch(sw);
-                    else
-                        listener.removedSwitch(sw);
+                    switch(switchUpdateType) {
+                        case ADDED:
+                            listener.addedSwitch(sw);
+                            break;
+                        case REMOVED:
+                            listener.removedSwitch(sw);
+                            break;
+                        case PORTCHANGED:
+                            listener.switchPortChanged(sw.getId());
+                            break;
+                    }
                 }
             }
         }
@@ -1058,6 +1070,12 @@ public class Controller implements IFloodlightProviderService,
                 removePortInfo(sw, portNumber);
             log.debug("Port #{} deleted for {}", portNumber, sw);
         }
+        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
+        try {
+            this.updates.put(update);
+        } catch (InterruptedException e) {
+            log.error("Failure adding update to queue", e);
+        }
     }
     
     /**
@@ -1286,7 +1304,7 @@ public class Controller implements IFloodlightProviderService,
         }
         
         updateActiveSwitchInfo(sw);
-        SwitchUpdate update = new SwitchUpdate(sw, true);
+        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.ADDED);
         try {
             this.updates.put(update);
         } catch (InterruptedException e) {
@@ -1325,7 +1343,7 @@ public class Controller implements IFloodlightProviderService,
         // of the switch state that's written to storage.
         
         updateInactiveSwitchInfo(sw);
-        SwitchUpdate update = new SwitchUpdate(sw, false);
+        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.REMOVED);
         try {
             this.updates.put(update);
         } catch (InterruptedException e) {
@@ -1686,10 +1704,12 @@ public class Controller implements IFloodlightProviderService,
                 // ignore
             }
         }
-
-        //for (Short portNum : oldports.keySet()) {
-        //    sw.deletePort(portNum);
-        //}
+        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
+        try {
+            this.updates.put(update);
+        } catch (InterruptedException e) {
+            log.error("Failure adding update to queue", e);
+        }
     }
     
     protected void removePortInfo(IOFSwitch sw, short portNumber) {
