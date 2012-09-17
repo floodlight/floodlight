@@ -688,7 +688,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // reverse link.
 
         newLinkInfo = links.get(lt);
-        if (newLinkInfo != null && isReverse == false) {
+        if (newLinkInfo != null && isStandard && isReverse == false) {
             Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
                                         lt.getSrc(), lt.getSrcPort());
             LinkInfo reverseInfo = links.get(reverseLink);
