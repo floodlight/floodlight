@@ -66,7 +66,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     /**
      * A map of counterName --> Counter
      */
-    protected Map<String, CounterEntry> nameToCEIndex = 
+    protected ConcurrentHashMap<String, CounterEntry> nameToCEIndex = 
             new ConcurrentHashMap<String, CounterEntry>();
 
     protected ICounter heartbeatCounter;
@@ -389,17 +389,13 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         CounterEntry ce;
         ICounter c;
 
-        if (!nameToCEIndex.containsKey(key)) {
-            c = SimpleCounter.createCounter(new Date(), type);
-            ce = new CounterEntry();
-            ce.counter = c;
-            ce.title = key;
-            nameToCEIndex.put(key, ce);
-        } else {
-            throw new IllegalArgumentException("Title for counters must be unique, and there is already a counter with title " + key);
-        }
-
-        return c;
+        c = SimpleCounter.createCounter(new Date(), type);
+        ce = new CounterEntry();
+        ce.counter = c;
+        ce.title = key;
+        nameToCEIndex.putIfAbsent(key, ce);
+        
+        return nameToCEIndex.get(key).counter;
     }
 
     /**
