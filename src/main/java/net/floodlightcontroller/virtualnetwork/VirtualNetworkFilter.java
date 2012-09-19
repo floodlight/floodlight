@@ -140,7 +140,10 @@ public class VirtualNetworkFilter
             }
         }
         nameToGuid.put(network, guid);
-        vNetsByGuid.put(guid, new VirtualNetwork(network, guid));
+        if (vNetsByGuid.containsKey(guid))
+            vNetsByGuid.get(guid).setName(network); //network already exists, just updating name
+        else
+            vNetsByGuid.put(guid, new VirtualNetwork(network, guid)); //new network
         
         // If they don't specify a new gateway the old one will be preserved
         if ((gateway != null) && (gateway != 0)) {
