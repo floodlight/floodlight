@@ -360,6 +360,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
+        if (ofpPort == null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Null physical port. sw={}, port={}", sw, port);
+            }
+            return;
+        }
+
         if (isLLDPSuppressed(sw, port)) {
             /* Dont send LLDPs out of this port as suppressLLDPs set
              * 
@@ -681,7 +688,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // reverse link.
 
         newLinkInfo = links.get(lt);
-        if (newLinkInfo != null && isReverse == false) {
+        if (newLinkInfo != null && isStandard && isReverse == false) {
             Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
                                         lt.getSrc(), lt.getSrcPort());
             LinkInfo reverseInfo = links.get(reverseLink);
