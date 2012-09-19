@@ -2,11 +2,7 @@ package net.floodlightcontroller.virtualnetwork;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
-import java.util.SortedSet;
-import java.util.TreeSet;
-
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import net.floodlightcontroller.util.MACAddress;
@@ -36,6 +32,15 @@ public class VirtualNetwork{
         this.gateway = null;
         this.hosts = new ArrayList<MACAddress>();
         return;        
+    }
+
+    /**
+     * Sets network name
+     * @param gateway: IP address as String
+     */
+    public void setName(String name){
+        this.name = name;
+        return;                
     }
     
     /**
