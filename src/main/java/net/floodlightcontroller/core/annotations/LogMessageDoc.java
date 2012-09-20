@@ -39,6 +39,14 @@ public @interface LogMessageDoc {
             "Verify controller system health, CPU usage, and memory.  " + 
             "Rebooting the controller node may help if the controller " +
             "node is in a distressed state.";
+    public static final String REPORT_CONTROLLER_BUG =
+            "This is likely a defect in the controller.  Please report this " +
+            "issue.  Restarting the controller or switch may help to " +
+            "alleviate.";
+    public static final String REPORT_SWITCH_BUG =
+            "This is likely a defect in the switch.  Please report this " +
+            "issue.  Restarting the controller or switch may help to " +
+            "alleviate.";
 
     /**
      * The log level for the log message

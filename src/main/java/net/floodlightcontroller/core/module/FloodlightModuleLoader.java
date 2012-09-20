@@ -2,7 +2,6 @@ package net.floodlightcontroller.core.module;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -20,6 +19,9 @@ import java.util.Queue;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
+
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,21 +140,39 @@ public class FloodlightModuleLoader {
 	 * @return An IFloodlightModuleContext with all the modules to be started
 	 * @throws FloodlightModuleException
 	 */
+	@LogMessageDocs({
+	    @LogMessageDoc(level="INFO",
+	            message="Loading modules from file {file name}",
+	            explanation="The controller is initializing its module " +
+	                    "configuration from the specified properties file"),
+	    @LogMessageDoc(level="INFO",
+	            message="Loading default modules",
+	            explanation="The controller is initializing its module " +
+	                    "configuration to the default configuration"),
+	    @LogMessageDoc(level="ERROR",
+	            message="Could not load module configuration file",
+	            explanation="The controller failed to read the " +
+	            		"module configuration file",
+	            recommendation="Verify that the module configuration is " +
+	            		"present. " + LogMessageDoc.CHECK_CONTROLLER),
+	    @LogMessageDoc(level="ERROR",
+                message="Could not load default modules",
+                explanation="The controller failed to read the default " +
+                        "module configuration",
+                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+	})
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
 	    Properties prop = new Properties();
 	    
 	    File f = new File(fName);
 	    if (f.isFile()) {
-            logger.info("Loading modules from file " + fName);
+            logger.info("Loading modules from file {}", fName);
             try {
                 prop.load(new FileInputStream(fName));
-            } catch (FileNotFoundException e) {
-                // should not happen
-                e.printStackTrace();
-            } catch (IOException e) {
-                // should not happen
-                e.printStackTrace();
+            } catch (Exception e) {
+                logger.error("Could not load module configuration file", e);
+                System.exit(1);
             }
         } else {
             logger.info("Loading default modules");
@@ -161,8 +181,7 @@ public class FloodlightModuleLoader {
             try {
                 prop.load(is);
             } catch (IOException e) {
-                logger.error("Error, could not load default modules");
-                logger.error(e.getMessage());
+                logger.error("Could not load default modules", e);
                 System.exit(1);
             }
         }
@@ -384,6 +403,11 @@ public class FloodlightModuleLoader {
      * Parses configuration parameters for each module
      * @param prop The properties file to use
      */
+    @LogMessageDoc(level="WARN",
+                   message="Module {module} not found or loaded. " +
+                           "Not adding configuration option {key} = {value}",
+                   explanation="Ignoring a configuration parameter for a " +
+                   		"module that is not loaded.")
     protected void parseConfigParameters(Properties prop) {
     	if (prop == null) return;
     	

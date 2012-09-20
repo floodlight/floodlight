@@ -44,10 +44,11 @@ import org.apache.thrift.TException;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -56,6 +57,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packetstreamer.thrift.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
+@LogMessageCategory("OpenFlow Message Tracing")
 public class OFMessageFilterManager 
         implements IOFMessageListener, IFloodlightModule, IOFMessageFilterManagerService {
 
@@ -72,13 +74,16 @@ public class OFMessageFilterManager
 
     protected IFloodlightProviderService floodlightProvider = null;
     protected IThreadPoolService threadPool = null;
-    // filter List is a key value pair.  Key is the session id, value is the filter rules.
-    protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> filterMap = null;
+    // filter List is a key value pair.  Key is the session id, 
+    // value is the filter rules.
+    protected ConcurrentHashMap<String, 
+                                ConcurrentHashMap<String,
+                                                  String>> filterMap = null;
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
     protected Timer timer = null;
 
     protected int MAX_FILTERS=5;
-    protected long MAX_FILTER_TIME= 300000;  // maximum filter time is 5 minutes.
+    protected long MAX_FILTER_TIME= 300000; // maximum filter time is 5 minutes.
     protected int TIMER_INTERVAL = 1000;  // 1 second time interval.
 
     public static final String SUCCESS                     = "0";
@@ -91,8 +96,10 @@ public class OFMessageFilterManager
     public enum FilterResult {
         /*
          * FILTER_NOT_DEFINED: Filter is not defined
-         * FILTER_NO_MATCH:    Filter is defined and the packet doesn't match the filter
-         * FILTER_MATCH:       Filter is defined and the packet matches the filter
+         * FILTER_NO_MATCH:    Filter is defined and the packet doesn't 
+         *                     match the filter
+         * FILTER_MATCH:       Filter is defined and the packet matches
+         *                     the filter
          */
         FILTER_NOT_DEFINED, FILTER_NO_MATCH, FILTER_MATCH
     }
@@ -110,7 +117,8 @@ public class OFMessageFilterManager
         for (i=0; i<MAX_FILTERS; ++i) {
             Integer x = prime + i;
             s = String.format("%d", x.hashCode());
-            if (!filterMap.containsKey(s)) break;  // implies you can use this key for session id.
+            // implies you can use this key for session id.    
+            if (!filterMap.containsKey(s)) break; 
         }
 
         if (i==MAX_FILTERS) {
@@ -121,7 +129,8 @@ public class OFMessageFilterManager
         if (filterTimeoutMap.containsKey(s))  filterTimeoutMap.remove(s);
         filterTimeoutMap.put(s, delta);
 
-        if (filterMap.size() == 1) { // set the timer as there will be no existing timers. 
+        // set the timer as there will be no existing timers. 
+        if (filterMap.size() == 1) { 
             TimeoutFilterTask task = new TimeoutFilterTask(this);
             Timer timer = new Timer();
             timer.schedule (task, TIMER_INTERVAL);                
@@ -131,7 +140,9 @@ public class OFMessageFilterManager
         return s;  // the return string is the session ID.
     }
 
-    public String setupFilter(String sid, ConcurrentHashMap<String,String> f, int deltaInMilliSeconds) {
+    public String setupFilter(String sid, 
+                              ConcurrentHashMap<String,String> f, 
+                              int deltaInMilliSeconds) {
 
         if (sid == null) {
             // Delta in filter needs to be milliseconds
@@ -175,6 +186,12 @@ public class OFMessageFilterManager
         } else return FILTER_SESSION_ID_NOT_FOUND;
     }
 
+    @LogMessageDoc(level="ERROR",
+                   message="Error while terminating packet " +
+                           "filter session",
+                   explanation="An unknown error occurred while terminating " +
+                   		"a packet filter session.",
+                   recommendation=LogMessageDoc.GENERIC_ACTION)
     protected String deleteFilter(String sessionId) {
 
         if (filterMap.containsKey(sessionId)) {
@@ -183,9 +200,11 @@ public class OFMessageFilterManager
                 if (packetClient != null)
                     packetClient.terminateSession(sessionId);
             } catch (TException e) {
-                log.error("terminateSession Texception: {}", e);
+                log.error("Error while terminating packet " +
+                		  "filter session", e);
             }
-            log.debug("Deleted Filter {}.  # of filters remaining: {}", sessionId, filterMap.size());
+            log.debug("Deleted Filter {}.  # of filters" +
+            		 " remaining: {}", sessionId, filterMap.size());
             return SUCCESS;
         } else return FILTER_SESSION_ID_NOT_FOUND;
     }
@@ -254,6 +273,12 @@ public class OFMessageFilterManager
             return matchedFilters;
     }
     
+    @LogMessageDoc(level="ERROR",
+                   message="Failed to establish connection with the " +
+                           "packetstreamer server.",
+                   explanation="The message tracing server is not running " +
+                   		"or otherwise unavailable.",
+                   recommendation=LogMessageDoc.CHECK_CONTROLLER)
     public boolean connectToPSServer() {
         int numRetries = 0;
         if (transport != null && transport.isOpen()) {
@@ -262,13 +287,15 @@ public class OFMessageFilterManager
 
         while (numRetries++ < MaxRetry) {
             try {
-                transport = new TFramedTransport(new TSocket("localhost", serverPort));
+                transport = new TFramedTransport(new TSocket("localhost", 
+                                                             serverPort));
                 transport.open();
 
                 TProtocol protocol = new  TBinaryProtocol(transport);
                 packetClient = new PacketStreamer.Client(protocol);
 
-                log.debug("Have a connection to packetstreamer server localhost:{}", serverPort);
+                log.debug("Have a connection to packetstreamer server " +
+                		  "localhost:{}", serverPort);
                 break;
             } catch (TException x) {
                 try {
@@ -281,7 +308,8 @@ public class OFMessageFilterManager
         }
 
         if (numRetries > MaxRetry) {
-            log.error("Failed to establish connection with the packetstreamer server.");
+            log.error("Failed to establish connection with the " +
+            		  "packetstreamer server.");
             return false;
         }
         return true;
@@ -289,7 +317,8 @@ public class OFMessageFilterManager
 
     public void disconnectFromPSServer() {
         if (transport != null && transport.isOpen()) {
-            log.debug("Close the connection to packetstreamer server localhost:{}", serverPort);
+            log.debug("Close the connection to packetstreamer server" +
+            		  " localhost:{}", serverPort);
             transport.close();
         }
     }
@@ -310,13 +339,20 @@ public class OFMessageFilterManager
     }
 
     @Override
-    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+    @LogMessageDoc(level="ERROR",
+                   message="Error while sending packet",
+                   explanation="Failed to send a message to the message " +
+                   		"tracing server",
+                   recommendation=LogMessageDoc.CHECK_CONTROLLER)
+    public Command receive(IOFSwitch sw, OFMessage msg, 
+                           FloodlightContext cntx) {
 
         if (filterMap == null || filterMap.isEmpty()) return Command.CONTINUE;
 
         HashSet<String> matchedFilters = null;
         if (log.isDebugEnabled()) {
-            log.debug("Received packet {} from switch {}", msg, sw.getStringId());
+            log.debug("Received packet {} from switch {}", 
+                      msg, sw.getStringId());
         }
 
         matchedFilters = getMatchedFilters(msg, cntx);
@@ -325,10 +361,8 @@ public class OFMessageFilterManager
         } else {
             try {
                 sendPacket(matchedFilters, sw, msg, cntx, true);
-            } catch (TException e) {
-                log.error("sendPacket Texception: {}", e);
             } catch (Exception e) {
-                log.error("sendPacket exception: {}", e);
+                log.error("Error while sending packet", e);
             }
         }
         
@@ -350,7 +384,8 @@ public class OFMessageFilterManager
 
             if (x > 0) {  // there's at least one filter still active.
                 Timer timer = new Timer();
-                timer.schedule(new TimeoutFilterTask(filterManager), TIMER_INTERVAL);
+                timer.schedule(new TimeoutFilterTask(filterManager), 
+                               TIMER_INTERVAL);
             } else {
                 // Don't stop the listener to avoid race condition
                 //stopListening();
@@ -382,36 +417,44 @@ public class OFMessageFilterManager
         switch (msg.getType()) {
             case PACKET_IN:
                 OFPacketIn pktIn = (OFPacketIn)msg;
-                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), pktIn.getInPort()));
+                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), 
+                                                          pktIn.getInPort()));
                 bb = ChannelBuffers.buffer(pktIn.getLength());
                 pktIn.writeTo(bb);
                 packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             case PACKET_OUT:
                 OFPacketOut pktOut = (OFPacketOut)msg;
-                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), pktOut.getInPort()));
+                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), 
+                                                          pktOut.getInPort()));
                 bb = ChannelBuffers.buffer(pktOut.getLength());
                 pktOut.writeTo(bb);
                 packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             case FLOW_MOD:
                 OFFlowMod offlowMod = (OFFlowMod)msg;
-                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), offlowMod.getOutPort()));
+                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), 
+                                                          offlowMod.
+                                                          getOutPort()));
                 bb = ChannelBuffers.buffer(offlowMod.getLength());
                 offlowMod.writeTo(bb);
                 packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             default:
-                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), (short)0));
+                packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), 
+                                                          (short)0));
                 String strData = "Unknown packet";
                 packet.setData(strData.getBytes());
                 break;
         }
 
         try {
-            if (transport == null || !transport.isOpen() || packetClient == null) {
+            if (transport == null || 
+                !transport.isOpen() || 
+                packetClient == null) {
                 if (!connectToPSServer()) {
-                    // No need to sendPacket if can't make connection to the server
+                    // No need to sendPacket if can't make connection to 
+                    // the server
                     return;
                 }
             }
@@ -422,12 +465,8 @@ public class OFMessageFilterManager
                 log.debug("Send packet sync: ", packet.toString());
                 packetClient.pushMessageAsync(sendMsg);
             }
-        } catch (TTransportException e) {
-            log.error("Caught TTransportException: {}", e.getMessage());
-            disconnectFromPSServer();
-            connectToPSServer();
         } catch (Exception e) {
-            log.error("Caught exception: {}", e.getMessage());
+            log.error("Error while sending packet", e);
             disconnectFromPSServer();
             connectToPSServer();
         }
@@ -479,7 +518,9 @@ public class OFMessageFilterManager
         
         filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
         filterTimeoutMap = new ConcurrentHashMap<String, Long>();
-        serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
+        serverPort = 
+                Integer.parseInt(System.getProperty("net.floodlightcontroller." +
+                		"packetstreamer.port", "9090"));
         
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_OUT, this);

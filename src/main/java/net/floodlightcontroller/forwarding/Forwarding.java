@@ -30,6 +30,9 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -51,14 +54,19 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@LogMessageCategory("Flow Programming")
 public class Forwarding extends ForwardingBase implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     @Override
+    @LogMessageDoc(level="ERROR",
+                   message="Unexpected decision made for this packet-in={}",
+                   explanation="An unsupported PacketIn decision has been " +
+                   		"passed to the flow programming component",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, 
                                           FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
@@ -110,6 +118,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         return Command.CONTINUE;
     }
     
+    @LogMessageDoc(level="ERROR",
+            message="Failure writing drop flow mod",
+            explanation="An I/O error occured while trying to write a " +
+            		"drop flow mod to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         // initialize match structure and populate it using the packet
         OFMatch match = new OFMatch();
@@ -144,7 +157,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             log.error("Failure writing drop flow mod", e);
         }
     }
-
+    
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
                                  FloodlightContext cntx,
                                  boolean requestFlowRemovedNotifn) {    
@@ -163,12 +176,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             Long srcIsland = topology.getL2DomainId(sw.getId());
             
             if (srcDevice == null) {
-                log.error("No device entry found for source device");
+                log.debug("No device entry found for source device");
                 return;
             }
             if (srcIsland == null) {
-                log.error("No openflow island found for source {}/{}", 
-                          HexString.toHexString(sw.getId()), pi.getInPort());
+                log.debug("No openflow island found for source {}/{}", 
+                          sw.getStringId(), pi.getInPort());
                 return;
             }
 
@@ -273,6 +286,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param pi The OFPacketIn that came to the switch
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
+    @LogMessageDoc(level="ERROR",
+                   message="Failure writing PacketOut " +
+                   		"switch={switch} packet-in={packet-in} " +
+                   		"packet-out={packet-out}",
+                   explanation="An I/O error occured while writing a packet " +
+                   		"out message to the switch",
+                   recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         if (topology.isIncomingBroadcastAllowed(sw.getId(),
                                                 pi.getInPort()) == false) {
@@ -359,6 +379,22 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     }
 
     @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="WARN",
+                message="Error parsing flow idle timeout, " +
+                        "using default of {number} seconds",
+                explanation="The properties file contains an invalid " +
+                        "flow idle timeout",
+                recommendation="Correct the idle timeout in the " +
+                        "properties file."),
+        @LogMessageDoc(level="WARN",
+                message="Error parsing flow hard timeout, " +
+                        "using default of {number} seconds",
+                explanation="The properties file contains an invalid " +
+                            "flow hard timeout",
+                recommendation="Correct the hard timeout in the " +
+                                "properties file."),
+    })
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         this.floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         this.deviceManager = context.getServiceImpl(IDeviceService.class);
@@ -374,8 +410,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 FLOWMOD_DEFAULT_IDLE_TIMEOUT = Short.parseShort(idleTimeout);
             }
         } catch (NumberFormatException e) {
-            log.warn("Error parsing flow idle timeout, using default of {} seconds",
-                    FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+            log.warn("Error parsing flow idle timeout, " +
+            		 "using default of {} seconds",
+                     FLOWMOD_DEFAULT_IDLE_TIMEOUT);
         }
         try {
             String hardTimeout = configOptions.get("hardtimeout");
@@ -383,11 +420,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 FLOWMOD_DEFAULT_HARD_TIMEOUT = Short.parseShort(hardTimeout);
             }
         } catch (NumberFormatException e) {
-            log.warn("Error parsing flow hard timeout, using default of {} seconds",
-                    FLOWMOD_DEFAULT_HARD_TIMEOUT);
+            log.warn("Error parsing flow hard timeout, " +
+            		 "using default of {} seconds",
+                     FLOWMOD_DEFAULT_HARD_TIMEOUT);
         }
-        log.debug("FlowMod idle timeout set to {} seconds", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
-        log.debug("FlowMod hard timeout set to {} seconds", FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        log.debug("FlowMod idle timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        log.debug("FlowMod hard timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_HARD_TIMEOUT);
     }
 
     @Override

@@ -30,6 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -44,6 +46,7 @@ import net.floodlightcontroller.storage.web.StorageWebRoutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@LogMessageCategory("System Database")
 public abstract class AbstractStorageSource 
     implements IStorageSourceService, IFloodlightModule {
     protected static Logger logger = LoggerFactory.getLogger(AbstractStorageSource.class);
@@ -73,6 +76,14 @@ public abstract class AbstractStorageSource
     // Our dependencies
     protected IRestApiService restApi = null;
     
+    protected static final String DB_ERROR_EXPLANATION =
+            "An unknown error occurred while executing asynchronous " +
+            "database operation";
+    
+    @LogMessageDoc(level="ERROR",
+            message="Failure in asynchronous call to executeQuery",
+            explanation=DB_ERROR_EXPLANATION,
+            recommendation=LogMessageDoc.GENERIC_ACTION)
     abstract class StorageCallable<V> implements Callable<V> {
         public V call() {
             try {
@@ -88,6 +99,10 @@ public abstract class AbstractStorageSource
         abstract protected V doStorageOperation();
     }
     
+    @LogMessageDoc(level="ERROR",
+            message="Failure in asynchronous call to updateRows",
+            explanation=DB_ERROR_EXPLANATION,
+            recommendation=LogMessageDoc.GENERIC_ACTION)
     abstract class StorageRunnable implements Runnable {
         public void run() {
             try {
@@ -439,6 +454,11 @@ public abstract class AbstractStorageSource
         }
     }
 
+    @LogMessageDoc(level="ERROR",
+            message="Exception caught handling storage notification",
+            explanation="An unknown error occured while trying to notify" +
+            		" storage listeners",
+            recommendation=LogMessageDoc.GENERIC_ACTION)
     protected synchronized void notifyListeners(StorageSourceNotification notification) {
         String tableName = notification.getTableName();
         Set<Object> keys = notification.getKeys();

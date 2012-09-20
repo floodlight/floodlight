@@ -12,6 +12,8 @@ import java.util.Map;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -23,36 +25,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author subrata
- *
+ * This class contains a set of buckets (called time buckets as the
+ * primarily contain 'times' that are used in a circular way to 
+ * store information on packet in processing time.
+ * Each bucket is meant to store the various processing time 
+ * related data for a fixed duration.
+ * Buckets are reused to reduce garbage generation! Once the
+ * last bucket is used up the LRU bucket is reused.
+ * 
+ * Naming convention for variable or constants
+ * variable_s : value in seconds
+ * variable_ms: value in milliseconds
+ * variable_us: value in microseconds
+ * variable_ns: value in nanoseconds
+ * 
+ * Key Constants:
+ * ONE_BUCKET_DURATION_SECONDS_INT:  time duration of each bucket
+ * BUCKET_SET_SIZE: Number of buckets
+ * TOT_PROC_TIME_WARN_THRESHOLD_US: if processing time for a packet
+ *    exceeds this threshold then a warning LOG message is generated
+ * TOT_PROC_TIME_ALERT_THRESHOLD_US: same as above but an alert level
+ *    syslog is generated instead
+ * 
  */
+@LogMessageCategory("Performance Monitoring")
 public class PktInProcessingTime
     implements IFloodlightModule, IPktInProcessingTimeService {
 
-    /***
-     * This class contains a set of buckets (called time buckets as the
-     * primarily contain 'times' that are used in a circular way to 
-     * store information on packet in processing time.
-     * Each bucket is meant to store the various processing time 
-     * related data for a fixed duration.
-     * Buckets are reused to reduce garbage generation! Once the
-     * last bucket is used up the LRU bucket is reused.
-     * 
-     * Naming convention for variable or constants
-     * variable_s : value in seconds
-     * variable_ms: value in milliseconds
-     * variable_us: value in microseconds
-     * variable_ns: value in nanoseconds
-     * 
-     * Key Constants:
-     * ONE_BUCKET_DURATION_SECONDS_INT:  time duration of each bucket
-     * BUCKET_SET_SIZE: Number of buckets
-     * TOT_PROC_TIME_WARN_THRESHOLD_US: if processing time for a packet
-     *    exceeds this threshold then a warning LOG message is generated
-     * TOT_PROC_TIME_ALERT_THRESHOLD_US: same as above but an alert level
-     *    syslog is generated instead
-     * 
-     */
     
     // Our dependencies
     private IRestApiService restApi;
@@ -131,14 +130,20 @@ public class PktInProcessingTime
     }
     
     @Override
+    @LogMessageDoc(level="WARN",
+            message="Time to process packet-in exceeded threshold: {}",
+            explanation="Time to process packet-in exceeded the configured " +
+            		"performance threshold",
+            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     public void recordEndTimePktIn(IOFSwitch sw, OFMessage m, FloodlightContext cntx) {
         if (isEnabled()) {
             long procTimeNs = System.nanoTime() - startTimePktNs;
             ctb.updatePerPacketCounters(procTimeNs);
             
-            if (ptWarningThresholdInNano > 0 && procTimeNs > ptWarningThresholdInNano) {
-                logger.warn("Time to process packet-in: {} us", procTimeNs/1000);
-                logger.warn("{}", OFMessage.getDataAsString(sw, m, cntx));
+            if (ptWarningThresholdInNano > 0 && 
+                    procTimeNs > ptWarningThresholdInNano) {
+                logger.warn("Time to process packet-in exceeded threshold: {}", 
+                            procTimeNs/1000);
             }
         }
     }
@@ -180,6 +185,11 @@ public class PktInProcessingTime
     }
     
     @Override
+    @LogMessageDoc(level="INFO",
+        message="Packet processing time threshold for warning" +
+            " set to {time} ms.",
+        explanation="Performance monitoring will log a warning if " +
+    		"packet processing time exceeds the configured threshold")
     public void startUp(FloodlightModuleContext context) {
         // Add our REST API
         restApi.addRestletRoutable(new PerfWebRoutable());
@@ -188,8 +198,8 @@ public class PktInProcessingTime
         ptWarningThresholdInNano = Long.parseLong(System.getProperty(
              "net.floodlightcontroller.core.PTWarningThresholdInMilli", "0")) * 1000000;
         if (ptWarningThresholdInNano > 0) {
-            logger.info("Packet processing time threshold for warning set to {} ms.",
-                 ptWarningThresholdInNano/1000000);
+            logger.info("Packet processing time threshold for warning" +
+            		" set to {} ms.", ptWarningThresholdInNano/1000000);
         }
     }
 }
