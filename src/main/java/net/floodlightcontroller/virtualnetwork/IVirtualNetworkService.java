@@ -1,5 +1,6 @@
 package net.floodlightcontroller.virtualnetwork;
 
+import java.util.Collection;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.util.MACAddress;
 
@@ -36,4 +37,10 @@ public interface IVirtualNetworkService extends IFloodlightService {
      * @param port The logical port the host is attached to.
      */
     public void deleteHost(MACAddress mac, String port);
+    
+    /**
+     * Return list of all virtual networks.
+     * @return Collection <VirtualNetwork>
+     */
+    public Collection <VirtualNetwork> listNetworks();
 }

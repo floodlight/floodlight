@@ -68,6 +68,7 @@ public class VirtualNetworkFilter
     IDeviceService deviceService;
     
     // Our internal state
+    protected Map<String, VirtualNetwork> vNetsByGuid; // List of all created virtual networks 
     protected Map<String, String> nameToGuid; // Logical name -> Network ID
     protected Map<String, Integer> guidToGateway; // Network ID -> Gateway IP
     protected Map<Integer, Set<String>> gatewayToGuid; // Gateway IP -> Network ID
@@ -87,6 +88,8 @@ public class VirtualNetworkFilter
         				IPv4.fromIPv4Address(ip), guid);
         	
             guidToGateway.put(guid, ip);
+            if (vNetsByGuid.get(guid) != null)
+                vNetsByGuid.get(guid).setGateway(IPv4.fromIPv4Address(ip));
             if (gatewayToGuid.containsKey(ip)) {
                 Set<String> gSet = gatewayToGuid.get(ip);
                 gSet.add(guid);
@@ -108,6 +111,8 @@ public class VirtualNetworkFilter
         if (gwIp == null) return;
         Set<String> gSet = gatewayToGuid.get(gwIp);
         gSet.remove(guid);
+        if(vNetsByGuid.get(guid)!=null)
+            vNetsByGuid.get(guid).setGateway(null);
     }
     
     // IVirtualNetworkService
@@ -135,9 +140,16 @@ public class VirtualNetworkFilter
             }
         }
         nameToGuid.put(network, guid);
+        if (vNetsByGuid.containsKey(guid))
+            vNetsByGuid.get(guid).setName(network); //network already exists, just updating name
+        else
+            vNetsByGuid.put(guid, new VirtualNetwork(network, guid)); //new network
+        
         // If they don't specify a new gateway the old one will be preserved
         if ((gateway != null) && (gateway != 0)) {
             addGateway(guid, gateway);
+            if(vNetsByGuid.get(guid)!=null)
+                vNetsByGuid.get(guid).setGateway(IPv4.fromIPv4Address(gateway));
         }
     }
 
@@ -163,6 +175,10 @@ public class VirtualNetworkFilter
         
         nameToGuid.remove(name);
         deleteGateway(guid);
+        if(vNetsByGuid.get(guid)!=null){
+            vNetsByGuid.get(guid).clearHosts();
+            vNetsByGuid.remove(guid);
+        }
         Collection<MACAddress> deleteList = new ArrayList<MACAddress>();
         for (MACAddress host : macToGuid.keySet()) {
             if (macToGuid.get(host).equals(guid)) {
@@ -194,6 +210,8 @@ public class VirtualNetworkFilter
             // We ignore old mappings
             macToGuid.put(mac, guid);
             portToMac.put(port, mac);
+            if(vNetsByGuid.get(guid)!=null)
+                vNetsByGuid.get(guid).addHost(new MACAddress(mac.toBytes()));
         } else {
             log.warn("Could not add MAC {} to network ID {} on port {}, the network does not exist",
                      new Object[] {mac, guid, port});
@@ -208,11 +226,15 @@ public class VirtualNetworkFilter
         if (mac == null && port == null) return;
         if (port != null) {
             MACAddress host = portToMac.remove(port);
+            if(vNetsByGuid.get(macToGuid.get(host)) != null)
+                vNetsByGuid.get(macToGuid.get(host)).removeHost(host);
             macToGuid.remove(host);
         } else if (mac != null) {
             if (!portToMac.isEmpty()) {
                 for (Entry<String, MACAddress> entry : portToMac.entrySet()) {
                     if (entry.getValue().equals(mac)) {
+                        if(vNetsByGuid.get(macToGuid.get(entry.getValue())) != null)
+                            vNetsByGuid.get(macToGuid.get(entry.getValue())).removeHost(entry.getValue());
                         portToMac.remove(entry.getKey());
                         macToGuid.remove(entry.getValue());
                         return;
@@ -260,6 +282,7 @@ public class VirtualNetworkFilter
         restApi = context.getServiceImpl(IRestApiService.class);
         deviceService = context.getServiceImpl(IDeviceService.class);
         
+        vNetsByGuid = new ConcurrentHashMap<String, VirtualNetwork>();
         nameToGuid = new ConcurrentHashMap<String, String>();
         guidToGateway = new ConcurrentHashMap<String, Integer>();
         gatewayToGuid = new ConcurrentHashMap<Integer, Set<String>>();
@@ -489,4 +512,10 @@ public class VirtualNetworkFilter
 	public void deviceVlanChanged(IDevice device) {
 		// ignore
 	}
+
+    @Override
+    public Collection <VirtualNetwork> listNetworks() {
+        return vNetsByGuid.values();
+        
+    }
 }

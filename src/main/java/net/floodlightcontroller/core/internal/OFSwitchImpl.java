@@ -208,9 +208,9 @@ public class OFSwitchImpl implements IOFSwitch {
             // Warn if programming a flow matching broadcast destination
     	    if ((match.getWildcards() & OFMatch.OFPFW_DL_DST) == 0 &&
     	            Arrays.equals(match.getDataLayerDestination(), bcast)) {
-    	    	log.warn("Programming flow with -1 destination addr");
-    	    	log.warn("swId {}, stack trace {}",
-                         stringId, new Exception().getStackTrace());
+    	    	log.warn("Programming flow with -1 destination addr: " +
+    	    			 "swId {}, stack trace {}",
+    	    			 stringId, new Exception().getStackTrace());
     	    }
     	}
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
