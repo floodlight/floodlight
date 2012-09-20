@@ -1518,8 +1518,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     				device.getDeviceKey(), emptyToKeep);
     	}
     	if (!deviceMap.remove(device.getDeviceKey(), device)) {
-    		logger.info("device map does not have this device -" + 
-    	                 device.toString());
+    	    if (logger.isDebugEnabled())
+    	        logger.debug("device map does not have this device -" + 
+    	                     device.toString());
     	}
     }
 
