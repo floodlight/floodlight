@@ -373,6 +373,7 @@ public class ForwardingTest extends FloodlightTestCase {
         reset(topology);
         expect(topology.isAttachmentPointPort(EasyMock.anyLong(), EasyMock.anyShort()))
         .andReturn(true).anyTimes();
+        expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         replay(topology);
 
         srcDevice = 

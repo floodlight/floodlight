@@ -62,14 +62,19 @@ public class TopologyManager implements
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
 
     /** 
-     * Set of ports for each switch 
+     * Set of ports for each switch
      */
-    protected Map<Long, Set<Short>> switchPorts; 
+    protected Map<Long, Set<Short>> switchPorts;
 
     /**
      * Set of links organized by node port tuple
      */
     protected Map<NodePortTuple, Set<Link>> switchPortLinks;
+
+    /**
+     * Set of direct links
+     */
+    protected Map<NodePortTuple, Set<Link>> directLinks;
 
     /**
      * set of links that are broadcast domain links.
@@ -80,6 +85,7 @@ public class TopologyManager implements
      * set of tunnel links
      */
     protected Map<NodePortTuple, Set<Link>> tunnelLinks; 
+
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
@@ -97,24 +103,31 @@ public class TopologyManager implements
     
     protected SingletonTask newInstanceTask;
     private Date lastUpdateTime;
+    protected boolean recomputeTopologyFlag;
 
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
      */
-    protected class NewInstanceWorker implements Runnable {
+    protected class UpdateTopologyWorker implements Runnable {
         @Override 
         public void run() {
             try {
-                applyUpdates();
-                createNewInstance();
-                lastUpdateTime = new Date();
-                informListeners();
+                updateTopology();
             }
             catch (Exception e) {
                 log.error("Error in topology instance task thread", e);
             }
         }
+    }
+
+    public boolean updateTopology() {
+        recomputeTopologyFlag = false;
+        applyUpdates();
+        createNewInstance();
+        lastUpdateTime = new Date();
+        informListeners();
+        return recomputeTopologyFlag;
     }
 
     // **********************
@@ -241,15 +254,15 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     /** Get all the ports connected to the switch */
     @Override
-    public Set<Short> getPorts(long sw) {
-        return getPorts(sw, true);
+    public Set<Short> getPortsWithLinks(long sw) {
+        return getPortsWithLinks(sw, true);
     }
 
     /** Get all the ports connected to the switch */
     @Override
-    public Set<Short> getPorts(long sw, boolean tunnelEnabled) {
+    public Set<Short> getPortsWithLinks(long sw, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.getPorts(sw);
+        return ti.getPortsWithLinks(sw);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -613,6 +626,7 @@ public class TopologyManager implements
 
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
+        directLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
         topologyAware = new ArrayList<ITopologyListener>();
@@ -624,7 +638,7 @@ public class TopologyManager implements
     @Override
     public void startUp(FloodlightModuleContext context) {
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
-        newInstanceTask = new SingletonTask(ses, new NewInstanceWorker());
+        newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
         linkDiscovery.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
@@ -753,13 +767,13 @@ public class TopologyManager implements
             IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
             if (sw == null) continue;
             Set<Short> ports = new HashSet<Short>();
-            if (sw.getPorts() == null) continue;
-            ports.addAll(sw.getPorts().keySet());
+            if (sw.getEnabledPorts() == null) continue;
+            ports.addAll(sw.getEnabledPorts());
 
             // all the ports known to topology // without tunnels.
             // out of these, we need to choose only those that are 
             // broadcast port, otherwise, we should eliminate.
-            Set<Short> portsKnownToTopo = ti.getPorts(sid);
+            Set<Short> portsKnownToTopo = ti.getPortsWithLinks(sid);
 
             if (portsKnownToTopo != null) {
                 for(short p: portsKnownToTopo) {
@@ -798,7 +812,6 @@ public class TopologyManager implements
         return Command.STOP;
     }
 
-
     public void applyUpdates() {
 
         appliedUpdates.clear();
@@ -834,12 +847,14 @@ public class TopologyManager implements
      * This function computes a new topology.
      */
     /**
-     * This function computes a new topology intance.
+     * This function computes a new topology instance.
      * It ignores links connected to all broadcast domain ports
      * and tunnel ports.
      */
-    public void createNewInstance() {
+    protected void createNewInstance() {
         Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
+
+        if (!recomputeTopologyFlag) return;
 
         Map<NodePortTuple, Set<Link>> openflowLinks;
         openflowLinks = 
@@ -920,6 +935,13 @@ public class TopologyManager implements
         return true;
     }
 
+    /**
+     * Add the given link to the data structure.  Returns true if a link was
+     * added.
+     * @param s
+     * @param l
+     * @return
+     */
     private boolean addLinkToStructure(Map<NodePortTuple, 
                                        Set<Link>> s, Link l) {
         boolean result1 = false, result2 = false; 
@@ -928,17 +950,24 @@ public class TopologyManager implements
         NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
 
         if (s.get(n1) == null) {
-            s.put(n1, new HashSet<Link>()); 
+            s.put(n1, new HashSet<Link>());
         }
         if (s.get(n2) == null) {
-            s.put(n2, new HashSet<Link>()); 
+            s.put(n2, new HashSet<Link>());
         }
         result1 = s.get(n1).add(l);
         result2 = s.get(n2).add(l);
 
-        return (result1 && result2);
+        return (result1 || result2);
     }
 
+    /**
+     * Delete the given link from the data strucure.  Returns true if the
+     * link was deleted.
+     * @param s
+     * @param l
+     * @return
+     */
     private boolean removeLinkFromStructure(Map<NodePortTuple, 
                                             Set<Link>> s, Link l) {
 
@@ -954,13 +983,14 @@ public class TopologyManager implements
             result2 = s.get(n2).remove(l);
             if (s.get(n2).isEmpty()) s.remove(n2);
         }
-        return result1 && result2; 
+        return result1 || result2;
     }
 
     public void addOrUpdateLink(long srcId, short srcPort, long dstId, 
                                 short dstPort, LinkType type) {
-        Link link = new Link(srcId, srcPort, dstId, dstPort);
+        boolean flag1 = false, flag2 = false;
 
+        Link link = new Link(srcId, srcPort, dstId, dstPort);
         addPortToSwitch(srcId, srcPort);
         addPortToSwitch(dstId, dstPort);
 
@@ -968,19 +998,31 @@ public class TopologyManager implements
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
             addLinkToStructure(portBroadcastDomainLinks, link);
-            removeLinkFromStructure(tunnelLinks, link);
+            flag1 = removeLinkFromStructure(tunnelLinks, link);
+            flag2 = removeLinkFromStructure(directLinks, link);
+            recomputeTopologyFlag = flag1 || flag2;
         } else if (type.equals(LinkType.TUNNEL)) {
             addLinkToStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
+            removeLinkFromStructure(directLinks, link);
+            recomputeTopologyFlag = true;
         } else if (type.equals(LinkType.DIRECT_LINK)) {
+            addLinkToStructure(directLinks, link);
             removeLinkFromStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
+            recomputeTopologyFlag = true;
         }
     }
 
     public void removeLink(Link link)  {
+        boolean flag1 = false, flag2 = false;
+
+        flag1 = removeLinkFromStructure(directLinks, link);
+        flag2 = removeLinkFromStructure(tunnelLinks, link);
+
+        recomputeTopologyFlag = flag1 || flag2;
+
         removeLinkFromStructure(portBroadcastDomainLinks, link);
-        removeLinkFromStructure(tunnelLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
         NodePortTuple srcNpt = 
@@ -1020,6 +1062,7 @@ public class TopologyManager implements
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
         tunnelLinks.clear();
+        directLinks.clear();
         appliedUpdates.clear();
     }
 
@@ -1057,5 +1100,23 @@ public class TopologyManager implements
     public TopologyInstance getCurrentInstance() {
         return this.getCurrentInstance(true);
     }
-}
 
+    /**
+     *  Switch methods
+     */
+    public Set<Short> getPorts(long sw) {
+        Set<Short> ports = new HashSet<Short>();
+        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) return null;
+
+        List<Short> ofpList = iofSwitch.getEnabledPorts();
+        if (ofpList == null) return null;
+
+        Set<Short> qPorts = linkDiscovery.getQuarantinedPorts(sw);
+        if (qPorts != null)
+            ofpList.removeAll(qPorts);
+
+        ports.addAll(ofpList);
+        return ports;
+    }
+}

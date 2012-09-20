@@ -741,7 +741,7 @@ public class TopologyInstance {
         return switches;
     }
 
-    public Set<Short> getPorts(long sw) {
+    public Set<Short> getPortsWithLinks(long sw) {
         return switchPorts.get(sw);
     }
 

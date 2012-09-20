@@ -130,7 +130,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
     private static final String LINK_DST_PORT_STATE = "dst_port_state";
     private static final String LINK_VALID_TIME = "valid_time";
     private static final String LINK_TYPE = "link_type";
-
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
     private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
@@ -139,6 +138,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected IThreadPoolService threadPool;
 
 
+    // LLDP and BDDP fields
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING = 
             HexString.fromHexString("01:80:c2:00:00:0e");
     private static final long LINK_LOCAL_MASK  = 0xfffffffffff0L;
@@ -167,12 +167,12 @@ IFloodlightModule, IInfoProvider, IHAListener {
     setLength((short)TLV_DIRECTION_LENGTH).
     setValue(TLV_DIRECTION_VALUE_REVERSE);
 
+    // Link discovery task details.
     protected SingletonTask discoveryTask;
     protected final int DISCOVERY_TASK_INTERVAL = 1; 
     protected final int LINK_TIMEOUT = 35; // timeout as part of LLDP process.
     protected final int LLDP_TO_ALL_INTERVAL = 15 ; //15 seconds.
     protected long lldpClock = 0;
-
     // This value is intentionally kept higher than LLDP_TO_ALL_INTERVAL.
     // If we want to identify link failures faster, we could decrease this
     // value to a small number, say 1 or 2 sec.
@@ -196,7 +196,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * Map from a id:port to the set of links containing it as an endpoint
      */
     protected Map<NodePortTuple, Set<Link>> portLinks;
-    protected Set<NodePortTuple> suppressLLDPs;
 
     /**
      * Set of link tuples over which multicast LLDPs are received
@@ -211,6 +210,30 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected ArrayList<ILinkDiscoveryListener> linkDiscoveryAware;
     protected BlockingQueue<LDUpdate> updates;
     protected Thread updatesThread;
+
+    /**
+     * List of ports through which LLDP/BDDPs are not sent.
+     */
+    protected Set<NodePortTuple> suppressLLDPs;
+
+    /** A list of ports that are quarantined for discovering links through
+     * them.  Data traffic from these ports are not allowed until the ports
+     * are released from quarantine.
+     */
+    protected LinkedBlockingQueue<NodePortTuple> quarantineQueue;
+    protected LinkedBlockingQueue<NodePortTuple> maintenanceQueue;
+    /**
+     * Quarantine task
+     */
+    protected SingletonTask bddpTask;
+    protected final int BDDP_TASK_INTERVAL = 100; // 100 ms.
+    protected final int BDDP_TASK_SIZE = 5;       // # of ports per iteration
+
+    /**
+     * Map of broadcast domain ports and the last time a BDDP was either
+     * sent or received on that port.
+     */
+    protected Map<NodePortTuple, Long> broadcastDomainPortTimeMap;
 
     /** 
      * Get the LLDP sending period in seconds.
@@ -262,6 +285,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return shuttingDown;
     }
 
+    public boolean isFastPort(long sw, short port) {
+        return false;
+    }
+
     public ILinkDiscovery.LinkType getLinkType(Link lt, LinkInfo info) {
         if (info.getUnicastValidTime() != null) {
             return ILinkDiscovery.LinkType.DIRECT_LINK;
@@ -294,7 +321,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
         } while (updates.peek() != null);
     }
-
     private boolean isLLDPSuppressed(long sw, short portNumber) {
         return this.suppressLLDPs.contains(new NodePortTuple(sw, portNumber));
     }
@@ -313,8 +339,133 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
     }
 
+
+    /**
+     *  Quarantine Ports.
+     */
+    protected class QuarantineWorker implements Runnable {
+        @Override
+        public void run() {
+            try {
+                processBDDPLists();
+            }
+            catch (Exception e) {
+                log.error("Error in quarantine worker thread", e);
+            } finally {
+                    bddpTask.reschedule(BDDP_TASK_INTERVAL,
+                                              TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
+    /**
+     * Add a switch port to the quarantine queue. Schedule the
+     * quarantine task if the quarantine queue was empty before adding
+     * this switch port.
+     * @param npt
+     */
+    protected void addToQuarantineQueue(NodePortTuple npt) {
+        if (quarantineQueue.contains(npt) == false)
+            quarantineQueue.add(npt);
+    }
+
+    /**
+     * Remove a switch port from the quarantine queue.
+     */
+    protected void removeFromQuarantineQueue(NodePortTuple npt) {
+        // Remove all occurrences of the node port tuple from the list.
+        while (quarantineQueue.remove(npt));
+    }
+
+    /**
+     * Add a switch port to maintenance queue.
+     * @param npt
+     */
+    protected void addToMaintenanceQueue(NodePortTuple npt) {
+        // TODO We are not checking if the switch port tuple is already
+        // in the maintenance list or not.  This will be an issue for
+        // really large number of switch ports in the network.
+        maintenanceQueue.add(npt);
+    }
+
+    /**
+     * Remove a switch port from maintenance queue.
+     * @param npt
+     */
+    protected void removeFromMaintenanceQueue(NodePortTuple npt) {
+        // Remove all occurrences of the node port tuple from the queue.
+        while (maintenanceQueue.remove(npt));
+    }
+
+    /**
+    * This method processes the quarantine list in bursts.  The task is
+    * at most once per BDDP_TASK_INTERVAL.
+    * One each call, BDDP_TASK_SIZE number of switch ports are processed.
+    * Once the BDDP packets are sent out through the switch ports, the ports
+    * are removed from the quarantine list.
+    */
+
+    protected void processBDDPLists() {
+        int count = 0;
+        Set<NodePortTuple> nptList = new HashSet<NodePortTuple>();
+
+        while(count < BDDP_TASK_SIZE && quarantineQueue.peek() !=null) {
+            NodePortTuple npt;
+            npt = quarantineQueue.remove();
+            sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+            nptList.add(npt);
+            count++;
+        }
+
+        count = 0;
+        while (count < BDDP_TASK_SIZE && maintenanceQueue.peek() != null) {
+            NodePortTuple npt;
+            npt = maintenanceQueue.remove();
+            sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+            nptList.add(npt);
+            count++;
+        }
+
+        for(NodePortTuple npt:nptList) {
+            generateSwitchPortStatusUpdate(npt.getNodeId(), npt.getPortId());
+        }
+    }
+
+    public Set<Short> getQuarantinedPorts(long sw) {
+        Set<Short> qPorts = new HashSet<Short>();
+
+        Iterator<NodePortTuple> iter = quarantineQueue.iterator();
+        while (iter.hasNext()) {
+            NodePortTuple npt = iter.next();
+            if (npt.getNodeId() == sw) {
+                qPorts.add(npt.getPortId());
+            }
+        }
+        return qPorts;
+    }
+
+    private void generateSwitchPortStatusUpdate(long sw, short port) {
+        UpdateOperation operation;
+
+        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) return;
+
+        OFPhysicalPort ofp = iofSwitch.getPort(port);
+        if (ofp == null) return;
+
+        int srcPortState = ofp.getState();
+        boolean portUp = ((srcPortState &
+                OFPortState.OFPPS_STP_MASK.getValue()) !=
+                OFPortState.OFPPS_STP_BLOCK.getValue());
+
+        if (portUp) operation = UpdateOperation.PORT_UP;
+        else operation = UpdateOperation.PORT_DOWN;
+
+        updates.add(new LDUpdate(sw, port, operation));
+    }
+
     /** 
-     * Send LLDP and BDDP on known 
+     * Send LLDP on known ports
      */
     protected void discoverOnKnownLinkPorts() {
         // Copy the port set.
@@ -332,10 +483,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     }
 
     protected void discover(long sw, short port) {
-        // Send standard lldp first
         sendDiscoveryMessage(sw, port, true, false);
-        // Then send the bddp following that.
-        sendDiscoveryMessage(sw, port, false, false);
     }
 
     /**
@@ -397,7 +545,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // using "nearest customer bridge" MAC address for broadest possible propagation
         // through provider and TPMR bridges (see IEEE 802.1AB-2009 and 802.1Q-2011),
         // in particular the Linux bridge which behaves mostly like a provider bridge
-
 
         ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
@@ -485,20 +632,18 @@ IFloodlightModule, IInfoProvider, IHAListener {
             IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
             if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
-                for (OFPhysicalPort p : iofSwitch.getEnabledPorts()) {
+                for (short p: iofSwitch.getEnabledPorts()) {
                     // sends only forward LLDPs and BDDPs
-                    sendDiscoveryMessage(sw, p.getPortNumber(), true, false);
-                }
-            }
-        }
+                    OFPhysicalPort ofp = iofSwitch.getPort(p);
+                    if (ofp==null) continue;
+                    sendDiscoveryMessage(sw, ofp.getPortNumber(), true, false);
 
-        for (long sw: switches) {
-            IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
-            if (iofSwitch == null) continue;
-            if (iofSwitch.getEnabledPorts() != null) {
-                for (OFPhysicalPort p : iofSwitch.getEnabledPorts()) {
-                    // sends only forward LLDPs and BDDPs
-                    sendDiscoveryMessage(sw, p.getPortNumber(), false, false);
+                    NodePortTuple npt = new NodePortTuple(sw, p);
+                    if (portLinks.containsKey(npt) == false ||
+                            portBroadcastDomainLinks.containsKey(npt)) {
+                        // add to maintenance list.
+                        addToMaintenanceQueue(npt);
+                    }
                 }
             }
         }
@@ -538,8 +683,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         this.controllerTLV = new LLDPTLV().setType((byte) 0x0c).setLength((short) controllerTLVValue.length).setValue(controllerTLVValue);
     }
-
-
 
     @Override
     public String getName() {
@@ -700,6 +843,28 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
         }
 
+        // If the received packet is a BDDP packet, then create a reverse BDDP
+        // link as well.
+        if (!isStandard) {
+            Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
+                                        lt.getSrc(), lt.getSrcPort());
+
+            // srcPortState and dstPort state are reversed.
+            LinkInfo reverseInfo =
+                    new LinkInfo(firstSeenTime, lastLldpTime, lastBddpTime,
+                                 dstPortState, srcPortState);
+
+            addOrUpdateLink(reverseLink, reverseInfo);
+        }
+
+        // Remove the node ports from the quarantine and maintenance queues.
+        NodePortTuple nptSrc = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
+        NodePortTuple nptDst = new NodePortTuple(lt.getDst(), lt.getDstPort());
+        removeFromQuarantineQueue(nptSrc);
+        removeFromMaintenanceQueue(nptSrc);
+        removeFromQuarantineQueue(nptDst);
+        removeFromMaintenanceQueue(nptDst);
+
         // Consume this message
         return Command.STOP;
     }
@@ -724,6 +889,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 return Command.STOP;
             }
         }
+
+        // If packet-in is from a quarantine port, stop processing.
+        NodePortTuple npt = new NodePortTuple(sw, pi.getInPort());
+        if (quarantineQueue.contains(npt)) return Command.STOP;
+
         return Command.CONTINUE;
     }
 
@@ -740,6 +910,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         if (added) return UpdateOperation.LINK_UPDATED;
         return UpdateOperation.LINK_REMOVED;
     }
+
+
 
     protected UpdateOperation getUpdateOperation(int srcPortState) {
         boolean portUp = ((srcPortState &
@@ -925,10 +1097,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
                         this.portLinks.remove(dstNpt);
                 }
 
-                this.links.remove(lt);
+                LinkInfo info = this.links.remove(lt);
                 updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
                                          lt.getDst(), lt.getDstPort(),
-                                         null, UpdateOperation.LINK_REMOVED));
+                                         getLinkType(lt, info),
+                                         UpdateOperation.LINK_REMOVED));
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc(),
@@ -1070,15 +1243,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
      */
     @Override
     public void addedSwitch(IOFSwitch sw) {
-        // It's probably overkill to send LLDP from all switches, but we don't
-        // know which switches might be connected to the new switch.
-        // Need to optimize when supporting a large number of switches.
-        NodePortTuple npt;
 
+        NodePortTuple npt;
         if (sw.getEnabledPorts() != null) {
-            for (OFPhysicalPort p : sw.getEnabledPorts()) {
-                npt = new NodePortTuple(sw.getId(), p.getPortNumber());
+            for (Short p : sw.getEnabledPorts()) {
+                npt = new NodePortTuple(sw.getId(), p);
                 discover(npt);
+                addToQuarantineQueue(npt);
             }
         }
         // Update event history
@@ -1543,6 +1714,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 Collections.synchronizedSet(new HashSet<NodePortTuple>());
         this.portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         this.switchLinks = new HashMap<Long, Set<Link>>();
+        this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
+        this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
+
         this.evHistTopologySwitch =
                 new EventHistory<EventHistoryTopologySwitch>("Topology: Switch");
         this.evHistTopologyLink =
@@ -1599,6 +1773,20 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
         });
 
+        // null role implies HA mode is not enabled.
+        Role role = floodlightProvider.getRole();
+        if (role == null || role == Role.MASTER) {
+            log.trace("Setup: Rescheduling discovery task. role = {}", role);
+            discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
+        } else {
+                log.trace("Setup: Not scheduling LLDP as role = {}.", role);
+        }
+
+        // Setup the BDDP task.  It is invoked whenever switch port tuples
+        // are added to the quarantine list.
+        bddpTask = new SingletonTask(ses, new QuarantineWorker());
+        bddpTask.reschedule(BDDP_TASK_INTERVAL, TimeUnit.MILLISECONDS);
+
         updatesThread = new Thread(new Runnable () {
             @Override
             public void run() {
@@ -1612,14 +1800,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }}, "Topology Updates");
         updatesThread.start();
 
-        // null role implies HA mode is not enabled.
-        Role role = floodlightProvider.getRole();
-        if (role == null || role == Role.MASTER) {
-            log.trace("Setup: Rescheduling discovery task. role = {}", role);
-            discoveryTask.reschedule(DISCOVERY_TASK_INTERVAL, TimeUnit.SECONDS);
-        } else {
-                log.trace("Setup: Not scheduling LLDP as role = {}.", role);
-        }
+
+
         // Register for the OpenFlow messages we want to receive
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
