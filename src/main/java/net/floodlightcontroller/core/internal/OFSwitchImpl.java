@@ -257,11 +257,11 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @JsonIgnore
-    public synchronized List<OFPhysicalPort> getEnabledPorts() {
-        List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
+    public synchronized List<Short> getEnabledPorts() {
+        List<Short> result = new ArrayList<Short>();
         for (OFPhysicalPort port : ports.values()) {
             if (portEnabled(port)) {
-                result.add(port);
+                result.add(port.getPortNumber());
             }
         }
         return result;

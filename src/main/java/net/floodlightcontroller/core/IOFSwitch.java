@@ -110,7 +110,7 @@ public interface IOFSwitch {
      * been received.
      * @return Unmodifiable list of ports
      */
-    public List<OFPhysicalPort> getEnabledPorts();
+    public List<Short> getEnabledPorts();
 
     /**
      * Retrieve the port object by the port number. The port object
