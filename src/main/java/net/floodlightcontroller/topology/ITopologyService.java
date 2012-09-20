@@ -91,8 +91,8 @@ public interface ITopologyService extends IFloodlightService  {
      * @param sw The switch DPID in long
      * @return The set of ports on this switch
      */
-    public Set<Short> getPorts(long sw);
-    public Set<Short> getPorts(long sw, boolean tunnelEnabled);
+    public Set<Short> getPortsWithLinks(long sw);
+    public Set<Short> getPortsWithLinks(long sw, boolean tunnelEnabled);
 
     /** Get broadcast ports on a target switch for a given attachmentpoint
      * point port.
@@ -101,7 +101,7 @@ public interface ITopologyService extends IFloodlightService  {
 
     public Set<Short> getBroadcastPorts(long targetSw, long src, short srcPort,
                                         boolean tunnelEnabled);
-    
+
     /**
      * 
      */
@@ -166,15 +166,15 @@ public interface ITopologyService extends IFloodlightService  {
                                     short srcPort,
                                     boolean tunnelEnabled);
 
-    
+
     /**
      * Gets the set of ports that belong to a broadcast domain.
      * @return The set of ports that belong to a broadcast domain.
      */
     public Set<NodePortTuple> getBroadcastDomainPorts();
     public Set<NodePortTuple> getTunnelPorts();
-    
-    
+
+
     /**
      * Returns a set of blocked ports.  The set of blocked
      * ports is the union of all the blocked ports across all
@@ -182,7 +182,7 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public Set<NodePortTuple> getBlockedPorts();
-    
+
     /**
      * ITopologyListener provides topologyChanged notification, 
      * but not *what* the changes were.  
@@ -190,4 +190,9 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public List<LDUpdate> getLastLinkUpdates();
+
+    /**
+     * Switch methods
+     */
+    public Set<Short> getPorts(long sw);
 }
