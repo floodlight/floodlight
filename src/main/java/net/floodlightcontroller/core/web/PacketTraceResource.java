@@ -100,12 +100,13 @@ public class PacketTraceResource extends ServerResource {
         }
         
         if (filter.isEmpty()) {
-            log.warn ("restlet packettrace: empty filter");
             setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
         } else {
-            log.debug ("Call setupFilter: sid:{} filter:{}, period:{}", 
-                        new Object[] {fp.getSessionId(), filter, 
-                                      fp.getPeriod()*1000});
+            if (log.isDebugEnabled()) {
+                log.debug ("Call setupFilter: sid:{} filter:{}, period:{}", 
+                           new Object[] {fp.getSessionId(), filter, 
+                                         fp.getPeriod()*1000});
+            }
             sid = manager.setupFilter(fp.getSessionId(), filter, 
                                       fp.getPeriod()*1000);
             output.setSessionId(sid);

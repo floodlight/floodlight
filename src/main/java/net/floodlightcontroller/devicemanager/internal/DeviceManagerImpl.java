@@ -558,9 +558,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             default:
             	break;
         }
-
-        logger.error("received an unexpected message {} from switch {}",
-                     msg, sw);
         return Command.CONTINUE;
     }
 
@@ -697,7 +694,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
         } else {
-            logger.error("Could not instantiate REST API");
+            logger.debug("Could not instantiate REST API");
         }
     }
 
@@ -1266,8 +1263,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     listener.deviceVlanChanged(update.device);
                                     break;
                                 default:
-                                	logger.error("Unknown device field changed {}",
-                                				update.fieldsChanged.toString());
+                                	logger.debug("Unknown device field changed {}",
+                                				 update.fieldsChanged.toString());
                                 	break;
                             }
                         }

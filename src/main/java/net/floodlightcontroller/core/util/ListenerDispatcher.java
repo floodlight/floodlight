@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.IListener;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 /**
  * Maintain lists of listeners ordered by dependency.  
@@ -59,6 +60,14 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
      * Add a listener to the list of listeners
      * @param listener
      */
+    @LogMessageDoc(level="ERROR",
+                   message="No listener dependency solution: " +
+                           "No listeners without incoming dependencies",
+                   explanation="The set of listeners installed " +
+                   		"have dependencies with no solution",
+                   recommendation="Install a different set of listeners " +
+                   		"or install all dependencies.  This is a defect in " +
+                   		"the controller installation.")
     public void addListener(U type, T listener) {
         List<T> newlisteners = new ArrayList<T>();
         if (listeners != null)

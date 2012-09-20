@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.packet.IPv4;
 
@@ -39,6 +41,11 @@ import org.openflow.protocol.action.OFActionVirtualLanIdentifier;
 import org.openflow.protocol.action.OFActionVirtualLanPriorityCodePoint;
 import org.openflow.util.HexString;
 
+/**
+ * Represents static flow entries to be maintained by the controller on the 
+ * switches. 
+ */
+@LogMessageCategory("Static Flow Pusher")
 public class StaticFlowEntries {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntries.class);
     
@@ -184,6 +191,10 @@ public class StaticFlowEntries {
      * @param fmActions A list of OFActions to encode into one string
      * @return A string of the actions encoded for our database
      */
+    @LogMessageDoc(level="ERROR",
+            message="Could not decode action {action}",
+            explanation="A static flow entry contained an invalid action",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     private static String flowModActionsToString(List<OFAction> fmActions) {
         StringBuilder sb = new StringBuilder();
         for (OFAction a : fmActions) {
@@ -239,7 +250,7 @@ public class StaticFlowEntries {
                         Short.toString(((OFActionTransportLayerDestination)a).getTransportPort()));
                     break;
                 default:
-                    log.error("Could not decode action " + a);
+                    log.error("Could not decode action: {}", a);
                     break;
             }
                 
@@ -335,6 +346,10 @@ public class StaticFlowEntries {
      * @param actionstr The string containing all the actions
      * @param log A logger to log for errors.
      */
+    @LogMessageDoc(level="ERROR",
+            message="Unexpected action '{action}', '{subaction}'",
+            explanation="A static flow entry contained an invalid action",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public static void parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
         List<OFAction> actions = new LinkedList<OFAction>();
         int actionsLength = 0;
@@ -381,7 +396,7 @@ public class StaticFlowEntries {
                     subaction_struct = decode_set_dst_port(subaction, log);
                 }
                 else {
-                    log.error("  Unexpected action '{}', '{}'", action, subaction);
+                    log.error("Unexpected action '{}', '{}'", action, subaction);
                 }
                 
                 if (subaction_struct != null) {
@@ -390,11 +405,16 @@ public class StaticFlowEntries {
                 }
             }
         }
-        log.debug("  action {}", actions);
+        log.debug("action {}", actions);
         
         flowMod.setActions(actions);
         flowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + actionsLength);
     } 
+    
+    @LogMessageDoc(level="ERROR",
+            message="Invalid subaction: '{subaction}'",
+            explanation="A static flow entry contained an invalid subaction",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     private static SubActionStruct decode_output(String subaction, Logger log) {
         SubActionStruct sa = null;
         Matcher n;
@@ -409,7 +429,7 @@ public class StaticFlowEntries {
                     port = get_short(n.group(1));
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid port in: '{}' (error ignored)", subaction);
+                    log.debug("Invalid port in: '{}' (error ignored)", subaction);
                     return null;
                 }
             }
@@ -426,14 +446,14 @@ public class StaticFlowEntries {
             else if (n.group(7) != null)
                 port = OFPort.OFPP_FLOOD.getValue();
             action.setPort(port);
-            log.debug("  action {}", action);
+            log.debug("action {}", action);
             
             sa = new SubActionStruct();
             sa.action = action;
             sa.len = OFActionOutput.MINIMUM_LENGTH;
         }
         else {
-            log.error("  Invalid action: '{}'", subaction);
+            log.error("Invalid subaction: '{}'", subaction);
             return null;
         }
         
@@ -452,7 +472,7 @@ public class StaticFlowEntries {
                     portnum = get_short(n.group(1));
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid port-num in: '{}' (error ignored)", subaction);
+                    log.debug("Invalid port-num in: '{}' (error ignored)", subaction);
                     return null;
                 }
             }
@@ -463,7 +483,7 @@ public class StaticFlowEntries {
                     queueid = get_int(n.group(2));
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid queue-id in: '{}' (error ignored)", subaction);
+                    log.debug("Invalid queue-id in: '{}' (error ignored)", subaction);
                     return null;
                }
             }
@@ -471,14 +491,14 @@ public class StaticFlowEntries {
             OFActionEnqueue action = new OFActionEnqueue();
             action.setPort(portnum);
             action.setQueueId(queueid);
-            log.debug("  action {}", action);
+            log.debug("action {}", action);
             
             sa = new SubActionStruct();
             sa.action = action;
             sa.len = OFActionEnqueue.MINIMUM_LENGTH;
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
         
@@ -491,14 +511,14 @@ public class StaticFlowEntries {
         
         if (n.matches()) {
             OFActionStripVirtualLan action = new OFActionStripVirtualLan();
-            log.debug("  action {}", action);
+            log.debug("action {}", action);
             
             sa = new SubActionStruct();
             sa.action = action;
             sa.len = OFActionStripVirtualLan.MINIMUM_LENGTH;
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -522,13 +542,13 @@ public class StaticFlowEntries {
                     sa.len = OFActionVirtualLanIdentifier.MINIMUM_LENGTH;
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid VLAN in: {} (error ignored)", subaction);
+                    log.debug("Invalid VLAN in: {} (error ignored)", subaction);
                     return null;
                 }
             }          
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -552,13 +572,13 @@ public class StaticFlowEntries {
                     sa.len = OFActionVirtualLanPriorityCodePoint.MINIMUM_LENGTH;
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid VLAN priority in: {} (error ignored)", subaction);
+                    log.debug("Invalid VLAN priority in: {} (error ignored)", subaction);
                     return null;
                 }
             }
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -574,7 +594,7 @@ public class StaticFlowEntries {
             if (macaddr != null) {
                 OFActionDataLayerSource action = new OFActionDataLayerSource();
                 action.setDataLayerAddress(macaddr);
-                log.debug("  action {}", action);
+                log.debug("action {}", action);
 
                 sa = new SubActionStruct();
                 sa.action = action;
@@ -582,7 +602,7 @@ public class StaticFlowEntries {
             }            
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -606,7 +626,7 @@ public class StaticFlowEntries {
             }
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -630,13 +650,13 @@ public class StaticFlowEntries {
                     sa.len = OFActionNetworkTypeOfService.MINIMUM_LENGTH;
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid dst-port in: {} (error ignored)", subaction);
+                    log.debug("Invalid dst-port in: {} (error ignored)", subaction);
                     return null;
                 }
             }
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -658,7 +678,7 @@ public class StaticFlowEntries {
             sa.len = OFActionNetworkLayerSource.MINIMUM_LENGTH;
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -673,14 +693,14 @@ public class StaticFlowEntries {
             int ipaddr = get_ip_addr(n, subaction, log);
             OFActionNetworkLayerDestination action = new OFActionNetworkLayerDestination();
             action.setNetworkAddress(ipaddr);
-            log.debug("  action {}", action);
+            log.debug("action {}", action);
  
             sa = new SubActionStruct();
             sa.action = action;
             sa.len = OFActionNetworkLayerDestination.MINIMUM_LENGTH;
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -697,20 +717,20 @@ public class StaticFlowEntries {
                     short portnum = get_short(n.group(1));
                     OFActionTransportLayerSource action = new OFActionTransportLayerSource();
                     action.setTransportPort(portnum);
-                    log.debug("  action {}", action);
+                    log.debug("action {}", action);
                     
                     sa = new SubActionStruct();
                     sa.action = action;
                     sa.len = OFActionTransportLayerSource.MINIMUM_LENGTH;;
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid src-port in: {} (error ignored)", subaction);
+                    log.debug("Invalid src-port in: {} (error ignored)", subaction);
                     return null;
                 }
             }
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -727,20 +747,20 @@ public class StaticFlowEntries {
                     short portnum = get_short(n.group(1));
                     OFActionTransportLayerDestination action = new OFActionTransportLayerDestination();
                     action.setTransportPort(portnum);
-                    log.debug("  action {}", action);
+                    log.debug("action {}", action);
                     
                     sa = new SubActionStruct();
                     sa.action = action;
                     sa.len = OFActionTransportLayerDestination.MINIMUM_LENGTH;;
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid dst-port in: {} (error ignored)", subaction);
+                    log.debug("Invalid dst-port in: {} (error ignored)", subaction);
                     return null;
                 }
             }
         }
         else {
-            log.debug("  Invalid action: '{}'", subaction);
+            log.debug("Invalid action: '{}'", subaction);
             return null;
         }
 
@@ -756,12 +776,12 @@ public class StaticFlowEntries {
                     macaddr[i] = get_byte("0x" + n.group(i+1));
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid src-mac in: '{}' (error ignored)", subaction);
+                    log.debug("Invalid src-mac in: '{}' (error ignored)", subaction);
                     return null;
                 }
             }
             else { 
-                log.debug("  Invalid src-mac in: '{}' (null, error ignored)", subaction);
+                log.debug("Invalid src-mac in: '{}' (null, error ignored)", subaction);
                 return null;
             }
         }
@@ -779,12 +799,12 @@ public class StaticFlowEntries {
                     ipaddr = ipaddr | get_int(n.group(i+1));
                 }
                 catch (NumberFormatException e) {
-                    log.debug("  Invalid src-ip in: '{}' (error ignored)", subaction);
+                    log.debug("Invalid src-ip in: '{}' (error ignored)", subaction);
                     return 0;
                 }
             }
             else {
-                log.debug("  Invalid src-ip in: '{}' (null, error ignored)", subaction);
+                log.debug("Invalid src-ip in: '{}' (null, error ignored)", subaction);
                 return 0;
             }
         }
