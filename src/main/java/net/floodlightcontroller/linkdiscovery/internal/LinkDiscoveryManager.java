@@ -47,6 +47,9 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -113,6 +116,7 @@ import org.slf4j.LoggerFactory;
  *   src.id and dst.id, and portLinks for each src and dst
  *  -The updates queue is only added to from within a held write lock
  */
+@LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager
 implements IOFMessageListener, IOFSwitchListener, 
 IStorageSourceListener, ILinkDiscoveryService,
@@ -298,6 +302,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return ILinkDiscovery.LinkType.INVALID_LINK;
     }
 
+    @LogMessageDoc(level="ERROR",
+            message="Error in link discovery updates loop",
+            explanation="An unknown error occured while dispatching " +
+            		"link update notifications",
+            recommendation=LogMessageDoc.GENERIC_ACTION)
     private void doUpdatesThread() throws InterruptedException {
         do {
             LDUpdate update = updates.take();
@@ -498,6 +507,11 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param isStandard   indicates standard or modified LLDP
      * @param isReverse    indicates whether the LLDP was sent as a response
      */
+    @LogMessageDoc(level="ERROR",
+            message="Failure sending LLDP out port {port} on switch {switch}",
+            explanation="An I/O error occured while sending LLDP message " +
+            		"to the switch.",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void sendDiscoveryMessage(long sw, short port,
                              boolean isStandard,
                              boolean isReverse) {
@@ -614,7 +628,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             iofSwitch.flush();
         } catch (IOException e) {
             log.error("Failure sending LLDP out port {} on switch {}",
-                      new Object[]{ port, HexString.toHexString(sw) }, e);
+                      new Object[]{ port, iofSwitch.getStringId() }, e);
         }
 
     }
@@ -699,8 +713,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
             default:
                 break;
         }
-
-        log.error("Received an unexpected message {} from switch {}", msg, sw);
         return Command.CONTINUE;
     }
 
@@ -708,8 +720,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // If LLDP is suppressed on this port, ignore received packet as well
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
         if (iofSwitch == null) {
-            log.warn("LLDP received on switch {} that is not known to controller.",
-                     HexString.toHexString(sw));
+            return Command.STOP;
         }
 
         if (isLLDPSuppressed(sw, pi.getInPort()))
@@ -1726,10 +1737,33 @@ IFloodlightModule, IInfoProvider, IHAListener {
     }
 
     @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+                message="No storage source found.",
+                explanation="Storage source was not initialized; cannot initialize " +
+                "link discovery.",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG),
+        @LogMessageDoc(level="ERROR",
+                message="Error in installing listener for " +
+                        "switch config table {table}",
+                explanation="Failed to install storage notification for the " +
+                		"switch config table",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG),
+        @LogMessageDoc(level="ERROR",
+                message="No storage source found.",
+                explanation="Storage source was not initialized; cannot initialize " +
+                "link discovery.",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG),
+        @LogMessageDoc(level="ERROR",
+                message="Exception in LLDP send timer.",
+                explanation="An unknown error occured while sending LLDP " +
+                		"messages to switches.",
+                recommendation=LogMessageDoc.CHECK_SWITCH),
+    })
     public void startUp(FloodlightModuleContext context) {
         // Create our storage tables
         if (storageSource == null) {
-            log.warn("No storage source found.");
+            log.error("No storage source found.");
             return;
         }
 
@@ -1740,7 +1774,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         try {
             storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
         } catch (StorageException ex) {
-            log.error("Error in installing listener for switch table - {}", SWITCH_CONFIG_TABLE_NAME);
+            log.error("Error in installing listener for " +
+            		  "switch table {}", SWITCH_CONFIG_TABLE_NAME);
         }
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();

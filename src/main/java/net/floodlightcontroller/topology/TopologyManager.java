@@ -20,6 +20,8 @@ import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IHAListener;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -51,6 +53,7 @@ import org.slf4j.LoggerFactory;
  * of the network graph, as well as implementing tools for finding routes 
  * through the topology.
  */
+@LogMessageCategory("Network Topology")
 public class TopologyManager implements 
         IFloodlightModule, ITopologyService, 
         IRoutingService, ILinkDiscoveryListener,
@@ -109,6 +112,11 @@ public class TopologyManager implements
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
      */
+    @LogMessageDoc(level="ERROR",
+            message="Error in topology instance task thread",
+            explanation="An unknown error occured in the topology " +
+            		"discovery module.",
+            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     protected class UpdateTopologyWorker implements Runnable {
         @Override 
         public void run() {
@@ -539,8 +547,6 @@ public class TopologyManager implements
             	break;
         }
 
-        log.error("received an unexpected message {} from switch {}", 
-                  msg, sw);
         return Command.CONTINUE;
     }
 
@@ -689,6 +695,11 @@ public class TopologyManager implements
      * @param ports
      * @param cntx
      */
+    @LogMessageDoc(level="ERROR",
+            message="Failed to clear all flows on switch {switch}",
+            explanation="An I/O error occured while trying send " +
+            		"topology discovery packet",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw, 
                                        Set<Short> ports,
                                        FloodlightContext cntx) {
@@ -812,6 +823,10 @@ public class TopologyManager implements
         return Command.STOP;
     }
 
+    @LogMessageDoc(level="ERROR",
+            message="Error reading link discovery update.",
+            explanation="Unable to process link discovery update",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void applyUpdates() {
 
         appliedUpdates.clear();

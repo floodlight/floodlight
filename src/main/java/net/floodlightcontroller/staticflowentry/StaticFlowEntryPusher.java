@@ -20,6 +20,8 @@ import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -44,6 +46,12 @@ import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@LogMessageCategory("Static Flow Pusher")
+/**
+ * This module is responsible for maintaining a set of static flows on
+ * switches. This is just a big 'ol dumb list of flows and something external
+ * is responsible for ensuring they make sense for the network.
+ */
 public class StaticFlowEntryPusher 
     implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService,
         IStorageSourceListener, IOFMessageListener, IHAListener {
@@ -193,7 +201,11 @@ public class StaticFlowEntryPusher
      * 
      * @return
      */
-    
+    @LogMessageDoc(level="ERROR",
+            message="failed to access storage: {reason}",
+            explanation="Could not retrieve static flows from the system " +
+            		"database",
+            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     private Map<String, Map<String, OFFlowMod>> readEntriesFromStorage() {
         Map<String, Map<String, OFFlowMod>> entries = new ConcurrentHashMap<String, Map<String, OFFlowMod>>();
         try {
@@ -236,7 +248,7 @@ public class StaticFlowEntryPusher
                 .getMessage(OFType.FLOW_MOD);
 
         if (!row.containsKey(COLUMN_SWITCH) || !row.containsKey(COLUMN_NAME)) {
-            log.error(
+            log.debug(
                     "skipping entry with missing required 'switch' or 'name' entry: {}",
                     row);
             return;
@@ -285,11 +297,11 @@ public class StaticFlowEntryPusher
             }
         } catch (ClassCastException e) {
             if (entryName != null && switchName != null)
-                log.error(
+                log.debug(
                         "skipping entry {} on switch {} with bad data : "
                                 + e.getMessage(), entryName, switchName);
             else
-                log.error("skipping entry with bad data: {} :: {} ",
+                log.debug("skipping entry with bad data: {} :: {} ",
                         e.getMessage(), e.getStackTrace());
         }
 
@@ -298,7 +310,7 @@ public class StaticFlowEntryPusher
         try {
             ofMatch.fromString(match);
         } catch (IllegalArgumentException e) {
-            log.error(
+            log.debug(
                     "ignoring flow entry {} on switch {} with illegal OFMatch() key: "
                             + match, entryName, switchName);
             return;
@@ -373,13 +385,18 @@ public class StaticFlowEntryPusher
         
         for(Object obj : rowKeys) {
             if (!(obj instanceof String)) {
-                log.error("tried to delete non-string key {}; ignoring", obj);
+                log.debug("tried to delete non-string key {}; ignoring", obj);
                 continue;
             }
             deleteStaticFlowEntry((String) obj);
         }
     }
     
+    @LogMessageDoc(level="ERROR",
+            message="inconsistent internal state: no switch has rule {rule}",
+            explanation="Inconsistent internat state discovered while " +
+            		"deleting a static flow rule",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     private boolean deleteStaticFlowEntry(String entryName) {
         String dpid = entry2dpid.get(entryName);
         if (log.isDebugEnabled()) {
@@ -399,7 +416,7 @@ public class StaticFlowEntryPusher
                 entriesFromStorage.get(dpid).containsKey(entryName)) {
             entriesFromStorage.get(dpid).remove(entryName);
         } else { 
-            log.error("Tried to delete non-existent entry {} for switch {}", 
+            log.debug("Tried to delete non-existent entry {} for switch {}", 
                     entryName, dpid);
             return false;
         }
@@ -413,6 +430,11 @@ public class StaticFlowEntryPusher
      * @param dpid The datapath ID of the switch to write to
      * @param messages The list of OFMessages to write.
      */
+    @LogMessageDoc(level="ERROR",
+            message="Tried to write to switch {switch} but got {error}",
+            explanation="An I/O error occured while trying to write a " +
+            		"static flow to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     private void writeOFMessagesToSwitch(long dpid, List<OFMessage> messages) {
         IOFSwitch ofswitch = floodlightProvider.getSwitches().get(dpid);
         if (ofswitch != null) {  // is the switch connected
@@ -423,7 +445,7 @@ public class StaticFlowEntryPusher
                 ofswitch.write(messages, null);
                 ofswitch.flush();
             } catch (IOException e) {
-                log.error("writed to write to switch {} but got {}", dpid, e.getMessage());
+                log.error("Tried to write to switch {} but got {}", dpid, e.getMessage());
             }
         }
     }
@@ -452,6 +474,11 @@ public class StaticFlowEntryPusher
      * @param sw The IOFSwitch to write to
      * @param flowMod The OFFlowMod to write
      */
+    @LogMessageDoc(level="ERROR",
+            message="Tried to write OFFlowMod to {switch} but got {error}",
+            explanation="An I/O error occured while trying to write a " +
+                    "static flow to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     private void writeFlowModToSwitch(IOFSwitch sw, OFFlowMod flowMod) {
         try {
             sw.write(flowMod, null);
@@ -468,12 +495,17 @@ public class StaticFlowEntryPusher
     }
     
     @Override
+    @LogMessageDoc(level="ERROR",
+        message="Got a FlowRemove message for a infinite " +
+                "timeout flow: {flow} from switch {switch}",
+        explanation="Flows with infinite timeouts should not expire. " +
+        		"The switch has expired the flow anyway.",
+        recommendation=LogMessageDoc.REPORT_SWITCH_BUG)
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
         case FLOW_REMOVED:
             break;
         default:
-            log.warn("ignoring unrequested message: {}", msg);
             return Command.CONTINUE;
         }
         OFFlowRemoved flowRemoved = (OFFlowRemoved) msg;
@@ -483,9 +515,10 @@ public class StaticFlowEntryPusher
          * never expire.
          */
         if( AppCookie.extractApp(cookie) == STATIC_FLOW_APP_ID) {
-            if (flowRemoved.getReason() != OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
-                log.error("PANIC -- got a FlowRemove message for a infinite timeout flow: {} from switch {}", 
-                        msg, sw);
+            if (flowRemoved.getReason() != 
+                    OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
+                log.error("Got a FlowRemove message for a infinite " +
+                		  "timeout flow: {} from switch {}", msg, sw);
             return Command.STOP;    // only for us
         } else
             return Command.CONTINUE;

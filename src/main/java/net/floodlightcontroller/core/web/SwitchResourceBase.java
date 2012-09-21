@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPort;
@@ -59,7 +60,14 @@ public class SwitchResourceBase extends ServerResource {
         
     }
     
-    protected List<OFStatistics> getSwitchStatistics(long switchId, OFStatisticsType statType) {
+    @LogMessageDoc(level="ERROR",
+                   message="Failure retrieving statistics from switch {switch}",
+                   explanation="An error occurred while retrieving statistics" +
+                   		"from the switch",
+                   recommendation=LogMessageDoc.CHECK_SWITCH + " " +
+                   		LogMessageDoc.GENERIC_ACTION)
+    protected List<OFStatistics> getSwitchStatistics(long switchId, 
+                                                     OFStatisticsType statType) {
         IFloodlightProviderService floodlightProvider = 
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
@@ -111,7 +119,7 @@ public class SwitchResourceBase extends ServerResource {
                 future = sw.getStatistics(req);
                 values = future.get(10, TimeUnit.SECONDS);
             } catch (Exception e) {
-                log.error("Failure retrieving statistics from switch {}", sw, e);
+                log.error("Failure retrieving statistics from switch " + sw, e);
             }
         }
         return values;

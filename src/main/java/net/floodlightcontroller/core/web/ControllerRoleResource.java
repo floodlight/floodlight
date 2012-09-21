@@ -5,6 +5,7 @@ import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -24,6 +25,11 @@ public class ControllerRoleResource extends ServerResource {
     }
     
     @Post("json")
+    @LogMessageDoc(level="WARN",
+                   message="Invalid role value specified in REST API to " +
+                      "set controller role",
+                   explanation="An HA role change request was malformed.",
+                   recommendation=LogMessageDoc.CHECK_CONTROLLER)
     public void setRole(RoleInfo roleInfo) {
         //Role role = Role.lookupRole(roleInfo.getRole());
         Role role = null;
@@ -36,7 +42,8 @@ public class ControllerRoleResource extends ServerResource {
             // the error below.
         }
         if (role == null) {
-            log.warn ("Invalid role value specified in REST API to set controller role");
+            log.warn ("Invalid role value specified in REST API to " +
+            		  "set controller role");
             setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid role value");
             return;
         }

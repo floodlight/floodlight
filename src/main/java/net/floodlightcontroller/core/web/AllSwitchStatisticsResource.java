@@ -123,7 +123,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                log.error("Failed to sleep", e);
+                log.error("Interrupted while waiting for statistics", e);
             }
         }
         
