@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.core.web;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
 import org.openflow.util.HexString;
@@ -68,6 +70,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
             IOFSwitch sw = floodlightProvider.getSwitches().get(HexString.toLong(switchId));
             if (sw != null) {
                 OFFeaturesReply fr = sw.getFeaturesReply();
+                fr.setPorts(new ArrayList<OFPhysicalPort>(sw.getPorts().values()));
                 result.put(sw.getStringId(), fr);
             }
             return result;
