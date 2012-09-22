@@ -32,16 +32,12 @@ public class EventHistoryTopologyClusterResource extends ServerResource {
             // Invalid input for event count - use default value
         }
 
-        try {
-            LinkDiscoveryManager topoManager =
-               (LinkDiscoveryManager)getContext().getAttributes().
-                   get(ILinkDiscoveryService.class.getCanonicalName());
-            if (topoManager != null) {
-                return new EventHistory<EventHistoryTopologyCluster>(
-                        topoManager.evHistTopologyCluster, count);
-            }
-        } catch (ClassCastException e) {
-            log.error(e.toString());
+        LinkDiscoveryManager topoManager =
+                (LinkDiscoveryManager)getContext().getAttributes().
+                get(ILinkDiscoveryService.class.getCanonicalName());
+        if (topoManager != null) {
+            return new EventHistory<EventHistoryTopologyCluster>(
+                    topoManager.evHistTopologyCluster, count);
         }
         
         return null;

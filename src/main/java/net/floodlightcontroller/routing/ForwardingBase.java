@@ -28,6 +28,9 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -54,6 +57,12 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Abstract base class for implementing a forwarding module.  Forwarding is
+ * responsible for programming flows to a switch in response to a policy
+ * decision.
+ */
+@LogMessageCategory("Flow Programming")
 public abstract class ForwardingBase 
 	implements IOFMessageListener, IDeviceListener {
     
@@ -144,9 +153,6 @@ public abstract class ForwardingBase
             default:
             	break;
         }
-        log.error("received an unexpected message {} from switch {}",
-                  msg,
-                  sw);
         return Command.CONTINUE;
     }
 
@@ -166,6 +172,18 @@ public abstract class ForwardingBase
      *        OFFlowMod.OFPFC_MODIFY etc.
      * @return srcSwitchIincluded True if the source switch is included in this route
      */
+    @LogMessageDocs({
+        @LogMessageDoc(level="WARN",
+            message="Unable to push route, switch at DPID {dpid} not available",
+            explanation="A switch along the calculated path for the " +
+            		"flow has disconnected.",
+            recommendation=LogMessageDoc.CHECK_SWITCH),
+        @LogMessageDoc(level="ERROR",
+            message="Failure writing flow mod",
+            explanation="An I/O error occurred while writing a " +
+            		"flow modification to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH),            
+    })
     public boolean pushRoute(Route route, OFMatch match, 
                              Integer wildcard_hints,
                              OFPacketIn pi,
@@ -285,6 +303,20 @@ public abstract class ForwardingBase
      * @param outPort   output port
      * @param cntx      context of the packet
      */
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+            message="BufferId is not and packet data is null. " +
+                    "Cannot send packetOut. " +
+                    "srcSwitch={dpid} inPort={port} outPort={port}",
+            explanation="The switch send a malformed packet-in." +
+            		"The packet will be dropped",
+            recommendation=LogMessageDoc.REPORT_SWITCH_BUG),
+        @LogMessageDoc(level="ERROR",
+            message="Failure writing packet out",
+            explanation="An I/O error occurred while writing a " +
+                    "packet out to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH),            
+    })
     public void pushPacket(IPacket packet, 
                            IOFSwitch sw,
                            int bufferId,
@@ -318,7 +350,7 @@ public abstract class ForwardingBase
         // set data - only if buffer_id == -1
         if (po.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             if (packet == null) {
-                log.error("BufferId is set but no packet data is null. " +
+                log.error("BufferId is not set and packet data is null. " +
                 		"Cannot send packetOut. " +
                         "srcSwitch={} inPort={} outPort={}",
                         new Object[] {sw, inPort, outPort});
@@ -546,6 +578,13 @@ public abstract class ForwardingBase
         return sw.updateBroadcastCache(hash, pi.getInPort());
     }
 
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+            message="Failure writing deny flow mod",
+            explanation="An I/O error occurred while writing a " +
+                    "deny flow mod to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH),            
+    })
     public static boolean
             blockHost(IFloodlightProviderService floodlightProvider,
                       SwitchPort sw_tup, long host_mac,

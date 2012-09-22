@@ -169,119 +169,113 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
                                                packetName, 
                                                etherType, 
                                                NetworkLayer.L3);
-        
-        try {        	
-        	// Controller counters
-        	ICounter controllerCounter = getCounter(controllerCounterName);
-            if (controllerCounter == null) {
-            	controllerCounter = createCounter(controllerCounterName, 
-                                               CounterType.LONG);
-            }
-            controllerCounter.increment();
-            ICounter portCounter = getCounter(portCounterName);
-            if (portCounter == null) {
-                portCounter = createCounter(portCounterName, 
-                                                   CounterType.LONG);
-            }
-            portCounter.increment();
-            ICounter switchCounter = getCounter(switchCounterName);
-            if (switchCounter == null) {
-                switchCounter = createCounter(switchCounterName, 
-                                                   CounterType.LONG);
-            }
-            switchCounter.increment();
 
-            // L2 counters
-            ICounter controllerL2Counter = getCounter(controllerL2CategoryCounterName);
-            if (controllerL2Counter == null) {
-            	controllerL2Counter = createCounter(controllerL2CategoryCounterName,
-                                               CounterType.LONG);
-            }
-            controllerL2Counter.increment();
-            ICounter switchL2Counter = getCounter(switchL2CategoryCounterName);
-            if (switchL2Counter == null) {
-            	switchL2Counter = createCounter(switchL2CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            switchL2Counter.increment();
-            ICounter portL2Counter = getCounter(portL2CategoryCounterName);
-            if (portL2Counter == null) {
-            	portL2Counter = createCounter(portL2CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            portL2Counter.increment();
-            
-            // L3 counters
-            ICounter controllerL3Counter = getCounter(controllerL3CategoryCounterName);
-            if (controllerL3Counter == null) {
-            	controllerL3Counter = createCounter(controllerL3CategoryCounterName,
-                                               CounterType.LONG);
-            }
-            controllerL3Counter.increment();
-            ICounter portL3Counter = getCounter(portL3CategoryCounterName);
-            if (portL3Counter == null) {
-                portL3Counter = createCounter(portL3CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            portL3Counter.increment();
-            ICounter switchL3Counter = getCounter(switchL3CategoryCounterName);
-            if (switchL3Counter == null) {
-                switchL3Counter = createCounter(switchL3CategoryCounterName,
-                                                   CounterType.LONG);
-            }
-            switchL3Counter.increment();
-            
-            // L4 counters
-            if (etherType.compareTo(CounterStore.L3ET_IPV4) == 0) {
-                IPv4 ipV4 = (IPv4)eth.getPayload();
-                String l4Type = String.format("%02x", ipV4.getProtocol());
-                if (TypeAliases.l4TypeAliasMap != null && 
+        // Controller counters
+        ICounter controllerCounter = getCounter(controllerCounterName);
+        if (controllerCounter == null) {
+            controllerCounter = createCounter(controllerCounterName, 
+                                              CounterType.LONG);
+        }
+        controllerCounter.increment();
+        ICounter portCounter = getCounter(portCounterName);
+        if (portCounter == null) {
+            portCounter = createCounter(portCounterName, 
+                                        CounterType.LONG);
+        }
+        portCounter.increment();
+        ICounter switchCounter = getCounter(switchCounterName);
+        if (switchCounter == null) {
+            switchCounter = createCounter(switchCounterName, 
+                                          CounterType.LONG);
+        }
+        switchCounter.increment();
+
+        // L2 counters
+        ICounter controllerL2Counter = getCounter(controllerL2CategoryCounterName);
+        if (controllerL2Counter == null) {
+            controllerL2Counter = createCounter(controllerL2CategoryCounterName,
+                                                CounterType.LONG);
+        }
+        controllerL2Counter.increment();
+        ICounter switchL2Counter = getCounter(switchL2CategoryCounterName);
+        if (switchL2Counter == null) {
+            switchL2Counter = createCounter(switchL2CategoryCounterName,
+                                            CounterType.LONG);
+        }
+        switchL2Counter.increment();
+        ICounter portL2Counter = getCounter(portL2CategoryCounterName);
+        if (portL2Counter == null) {
+            portL2Counter = createCounter(portL2CategoryCounterName,
+                                          CounterType.LONG);
+        }
+        portL2Counter.increment();
+
+        // L3 counters
+        ICounter controllerL3Counter = getCounter(controllerL3CategoryCounterName);
+        if (controllerL3Counter == null) {
+            controllerL3Counter = createCounter(controllerL3CategoryCounterName,
+                                                CounterType.LONG);
+        }
+        controllerL3Counter.increment();
+        ICounter portL3Counter = getCounter(portL3CategoryCounterName);
+        if (portL3Counter == null) {
+            portL3Counter = createCounter(portL3CategoryCounterName,
+                                          CounterType.LONG);
+        }
+        portL3Counter.increment();
+        ICounter switchL3Counter = getCounter(switchL3CategoryCounterName);
+        if (switchL3Counter == null) {
+            switchL3Counter = createCounter(switchL3CategoryCounterName,
+                                            CounterType.LONG);
+        }
+        switchL3Counter.increment();
+
+        // L4 counters
+        if (etherType.compareTo(CounterStore.L3ET_IPV4) == 0) {
+            IPv4 ipV4 = (IPv4)eth.getPayload();
+            String l4Type = String.format("%02x", ipV4.getProtocol());
+            if (TypeAliases.l4TypeAliasMap != null && 
                     TypeAliases.l4TypeAliasMap.containsKey(l4Type)) {
-                    l4Type = TypeAliases.l4TypeAliasMap.get(l4Type);
-                } else {
-                    l4Type = "L4_" + l4Type;
-                }
-                String controllerL4CategoryCounterName = 
+                l4Type = TypeAliases.l4TypeAliasMap.get(l4Type);
+            } else {
+                l4Type = "L4_" + l4Type;
+            }
+            String controllerL4CategoryCounterName = 
                     CounterStore.createCounterName(CONTROLLER_NAME, 
                                                    -1, 
                                                    packetName, 
                                                    l4Type, 
                                                    NetworkLayer.L4);
-                String portL4CategoryCounterName =
-                        CounterStore.createCounterName(switchIdHex, 
-                                                       packet.getInPort(), 
-                                                       packetName, 
-                                                       l4Type, 
-                                                       NetworkLayer.L4);
-                String switchL4CategoryCounterName = 
-                        CounterStore.createCounterName(switchIdHex, 
-                                                       -1, 
-                                                       packetName, 
-                                                       l4Type, 
-                                                       NetworkLayer.L4);
-                ICounter controllerL4Counter = getCounter(controllerL4CategoryCounterName);
-                if (controllerL4Counter == null) {
-                	controllerL4Counter = createCounter(controllerL4CategoryCounterName, 
-                                                   CounterType.LONG);
-                }
-                controllerL4Counter.increment();
-                ICounter portL4Counter = getCounter(portL4CategoryCounterName);
-                if (portL4Counter == null) {
-                    portL4Counter = createCounter(portL4CategoryCounterName, 
-                                                       CounterType.LONG);
-                }
-                portL4Counter.increment();
-                ICounter switchL4Counter = getCounter(switchL4CategoryCounterName);
-                if (switchL4Counter == null) {
-                    switchL4Counter = createCounter(switchL4CategoryCounterName, 
-                                                       CounterType.LONG);
-                }
-                switchL4Counter.increment();
+            String portL4CategoryCounterName =
+                    CounterStore.createCounterName(switchIdHex, 
+                                                   packet.getInPort(), 
+                                                   packetName, 
+                                                   l4Type, 
+                                                   NetworkLayer.L4);
+            String switchL4CategoryCounterName = 
+                    CounterStore.createCounterName(switchIdHex, 
+                                                   -1, 
+                                                   packetName, 
+                                                   l4Type, 
+                                                   NetworkLayer.L4);
+            ICounter controllerL4Counter = getCounter(controllerL4CategoryCounterName);
+            if (controllerL4Counter == null) {
+                controllerL4Counter = createCounter(controllerL4CategoryCounterName, 
+                                                    CounterType.LONG);
             }
-        }
-        catch (IllegalArgumentException e) {
-            log.error("Invalid Counter, " + portCounterName + 
-                      " or " + switchCounterName);
+            controllerL4Counter.increment();
+            ICounter portL4Counter = getCounter(portL4CategoryCounterName);
+            if (portL4Counter == null) {
+                portL4Counter = createCounter(portL4CategoryCounterName, 
+                                              CounterType.LONG);
+            }
+            portL4Counter.increment();
+            ICounter switchL4Counter = getCounter(switchL4CategoryCounterName);
+            if (switchL4Counter == null) {
+                switchL4Counter = createCounter(switchL4CategoryCounterName, 
+                                                CounterType.LONG);
+            }
+            switchL4Counter.increment();
         }
     }
     
@@ -296,28 +290,20 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         packetName = packetName.substring(packetName.lastIndexOf('.')+1);
         // flowmod is per switch and controller. portid = -1
         String controllerFMCounterName = CounterStore.createCounterName(CONTROLLER_NAME, -1, packetName);  
-        try {
-            ICounter counter = getCounter(controllerFMCounterName);
-            if (counter == null) {
-                counter = createCounter(controllerFMCounterName, CounterValue.CounterType.LONG);
-            }
-            counter.increment();
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid Counter, " + controllerFMCounterName);
+        ICounter counter = getCounter(controllerFMCounterName);
+        if (counter == null) {
+            counter = createCounter(controllerFMCounterName, CounterValue.CounterType.LONG);
         }
-        
+        counter.increment();
+
         String switchFMCounterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
-        try{ 
-        	ICounter counter = getCounter(switchFMCounterName);
-            if (counter == null) {
-                counter = createCounter(switchFMCounterName, CounterValue.CounterType.LONG);
-            }
-            counter.increment();
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid Counter, " + switchFMCounterName);
+        counter = getCounter(switchFMCounterName);
+        if (counter == null) {
+            counter = createCounter(switchFMCounterName, CounterValue.CounterType.LONG);
         }
+        counter.increment();
     }
-    
+
 
     /**
      * Create a title based on switch ID, portID, vlanID, and counterName

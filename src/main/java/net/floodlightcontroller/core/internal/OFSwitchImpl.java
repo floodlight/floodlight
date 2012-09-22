@@ -20,7 +20,6 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -40,6 +39,8 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
@@ -71,14 +72,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
+ * This is the internal representation of an openflow switch.
  */
 public class OFSwitchImpl implements IOFSwitch {
     // TODO: should we really do logging in the class or should we throw
     // exception that can then be handled by callers?
     protected static Logger log = LoggerFactory.getLogger(OFSwitchImpl.class);
 
+    private static final String HA_CHECK_SWITCH = 
+            "Check the health of the indicated switch.  If the problem " +
+            "persists or occurs repeatedly, it likely indicates a defect " +
+            "in the switch HA implementation.";
+    
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
@@ -198,21 +203,8 @@ public class OFSwitchImpl implements IOFSwitch {
         this.channel = channel;
     }
     
-    // TODO: document the difference between the different write functions
     @Override
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
-    	if (m instanceof OFFlowMod) {
-    	    byte[] bcast = new byte[] {-1, -1, -1, -1, -1, -1};
-    	    OFFlowMod fm = (OFFlowMod) m;
-    	    OFMatch match = fm.getMatch();
-            // Warn if programming a flow matching broadcast destination
-    	    if ((match.getWildcards() & OFMatch.OFPFW_DL_DST) == 0 &&
-    	            Arrays.equals(match.getDataLayerDestination(), bcast)) {
-    	    	log.warn("Programming flow with -1 destination addr: " +
-    	    			 "swId {}, stack trace {}",
-    	    			 stringId, new Exception().getStackTrace());
-    	    }
-    	}
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
         if (msg_buffer == null) {
@@ -231,21 +223,28 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException {
+    @LogMessageDoc(level="WARN",
+                   message="Sending OF message that modifies switch " +
+                           "state while in the slave role: {switch}",
+                   explanation="An application has sent a message to a switch " +
+                   		"that is not valid when the switch is in a slave role",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    public void write(List<OFMessage> msglist, 
+                      FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
                 switch (m.getType()) {
                     case PACKET_OUT:
                     case FLOW_MOD:
                     case PORT_MOD:
-                        log.warn("Sending OF message that modifies switch state while in the slave role: {}", m.getType().name());
+                        log.warn("Sending OF message that modifies switch " +
+                        		 "state while in the slave role: {}", 
+                        		 m.getType().name());
                         break;
                     default:
                         break;
                 }
             }
-            // FIXME: Debugging code should be disabled!!!
-            // log.debug("Sending message type {} with xid {}", new Object[] {m.getType(), m.getXid()});
             this.floodlightProvider.handleOutgoingMessage(this, m, bc);
         }
         this.write(msglist);
@@ -511,6 +510,11 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    @LogMessageDoc(level="ERROR",
+                   message="Failed to clear all flows on switch {switch}",
+                   explanation="An I/O error occured while trying to clear " +
+                   		"flows on the switch.",
+                   recommendation=LogMessageDoc.CHECK_SWITCH)
     public void clearAllFlowMods() {
         // Delete all pre-existing flows
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
@@ -525,7 +529,7 @@ public class OFSwitchImpl implements IOFSwitch {
             msglist.add(fm);
             channel.write(msglist);
         } catch (Exception e) {
-            log.error("Failed to clear all flows on switch {} - {}", this, e);
+            log.error("Failed to clear all flows on switch " + this, e);
         }
     }
 
@@ -677,6 +681,24 @@ public class OFSwitchImpl implements IOFSwitch {
      * @param xid Xid of the reply message
      * @param role The Role in the the reply message
      */
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: received unexpected role reply for " +
+                        "Role {role}" + 
+                        " Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: expected role reply with " +
+                        "Xid {xid}, got {xid}. Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: expected role reply with " +
+                        "Role {role}, got {role}. Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+    })
     protected void deliverRoleReply(int xid, Role role) {
         synchronized(pendingRoleRequests) {
             PendingRoleRequestEntry head = pendingRoleRequests.poll();
