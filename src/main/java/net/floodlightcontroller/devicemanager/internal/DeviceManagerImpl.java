@@ -1472,8 +1472,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         d = deviceMap.get(d.getDeviceKey());
                         if (null != d)
                             continue;
-                        else
-                            break;
                     }
                 } else {
                     deviceUpdates.add(new DeviceUpdate(d, DELETE, null));
@@ -1484,8 +1482,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         d = deviceMap.get(d.getDeviceKey());
                         if (null != d)
                             continue;
-                        else
-                            break;
                 }
                 processUpdates(deviceUpdates);
                 break;
