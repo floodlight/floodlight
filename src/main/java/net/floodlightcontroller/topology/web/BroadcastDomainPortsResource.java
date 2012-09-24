@@ -8,7 +8,7 @@ import net.floodlightcontroller.topology.NodePortTuple;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
-public class BroadcastDomainResource extends ServerResource {
+public class BroadcastDomainPortsResource extends ServerResource {
     @Get("json")
     public Set<NodePortTuple> retrieve() {
         ITopologyService topology = 
