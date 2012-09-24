@@ -106,7 +106,17 @@ public class TopologyManager implements
     
     protected SingletonTask newInstanceTask;
     private Date lastUpdateTime;
-    protected boolean recomputeTopologyFlag;
+
+    /**
+     * Flag that indicates if links (direct/tunnel/multihop links) were
+     * updated as part of LDUpdate.
+     */
+    protected boolean linksUpdated;
+    /**
+     * Flag that indicates if direct or tunnel links were updated as
+     * part of LDUpdate.
+     */
+    protected boolean dtLinksUpdated;
 
     /**
      * Thread for recomputing topology.  The thread is always running, 
@@ -130,12 +140,14 @@ public class TopologyManager implements
     }
 
     public boolean updateTopology() {
-        recomputeTopologyFlag = false;
+        boolean newInstanceFlag;
+        linksUpdated = false;
+        dtLinksUpdated = false;
         applyUpdates();
-        createNewInstance();
+        newInstanceFlag = createNewInstance();
         lastUpdateTime = new Date();
         informListeners();
-        return recomputeTopologyFlag;
+        return newInstanceFlag;
     }
 
     // **********************
@@ -864,12 +876,13 @@ public class TopologyManager implements
     /**
      * This function computes a new topology instance.
      * It ignores links connected to all broadcast domain ports
-     * and tunnel ports.
+     * and tunnel ports. The method returns if a new instance of
+     * topology was created or not.
      */
-    protected void createNewInstance() {
+    protected boolean createNewInstance() {
         Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
 
-        if (!recomputeTopologyFlag) return;
+        if (!linksUpdated) return false;
 
         Map<NodePortTuple, Set<Link>> openflowLinks;
         openflowLinks = 
@@ -897,6 +910,7 @@ public class TopologyManager implements
         // If needed, we may compute them differently.
         currentInstance = nt;
         currentInstanceWithoutTunnels = nt;
+        return true;
     }
 
 
@@ -1015,18 +1029,19 @@ public class TopologyManager implements
             addLinkToStructure(portBroadcastDomainLinks, link);
             flag1 = removeLinkFromStructure(tunnelLinks, link);
             flag2 = removeLinkFromStructure(directLinks, link);
-            recomputeTopologyFlag = flag1 || flag2;
+            dtLinksUpdated = flag1 || flag2;
         } else if (type.equals(LinkType.TUNNEL)) {
             addLinkToStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
             removeLinkFromStructure(directLinks, link);
-            recomputeTopologyFlag = true;
+            dtLinksUpdated = true;
         } else if (type.equals(LinkType.DIRECT_LINK)) {
             addLinkToStructure(directLinks, link);
             removeLinkFromStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
-            recomputeTopologyFlag = true;
+            dtLinksUpdated = true;
         }
+        linksUpdated = true;
     }
 
     public void removeLink(Link link)  {
@@ -1035,7 +1050,8 @@ public class TopologyManager implements
         flag1 = removeLinkFromStructure(directLinks, link);
         flag2 = removeLinkFromStructure(tunnelLinks, link);
 
-        recomputeTopologyFlag = flag1 || flag2;
+        linksUpdated = true;
+        dtLinksUpdated = flag1 || flag2;
 
         removeLinkFromStructure(portBroadcastDomainLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
@@ -1066,7 +1082,7 @@ public class TopologyManager implements
         }
     }
 
-    public void removeLink(long srcId, short srcPort, 
+    public void removeLink(long srcId, short srcPort,
                            long dstId, short dstPort) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
         removeLink(link);
@@ -1087,6 +1103,8 @@ public class TopologyManager implements
     */
     private void clearCurrentTopology() {
         this.clear();
+        linksUpdated = true;
+        dtLinksUpdated = true;
         createNewInstance();
         lastUpdateTime = new Date();
     }
