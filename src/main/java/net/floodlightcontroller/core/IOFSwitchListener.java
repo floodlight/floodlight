@@ -38,6 +38,12 @@ public interface IOFSwitchListener {
     public void removedSwitch(IOFSwitch sw);
     
     /**
+     * Fired when ports on a switch change (any change to the collection
+     * of OFPhysicalPorts and/or to a particular port)
+     */
+    public void switchPortChanged(Long switchId);
+    
+    /**
      * The name assigned to this listener
      * @return
      */

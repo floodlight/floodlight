@@ -2,7 +2,6 @@ package net.floodlightcontroller.core.module;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -11,13 +10,18 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Queue;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
+
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,9 +79,20 @@ public class FloodlightModuleLoader {
 	        ServiceLoader<IFloodlightModule> moduleLoader
 	            = ServiceLoader.load(IFloodlightModule.class, cl);
 	        // Iterate for each module, iterate through and add it's services
-	        for (IFloodlightModule m : moduleLoader) {
-	            if (logger.isTraceEnabled()) {
-	                logger.trace("Found module " + m.getClass().getName());
+	        Iterator<IFloodlightModule> moduleIter = moduleLoader.iterator();
+	        while (moduleIter.hasNext()) {
+	        	IFloodlightModule m = null;
+	        	try {
+	        		m = moduleIter.next();
+	        	} catch (ServiceConfigurationError sce) {
+	        		logger.debug("Could not find module");
+	        		//moduleIter.remove();
+	        		continue;
+	        	}
+	        //}
+	        //for (IFloodlightModule m : moduleLoader) {
+	            if (logger.isDebugEnabled()) {
+	                logger.debug("Found module " + m.getClass().getName());
 	            }
 
 	            // Set up moduleNameMap
@@ -100,7 +115,7 @@ public class FloodlightModuleLoader {
 	                    int dupInConf = 0;
 	                    for (IFloodlightModule cMod : mods) {
 	                        if (mList.contains(cMod.getClass().getCanonicalName()))
-	                            dupInConf++;
+	                            dupInConf += 1;
 	                    }
 	                    
 	                    if (dupInConf > 1) {
@@ -108,7 +123,7 @@ public class FloodlightModuleLoader {
                             for (IFloodlightModule mod : mods) {
                                 duplicateMods += mod.getClass().getCanonicalName() + ", ";
                             }
-	                        throw new FloodlightModuleException("ERROR! The configuraiton " +
+	                        throw new FloodlightModuleException("ERROR! The configuraiton" +
 	                                " file specifies more than one module that provides the service " +
 	                                s.getCanonicalName() +". Please specify only ONE of the " +
 	                                "following modules in the config file: " + duplicateMods);
@@ -125,21 +140,39 @@ public class FloodlightModuleLoader {
 	 * @return An IFloodlightModuleContext with all the modules to be started
 	 * @throws FloodlightModuleException
 	 */
+	@LogMessageDocs({
+	    @LogMessageDoc(level="INFO",
+	            message="Loading modules from file {file name}",
+	            explanation="The controller is initializing its module " +
+	                    "configuration from the specified properties file"),
+	    @LogMessageDoc(level="INFO",
+	            message="Loading default modules",
+	            explanation="The controller is initializing its module " +
+	                    "configuration to the default configuration"),
+	    @LogMessageDoc(level="ERROR",
+	            message="Could not load module configuration file",
+	            explanation="The controller failed to read the " +
+	            		"module configuration file",
+	            recommendation="Verify that the module configuration is " +
+	            		"present. " + LogMessageDoc.CHECK_CONTROLLER),
+	    @LogMessageDoc(level="ERROR",
+                message="Could not load default modules",
+                explanation="The controller failed to read the default " +
+                        "module configuration",
+                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+	})
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
 	    Properties prop = new Properties();
 	    
 	    File f = new File(fName);
 	    if (f.isFile()) {
-            logger.info("Loading modules from file " + fName);
+            logger.info("Loading modules from file {}", fName);
             try {
                 prop.load(new FileInputStream(fName));
-            } catch (FileNotFoundException e) {
-                // should not happen
-                e.printStackTrace();
-            } catch (IOException e) {
-                // should not happen
-                e.printStackTrace();
+            } catch (Exception e) {
+                logger.error("Could not load module configuration file", e);
+                System.exit(1);
             }
         } else {
             logger.info("Loading default modules");
@@ -148,8 +181,7 @@ public class FloodlightModuleLoader {
             try {
                 prop.load(is);
             } catch (IOException e) {
-                logger.error("Error, could not load default modules");
-                logger.error(e.getMessage());
+                logger.error("Could not load default modules", e);
                 System.exit(1);
             }
         }
@@ -164,12 +196,17 @@ public class FloodlightModuleLoader {
 	/**
 	 * Loads modules (and their dependencies) specified in the list
 	 * @param mList The array of fully qualified module names
+	 * @param ignoreList The list of Floodlight services NOT to 
+	 * load modules for. Used for unit testing.
 	 * @return The ModuleContext containing all the loaded modules
 	 * @throws FloodlightModuleException
 	 */
-	public IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop) 
-            throws FloodlightModuleException {
-        logger.trace("Starting module loader");
+	protected IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop, 
+			Collection<IFloodlightService> ignoreList) throws FloodlightModuleException {
+		logger.debug("Starting module loader");
+		if (logger.isDebugEnabled() && ignoreList != null)
+			logger.debug("Not loading module services " + ignoreList.toString());
+
         findAllModules(configMods);
         
         Collection<IFloodlightModule> moduleSet = new ArrayList<IFloodlightModule>();
@@ -192,6 +229,30 @@ public class FloodlightModuleLoader {
                 throw new FloodlightModuleException("Module " + 
                         moduleName + " not found");
             }
+            // If the module provies a service that is in the
+            // services ignorelist don't load it.
+            if ((ignoreList != null) && (module.getModuleServices() != null)) {
+            	for (IFloodlightService ifs : ignoreList) {
+            		for (Class<?> intsIgnore : ifs.getClass().getInterfaces()) {
+            			//System.out.println(intsIgnore.getName());
+        				// Check that the interface extends IFloodlightService
+        				//if (intsIgnore.isAssignableFrom(IFloodlightService.class)) {
+            			//System.out.println(module.getClass().getName());
+    					if (intsIgnore.isAssignableFrom(module.getClass())) {
+    						// We now ignore loading this module.
+    						logger.debug("Not loading module " + 
+    									 module.getClass().getCanonicalName() +
+    									 " because interface " +
+    									 intsIgnore.getCanonicalName() +
+    									 " is in the ignore list.");
+    						
+    						continue;
+    					}
+        				//}
+            		}
+            	}
+            }
+            
             // Add the module to be loaded
             addModule(moduleMap, moduleSet, module);
             // Add it's dep's to the queue
@@ -243,6 +304,18 @@ public class FloodlightModuleLoader {
         startupModules(moduleSet);
         
         return floodlightModuleContext;
+	}
+	
+	/**
+	 * Loads modules (and their dependencies) specified in the list.
+	 * @param configMods The collection of fully qualified module names to load.
+	 * @param prop The list of properties that are configuration options.
+	 * @return The ModuleContext containing all the loaded modules.
+	 * @throws FloodlightModuleException
+	 */
+	public IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop) 
+            throws FloodlightModuleException {
+		return loadModulesFromList(configMods, prop, null);
     }
 	
 	/**
@@ -320,8 +393,7 @@ public class FloodlightModuleLoader {
     protected void startupModules(Collection<IFloodlightModule> moduleSet) {
         for (IFloodlightModule m : moduleSet) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Starting " + 
-                             m.getClass().getCanonicalName());
+                logger.debug("Starting " + m.getClass().getCanonicalName());
             }
             m.startUp(floodlightModuleContext);
         }
@@ -331,7 +403,14 @@ public class FloodlightModuleLoader {
      * Parses configuration parameters for each module
      * @param prop The properties file to use
      */
+    @LogMessageDoc(level="WARN",
+                   message="Module {module} not found or loaded. " +
+                           "Not adding configuration option {key} = {value}",
+                   explanation="Ignoring a configuration parameter for a " +
+                   		"module that is not loaded.")
     protected void parseConfigParameters(Properties prop) {
+    	if (prop == null) return;
+    	
         Enumeration<?> e = prop.propertyNames();
         while (e.hasMoreElements()) {
             String key = (String) e.nextElement();

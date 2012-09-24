@@ -19,10 +19,12 @@ package net.floodlightcontroller.devicemanager.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.TreeSet;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.AttachmentPoint;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.devicemanager.internal.Entity;
@@ -45,9 +47,11 @@ public class MockDevice extends Device {
     }
     
     public MockDevice(DeviceManagerImpl deviceManager, Long deviceKey,
+                      List<AttachmentPoint> aps,
+                      List<AttachmentPoint> trueAPs,
                       Collection<Entity> entities,
                       IEntityClass entityClass) {
-        super(deviceManager, deviceKey, entities, entityClass);
+        super(deviceManager, deviceKey, aps, trueAPs, entities, entityClass);
     }
 
     @Override
@@ -67,7 +71,8 @@ public class MockDevice extends Device {
                 new ArrayList<SwitchPort>(entities.length);
         for (Entity e : entities) {
             if (e.getSwitchDPID() != null &&
-                e.getSwitchPort() != null) {
+                e.getSwitchPort() != null &&
+                deviceManager.isValidAttachmentPoint(e.getSwitchDPID(), e.getSwitchPort())) {
                 SwitchPort sp = new SwitchPort(e.getSwitchDPID(), 
                                                e.getSwitchPort());
                 vals.add(sp);
@@ -75,5 +80,4 @@ public class MockDevice extends Device {
         }
         return vals.toArray(new SwitchPort[vals.size()]);
     }
-
 }

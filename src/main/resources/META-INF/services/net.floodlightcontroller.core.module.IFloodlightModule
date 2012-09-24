@@ -19,3 +19,7 @@ net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter
 net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier
+net.floodlightcontroller.devicemanager.test.MockDeviceManager
+net.floodlightcontroller.core.test.MockFloodlightProvider
+net.floodlightcontroller.core.test.MockThreadPoolService
+net.floodlightcontroller.firewall.Firewall

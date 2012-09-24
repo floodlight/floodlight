@@ -1,8 +1,10 @@
 package net.floodlightcontroller.staticflowentry.web;
 
+import net.floodlightcontroller.core.web.ControllerSwitchesResource;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 
 import org.openflow.util.HexString;
+import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -27,7 +29,9 @@ public class ClearStaticFlowEntriesResource extends ServerResource {
             try {
                 sfpService.deleteFlowsForSwitch(HexString.toLong(param));
             } catch (NumberFormatException e){
-                log.error("Could not parse switch DPID: " + e.getMessage());
+                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, 
+                          ControllerSwitchesResource.DPID_ERROR);
+                return;
             }
         }
     }

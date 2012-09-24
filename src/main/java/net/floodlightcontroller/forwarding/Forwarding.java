@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.forwarding;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +30,9 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -52,27 +54,110 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@LogMessageCategory("Flow Programming")
 public class Forwarding extends ForwardingBase implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     @Override
-    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+    @LogMessageDoc(level="ERROR",
+                   message="Unexpected decision made for this packet-in={}",
+                   explanation="An unsupported PacketIn decision has been " +
+                   		"passed to the flow programming component",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, 
+                                          FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
-                                                       IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        if (eth.isBroadcast() || eth.isMulticast()) {
-            // For now we treat multicast as broadcast
-            doFlood(sw, pi, cntx);
+                                   IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        
+        // If a decision has been made we obey it
+        // otherwise we just forward
+        if (decision != null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Forwaring decision={} was made for PacketIn={}",
+                        decision.getRoutingAction().toString(),
+                        pi);
+            }
+            
+            switch(decision.getRoutingAction()) {
+                case NONE:
+                    // don't do anything
+                    return Command.CONTINUE;
+                case FORWARD_OR_FLOOD:
+                case FORWARD:
+                    doForwardFlow(sw, pi, cntx, false);
+                    return Command.CONTINUE;
+                case MULTICAST:
+                    // treat as broadcast
+                    doFlood(sw, pi, cntx);
+                    return Command.CONTINUE;
+                case DROP:
+                    doDropFlow(sw, pi, decision, cntx);
+                    return Command.CONTINUE;
+                default:
+                    log.error("Unexpected decision made for this packet-in={}",
+                            pi, decision.getRoutingAction());
+                    return Command.CONTINUE;
+            }
         } else {
-            doForwardFlow(sw, pi, cntx, false);
+            if (log.isTraceEnabled()) {
+                log.trace("No decision was made for PacketIn={}, forwarding",
+                        pi);
+            }
+            
+            if (eth.isBroadcast() || eth.isMulticast()) {
+                // For now we treat multicast as broadcast
+                doFlood(sw, pi, cntx);
+            } else {
+                doForwardFlow(sw, pi, cntx, false);
+            }
         }
         
         return Command.CONTINUE;
     }
+    
+    @LogMessageDoc(level="ERROR",
+            message="Failure writing drop flow mod",
+            explanation="An I/O error occured while trying to write a " +
+            		"drop flow mod to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
+    protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+        // initialize match structure and populate it using the packet
+        OFMatch match = new OFMatch();
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+        if (decision.getWildcards() != null) {
+            match.setWildcards(decision.getWildcards());
+        }
+        
+        // Create flow-mod based on packet-in and src-switch
+        OFFlowMod fm =
+                (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                              .getMessage(OFType.FLOW_MOD);
+        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
+                                                            // drop
+        long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+        
+        fm.setCookie(cookie)
+          .setHardTimeout((short) 0)
+          .setIdleTimeout((short) 5)
+          .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+          .setMatch(match)
+          .setActions(actions)
+          .setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
 
+        try {
+            if (log.isDebugEnabled()) {
+                log.debug("write drop flow-mod sw={} match={} flow-mod={}",
+                          new Object[] { sw, match, fm });
+            }
+            sw.write(fm, cntx);
+        } catch (IOException e) {
+            log.error("Failure writing drop flow mod", e);
+        }
+    }
+    
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
                                  FloodlightContext cntx,
                                  boolean requestFlowRemovedNotifn) {    
@@ -91,12 +176,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             Long srcIsland = topology.getL2DomainId(sw.getId());
             
             if (srcDevice == null) {
-                log.error("No device entry found for source device");
+                log.debug("No device entry found for source device");
                 return;
             }
             if (srcIsland == null) {
-                log.error("No openflow island found for source {}/{}", 
-                          HexString.toHexString(sw.getId()), pi.getInPort());
+                log.debug("No openflow island found for source {}/{}", 
+                          sw.getStringId(), pi.getInPort());
                 return;
             }
 
@@ -165,7 +250,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                                        dstDap.getSwitchDPID(),
                                                        (short)dstDap.getPort());
                         if (route != null) {
-                            int bufferId = OFPacketOut.BUFFER_ID_NONE;
                             if (log.isTraceEnabled()) {
                                 log.trace("pushRoute match={} route={} " + 
                                           "destination={}:{}",
@@ -176,10 +260,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             long cookie = 
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             
-                            pushRoute(route, match, 0,
-                                      bufferId,
-                                      pi, sw.getId(), cookie, cntx, 
-                                      requestFlowRemovedNotifn, false,
+                            pushRoute(route, match, 0, pi, sw.getId(), cookie, 
+                                      cntx, requestFlowRemovedNotifn, false,
                                       OFFlowMod.OFPFC_ADD);
                         }
                     }
@@ -204,6 +286,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
      * @param pi The OFPacketIn that came to the switch
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
+    @LogMessageDoc(level="ERROR",
+                   message="Failure writing PacketOut " +
+                   		"switch={switch} packet-in={packet-in} " +
+                   		"packet-out={packet-out}",
+                   explanation="An I/O error occured while writing a packet " +
+                   		"out message to the switch",
+                   recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         if (topology.isIncomingBroadcastAllowed(sw.getId(),
                                                 pi.getInPort()) == false) {
@@ -290,19 +379,59 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     }
 
     @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="WARN",
+                message="Error parsing flow idle timeout, " +
+                        "using default of {number} seconds",
+                explanation="The properties file contains an invalid " +
+                        "flow idle timeout",
+                recommendation="Correct the idle timeout in the " +
+                        "properties file."),
+        @LogMessageDoc(level="WARN",
+                message="Error parsing flow hard timeout, " +
+                        "using default of {number} seconds",
+                explanation="The properties file contains an invalid " +
+                            "flow hard timeout",
+                recommendation="Correct the hard timeout in the " +
+                                "properties file."),
+    })
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         this.floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         this.deviceManager = context.getServiceImpl(IDeviceService.class);
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);
         this.counterStore = context.getServiceImpl(ICounterStoreService.class);
+        
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        try {
+            String idleTimeout = configOptions.get("idletimeout");
+            if (idleTimeout != null) {
+                FLOWMOD_DEFAULT_IDLE_TIMEOUT = Short.parseShort(idleTimeout);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error parsing flow idle timeout, " +
+            		 "using default of {} seconds",
+                     FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        }
+        try {
+            String hardTimeout = configOptions.get("hardtimeout");
+            if (hardTimeout != null) {
+                FLOWMOD_DEFAULT_HARD_TIMEOUT = Short.parseShort(hardTimeout);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error parsing flow hard timeout, " +
+            		 "using default of {} seconds",
+                     FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        }
+        log.debug("FlowMod idle timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        log.debug("FlowMod hard timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_HARD_TIMEOUT);
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        if (log.isDebugEnabled()) {
-            log.debug("Starting " + this.getClass().getCanonicalName());
-        }
         super.startUp();
     }
 }

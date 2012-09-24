@@ -37,7 +37,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @param info
      * @return
      */
-    public ILinkDiscovery.LinkType getLinkType(LinkInfo info);
+    public ILinkDiscovery.LinkType getLinkType(Link lt, LinkInfo info);
 
     /**
      * Returns an unmodifiable map from switch id to a set of all links with it 
@@ -65,4 +65,9 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * Removes a switch port from suppress lldp set
      */
     public void RemoveFromSuppressLLDPs(long sw, short port);
+
+    /**
+     * Get the set of quarantined ports on a switch
+     */
+    public Set<Short> getQuarantinedPorts(long sw);
 }

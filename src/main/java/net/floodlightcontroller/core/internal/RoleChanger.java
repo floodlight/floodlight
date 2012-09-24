@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 /** 
  * This class handles sending of RoleRequest messages to all connected switches.
@@ -155,6 +156,11 @@ public class RoleChanger {
         }
     }
     
+    @LogMessageDoc(level="ERROR",
+                   message="RoleRequestWorker task had an uncaught exception.",
+                   explanation="An unknown occured while processing an HA " +
+                   		"role change event.",
+                   recommendation=LogMessageDoc.GENERIC_ACTION)                              
     protected class RoleRequestWorker extends Thread  {
         @Override
         public void run() {
@@ -184,8 +190,8 @@ public class RoleChanger {
             }
             catch (Exception e) {
                 // Should never get here
-                log.error("RoleRequestWorker task had an uncaught exception. "
-                          + "Task is terminating. {}", e);
+                log.error("RoleRequestWorker task had an uncaught exception. ", 
+                          e);
             }
             finally {
                 // Be nice in case we earlier caught InterruptedExecution
@@ -225,6 +231,12 @@ public class RoleChanger {
     * @param switches the collection of switches to send the request too
      * @param role the role to request
      */
+    @LogMessageDoc(level="WARN",
+            message="Failed to send role request message " + 
+                    "to switch {switch}: {message}. Disconnecting",
+            explanation="An I/O error occurred while attempting to change " +
+            		"the switch HA role.",
+            recommendation=LogMessageDoc.CHECK_SWITCH)                              
     protected void sendRoleRequest(Collection<OFSwitchImpl> switches,
                                    Role role, long cookie) {
         // There are three cases to consider:
@@ -290,6 +302,12 @@ public class RoleChanger {
      * @param switches the collection of switches to send the request too
      * @param cookie the cookie of the request
      */
+    @LogMessageDoc(level="WARN",
+            message="Timeout while waiting for role reply from switch {switch}."
+                    + " Disconnecting",
+            explanation="Timed out waiting for the switch to respond to " +
+            		"a request to change the HA role.",
+            recommendation=LogMessageDoc.CHECK_SWITCH)                              
     protected void verifyRoleReplyReceived(Collection<OFSwitchImpl> switches,
                                    long cookie) {
         for (OFSwitchImpl sw: switches) {

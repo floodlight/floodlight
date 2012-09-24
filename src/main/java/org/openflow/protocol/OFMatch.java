@@ -371,7 +371,7 @@ public class OFMatch implements Cloneable, Serializable {
      * @return : 6-bit DSCP value (0-63)
      */
     public byte getNetworkTypeOfService() {
-        return (byte) (this.networkTypeOfService >> 2);
+        return (byte) ((this.networkTypeOfService >> 2) & 0x3f);
     }
 
     /**

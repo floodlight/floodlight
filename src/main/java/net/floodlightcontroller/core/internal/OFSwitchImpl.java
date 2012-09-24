@@ -20,8 +20,8 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -39,6 +39,8 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
@@ -70,14 +72,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
- * @author David Erickson (daviderickson@cs.stanford.edu)
+ * This is the internal representation of an openflow switch.
  */
 public class OFSwitchImpl implements IOFSwitch {
     // TODO: should we really do logging in the class or should we throw
     // exception that can then be handled by callers?
     protected static Logger log = LoggerFactory.getLogger(OFSwitchImpl.class);
 
+    private static final String HA_CHECK_SWITCH = 
+            "Check the health of the indicated switch.  If the problem " +
+            "persists or occurs repeatedly, it likely indicates a defect " +
+            "in the switch HA implementation.";
+    
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
@@ -86,7 +92,16 @@ public class OFSwitchImpl implements IOFSwitch {
     protected String stringId;
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
-    protected Map<Short, OFPhysicalPort> ports;
+    // Lock to protect modification of the port maps. We only need to 
+    // synchronize on modifications. For read operations we are fine since
+    // we rely on ConcurrentMaps which works for our use case.
+    private Object portLock;
+    // Map port numbers to the appropriate OFPhysicalPort
+    protected ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
+    // Map port names to the appropriate OFPhyiscalPort
+    // XXX: The OF spec doesn't specify if port names need to be unique but
+    //      according it's always the case in practice. 
+    protected ConcurrentHashMap<String, OFPhysicalPort> portsByName;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected boolean connected;
@@ -134,7 +149,9 @@ public class OFSwitchImpl implements IOFSwitch {
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
-        this.ports = new ConcurrentHashMap<Short, OFPhysicalPort>();
+        this.portLock = new Object();
+        this.portsByNumber = new ConcurrentHashMap<Short, OFPhysicalPort>();
+        this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
@@ -145,7 +162,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.pendingRoleRequests = new LinkedList<OFSwitchImpl.PendingRoleRequestEntry>();
         
         // Defaults properties for an ideal switch
-        this.setAttribute(PROP_FASTWILDCARDS, (Integer) OFMatch.OFPFW_ALL);
+        this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
     }
@@ -175,29 +192,19 @@ public class OFSwitchImpl implements IOFSwitch {
         return this.attributes.containsKey(name);
     }
         
+    @Override
     @JsonIgnore
     public Channel getChannel() {
         return this.channel;
     }
 
+    @JsonIgnore
     public void setChannel(Channel channel) {
         this.channel = channel;
     }
     
-    // TODO: document the difference between the different write functions
+    @Override
     public void write(OFMessage m, FloodlightContext bc) throws IOException {
-    	if (m instanceof OFFlowMod) {
-    	    byte[] bcast = new byte[] {-1, -1, -1, -1, -1, -1};
-    	    OFFlowMod fm = (OFFlowMod) m;
-    	    OFMatch match = fm.getMatch();
-            // Warn if programming a flow matching broadcast destination
-    	    if ((match.getWildcards() & OFMatch.OFPFW_DL_DST) == 0 &&
-    	            Arrays.equals(match.getDataLayerDestination(), bcast)) {
-    	    	log.warn("Programming flow with -1 destination addr");
-    	    	log.warn("swId {}, stack trace {}",
-                         stringId, new Exception().getStackTrace());
-    	    }
-    	}
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
         if (msg_buffer == null) {
@@ -215,21 +222,29 @@ public class OFSwitchImpl implements IOFSwitch {
         }
     }
 
-    public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException {
+    @Override
+    @LogMessageDoc(level="WARN",
+                   message="Sending OF message that modifies switch " +
+                           "state while in the slave role: {switch}",
+                   explanation="An application has sent a message to a switch " +
+                   		"that is not valid when the switch is in a slave role",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    public void write(List<OFMessage> msglist, 
+                      FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
                 switch (m.getType()) {
                     case PACKET_OUT:
                     case FLOW_MOD:
                     case PORT_MOD:
-                        log.warn("Sending OF message that modifies switch state while in the slave role: {}", m.getType().name());
+                        log.warn("Sending OF message that modifies switch " +
+                        		 "state while in the slave role: {}", 
+                        		 m.getType().name());
                         break;
                     default:
                         break;
                 }
             }
-            // FIXME: Debugging code should be disabled!!!
-            // log.debug("Sending message type {} with xid {}", new Object[] {m.getType(), m.getXid()});
             this.floodlightProvider.handleOutgoingMessage(this, m, bc);
         }
         this.write(msglist);
@@ -239,60 +254,107 @@ public class OFSwitchImpl implements IOFSwitch {
         this.channel.write(msglist);
     }
     
+    @Override
     public void disconnectOutputStream() {
         channel.close();
     }
 
+    @Override
     @JsonIgnore
     public OFFeaturesReply getFeaturesReply() {
         return this.featuresReply;
     }
     
-    public synchronized void setFeaturesReply(OFFeaturesReply featuresReply) {
-        this.featuresReply = featuresReply;
-        for (OFPhysicalPort port : featuresReply.getPorts()) {
-            ports.put(port.getPortNumber(), port);
+    @Override
+    @JsonIgnore
+    public void setFeaturesReply(OFFeaturesReply featuresReply) {
+        synchronized(portLock) {
+            this.featuresReply = featuresReply;
+            for (OFPhysicalPort port : featuresReply.getPorts()) {
+                setPort(port);
+            }
+            this.stringId = HexString.toHexString(featuresReply.getDatapathId());
         }
-        this.stringId = HexString.toHexString(featuresReply.getDatapathId());
     }
 
+    @Override
     @JsonIgnore
-    public synchronized List<OFPhysicalPort> getEnabledPorts() {
+    public Collection<OFPhysicalPort> getEnabledPorts() {
         List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
-        for (OFPhysicalPort port : ports.values()) {
+        for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
                 result.add(port);
             }
         }
         return result;
     }
-
-    public synchronized OFPhysicalPort getPort(short portNumber) {
-        return ports.get(portNumber);
-    }
-
-    public synchronized void setPort(OFPhysicalPort port) {
-        ports.put(port.getPortNumber(), port);
-    }
     
+    @Override
     @JsonIgnore
-    public Map<Short, OFPhysicalPort> getPorts() {
-        return ports;
+    public Collection<Short> getEnabledPortNumbers() {
+        List<Short> result = new ArrayList<Short>();
+        for (OFPhysicalPort port : portsByNumber.values()) {
+            if (portEnabled(port)) {
+                result.add(port.getPortNumber());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public OFPhysicalPort getPort(short portNumber) {
+        return portsByNumber.get(portNumber);
     }
     
+    @Override
+    public OFPhysicalPort getPort(String portName) {
+        return portsByName.get(portName);
+    }
+
+    @Override
+    @JsonIgnore
+    public void setPort(OFPhysicalPort port) {
+        synchronized(portLock) {
+            portsByNumber.put(port.getPortNumber(), port);
+            portsByName.put(port.getName(), port);
+        }
+    }
+    
+    @Override
     @JsonProperty("ports")
-    public Collection<OFPhysicalPort> getPortCollection() {
-        return ports.values();
-    }
-
-    public synchronized void deletePort(short portNumber) {
-        ports.remove(portNumber);
-    }
-
-    public synchronized boolean portEnabled(short portNumber) {
-        return portEnabled(ports.get(portNumber));
+    public Collection<OFPhysicalPort> getPorts() {
+        return Collections.unmodifiableCollection(portsByNumber.values());
     }
     
+    @Override
+    public void deletePort(short portNumber) {
+        synchronized(portLock) {
+            portsByName.remove(portsByNumber.get(portNumber).getName());
+            portsByNumber.remove(portNumber);
+        }
+    }
+    
+    @Override
+    public void deletePort(String portName) {
+        synchronized(portLock) {
+            portsByNumber.remove(portsByName.get(portName).getPortNumber());
+            portsByName.remove(portName);
+        }
+    }
+
+    @Override
+    public boolean portEnabled(short portNumber) {
+        if (portsByNumber.get(portNumber) == null) return false;
+        return portEnabled(portsByNumber.get(portNumber));
+    }
+    
+    @Override
+    public boolean portEnabled(String portName) {
+        if (portsByName.get(portName) == null) return false;
+        return portEnabled(portsByName.get(portName));
+    }
+    
+    @Override
     public boolean portEnabled(OFPhysicalPort port) {
         if (port == null)
             return false;
@@ -406,10 +468,12 @@ public class OFSwitchImpl implements IOFSwitch {
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
+    @JsonIgnore
     public void setFloodlightProvider(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
+    @JsonIgnore
     public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
     }
@@ -421,6 +485,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    @JsonIgnore
     public synchronized void setConnected(boolean connected) {
         this.connected = connected;
     }
@@ -437,6 +502,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     @Override
+    @JsonIgnore
     public void setSwitchProperties(OFDescriptionStatistics description) {
         if (switchFeatures != null) {
             switchFeatures.setFromDescription(this, description);
@@ -444,6 +510,11 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
+    @LogMessageDoc(level="ERROR",
+                   message="Failed to clear all flows on switch {switch}",
+                   explanation="An I/O error occured while trying to clear " +
+                   		"flows on the switch.",
+                   recommendation=LogMessageDoc.CHECK_SWITCH)
     public void clearAllFlowMods() {
         // Delete all pre-existing flows
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
@@ -458,7 +529,7 @@ public class OFSwitchImpl implements IOFSwitch {
             msglist.add(fm);
             channel.write(msglist);
         } catch (Exception e) {
-            log.error("Failed to clear all flows on switch {} - {}", this, e);
+            log.error("Failed to clear all flows on switch " + this, e);
         }
     }
 
@@ -482,6 +553,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
 
+    @Override
     public void flush() {
         Map<OFSwitchImpl,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
@@ -609,6 +681,24 @@ public class OFSwitchImpl implements IOFSwitch {
      * @param xid Xid of the reply message
      * @param role The Role in the the reply message
      */
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: received unexpected role reply for " +
+                        "Role {role}" + 
+                        " Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: expected role reply with " +
+                        "Xid {xid}, got {xid}. Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+        @LogMessageDoc(level="ERROR",
+                message="Switch {switch}: expected role reply with " +
+                        "Role {role}, got {role}. Disconnecting switch",
+                explanation="The switch sent an unexpected HA role reply",
+                recommendation=HA_CHECK_SWITCH),                           
+    })
     protected void deliverRoleReply(int xid, Role role) {
         synchronized(pendingRoleRequests) {
             PendingRoleRequestEntry head = pendingRoleRequests.poll();

@@ -2,6 +2,9 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.EnumSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
@@ -16,7 +19,8 @@ public class IndexedEntity {
     protected EnumSet<DeviceField> keyFields;
     protected Entity entity;
     private int hashCode = 0;
-    
+    protected static Logger logger =
+            LoggerFactory.getLogger(IndexedEntity.class);
     /**
      * Create a new {@link IndexedEntity} for the given {@link Entity} using 
      * the provided key fields.
@@ -58,7 +62,10 @@ public class IndexedEntity {
     
     @Override
     public int hashCode() {
-        if (hashCode != 0) return hashCode;
+    	
+        if (hashCode != 0) {
+        	return hashCode;
+        }
 
         final int prime = 31;
         hashCode = 1;

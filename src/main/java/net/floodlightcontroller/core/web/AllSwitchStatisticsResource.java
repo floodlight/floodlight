@@ -24,9 +24,11 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.MacVlanPair;
 
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
 import org.openflow.util.HexString;
@@ -123,7 +125,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                log.error("Failed to sleep", e);
+                log.error("Interrupted while waiting for statistics", e);
             }
         }
         
@@ -171,7 +173,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             if ((requestType == REQUESTTYPE.OFSTATS) && (statType != null)) {
                 switchReply = getSwitchStatistics(switchId, statType);
             } else if (requestType == REQUESTTYPE.OFFEATURES) {
-                featuresReply = floodlightProvider.getSwitches().get(switchId).getFeaturesReply();
+            	IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
+                featuresReply = sw.getFeaturesReply();
+                featuresReply.setPorts(new ArrayList<OFPhysicalPort>(sw.getPorts()));
             }
         }
     }

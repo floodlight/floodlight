@@ -17,24 +17,21 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+
+import static org.easymock.EasyMock.*;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.createStrictMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.reset;
-import static org.easymock.EasyMock.verify;
-import static org.easymock.EasyMock.isA;
-import static org.easymock.EasyMock.anyLong;
-import static org.easymock.EasyMock.anyShort;
-
+import static org.easymock.EasyMock.expectLastCall;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -42,11 +39,15 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus;
+import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl.ClassState;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifierMac;
+import net.floodlightcontroller.devicemanager.test.MockFlexEntityClassifier;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
@@ -60,7 +61,6 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
-import static net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus.*;
 import static org.junit.Assert.*;
 
 import org.easymock.EasyMock;
@@ -71,8 +71,14 @@ import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.util.HexString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DeviceManagerImplTest extends FloodlightTestCase {
+
+    protected static Logger logger =
+            LoggerFactory.getLogger(DeviceManagerImplTest.class);
+
     protected OFPacketIn packetIn_1, packetIn_2, packetIn_3;
     protected IPacket testARPReplyPacket_1, testARPReplyPacket_2,
     testARPReplyPacket_3;
@@ -103,6 +109,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         RestApiServer restApi = new RestApiServer();
         MockThreadPoolService tp = new MockThreadPoolService();
+        ITopologyService topology = createMock(ITopologyService.class);
         fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
         deviceManager = new DeviceManagerImpl();
@@ -115,6 +122,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
+        fmc.addService(ITopologyService.class, topology);
         tp.init(fmc);
         restApi.init(fmc);
         storageSource.init(fmc);
@@ -126,6 +134,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         flowReconcileMgr.startUp(fmc);
         tp.startUp(fmc);
         entityClassifier.startUp(fmc);
+
+        reset(topology);
+        topology.addListener(deviceManager);
+        expectLastCall().anyTimes();
+        replay(topology);
 
         IOFSwitch mockSwitch1 = makeSwitchMock(1L);
         IOFSwitch mockSwitch10 = makeSwitchMock(10L);
@@ -396,6 +409,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         reset(mockListener);
         replay(mockListener);
         
+        reset(deviceManager.topology);
+        deviceManager.topology.addListener(deviceManager);
+        expectLastCall().times(1);
+        replay(deviceManager.topology);
+
         deviceManager.entityClassifier = new MockEntityClassifierMac();
         deviceManager.startUp(null);
         Entity entityNoClass = new Entity(5L, (short)1, 5, -1L, 1, new Date());
@@ -476,6 +494,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity2);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
+
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
@@ -488,8 +507,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity3);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1),
-                                             new SwitchPort(10L, 1) }, aps);
+        assertArrayEquals(new SwitchPort[] {new SwitchPort(5L, 1), new SwitchPort(10L, 1)}, aps);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
@@ -566,7 +584,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity0);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
-        assertEquals(0, aps.length);
+        assertEquals(aps.length, 0);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
@@ -593,7 +611,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
-        verify(mockListener);
+        //verify(mockListener);  // There is no device movement here; no not needed.
 
         reset(mockListener);
         mockListener.deviceMoved((isA(IDevice.class)));
@@ -637,10 +655,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Calendar c = Calendar.getInstance();
         Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
         c.add(Calendar.MILLISECOND,
-              (int)DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS / 2);
+              (int)AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT/ 2);
         Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
         c.add(Calendar.MILLISECOND,
-              (int)DeviceManagerImpl.NBD_TO_BD_TIMEDIFF_MS / 2 + 1);
+              (int)AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT / 2 + 1);
         Entity entity3 = new Entity(1L, null, null, 1L, 2, c.getTime());
 
         IDevice d;
@@ -665,6 +683,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2) }, aps);
     }
 
+
     @Test
     public void testPacketIn() throws Exception {
         byte[] dataLayerSource =
@@ -672,9 +691,17 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        expect(mockTopology.isAttachmentPointPort(anyLong(),
-                                                  anyShort())).andReturn(true).anyTimes();
         deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort())).andReturn(false).
+                                         anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
 
         Date currentDate = new Date();
 
@@ -691,17 +718,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                       currentDate),
                                       DefaultEntityClassifier.entityClass);
 
-        expect(mockTopology.isAllowed(EasyMock.anyLong(),
-                                      EasyMock.anyShort())).
-                                      andReturn(true).anyTimes();
-        // Start recording the replay on the mocks
-        replay(mockTopology);
+
+
+
         // Get the listener and trigger the packet in
         IOFSwitch switch1 = mockFloodlightProvider.getSwitches().get(1L);
         mockFloodlightProvider.dispatchMessage(switch1, this.packetIn_1);
 
         // Verify the replay matched our expectations
-        verify(mockTopology);
+        // verify(mockTopology);
 
         // Verify the device
         Device rdevice = (Device)
@@ -732,17 +757,29 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         reset(mockTopology);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
-                                                  anyShort())).andReturn(true).anyTimes();
+                                                  anyShort())).
+                                                  andReturn(true).
+                                                  anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort())).andReturn(false).
+                                         anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort()))
+                                                  .andReturn(false)
+                                                  .anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(1L).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)1, 5L, (short)2)).
+               andReturn(false).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockTopology);
         // Get the listener and trigger the packet in
         IOFSwitch switch5 = mockFloodlightProvider.getSwitches().get(5L);
         mockFloodlightProvider.
-        dispatchMessage(switch5,
-                        this.packetIn_1.setInPort((short)2));
+        dispatchMessage(switch5, this.packetIn_1.setInPort((short)2));
 
         // Verify the replay matched our expectations
         verify(mockTopology);
@@ -754,19 +791,23 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(device, rdevice);
     }
 
-    @Test
-    public void testEntityExpiration() throws Exception {
+    
+    /**
+     * Note: Entity expiration does not result in device moved notification.
+     * @throws Exception
+     */
+    public void doTestEntityExpiration() throws Exception {
         IDeviceListener mockListener =
                 createStrictMock(IDeviceListener.class);
         mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
-        mockListener.deviceMoved(isA(IDevice.class));
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
-                                                  anyShort())).andReturn(true).anyTimes();
-        expect(mockTopology.isBroadcastDomainPort(anyLong(),
                                                   anyShort())).
-                                                  andReturn(false).anyTimes();
+                                                  andReturn(true).anyTimes();
+
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(5L, (short)1)).andReturn(false).anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(5L).anyTimes();
         expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
@@ -798,13 +839,17 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
 
+
         deviceManager.addListener(mockListener);
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 
         d = deviceManager.getDevice(d.getDeviceKey());
         assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
+
+        // Attachment points are not removed, previous ones are still valid.
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) },
                           d.getAttachmentPoints());
         diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
         assertTrue(diter.hasNext());
@@ -814,23 +859,50 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         d = deviceManager.findDevice(1L, null, null, null, null);
         assertArrayEquals(new Integer[] { 2 }, d.getIPv4Addresses());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
+
+        // Attachment points are not removed, previous ones are still valid.
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1) },
                           d.getAttachmentPoints());
 
         verify(mockListener);
     }
 
-    @Test
-    public void testDeviceExpiration() throws Exception {
+    public void doTestDeviceExpiration() throws Exception {
+        IDeviceListener mockListener =
+                createStrictMock(IDeviceListener.class);
+        mockListener.deviceRemoved(isA(IDevice.class));
+        
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -DeviceManagerImpl.ENTITY_TIMEOUT-1);
         Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, 2, 5L, 1, c.getTime());
+        
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+
+        expect(mockTopology.isAttachmentPointPort(EasyMock.anyLong(),
+                                           EasyMock.anyShort())).
+                                           andReturn(true).
+                                           anyTimes();
+        expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(5L)).andReturn(1L).anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort())).andReturn(false).
+                                         anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort())).
+                                                  andReturn(false).anyTimes();
+        replay(mockTopology);
 
         IDevice d = deviceManager.learnDeviceByEntity(entity2);
         d = deviceManager.learnDeviceByEntity(entity1);
         assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
 
+        deviceManager.addListener(mockListener);
+        replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 
         IDevice r = deviceManager.getDevice(d.getDeviceKey());
@@ -841,7 +913,107 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         r = deviceManager.findDevice(1L, null, null, null, null);
         assertNull(r);
+        
+        verify(mockListener);
     }
+    
+    /*
+     * A ConcurrentHashMap for devices (deviceMap) that can be used to test 
+     * code that specially handles concurrent modification situations. In
+     * particular, we overwrite values() and will replace / remove all the
+     * elements returned by values. 
+     * 
+     * The remove flag in the constructor specifies if devices returned by 
+     * values() should be removed or replaced.
+     */
+    protected static class ConcurrentlyModifiedDeviceMap
+                            extends ConcurrentHashMap<Long, Device> {
+        private static final long serialVersionUID = 7784938535441180562L;
+        protected boolean remove;
+        public ConcurrentlyModifiedDeviceMap(boolean remove) {
+            super();
+            this.remove = remove;
+        }
+        
+        @Override
+        public Collection<Device> values() {
+            // Get the values from the real map and copy them since
+            // the collection returned by values can reflect changed
+            Collection<Device> devs = new ArrayList<Device>(super.values());
+            for (Device d: devs) {
+                if (remove) {
+                    // We remove the device from the underlying map 
+                    super.remove(d.getDeviceKey());
+                } else {
+                    super.remove(d.getDeviceKey());
+                    // We add a different Device instance with the same
+                    // key to the map. We'll do some hackery so the device
+                    // is different enough to compare differently in equals 
+                    // but otherwise looks the same.
+                    // It's ugly but it works. 
+                    Entity[] curEntities = new Entity[d.getEntities().length];
+                    int i = 0;
+                    // clone entities
+                    for (Entity e: d.getEntities()) {
+                        curEntities[i] = new Entity (e.macAddress,
+                                                     e.vlan,
+                                                     e.ipv4Address,
+                                                     e.switchDPID,
+                                                     e.switchPort,
+                                                     e.lastSeenTimestamp);
+                        if (e.vlan == null) 
+                            curEntities[i].vlan = (short)1;
+                        else 
+                            curEntities[i].vlan = (short)((e.vlan + 1 % 4095)+1);
+                        i++;
+                    }
+                    Device newDevice = new Device(d, curEntities[0]);
+                    newDevice.entities = curEntities;
+                    assertEquals(false, newDevice.equals(d));
+                    super.put(newDevice.getDeviceKey(), newDevice);
+                }
+            }
+            return devs; 
+        }
+    }
+   
+    @Test
+    public void testEntityExpiration() throws Exception {
+        doTestEntityExpiration();
+    }
+    
+    @Test
+    public void testDeviceExpiration() throws Exception {
+        doTestDeviceExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent modification
+     * occurs. 
+     */
+    @Test
+    public void testEntityExpirationConcurrentModification() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(false);
+        doTestEntityExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent remove
+     * occurs. 
+     */
+    @Test
+    public void testDeviceExpirationConcurrentRemove() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(true);
+        doTestDeviceExpiration();
+    }
+    
+    /* Test correct entity cleanup behavior when a concurrent modification
+     * occurs. 
+     */
+    @Test
+    public void testDeviceExpirationConcurrentModification() throws Exception {
+        deviceManager.deviceMap = new ConcurrentlyModifiedDeviceMap(false);
+        doTestDeviceExpiration();
+    }
+    
 
     @Test
     public void testAttachmentPointFlapping() throws Exception {
@@ -861,16 +1033,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(true).anyTimes();
         expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
         andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 10L, (short)1)).
+        andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 10L, (short)1)).
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(10L, (short)1, 1L, (short)1)).
         andReturn(false).anyTimes();
         expect(mockTopology.isConsistent(5L, (short)1, 1L, (short)1)).
         andReturn(false).anyTimes();
+        expect(mockTopology.isConsistent(10L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
 
         Date topologyUpdateTime = new Date();
         expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
         anyTimes();
+
 
         replay(mockTopology);
         deviceManager.topology = mockTopology;
@@ -879,44 +1056,46 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity1a = new Entity(1L, null, 1, 1L, 1, c.getTime());
         Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 10L, 1, c.getTime());
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1a.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
         entity3.setLastSeenTimestamp(c.getTime());
 
-        deviceManager.learnDeviceByEntity(entity1);
-        deviceManager.learnDeviceByEntity(entity1a);
-        deviceManager.learnDeviceByEntity(entity2);
-        IDevice d = deviceManager.learnDeviceByEntity(entity3);
+
+
+        IDevice d;
+        d = deviceManager.learnDeviceByEntity(entity1);
+        d = deviceManager.learnDeviceByEntity(entity1a);
+        d = deviceManager.learnDeviceByEntity(entity2);
+        d = deviceManager.learnDeviceByEntity(entity3);
 
         // all entities are active, so entity3 should win
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
                           d.getAttachmentPoints());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
-                                                                           d.getAttachmentPoints(true));
+
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),},
+                              d.getAttachmentPoints(true));
 
         c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/4);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         // all are still active; entity3 should still win
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
                           d.getAttachmentPoints());
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 1,
+                                                            ErrorStatus.DUPLICATE_DEVICE),
+                                                            new SwitchPort(10L, 1,
+                                                                           ErrorStatus.DUPLICATE_DEVICE) },
                                                                            d.getAttachmentPoints(true));
 
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+2000);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         assertEquals(entity1.getActiveSince(), entity1.getLastSeenTimestamp());
         // entity1 should now be the only active entity
@@ -924,33 +1103,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                           d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
                           d.getAttachmentPoints(true));
-
-        deviceManager.startUp(null);
-        c = Calendar.getInstance();
-        entity1.setActiveSince(c.getTime());
-        entity1.setLastSeenTimestamp(c.getTime());
-        d = deviceManager.learnDeviceByEntity(entity1);
-
-        // entity1 is only entity
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-                          d.getAttachmentPoints());
-
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
-        entity2.setActiveSince(c.getTime());
-        entity2.setLastSeenTimestamp(c.getTime());
-        d = deviceManager.learnDeviceByEntity(entity2);
-
-        // entity2 is strictly later
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) },
-                          d.getAttachmentPoints());
-
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
-        entity1.setLastSeenTimestamp(c.getTime());
-
-        // entity 1 is strictly later
-        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
-                          d.getAttachmentPoints());
     }
+
 
     @Test
     public void testAttachmentPointFlappingTwoCluster() throws Exception {
@@ -994,8 +1148,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity2 = new Entity(1L, null, null, 1L, 2, c.getTime());
         Entity entity3 = new Entity(1L, null, null, 5L, 1, c.getTime());
         Entity entity4 = new Entity(1L, null, null, 5L, 2, c.getTime());
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         entity1.setLastSeenTimestamp(c.getTime());
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT/2);
         c.add(Calendar.MILLISECOND, 1);
         entity2.setLastSeenTimestamp(c.getTime());
         c.add(Calendar.MILLISECOND, 1);
@@ -1013,27 +1167,36 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                              new SwitchPort(5L, 2) },
                                              d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2),
-                                             new SwitchPort(5L, 2),
-                                             new SwitchPort(1L, 1,
-                                                            DUPLICATE_DEVICE),
-                                                            new SwitchPort(5L, 1,
-                                                                           DUPLICATE_DEVICE) },
-                                                                           d.getAttachmentPoints(true));
+                                             new SwitchPort(5L, 2)},
+                                             d.getAttachmentPoints(true));
 
-        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT);
+        c.add(Calendar.MILLISECOND, 1);
         entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
+
+        // all entities are active, so entities 2,4 should win
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 2) },
+                                             d.getAttachmentPoints());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                                             new SwitchPort(5L, 2),
+                                             new SwitchPort(1L, 2, ErrorStatus.DUPLICATE_DEVICE)},
+                                             d.getAttachmentPoints(true));
+
+        c.add(Calendar.MILLISECOND, Entity.ACTIVITY_TIMEOUT+1);
+        entity1.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity1);
 
         // entities 3,4 are still in conflict, but 1 should be resolved
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
                                              new SwitchPort(5L, 2) },
                                              d.getAttachmentPoints());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
-                                             new SwitchPort(5L, 2),
-                                             new SwitchPort(5L, 1,
-                                                            DUPLICATE_DEVICE) },
-                                                            d.getAttachmentPoints(true));
+                                             new SwitchPort(5L, 2)},
+                                             d.getAttachmentPoints(true));
 
         entity3.setLastSeenTimestamp(c.getTime());
+        d = deviceManager.learnDeviceByEntity(entity3);
 
         // no conflicts, 1 and 3 will win
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
@@ -1100,11 +1263,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         indexFields.add(IDeviceService.DeviceField.VLAN);
         deviceManager.addIndex(false, indexFields);
 
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
         doTestDeviceQuery();
     }
 
     @Test
     public void testDeviceQuery() throws Exception {
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
+        
         doTestDeviceQuery();
     }
 
@@ -1167,20 +1345,44 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         indexFields.add(IDeviceService.DeviceField.VLAN);
         deviceManager.addIndex(true, indexFields);
 
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
+
         doTestDeviceClassQuery();
     }
 
     @Test
     public void testDeviceClassQuery() throws Exception {
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
+
         doTestDeviceClassQuery();
     }
-    
+
     @Test
     public void testFindDevice() {
         boolean exceptionCaught;
         deviceManager.entityClassifier= new MockEntityClassifierMac();
         deviceManager.startUp(null);
-        
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
+        replay(mockTopology);
+
         Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
         Entity entity2 = new Entity(2L, (short)2, 2, 1L, 2, new Date());
         Entity entity2b = new Entity(22L, (short)2, 2, 1L, 2, new Date());
@@ -1296,6 +1498,29 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     public void testGetIPv4Addresses() {
         // Looks like Date is only 1s granularity
         
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(anyLong())).andReturn(1L).anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort()))
+                                         .andReturn(false)
+                                         .anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort()))
+                                                  .andReturn(false)
+                                                  .anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(EasyMock.anyLong(),
+                                                    EasyMock.anyShort(),
+                                                    EasyMock.anyLong(),
+                                                    EasyMock.anyShort())).
+                                                    andReturn(false).anyTimes();
+        replay(mockTopology);
+
         Entity e1 = new Entity(1L, (short)1, null, null, null, new Date(2000));
         Device d1 = deviceManager.learnDeviceByEntity(e1);
         assertArrayEquals(new Integer[0], d1.getIPv4Addresses());
@@ -1392,7 +1617,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
             Entity[] entities = new Entity[] { entity1, entity2, 
                                                entity3, entity4
                                              };
-            Device d = new Device(null,1L, Arrays.asList(entities), null);
+            Device d = new Device(null,1L, null, null, Arrays.asList(entities), null);
             SwitchPort swp1x1 = new SwitchPort(1L, 1);
             SwitchPort swp1x2 = new SwitchPort(1L, 2);
             SwitchPort swp2x1 = new SwitchPort(2L, 1);
@@ -1405,5 +1630,127 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                               d.getSwitchPortVlanIds(swp1x2));
             assertArrayEquals(new Short[0],
                               d.getSwitchPortVlanIds(swp2x1));
+    }
+    
+    @Test
+    public void testReclassifyDevice() {
+    	MockFlexEntityClassifier flexClassifier = 
+    			new MockFlexEntityClassifier();
+        deviceManager.entityClassifier= flexClassifier;
+        deviceManager.startUp(null);
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        deviceManager.topology = mockTopology;
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).
+                                                  andReturn(true).anyTimes();
+        expect(mockTopology.getL2DomainId(anyLong())).andReturn(1L).anyTimes();
+        expect(mockTopology.isConsistent(EasyMock.anyLong(),
+                                         EasyMock.anyShort(),
+                                         EasyMock.anyLong(),
+                                         EasyMock.anyShort()))
+                                         .andReturn(false)
+                                         .anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
+                                                  EasyMock.anyShort()))
+                                                  .andReturn(false)
+                                                  .anyTimes();
+        replay(mockTopology);
+        
+        //flexClassifier.createTestEntityClass("Class1");
+        
+        Entity entity1 = new Entity(1L, (short)1, 1, 1L, 1, new Date());
+        Entity entity1b = new Entity(1L, (short)2, 1, 1L, 1, new Date());
+        Entity entity2 = new Entity(2L, (short)1, 2, 2L, 2, new Date());
+        Entity entity2b = new Entity(2L, (short)2, 2, 2L, 2, new Date());
+        
+        
+        Device d1 = deviceManager.learnDeviceByEntity(entity1);
+        Device d2 = deviceManager.learnDeviceByEntity(entity2);
+        Device d1b = deviceManager.learnDeviceByEntity(entity1b);
+        Device d2b = deviceManager.learnDeviceByEntity(entity2b);
+        
+        d1 = deviceManager.getDeviceIteratorForQuery(entity1.getMacAddress(), 
+        				entity1.getVlan(), entity1.getIpv4Address(), 
+        				entity1.getSwitchDPID(), entity1.getSwitchPort())
+        				.next();
+        d1b = deviceManager.getDeviceIteratorForQuery(entity1b.getMacAddress(), 
+				entity1b.getVlan(), entity1b.getIpv4Address(), 
+				entity1b.getSwitchDPID(), entity1b.getSwitchPort()).next();
+        
+        assertEquals(d1, d1b);
+        
+        d2 = deviceManager.getDeviceIteratorForQuery(entity2.getMacAddress(), 
+				entity2.getVlan(), entity2.getIpv4Address(), 
+				entity2.getSwitchDPID(), entity2.getSwitchPort()).next();
+        d2b = deviceManager.getDeviceIteratorForQuery(entity2b.getMacAddress(), 
+				entity2b.getVlan(), entity2b.getIpv4Address(), 
+				entity2b.getSwitchDPID(), entity2b.getSwitchPort()).next();
+        assertEquals(d2, d2b);
+        
+        IEntityClass eC1 = flexClassifier.createTestEntityClass("C1");
+        IEntityClass eC2 = flexClassifier.createTestEntityClass("C2");
+        
+        flexClassifier.addVlanEntities((short)1, eC1);
+        flexClassifier.addVlanEntities((short)2, eC1);
+        
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        
+        d1 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1));
+        d1b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1b));
+        
+        assertEquals(d1, d1b);
+        
+        d2 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2));
+        d2b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2b));
+        
+        assertEquals(d2, d2b);
+        				
+        flexClassifier.addVlanEntities((short)1, eC2);
+        
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        d1 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1));
+        d1b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity1b));
+        d2 = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2));
+        d2b = deviceManager.deviceMap.get(
+        		deviceManager.primaryIndex.findByEntity(entity2b));
+        
+        assertNotSame(d1, d1b);
+       
+        assertNotSame(d2, d2b);
+        
+        flexClassifier.addVlanEntities((short)1, eC1);
+        deviceManager.reclassifyDevice(d1);
+        deviceManager.reclassifyDevice(d2);
+        ClassState classState = deviceManager.classStateMap.get(eC1.getName());
+
+        Long deviceKey1 = null;
+        Long deviceKey1b = null;
+        Long deviceKey2 = null;
+        Long deviceKey2b = null;
+
+        deviceKey1 =
+        		classState.classIndex.findByEntity(entity1);
+        deviceKey1b =
+        		classState.classIndex.findByEntity(entity1b);
+        deviceKey2 =
+        		classState.classIndex.findByEntity(entity2);
+        deviceKey2b =
+        		classState.classIndex.findByEntity(entity2b);
+
+        assertEquals(deviceKey1, deviceKey1b);
+        
+        assertEquals(deviceKey2, deviceKey2b);
+
+
     }
 }

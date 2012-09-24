@@ -41,6 +41,9 @@ import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.internal.Controller.IUpdate;
+import net.floodlightcontroller.core.internal.Controller.SwitchUpdate;
+import net.floodlightcontroller.core.internal.Controller.SwitchUpdateType;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
@@ -72,9 +75,11 @@ import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFVendor;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -166,7 +171,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(channel.getRemoteAddress()).andReturn(null);
         
         expect(sw.getFeaturesReply()).andReturn(featuresReply).anyTimes();
-        expect(sw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
+        expect(sw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
     }
     
     /**
@@ -343,7 +348,7 @@ public class ControllerTest extends FloodlightTestCase {
         // Test self timeout
         reset(sw);
         sw.cancelStatisticsReply(1);
-        sf = new OFStatisticsFuture(tp, sw, 1, 1, TimeUnit.SECONDS);
+        sf = new OFStatisticsFuture(tp, sw, 1, 75, TimeUnit.MILLISECONDS);
 
         replay(sw);
         ff = new FutureFetcher<List<OFStatistics>>(sf);
@@ -358,15 +363,20 @@ public class ControllerTest extends FloodlightTestCase {
 
     @Test
     public void testMessageFilterManager() throws Exception {
+        class MyOFMessageFilterManager extends OFMessageFilterManager {
+            public MyOFMessageFilterManager(int timer_interval) {
+                super();
+                TIMER_INTERVAL = timer_interval;
+            }
+        }
         FloodlightModuleContext fmCntx = new FloodlightModuleContext();
         MockFloodlightProvider mfp = new MockFloodlightProvider();
-        OFMessageFilterManager mfm = new OFMessageFilterManager();
+        OFMessageFilterManager mfm = new MyOFMessageFilterManager(100);
         MockThreadPoolService mtp = new MockThreadPoolService();
         fmCntx.addService(IOFMessageFilterManagerService.class, mfm);
         fmCntx.addService(IFloodlightProviderService.class, mfp);
         fmCntx.addService(IThreadPoolService.class, mtp);
         String sid = null;
-
         
         mfm.init(fmCntx);
         mfm.startUp(fmCntx);
@@ -378,14 +388,14 @@ public class ControllerTest extends FloodlightTestCase {
         for(i=mfm.getMaxFilterSize(); i > 0; --i) {
             filter = new ConcurrentHashMap<String,String>();
             filter.put("mac", String.format("00:11:22:33:44:%d%d", i,i));
-            sid = mfm.setupFilter(null, filter, 6);
+            sid = mfm.setupFilter(null, filter, 60);
             assertTrue(mfm.getNumberOfFilters() == mfm.getMaxFilterSize() - i +1);
         }
 
         // Add one more to see if you can't
         filter = new ConcurrentHashMap<String,String>();
         filter.put("mac", "mac2");
-        mfm.setupFilter(null, filter, 10);
+        mfm.setupFilter(null, filter, 10*1000);
 
         assertTrue(mfm.getNumberOfFilters() == mfm.getMaxFilterSize());
 
@@ -465,9 +475,9 @@ public class ControllerTest extends FloodlightTestCase {
         matchedFilters = mfm.getMatchedFilters(packetOut, cntx);
         assertTrue(matchedFilters.size() == 1);
 
-        // Wait for 8 seconds for all filters to be timed out.
-        Thread.sleep(8000);
-        assertTrue(mfm.getNumberOfFilters() == 0);
+        // Wait for all filters to be timed out.
+        Thread.sleep(150);
+        assertEquals(0, mfm.getNumberOfFilters());
     }
 
     @Test
@@ -486,7 +496,7 @@ public class ControllerTest extends FloodlightTestCase {
         //expect(oldsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         //expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
-        Channel channel = createMock(Channel.class);
+        Channel channel = createNiceMock(Channel.class);
         //expect(oldsw.getChannel()).andReturn(channel);
         oldsw.setChannel(channel);
         expect(channel.close()).andReturn(null);
@@ -499,7 +509,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(newsw.getChannel()).andReturn(channel2);
         expect(channel2.getRemoteAddress()).andReturn(null);
         expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
-        expect(newsw.getPorts()).andReturn(new HashMap<Short,OFPhysicalPort>());
+        expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
         controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 
@@ -513,9 +523,11 @@ public class ControllerTest extends FloodlightTestCase {
         class DummySwitchListener implements IOFSwitchListener {
             public int nAdded;
             public int nRemoved;
+            public int nPortChanged;
             public DummySwitchListener() {
                 nAdded = 0;
                 nRemoved = 0;
+                nPortChanged = 0;
             }
             public synchronized void addedSwitch(IOFSwitch sw) {
                 nAdded++;
@@ -528,6 +540,11 @@ public class ControllerTest extends FloodlightTestCase {
             public String getName() {
                 return "dummy";
             }
+            @Override
+            public void switchPortChanged(Long switchId) {
+                nPortChanged++;
+                notifyAll();
+            }
         }
         DummySwitchListener switchListener = new DummySwitchListener();
         IOFSwitch sw = createMock(IOFSwitch.class);
@@ -536,14 +553,21 @@ public class ControllerTest extends FloodlightTestCase {
         
         controller.addOFSwitchListener(switchListener);
         synchronized(switchListener) {
-            controller.updates.put(controller.new SwitchUpdate(sw, true));
+            controller.updates.put(controller.new SwitchUpdate(sw,
+                                      Controller.SwitchUpdateType.ADDED));
             switchListener.wait(500);
             assertTrue("IOFSwitchListener.addedSwitch() was not called", 
                     switchListener.nAdded == 1);
-            controller.updates.put(controller.new SwitchUpdate(sw, false));
+            controller.updates.put(controller.new SwitchUpdate(sw, 
+                                      Controller.SwitchUpdateType.REMOVED));
             switchListener.wait(500);
             assertTrue("IOFSwitchListener.removedSwitch() was not called", 
                     switchListener.nRemoved == 1);
+            controller.updates.put(controller.new SwitchUpdate(sw, 
+                                      Controller.SwitchUpdateType.PORTCHANGED));
+            switchListener.wait(500);
+            assertTrue("IOFSwitchListener.switchPortChanged() was not called", 
+                    switchListener.nPortChanged == 1);
         }
     }
     
@@ -1170,5 +1194,56 @@ public class ControllerTest extends FloodlightTestCase {
         }
         assertTrue(exceptionThrown);
         verify(sw);
+    }
+    
+    public void verifyPortChangedUpdateInQueue(IOFSwitch sw) throws Exception {
+        assertEquals(1, controller.updates.size());
+        IUpdate update = controller.updates.take();
+        assertEquals(true, update instanceof SwitchUpdate);
+        SwitchUpdate swUpdate = (SwitchUpdate)update;
+        assertEquals(sw, swUpdate.sw);
+        assertEquals(SwitchUpdateType.PORTCHANGED, swUpdate.switchUpdateType);
+    }
+    
+    /*
+     * Test handlePortStatus()
+     * TODO: test correct updateStorage behavior!
+     */
+    @Test 
+    public void testHandlePortStatus() throws Exception {
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        OFPhysicalPort port = new OFPhysicalPort();
+        port.setName("myPortName1");
+        port.setPortNumber((short)42);
+        
+        OFPortStatus ofps = new OFPortStatus();
+        ofps.setDesc(port);
+        
+        ofps.setReason((byte)OFPortReason.OFPPR_ADD.ordinal());
+        sw.setPort(port);
+        expectLastCall().once();
+        replay(sw);
+        controller.handlePortStatusMessage(sw, ofps, false);
+        verify(sw);
+        verifyPortChangedUpdateInQueue(sw);
+        reset(sw);
+        
+        ofps.setReason((byte)OFPortReason.OFPPR_MODIFY.ordinal());
+        sw.setPort(port);
+        expectLastCall().once();
+        replay(sw);
+        controller.handlePortStatusMessage(sw, ofps, false);
+        verify(sw);
+        verifyPortChangedUpdateInQueue(sw);
+        reset(sw);
+        
+        ofps.setReason((byte)OFPortReason.OFPPR_DELETE.ordinal());
+        sw.deletePort(port.getPortNumber());
+        expectLastCall().once();
+        replay(sw);
+        controller.handlePortStatusMessage(sw, ofps, false);
+        verify(sw);
+        verifyPortChangedUpdateInQueue(sw);
+        reset(sw);
     }
 }

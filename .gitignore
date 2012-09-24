@@ -7,4 +7,5 @@
 .DS_Store
 target
 thrift
-logback.xml
+*.swp
+*.pyc

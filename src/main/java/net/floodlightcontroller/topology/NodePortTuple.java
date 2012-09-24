@@ -1,6 +1,7 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -40,6 +41,7 @@ public class NodePortTuple {
         this.nodeId = nodeId;
     }
     @JsonProperty("port")
+    @JsonSerialize(using=UShortSerializer.class)
     public short getPortId() {
         return portId;
     }
@@ -76,7 +78,13 @@ public class NodePortTuple {
         return true;
     }
     
+    /**
+     * API to return a String value formed wtih NodeID and PortID
+     * The portID is a 16-bit field, so mask it as an integer to get full
+     * positive value
+     * @return
+     */
     public String toKeyString() {
-        return (HexString.toHexString(nodeId)+ "|" + portId);
+        return (HexString.toHexString(nodeId)+ "|" + (portId & 0xffff));
     }
 }

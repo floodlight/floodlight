@@ -1,6 +1,7 @@
 package net.floodlightcontroller.virtualnetwork;
 
 import java.io.IOException;
+import java.util.Collection;
 
 import net.floodlightcontroller.packet.IPv4;
 
@@ -10,6 +11,7 @@ import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.MappingJsonFactory;
 import org.restlet.data.Status;
 import org.restlet.resource.Delete;
+import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
@@ -72,6 +74,14 @@ public class NetworkResource extends ServerResource {
         jp.close();
     }
     
+    @Get("json")
+    public Collection <VirtualNetwork> retrieve() {
+        IVirtualNetworkService vns =
+                (IVirtualNetworkService)getContext().getAttributes().
+                    get(IVirtualNetworkService.class.getCanonicalName());
+        
+        return vns.listNetworks();               
+    }
     
     @Put
     @Post

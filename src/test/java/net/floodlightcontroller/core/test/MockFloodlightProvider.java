@@ -19,10 +19,14 @@ package net.floodlightcontroller.core.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -38,19 +42,23 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.packet.Ethernet;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
-    protected Map<OFType, List<IOFMessageListener>> listeners;
+	protected static Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
+	protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
     protected List<IHAListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
@@ -60,36 +68,47 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
      * 
      */
     public MockFloodlightProvider() {
-        listeners = new ConcurrentHashMap<OFType, List<IOFMessageListener>>();
+        listeners = new ConcurrentHashMap<OFType, ListenerDispatcher<OFType, 
+                                   IOFMessageListener>>();
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switchListeners = new CopyOnWriteArrayList<IOFSwitchListener>();
         haListeners = new CopyOnWriteArrayList<IHAListener>();
         factory = new BasicFactory();
     }
 
-    public void addOFMessageListener(OFType type, IOFMessageListener listener) {
-        if (!listeners.containsKey(type)) {
-            listeners.put(type, new ArrayList<IOFMessageListener>());
+    @Override
+    public synchronized void addOFMessageListener(OFType type, 
+                                                  IOFMessageListener listener) {
+        ListenerDispatcher<OFType, IOFMessageListener> ldd = 
+        		listeners.get(type);
+        if (ldd == null) {
+            ldd = new ListenerDispatcher<OFType, IOFMessageListener>();
+            listeners.put(type, ldd);
         }
-        listeners.get(type).add(listener);
+        ldd.addListener(type, listener);
     }
 
-    public void removeOFMessageListener(OFType type, IOFMessageListener listener) {
-        listeners.get(type).remove(listener);
+    @Override
+    public synchronized void removeOFMessageListener(OFType type,
+                                                     IOFMessageListener listener) {
+        ListenerDispatcher<OFType, IOFMessageListener> ldd = 
+        		listeners.get(type);
+        if (ldd != null) {
+            ldd.removeListener(listener);
+        }
     }
 
     /**
      * @return the listeners
      */
     public Map<OFType, List<IOFMessageListener>> getListeners() {
-        return listeners;
-    }
-
-    /**
-     * @param listeners the listeners to set
-     */
-    public void setListeners(Map<OFType, List<IOFMessageListener>> listeners) {
-        this.listeners = listeners;
+    	Map<OFType, List<IOFMessageListener>> lers = 
+                new HashMap<OFType, List<IOFMessageListener>>();
+            for(Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e : 
+            	listeners.entrySet()) {
+                lers.put(e.getKey(), e.getValue().getOrderedListeners());
+            }
+            return Collections.unmodifiableMap(lers);
     }
 
     public void clearListeners() {
@@ -120,10 +139,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
     
     public void dispatchMessage(IOFSwitch sw, OFMessage msg, FloodlightContext bc) {
-        List<IOFMessageListener> listeners = this.listeners.get(msg.getType());
-        if (listeners != null) {
+        List<IOFMessageListener> theListeners = listeners.get(msg.getType()).getOrderedListeners();
+        if (theListeners != null) {
             Command result = Command.CONTINUE;
-            Iterator<IOFMessageListener> it = listeners.iterator();
+            Iterator<IOFMessageListener> it = theListeners.iterator();
             if (OFType.PACKET_IN.equals(msg.getType())) {
                 OFPacketIn pi = (OFPacketIn)msg;
                 Ethernet eth = new Ethernet();
@@ -141,7 +160,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m, FloodlightContext bc) {
         List<IOFMessageListener> msgListeners = null;
         if (listeners.containsKey(m.getType())) {
-            msgListeners = listeners.get(m.getType());
+            msgListeners = listeners.get(m.getType()).getOrderedListeners();
         }
             
         if (msgListeners != null) {                
@@ -194,33 +213,36 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void run() {
-        // no-op
+    	logListeners();
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // TODO Auto-generated method stub
-        return null;
+    	Collection<Class<? extends IFloodlightService>> services =
+                new ArrayList<Class<? extends IFloodlightService>>(1);
+        services.add(IFloodlightProviderService.class);
+        return services;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        // TODO Auto-generated method stub
-        return null;
+    	Map<Class<? extends IFloodlightService>,
+        	IFloodlightService> m = 
+            	new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+    	m.put(IFloodlightProviderService.class, this);
+    	return m;
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>>
             getModuleDependencies() {
-        // TODO Auto-generated method stub
-        return null;
+    	return null;
     }
     
     @Override
-    public
-            void
-            init(FloodlightModuleContext context)
+    public void init(FloodlightModuleContext context)
                                                  throws FloodlightModuleException {
         // TODO Auto-generated method stub
         
@@ -298,4 +320,25 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 		return 0;
 	}
 
+    private void logListeners() {
+        for (Map.Entry<OFType,
+                       ListenerDispatcher<OFType, 
+                                          IOFMessageListener>> entry
+             : listeners.entrySet()) {
+            
+            OFType type = entry.getKey();
+            ListenerDispatcher<OFType, IOFMessageListener> ldd = 
+                    entry.getValue();
+            
+            StringBuffer sb = new StringBuffer();
+            sb.append("OFListeners for ");
+            sb.append(type);
+            sb.append(": ");
+            for (IOFMessageListener l : ldd.getOrderedListeners()) {
+                sb.append(l.getName());
+                sb.append(",");
+            }
+            log.debug(sb.toString());            
+        }
+    }
 }
