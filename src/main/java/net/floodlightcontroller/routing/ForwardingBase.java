@@ -18,6 +18,7 @@
 package net.floodlightcontroller.routing;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -44,6 +45,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.OFMessageDamper;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.openflow.protocol.OFFlowMod;
@@ -68,7 +70,10 @@ public abstract class ForwardingBase
     
 	protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
-
+	
+    protected static int OFMESSAGE_DAMPER_CAPACITY = 50000; // TODO: find sweet spot
+    protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
+	
     public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
     
@@ -77,6 +82,8 @@ public abstract class ForwardingBase
     protected IRoutingService routingEngine;
     protected ITopologyService topology;
     protected ICounterStoreService counterStore;
+    
+    protected OFMessageDamper messageDamper;
     
     // for broadcast loop suppression
     protected boolean broadcastCacheFeature = true;
@@ -102,6 +109,16 @@ public abstract class ForwardingBase
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
+            
+    /**
+     * init data structures
+     * 
+     */
+    protected void init() {
+        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY, 
+                                            EnumSet.of(OFType.FLOW_MOD),
+                                            OFMESSAGE_DAMPER_TIMEOUT);
+    }
 
     /**
      * Adds a listener for devicemanager and registers for PacketIns.
@@ -257,7 +274,7 @@ public abstract class ForwardingBase
                                           fm.getMatch().getInputPort(),
                                           outPort });
                 }
-                sw.write(fm, cntx);
+                messageDamper.write(sw, fm, cntx);
                 if (doFlush) {
                     sw.flush();
                 }
@@ -365,7 +382,7 @@ public abstract class ForwardingBase
 
         try {
             counterStore.updatePktOutFMCounterStore(sw, po);
-            sw.write(po, cntx);
+            messageDamper.write(sw, po, cntx);
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
         }
@@ -448,7 +465,7 @@ public abstract class ForwardingBase
 
         try {
             counterStore.updatePktOutFMCounterStore(sw, po);
-            sw.write(po, cntx);
+            messageDamper.write(sw, po, cntx);
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
         }
@@ -505,7 +522,7 @@ public abstract class ForwardingBase
                         "interfaces={} packet-out={}",
                         new Object[] {sw.getId(), outPorts, po});
             }
-            sw.write(po, cntx);
+            messageDamper.write(sw, po, cntx);
 
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
@@ -624,6 +641,7 @@ public abstract class ForwardingBase
         try {
             log.debug("write drop flow-mod sw={} match={} flow-mod={}",
                       new Object[] { sw, match, fm });
+            // TODO: can't use the message damper sine this method is static
             sw.write(fm, null);
         } catch (IOException e) {
             log.error("Failure writing deny flow mod", e);

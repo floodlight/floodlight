@@ -80,4 +80,12 @@ public class MockDevice extends Device {
         }
         return vals.toArray(new SwitchPort[vals.size()]);
     }
+    
+    @Override
+    public String toString() {
+        String rv = "MockDevice[entities=+";
+        rv += entities.toString();
+        rv += "]";
+        return rv;
+    }
 }

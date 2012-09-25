@@ -31,30 +31,24 @@ import java.util.concurrent.ConcurrentMap;
 public class TimedCache<K> {    
     private final long timeoutInterval;    //specified in milliseconds.
 	private ConcurrentMap<K, Long> cache;
-    private long cacheHits;
-    private long totalHits;
     
+    /**
+     * 
+     * @param capacity the maximum number of entries in the cache before the 
+     * oldest entry is evicted. 
+     * @param timeToLive specified in milliseconds
+     */
 	public TimedCache(int capacity, int timeToLive) {
         cache = new ConcurrentLinkedHashMap.Builder<K, Long>()
         	    .maximumWeightedCapacity(capacity)
             .build();
         this.timeoutInterval = timeToLive;
-        this.cacheHits = 0;
-        this.totalHits = 0;
     }
     
     public long getTimeoutInterval() {
         return this.timeoutInterval;
     }
     
-    public long getCacheHits() {
-    	     return cacheHits;
-    }
-    
-    public long getTotalHits() {
-		return totalHits;
-	}
-
     /**
      * Always try to update the cache and set the last-seen value for this key.
      * 
@@ -70,7 +64,6 @@ public class TimedCache<K> {
         Long curr = new Long(System.currentTimeMillis());
         Long prev = cache.putIfAbsent(key, curr);
         
-		this.totalHits++;
         if (prev == null) {
         		return false;
         }
@@ -81,7 +74,6 @@ public class TimedCache<K> {
             }
         }
         
-        this.cacheHits++;
         return true;
     }
 }
