@@ -152,7 +152,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 log.debug("write drop flow-mod sw={} match={} flow-mod={}",
                           new Object[] { sw, match, fm });
             }
-            sw.write(fm, cntx);
+            messageDamper.write(sw, fm, cntx);
         } catch (IOException e) {
             log.error("Failure writing drop flow mod", e);
         }
@@ -309,9 +309,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
         List<OFAction> actions = new ArrayList<OFAction>();
         if (sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)) {
-            actions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(), (short)0));
+            actions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(), 
+                                           (short)0xFFFF));
         } else {
-            actions.add(new OFActionOutput(OFPort.OFPP_ALL.getValue(), (short)0));
+            actions.add(new OFActionOutput(OFPort.OFPP_ALL.getValue(), 
+                                           (short)0xFFFF));
         }
         po.setActions(actions);
         po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
@@ -332,7 +334,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
                           new Object[] {sw, pi, po});
             }
-            sw.write(po, cntx);
+            messageDamper.write(sw, po, cntx);
         } catch (IOException e) {
             log.error("Failure writing PacketOut switch={} packet-in={} packet-out={}",
                     new Object[] {sw, pi, po}, e);
@@ -396,6 +398,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                 "properties file."),
     })
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        super.init();
         this.floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         this.deviceManager = context.getServiceImpl(IDeviceService.class);
         this.routingEngine = context.getServiceImpl(IRoutingService.class);

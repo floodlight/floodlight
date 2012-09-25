@@ -180,7 +180,7 @@
             <batchtest todir="${test-output}">
                 <fileset dir="${source-test}">
                     <exclude name="**/storage/tests/StorageTest.java"/>
-                    <exclude name="**/test/Mock*"/>
+				    <include name="**/*Test*.java"/>
                     <exclude name="**/core/test/**"/>
                     <exclude name="**/core/module/**"/>
                 </fileset>
