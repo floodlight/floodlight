@@ -18,6 +18,8 @@
 package org.openflow.protocol;
 
 
+import java.util.Arrays;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.U16;
 
@@ -67,5 +69,33 @@ public class OFEchoRequest extends OFMessage {
         super.writeTo(bb);
         if (payload != null)
             bb.writeBytes(payload);
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + Arrays.hashCode(payload);
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        OFEchoRequest other = (OFEchoRequest) obj;
+        if (!Arrays.equals(payload, other.payload))
+            return false;
+        return true;
     }
 }
