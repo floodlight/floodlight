@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  * to be documentated on an interface.
  * @author readams
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.METHOD})
 public @interface LogMessageDocs {
     /**
      * A list of {@link LogMessageDoc} elements
