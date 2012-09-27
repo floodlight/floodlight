@@ -51,6 +51,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFFeaturesRequest;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -104,6 +105,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected ConcurrentHashMap<String, OFPhysicalPort> portsByName;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
+    protected Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
     protected boolean connected;
     protected Role role;
     protected TimedCache<Long> timedCache;
@@ -154,6 +156,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
+        this.featuresFutureMap = new ConcurrentHashMap<Integer,OFFeaturesReplyFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
         this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
@@ -785,5 +788,36 @@ public class OFSwitchImpl implements IOFSwitch {
                 this.channel.close();
             }
         }
+    }
+
+    @Override
+    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+            throws IOException {
+        OFMessage request = new OFFeaturesRequest();
+        request.setXid(getNextTransactionId());
+        OFFeaturesReplyFuture future =
+                new OFFeaturesReplyFuture(threadPool, this, request.getXid());
+        this.featuresFutureMap.put(request.getXid(), future);
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(request);
+        this.channel.write(msglist);
+        return future;
+    }
+
+    @Override
+    public void deliverOFFeaturesReply(OFMessage reply) {
+        OFFeaturesReplyFuture future = this.featuresFutureMap.get(reply.getXid());
+        if (future != null) {
+            future.deliverFuture(this, reply);
+            // The future will ultimately unregister itself and call
+            // cancelFeaturesReply
+            return;
+        }
+        log.error("Switch {}: received unexpected featureReply", this);
+    }
+
+    @Override
+    public void cancelFeaturesReply(int transactionId) {
+        this.featuresFutureMap.remove(transactionId);
     }
 }

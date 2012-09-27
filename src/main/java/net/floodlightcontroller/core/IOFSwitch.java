@@ -236,6 +236,29 @@ public interface IOFSwitch {
      */
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request)
             throws IOException;
+    
+    /**
+     * Returns a Future object that can be used to retrieve the asynchronous
+     * OFStatisticsReply when it is available.
+     *
+     * @param request statistics request
+     * @return Future object wrapping OFStatisticsReply
+     * @throws IOException 
+     */
+    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+            throws IOException;
+
+    /**
+     * Deliver the featuresReply future reply
+     * @param reply the reply to deliver
+     */
+    void deliverOFFeaturesReply(OFMessage reply);
+
+    /*
+     * Cancel features reply with a specific transction ID
+     * @param transactionId the transaction ID
+     */
+    public void cancelFeaturesReply(int transactionId);
 
     /**
      * Check if the switch is still connected;
@@ -348,5 +371,4 @@ public interface IOFSwitch {
      * NOTE: The contract is limited to the current thread
      */
      public void flush();
-
 }

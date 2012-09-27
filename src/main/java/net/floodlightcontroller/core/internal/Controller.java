@@ -945,8 +945,7 @@ public class Controller implements IFloodlightProviderService,
                         // state.hsState = HandshakeState.READY;
                         // addSwitch(sw);
                     } else {
-                        String em = "Unexpected FEATURES_REPLY from " + sw;
-                        throw new SwitchStateException(em);
+                        sw.deliverOFFeaturesReply(m);
                     }
                     break;
                 case GET_CONFIG_REPLY:
