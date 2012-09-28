@@ -159,19 +159,18 @@ public class ControllerTest extends FloodlightTestCase {
     protected void setupSwitchForAddSwitch(IOFSwitch sw, long dpid) {
         String dpidString = HexString.toHexString(dpid);
                 
-        OFFeaturesReply featuresReply = new OFFeaturesReply();
-        featuresReply.setDatapathId(dpid);
-        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
-        
         expect(sw.getId()).andReturn(dpid).anyTimes();
         expect(sw.getStringId()).andReturn(dpidString).anyTimes();
         expect(sw.getConnectedSince()).andReturn(new Date());
         Channel channel = createMock(Channel.class);
         expect(sw.getChannel()).andReturn(channel);
         expect(channel.getRemoteAddress()).andReturn(null);
-        
-        expect(sw.getFeaturesReply()).andReturn(featuresReply).anyTimes();
-        expect(sw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
+
+        expect(sw.getCapabilities()).andReturn(0).anyTimes();
+        expect(sw.getBuffers()).andReturn(0).anyTimes();
+        expect(sw.getTables()).andReturn((byte)0).anyTimes();
+        expect(sw.getActions()).andReturn(0).anyTimes();
+        expect(sw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>()).anyTimes();
     }
     
     /**
@@ -196,7 +195,6 @@ public class ControllerTest extends FloodlightTestCase {
 
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-        expect(sw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
 
         // Build our test packet
         IPacket testPacket = new Ethernet()
@@ -250,7 +248,6 @@ public class ControllerTest extends FloodlightTestCase {
         expect(test1.receive(eq(sw), eq(pi), isA(FloodlightContext.class))).andReturn(Command.STOP);       
         //expect(test1.getId()).andReturn(0).anyTimes();
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-        expect(sw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         replay(test1, test2, sw);
         controller.handleMessage(sw, pi, null);
         verify(test1, test2, sw);
@@ -493,7 +490,6 @@ public class ControllerTest extends FloodlightTestCase {
         //expect(oldsw.getId()).andReturn(0L).anyTimes();
         //expect(oldsw.asyncRemoveSwitchLock()).andReturn(rwlock.writeLock()).anyTimes();
         //oldsw.setConnected(false);
-        //expect(oldsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         //expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
         Channel channel = createNiceMock(Channel.class);
@@ -508,8 +504,11 @@ public class ControllerTest extends FloodlightTestCase {
         Channel channel2 = createMock(Channel.class);
         expect(newsw.getChannel()).andReturn(channel2);
         expect(channel2.getRemoteAddress()).andReturn(null);
-        expect(newsw.getFeaturesReply()).andReturn(new OFFeaturesReply()).anyTimes();
         expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
+        expect(newsw.getCapabilities()).andReturn(0).anyTimes();
+        expect(newsw.getBuffers()).andReturn(0).anyTimes();
+        expect(newsw.getTables()).andReturn((byte)0).anyTimes();
+        expect(newsw.getActions()).andReturn(0).anyTimes();
         controller.activeSwitches.put(0L, oldsw);
         replay(newsw, channel, channel2);
 

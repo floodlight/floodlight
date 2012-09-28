@@ -945,8 +945,7 @@ public class Controller implements IFloodlightProviderService,
                         // state.hsState = HandshakeState.READY;
                         // addSwitch(sw);
                     } else {
-                        String em = "Unexpected FEATURES_REPLY from " + sw;
-                        throw new SwitchStateException(em);
+                        sw.deliverOFFeaturesReply(m);
                     }
                     break;
                 case GET_CONFIG_REPLY:
@@ -1724,14 +1723,13 @@ public class Controller implements IFloodlightProviderService,
         }
         
         // Write out the switch features info
-        OFFeaturesReply featuresReply = sw.getFeaturesReply();
-        long capabilities = U32.f(featuresReply.getCapabilities());
+        long capabilities = U32.f(sw.getCapabilities());
         switchInfo.put(SWITCH_CAPABILITIES, capabilities);
-        long buffers = U32.f(featuresReply.getBuffers());
+        long buffers = U32.f(sw.getBuffers());
         switchInfo.put(SWITCH_BUFFERS, buffers);
-        long tables = U32.f(featuresReply.getTables());
+        long tables = U32.f(sw.getTables());
         switchInfo.put(SWITCH_TABLES, tables);
-        long actions = U32.f(featuresReply.getActions());
+        long actions = U32.f(sw.getActions());
         switchInfo.put(SWITCH_ACTIONS, actions);
         switchInfo.put(SWITCH_ACTIVE, Boolean.TRUE);
         

@@ -26,6 +26,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
+import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsRequest;
@@ -128,4 +129,29 @@ public class SwitchResourceBase extends ServerResource {
     protected List<OFStatistics> getSwitchStatistics(String switchId, OFStatisticsType statType) {
         return getSwitchStatistics(HexString.toLong(switchId), statType);
     }
+    
+    protected OFFeaturesReply getSwitchFeaturesReply(long switchId) {
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                get(IFloodlightProviderService.class.getCanonicalName());
+
+        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
+        Future<OFFeaturesReply> future;
+        OFFeaturesReply featuresReply = null;
+        if (sw != null) {
+            try {
+                future = sw.getFeaturesReplyFromSwitch();
+                featuresReply = future.get(10, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.error("Failure getting features reply from switch" + sw, e);
+            }
+        }
+
+        return featuresReply;
+    }
+
+    protected OFFeaturesReply getSwitchFeaturesReply(String switchId) {
+        return getSwitchFeaturesReply(HexString.toLong(switchId));
+    }
+
 }

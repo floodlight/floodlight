@@ -1,5 +1,5 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2012, Big Switch Networks, Inc. 
 *    Originally created by David Erickson, Stanford University
 * 
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -51,6 +51,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFFeaturesRequest;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -88,7 +89,6 @@ public class OFSwitchImpl implements IOFSwitch {
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
     protected Date connectedSince;
-    protected OFFeaturesReply featuresReply;
     protected String stringId;
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
@@ -104,6 +104,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected ConcurrentHashMap<String, OFPhysicalPort> portsByName;
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
+    protected Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
     protected boolean connected;
     protected Role role;
     protected TimedCache<Long> timedCache;
@@ -121,6 +122,13 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     protected LinkedList<PendingRoleRequestEntry> pendingRoleRequests;
     
+    /* Switch features from initial featuresReply */
+    protected int capabilities;
+    protected int buffers;
+    protected int actions;
+    protected byte tables;
+    protected long datapathId;
+
     public static IOFSwitchFeatures switchFeatures;
     protected static final ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>>() {
@@ -146,6 +154,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     public OFSwitchImpl() {
+        this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
@@ -154,6 +163,7 @@ public class OFSwitchImpl implements IOFSwitch {
         this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
         this.connected = true;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
+        this.featuresFutureMap = new ConcurrentHashMap<Integer,OFFeaturesReplyFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
         this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
@@ -261,19 +271,17 @@ public class OFSwitchImpl implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public OFFeaturesReply getFeaturesReply() {
-        return this.featuresReply;
-    }
-    
-    @Override
-    @JsonIgnore
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
         synchronized(portLock) {
-            this.featuresReply = featuresReply;
             for (OFPhysicalPort port : featuresReply.getPorts()) {
                 setPort(port);
             }
-            this.stringId = HexString.toHexString(featuresReply.getDatapathId());
+            this.datapathId = featuresReply.getDatapathId();
+            this.capabilities = featuresReply.getCapabilities();
+            this.buffers = featuresReply.getBuffers();
+            this.actions = featuresReply.getActions();
+            this.tables = featuresReply.getTables();
+            this.stringId = HexString.toHexString(this.datapathId);
         }
     }
 
@@ -372,9 +380,9 @@ public class OFSwitchImpl implements IOFSwitch {
     @JsonSerialize(using=DPIDSerializer.class)
     @JsonProperty("dpid")
     public long getId() {
-        if (this.featuresReply == null)
+        if (this.stringId == null)
             throw new RuntimeException("Features reply has not yet been set");
-        return this.featuresReply.getDatapathId();
+        return this.datapathId;
     }
 
     @JsonIgnore
@@ -388,7 +396,7 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     @Override
     public String toString() {
-        return "OFSwitchImpl [" + channel.getRemoteAddress() + " DPID[" + ((featuresReply != null) ? stringId : "?") + "]]";
+        return "OFSwitchImpl [" + channel.getRemoteAddress() + " DPID[" + ((stringId != null) ? stringId : "?") + "]]";
     }
 
     @Override
@@ -785,5 +793,60 @@ public class OFSwitchImpl implements IOFSwitch {
                 this.channel.close();
             }
         }
+    }
+
+    @Override
+    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+            throws IOException {
+        OFMessage request = new OFFeaturesRequest();
+        request.setXid(getNextTransactionId());
+        OFFeaturesReplyFuture future =
+                new OFFeaturesReplyFuture(threadPool, this, request.getXid());
+        this.featuresFutureMap.put(request.getXid(), future);
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(request);
+        this.channel.write(msglist);
+        return future;
+    }
+
+    @Override
+    public void deliverOFFeaturesReply(OFMessage reply) {
+        OFFeaturesReplyFuture future = this.featuresFutureMap.get(reply.getXid());
+        if (future != null) {
+            future.deliverFuture(this, reply);
+            // The future will ultimately unregister itself and call
+            // cancelFeaturesReply
+            return;
+        }
+        log.error("Switch {}: received unexpected featureReply", this);
+    }
+
+    @Override
+    public void cancelFeaturesReply(int transactionId) {
+        this.featuresFutureMap.remove(transactionId);
+    }
+
+
+    @Override
+    public int getBuffers() {
+        return buffers;
+    }
+
+
+    @Override
+    public int getActions() {
+        return actions;
+    }
+
+
+    @Override
+    public int getCapabilities() {
+        return capabilities;
+    }
+
+
+    @Override
+    public byte getTables() {
+        return tables;
     }
 }
