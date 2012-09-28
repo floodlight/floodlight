@@ -473,6 +473,8 @@ public class ForwardingTest extends FloodlightTestCase {
                         OFActionOutput.MINIMUM_LENGTH);
     
         // Record expected packet-outs/flow-mods
+        // We will inject the packet_in 3 times and expect 1 flow mod and
+        // 3 packet outs due to flow mod dampening
         sw1.write(fm1, cntx);
         expectLastCall().once();
         sw1.write(packetOut, cntx);
