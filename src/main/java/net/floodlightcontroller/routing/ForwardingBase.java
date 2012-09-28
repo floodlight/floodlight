@@ -443,7 +443,7 @@ public abstract class ForwardingBase
 
         // If the switch doens't support buffering set the buffer id to be none
         // otherwise it'll be the the buffer id of the PacketIn
-        if (sw.getFeaturesReply().getBuffers() == 0) {
+        if (sw.getBuffers() == 0) {
             // We set the PI buffer id here so we don't have to check again below
             pi.setBufferId(OFPacketOut.BUFFER_ID_NONE);
             po.setBufferId(OFPacketOut.BUFFER_ID_NONE);

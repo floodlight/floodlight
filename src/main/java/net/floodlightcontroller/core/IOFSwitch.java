@@ -84,11 +84,16 @@ public interface IOFSwitch {
     public Channel getChannel();
 
     /**
-     * Returns the cached OFFeaturesReply message returned by the switch during
-     * the initial handshake.
+     * Returns switch features from features Reply
      * @return
      */
-    public OFFeaturesReply getFeaturesReply();
+    public int getBuffers();
+    
+    public int getActions();
+    
+    public int getCapabilities();
+    
+    public byte getTables();
 
     /**
      * Set the OFFeaturesReply message returned by the switch during initial

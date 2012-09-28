@@ -103,12 +103,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public OFFeaturesReply getFeaturesReply() {
-        assertTrue("Unexpected method call", false);
-        return null;
-    }
-    
-    @Override
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
         assertTrue("Unexpected method call", false);
     }
@@ -326,6 +320,30 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public void cancelFeaturesReply(int transactionId) {
         // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    public int getBuffers() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public int getActions() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public int getCapabilities() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public byte getTables() {
+        // TODO Auto-generated method stub
+        return 0;
     }
 
 }

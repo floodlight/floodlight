@@ -1,5 +1,5 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2012, Big Switch Networks, Inc. 
 *    Originally created by David Erickson, Stanford University
 * 
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -89,7 +89,6 @@ public class OFSwitchImpl implements IOFSwitch {
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
     protected Date connectedSince;
-    protected OFFeaturesReply featuresReply;
     protected String stringId;
     protected Channel channel;
     protected AtomicInteger transactionIdSource;
@@ -123,6 +122,13 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     protected LinkedList<PendingRoleRequestEntry> pendingRoleRequests;
     
+    /* Switch features from initial featuresReply */
+    protected int capabilities;
+    protected int buffers;
+    protected int actions;
+    protected byte tables;
+    protected long datapathId;
+
     public static IOFSwitchFeatures switchFeatures;
     protected static final ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<OFSwitchImpl,List<OFMessage>>>() {
@@ -148,6 +154,7 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     public OFSwitchImpl() {
+        this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
@@ -264,19 +271,17 @@ public class OFSwitchImpl implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public OFFeaturesReply getFeaturesReply() {
-        return this.featuresReply;
-    }
-    
-    @Override
-    @JsonIgnore
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
         synchronized(portLock) {
-            this.featuresReply = featuresReply;
             for (OFPhysicalPort port : featuresReply.getPorts()) {
                 setPort(port);
             }
-            this.stringId = HexString.toHexString(featuresReply.getDatapathId());
+            this.datapathId = featuresReply.getDatapathId();
+            this.capabilities = featuresReply.getCapabilities();
+            this.buffers = featuresReply.getBuffers();
+            this.actions = featuresReply.getActions();
+            this.tables = featuresReply.getTables();
+            this.stringId = HexString.toHexString(this.datapathId);
         }
     }
 
@@ -375,9 +380,9 @@ public class OFSwitchImpl implements IOFSwitch {
     @JsonSerialize(using=DPIDSerializer.class)
     @JsonProperty("dpid")
     public long getId() {
-        if (this.featuresReply == null)
+        if (this.stringId == null)
             throw new RuntimeException("Features reply has not yet been set");
-        return this.featuresReply.getDatapathId();
+        return this.datapathId;
     }
 
     @JsonIgnore
@@ -391,7 +396,7 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     @Override
     public String toString() {
-        return "OFSwitchImpl [" + channel.getRemoteAddress() + " DPID[" + ((featuresReply != null) ? stringId : "?") + "]]";
+        return "OFSwitchImpl [" + channel.getRemoteAddress() + " DPID[" + ((stringId != null) ? stringId : "?") + "]]";
     }
 
     @Override
@@ -819,5 +824,29 @@ public class OFSwitchImpl implements IOFSwitch {
     @Override
     public void cancelFeaturesReply(int transactionId) {
         this.featuresFutureMap.remove(transactionId);
+    }
+
+
+    @Override
+    public int getBuffers() {
+        return buffers;
+    }
+
+
+    @Override
+    public int getActions() {
+        return actions;
+    }
+
+
+    @Override
+    public int getCapabilities() {
+        return capabilities;
+    }
+
+
+    @Override
+    public byte getTables() {
+        return tables;
     }
 }
