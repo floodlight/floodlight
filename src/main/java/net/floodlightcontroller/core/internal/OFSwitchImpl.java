@@ -273,8 +273,13 @@ public class OFSwitchImpl implements IOFSwitch {
     @JsonIgnore
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
         synchronized(portLock) {
-            for (OFPhysicalPort port : featuresReply.getPorts()) {
-                setPort(port);
+            if (stringId == null) {
+                /* ports are updated via port status message, so we
+                 * only fill in ports on initial connection.
+                 */
+                for (OFPhysicalPort port : featuresReply.getPorts()) {
+                    setPort(port);
+                }
             }
             this.datapathId = featuresReply.getDatapathId();
             this.capabilities = featuresReply.getCapabilities();
