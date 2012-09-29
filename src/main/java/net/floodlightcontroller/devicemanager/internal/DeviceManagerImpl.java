@@ -1111,14 +1111,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                     if (moved) {
                         sendDeviceMovedNotification(device);
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device moved: attachment points {}," +
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("Device moved: attachment points {}," +
                                     "entities {}", device.attachmentPoints,
                                     device.entities);
                         }
                     } else {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Device attachment point updated: " + 
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("Device attachment point NOT updated: " +
                                          "attachment points {}," +
                                          "entities {}", device.attachmentPoints,
                                          device.entities);
