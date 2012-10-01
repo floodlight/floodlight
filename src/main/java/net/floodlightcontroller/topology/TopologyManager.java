@@ -1103,7 +1103,7 @@ public class TopologyManager implements
     * Clears the current topology. Note that this does NOT
     * send out updates.
     */
-    private void clearCurrentTopology() {
+    public void clearCurrentTopology() {
         this.clear();
         linksUpdated = true;
         dtLinksUpdated = true;
