@@ -937,15 +937,18 @@ public class Controller implements IFloodlightProviderService,
                     if (log.isTraceEnabled())
                         log.trace("Features Reply from {}", sw);
                     
+                    sw.setFeaturesReply((OFFeaturesReply) m);
                     if (state.hsState.equals(HandshakeState.HELLO)) {
-                        sw.setFeaturesReply((OFFeaturesReply) m);
                         sendFeatureReplyConfiguration();
                         state.hsState = HandshakeState.FEATURES_REPLY;
                         // uncomment to enable "dumb" switches like cbench
                         // state.hsState = HandshakeState.READY;
                         // addSwitch(sw);
                     } else {
+                        // return results to rest api caller
                         sw.deliverOFFeaturesReply(m);
+                        // update database */
+                        updateActiveSwitchInfo(sw);
                     }
                     break;
                 case GET_CONFIG_REPLY:
