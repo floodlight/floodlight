@@ -1058,6 +1058,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 // generate a new device ID. However, we first check if 
                 // the entity is allowed (e.g., for spoofing protection)
                 if (!isEntityAllowed(entity, entityClass)) {
+                    logger.info("PacketIn is not allowed {} {}", 
+                                entityClass.getName(), entity);
                     return null;
                 }
                 synchronized (deviceKeyLock) {
@@ -1091,6 +1093,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             }
 
             if (!isEntityAllowed(entity, device.getEntityClass())) {
+                logger.info("PacketIn is not allowed {} {}", 
+                            device.getEntityClass().getName(), entity);
                 return null;
             }
             int entityindex = -1;
