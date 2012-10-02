@@ -94,7 +94,6 @@ public class OFMessageDamper {
         msgTypesToCache = EnumSet.copyOf(typesToDampen);
     }        
     
-    
     /**
      * write the messag to the switch according to our dampening settings
      * @param sw
@@ -104,10 +103,29 @@ public class OFMessageDamper {
      * the message was dampened. 
      * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) 
+    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx)
+                    throws IOException {
+        return write(sw, msg, cntx, false);
+    }
+    
+    /**
+     * write the messag to the switch according to our dampening settings
+     * @param sw
+     * @param msg
+     * @param cntx
+     * @param flush true to flush the packet immidiately
+     * @return true if the message was written to the switch, false if
+     * the message was dampened. 
+     * @throws IOException
+     */
+    public boolean write(IOFSwitch sw, OFMessage msg,
+                        FloodlightContext cntx, boolean flush) 
             throws IOException {
         if (! msgTypesToCache.contains(msg.getType())) {
             sw.write(msg, cntx);
+            if (flush) {
+                sw.flush();
+            }
             return true;
         }
         
@@ -117,6 +135,9 @@ public class OFMessageDamper {
             return false; 
         } else {
             sw.write(msg, cntx);
+            if (flush) {
+                sw.flush();
+            }
             return true;
         }
     }
