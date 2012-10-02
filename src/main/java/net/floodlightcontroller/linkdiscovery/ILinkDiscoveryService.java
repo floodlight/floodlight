@@ -70,4 +70,15 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * Get the set of quarantined ports on a switch
      */
     public Set<Short> getQuarantinedPorts(long sw);
+
+    /**
+     * Get the status of auto port fast feature.
+     */
+    public boolean isAutoPortFastFeature();
+
+    /**
+     * Set the state for auto port fast feature.
+     * @param autoPortFastFeature
+     */
+    public void setAutoPortFastFeature(boolean autoPortFastFeature);
 }
