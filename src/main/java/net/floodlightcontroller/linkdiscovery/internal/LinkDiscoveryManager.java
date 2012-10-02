@@ -1281,6 +1281,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
         // Update event history
         evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
+        LDUpdate update = new LDUpdate(sw.getId(), null,
+                                       UpdateOperation.SWITCH_UPDATED);
+        updates.add(update);
     }
 
     /**
