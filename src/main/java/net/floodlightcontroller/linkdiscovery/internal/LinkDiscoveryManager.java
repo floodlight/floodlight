@@ -60,6 +60,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
+import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
@@ -68,6 +69,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -140,6 +142,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IThreadPoolService threadPool;
+    protected IRestApiService restApi;
 
 
     // LLDP and BDDP fields
@@ -185,6 +188,12 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected LLDPTLV controllerTLV;
     protected ReentrantReadWriteLock lock;
     int lldpTimeCount = 0;
+
+    /**
+     * Flag to indicate if automatic port fast is enabled or not.
+     * Default is set to false -- Initialized in the init method as well.
+     */
+    boolean autoPortFastFeature = false;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -1124,6 +1133,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 // remove link from storage.
                 removeLinkFromStorage(lt);
 
+                // TODO  Whenever link is removed, it has to checked if
+                // the switchports must be added to quarantine.
 
                 if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
@@ -1242,6 +1253,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
             // do it outside the write-lock
             // sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
             discover(npt);
+            if (!isLLDPSuppressed(npt.getNodeId(), npt.getPortId()) &&
+                    autoPortFastFeature &&
+                    !isFastPort(npt.getNodeId(), npt.getPortId()))
+                addToQuarantineQueue(npt);
         }
         return Command.CONTINUE;
     }
@@ -1258,11 +1273,17 @@ IFloodlightModule, IInfoProvider, IHAListener {
             for (Short p : sw.getEnabledPortNumbers()) {
                 npt = new NodePortTuple(sw.getId(), p);
                 discover(npt);
-                addToQuarantineQueue(npt);
+                if (!isLLDPSuppressed(npt.getNodeId(), npt.getPortId()) &&
+                        autoPortFastFeature &&
+                        !isFastPort(npt.getNodeId(), npt.getPortId()))
+                    addToQuarantineQueue(npt);
             }
         }
         // Update event history
         evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
+        LDUpdate update = new LDUpdate(sw.getId(), null,
+                                       UpdateOperation.SWITCH_UPDATED);
+        updates.add(update);
     }
 
     /**
@@ -1713,6 +1734,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         l.add(IFloodlightProviderService.class);
         l.add(IStorageSourceService.class);
         l.add(IThreadPoolService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -1722,6 +1744,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
+
+        // Set the autoportfast feature to false.
+        this.autoPortFastFeature = false;
 
         // We create this here because there is no ordering guarantee
         this.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
@@ -1852,7 +1878,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         floodlightProvider.addOFSwitchListener(this);
         floodlightProvider.addHAListener(this);
         floodlightProvider.addInfoProvider("summary", this);
-
+        if (restApi != null)
+            restApi.addRestletRoutable(new LinkDiscoveryWebRoutable());
         setControllerTLV();
     }
 
@@ -1986,5 +2013,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                          Map<String, String> addedControllerNodeIPs,
                                          Map<String, String> removedControllerNodeIPs) {
         // ignore
+    }
+
+    public boolean isAutoPortFastFeature() {
+        return autoPortFastFeature;
+    }
+
+    public void setAutoPortFastFeature(boolean autoPortFastFeature) {
+        this.autoPortFastFeature = autoPortFastFeature;
     }
 }
