@@ -1875,7 +1875,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         floodlightProvider.addOFSwitchListener(this);
         floodlightProvider.addHAListener(this);
         floodlightProvider.addInfoProvider("summary", this);
-        restApi.addRestletRoutable(new LinkDiscoveryWebRoutable());
+        if (restApi != null)
+            restApi.addRestletRoutable(new LinkDiscoveryWebRoutable());
         setControllerTLV();
     }
 
