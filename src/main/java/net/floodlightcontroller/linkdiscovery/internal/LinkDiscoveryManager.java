@@ -440,7 +440,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
             NodePortTuple npt;
             npt = maintenanceQueue.remove();
             sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
-            nptList.add(npt);
             count++;
         }
 
