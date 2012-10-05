@@ -60,7 +60,7 @@ public class FlowReconcileManager
     String controllerPktInCounterName;
     protected SimpleCounter lastPacketInCounter;
     
-    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 500000;
+    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 50000;
     /** a minimum flow reconcile rate so that it won't stave */
     protected static int MIN_FLOW_RECONCILE_PER_SECOND = 1000;
     
@@ -364,13 +364,17 @@ public class FlowReconcileManager
         // Update the last packetInCounter
         lastPacketInCounter = (SimpleCounter)
         SimpleCounter.createCounter(pktInCounter);
-        if ((pktInRate + MIN_FLOW_RECONCILE_PER_SECOND) >
+        int capacity = minFlows;
+        if ((pktInRate + MIN_FLOW_RECONCILE_PER_SECOND) <=
                                MAX_SYSTEM_LOAD_PER_SECOND) {
-            return minFlows;
-        } else {
-            return (MAX_SYSTEM_LOAD_PER_SECOND - pktInRate)
+            capacity = (MAX_SYSTEM_LOAD_PER_SECOND - pktInRate)
                     * FLOW_RECONCILE_DELAY_MILLISEC / 1000;
         }
+        
+        if (logger.isTraceEnabled()) {
+            logger.trace("Capacity is {}", capacity);
+        }
+        return capacity;
     }
     
     protected int getPktInRate(ICounter newCnt, Date currentTime) {

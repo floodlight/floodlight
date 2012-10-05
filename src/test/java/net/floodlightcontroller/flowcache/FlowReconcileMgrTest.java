@@ -34,7 +34,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
     
     OFStatisticsRequest ofStatsRequest;
 
-    protected int NUM_FLOWS_PER_THREAD = 1000;
+    protected int NUM_FLOWS_PER_THREAD = 100;
     protected int NUM_THREADS = 100;
     
     @Before
@@ -329,7 +329,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             flowReconcileMgr.controllerPktInCounterName))
         .andReturn(newCnt)
         .times(1);
-        long initPktInCount = 100000;
+        long initPktInCount = 10000;
         newCnt.increment(currentTime, initPktInCount);
     
         replay(counterStore);
@@ -345,7 +345,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         newCnt = (SimpleCounter)SimpleCounter.createCounter(
                     currentTime, CounterType.LONG);
         currentTime = new Date(currentTime.getTime() + 200);
-        long nextPktInCount = 300000;
+        long nextPktInCount = 30000;
         newCnt.increment(currentTime, nextPktInCount);
     
         expect(counterStore.getCounter(
@@ -390,7 +390,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
                     flowReconcileMgr.controllerPktInCounterName))
         .andReturn(newCnt)
         .anyTimes();
-        long initPktInCount = 100000;
+        long initPktInCount = 10000;
         newCnt.increment(currentTime, initPktInCount);
     
         IFlowReconcileListener r1 =
