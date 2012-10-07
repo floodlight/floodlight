@@ -260,7 +260,30 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             long cookie = 
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             
-                            pushRoute(route, match, 0, pi, sw.getId(), cookie, 
+                         // if there is prior routing decision use wildcard                                                     
+                            Integer wildcard_hints = null;
+                            IRoutingDecision decision = null;
+                            if (cntx != null) {
+                                decision = IRoutingDecision.rtStore
+                                        .get(cntx,
+                                                IRoutingDecision.CONTEXT_DECISION);
+                            }
+                            if (decision != null) {
+                                wildcard_hints = decision.getWildcards();
+                            } else {
+                            	// L2 only wildcard if there is no prior route decision
+                                wildcard_hints = ((Integer) sw
+                                        .getAttribute(IOFSwitch.PROP_FASTWILDCARDS))
+                                        .intValue()
+                                        & ~OFMatch.OFPFW_IN_PORT
+                                        & ~OFMatch.OFPFW_DL_VLAN
+                                        & ~OFMatch.OFPFW_DL_SRC
+                                        & ~OFMatch.OFPFW_DL_DST
+                                        & ~OFMatch.OFPFW_NW_SRC_MASK
+                                        & ~OFMatch.OFPFW_NW_DST_MASK;
+                            }
+
+                            pushRoute(route, match, wildcard_hints, pi, sw.getId(), cookie, 
                                       cntx, requestFlowRemovedNotifn, false,
                                       OFFlowMod.OFPFC_ADD);
                         }
@@ -343,16 +366,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         return;
     }
     
-    @Override
-    protected OFMatch wildcard(OFMatch match, IOFSwitch sw, Integer hints) {
-        // use same wilcarding as the learning switch
-        int wildcards = ((Integer)sw.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).intValue() &
-            ~OFMatch.OFPFW_IN_PORT & ~OFMatch.OFPFW_DL_VLAN &
-            ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST &
-            ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK;
-        return match.clone().setWildcards(wildcards);
-    }
-
     // IFloodlightModule methods
     
     @Override

@@ -37,6 +37,11 @@ import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.OFType;
 import org.openflow.util.HexString;
 
+/**
+ * Unit test for stateless firewall implemented as a Google Summer of Code project.
+ * 
+ * @author Amer Tahir
+ */
 public class FirewallTest extends FloodlightTestCase {
     protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightContext cntx;
@@ -226,49 +231,49 @@ public class FirewallTest extends FloodlightTestCase {
     public void testReadRulesFromStorage() throws Exception {
         // add 2 rules first
         FirewallRule rule = new FirewallRule();
-        rule.src_inport = 2;
-        rule.src_mac = MACAddress.valueOf("00:00:00:00:00:01").toLong();
-        rule.dst_mac = MACAddress.valueOf("00:00:00:00:00:02").toLong();
+        rule.in_port = 2;
+        rule.dl_src = MACAddress.valueOf("00:00:00:00:00:01").toLong();
+        rule.dl_dst = MACAddress.valueOf("00:00:00:00:00:02").toLong();
         rule.priority = 1;
-        rule.is_denyrule = true;
+        rule.action = FirewallRule.FirewallAction.DENY;
         firewall.addRule(rule);
         rule = new FirewallRule();
-        rule.src_inport = 3;
-        rule.src_mac = MACAddress.valueOf("00:00:00:00:00:02").toLong();
-        rule.dst_mac = MACAddress.valueOf("00:00:00:00:00:01").toLong();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
-        rule.proto_dstport = 80;
+        rule.in_port = 3;
+        rule.dl_src = MACAddress.valueOf("00:00:00:00:00:02").toLong();
+        rule.dl_dst = MACAddress.valueOf("00:00:00:00:00:01").toLong();
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
+        rule.tp_dst = 80;
         rule.priority = 2;
-        rule.is_denyrule = false;
+        rule.action = FirewallRule.FirewallAction.ALLOW;
         firewall.addRule(rule);
 
         List<FirewallRule> rules = firewall.readRulesFromStorage();
         // verify rule 1
         FirewallRule r = rules.get(0);
-        assertEquals(r.src_inport, 2);
+        assertEquals(r.in_port, 2);
         assertEquals(r.priority, 1);
-        assertEquals(r.src_mac, MACAddress.valueOf("00:00:00:00:00:01").toLong());
-        assertEquals(r.dst_mac, MACAddress.valueOf("00:00:00:00:00:02").toLong());
-        assertEquals(r.is_denyrule, true);
+        assertEquals(r.dl_src, MACAddress.valueOf("00:00:00:00:00:01").toLong());
+        assertEquals(r.dl_dst, MACAddress.valueOf("00:00:00:00:00:02").toLong());
+        assertEquals(r.action, FirewallRule.FirewallAction.DENY);
         // verify rule 2
         r = rules.get(1);
-        assertEquals(r.src_inport, 3);
+        assertEquals(r.in_port, 3);
         assertEquals(r.priority, 2);
-        assertEquals(r.src_mac, MACAddress.valueOf("00:00:00:00:00:02").toLong());
-        assertEquals(r.dst_mac, MACAddress.valueOf("00:00:00:00:00:01").toLong());
-        assertEquals(r.proto_type, IPv4.PROTOCOL_TCP);
-        assertEquals(r.proto_dstport, 80);
-        assertEquals(r.wildcard_proto_type, false);
-        assertEquals(r.is_denyrule, false);
+        assertEquals(r.dl_src, MACAddress.valueOf("00:00:00:00:00:02").toLong());
+        assertEquals(r.dl_dst, MACAddress.valueOf("00:00:00:00:00:01").toLong());
+        assertEquals(r.nw_proto, IPv4.PROTOCOL_TCP);
+        assertEquals(r.tp_dst, 80);
+        assertEquals(r.wildcard_nw_proto, false);
+        assertEquals(r.action, FirewallRule.FirewallAction.ALLOW);
     }
 
     @Test
     public void testRuleInsertionIntoStorage() throws Exception {
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -281,8 +286,8 @@ public class FirewallTest extends FloodlightTestCase {
     public void testRuleDeletion() throws Exception {
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
         int rid = rule.ruleid;
@@ -304,8 +309,8 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -326,15 +331,17 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
+        rule.dl_type = Ethernet.TYPE_IPv4;
+        rule.wildcard_dl_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
         // source is IP 192.168.1.2
-        rule.src_ip_prefix = IPv4.toIPv4Address("192.168.1.2");
-        rule.wildcard_src_ip = false;
+        rule.nw_src_prefix = IPv4.toIPv4Address("192.168.1.2");
+        rule.wildcard_nw_src = false;
         // dest is network 192.168.1.0/24
-        rule.dst_ip_prefix = IPv4.toIPv4Address("192.168.1.0");
-        rule.dst_ip_bits = 24;
-        rule.wildcard_dst_ip = false;
+        rule.nw_dst_prefix = IPv4.toIPv4Address("192.168.1.0");
+        rule.nw_dst_maskbits = 24;
+        rule.wildcard_nw_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -364,15 +371,17 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP port 80 (destination only) allow rule
         FirewallRule rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
-        rule.proto_dstport = 80;
+        rule.dl_type = Ethernet.TYPE_IPv4;
+        rule.wildcard_dl_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
+        rule.tp_dst = 80;
         rule.priority = 1;
         firewall.addRule(rule);
 
         // add block all rule
         rule = new FirewallRule();
-        rule.is_denyrule = true;
+        rule.action = FirewallRule.FirewallAction.DENY;
         rule.priority = 2;
         firewall.addRule(rule);
 
@@ -477,19 +486,19 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add L2 rule
         FirewallRule rule = new FirewallRule();
-        rule.src_mac = MACAddress.valueOf("00:44:33:22:11:00").toLong();
-        rule.wildcard_src_mac = false;
-        rule.dst_mac = MACAddress.valueOf("00:11:22:33:44:55").toLong();
-        rule.wildcard_dst_mac = false;
+        rule.dl_src = MACAddress.valueOf("00:44:33:22:11:00").toLong();
+        rule.wildcard_dl_src = false;
+        rule.dl_dst = MACAddress.valueOf("00:11:22:33:44:55").toLong();
+        rule.wildcard_dl_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
         // add TCP deny all rule
         rule = new FirewallRule();
-        rule.proto_type = IPv4.PROTOCOL_TCP;
-        rule.wildcard_proto_type = false;
+        rule.nw_proto = IPv4.PROTOCOL_TCP;
+        rule.wildcard_nw_proto = false;
         rule.priority = 2;
-        rule.is_denyrule = true;
+        rule.action = FirewallRule.FirewallAction.DENY;
         firewall.addRule(rule);
 
         // simulate a packet-in event
