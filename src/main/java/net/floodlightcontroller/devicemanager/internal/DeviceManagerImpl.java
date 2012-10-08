@@ -609,10 +609,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
         }
         if (logger.isTraceEnabled()) {
-            logger.trace("Reconciling flow: match={}, srcDev={}, " 
+            logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, " 
                          + "dstEntity={}, dstDev={}",
-                         new Object[] { ofm.ofmWithSwDpid, srcDevice, 
-                                        dstEntity, dstDevice } );
+                         new Object[] {ofm.ofmWithSwDpid.getOfMatch(),
+                                       srcEntity, srcDevice, 
+                                       dstEntity, dstDevice } );
         }
         return Command.CONTINUE;
     }
@@ -890,7 +891,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param ofmWithSwDpid
      * @return the entity from the packet
      */
-    private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid, boolean isSource) {
+    private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid,
+                boolean isSource) {
         byte[] dlAddrArr = ofmWithSwDpid.getOfMatch().getDataLayerSource();
         int nwSrc = ofmWithSwDpid.getOfMatch().getNetworkSource();
         if (!isSource) {
