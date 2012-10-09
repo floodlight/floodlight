@@ -4,6 +4,7 @@ import static org.easymock.EasyMock.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.ListIterator;
 
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -373,6 +374,66 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
                 flowReconcileMgr.reconcileFlow(ofmRc);
             }
         }
+    }
+    
+    /** Verify the flows are sent to the reconcile pipeline in order.
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testQueueFlowsOrder() {
+        flowReconcileMgr.flowReconcileEnabled = false;
+        
+        IFlowReconcileListener r1 =
+            EasyMock.createNiceMock(IFlowReconcileListener.class);
+        
+        expect(r1.getName()).andReturn("r1").anyTimes();
+        
+        // Set the listeners' order: r1 -> r2 -> r3
+        expect(r1.isCallbackOrderingPrereq((OFType)anyObject(),
+            (String)anyObject())).andReturn(false).anyTimes();
+        expect(r1.isCallbackOrderingPostreq((OFType)anyObject(),
+            (String)anyObject())).andReturn(false).anyTimes();
+        
+        expect(r1.reconcileFlows((ArrayList<OFMatchReconcile>)anyObject()))
+        .andAnswer(new IAnswer<Command>() {
+            @Override
+            public Command answer() throws Throwable {
+                ArrayList<OFMatchReconcile> ofmList =
+                    (ArrayList<OFMatchReconcile>)EasyMock.
+                        getCurrentArguments()[0];
+                ListIterator<OFMatchReconcile> lit = ofmList.listIterator();
+                int index = 0;
+                while (lit.hasNext()) {
+                    OFMatchReconcile ofm = lit.next();
+                    assertEquals(index++, ofm.cookie);
+                }
+                return Command.STOP;
+            }
+        }).times(1);
+        
+        SimpleCounter cnt = (SimpleCounter)SimpleCounter.createCounter(
+                            new Date(),
+                            CounterType.LONG);
+        cnt.increment();
+        expect(counterStore.getCounter(
+                flowReconcileMgr.controllerPktInCounterName))
+                .andReturn(cnt)
+                .anyTimes();
+        
+        replay(r1, counterStore);
+        flowReconcileMgr.clearFlowReconcileListeners();
+        flowReconcileMgr.addFlowReconcileListener(r1);
+        
+        OFMatchReconcile ofmRcIn = new OFMatchReconcile();
+        int index = 0;
+        for (index = 0; index < 10; index++) {
+            ofmRcIn.cookie = index;
+            flowReconcileMgr.reconcileFlow(ofmRcIn);
+        }
+        flowReconcileMgr.flowReconcileEnabled = true;
+        flowReconcileMgr.doReconcile();
+        
+        verify(r1);
     }
     
     @SuppressWarnings("unchecked")

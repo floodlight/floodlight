@@ -109,8 +109,11 @@ public class FlowReconcileManager
      */
     public void reconcileFlow(OFMatchReconcile ofmRcIn) {
         if (ofmRcIn == null) return;
+        
+        // Make a copy before putting on the queue.
+        OFMatchReconcile myOfmRc = new OFMatchReconcile(ofmRcIn);
     
-        flowQueue.add(ofmRcIn);
+        flowQueue.add(myOfmRc);
     
         Date currTime = new Date();
         long delay = 0;
@@ -128,7 +131,7 @@ public class FlowReconcileManager
     
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: {}, total: {}",
-                    ofmRcIn.toString(), flowQueue.size());
+                myOfmRc.toString(), flowQueue.size());
         }
     }
     
@@ -270,10 +273,15 @@ public class FlowReconcileManager
             logger.trace("Reconcile capacity {} flows", reconcileCapacity);
         }
         while (!flowQueue.isEmpty() && reconcileCapacity > 0) {
-            OFMatchReconcile ofmRc = flowQueue.remove();
+            OFMatchReconcile ofmRc = flowQueue.poll();
             reconcileCapacity--;
             if (ofmRc != null) {
                 ofmRcList.add(ofmRc);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Add flow {} to be the reconcileList", ofmRc.cookie);
+                }
+            } else {
+                break;
             }
         }
         
