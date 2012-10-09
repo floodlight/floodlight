@@ -993,15 +993,15 @@ public class Controller implements IFloodlightProviderService,
                     if (sw.checkFirstPendingRoleRequestXid(error.getXid())) {
                         boolean isBadVendorError =
                             (error.getErrorType() == OFError.OFErrorType.
-                                    OFPET_BAD_REQUEST.getValue()) &&
-                            (error.getErrorCode() == OFError.
-                                    OFBadRequestCode.
-                                        OFPBRC_BAD_VENDOR.ordinal());
+                                    OFPET_BAD_REQUEST.getValue());
                         // We expect to receive a bad vendor error when 
                         // we're connected to a switch that doesn't support 
                         // the Nicira vendor extensions (i.e. not OVS or 
-                        // derived from OVS). So that's not a real error 
-                        // case and we don't want to log those spurious errors.
+                        // derived from OVS).  By protocol, it should also be
+                        // BAD_VENDOR, but too many switch implementations
+                        // get it wrong and we can already check the xid()
+                        // so we can ignore the type with confidence that this
+                        // is not a spurious error
                         shouldLogError = !isBadVendorError;
                         if (isBadVendorError) {
                             if (state.firstRoleReplyReceived && (role != null)) {
