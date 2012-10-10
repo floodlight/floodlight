@@ -544,6 +544,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
             return;
         }
 
+        // For fast ports, do not send forward LLDPs or BDDPs.
+        if (!isReverse && isFastPort(sw, port))
+            return;
+
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                       sw, port);
@@ -655,14 +659,15 @@ IFloodlightModule, IInfoProvider, IHAListener {
             if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
                 for (OFPhysicalPort ofp: iofSwitch.getEnabledPorts()) {
-                    // sends only forward LLDPs and BDDPs
-                    sendDiscoveryMessage(sw, ofp.getPortNumber(), true, false);
+                    if  (!isFastPort(sw, ofp.getPortNumber())) {
+                        // sends forward LLDP only non-fastports.
+                        sendDiscoveryMessage(sw, ofp.getPortNumber(), true, false);
 
-                    NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNumber());
-                    if (portLinks.containsKey(npt) == false ||
-                            portBroadcastDomainLinks.containsKey(npt)) {
-                        // add to maintenance list.
-                        addToMaintenanceQueue(npt);
+                        // If the switch port is not alreayd in the maintenance
+                        // queue, add it.
+                        NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNumber());
+                        if (!maintenanceQueue.contains(npt))
+                            addToMaintenanceQueue(npt);
                     }
                 }
             }
