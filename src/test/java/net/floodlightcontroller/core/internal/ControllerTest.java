@@ -941,6 +941,27 @@ public class ControllerTest extends FloodlightTestCase {
         assertTrue("activeSwitches must be empty",
                    controller.activeSwitches.isEmpty());
         reset(ch, chdlr.sw);
+              
+        
+        // a different error message - should also reject role request
+        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
+        state.firstRoleReplyReceived = false;
+        controller.role = Role.SLAVE;
+        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
+        chdlr.sw.deliverRoleRequestNotSupported(xid);
+        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
+        expect(ch.close()).andReturn(null);
+        replay(ch, chdlr.sw);
+        
+        chdlr.processOFMessage(msg);
+        verify(ch, chdlr.sw);
+        assertTrue("state.firstRoleReplyReceived must be True even with EPERM",
+                   state.firstRoleReplyReceived);
+        assertTrue("activeSwitches must be empty", 
+                   controller.activeSwitches.isEmpty());
+        reset(ch, chdlr.sw);
+    
         
         // We are MASTER, the switch should be added to the list of active
         // switches.
@@ -959,26 +980,7 @@ public class ControllerTest extends FloodlightTestCase {
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(0L));
         reset(ch, chdlr.sw);
-        
-        
-        // a different error messge
-        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
-        msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
-        state.firstRoleReplyReceived = false;
-        controller.role = Role.MASTER;
-        controller.activeSwitches.clear();
-        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
-        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
-        expect(ch.close()).andReturn(null);
-        replay(ch, chdlr.sw);
-        
-        chdlr.processOFMessage(msg);
-        verify(ch, chdlr.sw);
-        assertFalse("state.firstRoleReplyReceived must be false",
-                   state.firstRoleReplyReceived);
-        assertTrue("activeSwitches must be empty", 
-                   controller.activeSwitches.isEmpty());
-        reset(ch, chdlr.sw);
+
     }
     
     
