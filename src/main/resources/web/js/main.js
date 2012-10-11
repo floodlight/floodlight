@@ -117,11 +117,11 @@ tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-lis
         });
     });
 
-setInterval(function () {
-    swl.fetch();
-}, 3000);
+var updating = true;
 
 setInterval(function () {
-    hl.fetch();
+    if(updating) {
+        swl.fetch();
+        hl.fetch();
+    }
 }, 3000);
-
