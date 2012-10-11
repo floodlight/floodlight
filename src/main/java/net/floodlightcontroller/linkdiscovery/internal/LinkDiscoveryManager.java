@@ -545,7 +545,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
 
         // For fast ports, do not send forward LLDPs or BDDPs.
-        if (!isReverse && isFastPort(sw, port))
+        if (!isReverse && autoPortFastFeature && isFastPort(sw, port))
             return;
 
         if (log.isTraceEnabled()) {
