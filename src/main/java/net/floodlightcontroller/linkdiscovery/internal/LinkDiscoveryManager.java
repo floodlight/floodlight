@@ -227,7 +227,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     /**
      * List of ports through which LLDP/BDDPs are not sent.
      */
-    protected Set<NodePortTuple> suppressLLDPs;
+    protected Set<NodePortTuple> suppressLinkDiscovery;
 
     /** A list of ports that are quarantined for discovering links through
      * them.  Data traffic from these ports are not allowed until the ports
@@ -269,7 +269,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     }
 
     public Set<NodePortTuple> getSuppressLLDPsInfo() {
-        return suppressLLDPs;
+        return suppressLinkDiscovery;
     }
 
     /**
@@ -279,7 +279,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     public void AddToSuppressLLDPs(long sw, short port)
     {
         NodePortTuple npt = new NodePortTuple(sw, port);
-        this.suppressLLDPs.add(npt);
+        this.suppressLinkDiscovery.add(npt);
         deleteLinksOnPort(npt, "LLDP suppressed.");
     }
 
@@ -290,7 +290,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     public void RemoveFromSuppressLLDPs(long sw, short port) 
     {
         NodePortTuple npt = new NodePortTuple(sw, port);
-        this.suppressLLDPs.remove(npt);
+        this.suppressLinkDiscovery.remove(npt);
         discover(npt);
     }
 
@@ -339,8 +339,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
         } while (updates.peek() != null);
     }
-    private boolean isLLDPSuppressed(long sw, short portNumber) {
-        return this.suppressLLDPs.contains(new NodePortTuple(sw, portNumber));
+    private boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
+        return this.suppressLinkDiscovery.contains(new NodePortTuple(sw, portNumber));
     }
 
     protected void discoverLinks() {
@@ -537,7 +537,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             return;
         }
 
-        if (isLLDPSuppressed(sw, port)) {
+        if (isLinkDiscoverySuppressed(sw, port)) {
             /* Dont send LLDPs out of this port as suppressLLDPs set
              * 
              */
@@ -659,16 +659,20 @@ IFloodlightModule, IInfoProvider, IHAListener {
             if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
                 for (OFPhysicalPort ofp: iofSwitch.getEnabledPorts()) {
-                    if  (!isFastPort(sw, ofp.getPortNumber())) {
-                        // sends forward LLDP only non-fastports.
-                        sendDiscoveryMessage(sw, ofp.getPortNumber(), true, false);
+                    if (isLinkDiscoverySuppressed(sw, ofp.getPortNumber()))
+                        continue;
+                    if (autoPortFastFeature && isFastPort(sw, ofp.getPortNumber()))
+                        continue;
 
-                        // If the switch port is not alreayd in the maintenance
-                        // queue, add it.
-                        NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNumber());
-                        if (!maintenanceQueue.contains(npt))
-                            addToMaintenanceQueue(npt);
-                    }
+                    // sends forward LLDP only non-fastports.
+                    sendDiscoveryMessage(sw, ofp.getPortNumber(), true, false);
+
+                    // If the switch port is not alreayd in the maintenance
+                    // queue, add it.
+                    NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNumber());
+                    if (!maintenanceQueue.contains(npt))
+                        addToMaintenanceQueue(npt);
+
                 }
             }
         }
@@ -734,7 +738,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             return Command.STOP;
         }
 
-        if (isLLDPSuppressed(sw, pi.getInPort()))
+        if (isLinkDiscoverySuppressed(sw, pi.getInPort()))
             return Command.STOP;
 
         // If this is a malformed LLDP, or not from us, exit
@@ -807,7 +811,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
             }
             return Command.STOP;
         }
-        if (suppressLLDPs.contains(new NodePortTuple(remoteSwitch.getId(), 
+        if (suppressLinkDiscovery.contains(new NodePortTuple(remoteSwitch.getId(),
                                                      remotePort))) {
             if (log.isTraceEnabled()) {
                 log.trace("Ignoring link with suppressed src port: switch {} port {}",
@@ -1256,13 +1260,34 @@ IFloodlightModule, IInfoProvider, IHAListener {
             // to be sent on the timer as it is normally done
             // do it outside the write-lock
             // sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
-            discover(npt);
-            if (!isLLDPSuppressed(npt.getNodeId(), npt.getPortId()) &&
-                    autoPortFastFeature &&
-                    !isFastPort(npt.getNodeId(), npt.getPortId()))
-                addToQuarantineQueue(npt);
+            processNewPort(npt.getNodeId(), npt.getPortId());
         }
         return Command.CONTINUE;
+    }
+
+    /**
+     * Process a new port.
+     * If link discovery is disabled on the port, then do nothing.
+     * If autoportfast feature is enabled and the port is a fast port, then
+     * do nothing.
+     * Otherwise, send LLDP message.  Add the port to quarantine.
+     * @param sw
+     * @param p
+     */
+    private void processNewPort(long sw, short p) {
+        NodePortTuple npt = new NodePortTuple(sw, p);
+        if (isLinkDiscoverySuppressed(npt.getNodeId(), npt.getPortId())) {
+            // Do nothing as link discovery is suppressed.
+        }
+        else if (autoPortFastFeature &&
+                isFastPort(npt.getNodeId(), npt.getPortId())) {
+            // Do nothing as autoportfast feature is enabled and
+            // the port is a fast port.
+        }
+        else {
+            discover(npt);
+            addToQuarantineQueue(npt);
+        }
     }
 
     /**
@@ -1272,15 +1297,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
     @Override
     public void addedSwitch(IOFSwitch sw) {
 
-        NodePortTuple npt;
         if (sw.getEnabledPorts() != null) {
             for (Short p : sw.getEnabledPortNumbers()) {
-                npt = new NodePortTuple(sw.getId(), p);
-                discover(npt);
-                if (!isLLDPSuppressed(npt.getNodeId(), npt.getPortId()) &&
-                        autoPortFastFeature &&
-                        !isFastPort(npt.getNodeId(), npt.getPortId()))
-                    addToQuarantineQueue(npt);
+                processNewPort(sw.getId(), p);
             }
         }
         // Update event history
@@ -1759,7 +1778,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         this.updates = new LinkedBlockingQueue<LDUpdate>();
         this.links = new HashMap<Link, LinkInfo>();
         this.portLinks = new HashMap<NodePortTuple, Set<Link>>();
-        this.suppressLLDPs =
+        this.suppressLinkDiscovery =
                 Collections.synchronizedSet(new HashSet<NodePortTuple>());
         this.portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         this.switchLinks = new HashMap<Long, Set<Link>>();
