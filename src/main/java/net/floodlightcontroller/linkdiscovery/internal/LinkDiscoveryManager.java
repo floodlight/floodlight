@@ -403,7 +403,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
         // TODO We are not checking if the switch port tuple is already
         // in the maintenance list or not.  This will be an issue for
         // really large number of switch ports in the network.
-        maintenanceQueue.add(npt);
+        if (maintenanceQueue.contains(npt) == false)
+            maintenanceQueue.add(npt);
     }
 
     /**
@@ -670,9 +671,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     // If the switch port is not alreayd in the maintenance
                     // queue, add it.
                     NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNumber());
-                    if (!maintenanceQueue.contains(npt))
-                        addToMaintenanceQueue(npt);
-
+                    addToMaintenanceQueue(npt);
                 }
             }
         }
@@ -1275,18 +1274,23 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * @param p
      */
     private void processNewPort(long sw, short p) {
-        NodePortTuple npt = new NodePortTuple(sw, p);
-        if (isLinkDiscoverySuppressed(npt.getNodeId(), npt.getPortId())) {
+        if (isLinkDiscoverySuppressed(sw, p)) {
             // Do nothing as link discovery is suppressed.
         }
-        else if (autoPortFastFeature &&
-                isFastPort(npt.getNodeId(), npt.getPortId())) {
-            // Do nothing as autoportfast feature is enabled and
-            // the port is a fast port.
+        else if (autoPortFastFeature && isFastPort(sw, p)) {
+            // Do nothing as the port is a fast port.
         }
         else {
-            discover(npt);
-            addToQuarantineQueue(npt);
+            NodePortTuple npt = new NodePortTuple(sw, p);
+            discover(sw, p);
+            // if it is not a fast port, add it to quarantine.
+            if (!isFastPort(sw, p)) {
+                addToQuarantineQueue(npt);
+            } else {
+                // Add to maintenance queue to ensure that BDDP packets
+                // are sent out.
+                addToMaintenanceQueue(npt);
+            }
         }
     }
 
