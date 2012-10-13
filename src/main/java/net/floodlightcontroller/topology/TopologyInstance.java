@@ -421,7 +421,7 @@ public class TopologyInstance {
         return broadcastDomainPorts.contains(npt);
     }
 
-    class NodeDist implements Comparable<NodeDist> {
+    protected class NodeDist implements Comparable<NodeDist> {
         private Long node;
         public Long getNode() {
             return node;

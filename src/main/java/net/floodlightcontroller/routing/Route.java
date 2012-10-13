@@ -30,17 +30,20 @@ import net.floodlightcontroller.topology.NodePortTuple;
 public class Route implements Comparable<Route> {
     protected RouteId id;
     protected List<NodePortTuple> switchPorts;
+    protected int routeCount;
 
     public Route(RouteId id, List<NodePortTuple> switchPorts) {
         super();
         this.id = id;
         this.switchPorts = switchPorts;
+        this.routeCount = 0; // useful if multipath routing available
     }
 
     public Route(Long src, Long dst) {
         super();
         this.id = new RouteId(src, dst);
         this.switchPorts = new ArrayList<NodePortTuple>();
+        this.routeCount = 0;
     }
 
     /**
@@ -71,6 +74,20 @@ public class Route implements Comparable<Route> {
         this.switchPorts = switchPorts;
     }
 
+    /**
+     * @param routeCount routeCount set by (ECMP) buildRoute method 
+     */
+    public void setRouteCount(int routeCount) {
+        this.routeCount = routeCount;
+    }
+    
+    /**
+     * @return routeCount return routeCount set by (ECMP) buildRoute method 
+     */
+    public int getRouteCount() {
+        return routeCount;
+    }
+    
     @Override
     public int hashCode() {
         final int prime = 5791;

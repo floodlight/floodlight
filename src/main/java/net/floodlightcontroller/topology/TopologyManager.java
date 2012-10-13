@@ -529,7 +529,7 @@ public class TopologyManager implements
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getRoute(src, srcPort, dst, dstPort);
     }
-
+    
     @Override
     public boolean routeExists(long src, long dst) {
         return routeExists(src, dst, true);
@@ -1262,5 +1262,16 @@ public class TopologyManager implements
 
         ports.addAll(ofpList);
         return ports;
+    }
+
+    @Override
+    public ArrayList<Route> getRoutes(long srcDpid, long dstDpid,
+                                      boolean tunnelEnabled) {
+        // Floodlight supports single path routing now
+        
+        // return single path now
+        ArrayList<Route> result=new ArrayList<Route>();
+        result.add(getRoute(srcDpid, dstDpid, tunnelEnabled));
+        return result;
     }
 }
