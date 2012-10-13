@@ -1,8 +1,30 @@
 package net.floodlightcontroller.linkdiscovery;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.ser.ToStringSerializer;
+import org.openflow.util.HexString;
+
 public interface ILinkDiscovery {
 
-    public static enum UpdateOperation {LINK_UPDATED, LINK_REMOVED, SWITCH_UPDATED, SWITCH_REMOVED, PORT_UP, PORT_DOWN};
+    @JsonSerialize(using=ToStringSerializer.class)
+    public enum UpdateOperation {
+        LINK_UPDATED("Link Updated"),
+        LINK_REMOVED("Link Removed"),
+        SWITCH_UPDATED("Switch Updated"),
+        SWITCH_REMOVED("Switch Removed"),
+        PORT_UP("Port Up"),
+        PORT_DOWN("Port Down");
+        
+        private String value;
+        UpdateOperation(String v) {
+            value = v;
+        }
+        
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
 
     public class LDUpdate {
         protected long src;
@@ -83,36 +105,25 @@ public interface ILinkDiscovery {
         
         @Override
         public String toString() {
-            String operationString = null;
-            if (operation == UpdateOperation.LINK_REMOVED) {
-                operationString = "Link Removed";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + ", srcPort=" + srcPort
-                        + ", dst=" + dst + ", dstPort=" + dstPort
+            switch (operation) {
+            case LINK_REMOVED:
+            case LINK_UPDATED:
+                return "LDUpdate [operation=" + operation +
+                        ", src=" + HexString.toHexString(src)
+                        + ", srcPort=" + srcPort
+                        + ", dst=" + HexString.toHexString(dst) 
+                        + ", dstPort=" + dstPort
                         + ", type=" + type + "]";
-            } else if (operation == UpdateOperation.LINK_UPDATED) {
-                operationString = "Link Updated";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + ", srcPort=" + srcPort
-                        + ", dst=" + dst + ", dstPort=" + dstPort
-                        + ", type=" + type + "]";
-            } else if (operation == UpdateOperation.PORT_DOWN) {
-                operationString = "Port Down";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + ", srcPort=" + srcPort + "]";
-            } else if (operation == UpdateOperation.PORT_UP) {
-                operationString = "Port Up";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + ", srcPort=" + srcPort + "]";
-            } else if (operation == UpdateOperation.SWITCH_REMOVED) {
-                operationString = "Switch Removed";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + "]";
-            } else if (operation == UpdateOperation.SWITCH_UPDATED) {
-                operationString = "Switch Updated";
-                return "LDUpdate [operation=" + operationString +
-                        ", src=" + src + "]";
-            } else {
+            case PORT_DOWN:
+            case PORT_UP:
+                return "LDUpdate [operation=" + operation +
+                        ", src=" + HexString.toHexString(src)
+                        + ", srcPort=" + srcPort + "]";
+            case SWITCH_REMOVED:
+            case SWITCH_UPDATED:
+                return "LDUpdate [operation=" + operation +
+                        ", src=" + HexString.toHexString(src) + "]";
+            default:
                 return "LDUpdate: Unknown update.";
             }
         }
