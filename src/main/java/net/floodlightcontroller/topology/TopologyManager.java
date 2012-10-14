@@ -30,7 +30,9 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
@@ -829,7 +831,16 @@ public class TopologyManager implements
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getEtherType() == Ethernet.TYPE_BDDP) {
+        if (eth.getEtherType() == Ethernet.TYPE_BSN) {
+            BSN bsn = (BSN) eth.getPayload();
+            if (bsn == null) return Command.STOP;
+            if (bsn.getPayload() == null) return Command.STOP;
+
+            // It could be a packet other than BSN LLDP, therefore
+            // continue with the regular processing.
+            if (bsn.getPayload() instanceof LLDP == false)
+                return Command.CONTINUE;
+
             doFloodBDDP(sw.getId(), pi, cntx);
         } else {
             return dropFilter(sw.getId(), pi, cntx);
