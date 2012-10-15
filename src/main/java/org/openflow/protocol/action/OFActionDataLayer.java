@@ -22,6 +22,9 @@ package org.openflow.protocol.action;
 
 import java.util.Arrays;
 
+import net.floodlightcontroller.core.web.serializers.ByteArrayMACSerializer;
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.OFPhysicalPort;
 
@@ -37,6 +40,7 @@ public abstract class OFActionDataLayer extends OFAction {
     /**
      * @return the dataLayerAddress
      */
+    @JsonSerialize(using=ByteArrayMACSerializer.class)
     public byte[] getDataLayerAddress() {
         return dataLayerAddress;
     }
