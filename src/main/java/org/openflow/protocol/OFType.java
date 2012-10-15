@@ -141,7 +141,7 @@ public enum OFType {
      * type number, length, and derived class
      *
      * @param type Wire protocol number associated with this OFType
-     * @param requestClass The Java class corresponding to this type of OpenFlow
+     * @param clazz The Java class corresponding to this type of OpenFlow
      *              message
      * @param instantiator An Instantiator<OFMessage> implementation that creates an
      *          instance of the specified OFMessage
