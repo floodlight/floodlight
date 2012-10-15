@@ -8,6 +8,7 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.MappingJsonFactory;
+import org.openflow.util.HexString;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
 import org.restlet.resource.Get;
@@ -68,6 +69,7 @@ public class FirewallRulesResource extends ServerResource {
      * @param fmJson The Firewall rule entry in JSON format.
      * @return A string status message
      */
+    
     @Delete
     public String remove(String fmJson) {
         IFirewallService firewall = 
@@ -109,6 +111,7 @@ public class FirewallRulesResource extends ServerResource {
      * @return The FirewallRule instance
      * @throws IOException If there was an error parsing the JSON
      */
+     
     public static FirewallRule jsonToFirewallRule(String fmJson) throws IOException {
         FirewallRule rule = new FirewallRule();
         MappingJsonFactory f = new MappingJsonFactory();
@@ -136,70 +139,114 @@ public class FirewallRulesResource extends ServerResource {
                 continue;
 
             String tmp;
+            
+            // This is currently only applicable for remove().  In store(), ruleid takes a random number
             if (n == "ruleid") {
                 rule.ruleid = Integer.parseInt((String)jp.getText());
-            } else if (n == "switchid") {
+            }
+            
+            // This assumes user having dpid info for involved switches
+            else if (n == "switchid") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("-1") == false) {
-                    rule.switchid = Long.parseLong(tmp);
-                    rule.wildcard_switchid = false;
+                    // user inputs hex format dpid 
+                    rule.dpid = HexString.toLong(tmp);                    
+                    rule.wildcard_dpid = false;
                 }
-            } else if (n == "src-inport") {
-                rule.src_inport = Short.parseShort(jp.getText());
-            } else if (n == "src-mac") {
+            } 
+            
+            else if (n == "src-inport") {
+                rule.in_port = Short.parseShort(jp.getText());
+                rule.wildcard_in_port = false;
+            } 
+            
+            else if (n == "src-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_src_mac = false;
-                    rule.src_mac = Ethernet.toLong(Ethernet.toMACAddress(tmp));
+                    rule.wildcard_dl_src = false;
+                    rule.dl_src = Ethernet.toLong(Ethernet.toMACAddress(tmp));
                 }
-            } else if (n == "src-ip") {
+            } 
+            
+            else if (n == "dst-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_src_ip = false;
+                    rule.wildcard_dl_dst = false;
+                    rule.dl_dst = Ethernet.toLong(Ethernet.toMACAddress(tmp));
+                }
+            } 
+            
+            else if (n == "dl-type") {
+                tmp = jp.getText();
+                if (tmp.equalsIgnoreCase("ARP")) {
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_ARP;
+                }
+            } 
+            
+            else if (n == "src-ip") {
+                tmp = jp.getText();
+                if (tmp.equalsIgnoreCase("ANY") == false) {
+                    rule.wildcard_nw_src = false;
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
                     int[] cidr = IPCIDRToPrefixBits(tmp);
-                    rule.src_ip_prefix = cidr[0];
-                    rule.src_ip_bits = cidr[1];
+                    rule.nw_src_prefix = cidr[0];
+                    rule.nw_src_maskbits = cidr[1];
                 }
-            } else if (n == "proto-type") {
+            } 
+            
+            else if (n == "dst-ip") {
+                tmp = jp.getText();
+                if (tmp.equalsIgnoreCase("ANY") == false) {
+                    rule.wildcard_nw_dst = false;
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
+                    int[] cidr = IPCIDRToPrefixBits(tmp);
+                    rule.nw_dst_prefix = cidr[0];
+                    rule.nw_dst_maskbits = cidr[1];
+                }
+            } 
+            
+            else if (n == "nw-proto") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("TCP")) {
-                    rule.wildcard_proto_type = false;
-                    rule.proto_type = IPv4.PROTOCOL_TCP;
+                    rule.wildcard_nw_proto = false;
+                    rule.nw_proto = IPv4.PROTOCOL_TCP;
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
                 } else if (tmp.equalsIgnoreCase("UDP")) {
-                    rule.wildcard_proto_type = false;
-                    rule.proto_type = IPv4.PROTOCOL_UDP;
+                    rule.wildcard_nw_proto = false;
+                    rule.nw_proto = IPv4.PROTOCOL_UDP;
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
-                    rule.wildcard_proto_type = false;
-                    rule.proto_type = IPv4.PROTOCOL_ICMP;
-                } else if (tmp.equalsIgnoreCase("ARP")) {
-                    rule.wildcard_proto_type = false;
-                    rule.proto_type = Ethernet.TYPE_ARP;
-                }
-            } else if (n == "proto-srcport") {
-                rule.proto_srcport = Short.parseShort(jp.getText());
-            } else if (n == "proto-dstport") {
-                rule.proto_dstport = Short.parseShort(jp.getText());
-            } else if (n == "dst-mac") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_dst_mac = false;
-                    rule.dst_mac = Ethernet.toLong(Ethernet.toMACAddress(tmp));
-                }
-            } else if (n == "dst-ip") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_dst_ip = false;
-                    int[] cidr = IPCIDRToPrefixBits(tmp);
-                    rule.dst_ip_prefix = cidr[0];
-                    rule.dst_ip_bits = cidr[1];
-                }
-            } else if (n == "priority") {
+                    rule.wildcard_nw_proto = false;
+                    rule.nw_proto = IPv4.PROTOCOL_ICMP;
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
+                } 
+            } 
+            
+            else if (n == "tp-src") {
+                rule.wildcard_tp_src = false;
+                rule.tp_src = Short.parseShort(jp.getText());
+            } 
+            
+            else if (n == "tp-dst") {
+                rule.wildcard_tp_dst = false;
+                rule.tp_dst = Short.parseShort(jp.getText());
+            } 
+            
+            else if (n == "priority") {
                 rule.priority = Integer.parseInt(jp.getText());
-            } else if (n == "is_denyrule") {
-                if (jp.getText().equalsIgnoreCase("true") == true) {
-                    rule.is_denyrule = true;
-                } else {
-                    rule.is_denyrule = false;
+            } 
+            
+            else if (n == "action") {
+                if (jp.getText().equalsIgnoreCase("allow") == true) {
+                    rule.action = FirewallRule.FirewallAction.ALLOW;
+                } else if (jp.getText().equalsIgnoreCase("deny") == true) {
+                    rule.action = FirewallRule.FirewallAction.DENY;
                 }
             }
         }

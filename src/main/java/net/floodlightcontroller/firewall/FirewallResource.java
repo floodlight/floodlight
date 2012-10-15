@@ -14,26 +14,48 @@ import org.slf4j.LoggerFactory;
 
 public class FirewallResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(FirewallResource.class);
-
+    
     @Get("json")
     public Object handleRequest() {
-        String op = (String) getRequestAttributes().get("op");
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
+        String op = (String) getRequestAttributes().get("op");
+
+        // REST API check status
+        if (op.equalsIgnoreCase("status")) {
+            if (firewall.isEnabled())
+                return "{\"result\" : \"firewall enabled\"}";
+            else
+                return "{\"result\" : \"firewall disabled\"}";
+        }
+
+        // REST API enable firewall
         if (op.equalsIgnoreCase("enable")) {
             firewall.enableFirewall(true);
             return "{\"status\" : \"success\", \"details\" : \"firewall running\"}";
-        } else if (op.equalsIgnoreCase("disable")) {
+        } 
+        
+        // REST API disable firewall
+        if (op.equalsIgnoreCase("disable")) {
             firewall.enableFirewall(false);
             return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
-        } else if (op.equalsIgnoreCase("storageRules")) {
+        } 
+        
+        // REST API retrieving rules from storage
+        // currently equivalent to /wm/firewall/rules/json
+        if (op.equalsIgnoreCase("storageRules")) {
             return firewall.getStorageRules();
-        } else if (op.equalsIgnoreCase("subnet-mask")) {
+        } 
+        
+        // REST API set local subnet mask -- this only makes sense for one subnet
+        // will remove later
+        if (op.equalsIgnoreCase("subnet-mask")) {
             return firewall.getSubnetMask();
         }
 
+        // no known options found
         return "{\"status\" : \"failure\", \"details\" : \"invalid operation\"}";
     }
     

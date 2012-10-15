@@ -31,7 +31,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
  * We'd also like to send the role request to the switch asynchronously in a
  * separate thread so we don't block the REST API or other callers.
  * 
- * There are potential ways to relax these sychrnonization requirements:
+ * There are potential ways to relax these synchronization requirements:
  * - "Generation ID" for each role request. However, this would be most useful
  *   if it were global for the whole cluster
  * - Regularly resend the controller's current role. Don't know whether this

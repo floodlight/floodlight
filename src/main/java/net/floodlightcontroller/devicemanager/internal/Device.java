@@ -293,10 +293,12 @@ entity.getLastSeenTimestamp().getTime());
     protected boolean updateAttachmentPoint() {
         boolean moved = false;
 
+        if (attachmentPoints == null || attachmentPoints.isEmpty())
+            return false;
+
         List<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
         if (attachmentPoints != null) apList.addAll(attachmentPoints);
         Map<Long, AttachmentPoint> newMap = getAPMap(apList);
-
         if (newMap == null || newMap.size() != apList.size()) {
             moved = true;
         }

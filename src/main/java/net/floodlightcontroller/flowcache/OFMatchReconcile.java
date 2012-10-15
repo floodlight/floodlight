@@ -7,31 +7,31 @@ import org.openflow.protocol.OFMatchWithSwDpid;
  * OFMatchReconcile class to indicate result of a flow-reconciliation.
  */
 public class OFMatchReconcile  {
-	
-	/**
-	 * The enum ReconcileAction. Specifies the result of reconciliation of a 
-	 * flow.
-	 */
-	public enum ReconcileAction {
+ 
+    /**
+     * The enum ReconcileAction. Specifies the result of reconciliation of a 
+     * flow.
+     */
+    public enum ReconcileAction {
 
-	    /** Delete the flow-mod from the switch */
-	    DROP,
-	    /** Leave the flow-mod as-is. */
-	    NO_CHANGE,
-	    /** Program this new flow mod. */
-	    NEW_ENTRY,
-	    /** 
-	     * Reprogram the flow mod as the path of the flow might have changed,
-	     * for example when a host is moved or when a link goes down. */
-	    UPDATE_PATH,
-	    /* Flow is now in a different BVS */
-	    APP_INSTANCE_CHANGED,
-	    /* Delete the flow-mod - used to delete, for example, drop flow-mods
-	     * when the source and destination are in the same BVS after a 
-	     * configuration change */
-	    DELETE
-	}
-	
+        /** Delete the flow-mod from the switch */
+        DROP,
+        /** Leave the flow-mod as-is. */
+        NO_CHANGE,
+        /** Program this new flow mod. */
+        NEW_ENTRY,
+        /** 
+         * Reprogram the flow mod as the path of the flow might have changed,
+         * for example when a host is moved or when a link goes down. */
+        UPDATE_PATH,
+        /* Flow is now in a different BVS */
+        APP_INSTANCE_CHANGED,
+        /* Delete the flow-mod - used to delete, for example, drop flow-mods
+         * when the source and destination are in the same BVS after a 
+         * configuration change */
+        DELETE
+    }
+
     /** The open flow match after reconciliation. */
     public OFMatchWithSwDpid ofmWithSwDpid;
     /** flow mod. priority */
@@ -59,6 +59,19 @@ public class OFMatchReconcile  {
     public OFMatchReconcile() {
         ofmWithSwDpid      = new OFMatchWithSwDpid();
         rcAction = ReconcileAction.NO_CHANGE;
+        cntx = new FloodlightContext();
+    }
+    
+    public OFMatchReconcile(OFMatchReconcile copy) {
+        ofmWithSwDpid =
+            new OFMatchWithSwDpid(copy.ofmWithSwDpid.getOfMatch(),
+                    copy.ofmWithSwDpid.getSwitchDataPathId());
+        priority = copy.priority;
+        action = copy.action;
+        cookie = copy.cookie;
+        appInstName = copy.appInstName;
+        newAppInstName = copy.newAppInstName;
+        rcAction = copy.rcAction;
         cntx = new FloodlightContext();
     }
     
