@@ -25,18 +25,18 @@ import net.floodlightcontroller.routing.Route;
 public interface IRoutingService extends IFloodlightService {
 
     /** Provides a route between src and dst that allows tunnels. */
-    public Route getRoute(long src, long dst);
+    public Route getRoute(long src, long dst, long cookie);
 
     /** Provides a route between src and dst, with option to allow or 
      *  not allow tunnels in the path.*/
-    public Route getRoute(long src, long dst, boolean tunnelEnabled);
+    public Route getRoute(long src, long dst, long cookie, boolean tunnelEnabled);
 
 
     public Route getRoute(long srcId, short srcPort, 
-                             long dstId, short dstPort);
+                             long dstId, short dstPort, long cookie);
 
     public Route getRoute(long srcId, short srcPort, 
-                             long dstId, short dstPort, 
+                             long dstId, short dstPort, long cookie,
                              boolean tunnelEnabled);
 
     /** return all routes, if available */
