@@ -3,7 +3,6 @@ package net.floodlightcontroller.firewall;
 import org.openflow.protocol.OFMatch;
 
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
@@ -11,53 +10,74 @@ import net.floodlightcontroller.packet.UDP;
 
 public class FirewallRule implements Comparable<FirewallRule> {
     public int ruleid;
-    public short src_inport;
-    public long src_mac;
-    public int src_ip_prefix;
-    public int src_ip_bits;
-    public short proto_type;
-    public short proto_srcport;
-    public short proto_dstport;
-    public long dst_mac;
-    public int dst_ip_prefix;
-    public int dst_ip_bits;
-    public long switchid;
-    public boolean wildcard_src_inport;
-    public boolean wildcard_src_mac;
-    public boolean wildcard_src_ip;
-    public boolean wildcard_proto_type;
-    public boolean wildcard_dst_mac;
-    public boolean wildcard_dst_ip;
-    public boolean wildcard_switchid;
+
+    public long dpid; 
+    public short in_port; 
+    public long dl_src; 
+    public long dl_dst; 
+    public short dl_type; 
+    public int nw_src_prefix; 
+    public int nw_src_maskbits;
+    public int nw_dst_prefix;
+    public int nw_dst_maskbits;
+    public short nw_proto;
+    public short tp_src;
+    public short tp_dst;
+
+    public boolean wildcard_dpid;
+    public boolean wildcard_in_port; 
+    public boolean wildcard_dl_src;
+    public boolean wildcard_dl_dst;
+    public boolean wildcard_dl_type;
+    public boolean wildcard_nw_src;
+    public boolean wildcard_nw_dst;
+    public boolean wildcard_nw_proto;
+    public boolean wildcard_tp_src;
+    public boolean wildcard_tp_dst;
+
     public int priority = 0;
-    public boolean is_denyrule;
+
+    public FirewallAction action;
+
+    public enum FirewallAction {
+        /*
+         * DENY: Deny rule
+         * ALLOW: Allow rule
+         */
+        DENY, ALLOW
+    }
 
     public FirewallRule() {
-        this.src_inport = 1;
-        this.src_mac = 0;
-        this.src_ip_prefix = 0;
-        this.src_ip_bits = 32;
-        this.proto_type = 0;
-        this.proto_srcport = 0;
-        this.proto_dstport = 0;
-        this.dst_mac = 0;
-        this.dst_ip_prefix = 0;
-        this.dst_ip_bits = 32;
-        this.switchid = -1;
-        this.wildcard_src_inport = true;
-        this.wildcard_src_mac = true;
-        this.wildcard_src_ip = true;
-        this.wildcard_proto_type = true;
-        this.wildcard_dst_mac = true;
-        this.wildcard_dst_ip = true;
-        this.wildcard_switchid = true;
-        this.priority = 32767;
-        this.is_denyrule = false;
-        this.ruleid = this.genID();
+        this.in_port = 0; 
+        this.dl_src = 0;
+        this.nw_src_prefix = 0;
+        this.nw_src_maskbits = 0; 
+        this.dl_dst = 0;
+        this.nw_proto = 0;
+        this.tp_src = 0;
+        this.tp_dst = 0;
+        this.dl_dst = 0;
+        this.nw_dst_prefix = 0;
+        this.nw_dst_maskbits = 0; 
+        this.dpid = -1;
+        this.wildcard_dpid = true; 
+        this.wildcard_in_port = true; 
+        this.wildcard_dl_src = true; 
+        this.wildcard_dl_dst = true; 
+        this.wildcard_dl_type = true; 
+        this.wildcard_nw_src = true; 
+        this.wildcard_nw_dst = true; 
+        this.wildcard_nw_proto = true; 
+        this.wildcard_tp_src = true; 
+        this.wildcard_tp_dst = true; 
+        this.priority = 0; 
+        this.action = FirewallAction.ALLOW; 
+        this.ruleid = 0; 
     }
 
     /**
      * Generates a unique ID for the instance
+     * 
      * @return int representing the unique id
      */
     public int genID() {
@@ -71,182 +91,250 @@ public class FirewallRule implements Comparable<FirewallRule> {
 
     /**
      * Comparison method for Collections.sort method
-     * @param rule the rule to compare with
-     * @return number representing the result of comparison
-     * 0 if equal
-     * negative if less than 'rule'
-     * greater than zero if greater priority rule than 'rule'
+     * 
+     * @param rule
+     *            the rule to compare with
+     * @return number representing the result of comparison 0 if equal negative
+     *         if less than 'rule' greater than zero if greater priority rule
+     *         than 'rule'
      */
+    @Override
     public int compareTo(FirewallRule rule) {
-        return this.priority - ((FirewallRule)rule).priority;
+        return this.priority - rule.priority;
     }
 
     /**
-     * Determines if this instance is similar to another rule instance
-     * @param r the FirewallRule instance to compare with
-     * @return true if both rules are similar, i.e. have same fields
-     * NOTE: this is different than equals() method that checks for equality
-     */
+     * Determines if this instance matches an existing rule instance
+     * 
+     * @param r
+     *            : the FirewallRule instance to compare with
+     * @return boolean: true if a match is found
+     **/
     public boolean isSameAs(FirewallRule r) {
-        if (
-                this.is_denyrule != r.is_denyrule ||
-                this.wildcard_switchid != r.wildcard_switchid ||
-                this.wildcard_src_inport != r.wildcard_src_inport ||
-                this.wildcard_src_ip != r.wildcard_src_ip ||
-                this.wildcard_src_mac != r.wildcard_src_ip ||
-                this.wildcard_proto_type != r.wildcard_proto_type ||
-                this.wildcard_dst_ip != r.wildcard_dst_ip ||
-                this.wildcard_dst_mac != r.wildcard_dst_mac ||
-                (this.wildcard_switchid == false && this.switchid != r.switchid) ||
-                (this.wildcard_src_inport == false && this.src_inport != r.src_inport) ||
-                (this.wildcard_src_ip == false && (this.src_ip_prefix != r.src_ip_prefix || this.src_ip_bits != r.src_ip_bits)) ||
-                (this.wildcard_src_mac == false && this.src_mac != r.src_mac) ||
-                (this.wildcard_proto_type == false && this.proto_type != r.proto_type) ||
-                (this.wildcard_dst_ip == false && (this.dst_ip_prefix != r.dst_ip_prefix || this.dst_ip_bits != r.dst_ip_bits)) ||
-                (this.wildcard_dst_mac == false && this.dst_mac != r.dst_mac)
-                ) {
+        if (this.action != r.action
+                || this.wildcard_dl_type != r.wildcard_dl_type
+                || (this.wildcard_dl_type == false && this.dl_type == r.dl_type)
+                || this.wildcard_tp_src != r.wildcard_tp_src
+                || (this.wildcard_tp_src == false && this.tp_src != r.tp_src)
+                || this.wildcard_tp_dst != r.wildcard_tp_dst
+                || (this.wildcard_tp_dst == false &&this.tp_dst != r.tp_dst)
+                || this.wildcard_dpid != r.wildcard_dpid
+                || (this.wildcard_dpid == false && this.dpid != r.dpid)
+                || this.wildcard_in_port != r.wildcard_in_port
+                || (this.wildcard_in_port == false && this.in_port != r.in_port)
+                || this.wildcard_nw_src != r.wildcard_nw_src
+                || (this.wildcard_nw_src == false && (this.nw_src_prefix != r.nw_src_prefix || this.nw_src_maskbits != r.nw_src_maskbits))
+                || this.wildcard_dl_src != r.wildcard_dl_src
+                || (this.wildcard_dl_src == false && this.dl_src != r.dl_src)
+                || this.wildcard_nw_proto != r.wildcard_nw_proto
+                || (this.wildcard_nw_proto == false && this.nw_proto != r.nw_proto)
+                || this.wildcard_nw_dst != r.wildcard_nw_dst
+                || (this.wildcard_nw_dst == false && (this.nw_dst_prefix != r.nw_dst_prefix || this.nw_dst_maskbits != r.nw_dst_maskbits))
+                || this.wildcard_dl_dst != r.wildcard_dl_dst                
+                || (this.wildcard_dl_dst == false && this.dl_dst != r.dl_dst)) {
             return false;
         }
         return true;
     }
-    
+
     /**
      * Matches this rule to a given flow - incoming packet
-     * @param switchDpid the Id of the connected switch
-     * @param inPort the switch port where the packet originated from
-     * @param packet the Ethernet packet that arrives at the switch
-     * @param wildcards the pair of wildcards (allow and deny) given by Firewall module
-     * that is used by the Firewall module's matchWithRule method to derive wildcards
-     * for the decision to be taken
+     * 
+     * @param switchDpid
+     *            the Id of the connected switch
+     * @param inPort
+     *            the switch port where the packet originated from
+     * @param packet
+     *            the Ethernet packet that arrives at the switch
+     * @param wildcards
+     *            the pair of wildcards (allow and deny) given by Firewall
+     *            module that is used by the Firewall module's matchWithRule
+     *            method to derive wildcards for the decision to be taken
      * @return true if the rule matches the given packet-in, false otherwise
      */
-    public boolean matchesFlow(long switchDpid, short inPort, Ethernet packet, WildcardsPair wildcards) {
-        IPacket pkt = (IPacket) packet.getPayload();
+    public boolean matchesFlow(long switchDpid, short inPort, Ethernet packet,
+            WildcardsPair wildcards) {
+        IPacket pkt = packet.getPayload();
+
+        // dl_type type
         IPv4 pkt_ip = null;
+
+        // nw_proto types
         TCP pkt_tcp = null;
         UDP pkt_udp = null;
-        ICMP pkt_icmp = null;
-        short proto_src = 0;
-        short proto_dst = 0;
 
-
-        if (pkt instanceof IPv4) {
-            pkt_ip = (IPv4) pkt;
-            if (pkt_ip.getPayload() instanceof TCP) {
-                pkt_tcp = (TCP)pkt_ip.getPayload();
-                proto_src = pkt_tcp.getSourcePort();
-                proto_dst = pkt_tcp.getDestinationPort();
-            } else if (pkt_ip.getPayload() instanceof UDP) {
-                pkt_udp = (UDP)pkt_ip.getPayload();
-                proto_src = pkt_udp.getSourcePort();
-                proto_dst = pkt_udp.getDestinationPort();
-            } else if (pkt_ip.getPayload() instanceof ICMP) {
-                pkt_icmp = (ICMP)pkt_ip.getPayload();
-            }
-        }
+        // tp_src and tp_dst (tp port numbers)
+        short pkt_tp_src = 0;
+        short pkt_tp_dst = 0;
 
         // switchID matches?
-        if (wildcard_switchid == false && switchid != switchDpid) return false;
+        if (wildcard_dpid == false && dpid != switchDpid)
+            return false;
 
-        // inport matches?
-        if (wildcard_src_inport == false && src_inport != inPort) return false;
-        if (is_denyrule) {
-            wildcards.allow &= ~OFMatch.OFPFW_IN_PORT;
-        } else {
+        // in_port matches?
+        if (wildcard_in_port == false && in_port != inPort)
+            return false;
+        if (action == FirewallRule.FirewallAction.DENY) {
             wildcards.drop &= ~OFMatch.OFPFW_IN_PORT;
+        } else {
+            wildcards.allow &= ~OFMatch.OFPFW_IN_PORT;
         }
 
         // mac address (src and dst) match?
-        if (wildcard_src_mac == false && src_mac != packet.getSourceMAC().toLong()) return false;
-        if (is_denyrule) {
-            wildcards.allow &= ~OFMatch.OFPFW_DL_SRC;
-        } else {
+        if (wildcard_dl_src == false
+                && dl_src != packet.getSourceMAC().toLong())
+            return false;
+        if (action == FirewallRule.FirewallAction.DENY) {
             wildcards.drop &= ~OFMatch.OFPFW_DL_SRC;
-        }
-        if (wildcard_dst_mac == false && dst_mac != packet.getDestinationMAC().toLong()) return false;
-        if (is_denyrule) {
-            wildcards.allow &= ~OFMatch.OFPFW_DL_DST;
         } else {
+            wildcards.allow &= ~OFMatch.OFPFW_DL_SRC;
+        }
+
+        if (wildcard_dl_dst == false
+                && dl_dst != packet.getDestinationMAC().toLong())
+            return false;
+        if (action == FirewallRule.FirewallAction.DENY) {
             wildcards.drop &= ~OFMatch.OFPFW_DL_DST;
-        }
-
-        // protocol type matches?
-        if (wildcard_proto_type == false) {
-            if (proto_type == IPv4.PROTOCOL_TCP && pkt_tcp == null) return false;
-            if (proto_type == IPv4.PROTOCOL_UDP && pkt_udp == null) return false;
-            if (proto_type == IPv4.PROTOCOL_ICMP && pkt_icmp == null) return false;
-            if (proto_type == Ethernet.TYPE_ARP && packet.getEtherType() != Ethernet.TYPE_ARP) return false;
-            if (is_denyrule) {
-                wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
-                if (proto_type != Ethernet.TYPE_ARP) {
-                    wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
-                }
-            } else {
-                wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
-                if (proto_type != Ethernet.TYPE_ARP) {
-                    wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
-                }
-            }
         } else {
-            // if we have a non-IPv4 packet and packet matches SWITCH, INPORT and MAC criteria (if specified)
-            // and the rule has "ANY" specified on protocol, then make decision for this packet/flow
-            if (pkt_ip == null) {
-                return true;
-            }
+            wildcards.allow &= ~OFMatch.OFPFW_DL_DST;
         }
 
-        // protocol specific fields - for IP packets only
+        // dl_type check: ARP, IP
 
-        if (wildcard_proto_type == false && proto_type != Ethernet.TYPE_ARP) {
-
-            // ip addresses (src and dst) match?
-            if (wildcard_src_ip == false && this.matchIPAddress(src_ip_prefix, src_ip_bits, pkt_ip.getSourceAddress()) == false) return false;
-            if (is_denyrule) {
-                wildcards.allow &= ~OFMatch.OFPFW_NW_SRC_ALL;
-                wildcards.allow |= (src_ip_bits << OFMatch.OFPFW_NW_SRC_SHIFT);
-            } else {
-                wildcards.drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
-                wildcards.drop |= (src_ip_bits << OFMatch.OFPFW_NW_SRC_SHIFT);
-            }
-            if (wildcard_dst_ip == false && this.matchIPAddress(dst_ip_prefix, dst_ip_bits, pkt_ip.getDestinationAddress()) == false) return false;
-            if (is_denyrule) {
-                wildcards.allow &= ~OFMatch.OFPFW_NW_DST_ALL;
-                wildcards.allow |= (dst_ip_bits << OFMatch.OFPFW_NW_DST_SHIFT);
-            } else {
-                wildcards.drop &= ~OFMatch.OFPFW_NW_DST_ALL;
-                wildcards.drop |= (dst_ip_bits << OFMatch.OFPFW_NW_DST_SHIFT);
-            }
-
-            // TCP/UDP source and destination ports match?
-            if (pkt_tcp != null || pkt_udp != null) {
-                // does the source port match?
-                if (proto_srcport != 0 && proto_srcport != proto_src) return false;
-                if (is_denyrule) {
-                    wildcards.allow &= ~OFMatch.OFPFW_TP_SRC;
-                } else {
-                    wildcards.drop &= ~OFMatch.OFPFW_TP_SRC;
+        // if this is not an ARP rule but the pkt is ARP,
+        // return false match - no need to continue protocol specific check
+        if (wildcard_dl_type == false) {
+            if (dl_type == Ethernet.TYPE_ARP) {
+                if (packet.getEtherType() != Ethernet.TYPE_ARP)
+                    return false;
+                else {
+                    if (action == FirewallRule.FirewallAction.DENY) {
+                        wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
+                    } else {
+                        wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
+                    }
                 }
-                // does the destination port match?
-                if (proto_dstport != 0 && proto_dstport != proto_dst) return false;
-                if (is_denyrule) {
-                    wildcards.allow &= ~OFMatch.OFPFW_TP_DST;
-                } else {
-                    wildcards.drop &= ~OFMatch.OFPFW_TP_DST;
+            } else if (dl_type == Ethernet.TYPE_IPv4) {
+                if (packet.getEtherType() != Ethernet.TYPE_IPv4)
+                    return false;
+                else {
+                    if (action == FirewallRule.FirewallAction.DENY) {
+                        wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
+                    } else {
+                        wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
+                    }
+                    // IP packets, proceed with ip address check
+                    pkt_ip = (IPv4) pkt;
+
+                    // IP addresses (src and dst) match?
+                    if (wildcard_nw_src == false
+                            && this.matchIPAddress(nw_src_prefix,
+                                    nw_src_maskbits, pkt_ip.getSourceAddress()) == false)
+                        return false;
+                    if (action == FirewallRule.FirewallAction.DENY) {
+                        wildcards.drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
+                        wildcards.drop |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
+                    } else {
+                        wildcards.allow &= ~OFMatch.OFPFW_NW_SRC_ALL;
+                        wildcards.allow |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
+                    }
+
+                    if (wildcard_nw_dst == false
+                            && this.matchIPAddress(nw_dst_prefix,
+                                    nw_dst_maskbits,
+                                    pkt_ip.getDestinationAddress()) == false)
+                        return false;
+                    if (action == FirewallRule.FirewallAction.DENY) {
+                        wildcards.drop &= ~OFMatch.OFPFW_NW_DST_ALL;
+                        wildcards.drop |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
+                    } else {
+                        wildcards.allow &= ~OFMatch.OFPFW_NW_DST_ALL;
+                        wildcards.allow |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
+                    }
+
+                    // nw_proto check
+                    if (wildcard_nw_proto == false) {
+                        if (nw_proto == IPv4.PROTOCOL_TCP) {
+                            if (pkt_ip.getProtocol() != IPv4.PROTOCOL_TCP)
+                                return false;
+                            else {
+                                pkt_tcp = (TCP) pkt_ip.getPayload();
+                                pkt_tp_src = pkt_tcp.getSourcePort();
+                                pkt_tp_dst = pkt_tcp.getDestinationPort();
+                            }
+                        } else if (nw_proto == IPv4.PROTOCOL_UDP) {
+                            if (pkt_ip.getProtocol() != IPv4.PROTOCOL_UDP)
+                                return false;
+                            else {
+                                pkt_udp = (UDP) pkt_ip.getPayload();
+                                pkt_tp_src = pkt_udp.getSourcePort();
+                                pkt_tp_dst = pkt_udp.getDestinationPort();
+                            }
+                        } else if (nw_proto == IPv4.PROTOCOL_ICMP) {
+                            if (pkt_ip.getProtocol() != IPv4.PROTOCOL_ICMP)
+                                return false;
+                            else {
+                                // nothing more needed for ICMP
+                            }
+                        }
+                        if (action == FirewallRule.FirewallAction.DENY) {
+                            wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
+                        } else {
+                            wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
+                        }
+
+                        // TCP/UDP source and destination ports match?
+                        if (pkt_tcp != null || pkt_udp != null) {
+                            // does the source port match?
+                            if (tp_src != 0 && tp_src != pkt_tp_src)
+                                return false;
+                            if (action == FirewallRule.FirewallAction.DENY) {
+                                wildcards.drop &= ~OFMatch.OFPFW_TP_SRC;
+                            } else {
+                                wildcards.allow &= ~OFMatch.OFPFW_TP_SRC;
+                            }
+
+                            // does the destination port match?
+                            if (tp_dst != 0 && tp_dst != pkt_tp_dst)
+                                return false;
+                            if (action == FirewallRule.FirewallAction.DENY) {
+                                wildcards.drop &= ~OFMatch.OFPFW_TP_DST;
+                            } else {
+                                wildcards.allow &= ~OFMatch.OFPFW_TP_DST;
+                            }
+                        }
+                    }
+
                 }
+            } else {
+                // non-IP packet - not supported - report no match
+                return false;
             }
         }
+        if (action == FirewallRule.FirewallAction.DENY) {
+            wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
+        } else {
+            wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
+        }
 
+        // all applicable checks passed
         return true;
     }
-    
+
     /**
      * Determines if rule's CIDR address matches IP address of the packet
-     * @param rulePrefix prefix part of the CIDR address
-     * @param ruleBits the size of mask of the CIDR address
-     * @param packetAddress the IP address of the incoming packet to match with
-     * @return true if CIDR address matches the packet's IP address, false otherwise
+     * 
+     * @param rulePrefix
+     *            prefix part of the CIDR address
+     * @param ruleBits
+     *            the size of mask of the CIDR address
+     * @param packetAddress
+     *            the IP address of the incoming packet to match with
+     * @return true if CIDR address matches the packet's IP address, false
+     *         otherwise
      */
-    protected boolean matchIPAddress(int rulePrefix, int ruleBits, int packetAddress) {
+    protected boolean matchIPAddress(int rulePrefix, int ruleBits,
+            int packetAddress) {
         boolean matched = true;
 
         int rule_iprng = 32 - ruleBits;
@@ -254,16 +342,19 @@ public class FirewallRule implements Comparable<FirewallRule> {
         int pkt_ipint = packetAddress;
         // if there's a subnet range (bits to be wildcarded > 0)
         if (rule_iprng > 0) {
-            // right shift bits to remove rule_iprng of LSB that are to be wildcarded
+            // right shift bits to remove rule_iprng of LSB that are to be
+            // wildcarded
             rule_ipint = rule_ipint >> rule_iprng;
-                    pkt_ipint = pkt_ipint >> rule_iprng;
-                    // now left shift to return to normal range, except that the rule_iprng number of LSB
-                    // are now zeroed
-                    rule_ipint = rule_ipint << rule_iprng;
-                    pkt_ipint = pkt_ipint << rule_iprng;
+            pkt_ipint = pkt_ipint >> rule_iprng;
+            // now left shift to return to normal range, except that the
+            // rule_iprng number of LSB
+            // are now zeroed
+            rule_ipint = rule_ipint << rule_iprng;
+            pkt_ipint = pkt_ipint << rule_iprng;
         }
         // check if we have a match
-        if (rule_ipint != pkt_ipint) matched = false;
+        if (rule_ipint != pkt_ipint)
+            matched = false;
 
         return matched;
     }
@@ -272,26 +363,30 @@ public class FirewallRule implements Comparable<FirewallRule> {
     public int hashCode() {
         final int prime = 2521;
         int result = super.hashCode();
-        result = prime * result + src_inport;
-        result = prime * result + (int)src_mac;
-        result = prime * result + src_ip_prefix;
-        result = prime * result + src_ip_bits;
-        result = prime * result + proto_type;
-        result = prime * result + proto_srcport;
-        result = prime * result + proto_dstport;
-        result = prime * result + (int)dst_mac;
-        result = prime * result + dst_ip_prefix;
-        result = prime * result + dst_ip_bits;
-        result = prime * result + (int)switchid;
+        result = prime * result + (int) dpid;
+        result = prime * result + in_port;
+        result = prime * result + (int) dl_src;
+        result = prime * result + (int) dl_dst;
+        result = prime * result + dl_type;
+        result = prime * result + nw_src_prefix;
+        result = prime * result + nw_src_maskbits;
+        result = prime * result + nw_dst_prefix;
+        result = prime * result + nw_dst_maskbits;
+        result = prime * result + nw_proto;
+        result = prime * result + tp_src;
+        result = prime * result + tp_dst;
+        result = prime * result + action.ordinal();
         result = prime * result + priority;
-        result = prime * result + (new Boolean(is_denyrule)).hashCode();
-        result = prime * result + (new Boolean(wildcard_switchid)).hashCode();
-        result = prime * result + (new Boolean(wildcard_src_inport)).hashCode();
-        result = prime * result + (new Boolean(wildcard_src_ip)).hashCode();
-        result = prime * result + (new Boolean(wildcard_src_mac)).hashCode();
-        result = prime * result + (new Boolean(wildcard_proto_type)).hashCode();
-        result = prime * result + (new Boolean(wildcard_dst_ip)).hashCode();
-        result = prime * result + (new Boolean(wildcard_dst_mac)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dpid)).hashCode();
+        result = prime * result + (new Boolean(wildcard_in_port)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dl_src)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dl_dst)).hashCode();
+        result = prime * result + (new Boolean(wildcard_dl_type)).hashCode();
+        result = prime * result + (new Boolean(wildcard_nw_src)).hashCode();
+        result = prime * result + (new Boolean(wildcard_nw_dst)).hashCode();
+        result = prime * result + (new Boolean(wildcard_nw_proto)).hashCode();
+        result = prime * result + (new Boolean(wildcard_tp_src)).hashCode();
+        result = prime * result + (new Boolean(wildcard_tp_dst)).hashCode();
         return result;
     }
 }

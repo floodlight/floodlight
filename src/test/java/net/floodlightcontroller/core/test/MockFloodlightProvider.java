@@ -57,8 +57,8 @@ import org.slf4j.LoggerFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
-	protected static Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
-	protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
+    protected static Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
+    protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
     protected List<IHAListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
@@ -80,7 +80,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public synchronized void addOFMessageListener(OFType type, 
                                                   IOFMessageListener listener) {
         ListenerDispatcher<OFType, IOFMessageListener> ldd = 
-        		listeners.get(type);
+                listeners.get(type);
         if (ldd == null) {
             ldd = new ListenerDispatcher<OFType, IOFMessageListener>();
             listeners.put(type, ldd);
@@ -92,7 +92,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public synchronized void removeOFMessageListener(OFType type,
                                                      IOFMessageListener listener) {
         ListenerDispatcher<OFType, IOFMessageListener> ldd = 
-        		listeners.get(type);
+                listeners.get(type);
         if (ldd != null) {
             ldd.removeListener(listener);
         }
@@ -102,10 +102,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
      * @return the listeners
      */
     public Map<OFType, List<IOFMessageListener>> getListeners() {
-    	Map<OFType, List<IOFMessageListener>> lers = 
+        Map<OFType, List<IOFMessageListener>> lers = 
                 new HashMap<OFType, List<IOFMessageListener>>();
             for(Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e : 
-            	listeners.entrySet()) {
+                listeners.entrySet()) {
                 lers.put(e.getKey(), e.getValue().getOrderedListeners());
             }
             return Collections.unmodifiableMap(lers);
@@ -213,12 +213,12 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void run() {
-    	logListeners();
+        logListeners();
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-    	Collection<Class<? extends IFloodlightService>> services =
+        Collection<Class<? extends IFloodlightService>> services =
                 new ArrayList<Class<? extends IFloodlightService>>(1);
         services.add(IFloodlightProviderService.class);
         return services;
@@ -227,18 +227,18 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-    	Map<Class<? extends IFloodlightService>,
-        	IFloodlightService> m = 
-            	new HashMap<Class<? extends IFloodlightService>,
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
-    	m.put(IFloodlightProviderService.class, this);
-    	return m;
+        m.put(IFloodlightProviderService.class, this);
+        return m;
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>>
             getModuleDependencies() {
-    	return null;
+        return null;
     }
     
     @Override
@@ -254,23 +254,23 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         
     }
 
-	@Override
-	public void addInfoProvider(String type, IInfoProvider provider) {
-		// TODO Auto-generated method stub
-		
-	}
+    @Override
+    public void addInfoProvider(String type, IInfoProvider provider) {
+        // TODO Auto-generated method stub
+        
+    }
 
-	@Override
-	public void removeInfoProvider(String type, IInfoProvider provider) {
-		// TODO Auto-generated method stub
-		
-	}
+    @Override
+    public void removeInfoProvider(String type, IInfoProvider provider) {
+        // TODO Auto-generated method stub
+        
+    }
 
-	@Override
-	public Map<String, Object> getControllerInfo(String type) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public Map<String, Object> getControllerInfo(String type) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
     @Override
     public void addHAListener(IHAListener listener) {
@@ -308,17 +308,17 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         return "localhost";
     }
 
-	@Override
-	public Map<String, String> getControllerNodeIPs() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public Map<String, String> getControllerNodeIPs() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
-	@Override
-	public long getSystemStartTime() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+    @Override
+    public long getSystemStartTime() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
 
     private void logListeners() {
         for (Map.Entry<OFType,
@@ -340,5 +340,11 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
             }
             log.debug(sb.toString());            
         }
+    }
+
+    @Override
+    public void setAlwaysClearFlowsOnSwAdd(boolean value) {
+        // TODO Auto-generated method stub
+        
     }
 }

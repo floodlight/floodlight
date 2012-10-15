@@ -837,12 +837,18 @@ public class TopologyManager implements
         return Command.STOP;
     }
 
+
+    /**
+     * Updates concerning switch disconnect and port down are not processed.
+     * LinkDiscoveryManager is expected to process those messages and send
+     * multiple link removed messages.  However, all the updates from
+     * LinkDiscoveryManager would be propagated to the listeners of topology.
+     */
     @LogMessageDoc(level="ERROR",
             message="Error reading link discovery update.",
             explanation="Unable to process link discovery update",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void applyUpdates() {
-
         appliedUpdates.clear();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
@@ -861,12 +867,7 @@ public class TopologyManager implements
             } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
-            } else if (update.getOperation() == UpdateOperation.SWITCH_REMOVED) {
-                removeSwitch(update.getSrc());
-            } else if (update.getOperation() == UpdateOperation.PORT_DOWN) {
-                removeSwitchPort(update.getSrc(), update.getSrcPort());
             }
-
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
@@ -1103,7 +1104,7 @@ public class TopologyManager implements
     * Clears the current topology. Note that this does NOT
     * send out updates.
     */
-    private void clearCurrentTopology() {
+    public void clearCurrentTopology() {
         this.clear();
         linksUpdated = true;
         dtLinksUpdated = true;

@@ -198,5 +198,13 @@ public interface IFloodlightProviderService extends IFloodlightService {
     * @return
     */
    public long getSystemStartTime();
+   
+   /**
+    * Configure controller to always clear the flow table on the switch,
+    * when it connects to controller. This will be true for first time switch
+    * reconnect, as well as a switch re-attaching to Controller after HA
+    * switch over to ACTIVE role
+    */
+   public void setAlwaysClearFlowsOnSwAdd(boolean value);
 
 }

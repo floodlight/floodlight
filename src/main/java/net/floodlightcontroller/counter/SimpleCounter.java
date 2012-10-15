@@ -47,7 +47,25 @@ public class SimpleCounter implements ICounter {
   public static ICounter createCounter(Date startDate, CounterValue.CounterType type) {
     SimpleCounter cc = new SimpleCounter(startDate, type);
     return cc;
-    
+  }
+  
+  /**
+   * Factory method to create a copy of a counter instance.  
+   * 
+   * @param startDate
+   * @return
+   */
+  public static ICounter createCounter(ICounter copy) {
+    if (copy == null ||
+        copy.getCounterDate() == null ||
+        copy.getCounterValue() == null) {
+        return null;
+    }
+
+     SimpleCounter cc = new SimpleCounter(copy.getCounterDate(),
+            copy.getCounterValue().getType());
+     cc.setCounter(copy.getCounterDate(), copy.getCounterValue());
+     return cc;
   }
   
   /**
