@@ -523,7 +523,7 @@ public class Controller implements IFloodlightProviderService,
                     message="Error while processing message " +
                             "from switch {switch} {cause}",
                     explanation="An error occurred processing the switch message",
-                    recommendation=LogMessageDoc.GENERIC_ACTION),
+                    recommendation=LogMessageDoc.GENERIC_ACTION)
         })
         public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
                 throws Exception {
@@ -912,7 +912,7 @@ public class Controller implements IFloodlightProviderService,
                             +"but we have received a valid "
                             +"role reply earlier",
                     explanation="The switch sent a confusing message to the" +
-                            "controller"),
+                            "controller")
         })
         protected void processOFMessage(OFMessage m)
                 throws IOException, SwitchStateException {
@@ -1219,7 +1219,7 @@ public class Controller implements IFloodlightProviderService,
         @LogMessageDoc(level="WARN",
                 message="Unhandled OF Message: {} from {}",
                 explanation="The switch sent a message not handled by " +
-                        "the controller"),
+                        "the controller")
     })
     protected void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext)
