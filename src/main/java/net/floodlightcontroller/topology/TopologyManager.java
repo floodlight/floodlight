@@ -199,6 +199,13 @@ public class TopologyManager implements
     @Override
     public boolean isAttachmentPointPort(long switchid, short port, 
                                          boolean tunnelEnabled) {
+
+        // If the switch port is a tunnel endpoint, it is not
+        // an attachment point port, irrespective of whether
+        // a link is found through it or not.
+        if (linkDiscovery.isTunnelPort(switchid, port))
+            return false;
+
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 
         // if the port is not attachment point port according to

@@ -302,6 +302,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return false;
     }
 
+    public boolean isTunnelPort(long sw, short port) {
+        return false;
+    }
+
     public ILinkDiscovery.LinkType getLinkType(Link lt, LinkInfo info) {
         if (info.getUnicastValidTime() != null) {
             return ILinkDiscovery.LinkType.DIRECT_LINK;
