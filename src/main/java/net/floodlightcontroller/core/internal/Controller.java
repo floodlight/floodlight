@@ -803,9 +803,8 @@ public class Controller implements IFloodlightProviderService,
             sw.deliverRoleReply(vendorMessage.getXid(), role);
             
             boolean isActive = activeSwitches.containsKey(sw.getId());
-            if (!isActive && sw.isActive()) {
+            if (sw.isActive()) {
                 // Transition from SLAVE to MASTER.
-                
                 if (!state.firstRoleReplyReceived || 
                     getAlwaysClearFlowsOnSwAdd()) {
                     // This is the first role-reply message we receive from
@@ -833,11 +832,11 @@ public class Controller implements IFloodlightProviderService,
                               "clear FlowTable to active switch list",
                              HexString.toHexString(sw.getId()));
                 }
-                
                 // Some switches don't seem to update us with port
                 // status messages while in slave role.
-                readSwitchPortStateFromStorage(sw);                
-                
+                if (!isActive)	{
+                	readSwitchPortStateFromStorage(sw);
+                }
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
                 // attribute is null, then that means that the switch 
@@ -1395,7 +1394,6 @@ public class Controller implements IFloodlightProviderService,
                 oldSw.setConnected(false);
                 
                 oldSw.cancelAllStatisticsReplies();
-                
                 updateInactiveSwitchInfo(oldSw);
     
                 // we need to clean out old switch state definitively 
