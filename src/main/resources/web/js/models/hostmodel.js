@@ -38,18 +38,27 @@ window.HostCollection = Backbone.Collection.extend({
             url:hackBase + "/wm/device/",
             dataType:"json",
             success:function (data) {
-                // console.log("fetched  host list: " + data.length);
+                console.log("fetched  host list: " + data.length);
                 // console.log(data);
                 // data is a list of device hashes
+                var old_ids = self.pluck('id');
+                //console.log("old_ids" + old_ids);
                 _.each(data, function(h) {
+                    h.id = h.mac[0];
+                    old_ids = _.without(old_ids, h.id);
                     if (h['attachmentPoint'].length > 0) {
-                        h.id = h.mac[0];
                         h.swport = _.reduce(h['attachmentPoint'], function(memo, ap) {
                             return memo + ap.switchDPID + "-" + ap.port + " "}, "");
                         //console.log(h.swport);
                         h.lastSeen = new Date(h.lastSeen).toLocaleString();
                         self.add(h, {silent: true});
                     }
+                });
+                // old_ids now holds hosts that no longer exist; remove them
+                console.log("old_ids" + old_ids);
+                _.each(old_ids, function(h) {
+                    console.log("---removing host " + h);
+                    self.remove({id:h});
                 });
                 self.trigger('add'); // batch redraws
             }
