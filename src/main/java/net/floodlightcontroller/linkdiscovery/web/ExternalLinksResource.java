@@ -13,7 +13,7 @@ import net.floodlightcontroller.routing.Link;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
-public class LinksResource extends ServerResource {
+public class ExternalLinksResource extends ServerResource {
 
     @Get("json")
     public Set<LinkWithType> retrieve() {
@@ -27,13 +27,14 @@ public class LinksResource extends ServerResource {
             for (Link link: links.keySet()) {
                 LinkInfo info = links.get(link);
                 LinkType type = ld.getLinkType(link, info);
-                LinkWithType lwt = new LinkWithType(link,
-                                                    info.getSrcPortState(),
-                                                    info.getDstPortState(),
-                                                    type);
+                if (type == LinkType.MULTIHOP_LINK) {
+                    LinkWithType lwt = new LinkWithType(link,
+                                                        info.getSrcPortState(),
+                                                        info.getDstPortState(),
+                                                        type);
 
-                if (type == LinkType.DIRECT_LINK || type == LinkType.TUNNEL)
                     returnLinkSet.add(lwt);
+                }
             }
         }
         return returnLinkSet;

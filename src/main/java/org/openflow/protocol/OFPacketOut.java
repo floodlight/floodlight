@@ -24,6 +24,7 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.factory.OFActionFactory;
 import org.openflow.protocol.factory.OFActionFactoryAware;
+import org.openflow.util.HexString;
 import org.openflow.util.U16;
 
 /**
@@ -235,6 +236,6 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
         return "OFPacketOut [actionFactory=" + actionFactory + ", actions="
                 + actions + ", actionsLength=" + actionsLength + ", bufferId=0x"
                 + Integer.toHexString(bufferId) + ", inPort=" + inPort + ", packetData="
-                + Arrays.toString(packetData) + "]";
+                + HexString.toHexString(packetData) + "]";
     }
 }
