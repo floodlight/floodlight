@@ -710,7 +710,7 @@ public class OFSwitchImpl implements IOFSwitch {
                 message="Switch {switch}: expected role reply with " +
                         "Role {role}, got {role}. Disconnecting switch",
                 explanation="The switch sent an unexpected HA role reply",
-                recommendation=HA_CHECK_SWITCH),                           
+                recommendation=HA_CHECK_SWITCH)                           
     })
     protected void deliverRoleReply(int xid, Role role) {
         synchronized(pendingRoleRequests) {

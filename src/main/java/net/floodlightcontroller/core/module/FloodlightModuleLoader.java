@@ -159,7 +159,7 @@ public class FloodlightModuleLoader {
                 message="Could not load default modules",
                 explanation="The controller failed to read the default " +
                         "module configuration",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+                recommendation=LogMessageDoc.CHECK_CONTROLLER)
 	})
 	public IFloodlightModuleContext loadModulesFromConfig(String fName) 
 	        throws FloodlightModuleException {
