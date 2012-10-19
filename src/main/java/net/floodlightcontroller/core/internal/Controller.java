@@ -804,7 +804,8 @@ public class Controller implements IFloodlightProviderService,
             
             boolean isActive = activeSwitches.containsKey(sw.getId());
             if (sw.isActive()) {
-                // Transition from SLAVE to MASTER.
+            // Transition from SLAVE to MASTER.
+                
                 if (!state.firstRoleReplyReceived || 
                     getAlwaysClearFlowsOnSwAdd()) {
                     // This is the first role-reply message we receive from
@@ -827,15 +828,18 @@ public class Controller implements IFloodlightProviderService,
                     // flow-table. The end result would be that the flow 
                     // table for a newly connected switch is never
                     // flushed. Not sure how to handle that case though...
-                    sw.clearAllFlowMods();
+                    if (!isActive){
+                        sw.clearAllFlowMods();
+                    }
                     log.debug("First role reply from master switch {}, " +
                               "clear FlowTable to active switch list",
                              HexString.toHexString(sw.getId()));
                 }
+                
                 // Some switches don't seem to update us with port
                 // status messages while in slave role.
-                if (!isActive)	{
-                	readSwitchPortStateFromStorage(sw);
+                if (!isActive){
+                     readSwitchPortStateFromStorage(sw);
                 }
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
@@ -848,7 +852,7 @@ public class Controller implements IFloodlightProviderService,
                          HexString.toHexString(sw.getId()));
 
             } 
-            else if (isActive && !sw.isActive()) {
+            else if (isActive) {
                 // Transition from MASTER to SLAVE: remove switch 
                 // from active switch list. 
                 log.debug("Removed slave switch {} from active switch" +
@@ -1394,6 +1398,7 @@ public class Controller implements IFloodlightProviderService,
                 oldSw.setConnected(false);
                 
                 oldSw.cancelAllStatisticsReplies();
+                
                 updateInactiveSwitchInfo(oldSw);
     
                 // we need to clean out old switch state definitively 
