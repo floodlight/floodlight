@@ -105,7 +105,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
-    protected boolean connected;
+    protected volatile boolean connected;
     protected Role role;
     protected TimedCache<Long> timedCache;
     protected ReentrantReadWriteLock listenerLock;
@@ -493,13 +493,15 @@ public class OFSwitchImpl implements IOFSwitch {
 
     @JsonIgnore
     @Override
-    public synchronized boolean isConnected() {
+    public boolean isConnected() {
+        // No lock needed since we use volatile
         return connected;
     }
 
     @Override
     @JsonIgnore
-    public synchronized void setConnected(boolean connected) {
+    public void setConnected(boolean connected) {
+        // No lock needed since we use volatile
         this.connected = connected;
     }
     
