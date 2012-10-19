@@ -803,7 +803,7 @@ public class Controller implements IFloodlightProviderService,
             sw.deliverRoleReply(vendorMessage.getXid(), role);
             
             boolean isActive = activeSwitches.containsKey(sw.getId());
-            if (!isActive && sw.isActive()) {
+            if (sw.isActive()) {
                 // Transition from SLAVE to MASTER.
                 
                 if (!state.firstRoleReplyReceived || 
@@ -838,8 +838,9 @@ public class Controller implements IFloodlightProviderService,
                 
                 // Some switches don't seem to update us with port
                 // status messages while in slave role.
+                if (!isActive){
                 readSwitchPortStateFromStorage(sw);                
-                
+                }
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
                 // attribute is null, then that means that the switch 
