@@ -1163,7 +1163,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
         controller.activeSwitches.put(1L, chdlr.sw);
-        expect(chdlr.sw.isActive()).andReturn(false);
+        expect(chdlr.sw.isActive()).andReturn(false).anyTimes();
         expect(chdlr.sw.isConnected()).andReturn(true);
         chdlr.sw.cancelAllStatisticsReplies();
         chdlr.state.firstRoleReplyReceived = false;

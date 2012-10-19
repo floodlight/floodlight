@@ -827,7 +827,9 @@ public class Controller implements IFloodlightProviderService,
                     // flow-table. The end result would be that the flow 
                     // table for a newly connected switch is never
                     // flushed. Not sure how to handle that case though...
-                    sw.clearAllFlowMods();
+                	if (!isActive){
+                		sw.clearAllFlowMods();
+                	}
                     log.debug("First role reply from master switch {}, " +
                               "clear FlowTable to active switch list",
                              HexString.toHexString(sw.getId()));
@@ -848,7 +850,7 @@ public class Controller implements IFloodlightProviderService,
                          HexString.toHexString(sw.getId()));
 
             } 
-            else if (isActive && !sw.isActive()) {
+            else if (isActive) {
                 // Transition from MASTER to SLAVE: remove switch 
                 // from active switch list. 
                 log.debug("Removed slave switch {} from active switch" +
