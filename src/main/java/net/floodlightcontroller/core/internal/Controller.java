@@ -804,7 +804,7 @@ public class Controller implements IFloodlightProviderService,
             
             boolean isActive = activeSwitches.containsKey(sw.getId());
             if (sw.isActive()) {
-                // Transition from SLAVE to MASTER.
+            	// Transition from SLAVE to MASTER.
                 
                 if (!state.firstRoleReplyReceived || 
                     getAlwaysClearFlowsOnSwAdd()) {
@@ -828,8 +828,8 @@ public class Controller implements IFloodlightProviderService,
                     // flow-table. The end result would be that the flow 
                     // table for a newly connected switch is never
                     // flushed. Not sure how to handle that case though...
-                	if (!isActive){
-                		sw.clearAllFlowMods();
+                    if (!isActive){
+                    	sw.clearAllFlowMods();
                 	}
                     log.debug("First role reply from master switch {}, " +
                               "clear FlowTable to active switch list",
@@ -839,8 +839,8 @@ public class Controller implements IFloodlightProviderService,
                 // Some switches don't seem to update us with port
                 // status messages while in slave role.
                 if (!isActive){
-                readSwitchPortStateFromStorage(sw);                
-                }
+                	readSwitchPortStateFromStorage(sw);
+                	}
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
                 // attribute is null, then that means that the switch 
