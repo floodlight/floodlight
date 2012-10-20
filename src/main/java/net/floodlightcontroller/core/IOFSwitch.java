@@ -375,5 +375,23 @@ public interface IOFSwitch {
      * Flush all flows queued for this switch in the current thread.
      * NOTE: The contract is limited to the current thread
      */
-     public void flush();
+    public void flush();
+
+    /**
+     * Send HA role request
+     * 
+     * @param role
+     * @param cookie
+     * @return 
+     * @throws IOException 
+     */
+    public int sendNxRoleRequest(Role role, long cookie) throws IOException;
+
+    /**
+     * Check HA role request cookie
+     * 
+     * @param cookie
+     * @return
+     */
+    public boolean checkFirstPendingRoleRequestCookie(long cookie);
 }

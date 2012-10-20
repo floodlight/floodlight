@@ -826,8 +826,8 @@ public class ControllerTest extends FloodlightTestCase {
         // Role support enabled. 
         state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
         controller.role = Role.MASTER;
-        Capture<Collection<OFSwitchImpl>> swListCapture = 
-                    new Capture<Collection<OFSwitchImpl>>();
+        Capture<Collection<IOFSwitch>> swListCapture = 
+                    new Capture<Collection<IOFSwitch>>();
         controller.roleChanger.submitRequest(capture(swListCapture), 
                     same(Role.MASTER));
         replay(controller.roleChanger, chdlr.sw);
@@ -837,7 +837,7 @@ public class ControllerTest extends FloodlightTestCase {
         assertTrue(controller.activeSwitches.isEmpty());
         assertTrue(controller.connectedSwitches.contains(chdlr.sw));
         assertTrue(state.firstRoleReplyReceived);
-        Collection<OFSwitchImpl> swList = swListCapture.getValue();
+        Collection<IOFSwitch> swList = swListCapture.getValue();
         assertEquals(1, swList.size());
         assertTrue("swList must contain this switch", swList.contains(chdlr.sw));
     }

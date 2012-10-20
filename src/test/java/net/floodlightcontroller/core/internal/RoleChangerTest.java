@@ -32,7 +32,7 @@ public class RoleChangerTest {
      */
     @Test
     public void testSendRoleRequestSlaveNotSupported() {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that doesn't support role requests
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
@@ -59,7 +59,7 @@ public class RoleChangerTest {
      */
     @Test
     public void testSendRoleRequestMasterNotSupported() {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that doesn't support role requests
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
@@ -81,7 +81,7 @@ public class RoleChangerTest {
      */
     @Test
     public void testSendRoleRequestErrorHandling () throws Exception {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that supports role requests
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
@@ -108,7 +108,7 @@ public class RoleChangerTest {
      */
     @Test
     public void testSendRoleRequestSupported() throws Exception {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that supports role requests
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
@@ -136,7 +136,7 @@ public class RoleChangerTest {
     
     @Test
     public void testVerifyRoleReplyReceived() {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        Collection<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // Add a switch that has received a role reply
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
@@ -164,7 +164,7 @@ public class RoleChangerTest {
     @Test
     public void testRoleChangeTask() {
         @SuppressWarnings("unchecked")
-        Collection<OFSwitchImpl> switches = 
+        Collection<IOFSwitch> switches = 
                 EasyMock.createMock(Collection.class);
         long now = System.nanoTime();
         long dt1 = 10 * 1000*1000*1000L;
@@ -186,7 +186,7 @@ public class RoleChangerTest {
     
     @Test
     public void testSubmitRequest() throws Exception {
-        LinkedList<OFSwitchImpl> switches = new LinkedList<OFSwitchImpl>();
+        LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         roleChanger.timeout = 500*1000*1000; // 500 ms
         
         // a switch that supports role requests

@@ -346,4 +346,16 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return 0;
     }
 
+    @Override
+    public int sendNxRoleRequest(Role role, long cookie) {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public boolean checkFirstPendingRoleRequestCookie(long cookie) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
 }

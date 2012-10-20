@@ -634,7 +634,7 @@ public class OFSwitchImpl implements IOFSwitch {
      *        RoleChanger can check for timeouts.
      * @return transaction id of the role request message that was sent
      */
-    protected int sendNxRoleRequest(Role role, long cookie)
+    public int sendNxRoleRequest(Role role, long cookie)
             throws IOException {
         synchronized(pendingRoleRequests) {
             // Convert the role enum to the appropriate integer constant used
@@ -771,7 +771,7 @@ public class OFSwitchImpl implements IOFSwitch {
      * @param cookie
      * @return
      */
-    protected boolean checkFirstPendingRoleRequestCookie(long cookie) {
+    public boolean checkFirstPendingRoleRequestCookie(long cookie) {
         synchronized(pendingRoleRequests) {
             PendingRoleRequestEntry head = pendingRoleRequests.peek();
             if (head == null)

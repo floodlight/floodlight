@@ -149,7 +149,7 @@ public class Controller implements IFloodlightProviderService,
     // send role request messages to switches when our role changes to master
     // We add a switch to this set after it successfully completes the
     // handshake. Access to this Set needs to be synchronized with roleChanger
-    protected HashSet<OFSwitchImpl> connectedSwitches;
+    protected HashSet<IOFSwitch> connectedSwitches;
     
     // The controllerNodeIPsCache maps Controller IDs to their IP address. 
     // It's only used by handleControllerNodeIPsChanged
@@ -776,7 +776,7 @@ public class Controller implements IFloodlightProviderService,
                         log.debug("This controller's role is {}, " + 
                                 "sending initial role request msg to {}",
                                 role, sw);
-                        Collection<OFSwitchImpl> swList = new ArrayList<OFSwitchImpl>(1);
+                        Collection<IOFSwitch> swList = new ArrayList<IOFSwitch>(1);
                         swList.add(sw);
                         roleChanger.submitRequest(swList, role);
                     } 
@@ -1862,7 +1862,7 @@ public class Controller implements IFloodlightProviderService,
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
         this.haListeners = new CopyOnWriteArraySet<IHAListener>();
         this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
-        this.connectedSwitches = new HashSet<OFSwitchImpl>();
+        this.connectedSwitches = new HashSet<IOFSwitch>();
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
         this.factory = new BasicFactory();
