@@ -304,7 +304,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+    public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {
         // TODO Auto-generated method stub
         return null;
