@@ -1141,6 +1141,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(chdlr.sw.isActive()).andReturn(true);
         controller.activeSwitches.put(1L, chdlr.sw);
         chdlr.state.firstRoleReplyReceived = false;
+        chdlr.sw.clearAllFlowMods();
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);

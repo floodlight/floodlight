@@ -828,19 +828,12 @@ public class Controller implements IFloodlightProviderService,
                     // flow-table. The end result would be that the flow 
                     // table for a newly connected switch is never
                     // flushed. Not sure how to handle that case though...
-                    if (!isActive){
-                        sw.clearAllFlowMods();
-                    }
+                    sw.clearAllFlowMods();
                     log.debug("First role reply from master switch {}, " +
                               "clear FlowTable to active switch list",
                              HexString.toHexString(sw.getId()));
                 }
                 
-                // Some switches don't seem to update us with port
-                // status messages while in slave role.
-                if (!isActive){
-                     readSwitchPortStateFromStorage(sw);
-                }
                 // Only add the switch to the active switch list if 
                 // we're not in the slave role. Note that if the role 
                 // attribute is null, then that means that the switch 
@@ -852,7 +845,7 @@ public class Controller implements IFloodlightProviderService,
                          HexString.toHexString(sw.getId()));
 
             } 
-            else if (isActive) {
+            else {
                 // Transition from MASTER to SLAVE: remove switch 
                 // from active switch list. 
                 log.debug("Removed slave switch {} from active switch" +
@@ -1384,7 +1377,7 @@ public class Controller implements IFloodlightProviderService,
         OFSwitchImpl oldSw = (OFSwitchImpl) this.activeSwitches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
-            log.info("New add switch for pre-existing switch {}", sw);
+            log.debug("New add switch for pre-existing switch {}", sw);
             return;
         }
         
@@ -1424,7 +1417,10 @@ public class Controller implements IFloodlightProviderService,
                 oldSw.getListenerWriteLock().unlock();
             }
         }
-        
+      else {// Some switches don't seem to update us with port
+           // status messages while in slave role.
+            readSwitchPortStateFromStorage(sw);
+        }
         updateActiveSwitchInfo(sw);
         SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.ADDED);
         try {
@@ -1803,7 +1799,7 @@ public class Controller implements IFloodlightProviderService,
      * Read switch port data from storage and write it into a switch object
      * @param sw the switch to update
      */
-    protected void readSwitchPortStateFromStorage(OFSwitchImpl sw) {
+    protected void readSwitchPortStateFromStorage(IOFSwitch sw) {
         OperatorPredicate op = 
                 new OperatorPredicate(PORT_SWITCH, 
                                       OperatorPredicate.Operator.EQ,
