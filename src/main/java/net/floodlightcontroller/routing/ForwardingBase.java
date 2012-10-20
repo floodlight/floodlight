@@ -71,7 +71,7 @@ public abstract class ForwardingBase
     protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
 
-    protected static int OFMESSAGE_DAMPER_CAPACITY = 50000; // TODO: find sweet spot
+    protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
     protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
 
     public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
