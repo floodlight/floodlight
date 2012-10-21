@@ -38,7 +38,22 @@ public class NullCounterStore implements IFloodlightModule,
     }
 
     @Override
+    public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
+        // no-op
+    }
+
+    @Override
     public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage ofMsg) {
+        // no-op
+    }
+
+    @Override
+    public void updatePktOutFMCounterStoreLocal(IOFSwitch sw, OFMessage ofMsg) {
+        // no-op
+    }
+
+    @Override
+    public void updateFlush() {
         // no-op
     }
 

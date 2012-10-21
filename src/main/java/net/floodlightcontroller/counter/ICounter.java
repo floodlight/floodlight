@@ -35,7 +35,7 @@ public interface ICounter {
   public void increment();
   
   /**
-   * Used primarily for testing - no performance guarantees
+   * Used primarily for flushing thread local updates
    */
   public void increment(Date d, long delta);
   

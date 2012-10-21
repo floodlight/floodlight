@@ -31,6 +31,7 @@ public interface ICounterStoreService extends IFloodlightService {
      * @param eth
      */
     public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth);
+    public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth);
     
     /**
      * This method can only be used to update packetOut and flowmod counters
@@ -39,6 +40,13 @@ public interface ICounterStoreService extends IFloodlightService {
      * @param ofMsg
      */
     public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage ofMsg);
+    public void updatePktOutFMCounterStoreLocal(IOFSwitch sw, OFMessage ofMsg);
+
+    /**
+     * Flush Local Counter Updates
+     *
+     */
+    public void updateFlush();
     
     /**
      * Retrieve a list of subCategories by counterName.

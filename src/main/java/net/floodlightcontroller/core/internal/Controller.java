@@ -590,8 +590,9 @@ public class Controller implements IFloodlightProviderService,
                     }
                 }
 
-                // Flush all flow-mods/packet-out generated from this "train"
+                // Flush all flow-mods/packet-out/stats generated from this "train"
                 OFSwitchImpl.flush_all();
+                counterStore.updateFlush();
             }
         }
         
@@ -1236,7 +1237,7 @@ public class Controller implements IFloodlightProviderService,
                     eth = new Ethernet();
                     eth.deserialize(pi.getPacketData(), 0,
                             pi.getPacketData().length);
-                    counterStore.updatePacketInCounters(sw, m, eth);
+                    counterStore.updatePacketInCountersLocal(sw, m, eth);
                 }
                 // fall through to default case...
 
