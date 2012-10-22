@@ -750,8 +750,7 @@ public class Controller implements IFloodlightProviderService,
                                 role, sw);
                         // Need to clear FlowMods before we add the switch
                         // and dispatch updates otherwise we have a race condition.
-                        sw.clearAllFlowMods();
-                        addSwitch(sw);
+                        addSwitch(sw, true, false);
                         state.firstRoleReplyReceived = true;
                     }
                 }
@@ -802,10 +801,9 @@ public class Controller implements IFloodlightProviderService,
             
             sw.deliverRoleReply(vendorMessage.getXid(), role);
             
-            boolean isActive = activeSwitches.containsKey(sw.getId());
             if (sw.isActive()) {
             // Transition from SLAVE to MASTER.
-                
+                boolean shouldClearFlowMods = false;
                 if (!state.firstRoleReplyReceived || 
                     getAlwaysClearFlowsOnSwAdd()) {
                     // This is the first role-reply message we receive from
@@ -828,7 +826,7 @@ public class Controller implements IFloodlightProviderService,
                     // flow-table. The end result would be that the flow 
                     // table for a newly connected switch is never
                     // flushed. Not sure how to handle that case though...
-                    sw.clearAllFlowMods();
+                    shouldClearFlowMods = true;
                     log.debug("First role reply from master switch {}, " +
                               "clear FlowTable to active switch list",
                              HexString.toHexString(sw.getId()));
@@ -840,7 +838,7 @@ public class Controller implements IFloodlightProviderService,
                 // doesn't support the role request messages, so in that
                 // case we're effectively in the EQUAL role and the 
                 // switch should be included in the active switch list.
-                addSwitch(sw);
+                addSwitch(sw, shouldClearFlowMods, true);
                 log.debug("Added master switch {} to active switch list",
                          HexString.toHexString(sw.getId()));
 
@@ -1025,8 +1023,7 @@ public class Controller implements IFloodlightProviderService,
                                     // and dispatch updates otherwise we have a race condition.
                                     // TODO: switch update is async. Won't we still have a potential
                                     //       race condition? 
-                                    sw.clearAllFlowMods();
-                                    addSwitch(sw);
+                                    addSwitch(sw, true, false);
                                 }
                             }
                         }
@@ -1354,6 +1351,10 @@ public class Controller implements IFloodlightProviderService,
      * This happens either when a switch first connects (and the controller is
      * not in the slave role) or when the role of the controller changes from
      * slave to master.
+     * 
+     * FIXME: remove shouldReadSwitchPortStateFromStorage argument once 
+     * performance problems are solved. We should call it always or never.
+     * 
      * @param sw the switch that has been added
      */
     // TODO: need to rethink locking and the synchronous switch update.
@@ -1371,15 +1372,19 @@ public class Controller implements IFloodlightProviderService,
                     "very rarely, then it is likely this is a transient " +
                     "network problem that can be ignored."
             )
-    protected void addSwitch(IOFSwitch sw) {
+    protected void addSwitch(IOFSwitch sw, 
+                             boolean shouldClearFlowMods,
+                             boolean shouldReadSwitchPortStateFromStorage) {
         // TODO: is it safe to modify the HashMap without holding 
         // the old switch's lock?
         OFSwitchImpl oldSw = (OFSwitchImpl) this.activeSwitches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
-            log.debug("New add switch for pre-existing switch {}", sw);
+            log.info("New add switch for pre-existing switch {}", sw);
             return;
         }
+        
+        
         
         if (oldSw != null) {
             oldSw.getListenerWriteLock().lock();
@@ -1417,10 +1422,15 @@ public class Controller implements IFloodlightProviderService,
                 oldSw.getListenerWriteLock().unlock();
             }
         }
-      else {// Some switches don't seem to update us with port
-           // status messages while in slave role.
+        
+        // Some switches don't seem to update us with port
+        // status messages while in slave role.
+        if (shouldReadSwitchPortStateFromStorage)
             readSwitchPortStateFromStorage(sw);
-        }
+        
+        if (shouldClearFlowMods)
+            sw.clearAllFlowMods();
+        
         updateActiveSwitchInfo(sw);
         SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.ADDED);
         try {
@@ -1797,9 +1807,20 @@ public class Controller implements IFloodlightProviderService,
     
     /**
      * Read switch port data from storage and write it into a switch object
+     * This is a hack since some switches don't seem to update us with 
+     * port status messages while in slave mode, so we read the port 
+     * list from storage and /add/ them to the current port list. 
+     * NOTE: this method /will not send/ a PORTCHANGED switch update since
+     * we usually call it from addSwitch. 
+     * 
      * @param sw the switch to update
      */
     protected void readSwitchPortStateFromStorage(IOFSwitch sw) {
+    /*
+     * FIXME: This method causes performance degradation if many switches
+     * are connected updated. CHANGE IT. Once done remove the 
+     * shouldReadSwitchPortStateFromStorage() argument to addSwitch
+     */
         OperatorPredicate op = 
                 new OperatorPredicate(PORT_SWITCH, 
                                       OperatorPredicate.Operator.EQ,
@@ -1833,12 +1854,6 @@ public class Controller implements IFloodlightProviderService,
             } catch (NullPointerException e) {
                 // ignore
             }
-        }
-        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
-        try {
-            this.updates.put(update);
-        } catch (InterruptedException e) {
-            log.error("Failure adding update to queue", e);
         }
     }
     
