@@ -64,7 +64,6 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
@@ -479,7 +478,7 @@ public class ControllerTest extends FloodlightTestCase {
     }
 
     @Test
-    public void testAddSwitch() throws Exception {
+    public void testAddSwitchNoClearFM() throws Exception {
         controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
 
         //OFSwitchImpl oldsw = createMock(OFSwitchImpl.class);
@@ -511,9 +510,53 @@ public class ControllerTest extends FloodlightTestCase {
         expect(newsw.getTables()).andReturn((byte)0).anyTimes();
         expect(newsw.getActions()).andReturn(0).anyTimes();
         controller.activeSwitches.put(0L, oldsw);
+        
         replay(newsw, channel, channel2);
 
-        controller.addSwitch(newsw);
+        controller.addSwitch(newsw, false, false);
+
+        verify(newsw, channel, channel2);
+    }
+    
+    @Test
+    public void testAddSwitchClearFM() throws Exception {
+        controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
+
+        //OFSwitchImpl oldsw = createMock(OFSwitchImpl.class);
+        OFSwitchImpl oldsw = new OFSwitchImpl();
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setDatapathId(0L);
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        oldsw.setFeaturesReply(featuresReply);
+        //expect(oldsw.getId()).andReturn(0L).anyTimes();
+        //expect(oldsw.asyncRemoveSwitchLock()).andReturn(rwlock.writeLock()).anyTimes();
+        //oldsw.setConnected(false);
+        //expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+
+        Channel channel = createNiceMock(Channel.class);
+        //expect(oldsw.getChannel()).andReturn(channel);
+        oldsw.setChannel(channel);
+        expect(channel.close()).andReturn(null);
+
+        IOFSwitch newsw = createMock(IOFSwitch.class);
+        expect(newsw.getId()).andReturn(0L).anyTimes();
+        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        expect(newsw.getConnectedSince()).andReturn(new Date());
+        Channel channel2 = createMock(Channel.class);
+        expect(newsw.getChannel()).andReturn(channel2);
+        expect(channel2.getRemoteAddress()).andReturn(null);
+        expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
+        expect(newsw.getCapabilities()).andReturn(0).anyTimes();
+        expect(newsw.getBuffers()).andReturn(0).anyTimes();
+        expect(newsw.getTables()).andReturn((byte)0).anyTimes();
+        expect(newsw.getActions()).andReturn(0).anyTimes();
+        newsw.clearAllFlowMods();
+        expectLastCall().once();
+        controller.activeSwitches.put(0L, oldsw);
+        
+        replay(newsw, channel, channel2);
+
+        controller.addSwitch(newsw, true, false);
 
         verify(newsw, channel, channel2);
     }
@@ -1142,7 +1185,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(chdlr.sw.isActive()).andReturn(true);
         controller.activeSwitches.put(1L, chdlr.sw);
         chdlr.state.firstRoleReplyReceived = false;
-        chdlr.sw.clearAllFlowMods();
+        // Must not clear flow mods
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
@@ -1185,7 +1228,7 @@ public class ControllerTest extends FloodlightTestCase {
      */
     @Test
     public void testRemoveActiveSwitch() {
-        IOFSwitch sw = EasyMock.createNiceMock(IOFSwitch.class);
+        IOFSwitch sw = createNiceMock(IOFSwitch.class);
         boolean exceptionThrown = false;
         expect(sw.getId()).andReturn(1L).anyTimes();
         replay(sw);

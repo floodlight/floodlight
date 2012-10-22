@@ -803,9 +803,11 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+    public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {
-        OFMessage request = new OFFeaturesRequest();
+        OFMessage request = 
+                floodlightProvider.getOFMessageFactory().
+                    getMessage(OFType.FEATURES_REQUEST);
         request.setXid(getNextTransactionId());
         OFFeaturesReplyFuture future =
                 new OFFeaturesReplyFuture(threadPool, this, request.getXid());
