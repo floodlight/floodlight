@@ -64,7 +64,7 @@ import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
-import net.floodlightcontroller.packet.BDDP;
+import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
@@ -529,6 +529,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
         if (iofSwitch == null) {
             return;
         }
+
+        if (port == OFPort.OFPP_LOCAL.getValue())
+            return;
+
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
         if (ofpPort == null) {
@@ -553,37 +557,42 @@ IFloodlightModule, IInfoProvider, IHAListener {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                       sw, port);
         }
-        LLDP lldp;
-        Ethernet ethernet;
 
-        if (isStandard) {
-            ethernet = new Ethernet()
-            .setSourceMACAddress(ofpPort.getHardwareAddress())
-            .setDestinationMACAddress(LLDP_STANDARD_DST_MAC_STRING)
-            .setEtherType(Ethernet.TYPE_LLDP);
-            lldp = new LLDP();
-        } else {
-            ethernet = new Ethernet()
-            .setSourceMACAddress(ofpPort.getHardwareAddress())
-            .setDestinationMACAddress(LLDP_BSN_DST_MAC_STRING)
-            .setEtherType(Ethernet.TYPE_BDDP);
-            lldp = new BDDP();
-        }
         // using "nearest customer bridge" MAC address for broadest possible propagation
         // through provider and TPMR bridges (see IEEE 802.1AB-2009 and 802.1Q-2011),
         // in particular the Linux bridge which behaves mostly like a provider bridge
-
-        ethernet.setPayload(lldp);
         byte[] chassisId = new byte[] {4, 0, 0, 0, 0, 0, 0}; // filled in later
         byte[] portId = new byte[] {2, 0, 0}; // filled in later
         byte[] ttlValue = new byte[] {0, 0x78};
-        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
-        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
-        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
-
         // OpenFlow OUI - 00-26-E1
         byte[] dpidTLVValue = new byte[] {0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) dpidTLVValue.length).setValue(dpidTLVValue);
+
+        byte[] dpidArray = new byte[8];
+        ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
+        ByteBuffer portBB = ByteBuffer.wrap(portId, 1, 2);
+
+        Long dpid = sw;
+        dpidBB.putLong(dpid);
+        // set the ethernet source mac to last 6 bytes of dpid
+        System.arraycopy(dpidArray, 2, ofpPort.getHardwareAddress(), 0, 6);
+        // set the chassis id's value to last 6 bytes of dpid
+        System.arraycopy(dpidArray, 2, chassisId, 1, 6);
+        // set the optional tlv to the full dpid
+        System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
+
+
+        // set the portId to the outgoing port
+        portBB.putShort(port);
+        if (log.isTraceEnabled()) {
+            log.trace("Sending LLDP out of interface: {}/{}",
+                      HexString.toHexString(sw), port);
+        }
+
+        LLDP lldp = new LLDP();
+        lldp.setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
+        lldp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
+        lldp.setTtl(new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
         lldp.getOptionalTLVList().add(dpidTLV);
 
         // Add the controller identifier to the TLV value.
@@ -594,30 +603,24 @@ IFloodlightModule, IInfoProvider, IHAListener {
             lldp.getOptionalTLVList().add(forwardTLV);
         }
 
-        byte[] dpidArray = new byte[8];
-        ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
-        ByteBuffer portBB = ByteBuffer.wrap(portId, 1, 2);
+        Ethernet ethernet;
+        if (isStandard) {
+            ethernet = new Ethernet()
+            .setSourceMACAddress(ofpPort.getHardwareAddress())
+            .setDestinationMACAddress(LLDP_STANDARD_DST_MAC_STRING)
+            .setEtherType(Ethernet.TYPE_LLDP);
+            ethernet.setPayload(lldp);
+        } else {
+            BSN bsn = new BSN(BSN.BSN_TYPE_BDDP);
+            bsn.setPayload(lldp);
 
-
-        Long dpid = sw;
-        dpidBB.putLong(dpid);
-
-        // set the ethernet source mac to last 6 bytes of dpid
-        System.arraycopy(dpidArray, 2, ethernet.getSourceMACAddress(), 0, 6);
-        // set the chassis id's value to last 6 bytes of dpid
-        System.arraycopy(dpidArray, 2, chassisId, 1, 6);
-        // set the optional tlv to the full dpid
-        System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
-
-        if (port == OFPort.OFPP_LOCAL.getValue())
-            return;
-
-        // set the portId to the outgoing port
-        portBB.putShort(port);
-        if (log.isTraceEnabled()) {
-            log.trace("Sending LLDP out of interface: {}/{}",
-                      HexString.toHexString(sw), port);
+            ethernet = new Ethernet()
+            .setSourceMACAddress(ofpPort.getHardwareAddress())
+            .setDestinationMACAddress(LLDP_BSN_DST_MAC_STRING)
+            .setEtherType(Ethernet.TYPE_BSN);
+            ethernet.setPayload(bsn);
         }
+
 
         // serialize and wrap in a packet out
         byte[] data = ethernet.serialize();
@@ -900,8 +903,15 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 IFloodlightProviderService.bcStore.get(cntx, 
                                                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if(eth.getEtherType() == Ethernet.TYPE_BDDP) {
-            return handleLldp((LLDP) eth.getPayload(), sw, pi, false, cntx);
+        if(eth.getEtherType() == Ethernet.TYPE_BSN) {
+            BSN bsn = (BSN) eth.getPayload();
+            if (bsn == null) return Command.STOP;
+            if (bsn.getPayload() == null) return Command.STOP;
+            // It could be a packet other than BSN LLDP, therefore
+            // continue with the regular processing.
+            if (bsn.getPayload() instanceof LLDP == false)
+                return Command.CONTINUE;
+            return handleLldp((LLDP) bsn.getPayload(), sw, pi, false, cntx);
         } else if (eth.getEtherType() == Ethernet.TYPE_LLDP)  {
             return handleLldp((LLDP) eth.getPayload(), sw, pi, true, cntx);
         } else if (eth.getEtherType() < 1500) {

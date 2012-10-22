@@ -37,7 +37,6 @@ public class Ethernet extends BasePacket {
     public static final short TYPE_LLDP = (short) 0x88cc;
     public static final short TYPE_BSN = (short) 0x8942;
     public static final short VLAN_UNTAGGED = (short)0xffff;
-    public static final short TYPE_BDDP = (short) 0x8999;
     public static final short DATALAYER_ADDRESS_LENGTH = 6; // bytes
     public static Map<Short, Class<? extends IPacket>> etherTypeClassMap;
 
@@ -47,7 +46,6 @@ public class Ethernet extends BasePacket {
         etherTypeClassMap.put(TYPE_RARP, ARP.class);
         etherTypeClassMap.put(TYPE_IPv4, IPv4.class);
         etherTypeClassMap.put(TYPE_LLDP, LLDP.class);
-        etherTypeClassMap.put(TYPE_BDDP, BDDP.class);
         etherTypeClassMap.put(TYPE_BSN, BSN.class);
     }
 
