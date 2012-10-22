@@ -1833,7 +1833,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 message="Exception in LLDP send timer.",
                 explanation="An unknown error occured while sending LLDP " +
                 		"messages to switches.",
-                recommendation=LogMessageDoc.CHECK_SWITCH),
+                recommendation=LogMessageDoc.CHECK_SWITCH)
     })
     public void startUp(FloodlightModuleContext context) {
         // Create our storage tables
