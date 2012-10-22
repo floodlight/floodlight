@@ -79,7 +79,7 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
                 message="Interrupted while waiting for packets",
                 explanation="The thread was interrupted waiting " +
                         "for packets",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+                recommendation=LogMessageDoc.CHECK_CONTROLLER)
     })
     public List<ByteBuffer> getPackets(String sessionid)
             throws org.apache.thrift.TException {
@@ -127,7 +127,7 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
                 message="queue for session {sessionId} is null",
                 explanation="The queue for the packet streamer session " +
                 		"is missing",
-                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG),
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     })
 
     public int pushMessageSync(Message msg)

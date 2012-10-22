@@ -408,7 +408,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 explanation="The properties file contains an invalid " +
                             "flow hard timeout",
                 recommendation="Correct the hard timeout in the " +
-                                "properties file."),
+                                "properties file.")
     })
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         super.init();

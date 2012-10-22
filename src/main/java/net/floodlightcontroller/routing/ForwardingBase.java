@@ -199,7 +199,7 @@ public abstract class ForwardingBase
             message="Failure writing flow mod",
             explanation="An I/O error occurred while writing a " +
                         "flow modification to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH),            
+            recommendation=LogMessageDoc.CHECK_SWITCH)            
     })
     public boolean pushRoute(Route route, OFMatch match, 
                              Integer wildcard_hints,
@@ -333,7 +333,7 @@ public abstract class ForwardingBase
             message="Failure writing packet out",
             explanation="An I/O error occurred while writing a " +
                     "packet out to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH),            
+            recommendation=LogMessageDoc.CHECK_SWITCH)            
     })
     public void pushPacket(IPacket packet, 
                            IOFSwitch sw,
@@ -602,7 +602,7 @@ public abstract class ForwardingBase
             message="Failure writing deny flow mod",
             explanation="An I/O error occurred while writing a " +
                     "deny flow mod to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH),            
+            recommendation=LogMessageDoc.CHECK_SWITCH)            
     })
     public static boolean
             blockHost(IFloodlightProviderService floodlightProvider,
