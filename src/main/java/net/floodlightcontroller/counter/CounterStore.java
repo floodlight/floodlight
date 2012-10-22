@@ -212,7 +212,8 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
 
     protected String getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
         byte mtype = m.getType().getTypeValue();
-        long swid = sw.getId();
+        //long swid = sw.getId();
+        String swsid = sw.getStringId();
         short port = 0;
         short l3type = 0;
         byte l4type = 0;
@@ -229,10 +230,16 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             }
         }
 
-        /* If possible, find and return counters for this tuple */
-        String countersKey = String.format(
-                "%02x-%016x-%04x-%04x-%02x",
-                mtype, swid, port, l3type, l4type);
+        /* If possible, find and return counters for this tuple
+         *
+         * NOTE: this can be converted to a tuple for better performance,
+         * for now we are using a string representation as a the key
+         */
+        String countersKey =
+            Byte.toString(mtype) + "-" +
+            swsid + "-" + Short.toString(port) + "-" +
+            Short.toString(l3type) + "-" +
+            Byte.toString(l4type);
         return countersKey;
     }
 
