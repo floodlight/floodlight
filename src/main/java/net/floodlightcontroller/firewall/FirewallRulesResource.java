@@ -182,6 +182,10 @@ public class FirewallRulesResource extends ServerResource {
                     rule.wildcard_dl_type = false;
                     rule.dl_type = Ethernet.TYPE_ARP;
                 }
+                if (tmp.equalsIgnoreCase("IPv4")) {
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
+                }
             } 
             
             else if (n == "src-ip") {
