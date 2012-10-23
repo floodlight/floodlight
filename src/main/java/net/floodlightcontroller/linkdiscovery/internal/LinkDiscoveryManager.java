@@ -24,6 +24,7 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -578,13 +579,23 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         Long dpid = sw;
         dpidBB.putLong(dpid);
-        // set the ethernet source mac to last 6 bytes of dpid
-        System.arraycopy(dpidArray, 2, ofpPort.getHardwareAddress(), 0, 6);
         // set the chassis id's value to last 6 bytes of dpid
         System.arraycopy(dpidArray, 2, chassisId, 1, 6);
         // set the optional tlv to the full dpid
         System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
 
+        // TODO: Consider remove this block of code.
+        // It's evil to overwrite port object. The the old code always
+        // overwrote mac address, we now only overwrite zero macs and
+        // log a warning, mostly for paranoia.
+        byte[] srcMac = ofpPort.getHardwareAddress();
+        byte[] zeroMac = {0, 0, 0, 0, 0, 0};
+        if (Arrays.equals(srcMac, zeroMac)) {
+            log.warn("Port {}/{} has zero hareware address" +
+                     "overwrite with lower 6 bytes of dpid",
+                     HexString.toHexString(dpid), ofpPort.getPortNumber());
+            System.arraycopy(dpidArray, 2, srcMac, 0, 6); 
+        }
 
         // set the portId to the outgoing port
         portBB.putShort(port);
