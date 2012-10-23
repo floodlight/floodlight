@@ -63,6 +63,13 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         String title;
     }
 
+    protected class MutableInt {
+          int value = 0;
+          public void increment() { value += 1; }
+          public int get() { return value; }
+          public void set(int val) { value = val; }
+        }
+
     /**
      * A map of counterName --> Counter
      */
@@ -72,6 +79,27 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     protected ICounter heartbeatCounter;
     protected ICounter randomCounter;
 
+    protected ConcurrentHashMap<String, List<ICounter>>
+        pktinCounters = new ConcurrentHashMap<String, List<ICounter>>();
+    protected ConcurrentHashMap<String, List<ICounter>>
+        pktoutCounters = new ConcurrentHashMap<String, List<ICounter>>();
+
+    protected final ThreadLocal<Map<String,MutableInt>> pktin_local_buffer =
+        new ThreadLocal<Map<String,MutableInt>>() {
+        @Override
+        protected Map<String,MutableInt> initialValue() {
+            return new HashMap<String,MutableInt>();
+        }
+    };
+    protected final ThreadLocal<Map<String,MutableInt>> pktout_local_buffer =
+        new ThreadLocal<Map<String,MutableInt>>() {
+        @Override
+        protected Map<String,MutableInt> initialValue() {
+            return new HashMap<String,MutableInt>();
+        }
+    };
+
+
     /**
      * Counter Categories grouped by network layers
      * NetworkLayer -> CounterToCategories
@@ -80,230 +108,369 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             new ConcurrentHashMap<NetworkLayer, Map<String, List<String>>> ();
 
     public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        OFPacketIn packet = (OFPacketIn)m;
+        if (((OFPacketIn)m).getPacketData().length <= 0) {
+            return;
+        }
+
+        List<ICounter> counters = this.getPacketInCounters(sw, m, eth);
+        if (counters != null) {
+            for (ICounter c : counters) {
+                c.increment();
+            }
+        }
+        return;
+    }
+
+    @Override
+    public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
+        if (((OFPacketIn)m).getPacketData().length <= 0) {
+            return;
+        }
+
+        String countersKey = this.getCountersKey(sw, m, eth);
+        Map<String, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
+        MutableInt currval = pktin_buffer.get(countersKey);
+
+        if ( currval == null ) {
+            this.getPacketInCounters(sw, m, eth); // create counters as side effect (if required)
+            currval = new MutableInt();
+            pktin_buffer.put(countersKey, currval);
+        }
+        currval.increment();
+        return;
+    }
+
+    /**
+     * This method can only be used to update packetOut and flowmod counters
+     *  NOTE: flowmod is counted per switch and for controller, not per port/proto
+     *
+     * @param sw
+     * @param m
+     */
+    public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage m) {
+        List<ICounter> counters = this.getPktOutFMCounters(sw, m);
+        if (counters != null) {
+            for (ICounter c : counters) {
+                c.increment();
+            }
+        }
+        return;
+    }
+
+    @Override
+    public void updatePktOutFMCounterStoreLocal(IOFSwitch sw, OFMessage m) {
+        String countersKey = this.getCountersKey(sw, m, null);
+        Map<String, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
+        MutableInt currval = pktout_buffer.get(countersKey);
+
+        if ( currval == null ) {
+            this.getPktOutFMCounters(sw, m); // create counters as side effect (if required)
+            currval = new MutableInt();
+            pktout_buffer.put(countersKey, currval);
+        }
+        currval.increment();
+        return;
+    }
+
+    @Override
+    public void updateFlush() {
+        Date date = new Date();
+        Map<String, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
+        for (String key : pktin_buffer.keySet()) {
+                MutableInt currval = pktin_buffer.get(key);
+                int delta = currval.get();
+
+                if (delta > 0) {
+                    List<ICounter> counters = this.pktinCounters.get(key);
+                    if (counters != null) {
+                        for (ICounter c : counters) {
+                            c.increment(date, delta);
+                        }
+                    }
+                }
+        }
+        // We could do better "GC" of counters that have not been update "recently"
+        pktin_buffer.clear();
+
+        Map<String, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
+        for (String key : pktout_buffer.keySet()) {
+                MutableInt currval = pktout_buffer.get(key);
+                int delta = currval.get();
+
+                if (delta > 0) {
+                    List<ICounter> counters = this.pktoutCounters.get(key);
+                    if (counters != null) {
+                        for (ICounter c : counters) {
+                            c.increment(date, delta);
+                        }
+                    }
+                }
+        }
+        // We could do better "GC" of counters that have not been update "recently"
+        pktout_buffer.clear();
+    }
+
+    protected String getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
+        byte mtype = m.getType().getTypeValue();
+        //long swid = sw.getId();
+        String swsid = sw.getStringId();
+        short port = 0;
+        short l3type = 0;
+        byte l4type = 0;
         
-        // Make sure there is data
-        if (packet.getPacketData().length <= 0) return;
-        
-        /* Extract the etherType and protocol field for IPv4 packet.
+        if (eth != null) {
+            // Packet in counters
+            // Need port and protocol level differentiation
+            OFPacketIn packet = (OFPacketIn)m;
+            port = packet.getInPort();
+            l3type = eth.getEtherType();
+            if (l3type == (short)0x0800) {
+                IPv4 ipV4 = (IPv4)eth.getPayload();
+                l4type = ipV4.getProtocol();
+            }
+        }
+
+        /* If possible, find and return counters for this tuple
+         *
+         * NOTE: this can be converted to a tuple for better performance,
+         * for now we are using a string representation as a the key
          */
-        String etherType = String.format("%04x", eth.getEtherType());
+        String countersKey =
+            Byte.toString(mtype) + "-" +
+            swsid + "-" + Short.toString(port) + "-" +
+            Short.toString(l3type) + "-" +
+            Byte.toString(l4type);
+        return countersKey;
+    }
+
+    protected List<ICounter> getPacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
+        /* If possible, find and return counters for this tuple */
+        String countersKey = this.getCountersKey(sw, m, eth);
+        List<ICounter> counters =
+                this.pktinCounters.get(countersKey);
+        if (counters != null) {
+                return counters;
+        }
         
         /*
+         *  Create the required counters
+         */
+        counters = new ArrayList<ICounter>();
+
+        /* values for names */
+        short port = ((OFPacketIn)m).getInPort();
+        short l3type = eth.getEtherType();
+        String switchIdHex = sw.getStringId();
+        String etherType = String.format("%04x", eth.getEtherType());
+        String packetName = m.getType().toClass().getName();
+        packetName = packetName.substring(packetName.lastIndexOf('.')+1);
+
+        // L2 Type
+        String l2Type = null;
+        if (eth.isBroadcast()) {
+            l2Type = BROADCAST;
+        }
+        else if (eth.isMulticast()) {
+            l2Type = MULTICAST;
+        }
+        else {
+            l2Type = UNICAST;
+        }
+
+        /*
+         * Use alias for L3 type
          * Valid EtherType must be greater than or equal to 0x0600
          * It is V1 Ethernet Frame if EtherType < 0x0600
          */
-        if (eth.getEtherType() < 0x0600) {
+        if (l3type < 0x0600) {
             etherType = "0599";
         }
-
         if (TypeAliases.l3TypeAliasMap != null && 
             TypeAliases.l3TypeAliasMap.containsKey(etherType)) {
             etherType = TypeAliases.l3TypeAliasMap.get(etherType);
-        } else {
+        }
+        else {
             etherType = "L3_" + etherType;
         }
-        String switchIdHex = sw.getStringId();
    
-        String packetName = m.getType().toClass().getName();
-        packetName = packetName.substring(packetName.lastIndexOf('.')+1); 
-        
-        // Construct controller counter for the packet_in
+        // overall controller packet counter names
         String controllerCounterName =
-            CounterStore.createCounterName(CONTROLLER_NAME, 
-                                           -1,
-                                           packetName);
-    
-        String controllerL3CategoryCounterName = 
-            CounterStore.createCounterName(CONTROLLER_NAME, 
-                                           -1,
-                                           packetName, 
-                                           etherType, 
-                                           NetworkLayer.L3);
-
-        String l2Type = null;
-        if (eth.isBroadcast()) {
-        	l2Type = BROADCAST;
-        } else if (eth.isMulticast()) {
-        	l2Type = MULTICAST;
-        } else {
-        	l2Type = UNICAST;
-        }
-        
-        // Construct both port and switch L3 counter for the packet_in
-    	String controllerL2CategoryCounterName = CounterStore.createCounterName(CONTROLLER_NAME, 
+            CounterStore.createCounterName(
+                CONTROLLER_NAME,
                 -1,
-                packetName, 
-                l2Type, 
-                NetworkLayer.L2);
-    	String switchL2CategoryCounterName = CounterStore.createCounterName(switchIdHex, 
-                -1, 
-                packetName, 
-                l2Type, 
-                NetworkLayer.L2);
-    	String portL2CategoryCounterName = CounterStore.createCounterName(switchIdHex, 
-                packet.getInPort(),
-                packetName, 
-                l2Type, 
-                NetworkLayer.L2);
-        
-        // Construct both port and switch L3 counter for the packet_in
-        String portCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               packet.getInPort(),
-                                               packetName);
+                packetName);
+        counters.add(createCounter(controllerCounterName,
+                                   CounterType.LONG));
+
         String switchCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               -1,
-                                               packetName);
-        
-        String portL3CategoryCounterName = 
-                CounterStore.createCounterName(switchIdHex, 
-                                               packet.getInPort(),
-                                               packetName, 
-                                               etherType, 
-                                               NetworkLayer.L3);
-        String switchL3CategoryCounterName =
-                CounterStore.createCounterName(switchIdHex, 
-                                               -1, 
-                                               packetName, 
-                                               etherType, 
-                                               NetworkLayer.L3);
+            CounterStore.createCounterName(
+                switchIdHex,
+                -1,
+                packetName);
+        counters.add(createCounter(switchCounterName,
+                                   CounterType.LONG));
 
-        // Controller counters
-        ICounter controllerCounter = getCounter(controllerCounterName);
-        if (controllerCounter == null) {
-            controllerCounter = createCounter(controllerCounterName, 
-                                              CounterType.LONG);
-        }
-        controllerCounter.increment();
-        ICounter portCounter = getCounter(portCounterName);
-        if (portCounter == null) {
-            portCounter = createCounter(portCounterName, 
-                                        CounterType.LONG);
-        }
-        portCounter.increment();
-        ICounter switchCounter = getCounter(switchCounterName);
-        if (switchCounter == null) {
-            switchCounter = createCounter(switchCounterName, 
-                                          CounterType.LONG);
-        }
-        switchCounter.increment();
+        String portCounterName =
+            CounterStore.createCounterName(
+                switchIdHex,
+                port,
+                packetName);
+        counters.add(createCounter(portCounterName,
+                                   CounterType.LONG));
 
-        // L2 counters
-        ICounter controllerL2Counter = getCounter(controllerL2CategoryCounterName);
-        if (controllerL2Counter == null) {
-            controllerL2Counter = createCounter(controllerL2CategoryCounterName,
-                                                CounterType.LONG);
-        }
-        controllerL2Counter.increment();
-        ICounter switchL2Counter = getCounter(switchL2CategoryCounterName);
-        if (switchL2Counter == null) {
-            switchL2Counter = createCounter(switchL2CategoryCounterName,
-                                            CounterType.LONG);
-        }
-        switchL2Counter.increment();
-        ICounter portL2Counter = getCounter(portL2CategoryCounterName);
-        if (portL2Counter == null) {
-            portL2Counter = createCounter(portL2CategoryCounterName,
-                                          CounterType.LONG);
-        }
-        portL2Counter.increment();
+        // L2 counter names
+            String controllerL2CategoryCounterName =
+                CounterStore.createCounterName(
+                    CONTROLLER_NAME,
+                    -1,
+                    packetName,
+                    l2Type,
+                    NetworkLayer.L2);
+            counters.add(createCounter(controllerL2CategoryCounterName,
+                                       CounterType.LONG));
 
-        // L3 counters
-        ICounter controllerL3Counter = getCounter(controllerL3CategoryCounterName);
-        if (controllerL3Counter == null) {
-            controllerL3Counter = createCounter(controllerL3CategoryCounterName,
-                                                CounterType.LONG);
-        }
-        controllerL3Counter.increment();
-        ICounter portL3Counter = getCounter(portL3CategoryCounterName);
-        if (portL3Counter == null) {
-            portL3Counter = createCounter(portL3CategoryCounterName,
-                                          CounterType.LONG);
-        }
-        portL3Counter.increment();
-        ICounter switchL3Counter = getCounter(switchL3CategoryCounterName);
-        if (switchL3Counter == null) {
-            switchL3Counter = createCounter(switchL3CategoryCounterName,
-                                            CounterType.LONG);
-        }
-        switchL3Counter.increment();
+            String switchL2CategoryCounterName =
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    -1,
+                    packetName,
+                    l2Type,
+                    NetworkLayer.L2);
+            counters.add(createCounter(switchL2CategoryCounterName,
+                                       CounterType.LONG));
+
+            String portL2CategoryCounterName =
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    port,
+                    packetName,
+                    l2Type,
+                    NetworkLayer.L2);
+            counters.add(createCounter(portL2CategoryCounterName,
+                                       CounterType.LONG));
+
+        // L3 counter names
+            String controllerL3CategoryCounterName =
+                CounterStore.createCounterName(
+                    CONTROLLER_NAME,
+                    -1,
+                    packetName,
+                    etherType,
+                    NetworkLayer.L3);
+            counters.add(createCounter(controllerL3CategoryCounterName,
+                                       CounterType.LONG));
+
+            String switchL3CategoryCounterName =
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    -1,
+                    packetName,
+                    etherType,
+                    NetworkLayer.L3);
+            counters.add(createCounter(switchL3CategoryCounterName,
+                                       CounterType.LONG));
+
+            String portL3CategoryCounterName =
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    port,
+                    packetName,
+                    etherType,
+                    NetworkLayer.L3);
+            counters.add(createCounter(portL3CategoryCounterName,
+                                       CounterType.LONG));
 
         // L4 counters
-        if (etherType.compareTo(CounterStore.L3ET_IPV4) == 0) {
+        if (l3type == (short)0x0800) {
+
+            // resolve protocol alias
             IPv4 ipV4 = (IPv4)eth.getPayload();
-            String l4Type = String.format("%02x", ipV4.getProtocol());
+            String l4name = String.format("%02x", ipV4.getProtocol());
             if (TypeAliases.l4TypeAliasMap != null && 
-                    TypeAliases.l4TypeAliasMap.containsKey(l4Type)) {
-                l4Type = TypeAliases.l4TypeAliasMap.get(l4Type);
-            } else {
-                l4Type = "L4_" + l4Type;
+                TypeAliases.l4TypeAliasMap.containsKey(l4name)) {
+                l4name = TypeAliases.l4TypeAliasMap.get(l4name);
             }
-            String controllerL4CategoryCounterName = 
-                    CounterStore.createCounterName(CONTROLLER_NAME, 
-                                                   -1, 
-                                                   packetName, 
-                                                   l4Type, 
-                                                   NetworkLayer.L4);
+            else {
+                l4name = "L4_" + l4name;
+            }
+
+            // create counters
+            String controllerL4CategoryCounterName =
+                CounterStore.createCounterName(
+                    CONTROLLER_NAME,
+                    -1,
+                    packetName,
+                    l4name,
+                    NetworkLayer.L4);
+            counters.add(createCounter(controllerL4CategoryCounterName,
+                                       CounterType.LONG));
+
+            String switchL4CategoryCounterName =
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    -1,
+                    packetName,
+                    l4name,
+                    NetworkLayer.L4);
+            counters.add(createCounter(switchL4CategoryCounterName,
+                                       CounterType.LONG));
+
             String portL4CategoryCounterName =
-                    CounterStore.createCounterName(switchIdHex, 
-                                                   packet.getInPort(), 
-                                                   packetName, 
-                                                   l4Type, 
-                                                   NetworkLayer.L4);
-            String switchL4CategoryCounterName = 
-                    CounterStore.createCounterName(switchIdHex, 
-                                                   -1, 
-                                                   packetName, 
-                                                   l4Type, 
-                                                   NetworkLayer.L4);
-            ICounter controllerL4Counter = getCounter(controllerL4CategoryCounterName);
-            if (controllerL4Counter == null) {
-                controllerL4Counter = createCounter(controllerL4CategoryCounterName, 
-                                                    CounterType.LONG);
-            }
-            controllerL4Counter.increment();
-            ICounter portL4Counter = getCounter(portL4CategoryCounterName);
-            if (portL4Counter == null) {
-                portL4Counter = createCounter(portL4CategoryCounterName, 
-                                              CounterType.LONG);
-            }
-            portL4Counter.increment();
-            ICounter switchL4Counter = getCounter(switchL4CategoryCounterName);
-            if (switchL4Counter == null) {
-                switchL4Counter = createCounter(switchL4CategoryCounterName, 
-                                                CounterType.LONG);
-            }
-            switchL4Counter.increment();
+                CounterStore.createCounterName(
+                    switchIdHex,
+                    port,
+                    packetName,
+                    l4name,
+                    NetworkLayer.L4);
+            counters.add(createCounter(portL4CategoryCounterName,
+                                       CounterType.LONG));
         }
+
+        /* Add to map and return */
+        this.pktinCounters.putIfAbsent(countersKey, counters);
+        return this.pktinCounters.get(countersKey);
     }
     
-    /**
-     * This method can only be used to update packetOut and flowmod counters
-     * 
-     * @param sw
-     * @param ofMsg
-     */
-    public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage ofMsg) {
-        String packetName = ofMsg.getType().toClass().getName();
+    protected List<ICounter> getPktOutFMCounters(IOFSwitch sw, OFMessage m) {
+        /* If possible, find and return counters for this tuple */
+        String countersKey = this.getCountersKey(sw, m, null);
+        List<ICounter> counters =
+            this.pktoutCounters.get(countersKey);
+        if (counters != null) {
+            return counters;
+        }
+
+        /*
+         *  Create the required counters
+         */
+        counters = new ArrayList<ICounter>();
+
+        /* String values for names */
+        String switchIdHex = sw.getStringId();
+        String packetName = m.getType().toClass().getName();
         packetName = packetName.substring(packetName.lastIndexOf('.')+1);
-        // flowmod is per switch and controller. portid = -1
-        String controllerFMCounterName = CounterStore.createCounterName(CONTROLLER_NAME, -1, packetName);  
-        ICounter counter = getCounter(controllerFMCounterName);
-        if (counter == null) {
-            counter = createCounter(controllerFMCounterName, CounterValue.CounterType.LONG);
-        }
-        counter.increment();
 
-        String switchFMCounterName = CounterStore.createCounterName(sw.getStringId(), -1, packetName);
-        counter = getCounter(switchFMCounterName);
-        if (counter == null) {
-            counter = createCounter(switchFMCounterName, CounterValue.CounterType.LONG);
-        }
-        counter.increment();
+        String controllerFMCounterName =
+            CounterStore.createCounterName(
+                CONTROLLER_NAME,
+                -1,
+                packetName);
+        counters.add(createCounter(controllerFMCounterName,
+                                   CounterValue.CounterType.LONG));
+
+        String switchFMCounterName =
+            CounterStore.createCounterName(
+                switchIdHex,
+                -1,
+                packetName);
+        counters.add(createCounter(switchFMCounterName,
+                                   CounterValue.CounterType.LONG));
+
+        /* Add to map and return */
+        this.pktoutCounters.putIfAbsent(countersKey, counters);
+        return this.pktoutCounters.get(countersKey);
+
     }
-
 
     /**
      * Create a title based on switch ID, portID, vlanID, and counterName

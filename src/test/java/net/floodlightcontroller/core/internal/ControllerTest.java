@@ -193,6 +193,7 @@ public class ControllerTest extends FloodlightTestCase {
         controller.removeOFMessageListeners(OFType.PACKET_IN);
 
         IOFSwitch sw = createMock(IOFSwitch.class);
+        expect(sw.getId()).andReturn(0L).anyTimes();
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
         // Build our test packet
@@ -245,7 +246,7 @@ public class ControllerTest extends FloodlightTestCase {
         // verify STOP works
         reset(test1, test2, sw);
         expect(test1.receive(eq(sw), eq(pi), isA(FloodlightContext.class))).andReturn(Command.STOP);       
-        //expect(test1.getId()).andReturn(0).anyTimes();
+        expect(sw.getId()).andReturn(0L).anyTimes();
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
         replay(test1, test2, sw);
         controller.handleMessage(sw, pi, null);

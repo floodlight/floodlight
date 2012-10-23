@@ -265,7 +265,7 @@ public abstract class ForwardingBase
             ((OFActionOutput)fm.getActions().get(0)).setPort(outPort);
 
             try {
-                counterStore.updatePktOutFMCounterStore(sw, fm);
+                counterStore.updatePktOutFMCounterStoreLocal(sw, fm);
                 if (log.isTraceEnabled()) {
                     log.trace("Pushing Route flowmod routeIndx={} " + 
                             "sw={} inPort={} outPort={}",
@@ -277,6 +277,7 @@ public abstract class ForwardingBase
                 messageDamper.write(sw, fm, cntx);
                 if (doFlush) {
                     sw.flush();
+                    counterStore.updateFlush();
                 }
 
                 // Push the packet out the source switch
@@ -383,7 +384,7 @@ public abstract class ForwardingBase
         po.setLength(poLength);
 
         try {
-            counterStore.updatePktOutFMCounterStore(sw, po);
+            counterStore.updatePktOutFMCounterStoreLocal(sw, po);
             messageDamper.write(sw, po, cntx, flush);
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
@@ -466,7 +467,7 @@ public abstract class ForwardingBase
         po.setLength(poLength);
 
         try {
-            counterStore.updatePktOutFMCounterStore(sw, po);
+            counterStore.updatePktOutFMCounterStoreLocal(sw, po);
             messageDamper.write(sw, po, cntx);
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
@@ -518,7 +519,7 @@ public abstract class ForwardingBase
         po.setLength(poLength);
 
         try {
-            counterStore.updatePktOutFMCounterStore(sw, po);
+            counterStore.updatePktOutFMCounterStoreLocal(sw, po);
             if (log.isTraceEnabled()) {
                 log.trace("write broadcast packet on switch-id={} " + 
                         "interfaces={} packet-out={}",
