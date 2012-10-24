@@ -283,7 +283,8 @@ public class TCP extends BasePacket {
         }
         
         this.payload = new Data();
-        this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+        int remLength = bb.limit()-bb.position();
+        this.payload = payload.deserialize(data, bb.position(), remLength);
         this.payload.setParent(this);
         return this;
     }
