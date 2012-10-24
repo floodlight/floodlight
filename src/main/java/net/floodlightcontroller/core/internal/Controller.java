@@ -72,6 +72,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.LoadMonitor;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -230,12 +231,14 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_INTERFACE_NUMBER = "number";
     protected static final String CONTROLLER_INTERFACE_DISCOVERED_IP = "discovered_ip";
     
-    
-    
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
     protected static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
+
+    // Load monitor for overload protection
+    protected final boolean overload_protection = true;
+    protected final LoadMonitor loadmonitor = new LoadMonitor();
 
     /**
      *  Updates handled by the main loop 
@@ -578,15 +581,77 @@ public class Controller implements IFloodlightProviderService,
                 @SuppressWarnings("unchecked")
                 List<OFMessage> msglist = (List<OFMessage>)e.getMessage();
 
+                LoadMonitor.LoadLevel loadlevel;
+                int packets_dropped = 0;
+                int packets_allowed = 0;
+                int lldps_allowed = 0;
+
+                if (overload_protection) {
+                    loadlevel = loadmonitor.getLoadLevel();
+                }
+                else {
+                    loadlevel = LoadMonitor.LoadLevel.OK;
+                }
+
                 for (OFMessage ofm : msglist) {
                     try {
+                        if (overload_protection &&
+                            !loadlevel.equals(LoadMonitor.LoadLevel.OK)) {
+                            switch (ofm.getType()) {
+                            case PACKET_IN:
+                                switch (loadlevel) {
+                                case VERYHIGH:
+                                    // Drop all packet-ins, including LLDP/BDDPs
+                                    packets_dropped++;
+                                    continue;
+                                case HIGH:
+                                    // Drop all packet-ins, except LLDP/BDDPs
+                                    byte[] data = ((OFPacketIn)ofm).getPacketData();
+                                    if (data.length > 14) {
+                                        if (((data[12] == (byte)0x88) &&
+                                             (data[13] == (byte)0xcc)) ||
+                                            ((data[12] == (byte)0x89) &&
+                                             (data[13] == (byte)0x42))) {
+                                            lldps_allowed++;
+                                            packets_allowed++;
+                                            break;
+                                        }
+                                    }
+                                    packets_dropped++;
+                                    continue;
+                                default:
+                                    // Load not high, go ahead and process msg
+                                    packets_allowed++;
+                                    break;
+                                }
+                                break;
+                            default:
+                                // Process all non-packet-ins
+                                packets_allowed++;
+                                break;
+                            }
+                        }
+
+                        // Do the actual packet processing
                         processOFMessage(ofm);
+
                     }
                     catch (Exception ex) {
                         // We are the last handler in the stream, so run the 
                         // exception through the channel again by passing in 
                         // ctx.getChannel().
                         Channels.fireExceptionCaught(ctx.getChannel(), ex);
+                    }
+                }
+
+                if (loadlevel != LoadMonitor.LoadLevel.OK) {
+                    if (log.isDebugEnabled()) {
+                        log.debug(
+                            "Overload: Detected {}, packets dropped={}",
+                            loadlevel.toString(), packets_dropped);
+                        log.debug(
+                            "Overload: Packets allowed={} (LLDP/BDDPs allowed={})",
+                            packets_allowed, lldps_allowed);
                     }
                 }
 
@@ -2105,6 +2170,10 @@ public class Controller implements IFloodlightProviderService,
             }
         }
        
+        // Startup load monitoring
+        this.loadmonitor.startMonitoring(
+            this.threadPool.getScheduledExecutor());
+
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
     }
