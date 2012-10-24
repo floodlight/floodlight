@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -38,6 +38,9 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     protected OFStatisticsFactory statisticsFactory;
     protected OFStatisticsType statisticType;
     protected short flags;
+
+    // TODO: this should be List<? extends OFStatistics>, to
+    // allow for type safe assignments of lists of specific message
     protected List<OFStatistics> statistics;
 
     /**
