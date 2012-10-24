@@ -237,7 +237,7 @@ public class Controller implements IFloodlightProviderService,
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
     // Load monitor for overload protection
-    protected final boolean overload_protection = true;
+    protected final boolean overload_protection = false;
     protected final LoadMonitor loadmonitor = new LoadMonitor();
 
     /**
@@ -2171,8 +2171,10 @@ public class Controller implements IFloodlightProviderService,
         }
        
         // Startup load monitoring
-        this.loadmonitor.startMonitoring(
-            this.threadPool.getScheduledExecutor());
+        if (overload_protection) {
+            this.loadmonitor.startMonitoring(
+                this.threadPool.getScheduledExecutor());
+        }
 
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
