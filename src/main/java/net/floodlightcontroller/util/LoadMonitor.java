@@ -25,7 +25,7 @@ public class LoadMonitor implements Runnable {
         return load ;
     }
 
-    public static final int LOADMONITOR_SAMPLING_INTERVAL = 1000; // in milisec
+    public static final int LOADMONITOR_SAMPLING_INTERVAL = 1000; // mili-sec
     public static final double THRESHOLD_HIGH = 0.85;
     public static final double THRESHOLD_VERYHIGH = 0.95;
     public static final int MAX_LOADED_ITERATIONS = 5;
@@ -58,8 +58,10 @@ public class LoadMonitor implements Runnable {
         jiffyNanos = 10 * 1000 * 1000;
         if (isLinux) {
             try {
-                numcores = Integer.parseInt(this.runcmd("/usr/bin/nproc"));
-                jiffyNanos = (1000 * 1000 * 1000) / Integer.parseInt(this.runcmd("/usr/bin/getconf CLK_TCK"));
+                numcores = Integer.parseInt(
+                        this.runcmd("/usr/bin/nproc"));
+                jiffyNanos = (1000 * 1000 * 1000) / Integer.parseInt(
+                        this.runcmd("/usr/bin/getconf CLK_TCK"));
             }
             catch (NumberFormatException ex) {
                 ex.printStackTrace();
@@ -69,7 +71,7 @@ public class LoadMonitor implements Runnable {
 
     @Override
     public void run() {
-            if (!isLinux) return;
+        if (!isLinux) return;
 
         long currNanos = System.nanoTime();
         long currIdle = this.readIdle();
@@ -88,7 +90,8 @@ public class LoadMonitor implements Runnable {
 
         long nanos = lastNanos[MAX_LOAD_HISTORY - 1] - lastNanos[0];
         long idle = lastIdle[MAX_LOAD_HISTORY - 1] - lastIdle[0];
-        load =  1.0 - ( (double)(idle * jiffyNanos) / (double)(nanos * numcores));
+        load =
+            1.0 - ((double)(idle * jiffyNanos) / (double)(nanos * numcores));
 
         if (load > THRESHOLD_VERYHIGH) {
             loadlevel = LoadLevel.VERYHIGH;
@@ -126,6 +129,7 @@ public class LoadMonitor implements Runnable {
             ex.printStackTrace();
         }
         return ret.toString();
+
     }
 
     protected long readIdle() {
@@ -133,7 +137,8 @@ public class LoadMonitor implements Runnable {
 
         try {
             FileInputStream fs = new FileInputStream("/proc/stat");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(fs));
+            BufferedReader reader =
+                new BufferedReader(new InputStreamReader(fs));
             idle = Long.parseLong(reader.readLine().split("\\s+")[4]);
             reader.close();
             fs.close();
@@ -141,47 +146,53 @@ public class LoadMonitor implements Runnable {
         catch (IOException ex) {
             ex.printStackTrace();
         }
-
         return idle;
+
     }
 
-    public ScheduledFuture<?> startMonitoring(ScheduledExecutorService scheduler)
+    public ScheduledFuture<?> startMonitoring(ScheduledExecutorService ses)
     {
         ScheduledFuture<?> monitorTask =
-                scheduler.scheduleAtFixedRate(this,
-                        0, LOADMONITOR_SAMPLING_INTERVAL, TimeUnit.MILLISECONDS);
-        return monitorTask;
-    }
-
-    public ScheduledFuture<?> printMonitoring(ScheduledExecutorService scheduler)
-    {
-        final LoadMonitor mon = this;
-        ScheduledFuture<?> monitorTask =
-                scheduler.scheduleAtFixedRate(new Runnable() {
-                    public void run() {
-                        System.out.println(mon.getLoad());
-                    }
-                },
-                LOADMONITOR_SAMPLING_INTERVAL/2, LOADMONITOR_SAMPLING_INTERVAL, TimeUnit.MILLISECONDS);
+            ses.scheduleAtFixedRate(
+                this, 0,
+                LOADMONITOR_SAMPLING_INTERVAL, TimeUnit.MILLISECONDS);
         return monitorTask;
     }
 
     /*
      * For testing
      */
-    public static void main(String[] args) {
-            final ScheduledExecutorService scheduler =
-            Executors.newScheduledThreadPool(1);
-            final LoadMonitor monitor = new LoadMonitor();
-            final ScheduledFuture<?> monitorTask = monitor.startMonitoring(scheduler);
-            final ScheduledFuture<?> printTask = monitor.printMonitoring(scheduler);
+    public ScheduledFuture<?> printMonitoring(ScheduledExecutorService ses)
+    {
+        final LoadMonitor mon = this;
+        ScheduledFuture<?> monitorTask =
+            ses.scheduleAtFixedRate(
+                new Runnable() {
+                    public void run() {
+                        System.out.println(mon.getLoad());
+                    }
+                }, LOADMONITOR_SAMPLING_INTERVAL/2,
+                LOADMONITOR_SAMPLING_INTERVAL, TimeUnit.MILLISECONDS);
+        return monitorTask;
+    }
 
-            scheduler.schedule(new Runnable() {
-            public void run() {
+    public static void main(String[] args) {
+        final LoadMonitor monitor = new LoadMonitor();
+        final ScheduledExecutorService scheduler =
+            Executors.newScheduledThreadPool(1);
+        final ScheduledFuture<?> monitorTask =
+            monitor.startMonitoring(scheduler);
+        final ScheduledFuture<?> printTask =
+            monitor.printMonitoring(scheduler);
+
+        // Run the tasks for 2 minutes
+        scheduler.schedule(
+            new Runnable() {
+                public void run() {
                     monitorTask.cancel(true);
                     printTask.cancel(true);
                 }
-        }, 5*60, TimeUnit.SECONDS);
+            }, 5*60, TimeUnit.SECONDS);
     }
 
 }
