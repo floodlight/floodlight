@@ -160,16 +160,6 @@ public class ControllerTest extends FloodlightTestCase {
                 
         expect(sw.getId()).andReturn(dpid).anyTimes();
         expect(sw.getStringId()).andReturn(dpidString).anyTimes();
-        expect(sw.getConnectedSince()).andReturn(new Date());
-        Channel channel = createMock(Channel.class);
-        expect(sw.getChannel()).andReturn(channel);
-        expect(channel.getRemoteAddress()).andReturn(null);
-
-        expect(sw.getCapabilities()).andReturn(0).anyTimes();
-        expect(sw.getBuffers()).andReturn(0).anyTimes();
-        expect(sw.getTables()).andReturn((byte)0).anyTimes();
-        expect(sw.getActions()).andReturn(0).anyTimes();
-        expect(sw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>()).anyTimes();
     }
     
     /**
@@ -481,84 +471,54 @@ public class ControllerTest extends FloodlightTestCase {
     public void testAddSwitchNoClearFM() throws Exception {
         controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
 
-        //OFSwitchImpl oldsw = createMock(OFSwitchImpl.class);
         OFSwitchImpl oldsw = new OFSwitchImpl();
         OFFeaturesReply featuresReply = new OFFeaturesReply();
         featuresReply.setDatapathId(0L);
         featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
         oldsw.setFeaturesReply(featuresReply);
-        //expect(oldsw.getId()).andReturn(0L).anyTimes();
-        //expect(oldsw.asyncRemoveSwitchLock()).andReturn(rwlock.writeLock()).anyTimes();
-        //oldsw.setConnected(false);
-        //expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
-        Channel channel = createNiceMock(Channel.class);
-        //expect(oldsw.getChannel()).andReturn(channel);
+        Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
         expect(channel.close()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
         expect(newsw.getId()).andReturn(0L).anyTimes();
         expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-        expect(newsw.getConnectedSince()).andReturn(new Date());
-        Channel channel2 = createMock(Channel.class);
-        expect(newsw.getChannel()).andReturn(channel2);
-        expect(channel2.getRemoteAddress()).andReturn(null);
-        expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
-        expect(newsw.getCapabilities()).andReturn(0).anyTimes();
-        expect(newsw.getBuffers()).andReturn(0).anyTimes();
-        expect(newsw.getTables()).andReturn((byte)0).anyTimes();
-        expect(newsw.getActions()).andReturn(0).anyTimes();
         controller.activeSwitches.put(0L, oldsw);
         
-        replay(newsw, channel, channel2);
+        replay(newsw, channel);
 
         controller.addSwitch(newsw, false);
 
-        verify(newsw, channel, channel2);
+        verify(newsw, channel);
     }
     
     @Test
     public void testAddSwitchClearFM() throws Exception {
         controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
 
-        //OFSwitchImpl oldsw = createMock(OFSwitchImpl.class);
         OFSwitchImpl oldsw = new OFSwitchImpl();
         OFFeaturesReply featuresReply = new OFFeaturesReply();
         featuresReply.setDatapathId(0L);
         featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
         oldsw.setFeaturesReply(featuresReply);
-        //expect(oldsw.getId()).andReturn(0L).anyTimes();
-        //expect(oldsw.asyncRemoveSwitchLock()).andReturn(rwlock.writeLock()).anyTimes();
-        //oldsw.setConnected(false);
-        //expect(oldsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
-        Channel channel = createNiceMock(Channel.class);
-        //expect(oldsw.getChannel()).andReturn(channel);
+        Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
         expect(channel.close()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
         expect(newsw.getId()).andReturn(0L).anyTimes();
         expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-        expect(newsw.getConnectedSince()).andReturn(new Date());
-        Channel channel2 = createMock(Channel.class);
-        expect(newsw.getChannel()).andReturn(channel2);
-        expect(channel2.getRemoteAddress()).andReturn(null);
-        expect(newsw.getPorts()).andReturn(new ArrayList<OFPhysicalPort>());
-        expect(newsw.getCapabilities()).andReturn(0).anyTimes();
-        expect(newsw.getBuffers()).andReturn(0).anyTimes();
-        expect(newsw.getTables()).andReturn((byte)0).anyTimes();
-        expect(newsw.getActions()).andReturn(0).anyTimes();
         newsw.clearAllFlowMods();
         expectLastCall().once();
         controller.activeSwitches.put(0L, oldsw);
         
-        replay(newsw, channel, channel2);
+        replay(newsw, channel);
 
         controller.addSwitch(newsw, true);
 
-        verify(newsw, channel, channel2);
+        verify(newsw, channel);
     }
     
     @Test
@@ -1269,7 +1229,7 @@ public class ControllerTest extends FloodlightTestCase {
         sw.setPort(port);
         expectLastCall().once();
         replay(sw);
-        controller.handlePortStatusMessage(sw, ofps, false);
+        controller.handlePortStatusMessage(sw, ofps);
         verify(sw);
         verifyPortChangedUpdateInQueue(sw);
         reset(sw);
@@ -1278,7 +1238,7 @@ public class ControllerTest extends FloodlightTestCase {
         sw.setPort(port);
         expectLastCall().once();
         replay(sw);
-        controller.handlePortStatusMessage(sw, ofps, false);
+        controller.handlePortStatusMessage(sw, ofps);
         verify(sw);
         verifyPortChangedUpdateInQueue(sw);
         reset(sw);
@@ -1287,7 +1247,7 @@ public class ControllerTest extends FloodlightTestCase {
         sw.deletePort(port.getPortNumber());
         expectLastCall().once();
         replay(sw);
-        controller.handlePortStatusMessage(sw, ofps, false);
+        controller.handlePortStatusMessage(sw, ofps);
         verify(sw);
         verifyPortChangedUpdateInQueue(sw);
         reset(sw);
