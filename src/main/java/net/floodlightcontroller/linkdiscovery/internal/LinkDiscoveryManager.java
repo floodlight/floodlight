@@ -1326,7 +1326,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
     @Override
     public void addedSwitch(IOFSwitch sw) {
 
-        if (sw.getEnabledPorts() != null) {
+        if (sw.getEnabledPortNumbers() != null) {
             for (Short p : sw.getEnabledPortNumbers()) {
                 processNewPort(sw.getId(), p);
             }

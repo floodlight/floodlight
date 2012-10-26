@@ -22,14 +22,24 @@ import static org.easymock.EasyMock.*;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.easymock.Capture;
+import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.util.HexString;
+import org.python.modules.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -428,5 +438,62 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(ldm.isSendLLDPsCalled);
         assertTrue(ldm.isClearLinksCalled);
         ldm.reset();
+    }
+
+    @Test
+    public void testSwitchAdded() throws Exception {
+        LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
+        Capture<OFMessage> wc;
+        Capture<FloodlightContext> fc;
+        Set<Short> qPorts;
+        OFPhysicalPort p1 = new OFPhysicalPort();
+        p1.setHardwareAddress(HexString.fromHexString("5c:16:c7:00:00:01"));
+        p1.setCurrentFeatures(0);
+        IOFSwitch sw1 = createMockSwitch(1L);
+
+        // Set switch map in floodlightProvider.
+        Map<Long, IOFSwitch> switches = new HashMap<Long, IOFSwitch>();
+        switches.put(1L, sw1);
+        getMockFloodlightProvider().setSwitches(switches);
+
+        // Create the set of ports
+        List<Short> ports = new ArrayList<Short>();
+        for(short p=1; p<=90; ++p) {
+            ports.add(p);
+        }
+
+        // Set the captures.
+        wc = new Capture<OFMessage>(CaptureType.ALL);
+        fc = new Capture<FloodlightContext>(CaptureType.ALL);
+
+        // Expect switch to return those ports.
+        expect(sw1.getEnabledPortNumbers()).andReturn(ports).anyTimes();
+        expect(sw1.getPort(EasyMock.anyShort())).andReturn(p1).anyTimes();
+        sw1.write(capture(wc), capture(fc));
+        expectLastCall().anyTimes();
+        replay(sw1);
+
+        linkDiscovery.addedSwitch(sw1);
+        verify(sw1);
+
+        qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());
+        assertNotNull(qPorts);
+        assertFalse(qPorts.isEmpty());
+
+        Time.sleep(1);
+        qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());
+        assertNotNull(qPorts);
+        assertFalse(qPorts.isEmpty());
+
+        Time.sleep(1);
+        qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());
+        assertNotNull(qPorts);
+        assertTrue(qPorts.isEmpty());
+
+        // Ensure that through every switch port, an LLDP and BDDP
+        // packet was sent out.  Total # of packets = # of ports * 2.
+        assertTrue(wc.hasCaptured());
+        List<OFMessage> msgList = wc.getValues();
+        assertTrue(msgList.size() == ports.size() * 2);
     }
 }
