@@ -9,6 +9,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+
 public class LoadMonitor implements Runnable {
 
     public enum LoadLevel {
@@ -26,7 +31,7 @@ public class LoadMonitor implements Runnable {
     }
 
     public static final int LOADMONITOR_SAMPLING_INTERVAL = 1000; // mili-sec
-    public static final double THRESHOLD_HIGH = 0.85;
+    public static final double THRESHOLD_HIGH = 0.90;
     public static final double THRESHOLD_VERYHIGH = 0.95;
     public static final int MAX_LOADED_ITERATIONS = 5;
     public static final int MAX_LOAD_HISTORY = 5;
@@ -40,8 +45,10 @@ public class LoadMonitor implements Runnable {
     protected int jiffyNanos;
     protected long[] lastNanos;
     protected long[] lastIdle;
+    protected Logger log;
 
-    public LoadMonitor() {
+    public LoadMonitor(Logger log_) {
+        log = log_;
         loadlevel = LoadLevel.OK;
         load = 0.0;
         itersLoaded = 0;
@@ -64,12 +71,28 @@ public class LoadMonitor implements Runnable {
                         this.runcmd("/usr/bin/getconf CLK_TCK"));
             }
             catch (NumberFormatException ex) {
-                ex.printStackTrace();
+                if (log != null) {
+                        // Log message documented on runcmd function
+                    log.error("Exception in inializing load monitor ", ex);
+                }
+                else {
+                    ex.printStackTrace();
+                }
             }
         }
     }
 
     @Override
+    @LogMessageDocs({
+        @LogMessageDoc(
+            message="System under very heavy load, dropping some packet-ins",
+            explanation="We detcted that the system was under very heavy" +
+                        "  load, dropping some packet-ins temporarily"),
+        @LogMessageDoc(
+            message="System under heavy load, dropping some new flows",
+            explanation="We detcted that the system was under heavy load," +
+                        " dropping some new flows temporarily")
+    })
     public void run() {
         if (!isLinux) return;
 
@@ -96,18 +119,40 @@ public class LoadMonitor implements Runnable {
         if (load > THRESHOLD_VERYHIGH) {
             loadlevel = LoadLevel.VERYHIGH;
             itersLoaded += 1;
+            String msg = "System under very heavy load, dropping packet-ins.";
+
+            if (log != null) {
+                log.error(msg);
+            }
+            else {
+                System.out.println(msg);
+            }
             return;
         }
+
         if (load > THRESHOLD_HIGH) {
             loadlevel = LoadLevel.HIGH;
             itersLoaded += 1;
+            String msg = "System under heavy load, dropping new flows.";
+
+            if (log != null) {
+                log.error(msg);
+            }
+            else {
+                System.out.println(msg);
+            }
             return;
         }
+
         loadlevel = LoadLevel.OK;
         itersLoaded = 0;
         return;
     }
 
+    @LogMessageDoc(
+        message="Exception in reading load monitor params, using defaults",
+        explanation="There was an error in inializing load monitor's props," +
+                    " using default parameters")
     protected String runcmd(String cmd) {
         String line;
         StringBuilder ret = new StringBuilder();
@@ -122,11 +167,21 @@ public class LoadMonitor implements Runnable {
             input.close();
             p.waitFor();
         }
-        catch (InterruptedException e) {
-            e.printStackTrace();
+        catch (InterruptedException ex) {
+            if (log != null) {
+                log.error("Exception in inializing load monitor ", ex);
+            }
+            else {
+                ex.printStackTrace();
+            }
         }
         catch (IOException ex) {
-            ex.printStackTrace();
+            if (log != null) {
+                log.error("Exception in inializing load monitor ", ex);
+            }
+            else {
+                ex.printStackTrace();
+            }
         }
         return ret.toString();
 
@@ -177,7 +232,7 @@ public class LoadMonitor implements Runnable {
     }
 
     public static void main(String[] args) {
-        final LoadMonitor monitor = new LoadMonitor();
+        final LoadMonitor monitor = new LoadMonitor(null);
         final ScheduledExecutorService scheduler =
             Executors.newScheduledThreadPool(1);
         final ScheduledFuture<?> monitorTask =
