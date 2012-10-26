@@ -513,7 +513,7 @@ public class ControllerTest extends FloodlightTestCase {
         
         replay(newsw, channel, channel2);
 
-        controller.addSwitch(newsw, false, false);
+        controller.addSwitch(newsw, false);
 
         verify(newsw, channel, channel2);
     }
@@ -556,7 +556,7 @@ public class ControllerTest extends FloodlightTestCase {
         
         replay(newsw, channel, channel2);
 
-        controller.addSwitch(newsw, true, false);
+        controller.addSwitch(newsw, true);
 
         verify(newsw, channel, channel2);
     }

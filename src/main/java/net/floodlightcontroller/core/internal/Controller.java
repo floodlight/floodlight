@@ -816,7 +816,7 @@ public class Controller implements IFloodlightProviderService,
                                 role, sw);
                         // Need to clear FlowMods before we add the switch
                         // and dispatch updates otherwise we have a race condition.
-                        addSwitch(sw, true, false);
+                        addSwitch(sw, true);
                         state.firstRoleReplyReceived = true;
                     }
                 }
@@ -904,7 +904,7 @@ public class Controller implements IFloodlightProviderService,
                 // doesn't support the role request messages, so in that
                 // case we're effectively in the EQUAL role and the 
                 // switch should be included in the active switch list.
-                addSwitch(sw, shouldClearFlowMods, true);
+                addSwitch(sw, shouldClearFlowMods);
                 log.debug("Added master switch {} to active switch list",
                          HexString.toHexString(sw.getId()));
 
@@ -1089,7 +1089,7 @@ public class Controller implements IFloodlightProviderService,
                                     // and dispatch updates otherwise we have a race condition.
                                     // TODO: switch update is async. Won't we still have a potential
                                     //       race condition? 
-                                    addSwitch(sw, true, false);
+                                    addSwitch(sw, true);
                                 }
                             }
                         }
@@ -1438,9 +1438,7 @@ public class Controller implements IFloodlightProviderService,
                     "very rarely, then it is likely this is a transient " +
                     "network problem that can be ignored."
             )
-    protected void addSwitch(IOFSwitch sw, 
-                             boolean shouldClearFlowMods,
-                             boolean shouldReadSwitchPortStateFromStorage) {
+    protected void addSwitch(IOFSwitch sw, boolean shouldClearFlowMods) {
         // TODO: is it safe to modify the HashMap without holding 
         // the old switch's lock?
         OFSwitchImpl oldSw = (OFSwitchImpl) this.activeSwitches.put(sw.getId(), sw);
@@ -1488,11 +1486,6 @@ public class Controller implements IFloodlightProviderService,
                 oldSw.getListenerWriteLock().unlock();
             }
         }
-        
-        // Some switches don't seem to update us with port
-        // status messages while in slave role.
-        if (shouldReadSwitchPortStateFromStorage)
-            readSwitchPortStateFromStorage(sw);
         
         if (shouldClearFlowMods)
             sw.clearAllFlowMods();
