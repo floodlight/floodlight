@@ -237,8 +237,9 @@ public class Controller implements IFloodlightProviderService,
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
     // Load monitor for overload protection
-    protected final boolean overload_protection = false;
-    protected final LoadMonitor loadmonitor = new LoadMonitor();
+    protected final boolean overload_drop =
+        Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
+    protected final LoadMonitor loadmonitor = new LoadMonitor(log);
 
     /**
      *  Updates handled by the main loop 
@@ -586,7 +587,7 @@ public class Controller implements IFloodlightProviderService,
                 int packets_allowed = 0;
                 int lldps_allowed = 0;
 
-                if (overload_protection) {
+                if (overload_drop) {
                     loadlevel = loadmonitor.getLoadLevel();
                 }
                 else {
@@ -595,7 +596,7 @@ public class Controller implements IFloodlightProviderService,
 
                 for (OFMessage ofm : msglist) {
                     try {
-                        if (overload_protection &&
+                        if (overload_drop &&
                             !loadlevel.equals(LoadMonitor.LoadLevel.OK)) {
                             switch (ofm.getType()) {
                             case PACKET_IN:
@@ -2164,7 +2165,7 @@ public class Controller implements IFloodlightProviderService,
         }
        
         // Startup load monitoring
-        if (overload_protection) {
+        if (overload_drop) {
             this.loadmonitor.startMonitoring(
                 this.threadPool.getScheduledExecutor());
         }
