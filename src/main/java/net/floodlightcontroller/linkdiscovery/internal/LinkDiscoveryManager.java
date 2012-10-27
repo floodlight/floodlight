@@ -324,6 +324,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
     private void doUpdatesThread() throws InterruptedException {
         do {
             LDUpdate update = updates.take();
+            List<LDUpdate> updateList = new ArrayList<LDUpdate>();
+            updateList.add(update);
+
+            // Add all the pending updates to the list.
+            while (updates.peek() != null) {
+                updateList.add(updates.remove());
+            }
 
             if (linkDiscoveryAware != null) {
                 if (log.isTraceEnabled()) {
@@ -335,7 +342,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
                 try {
                     for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order maintained
-                        lda.linkDiscoveryUpdate(update);
+                        lda.linkDiscoveryUpdate(updateList);
                     }
                 }
                 catch (Exception e) {
@@ -1113,14 +1120,24 @@ IFloodlightModule, IInfoProvider, IHAListener {
     public Map<Long, Set<Link>> getSwitchLinks() {
         return this.switchLinks;
     }
-
+    
     /**
      * Removes links from memory and storage.
      * @param links The List of @LinkTuple to delete.
      */
     protected void deleteLinks(List<Link> links, String reason) {
-        NodePortTuple srcNpt, dstNpt;
+        deleteLinks(links, reason, null);
+    }
 
+    /**
+     * Removes links from memory and storage.
+     * @param links The List of @LinkTuple to delete.
+     */
+    protected void deleteLinks(List<Link> links, String reason,
+                               List<LDUpdate> updateList) {
+
+        NodePortTuple srcNpt, dstNpt;
+        List<LDUpdate> linkUpdateList = new ArrayList<LDUpdate>();
         lock.writeLock().lock();
         try {
             for (Link lt : links) {
@@ -1148,7 +1165,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
 
                 LinkInfo info = this.links.remove(lt);
-                updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
+                linkUpdateList.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
                                          lt.getDst(), lt.getDstPort(),
                                          getLinkType(lt, info),
                                          UpdateOperation.LINK_REMOVED));
@@ -1173,6 +1190,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 }
             }
         } finally {
+            if (updateList != null)
+                linkUpdateList.addAll(updateList);
+            updates.addAll(linkUpdateList);
             lock.writeLock().unlock();
         }
     }
@@ -1355,13 +1375,18 @@ IFloodlightModule, IInfoProvider, IHAListener {
                     log.trace("Handle switchRemoved. Switch {}; removing links {}",
                               HexString.toHexString(sw), switchLinks.get(sw));
                 }
+
+                List<LDUpdate> updateList = new ArrayList<LDUpdate>();
+                updateList.add(new LDUpdate(sw, null,
+                                            UpdateOperation.SWITCH_REMOVED));
                 // add all tuples with an endpoint on this switch to erase list
                 eraseList.addAll(switchLinks.get(sw));
-                deleteLinks(eraseList, "Switch Removed");
 
-                // Send a switch removed update
-                LDUpdate update = new LDUpdate(sw, null, UpdateOperation.SWITCH_REMOVED);
-                updates.add(update);
+                // Sending the updateList, will ensure the updates in this
+                // list will be added at the end of all the link updates.
+                // Thus, it is not necessary to explicitly add these updates
+                // to the queue.
+                deleteLinks(eraseList, "Switch Removed", updateList);
             }
         } finally {
             lock.writeLock().unlock();
