@@ -1387,6 +1387,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 // Thus, it is not necessary to explicitly add these updates
                 // to the queue.
                 deleteLinks(eraseList, "Switch Removed", updateList);
+            } else {
+                // Switch does not have any links.
+                updates.add(new LDUpdate(sw, null,
+                                            UpdateOperation.SWITCH_REMOVED));
             }
         } finally {
             lock.writeLock().unlock();
