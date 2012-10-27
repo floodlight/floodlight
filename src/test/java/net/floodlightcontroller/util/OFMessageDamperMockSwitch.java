@@ -8,11 +8,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -356,6 +359,54 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public boolean checkFirstPendingRoleRequestCookie(long cookie) {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    @Override
+    public void setChannel(Channel channel) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void setFloodlightProvider(Controller controller) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void setThreadPoolService(IThreadPoolService threadPool) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void deliverRoleReply(int xid, Role role) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void deliverRoleRequestNotSupported(int xid) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public Lock getListenerReadLock() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public boolean checkFirstPendingRoleRequestXid(int xid) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public Lock getListenerWriteLock() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

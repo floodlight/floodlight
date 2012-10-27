@@ -410,7 +410,7 @@ public class Controller implements IFloodlightProviderService,
      */
     protected class OFChannelHandler 
         extends IdleStateAwareChannelUpstreamHandler {
-        protected OFSwitchImpl sw;
+        protected IOFSwitch sw;
         protected OFChannelState state;
         
         public OFChannelHandler(OFChannelState state) {
@@ -426,6 +426,7 @@ public class Controller implements IFloodlightProviderService,
             log.info("New switch connection from {}",
                      e.getChannel().getRemoteAddress());
             
+            // Use OFSwitchImpl initially
             sw = new OFSwitchImpl();
             sw.setChannel(e.getChannel());
             sw.setFloodlightProvider(Controller.this);
@@ -1043,14 +1044,15 @@ public class Controller implements IFloodlightProviderService,
                             state.firstRoleReplyReceived = true;
                             sw.deliverRoleRequestNotSupported(error.getXid());
                             synchronized(roleChanger) {
-                                if (sw.role == null && Controller.this.role==Role.SLAVE) {
+                                if (sw.getRole() == null &&
+                                        Controller.this.role==Role.SLAVE) {
                                     // the switch doesn't understand role request
                                     // messages and the current controller role is
                                     // slave. We need to disconnect the switch. 
                                     // @see RoleChanger for rationale
                                     sw.getChannel().close();
                                 }
-                                else if (sw.role == null) {
+                                else if (sw.getRole() == null) {
                                     // Controller's role is master: add to
                                     // active 
                                     // TODO: check if clearing flow table is
@@ -1397,7 +1399,7 @@ public class Controller implements IFloodlightProviderService,
     protected void addSwitch(IOFSwitch sw, boolean shouldClearFlowMods) {
         // TODO: is it safe to modify the HashMap without holding 
         // the old switch's lock?
-        OFSwitchImpl oldSw = (OFSwitchImpl) this.activeSwitches.put(sw.getId(), sw);
+        IOFSwitch oldSw = this.activeSwitches.put(sw.getId(), sw);
         if (sw == oldSw) {
             // Note == for object equality, not .equals for value
             log.info("New add switch for pre-existing switch {}", sw);

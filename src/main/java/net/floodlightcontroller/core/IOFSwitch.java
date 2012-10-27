@@ -23,7 +23,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
+
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -394,4 +398,20 @@ public interface IOFSwitch {
      * @return
      */
     public boolean checkFirstPendingRoleRequestCookie(long cookie);
+
+    public void setChannel(Channel channel);
+
+    public void setFloodlightProvider(Controller controller);
+
+    public void setThreadPoolService(IThreadPoolService threadPool);
+
+    public void deliverRoleReply(int xid, Role role);
+
+    public void deliverRoleRequestNotSupported(int xid);
+
+    public Lock getListenerReadLock();
+
+    public boolean checkFirstPendingRoleRequestXid(int xid);
+
+    public Lock getListenerWriteLock();
 }

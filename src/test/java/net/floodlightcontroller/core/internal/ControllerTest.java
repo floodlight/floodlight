@@ -934,6 +934,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
         chdlr.sw.deliverRoleRequestNotSupported(xid);
         expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
+        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
         expect(ch.close()).andReturn(null);
         
         replay(ch, chdlr.sw);
@@ -954,6 +955,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
         chdlr.sw.deliverRoleRequestNotSupported(xid);
         expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
+        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
         expect(ch.close()).andReturn(null);
         replay(ch, chdlr.sw);
         
@@ -974,6 +976,7 @@ public class ControllerTest extends FloodlightTestCase {
         chdlr.sw.deliverRoleRequestNotSupported(xid);
         setupSwitchForAddSwitch(chdlr.sw, 0L);
         chdlr.sw.clearAllFlowMods();
+        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
         replay(ch, chdlr.sw);
         
         chdlr.processOFMessage(msg);
