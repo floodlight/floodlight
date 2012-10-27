@@ -162,6 +162,13 @@ public class TopologyManager implements
     // **********************
     // ILinkDiscoveryListener
     // **********************
+    @Override
+    public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
+        if (log.isTraceEnabled()) {
+            log.trace("Queuing update: {}", updateList);
+        }
+        ldUpdates.addAll(updateList);
+    }
 
     @Override
     public void linkDiscoveryUpdate(LDUpdate update) {
