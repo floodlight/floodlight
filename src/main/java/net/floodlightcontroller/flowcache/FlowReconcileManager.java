@@ -61,9 +61,9 @@ public class FlowReconcileManager
     String controllerPktInCounterName;
     protected SimpleCounter lastPacketInCounter;
     
-    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 50000;
+    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
     /** a minimum flow reconcile rate so that it won't stave */
-    protected static int MIN_FLOW_RECONCILE_PER_SECOND = 1000;
+    protected static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
     
     /** once per second */
     protected static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
