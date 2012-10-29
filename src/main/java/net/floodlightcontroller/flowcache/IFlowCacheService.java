@@ -85,15 +85,6 @@ public interface IFlowCacheService extends IFloodlightService {
     public void submitFlowCacheQuery(FCQueryObj query);
 
     /**
-     * Deactivates all flows in the flow cache for which the source switch
-     * matches the given switchDpid. Note that the flows are NOT deleted
-     * from the cache.
-     *
-     * @param switchDpid Data-path identifier of the source switch
-     */
-    public void deactivateFlowCacheBySwitch(long switchDpid);
-
-    /**
      * Deletes all flows in the flow cache for which the source switch
      * matches the given switchDpid. 
      * 
@@ -101,6 +92,12 @@ public interface IFlowCacheService extends IFloodlightService {
      */
     public void deleteFlowCacheBySwitch(long switchDpid);
 
+    /**
+     * Flush Local Counter Updates
+     *
+     */
+    public void updateFlush();
+    
     /**
      * Add a flow to the flow-cache - called when a flow-mod is about to be
      * written to a set of switches. If it returns false then it should not
