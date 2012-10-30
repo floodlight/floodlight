@@ -41,7 +41,6 @@ public class FlowReconcileManager
     /** Reference to dependent modules */
     protected IThreadPoolService threadPool;
     protected ICounterStoreService counterStore;
-    protected IFlowCacheService bigFlowCacheMgr;
 
     /**
      * The list of flow reconcile listeners that have registered to get
@@ -194,7 +193,6 @@ public class FlowReconcileManager
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IThreadPoolService.class);
         l.add(ICounterStoreService.class);
-        l.add(IFlowCacheService.class);
         return null;
     }
 
@@ -203,7 +201,6 @@ public class FlowReconcileManager
             throws FloodlightModuleException {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         counterStore = context.getServiceImpl(ICounterStoreService.class);
-        bigFlowCacheMgr = context.getServiceImpl(IFlowCacheService.class);
     
         flowQueue = new ConcurrentLinkedQueue<OFMatchReconcile>();
         flowReconcileListeners = 
