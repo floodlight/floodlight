@@ -335,7 +335,7 @@ public class Controller implements IFloodlightProviderService,
         this.counterStore = counterStore;
     }
     
-    public void setBigFlowCacheMgr(IFlowCacheService flowCacheMgr) {
+    public void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
         this.bigFlowCacheMgr = flowCacheMgr;
     }
     

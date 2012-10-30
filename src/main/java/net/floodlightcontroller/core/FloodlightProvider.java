@@ -62,7 +62,7 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IPktInProcessingTimeService.class));
        controller.setCounterStore(
            context.getServiceImpl(ICounterStoreService.class));
-       controller.setBigFlowCacheMgr(
+       controller.setFlowCacheMgr(
            context.getServiceImpl(IFlowCacheService.class));
        controller.setRestApiService(
            context.getServiceImpl(IRestApiService.class));
