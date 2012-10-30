@@ -254,6 +254,9 @@ public class FlowReconcileManager
                                            packetInName);
     }
     
+    protected void updateFlush() {
+        // No-OP
+    }
     /**
      * Feed the flows into the flow reconciliation pipeline.
      * @return true if more flows to be reconciled
@@ -313,7 +316,7 @@ public class FlowReconcileManager
             }
             flowReconcileThreadRunCount++;
             // Flush the flowCache counters.
-            bigFlowCacheMgr.updateFlush();
+            updateFlush();
         } else {
             if (logger.isTraceEnabled()) {
                 logger.trace("No flow to be reconciled.");
