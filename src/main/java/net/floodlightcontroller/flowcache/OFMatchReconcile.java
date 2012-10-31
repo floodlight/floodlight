@@ -49,6 +49,8 @@ public class OFMatchReconcile  {
     public String newAppInstName;
     /** The reconcile action. */
     public ReconcileAction rcAction;
+    /** Outport in the event of UPDATE_PATH action**/
+    public short outPort;
 
     // The context for the reconcile action
     public FloodlightContext cntx;
@@ -72,6 +74,7 @@ public class OFMatchReconcile  {
         appInstName = copy.appInstName;
         newAppInstName = copy.newAppInstName;
         rcAction = copy.rcAction;
+        outPort = copy.outPort;
         cntx = new FloodlightContext();
     }
     
@@ -79,6 +82,6 @@ public class OFMatchReconcile  {
     public String toString() {
         return "OFMatchReconcile [" + ofmWithSwDpid + " priority=" + priority + " action=" + action + 
                 " cookie=" + cookie + " appInstName=" + appInstName + " newAppInstName=" + newAppInstName + 
-                " ReconcileAction=" + rcAction + "]";
+                " ReconcileAction=" + rcAction + "outPort=" + outPort + "]";
     }
 }
