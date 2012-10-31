@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -38,6 +38,9 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     protected OFStatisticsFactory statisticsFactory;
     protected OFStatisticsType statisticType;
     protected short flags;
+
+    // TODO: this should be List<? extends OFStatistics>, to
+    // allow for type safe assignments of lists of specific message
     protected List<OFStatistics> statistics;
 
     /**
@@ -73,6 +76,23 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
      */
     public List<OFStatistics> getStatistics() {
         return statistics;
+    }
+
+    /**
+     * return the first statistics request in the list of statistics, for
+     * statistics messages that expect exactly one message in their body (e.g.,
+     * flow stats request, port statsrequest)
+     *
+     * @return the first and only element in the list of statistics
+     * @throw NoSuchElementException if the list does not contain exactly one
+     *        element
+     */
+    public OFStatistics getFirstStatistics() {
+        if (statistics == null || statistics.size() != 1) {
+            throw new IllegalArgumentException("Invariant violation: statistics message of type "+statisticType+" contains "+statistics.size() +" statreq/reply messages in its body (should be 1)");
+        }
+
+        return statistics.get(0);
     }
 
     /**

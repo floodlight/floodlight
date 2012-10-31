@@ -663,8 +663,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
         this.deviceListeners = new HashSet<IDeviceListener>();
-        this.suppressAPs =
-                Collections.synchronizedSet(new HashSet<SwitchPort>());
+        this.suppressAPs = Collections.newSetFromMap(
+                               new ConcurrentHashMap<SwitchPort, Boolean>());
 
         this.floodlightProvider =
                 fmc.getServiceImpl(IFloodlightProviderService.class);

@@ -26,6 +26,12 @@ import net.floodlightcontroller.topology.NodePortTuple;
 
 
 public interface ILinkDiscoveryService extends IFloodlightService {
+
+    /**
+     * Returns if a given switchport is a tunnel endpoint or not
+     */
+    public boolean isTunnelPort(long sw, short port);
+
     /**
      * Retrieves a map of all known link connections between OpenFlow switches
      * and the associated info (valid time, port states) for the link.

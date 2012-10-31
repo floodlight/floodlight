@@ -60,7 +60,7 @@ public class Data extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
-        this.data = Arrays.copyOfRange(data, offset, data.length);
+        this.data = Arrays.copyOfRange(data, offset, offset + length);
         return this;
     }
 

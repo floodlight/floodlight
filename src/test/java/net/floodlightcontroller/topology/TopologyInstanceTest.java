@@ -12,11 +12,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyInstance;
 import net.floodlightcontroller.topology.TopologyManager;
 
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -26,6 +28,7 @@ public class TopologyInstanceTest {
     protected static Logger log = LoggerFactory.getLogger(TopologyInstanceTest.class);
     protected TopologyManager topologyManager;
     protected FloodlightModuleContext fmc;
+    protected ILinkDiscoveryService linkDiscovery;
     protected MockFloodlightProvider mockFloodlightProvider;
 
     protected int DIRECT_LINK = 1;
@@ -35,8 +38,10 @@ public class TopologyInstanceTest {
     @Before 
     public void SetUp() throws Exception {
         fmc = new FloodlightModuleContext();
+        linkDiscovery = EasyMock.createMock(ILinkDiscoveryService.class);
         mockFloodlightProvider = new MockFloodlightProvider();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(ILinkDiscoveryService.class, linkDiscovery);
         MockThreadPoolService tp = new MockThreadPoolService();
         topologyManager  = new TopologyManager();
         fmc.addService(IThreadPoolService.class, tp);
