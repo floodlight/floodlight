@@ -549,7 +549,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         if (ofpPort == null) {
             if (log.isTraceEnabled()) {
-                log.trace("Null physical port. sw={}, port={}", sw, port);
+                log.trace("Null physical port. sw={}, port={}", HexString.toHexString(sw), port);
             }
             return;
         }
@@ -567,7 +567,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
-                      sw, port);
+            		HexString.toHexString(sw), port);
         }
 
         // using "nearest customer bridge" MAC address for broadest possible propagation
@@ -831,7 +831,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
         if (!remoteSwitch.portEnabled(remotePort)) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled source port: switch {} port {}", remoteSwitch, remotePort);
+                log.trace("Ignoring link with disabled source port: switch {} port {}", remoteSwitch.getStringId(), remotePort);
             }
             return Command.STOP;
         }
@@ -839,13 +839,13 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                                      remotePort))) {
             if (log.isTraceEnabled()) {
                 log.trace("Ignoring link with suppressed src port: switch {} port {}",
-                      remoteSwitch, remotePort);
+                		remoteSwitch.getStringId(), remotePort);
             }
             return Command.STOP;
         }
         if (!iofSwitch.portEnabled(pi.getInPort())) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled dest port: switch {} port {}", sw, pi.getInPort());
+                log.trace("Ignoring link with disabled dest port: switch {} port {}", HexString.toHexString(sw), pi.getInPort());
             }
             return Command.STOP;
         }
