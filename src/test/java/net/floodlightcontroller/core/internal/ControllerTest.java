@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
@@ -63,6 +64,7 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.easymock.Capture;
+import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
@@ -82,6 +84,7 @@ import org.openflow.protocol.OFVendor;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.factory.BasicFactory;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFFlowStatisticsReply;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
@@ -93,7 +96,8 @@ import org.openflow.vendor.nicira.OFRoleReplyVendorData;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class ControllerTest extends FloodlightTestCase {
+public class ControllerTest extends FloodlightTestCase
+        implements IOFSwitchDriver {
    
     private Controller controller;
     private MockThreadPoolService tp;
@@ -762,42 +766,45 @@ public class ControllerTest extends FloodlightTestCase {
     public void testCheckSwitchReady() {
         OFChannelState state = new OFChannelState();
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
-        chdlr.sw = createMock(OFSwitchImpl.class);
+        Channel channel = createMock(Channel.class);
+        chdlr.channel = channel;
+        OFDescriptionStatistics desc = new OFDescriptionStatistics();
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
         
         // Wrong current state 
         // Should not go to READY
         state.hsState = OFChannelState.HandshakeState.HELLO;
-        state.hasDescription = true;
-        state.hasGetConfigReply = true;
-        replay(chdlr.sw);  // nothing called on sw
+        state.hasDescription = false;
+        state.hasGetConfigReply = false;
+        state.switchBindingDone = false;
+        expect(channel.getRemoteAddress()).andReturn(null).anyTimes();
+        expect(channel.write(EasyMock.anyObject())).andReturn(null).anyTimes();
+        replay(channel);
         chdlr.checkSwitchReady();
-        verify(chdlr.sw);
         assertSame(OFChannelState.HandshakeState.HELLO, state.hsState);
-        reset(chdlr.sw);
         
         // Have only config reply
         state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
         state.hasDescription = false;
         state.hasGetConfigReply = true;
-        replay(chdlr.sw); 
+        state.featuresReply = featuresReply;
+        state.switchBindingDone = false;
         chdlr.checkSwitchReady();
-        verify(chdlr.sw);
         assertSame(OFChannelState.HandshakeState.FEATURES_REPLY, state.hsState);
         assertTrue(controller.connectedSwitches.isEmpty());
         assertTrue(controller.activeSwitches.isEmpty());
-        reset(chdlr.sw);
         
         // Have only desc reply
         state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
         state.hasDescription = true;
+        state.description = desc;
         state.hasGetConfigReply = false;
-        replay(chdlr.sw); 
+        state.switchBindingDone = false;
         chdlr.checkSwitchReady();
-        verify(chdlr.sw);
         assertSame(OFChannelState.HandshakeState.FEATURES_REPLY, state.hsState);
         assertTrue(controller.connectedSwitches.isEmpty());
         assertTrue(controller.activeSwitches.isEmpty());
-        reset(chdlr.sw);
         
         //////////////////////////////////////////
         // Finally, everything is right. Should advance to READY
@@ -805,19 +812,22 @@ public class ControllerTest extends FloodlightTestCase {
         controller.roleChanger = createMock(RoleChanger.class);
         state.hsState = OFChannelState.HandshakeState.FEATURES_REPLY;
         state.hasDescription = true;
+        state.description = desc;
         state.hasGetConfigReply = true;
+        state.featuresReply = featuresReply;
+        state.switchBindingDone = false;
         // Role support disabled. Switch should be promoted to active switch
         // list. 
-        setupSwitchForAddSwitch(chdlr.sw, 0L);
-        chdlr.sw.clearAllFlowMods();
-        replay(controller.roleChanger, chdlr.sw);
+        // setupSwitchForAddSwitch(chdlr.sw, 0L);
+        // chdlr.sw.clearAllFlowMods();
+        desc.setManufacturerDescription("test vendor");
+        replay(controller.roleChanger);
         chdlr.checkSwitchReady();
-        verify(controller.roleChanger, chdlr.sw);
+        verify(controller.roleChanger);
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
         assertSame(chdlr.sw, controller.activeSwitches.get(0L));
         assertTrue(controller.connectedSwitches.contains(chdlr.sw));
         assertTrue(state.firstRoleReplyReceived);
-        reset(chdlr.sw);
         reset(controller.roleChanger);
         controller.connectedSwitches.clear();
         controller.activeSwitches.clear();
@@ -830,18 +840,73 @@ public class ControllerTest extends FloodlightTestCase {
                     new Capture<Collection<IOFSwitch>>();
         controller.roleChanger.submitRequest(capture(swListCapture), 
                     same(Role.MASTER));
-        replay(controller.roleChanger, chdlr.sw);
+        replay(controller.roleChanger);
         chdlr.checkSwitchReady();
-        verify(controller.roleChanger, chdlr.sw);
+        verify(controller.roleChanger);
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
         assertTrue(controller.activeSwitches.isEmpty());
-        assertTrue(controller.connectedSwitches.contains(chdlr.sw));
+        assertFalse(controller.connectedSwitches.isEmpty());
         assertTrue(state.firstRoleReplyReceived);
         Collection<IOFSwitch> swList = swListCapture.getValue();
         assertEquals(1, swList.size());
-        assertTrue("swList must contain this switch", swList.contains(chdlr.sw));
+    }
+    
+    public class TestSwitchClass extends OFSwitchImpl {
     }
 
+    public class Test11SwitchClass extends OFSwitchImpl {
+    }
+
+    @Test
+    public void testBindSwitchToDriver() {
+        controller.addOFSwitchDriver("test", this);
+        
+        OFChannelState state = new OFChannelState();
+        Controller.OFChannelHandler chdlr =
+                controller.new OFChannelHandler(state);
+        OFSwitchImpl sw = new OFSwitchImpl();
+        sw.stringId = "1";
+        chdlr.sw = sw;
+        
+        // Swith should be bound of OFSwitchImpl (default)
+        state.hsState = OFChannelState.HandshakeState.HELLO;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        state.switchBindingDone = false;
+        OFDescriptionStatistics desc = new OFDescriptionStatistics();
+        desc.setManufacturerDescription("test switch");
+        desc.setHardwareDescription("version 0.9");
+        state.description = desc;
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        state.featuresReply = featuresReply;
+
+        chdlr.bindSwitchToDriver();
+        assertTrue(chdlr.sw instanceof OFSwitchImpl);
+        assertTrue(!(chdlr.sw instanceof TestSwitchClass));
+        
+        // Switch should be bound to TestSwitchImpl
+        chdlr.sw = sw;
+        state.switchBindingDone = false;
+        desc.setManufacturerDescription("test1 switch");
+        desc.setHardwareDescription("version 1.0");
+        state.description = desc;
+        state.featuresReply = featuresReply;
+
+        chdlr.bindSwitchToDriver();
+        assertTrue(chdlr.sw instanceof TestSwitchClass);
+
+        // Switch should be bound to Test11SwitchImpl
+        chdlr.sw = sw;
+        state.switchBindingDone = false;
+        desc.setManufacturerDescription("test11 switch");
+        desc.setHardwareDescription("version 1.1");
+        state.description = desc;
+        state.featuresReply = featuresReply;
+
+        chdlr.bindSwitchToDriver();
+        assertTrue(chdlr.sw instanceof Test11SwitchClass);
+    }
     
     @Test
     public void testChannelDisconnected() throws Exception {
@@ -1253,5 +1318,17 @@ public class ControllerTest extends FloodlightTestCase {
         verify(sw);
         verifyPortChangedUpdateInQueue(sw);
         reset(sw);
+    }
+
+    @Override
+    public IOFSwitch getOFSwitchImpl(OFDescriptionStatistics description) {
+        String hw_desc = description.getHardwareDescription();
+        if (hw_desc.equals("version 1.1")) {
+            return new Test11SwitchClass();
+        }
+        if (hw_desc.equals("version 1.0")) {
+            return new TestSwitchClass();
+        }
+        return null;
     }
 }

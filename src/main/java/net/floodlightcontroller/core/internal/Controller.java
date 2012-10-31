@@ -39,12 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
@@ -52,6 +48,7 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -74,6 +71,7 @@ import net.floodlightcontroller.util.LoadMonitor;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -98,12 +96,14 @@ import org.openflow.protocol.OFError.OFPortModFailedCode;
 import org.openflow.protocol.OFError.OFQueueOpFailedCode;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFGetConfigReply;
+import org.openflow.protocol.OFGetConfigRequest;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFSetConfig;
+import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFSwitchConfig;
 import org.openflow.protocol.OFType;
@@ -140,6 +140,10 @@ public class Controller implements IFloodlightProviderService,
     protected ConcurrentMap<OFType,
                             ListenerDispatcher<OFType,IOFMessageListener>> 
                                 messageListeners;
+    // OFSwitch driver binding map and order
+    protected Map<String, IOFSwitchDriver>switchBindingMap;
+    protected List<String> switchDescSortedList;
+    
     // The activeSwitches map contains only those switches that are actively
     // being controlled by us -- it doesn't contain switches that are
     // in the slave role
@@ -411,6 +415,7 @@ public class Controller implements IFloodlightProviderService,
     protected class OFChannelHandler 
         extends IdleStateAwareChannelUpstreamHandler {
         protected IOFSwitch sw;
+        protected Channel channel;
         protected OFChannelState state;
         
         public OFChannelHandler(OFChannelState state) {
@@ -422,20 +427,11 @@ public class Controller implements IFloodlightProviderService,
                        explanation="A new switch has connected from the " + 
                                 "specified IP address")
         public void channelConnected(ChannelHandlerContext ctx,
-                                     ChannelStateEvent e) throws Exception {
+                                     ChannelStateEvent e) throws Exception {            
+            channel = e.getChannel();
             log.info("New switch connection from {}",
-                     e.getChannel().getRemoteAddress());
-            
-            // Use OFSwitchImpl initially
-            sw = new OFSwitchImpl();
-            sw.setChannel(e.getChannel());
-            sw.setFloodlightProvider(Controller.this);
-            sw.setThreadPoolService(threadPool);
-            
-            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
-            msglist.add(factory.getMessage(OFType.HELLO));
-            e.getChannel().write(msglist);
-
+                     channel.getRemoteAddress());
+            sendHandShakeMessage(OFType.HELLO);
         }
 
         @Override
@@ -642,73 +638,21 @@ public class Controller implements IFloodlightProviderService,
                         " during handshake {exception}",
                 explanation="Could not process the switch description string",
                 recommendation=LogMessageDoc.CHECK_SWITCH)
-        void processSwitchDescReply() {
+        void processSwitchDescReply(OFStatisticsReply m) {
             try {
                 // Read description, if it has been updated
-                @SuppressWarnings("unchecked")
-                Future<List<OFStatistics>> desc_future =
-                    (Future<List<OFStatistics>>)sw.
-                        getAttribute(IOFSwitch.SWITCH_DESCRIPTION_FUTURE);
-                List<OFStatistics> values = 
-                        desc_future.get(0, TimeUnit.MILLISECONDS);
-                if (values != null) {
-                    OFDescriptionStatistics description = 
-                            new OFDescriptionStatistics();
-                    ChannelBuffer data = 
-                            ChannelBuffers.buffer(description.getLength());
-                    for (OFStatistics f : values) {
-                        f.writeTo(data);
-                        description.readFrom(data);
-                        break; // SHOULD be a list of length 1
-                    }
-                    sw.setAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA, 
-                                    description);
-                    sw.setSwitchProperties(description);
-                    data = null;
-
-                    // At this time, also set other switch properties from storage
-                    boolean is_core_switch = false;
-                    IResultSet resultSet = null;
-                    try {
-                        String swid = sw.getStringId();
-                        resultSet = 
-                                storageSource.getRow(SWITCH_CONFIG_TABLE_NAME, swid);
-                        for (Iterator<IResultSet> it = 
-                                resultSet.iterator(); it.hasNext();) {
-                            // In case of multiple rows, use the status
-                            // in last row?
-                            Map<String, Object> row = it.next().getRow();
-                            if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Reading SWITCH_IS_CORE_SWITCH " + 
-                                              "config for switch={}, is-core={}",
-                                              sw, row.get(SWITCH_CONFIG_CORE_SWITCH));
-                                }
-                                String ics = 
-                                        (String)row.get(SWITCH_CONFIG_CORE_SWITCH);
-                                is_core_switch = ics.equals("true");
-                            }
-                        }
-                    }
-                    finally {
-                        if (resultSet != null)
-                            resultSet.close();
-                    }
-                    if (is_core_switch) {
-                        sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, 
-                                        new Boolean(true));
-                    }
-                }
-                sw.removeAttribute(IOFSwitch.SWITCH_DESCRIPTION_FUTURE);
+                OFDescriptionStatistics description = 
+                        new OFDescriptionStatistics();
+                ChannelBuffer data = 
+                        ChannelBuffers.buffer(description.getLength());
+                OFStatistics f = m.getFirstStatistics();
+                f.writeTo(data);
+                description.readFrom(data);
+                state.description = description;
                 state.hasDescription = true;
                 checkSwitchReady();
             }
-            catch (InterruptedException ex) {
-                // Ignore
-            }
-            catch (TimeoutException ex) {
-                // Ignore
-            } catch (Exception ex) {
+            catch (Exception ex) {
                 log.error("Exception in reading description " + 
                           " during handshake", ex);
             }
@@ -719,9 +663,11 @@ public class Controller implements IFloodlightProviderService,
          * the switch
          * @throws IOException
          */
-        void sendHelloConfiguration() throws IOException {
+        private void sendHandShakeMessage(OFType type) throws IOException {
             // Send initial Features Request
-            sw.write(factory.getMessage(OFType.FEATURES_REQUEST), null);
+            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+            msglist.add(factory.getMessage(type));
+            channel.write(msglist);
         }
         
         /**
@@ -729,30 +675,40 @@ public class Controller implements IFloodlightProviderService,
          * the features reply
          * @throws IOException
          */
-        void sendFeatureReplyConfiguration() throws IOException {
+        private void sendFeatureReplyConfiguration() throws IOException {
+            List<OFMessage> msglist = new ArrayList<OFMessage>(3);
+
             // Ensure we receive the full packet via PacketIn
-            OFSetConfig config = (OFSetConfig) factory
+            OFSetConfig configSet = (OFSetConfig) factory
                     .getMessage(OFType.SET_CONFIG);
-            config.setMissSendLength((short) 0xffff)
-            .setLengthU(OFSwitchConfig.MINIMUM_LENGTH);
-            sw.write(config, null);
-            sw.write(factory.getMessage(OFType.GET_CONFIG_REQUEST),
-                    null);
+            configSet.setMissSendLength((short) 0xffff)
+                .setLengthU(OFSwitchConfig.MINIMUM_LENGTH);
+            configSet.setXid(-4);
+            msglist.add(configSet);
+            
+            // Verify (need barrier?)
+            OFGetConfigRequest configReq = (OFGetConfigRequest)
+                    factory.getMessage(OFType.GET_CONFIG_REQUEST);
+            configReq.setXid(-3);
+            msglist.add(configReq);
 
             // Get Description to set switch-specific flags
             OFStatisticsRequest req = new OFStatisticsRequest();
             req.setStatisticType(OFStatisticsType.DESC);
+            req.setXid(-2);  // something "large"
             req.setLengthU(req.getLengthU());
-            Future<List<OFStatistics>> dfuture = 
-                    sw.getStatistics(req);
-            sw.setAttribute(IOFSwitch.SWITCH_DESCRIPTION_FUTURE,
-                    dfuture);
-
+            msglist.add(req);
+            
+            channel.write(msglist);
         }
         
         protected void checkSwitchReady() {
+            if (!state.switchBindingDone) {
+                bindSwitchToDriver();
+            }
+
             if (state.hsState == HandshakeState.FEATURES_REPLY &&
-                    state.hasDescription && state.hasGetConfigReply) {
+                    state.switchBindingDone) {
                 
                 state.hsState = HandshakeState.READY;
                 
@@ -780,7 +736,7 @@ public class Controller implements IFloodlightProviderService,
                         Collection<IOFSwitch> swList = new ArrayList<IOFSwitch>(1);
                         swList.add(sw);
                         roleChanger.submitRequest(swList, role);
-                    } 
+                    }
                     else {
                         // Role supported not enabled on controller (for now)
                         // automatically promote switch to active state. 
@@ -796,6 +752,86 @@ public class Controller implements IFloodlightProviderService,
             }
         }
                 
+        protected void bindSwitchToDriver() {
+            if (!state.hasGetConfigReply) {
+                log.debug("Waiting for config reply from switch {}",
+                        channel.getRemoteAddress());
+                return;
+            }
+            if (!state.hasDescription) {
+                log.debug("Waiting for switch description from switch {}",
+                        channel.getRemoteAddress());
+                return;
+            }
+            
+            for (String desc : switchDescSortedList) {
+                if (state.description.getManufacturerDescription()
+                        .startsWith(desc)) {
+                    sw = switchBindingMap.get(desc)
+                            .getOFSwitchImpl(state.description);
+                    if (sw != null) {
+                        break;
+                    }
+                }
+            }
+            if (sw == null) {
+                sw = new OFSwitchImpl();
+            }
+
+            // set switch information
+            sw.setChannel(channel);
+            sw.setFloodlightProvider(Controller.this);
+            sw.setThreadPoolService(threadPool);
+            sw.setFeaturesReply(state.featuresReply);
+            sw.setAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA,
+                        state.description);
+            sw.setSwitchProperties(state.description);
+            readPropertyFromStorage();
+
+            state.featuresReply = null;
+            state.description = null;
+            state.switchBindingDone = true;
+
+            log.info("Switch {} bound to class {}",
+                    HexString.toHexString(sw.getId()), sw.getClass().getName());
+            return;
+        }
+        
+        private void readPropertyFromStorage() {
+            // At this time, also set other switch properties from storage
+            boolean is_core_switch = false;
+            IResultSet resultSet = null;
+            try {
+                String swid = sw.getStringId();
+                resultSet = 
+                        storageSource.getRow(SWITCH_CONFIG_TABLE_NAME, swid);
+                for (Iterator<IResultSet> it = 
+                        resultSet.iterator(); it.hasNext();) {
+                    // In case of multiple rows, use the status
+                    // in last row?
+                    Map<String, Object> row = it.next().getRow();
+                    if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Reading SWITCH_IS_CORE_SWITCH " + 
+                                    "config for switch={}, is-core={}",
+                                    sw, row.get(SWITCH_CONFIG_CORE_SWITCH));
+                        }
+                        String ics = 
+                                (String)row.get(SWITCH_CONFIG_CORE_SWITCH);
+                        is_core_switch = ics.equals("true");
+                    }
+                }
+            }
+            finally {
+                if (resultSet != null)
+                    resultSet.close();
+            }
+            if (is_core_switch) {
+                sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, 
+                        new Boolean(true));
+            }
+        }
+
         /* Handle a role reply message we received from the switch. Since
          * netty serializes message dispatch we don't need to synchronize 
          * against other receive operations from the same switch, so no need
@@ -958,7 +994,7 @@ public class Controller implements IFloodlightProviderService,
                     
                     if (state.hsState.equals(HandshakeState.START)) {
                         state.hsState = HandshakeState.HELLO;
-                        sendHelloConfiguration();
+                        sendHandShakeMessage(OFType.FEATURES_REQUEST);
                     } else {
                         throw new SwitchStateException("Unexpected HELLO from " 
                                                        + sw);
@@ -968,7 +1004,9 @@ public class Controller implements IFloodlightProviderService,
                     OFEchoReply reply =
                         (OFEchoReply) factory.getMessage(OFType.ECHO_REPLY);
                     reply.setXid(m.getXid());
-                    sw.write(reply, null);
+                    List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+                    msglist.add(reply);
+                    channel.write(msglist);
                     break;
                 case ECHO_REPLY:
                     break;
@@ -976,15 +1014,16 @@ public class Controller implements IFloodlightProviderService,
                     if (log.isTraceEnabled())
                         log.trace("Features Reply from {}", sw);
                     
-                    sw.setFeaturesReply((OFFeaturesReply) m);
                     if (state.hsState.equals(HandshakeState.HELLO)) {
                         sendFeatureReplyConfiguration();
+                        state.featuresReply = (OFFeaturesReply) m;
                         state.hsState = HandshakeState.FEATURES_REPLY;
                         // uncomment to enable "dumb" switches like cbench
                         // state.hsState = HandshakeState.READY;
                         // addSwitch(sw);
                     } else {
                         // return results to rest api caller
+                        sw.setFeaturesReply((OFFeaturesReply) m);
                         sw.deliverOFFeaturesReply(m);
                     }
                     break;
@@ -1099,9 +1138,10 @@ public class Controller implements IFloodlightProviderService,
                         String em = "Unexpected STATS_REPLY from " + sw;
                         throw new SwitchStateException(em);
                     }
-                    sw.deliverStatisticsReply(m);
-                    if (sw.hasAttribute(IOFSwitch.SWITCH_DESCRIPTION_FUTURE)) {
-                        processSwitchDescReply();
+                    if (sw == null) { 
+                        processSwitchDescReply((OFStatisticsReply) m);
+                    } else {
+                        sw.deliverStatisticsReply(m);
                     }
                     break;
                 case PORT_STATUS:
@@ -1863,6 +1903,9 @@ public class Controller implements IFloodlightProviderService,
                                                          IOFMessageListener>>();
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
         this.haListeners = new CopyOnWriteArraySet<IHAListener>();
+        this.switchBindingMap =
+                new ConcurrentHashMap<String, IOFSwitchDriver>();
+        this.switchDescSortedList = new ArrayList<String>();
         this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.connectedSwitches = new HashSet<IOFSwitch>();
         this.controllerNodeIPsCache = new HashMap<String, String>();
@@ -2059,4 +2102,29 @@ public class Controller implements IFloodlightProviderService,
     public boolean getAlwaysClearFlowsOnSwAdd() {
         return this.alwaysClearFlowsOnSwAdd;
     }
+
+    @Override
+    public void addOFSwitchDriver(String description, IOFSwitchDriver driver) {
+        IOFSwitchDriver existingDriver = switchBindingMap.get(description);
+        if (existingDriver != null) {
+            log.warn("Failed to add OFSwitch driver for {}, " +
+                     "already registered", description);
+            return;
+        }
+        switchBindingMap.put(description, driver);
+
+        // Sort so we match the longest string first
+        int index = -1;
+        for (String desc : switchDescSortedList) {
+            if (description.compareTo(desc) < 0) {
+                index = switchDescSortedList.indexOf(desc);
+                switchDescSortedList.add(index, description);
+                break;
+            }
+        }
+        if (index == -1) {  // append to list
+            switchDescSortedList.add(description);
+        }
+    }
+
 }
