@@ -51,7 +51,6 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFFeaturesRequest;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -105,7 +104,7 @@ public class OFSwitchImpl implements IOFSwitch {
     protected Map<Integer,OFStatisticsFuture> statsFutureMap;
     protected Map<Integer, IOFMessageListener> iofMsgListenersMap;
     protected Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
-    protected boolean connected;
+    protected volatile boolean connected;
     protected Role role;
     protected TimedCache<Long> timedCache;
     protected ReentrantReadWriteLock listenerLock;
@@ -493,13 +492,15 @@ public class OFSwitchImpl implements IOFSwitch {
 
     @JsonIgnore
     @Override
-    public synchronized boolean isConnected() {
+    public boolean isConnected() {
+        // No lock needed since we use volatile
         return connected;
     }
 
     @Override
     @JsonIgnore
-    public synchronized void setConnected(boolean connected) {
+    public void setConnected(boolean connected) {
+        // No lock needed since we use volatile
         this.connected = connected;
     }
     
@@ -801,9 +802,11 @@ public class OFSwitchImpl implements IOFSwitch {
     }
 
     @Override
-    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+    public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {
-        OFMessage request = new OFFeaturesRequest();
+        OFMessage request = 
+                floodlightProvider.getOFMessageFactory().
+                    getMessage(OFType.FEATURES_REQUEST);
         request.setXid(getNextTransactionId());
         OFFeaturesReplyFuture future =
                 new OFFeaturesReplyFuture(threadPool, this, request.getXid());

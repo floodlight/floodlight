@@ -120,6 +120,8 @@ public class TopologyManager implements
      */
     protected boolean dtLinksUpdated;
 
+    protected final int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+
     /**
      * Thread for recomputing topology.  The thread is always running, 
      * however the function applyUpdates() has a blocking call.
@@ -133,10 +135,15 @@ public class TopologyManager implements
         @Override 
         public void run() {
             try {
-                updateTopology();
+                if (ldUpdates.peek() != null)
+                    updateTopology();
             }
             catch (Exception e) {
                 log.error("Error in topology instance task thread", e);
+            } finally {
+                if (floodlightProvider.getRole() != Role.SLAVE)
+                    newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                           TimeUnit.MILLISECONDS);
             }
         }
     }
@@ -155,23 +162,20 @@ public class TopologyManager implements
     // **********************
     // ILinkDiscoveryListener
     // **********************
+    @Override
+    public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
+        if (log.isTraceEnabled()) {
+            log.trace("Queuing update: {}", updateList);
+        }
+        ldUpdates.addAll(updateList);
+    }
 
     @Override
     public void linkDiscoveryUpdate(LDUpdate update) {
-        boolean scheduleFlag = false;
-        // if there's no udpates in the queue, then
-        // we need to schedule an update.
-        if (ldUpdates.peek() == null)
-            scheduleFlag = true;
-
         if (log.isTraceEnabled()) {
             log.trace("Queuing update: {}", update);
         }
         ldUpdates.add(update);
-
-        if (scheduleFlag) {
-            newInstanceTask.reschedule(1, TimeUnit.MICROSECONDS);
-        }
     }
     
     // ****************
@@ -199,6 +203,13 @@ public class TopologyManager implements
     @Override
     public boolean isAttachmentPointPort(long switchid, short port, 
                                          boolean tunnelEnabled) {
+
+        // If the switch port is a tunnel endpoint, it is not
+        // an attachment point port, irrespective of whether
+        // a link is found through it or not.
+        if (linkDiscovery.isTunnelPort(switchid, port))
+            return false;
+
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 
         // if the port is not attachment point port according to
@@ -575,12 +586,14 @@ public class TopologyManager implements
                 if (oldRole == Role.SLAVE) {
                     log.debug("Re-computing topology due " +
                             "to HA change from SLAVE->MASTER");
-                    newInstanceTask.reschedule(1, TimeUnit.MILLISECONDS);
+                    newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                               TimeUnit.MILLISECONDS);
                 }
                 break;
             case SLAVE:
                 log.debug("Clearing topology due to " +
                         "HA change to SLAVE");
+                ldUpdates.clear();
                 clearCurrentTopology();
                 break;
             default:
@@ -659,6 +672,11 @@ public class TopologyManager implements
     public void startUp(FloodlightModuleContext context) {
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
+
+        if (floodlightProvider.getRole() != Role.SLAVE)
+            newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                   TimeUnit.MILLISECONDS);
+
         linkDiscovery.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);

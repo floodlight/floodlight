@@ -250,7 +250,7 @@ public interface IOFSwitch {
      * @return Future object wrapping OFStatisticsReply
      * @throws IOException 
      */
-    public Future<OFFeaturesReply> getFeaturesReplyFromSwitch()
+    public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException;
 
     /**

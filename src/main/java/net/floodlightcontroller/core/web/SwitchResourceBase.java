@@ -140,7 +140,7 @@ public class SwitchResourceBase extends ServerResource {
         OFFeaturesReply featuresReply = null;
         if (sw != null) {
             try {
-                future = sw.getFeaturesReplyFromSwitch();
+                future = sw.querySwitchFeaturesReply();
                 featuresReply = future.get(10, TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.error("Failure getting features reply from switch" + sw, e);
