@@ -127,6 +127,10 @@ IFloodlightModule, IInfoProvider, IHAListener {
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
+    private static final String TOPOLOGY_TABLE_NAME = "controller_topologyconfig";
+    private static final String TOPOLOGY_ID = "id";
+    private static final String TOPOLOGY_AUTOPORTFAST = "autoportfast";
+
     private static final String LINK_TABLE_NAME = "controller_link";
     private static final String LINK_ID = "id";
     private static final String LINK_SRC_SWITCH = "src_switch_id";
@@ -194,7 +198,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
      * Flag to indicate if automatic port fast is enabled or not.
      * Default is set to false -- Initialized in the init method as well.
      */
-    boolean autoPortFastFeature = false;
+    public final boolean AUTOPORTFAST_DEFAULT= false;
+    boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -1723,6 +1728,12 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
+
+        if (tableName.equals(TOPOLOGY_TABLE_NAME)) {
+            readTopologyConfigFromStorage();
+            return;
+        }
+
         Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
         for(Object key: rowKeys) {
@@ -1782,7 +1793,9 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
-        // Ignore delete events, the switch delete will do the right thing on it's own
+        // Ignore delete events, the switch delete will do the 
+        // right thing on it's own.
+        readTopologyConfigFromStorage();
     }
 
     // IFloodlightModule classes
@@ -1882,12 +1895,17 @@ IFloodlightModule, IInfoProvider, IHAListener {
             return;
         }
 
+        storageSource.createTable(TOPOLOGY_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(TOPOLOGY_TABLE_NAME, TOPOLOGY_ID);
+        readTopologyConfigFromStorage();
+
         storageSource.createTable(LINK_TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(LINK_TABLE_NAME, LINK_ID);
         storageSource.deleteMatchingRows(LINK_TABLE_NAME, null);
         // Register for storage updates for the switch table
         try {
             storageSource.addListener(SWITCH_CONFIG_TABLE_NAME, this);
+            storageSource.addListener(TOPOLOGY_TABLE_NAME, this);
         } catch (StorageException ex) {
             log.error("Error in installing listener for " +
             		  "switch table {}", SWITCH_CONFIG_TABLE_NAME);
@@ -2068,6 +2086,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
                                 "to HA change from SLAVE->MASTER");
                     }
                     clearAllLinks();
+                    readTopologyConfigFromStorage();
                     log.debug("Role Change to Master: Rescheduling discovery task.");
                     discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 }
@@ -2102,5 +2121,22 @@ IFloodlightModule, IInfoProvider, IHAListener {
 
     public void setAutoPortFastFeature(boolean autoPortFastFeature) {
         this.autoPortFastFeature = autoPortFastFeature;
+    }
+
+    public void readTopologyConfigFromStorage() {
+        IResultSet topologyResult = storageSource.executeQuery(TOPOLOGY_TABLE_NAME,
+                                                               null, null, null);
+
+        if (topologyResult.next()) {
+            boolean apf = topologyResult.getBoolean(TOPOLOGY_AUTOPORTFAST);
+            autoPortFastFeature = apf;
+        } else {
+            this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;
+        }
+
+        if (autoPortFastFeature)
+            log.info("Setting autoportfast feature to ON");
+        else
+            log.info("Setting autoportfast feature to OFF");
     }
 }
