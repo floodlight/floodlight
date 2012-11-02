@@ -1155,41 +1155,44 @@ public class Controller implements IFloodlightProviderService,
             }
             
             if (shouldHandleMessage) {
-                sw.getListenerReadLock().lock();
-                try {
-                    if (sw.isConnected()) {
-                        if (!state.hsState.equals(HandshakeState.READY)) {
-                            log.debug("Ignoring message type {} received " + 
-                                      "from switch {} before switch is " + 
-                                      "fully configured.", m.getType(), sw);
-                        }
-                        // Check if the controller is in the slave role for the 
-                        // switch. If it is, then don't dispatch the message to 
-                        // the listeners.
-                        // TODO: Should we dispatch messages that we expect to 
-                        // receive when we're in the slave role, e.g. port 
-                        // status messages? Since we're "hiding" switches from 
-                        // the listeners when we're in the slave role, then it 
-                        // seems a little weird to dispatch port status messages
-                        // to them. On the other hand there might be special 
-                        // modules that care about all of the connected switches
-                        // and would like to receive port status notifications.
-                        else if (sw.getRole() == Role.SLAVE) {
-                            // Don't log message if it's a port status message 
-                            // since we expect to receive those from the switch 
-                            // and don't want to emit spurious messages.
-                            if (m.getType() != OFType.PORT_STATUS) {
-                                log.debug("Ignoring message type {} received " +
-                                        "from switch {} while in the slave role.",
-                                        m.getType(), sw);
+                // WARNING: sw is null if handshake is not complete
+                if (!state.hsState.equals(HandshakeState.READY)) {
+                    log.debug("Ignoring message type {} received " + 
+                              "from switch {} before switch is " + 
+                              "fully configured.", m.getType(), sw);
+                } else {
+                    sw.getListenerReadLock().lock();
+                    try {
+
+                        if (sw.isConnected()) {
+                            // Check if the controller is in the slave role for the 
+                            // switch. If it is, then don't dispatch the message to 
+                            // the listeners.
+                            // TODO: Should we dispatch messages that we expect to 
+                            // receive when we're in the slave role, e.g. port 
+                            // status messages? Since we're "hiding" switches from 
+                            // the listeners when we're in the slave role, then it 
+                            // seems a little weird to dispatch port status messages
+                            // to them. On the other hand there might be special 
+                            // modules that care about all of the connected switches
+                            // and would like to receive port status notifications.
+                            if (sw.getRole() == Role.SLAVE) {
+                                // Don't log message if it's a port status message 
+                                // since we expect to receive those from the switch 
+                                // and don't want to emit spurious messages.
+                                if (m.getType() != OFType.PORT_STATUS) {
+                                    log.debug("Ignoring message type {} received " +
+                                            "from switch {} while in the slave role.",
+                                            m.getType(), sw);
+                                }
+                            } else {
+                                handleMessage(sw, m, null);
                             }
-                        } else {
-                            handleMessage(sw, m, null);
                         }
                     }
-                }
-                finally {
-                    sw.getListenerReadLock().unlock();
+                    finally {
+                        sw.getListenerReadLock().unlock();
+                    }
                 }
             }
         }
