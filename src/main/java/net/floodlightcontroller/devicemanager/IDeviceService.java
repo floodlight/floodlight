@@ -97,9 +97,13 @@ public interface IDeviceService extends IFloodlightService {
      * the given source device.  The source device is important since
      * there could be ambiguity in the destination device without the
      * attachment point information. 
+     * Search for a device in a given entity class. This is the same as 
+     * the lookup process for destination devices. 
      * 
-     * @param source the source device.  The returned destination will be
-     * in the same entity class as the source.
+     * Only the key fields as defined by the reference entity class will
+     * be important in this search. All key fields MUST be supplied.
+     * 
+     * @param entityClass The entity class in which to perform the lookup.
      * @param macAddress The MAC address for the destination
      * @param vlan the VLAN if available
      * @param ipv4Address The IP address if available.
@@ -109,10 +113,10 @@ public interface IDeviceService extends IFloodlightService {
      * @throws IllegalArgumentException if not all key fields of the
      * source's {@link IEntityClass} are specified.
      */
-    public IDevice findDestDevice(IDevice source,
-                                  long macAddress, Short vlan,
-                                  Integer ipv4Address)
-                                  throws IllegalArgumentException;
+    public IDevice findClassDevice(IEntityClass entityClass,
+                                   long macAddress, Short vlan,
+                                   Integer ipv4Address)
+                                   throws IllegalArgumentException;
 
     /**
      * Get an unmodifiable collection view over all devices currently known.
@@ -158,14 +162,13 @@ public interface IDeviceService extends IFloodlightService {
 
     /**
      * Find devices that match the provided query.  Only the index for
-     * the class of the specified reference device will be searched.  
+     * the specified class will be searched.  
      * Any fields that are null will not be included in the query.  If
      * there is an index for the query, then it will be performed
      * efficiently using the index. Otherwise, there will be a full scan
      * of the device list.
      * 
-     * @param reference The reference device to refer to when finding
-     * entity classes.
+     * @param entityClass The entity class in which to perform the query
      * @param macAddress The MAC address
      * @param vlan the VLAN
      * @param ipv4Address the ipv4 address
@@ -175,7 +178,7 @@ public interface IDeviceService extends IFloodlightService {
      * @see IDeviceService#queryClassDevices(Long, 
      * Short, Integer, Long, Integer)
      */
-    public Iterator<? extends IDevice> queryClassDevices(IDevice reference,
+    public Iterator<? extends IDevice> queryClassDevices(IEntityClass entityClass,
                                                          Long macAddress,
                                                          Short vlan,
                                                          Integer ipv4Address, 
