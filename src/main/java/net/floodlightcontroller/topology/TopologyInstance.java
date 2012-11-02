@@ -147,18 +147,20 @@ public class TopologyInstance {
         calculateBroadcastNodePortsInClusters();
 
         // Step 4. print topology.
-        // printTopology();
+        printTopology();
     }
 
     public void printTopology() {
-        log.trace("-----------------------------------------------");
-        log.trace("Links: {}",this.switchPortLinks);
-        log.trace("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.trace("tunnelPorts: {}", tunnelPorts);
-        log.trace("clusters: {}", clusters);
-        log.trace("destinationRootedTrees: {}", destinationRootedTrees);
-        log.trace("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.trace("-----------------------------------------------");
+        if (log.isTraceEnabled()) {
+            log.trace("-----------------------------------------------");
+            log.trace("Links: {}",this.switchPortLinks);
+            log.trace("broadcastDomainPorts: {}", broadcastDomainPorts);
+            log.trace("tunnelPorts: {}", tunnelPorts);
+            log.trace("clusters: {}", clusters);
+            log.trace("destinationRootedTrees: {}", destinationRootedTrees);
+            log.trace("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+            log.trace("-----------------------------------------------");
+        }
     }
 
     protected void addLinksToOpenflowDomains() {
@@ -257,6 +259,8 @@ public class TopologyInstance {
         ClusterDFS currDFS = dfsList.get(currSw);
         // Get all the links corresponding to this switch
 
+        Set<Long> nodesInMyCluster = new HashSet<Long>();
+        Set<Long> myCurrSet = new HashSet<Long>();
 
         //Assign the DFS object with right values.
         currDFS.setVisited(true);
@@ -296,13 +300,16 @@ public class TopologyInstance {
                     } else if (!dstDFS.isVisited()) {
                         // make a DFS visit
                         currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                                                dfsList, currSet);
+                                                dfsList, myCurrSet);
 
                         if (currIndex < 0) return -1;
 
                         // update lowpoint after the visit
                         if (dstDFS.getLowpoint() < currDFS.getLowpoint())
                             currDFS.setLowpoint(dstDFS.getLowpoint());
+
+                        nodesInMyCluster.addAll(myCurrSet);
+                        myCurrSet.clear();
                     }
                     // else, it is a node already visited with a higher
                     // dfs index, just ignore.
@@ -310,8 +317,8 @@ public class TopologyInstance {
             }
         }
 
-        // Add current node to currSet.
-        currSet.add(currSw);
+        nodesInMyCluster.add(currSw);
+        currSet.addAll(nodesInMyCluster);
 
         // Cluster computation.
         // If the node's lowpoint is greater than its parent's DFS index,
