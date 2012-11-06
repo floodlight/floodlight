@@ -133,12 +133,12 @@ public class RoleChanger {
             TIMEOUT
         }
         // The set of switches to work on
-        public Collection<OFSwitchImpl> switches;
+        public Collection<IOFSwitch> switches;
         public Role role;
         public Type type;
         // the time when the task should run as nanoTime() 
         public long deadline;
-        public RoleChangeTask(Collection<OFSwitchImpl> switches, Role role, long deadline) {
+        public RoleChangeTask(Collection<IOFSwitch> switches, Role role, long deadline) {
             this.switches = switches;
             this.role = role;
             this.type = Type.REQUEST;
@@ -209,14 +209,14 @@ public class RoleChanger {
     }
     
     
-    public synchronized void submitRequest(Collection<OFSwitchImpl> switches, Role role) {
+    public synchronized void submitRequest(Collection<IOFSwitch> switches, Role role) {
         long deadline = System.nanoTime();
         // Grrr. stupid DelayQueue. Make sre we have at least 10ms between 
         // role request messages.
         if (deadline - lastSubmitTime < 10 * 1000*1000) 
             deadline = lastSubmitTime + 10 * 1000*1000;
         // make a copy of the list 
-        ArrayList<OFSwitchImpl> switches_copy = new ArrayList<OFSwitchImpl>(switches);
+        ArrayList<IOFSwitch> switches_copy = new ArrayList<IOFSwitch>(switches);
         RoleChangeTask req = new RoleChangeTask(switches_copy, role, deadline);
         pendingTasks.put(req);
         lastSubmitTime = deadline;
@@ -237,7 +237,7 @@ public class RoleChanger {
             explanation="An I/O error occurred while attempting to change " +
             		"the switch HA role.",
             recommendation=LogMessageDoc.CHECK_SWITCH)                              
-    protected void sendRoleRequest(Collection<OFSwitchImpl> switches,
+    protected void sendRoleRequest(Collection<IOFSwitch> switches,
                                    Role role, long cookie) {
         // There are three cases to consider:
         //
@@ -267,9 +267,9 @@ public class RoleChanger {
         //    controller in its list of controllers. Eventually (hopefully, if
         //    things are configured correctly) it will walk down its list of
         //    controllers and connect to the current master controller.
-        Iterator<OFSwitchImpl> iter = switches.iterator();
+        Iterator<IOFSwitch> iter = switches.iterator();
         while(iter.hasNext()) {
-            OFSwitchImpl sw = iter.next();
+            IOFSwitch sw = iter.next();
             try {
                 Boolean supportsNxRole = (Boolean)
                         sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
@@ -308,9 +308,9 @@ public class RoleChanger {
             explanation="Timed out waiting for the switch to respond to " +
             		"a request to change the HA role.",
             recommendation=LogMessageDoc.CHECK_SWITCH)                              
-    protected void verifyRoleReplyReceived(Collection<OFSwitchImpl> switches,
+    protected void verifyRoleReplyReceived(Collection<IOFSwitch> switches,
                                    long cookie) {
-        for (OFSwitchImpl sw: switches) {
+        for (IOFSwitch sw: switches) {
             if (sw.checkFirstPendingRoleRequestCookie(cookie)) {
                 sw.getChannel().close();
                 log.warn("Timeout while waiting for role reply from switch {}."

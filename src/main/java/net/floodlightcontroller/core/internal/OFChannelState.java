@@ -17,6 +17,9 @@
 
 package net.floodlightcontroller.core.internal;
 
+import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
+
 /**
  * Wrapper class to hold state for the OpenFlow switch connection
  * @author readams
@@ -53,6 +56,10 @@ class OFChannelState {
     protected volatile HandshakeState hsState = HandshakeState.START;
     protected boolean hasGetConfigReply = false;
     protected boolean hasDescription = false;
+    protected boolean switchBindingDone = false;
+    
+    protected OFFeaturesReply featuresReply = null;
+    protected OFDescriptionStatistics description = null;
     
     // The firstRoleReplyRecevied flag indicates if we have received the
     // first role reply message on this connection (in response to the 
