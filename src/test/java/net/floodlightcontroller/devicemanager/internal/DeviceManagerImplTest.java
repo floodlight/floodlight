@@ -738,7 +738,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         Device result = null;
         Iterator<? extends IDevice> dstiter =
-                deviceManager.queryClassDevices(device, null, null, ipaddr,
+                deviceManager.queryClassDevices(device.getEntityClass(),
+                                                null, null, ipaddr,
                                                 null, null);
         if (dstiter.hasNext()) {
             result = (Device)dstiter.next();
@@ -832,10 +833,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                              new SwitchPort(5L, 1)},
                                              d.getAttachmentPoints());
         Iterator<? extends IDevice> diter =
-                deviceManager.queryClassDevices(d, null, null, 1, null, null);
+                deviceManager.queryClassDevices(d.getEntityClass(),
+                                                null, null, 1, null, null);
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
-        diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
+        diter = deviceManager.queryClassDevices(d.getEntityClass(), 
+                                                null, null, 2, null, null);
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
 
@@ -851,10 +854,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
                                              new SwitchPort(5L, 1) },
                           d.getAttachmentPoints());
-        diter = deviceManager.queryClassDevices(d, null, null, 2, null, null);
+        diter = deviceManager.queryClassDevices(d.getEntityClass(),
+                                                null, null, 2, null, null);
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
-        diter = deviceManager.queryClassDevices(d, null, null, 1, null, null);
+        diter = deviceManager.queryClassDevices(d.getEntityClass(),
+                                                null, null, 1, null, null);
         assertFalse(diter.hasNext());
 
         d = deviceManager.findDevice(1L, null, null, null, null);
@@ -908,7 +913,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDevice r = deviceManager.getDevice(d.getDeviceKey());
         assertNull(r);
         Iterator<? extends IDevice> diter =
-                deviceManager.queryClassDevices(d, null, null, 1, null, null);
+                deviceManager.queryClassDevices(d.getEntityClass(),
+                                                null, null, 1, null, null);
         assertFalse(diter.hasNext());
 
         r = deviceManager.findDevice(1L, null, null, null, null);
@@ -1299,7 +1305,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.learnDeviceByEntity(entity4);
 
         Iterator<? extends IDevice> iter =
-                deviceManager.queryClassDevices(d, null,
+                deviceManager.queryClassDevices(d.getEntityClass(), null,
                                                 (short)1, 1, null, null);
         int count = 0;
         while (iter.hasNext()) {
@@ -1308,7 +1314,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
         assertEquals(1, count);
 
-        iter = deviceManager.queryClassDevices(d, null,
+        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
                                                (short)3, 3, null, null);
         count = 0;
         while (iter.hasNext()) {
@@ -1317,7 +1323,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
         assertEquals(1, count);
 
-        iter = deviceManager.queryClassDevices(d, null,
+        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
                                                (short)1, 3, null, null);
         count = 0;
         while (iter.hasNext()) {
@@ -1327,7 +1333,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(0, count);
 
         deviceManager.learnDeviceByEntity(entity5);
-        iter = deviceManager.queryClassDevices(d, null,
+        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
                                                (short)4, 3, null, null);
         count = 0;
         while (iter.hasNext()) {
@@ -1480,15 +1486,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         
         
         // Now look up destination devices
-        assertEquals(d1, deviceManager.findDestDevice(d2, 
+        assertEquals(d1, deviceManager.findClassDevice(d2.getEntityClass(), 
                                                   entity1.getMacAddress(), 
                                                   entity1.getVlan(),
                                                   entity1.getIpv4Address()));
-        assertEquals(d1, deviceManager.findDestDevice(d2, 
+        assertEquals(d1, deviceManager.findClassDevice(d2.getEntityClass(), 
                                                   entity1.getMacAddress(), 
                                                   entity1.getVlan(),
                                                   null));
-        assertEquals(null, deviceManager.findDestDevice(d2, 
+        assertEquals(null, deviceManager.findClassDevice(d2.getEntityClass(), 
                                                   entity1.getMacAddress(), 
                                                   (short) -1,
                                                   0));

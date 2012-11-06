@@ -35,6 +35,7 @@ import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
@@ -347,4 +348,11 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         // TODO Auto-generated method stub
         
     }
+
+    @Override
+    public void addOFSwitchDriver(String desc, IOFSwitchDriver driver) {
+        // TODO Auto-generated method stub
+        
+    }
+
 }

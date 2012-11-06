@@ -345,7 +345,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     @Override
-    public IDevice findDestDevice(IDevice source, long macAddress,
+    public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
                                   Short vlan, Integer ipv4Address) 
                                   throws IllegalArgumentException {
         if (vlan != null && vlan.shortValue() <= 0)
@@ -354,13 +354,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address,
                               null, null, null);
-        if (source == null || 
-                !allKeyFieldsPresent(e, source.getEntityClass().getKeyFields())) {
+        if (entityClass == null || 
+                !allKeyFieldsPresent(e, entityClass.getKeyFields())) {
             throw new IllegalArgumentException("Not all key fields and/or "
                     + " no source device specified. Required fields: " + 
                     entityClassifier.getKeyFields());
         }
-        return findDestByEntity(source, e);
+        return findDestByEntity(entityClass, e);
     }
 
     @Override
@@ -421,13 +421,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     @Override
-    public Iterator<? extends IDevice> queryClassDevices(IDevice reference,
+    public Iterator<? extends IDevice> queryClassDevices(IEntityClass entityClass,
                                                          Long macAddress,
                                                          Short vlan,
                                                          Integer ipv4Address,
                                                          Long switchDPID,
                                                          Integer switchPort) {
-        IEntityClass entityClass = reference.getEntityClass();
         ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
         ClassState classState = getClassState(entityClass);
@@ -604,7 +603,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
         Device dstDevice = null;
         if (dstEntity != null) {
-            dstDevice = findDestByEntity(srcDevice, dstEntity);
+            dstDevice = findDestByEntity(srcDevice.getEntityClass(), dstEntity);
             if (dstDevice != null)
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
         }
@@ -769,7 +768,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         Device dstDevice = null;
         if (dstEntity != null) {
             dstDevice =
-                    findDestByEntity(srcDevice, dstEntity);
+                    findDestByEntity(srcDevice.getEntityClass(), dstEntity);
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
         }
@@ -980,13 +979,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param dstEntity the entity to look up
      * @return an {@link Device} or null if no device is found.
      */
-    protected Device findDestByEntity(IDevice source,
+    protected Device findDestByEntity(IEntityClass reference,
                                       Entity dstEntity) {
         
         // Look  up the fully-qualified entity to see if it 
         // exists in the primary entity index
         Long deviceKey = primaryIndex.findByEntity(dstEntity);
-        
+         
         if (deviceKey == null) {
             // This could happen because:
             // 1) no destination known, or a broadcast destination
@@ -996,7 +995,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // For the second case, we'll need to match up the
             // destination device with the class of the source
             // device.
-            ClassState classState = getClassState(source.getEntityClass());
+            ClassState classState = getClassState(reference);
             if (classState.classIndex == null) {
                 return null;
             }

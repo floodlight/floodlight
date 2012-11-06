@@ -72,19 +72,19 @@ public class TopologyInstance {
         this.blockedPorts = new HashSet<NodePortTuple>();
         this.blockedLinks = new HashSet<Link>();
     }
-    
+
     public TopologyInstance(Map<Long, Set<Short>> switchPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks)
     {
         this.switches = new HashSet<Long>(switchPorts.keySet());
         this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
         this.switchPortLinks = new HashMap<NodePortTuple, 
-                                           Set<Link>>(switchPortLinks);
+                Set<Link>>(switchPortLinks);
         this.broadcastDomainPorts = new HashSet<NodePortTuple>();
         this.tunnelPorts = new HashSet<NodePortTuple>();
         this.blockedPorts = new HashSet<NodePortTuple>();
         this.blockedLinks = new HashSet<Link>();
-        
+
         clusters = new HashSet<Cluster>();
         switchClusterMap = new HashMap<Long, Cluster>();
     }
@@ -147,18 +147,20 @@ public class TopologyInstance {
         calculateBroadcastNodePortsInClusters();
 
         // Step 4. print topology.
-        // printTopology();
+        printTopology();
     }
 
     public void printTopology() {
-        log.trace("-----------------------------------------------");
-        log.trace("Links: {}",this.switchPortLinks);
-        log.trace("broadcastDomainPorts: {}", broadcastDomainPorts);
-        log.trace("tunnelPorts: {}", tunnelPorts);
-        log.trace("clusters: {}", clusters);
-        log.trace("destinationRootedTrees: {}", destinationRootedTrees);
-        log.trace("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
-        log.trace("-----------------------------------------------");
+        if (log.isTraceEnabled()) {
+            log.trace("-----------------------------------------------");
+            log.trace("Links: {}",this.switchPortLinks);
+            log.trace("broadcastDomainPorts: {}", broadcastDomainPorts);
+            log.trace("tunnelPorts: {}", tunnelPorts);
+            log.trace("clusters: {}", clusters);
+            log.trace("destinationRootedTrees: {}", destinationRootedTrees);
+            log.trace("clusterBroadcastNodePorts: {}", clusterBroadcastNodePorts);
+            log.trace("-----------------------------------------------");
+        }
     }
 
     protected void addLinksToOpenflowDomains() {
@@ -257,6 +259,8 @@ public class TopologyInstance {
         ClusterDFS currDFS = dfsList.get(currSw);
         // Get all the links corresponding to this switch
 
+        Set<Long> nodesInMyCluster = new HashSet<Long>();
+        Set<Long> myCurrSet = new HashSet<Long>();
 
         //Assign the DFS object with right values.
         currDFS.setVisited(true);
@@ -296,13 +300,16 @@ public class TopologyInstance {
                     } else if (!dstDFS.isVisited()) {
                         // make a DFS visit
                         currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                                                dfsList, currSet);
+                                                dfsList, myCurrSet);
 
                         if (currIndex < 0) return -1;
 
                         // update lowpoint after the visit
                         if (dstDFS.getLowpoint() < currDFS.getLowpoint())
                             currDFS.setLowpoint(dstDFS.getLowpoint());
+
+                        nodesInMyCluster.addAll(myCurrSet);
+                        myCurrSet.clear();
                     }
                     // else, it is a node already visited with a higher
                     // dfs index, just ignore.
@@ -310,8 +317,8 @@ public class TopologyInstance {
             }
         }
 
-        // Add current node to currSet.
-        currSet.add(currSw);
+        nodesInMyCluster.add(currSw);
+        currSet.addAll(nodesInMyCluster);
 
         // Cluster computation.
         // If the node's lowpoint is greater than its parent's DFS index,
@@ -431,9 +438,32 @@ public class TopologyInstance {
 
         public int compareTo(NodeDist o) {
             if (o.dist == this.dist) {
-                return (int)(o.node - this.node);
+                return (int)(this.node - o.node);
             }
-            return o.dist - this.dist;
+            return this.dist - o.dist;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            NodeDist other = (NodeDist) obj;
+            if (!getOuterType().equals(other.getOuterType()))
+                return false;
+            if (node == null) {
+                if (other.node != null)
+                    return false;
+            } else if (!node.equals(other.node))
+                return false;
+            return true;
+        }
+
+        private TopologyInstance getOuterType() {
+            return TopologyInstance.this;
         }
     }
 
@@ -465,13 +495,15 @@ public class TopologyInstance {
 
             for (Link link: c.links.get(cnode)) {
                 Long neighbor;
-                
+
                 if (isDstRooted == true) neighbor = link.getSrc();
                 else neighbor = link.getDst();
-                
+
                 // links directed toward cnode will result in this condition
-                // if (neighbor == cnode) continue;
-                
+                if (neighbor.equals(cnode)) continue;
+
+                if (seen.containsKey(neighbor)) continue;
+
                 if (linkCost == null || linkCost.get(link)==null) w = 1;
                 else w = linkCost.get(link);
 
@@ -480,7 +512,13 @@ public class TopologyInstance {
                     cost.put(neighbor, ndist);
                     nexthoplinks.put(neighbor, link);
                     //nexthopnodes.put(neighbor, cnode);
-                    nodeq.add(new NodeDist(neighbor, ndist));
+                    NodeDist ndTemp = new NodeDist(neighbor, ndist);
+                    // Remove an object that's already in there.
+                    // Note that the comparison is based on only the node id,
+                    // and not node id and distance.
+                    nodeq.remove(ndTemp);
+                    // add the current object to the queue.
+                    nodeq.add(ndTemp);
                 }
             }
         }
@@ -744,7 +782,8 @@ public class TopologyInstance {
 
     public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort) {
-     // Use this function to reinject traffic from a different port if needed.
+        // Use this function to reinject traffic from a 
+        // different port if needed.
         return new NodePortTuple(src, srcPort);
     }
 
@@ -768,8 +807,8 @@ public class TopologyInstance {
     }
 
     public NodePortTuple
-            getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
-                                            short dstPort) {
+    getAllowedOutgoingBroadcastPort(long src, short srcPort, long dst,
+                                    short dstPort) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -780,3 +819,4 @@ public class TopologyInstance {
         return null;
     }
 }
+
