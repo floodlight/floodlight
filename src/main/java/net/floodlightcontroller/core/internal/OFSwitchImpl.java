@@ -616,6 +616,7 @@ public class OFSwitchImpl implements IOFSwitch {
      * Get the IP Address for the switch
      * @return the inet address
      */
+    @Override
     @JsonSerialize(using=ToStringSerializer.class)
     public SocketAddress getInetAddress() {
         return channel.getRemoteAddress();

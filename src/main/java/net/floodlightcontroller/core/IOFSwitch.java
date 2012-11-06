@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -212,6 +213,12 @@ public interface IOFSwitch {
      * @return
      */
     public String getStringId();
+    
+    /**
+     * Get the IP Address for the switch
+     * @return the inet address
+     */
+    public SocketAddress getInetAddress();
     
     /**
      * Retrieves attributes of this switch
