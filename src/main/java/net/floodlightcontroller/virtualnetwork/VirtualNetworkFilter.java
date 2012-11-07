@@ -139,7 +139,8 @@ public class VirtualNetworkFilter
                 }
             }
         }
-        nameToGuid.put(network, guid);
+        if(network != null)
+            nameToGuid.put(network, guid);
         if (vNetsByGuid.containsKey(guid))
             vNetsByGuid.get(guid).setName(network); //network already exists, just updating name
         else
