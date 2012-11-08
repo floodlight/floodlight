@@ -47,10 +47,14 @@ public @interface LogMessageDoc {
             "This is likely a defect in the switch.  Please report this " +
             "issue.  Restarting the controller or switch may help to " +
             "alleviate.";
+    public static final String TRANSIENT_CONDITION =
+            "This is normally a transient condition that does not necessarily " +
+            "represent an error.  If, however, the condition persists or " +
+            "happens frequently you should report this as a controller defect.";
 
     /**
      * The log level for the log message
-     * @return the log level as a tring
+     * @return the log level as a string
      */
     String level() default "INFO";
     /**
@@ -64,7 +68,7 @@ public @interface LogMessageDoc {
      */
     String explanation() default UNKNOWN_ERROR;
     /**
-     * The recommendated action associated with the log message
+     * The recommended action associated with the log message
      * @return the recommendation
      */
     String recommendation() default NO_ACTION;
