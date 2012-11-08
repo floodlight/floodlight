@@ -33,10 +33,9 @@ public interface IRoutingDecision {
          *                          if the destination is not known at this time, initiate a discovery action for it (e.g. ARP)
          * FORWARD_OR_FLOOD:        Forward this packet, and this flow, to the first (and only device) in getDestinationDevices(),
          *                          if the destination is not known at this time, flood this packet on the source switch
-         * BROADCAST:               Broadcast this packet on all links                         
          * MULTICAST:               Multicast this packet to all the interfaces and devices attached
          */
-        NONE, DROP, FORWARD, FORWARD_OR_FLOOD, BROADCAST, MULTICAST
+        NONE, DROP, FORWARD, FORWARD_OR_FLOOD, MULTICAST
     }
     
     public static final FloodlightContextStore<IRoutingDecision> rtStore =
