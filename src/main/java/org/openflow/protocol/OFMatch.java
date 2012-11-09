@@ -778,6 +778,56 @@ public class OFMatch implements Cloneable, Serializable {
         return "OFMatch[" + str + "]";
     }
 
+    /**
+     * debug a set of wildcards
+     */
+    public static String debugWildCards(int wildcards) {
+        String str = "";
+
+        // l1
+        if ((wildcards & OFPFW_IN_PORT) != 0)
+            str += "|" + STR_IN_PORT;
+
+        // l2
+        if ((wildcards & OFPFW_DL_DST) != 0)
+            str += "|" + STR_DL_DST;
+        if ((wildcards & OFPFW_DL_SRC) != 0)
+            str += "|" + STR_DL_SRC;
+        if ((wildcards & OFPFW_DL_TYPE) != 0)
+            str += "|" + STR_DL_TYPE;
+        if ((wildcards & OFPFW_DL_VLAN) != 0)
+            str += "|" + STR_DL_VLAN;
+        if ((wildcards & OFPFW_DL_VLAN_PCP) != 0)
+            str += "|" + STR_DL_VLAN_PCP;
+
+        int nwDstMask = Math.max(32 - ((wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT),
+                            0);
+        int nwSrcMask = Math.max(32 - ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT),
+                0);
+
+        // l3
+        if (nwDstMask < 32)
+            str += "|" + STR_NW_DST + "(/" +nwDstMask + ")";
+
+        if (nwSrcMask < 32)
+            str += "|" + STR_NW_SRC + "(/" + nwSrcMask + ")";
+
+        if ((wildcards & OFPFW_NW_PROTO) != 0)
+            str += "|" + STR_NW_PROTO;
+        if ((wildcards & OFPFW_NW_TOS) != 0)
+            str += "|" + STR_NW_TOS;
+
+        // l4
+        if ((wildcards & OFPFW_TP_DST) != 0)
+            str += "|" + STR_TP_DST;
+        if ((wildcards & OFPFW_TP_SRC) != 0)
+            str += "|" + STR_TP_SRC;
+        if ((str.length() > 0) && (str.charAt(0) == '|'))
+            str = str.substring(1); // trim the leading ","
+        // done
+        return str;
+    }
+
     private String cidrToString(int ip, int prefix) {
         String str;
         if (prefix >= 32) {
