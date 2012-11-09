@@ -567,11 +567,131 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
     }
+    
+    private void verifyEntityArray(Entity[] expected, Device d) {
+        Arrays.sort(expected);
+        assertArrayEquals(expected, d.entities);
+    }
+    
+    @Test
+    public void testNoLearningOnInternalPorts() throws Exception {
+        IDeviceListener mockListener =
+                createMock(IDeviceListener.class);
 
+        deviceManager.addListener(mockListener);
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.getL2DomainId(1L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(2L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(3L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(4L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort()))
+                .andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
+                                                    anyLong(), anyShort()))
+                .andReturn(false).anyTimes();
+
+        expect(mockTopology.isAttachmentPointPort(or(eq(1L), eq(3L)), anyShort()))
+                .andReturn(true).anyTimes();
+        // Switches 2 and 4 have only internal ports 
+        expect(mockTopology.isAttachmentPointPort(or(eq(2L), eq(4L)), anyShort()))
+                .andReturn(false).anyTimes();
+        
+        expect(mockTopology.isConsistent(1L, (short)1, 3L, (short)1))
+                .andReturn(false).once(); 
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
+        replay(mockTopology);
+
+        deviceManager.topology = mockTopology;
+
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity2 = new Entity(1L, null, 2, 2L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity3 = new Entity(1L, null, 3, 3L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity4 = new Entity(1L, null, 4, 4L, 1, c.getTime());
+
+        IDevice d;
+        SwitchPort[] aps;
+        Integer[] ips;
+
+        mockListener.deviceAdded(isA(IDevice.class));
+        expectLastCall().once();
+        replay(mockListener);
+        
+        // cannot learn device internal ports 
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertNull(d);
+        d = deviceManager.learnDeviceByEntity(entity4);
+        assertNull(d);
+        
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity1 } , (Device)d);
+        ips = d.getIPv4Addresses();
+        assertArrayEquals(new Integer[] { 1 }, ips);
+        verify(mockListener);
+        
+        reset(mockListener);
+        replay(mockListener);
+        
+        // don't learn 
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity1 } , (Device)d);
+        ips = d.getIPv4Addresses();
+        assertArrayEquals(new Integer[] { 1 }, ips);
+        verify(mockListener);
+        
+        reset(mockListener);
+        mockListener.deviceMoved(isA(IDevice.class));
+        mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
+        replay(mockListener);
+        
+        // learn 
+        d = deviceManager.learnDeviceByEntity(entity3);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(3L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity1, entity3 } , (Device)d);
+        ips = d.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 1, 3 }, ips);
+        verify(mockListener);
+        
+        reset(mockListener);
+        replay(mockListener);
+        
+        // don't learn 
+        d = deviceManager.learnDeviceByEntity(entity4);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(3L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity1, entity3 } , (Device)d);
+        ips = d.getIPv4Addresses();
+        Arrays.sort(ips);
+        assertArrayEquals(new Integer[] { 1, 3 }, ips);
+        verify(mockListener);
+    }
+    
     @Test
     public void testAttachmentPointSuppression() throws Exception {
         IDeviceListener mockListener =
-                createStrictMock(IDeviceListener.class);
+                createMock(IDeviceListener.class);
 
         deviceManager.addListener(mockListener);
 
@@ -584,15 +704,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         andReturn(10L).anyTimes();
         expect(mockTopology.getL2DomainId(50L)).
         andReturn(10L).anyTimes();
-        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
-        andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort()))
+                .andReturn(false).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
-                                                    anyLong(), anyShort())).andReturn(false).anyTimes();
+                                                    anyLong(), anyShort()))
+                .andReturn(false).anyTimes();
 
-        expect(mockTopology.isAttachmentPointPort(anyLong(),
-                                                  anyShort())).andReturn(true).anyTimes();
-        expect(mockTopology.isConsistent(5L, (short)1, 50L, (short)1)).
-        andReturn(false).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), anyShort()))
+                .andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(5L, (short)1, 50L, (short)1))
+                .andReturn(false).anyTimes();
 
         Date topologyUpdateTime = new Date();
         expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
@@ -606,10 +727,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.addSuppressAPs(10L, (short)1);
 
         Calendar c = Calendar.getInstance();
-        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
         Entity entity0 = new Entity(1L, null, null, null, null, c.getTime());
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
         c.add(Calendar.SECOND, 1);
-        Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
+        Entity entity2 = new Entity(1L, null, 1, 5L, 1, c.getTime());
         c.add(Calendar.SECOND, 1);
         Entity entity3 = new Entity(1L, null, null, 10L, 1, c.getTime());
         c.add(Calendar.SECOND, 1);
@@ -621,39 +742,47 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         mockListener.deviceAdded(isA(IDevice.class));
         replay(mockListener);
+        
+        // cannot learn device on suppressed AP
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertNull(d);
 
-        deviceManager.learnDeviceByEntity(entity1);
-        d = deviceManager.learnDeviceByEntity(entity0);
+        deviceManager.learnDeviceByEntity(entity0);
+        d = deviceManager.learnDeviceByEntity(entity1);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
         assertEquals(aps.length, 0);
+        // entities from suppressed switchPorts will not be learned 
+        verifyEntityArray(new Entity[] { entity0} , (Device)d);
         ips = d.getIPv4Addresses();
-        assertArrayEquals(new Integer[] { 1 }, ips);
+        assertArrayEquals(new Integer[] { }, ips);
         verify(mockListener);
 
         reset(mockListener);
         mockListener.deviceMoved((isA(IDevice.class)));
+        mockListener.deviceIPV4AddrChanged((isA(IDevice.class)));
         replay(mockListener);
 
         d = deviceManager.learnDeviceByEntity(entity2);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity0, entity2} , (Device)d);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
 
         reset(mockListener);
-        mockListener.deviceMoved((isA(IDevice.class)));
         replay(mockListener);
 
         d = deviceManager.learnDeviceByEntity(entity3);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity0, entity2} , (Device)d);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
-        //verify(mockListener);  // There is no device movement here; no not needed.
+        verify(mockListener);  
 
         reset(mockListener);
         mockListener.deviceMoved((isA(IDevice.class)));
@@ -664,6 +793,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         aps = d.getAttachmentPoints();
         assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1),
                                              new SwitchPort(50L, 1) }, aps);
+        verifyEntityArray(new Entity[] { entity0, entity2, entity4} , (Device)d);
         ips = d.getIPv4Addresses();
         assertArrayEquals(new Integer[] { 1 }, ips);
         verify(mockListener);
