@@ -1148,7 +1148,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 break;
             } else {
                 boolean moved = false;
-                Device newDevice = allocateDevice(device, entity);
+                // compute the insertion point for the entity.
+                // see Arrays.binarySearch()
+                entityindex = -(entityindex + 1);
+                Device newDevice = allocateDevice(device, entity, entityindex);
                 if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
                     moved = newDevice.updateAttachmentPoint(entity.getSwitchDPID(),
                                                             entity.getSwitchPort().shortValue(),
@@ -1591,8 +1594,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     protected Device allocateDevice(Device device,
-                                    Entity entity) {
-        return new Device(device, entity);
+                                    Entity entity,
+                                    int insertionpoint) {
+        return new Device(device, entity, insertionpoint);
     }
     
     protected Device allocateDevice(Device device, Set <Entity> entities) {

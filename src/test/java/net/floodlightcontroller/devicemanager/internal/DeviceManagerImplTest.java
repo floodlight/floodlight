@@ -422,6 +422,48 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         verify(mockListener);
     }
     
+    
+    private void doTestEntityOrdering(boolean computeInsertionPoint) throws Exception {
+        Entity e = new Entity(10L, null, null, null, null, null);
+        IEntityClass ec = createNiceMock(IEntityClass.class);
+        Device d = new Device(deviceManager, 1L, e, ec);
+        
+        int expectedLength = 1;
+        Long[] macs = new Long[] {  5L,  // new first element
+                                   15L,  // new last element
+                                    7L,  // insert in middle 
+                                   12L,  // insert in middle
+                                    6L,  // insert at idx 1
+                                   14L,  // insert at idx length-2
+                                    1L,
+                                   20L 
+                                  };
+        
+        for (Long mac: macs) {
+            e = new Entity(mac, null, null, null, null, null);
+            int insertionPoint;
+            if (computeInsertionPoint) {
+                insertionPoint = -(Arrays.binarySearch(d.entities, e)+1);
+            } else {
+                insertionPoint = -1;
+            }
+            d = deviceManager.allocateDevice(d, e, insertionPoint);
+            expectedLength++;
+            assertEquals(expectedLength, d.entities.length);
+            for (int i = 0; i < d.entities.length-1; i++) 
+                assertEquals(-1, d.entities[i].compareTo(d.entities[i+1]));
+        }
+    }
+    
+    @Test
+    public void testEntityOrderingExternal() throws Exception {
+        doTestEntityOrdering(true);
+    }
+    
+    @Test
+    public void testEntityOrderingInternal() throws Exception {
+        doTestEntityOrdering(false);
+    }
 
     @Test
     public void testAttachmentPointLearning() throws Exception {
@@ -754,7 +796,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                       ipaddr,
                                       5L,
                                       2,
-                                      currentDate));
+                                      currentDate),
+                                      -1);
 
         reset(mockTopology);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
@@ -973,7 +1016,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                             curEntities[i].vlan = (short)((e.vlan + 1 % 4095)+1);
                         i++;
                     }
-                    Device newDevice = new Device(d, curEntities[0]);
+                    Device newDevice = new Device(d, curEntities[0], -1);
                     newDevice.entities = curEntities;
                     assertEquals(false, newDevice.equals(d));
                     super.put(newDevice.getDeviceKey(), newDevice);
