@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.core.HARoleUnsupportedException;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -271,28 +272,23 @@ public class RoleChanger {
         while(iter.hasNext()) {
             IOFSwitch sw = iter.next();
             try {
-                Boolean supportsNxRole = (Boolean)
-                        sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
-                if ((supportsNxRole == null) || supportsNxRole) {
-                    // Handle cases #1 and #2
-                    sw.sendNxRoleRequest(role, cookie);
-                } else {
-                    // Handle case #3
-                    if (role == Role.SLAVE) {
-                        log.debug("Disconnecting switch {} that doesn't support " +
-                        "role request messages from a controller that went to SLAVE mode");
-                        // Closing the channel should result in a call to
-                        // channelDisconnect which updates all state 
-                        sw.getChannel().close();
-                        iter.remove();
-                    }
-                }
+                sw.sendHARoleRequest(role, cookie);
             } catch (IOException e) {
                 log.warn("Failed to send role request message " + 
                          "to switch {}: {}. Disconnecting",
                          sw, e);
                 sw.getChannel().close();
                 iter.remove();
+            } catch (HARoleUnsupportedException e) {
+                // Handle case #3
+                if (role == Role.SLAVE) {
+                    log.debug("Disconnecting switch {} that doesn't support " +
+                    "role request messages from a controller that went to SLAVE mode");
+                    // Closing the channel should result in a call to
+                    // channelDisconnect which updates all state 
+                    sw.getChannel().close();
+                    iter.remove();
+                }
             }
         }
     }

@@ -46,7 +46,7 @@ public class OFSwitchImplTest extends FloodlightTestCase {
         Capture<List<OFMessage>> msgCapture = new Capture<List<OFMessage>>();
         expect(sw.channel.write(capture(msgCapture))).andReturn(null);
         replay(sw.channel);
-        int xid = sw.sendNxRoleRequest(role, cookie);
+        int xid = sw.sendHARoleRequest(role, cookie);
         verify(sw.channel);
         List<OFMessage> msgList = msgCapture.getValue();
         assertEquals(1, msgList.size());

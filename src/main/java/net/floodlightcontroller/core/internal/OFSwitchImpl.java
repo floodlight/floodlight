@@ -35,6 +35,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HARoleUnsupportedException;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
@@ -634,8 +635,14 @@ public class OFSwitchImpl implements IOFSwitch {
      *        RoleChanger can check for timeouts.
      * @return transaction id of the role request message that was sent
      */
-    public int sendNxRoleRequest(Role role, long cookie)
-            throws IOException {
+    public int sendHARoleRequest(Role role, long cookie)
+            throws IOException, HARoleUnsupportedException {
+        Boolean supportsNxRole = (Boolean)
+                getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
+        if ((supportsNxRole != null) && !supportsNxRole) {
+            throw new HARoleUnsupportedException();
+        }
+
         synchronized(pendingRoleRequests) {
             // Convert the role enum to the appropriate integer constant used
             // in the NX role request message

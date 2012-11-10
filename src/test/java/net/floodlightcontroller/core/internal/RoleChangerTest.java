@@ -88,7 +88,7 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(true); 
-        expect(sw1.sendNxRoleRequest(Role.MASTER, 123456))
+        expect(sw1.sendHARoleRequest(Role.MASTER, 123456))
                     .andThrow(new IOException()).once();
         Channel channel1 = createMock(Channel.class);
         expect(sw1.getChannel()).andReturn(channel1);
@@ -115,7 +115,7 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(true); 
-        expect(sw1.sendNxRoleRequest(Role.MASTER, 123456)).andReturn(1).once();
+        expect(sw1.sendHARoleRequest(Role.MASTER, 123456)).andReturn(1).once();
         switches.add(sw1);
         
         // a switch for which we don't have SUPPORTS_NX_ROLE yet
@@ -123,7 +123,7 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw2.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(null); 
-        expect(sw2.sendNxRoleRequest(Role.MASTER, 123456)).andReturn(1).once();
+        expect(sw2.sendHARoleRequest(Role.MASTER, 123456)).andReturn(1).once();
         switches.add(sw2);
         
         
@@ -194,11 +194,11 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(true); 
-        expect(sw1.sendNxRoleRequest(EasyMock.same(Role.MASTER), EasyMock.anyLong()))
+        expect(sw1.sendHARoleRequest(EasyMock.same(Role.MASTER), EasyMock.anyLong()))
                        .andReturn(1);
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                         .andReturn(true); 
-        expect(sw1.sendNxRoleRequest(EasyMock.same(Role.SLAVE), EasyMock.anyLong()))
+        expect(sw1.sendHARoleRequest(EasyMock.same(Role.SLAVE), EasyMock.anyLong()))
                        .andReturn(1);
         // The following calls happen for timeout handling:
         expect(sw1.checkFirstPendingRoleRequestCookie(EasyMock.anyLong()))

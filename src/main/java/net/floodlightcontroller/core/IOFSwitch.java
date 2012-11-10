@@ -389,7 +389,8 @@ public interface IOFSwitch {
      * @return 
      * @throws IOException 
      */
-    public int sendNxRoleRequest(Role role, long cookie) throws IOException;
+    public int sendHARoleRequest(Role role, long cookie)
+            throws IOException, HARoleUnsupportedException;
 
     /**
      * Check HA role request cookie
