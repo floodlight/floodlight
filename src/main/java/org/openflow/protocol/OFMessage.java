@@ -41,6 +41,7 @@ import org.openflow.util.U8;
  * @author Rob Sherwood (rob.sherwood@stanford.edu) - Feb 3, 2010
  */
 public class OFMessage {
+    public static final int MAXIMUM_LENGTH = (1 << 16) - 1;
     public static byte OFP_VERSION = 0x01;
     public static int MINIMUM_LENGTH = 8;
 
@@ -48,14 +49,14 @@ public class OFMessage {
     protected OFType type;
     protected short length;
     protected int xid;
-    
+
     private ConcurrentHashMap<String, Object> storage;
-    
+
     public OFMessage() {
         storage = null;
         this.version = OFP_VERSION;
     }
-    
+
     protected synchronized ConcurrentHashMap<String, Object> getMessageStore() {
         if (storage == null) {
             storage = new ConcurrentHashMap<String, Object>();;
@@ -181,6 +182,7 @@ public class OFMessage {
      * Returns a summary of the message
      * @return "ofmsg=v=$version;t=$type:l=$len:xid=$xid"
      */
+    @Override
     public String toString() {
         return "ofmsg" +
             ":v=" + U8.f(this.getVersion()) +
@@ -230,7 +232,7 @@ public class OFMessage {
         }
         return true;
     }
-    
+
     public static String getDataAsString(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 
         Ethernet eth;
