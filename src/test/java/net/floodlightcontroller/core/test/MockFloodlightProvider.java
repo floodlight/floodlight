@@ -355,4 +355,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         
     }
 
+    @Override
+    public void sendNxRoleRequest(IOFSwitch sw, int xid, Role role, long cookie) {
+        // TODO Auto-generated method stub
+        
+    }
+
 }

@@ -356,12 +356,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public boolean checkFirstPendingRoleRequestCookie(long cookie) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
     public void setChannel(Channel channel) {
         // TODO Auto-generated method stub
         
@@ -380,33 +374,21 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void deliverRoleReply(int xid, Role role) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void deliverRoleRequestNotSupported(int xid) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
     public Lock getListenerReadLock() {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public boolean checkFirstPendingRoleRequestXid(int xid) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
     public Lock getListenerWriteLock() {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void setHARole(Role role, boolean haRoleReplyReceived) {
+        // TODO Auto-generated method stub
+        
     }
 
 }
