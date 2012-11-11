@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +40,6 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.TimedCache;
@@ -58,7 +56,6 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
-import org.openflow.protocol.OFVendor;
 import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFStatisticsRequest;
@@ -66,9 +63,6 @@ import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
-import org.openflow.vendor.nicira.OFNiciraVendorData;
-import org.openflow.vendor.nicira.OFRoleRequestVendorData;
-import org.openflow.vendor.nicira.OFRoleVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,11 +74,6 @@ public class OFSwitchImpl implements IOFSwitch {
     // exception that can then be handled by callers?
     protected static Logger log = LoggerFactory.getLogger(OFSwitchImpl.class);
 
-    private static final String HA_CHECK_SWITCH = 
-            "Check the health of the indicated switch.  If the problem " +
-            "persists or occurs repeatedly, it likely indicates a defect " +
-            "in the switch HA implementation.";
-    
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
@@ -110,17 +99,6 @@ public class OFSwitchImpl implements IOFSwitch {
     protected TimedCache<Long> timedCache;
     protected ReentrantReadWriteLock listenerLock;
     protected ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
-    /**
-     * When sending a role request message, the role request is added
-     * to this queue. If a role reply is received this queue is checked to 
-     * verify that the reply matches the expected reply. We require in order
-     * delivery of replies. That's why we use a Queue. 
-     * The RoleChanger uses a timeout to ensure we receive a timely reply.
-     * 
-     * Need to synchronize on this instance if a request is sent, received, 
-     * checked. 
-     */
-    protected LinkedList<PendingRoleRequestEntry> pendingRoleRequests;
     
     /* Switch features from initial featuresReply */
     protected int capabilities;
@@ -141,18 +119,6 @@ public class OFSwitchImpl implements IOFSwitch {
     // for managing our map sizes
     protected static final int MAX_MACS_PER_SWITCH  = 1000;
     
-    protected static class PendingRoleRequestEntry {
-        protected int xid;
-        protected Role role;
-        // cookie is used to identify the role "generation". roleChanger uses
-        protected long cookie;
-        public PendingRoleRequestEntry(int xid, Role role, long cookie) {
-            this.xid = xid;
-            this.role = role;
-            this.cookie = cookie;
-        }
-    }
-    
     public OFSwitchImpl() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
@@ -169,7 +135,6 @@ public class OFSwitchImpl implements IOFSwitch {
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.listenerLock = new ReentrantReadWriteLock();
         this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, Long>();
-        this.pendingRoleRequests = new LinkedList<OFSwitchImpl.PendingRoleRequestEntry>();
         
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
@@ -637,177 +602,53 @@ public class OFSwitchImpl implements IOFSwitch {
      */
     public int sendHARoleRequest(Role role, long cookie)
             throws IOException, HARoleUnsupportedException {
+        // There are three cases to consider:
+        //
+        // 1) If the controller role at the point the switch connected was
+        //    null/disabled, then we never sent the role request probe to the
+        //    switch and therefore never set the SWITCH_SUPPORTS_NX_ROLE
+        //    attribute for the switch, so supportsNxRole is null. In that
+        //    case since we're now enabling role support for the controller
+        //    we should send out the role request probe/update to the switch.
+        //
+        // 2) If supportsNxRole == Boolean.TRUE then that means we've already
+        //    sent the role request probe to the switch and it replied with
+        //    a role reply message, so we know it supports role request
+        //    messages. Now we're changing the role and we want to send
+        //    it another role request message to inform it of the new role
+        //    for the controller.
+        //
+        // 3) If supportsNxRole == Boolean.FALSE, then that means we sent the
+        //    role request probe to the switch but it responded with an error
+        //    indicating that it didn't understand the role request message.
+        //    In that case, we simply throw an unsupported exception.
         Boolean supportsNxRole = (Boolean)
                 getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
         if ((supportsNxRole != null) && !supportsNxRole) {
             throw new HARoleUnsupportedException();
         }
 
-        synchronized(pendingRoleRequests) {
-            // Convert the role enum to the appropriate integer constant used
-            // in the NX role request message
-            int nxRole = 0;
-            switch (role) {
-                case EQUAL:
-                    nxRole = OFRoleVendorData.NX_ROLE_OTHER;
-                    break;
-                case MASTER:
-                    nxRole = OFRoleVendorData.NX_ROLE_MASTER;
-                    break;
-                case SLAVE:
-                    nxRole = OFRoleVendorData.NX_ROLE_SLAVE;
-                    break;
-                default:
-                    log.error("Invalid Role specified for switch {}."
-                              + " Disconnecting.", this);
-                    // TODO: should throw an error
-                    return 0;
-            }
-            
-            // Construct the role request message
-            OFVendor roleRequest = (OFVendor)floodlightProvider.
-                    getOFMessageFactory().getMessage(OFType.VENDOR);
-            int xid = this.getNextTransactionId();
-            roleRequest.setXid(xid);
-            roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
-            OFRoleRequestVendorData roleRequestData = new OFRoleRequestVendorData();
-            roleRequestData.setRole(nxRole);
-            roleRequest.setVendorData(roleRequestData);
-            roleRequest.setLengthU(OFVendor.MINIMUM_LENGTH + 
-                                   roleRequestData.getLength());
-            
-            // Send it to the switch
-            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
-            msglist.add(roleRequest);
-            // FIXME: should this use this.write() in order for messages to
-            // be processed by handleOutgoingMessage()
-            this.channel.write(msglist);
-            
-            pendingRoleRequests.add(new PendingRoleRequestEntry(xid, role, cookie));
-            return xid;
-        }
+        int xid = this.getNextTransactionId();
+        floodlightProvider.sendNxRoleRequest(this, xid, role, cookie);
+        return xid;
     }
     
-    /** 
-     * Deliver a RoleReply message to this switch. Checks if the reply 
-     * message matches the expected reply (head of the pending request queue). 
-     * We require in-order delivery of replies. If there's any deviation from
-     * our expectations we disconnect the switch. 
-     * 
-     * We must not check the received role against the controller's current
-     * role because there's no synchronization but that's fine @see RoleChanger
-     * 
-     * Will be called by the OFChannelHandler's receive loop
-     * 
-     * @param xid Xid of the reply message
-     * @param role The Role in the the reply message
-     */
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="Switch {switch}: received unexpected role reply for " +
-                        "Role {role}" + 
-                        " Disconnecting switch",
-                explanation="The switch sent an unexpected HA role reply",
-                recommendation=HA_CHECK_SWITCH),                           
-        @LogMessageDoc(level="ERROR",
-                message="Switch {switch}: expected role reply with " +
-                        "Xid {xid}, got {xid}. Disconnecting switch",
-                explanation="The switch sent an unexpected HA role reply",
-                recommendation=HA_CHECK_SWITCH),                           
-        @LogMessageDoc(level="ERROR",
-                message="Switch {switch}: expected role reply with " +
-                        "Role {role}, got {role}. Disconnecting switch",
-                explanation="The switch sent an unexpected HA role reply",
-                recommendation=HA_CHECK_SWITCH)                           
-    })
-    public void deliverRoleReply(int xid, Role role) {
-        synchronized(pendingRoleRequests) {
-            PendingRoleRequestEntry head = pendingRoleRequests.poll();
-            if (head == null) {
-                // Maybe don't disconnect if the role reply we received is 
-                // for the same role we are already in. 
-                log.error("Switch {}: received unexpected role reply for Role {}" + 
-                          " Disconnecting switch", this, role );
-                this.channel.close();
-            }
-            else if (head.xid != xid) {
-                // check xid before role!!
-                log.error("Switch {}: expected role reply with " +
-                       "Xid {}, got {}. Disconnecting switch",
-                       new Object[] { this, head.xid, xid } );
-                this.channel.close();
-            }
-            else if (head.role != role) {
-                log.error("Switch {}: expected role reply with " +
-                       "Role {}, got {}. Disconnecting switch",
-                       new Object[] { this, head.role, role } );
-                this.channel.close();
-            }
-            else {
-                log.debug("Received role reply message from {}, setting role to {}",
-                          this, role);
-                if (this.role == null && getAttribute(SWITCH_SUPPORTS_NX_ROLE) == null) {
-                    // The first role reply we received. Set the attribute
-                    // that the switch supports roles
-                    setAttribute(SWITCH_SUPPORTS_NX_ROLE, true);
-                }
-                this.role = role;
-            }
+    public void setHARole(Role role, boolean replyReceived) {
+        /* null role implies disconnect the switch */
+        if (role == null) {
+            this.channel.close();
+            return;
         }
-    }
-    
-    /** 
-     * Checks whether the given xid matches the xid of the first pending
-     * role request. 
-     * @param xid
-     * @return 
-     */
-    public boolean checkFirstPendingRoleRequestXid (int xid) {
-        synchronized(pendingRoleRequests) {
-            PendingRoleRequestEntry head = pendingRoleRequests.peek();
-            if (head == null)
-                return false;
-            else 
-                return head.xid == xid;
+        
+        if (this.role == null && getAttribute(SWITCH_SUPPORTS_NX_ROLE) == null)
+        {
+            // The first role reply we received. Set the attribute
+            // that the switch supports roles
+            setAttribute(SWITCH_SUPPORTS_NX_ROLE, replyReceived);
         }
+        this.role = role;
     }
-    
-    /**
-     * Checks whether the given request cookie matches the cookie of the first 
-     * pending request
-     * @param cookie
-     * @return
-     */
-    public boolean checkFirstPendingRoleRequestCookie(long cookie) {
-        synchronized(pendingRoleRequests) {
-            PendingRoleRequestEntry head = pendingRoleRequests.peek();
-            if (head == null)
-                return false;
-            else 
-                return head.cookie == cookie;
-        }
-    }
-    
-    /**
-     * Called if we receive a vendor error message indicating that roles
-     * are not supported by the switch. If the xid matches the first pending
-     * one, we'll mark the switch as not supporting roles and remove the head.
-     * Otherwise we ignore it.
-     * @param xid
-     */
-    public void deliverRoleRequestNotSupported(int xid) {
-        synchronized(pendingRoleRequests) {
-            PendingRoleRequestEntry head = pendingRoleRequests.poll();
-            this.role = null;
-            if (head!=null && head.xid == xid) {
-                setAttribute(SWITCH_SUPPORTS_NX_ROLE, false);
-            }
-            else {
-                this.channel.close();
-            }
-        }
-    }
-
+     
     @Override
     public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {

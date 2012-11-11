@@ -874,7 +874,7 @@ public class Controller implements IFloodlightProviderService,
                       new Object[] { role, sw, Controller.this.role} 
                       );
             
-            sw.deliverRoleReply(vendorMessage.getXid(), role);
+            roleChanger.deliverRoleReply(sw, vendorMessage.getXid(), role);
             
             if (sw.isActive()) {
             // Transition from SLAVE to MASTER.
@@ -1060,7 +1060,8 @@ public class Controller implements IFloodlightProviderService,
                     boolean shouldLogError = true;
                     // TODO: should we check that firstRoleReplyReceived is false,
                     // i.e., check only whether the first request fails?
-                    if (sw.checkFirstPendingRoleRequestXid(error.getXid())) {
+                    if (roleChanger.checkFirstPendingRoleRequestXid(
+                            sw, error.getXid())) {
                         boolean isBadVendorError =
                             (error.getErrorType() == OFError.OFErrorType.
                                     OFPET_BAD_REQUEST.getValue());
@@ -1081,17 +1082,16 @@ public class Controller implements IFloodlightProviderService,
                                           +"role reply earlier", sw);
                             }
                             state.firstRoleReplyReceived = true;
-                            sw.deliverRoleRequestNotSupported(error.getXid());
+                            roleChanger.deliverRoleRequestNotSupported(sw, error.getXid());
                             synchronized(roleChanger) {
-                                if (sw.getRole() == null &&
-                                        Controller.this.role==Role.SLAVE) {
+                                if (Controller.this.role==Role.SLAVE) {
                                     // the switch doesn't understand role request
                                     // messages and the current controller role is
                                     // slave. We need to disconnect the switch. 
                                     // @see RoleChanger for rationale
-                                    sw.getChannel().close();
+                                    sw.disconnectOutputStream();
                                 }
-                                else if (sw.getRole() == null) {
+                                else {
                                     // Controller's role is master: add to
                                     // active 
                                     // TODO: check if clearing flow table is
@@ -2128,6 +2128,45 @@ public class Controller implements IFloodlightProviderService,
         if (index == -1) {  // append to list
             switchDescSortedList.add(description);
         }
+    }
+    
+    public void sendNxRoleRequest(IOFSwitch sw, int xid,
+            Role role, long cookie) throws IOException {
+        // Convert the role enum to the appropriate integer constant used
+        // in the NX role request message
+        int nxRole = 0;
+        switch (role) {
+            case EQUAL:
+                nxRole = OFRoleVendorData.NX_ROLE_OTHER;
+                break;
+            case MASTER:
+                nxRole = OFRoleVendorData.NX_ROLE_MASTER;
+                break;
+            case SLAVE:
+                nxRole = OFRoleVendorData.NX_ROLE_SLAVE;
+                break;
+            default:
+                log.error("Invalid Role specified for switch {}."
+                          + " Disconnecting.", sw);
+                // TODO: should throw an error
+                return;
+        }
+        
+        // Construct the role request message
+        OFVendor roleRequest = (OFVendor)this.
+                getOFMessageFactory().getMessage(OFType.VENDOR);
+        roleRequest.setXid(xid);
+        roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
+        OFRoleRequestVendorData roleRequestData = new OFRoleRequestVendorData();
+        roleRequestData.setRole(nxRole);
+        roleRequest.setVendorData(roleRequestData);
+        roleRequest.setLengthU(OFVendor.MINIMUM_LENGTH + 
+                               roleRequestData.getLength());
+        
+        // Send it to the switch
+        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
+        msglist.add(roleRequest);
+        sw.write(msglist, new FloodlightContext());
     }
 
 }

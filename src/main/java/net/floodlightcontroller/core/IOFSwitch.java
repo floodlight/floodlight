@@ -391,14 +391,17 @@ public interface IOFSwitch {
      */
     public int sendHARoleRequest(Role role, long cookie)
             throws IOException, HARoleUnsupportedException;
-
+    
     /**
-     * Check HA role request cookie
+     * Set switch's HA role to role. The haRoleReplyReceived indicates
+     * if a reply was received from the switch (error replies excluded).
      * 
-     * @param cookie
-     * @return
+     * If role is null, the switch should close the channel connection.
+     * 
+     * @param role
+     * @param haRoleReplyReceived
      */
-    public boolean checkFirstPendingRoleRequestCookie(long cookie);
+    public void setHARole(Role role, boolean haRoleReplyReceived);
 
     public void setChannel(Channel channel);
 
@@ -406,13 +409,8 @@ public interface IOFSwitch {
 
     public void setThreadPoolService(IThreadPoolService threadPool);
 
-    public void deliverRoleReply(int xid, Role role);
-
-    public void deliverRoleRequestNotSupported(int xid);
-
     public Lock getListenerReadLock();
 
-    public boolean checkFirstPendingRoleRequestXid(int xid);
-
     public Lock getListenerWriteLock();
+
 }
