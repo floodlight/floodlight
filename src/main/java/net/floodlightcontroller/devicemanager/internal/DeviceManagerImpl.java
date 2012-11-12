@@ -1081,8 +1081,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 // generate a new device ID if the the entity is on an 
                 // attachment point port. Otherwise ignore. 
                 if (entity.hasSwitchPort() &&
-                        !this.isValidAttachmentPoint(entity.getSwitchDPID(), 
-                                                 entity.getSwitchPort())) {
+                        !topology.isAttachmentPointPort(entity.getSwitchDPID(), 
+                                                 entity.getSwitchPort().shortValue())) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
                                      + " link: {}", entity);
@@ -1137,8 +1137,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // and don't update indexes. We only learn on attachment point
             // ports.
             if (entity.hasSwitchPort() &&
-                    !this.isValidAttachmentPoint(entity.getSwitchDPID(), 
-                                                 entity.getSwitchPort())) {
+                    !topology.isAttachmentPointPort(entity.getSwitchDPID(), 
+                                                 entity.getSwitchPort().shortValue())) {
                 break;
             }
             int entityindex = -1;
