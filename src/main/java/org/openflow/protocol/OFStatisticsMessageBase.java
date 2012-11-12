@@ -41,7 +41,7 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
 
     // TODO: this should be List<? extends OFStatistics>, to
     // allow for type safe assignments of lists of specific message
-    protected List<OFStatistics> statistics;
+    protected List<? extends OFStatistics> statistics;
 
     /**
      * @return the statisticType
@@ -74,7 +74,7 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     /**
      * @return the statistics
      */
-    public List<OFStatistics> getStatistics() {
+    public List<? extends OFStatistics> getStatistics() {
         return statistics;
     }
 
@@ -98,7 +98,7 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     /**
      * @param statistics the statistics to set
      */
-    public void setStatistics(List<OFStatistics> statistics) {
+    public void setStatistics(List<? extends OFStatistics> statistics) {
         this.statistics = statistics;
     }
 
