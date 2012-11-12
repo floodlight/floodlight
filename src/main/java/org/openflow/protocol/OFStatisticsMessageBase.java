@@ -84,7 +84,7 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
      * flow stats request, port statsrequest)
      *
      * @return the first and only element in the list of statistics
-     * @throw NoSuchElementException if the list does not contain exactly one
+     * @throw IllegalArgumentException if the list does not contain exactly one
      *        element
      */
     public OFStatistics getFirstStatistics() {
