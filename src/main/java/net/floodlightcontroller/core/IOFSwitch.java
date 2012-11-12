@@ -106,13 +106,6 @@ public interface IOFSwitch {
     public void disconnectOutputStream();
 
     /**
-     * FIXME: remove getChannel(). All access to the channel should be through
-     *        wrapper functions in IOFSwitch
-     * @return
-     */
-    public Channel getChannel();
-
-    /**
      * Returns switch features from features Reply
      * @return
      */

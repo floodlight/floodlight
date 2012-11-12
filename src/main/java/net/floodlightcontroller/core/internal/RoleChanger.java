@@ -288,7 +288,7 @@ public class RoleChanger {
                 log.warn("Failed to send role request message " + 
                          "to switch {}: {}. Disconnecting",
                          sw, e);
-                sw.getChannel().close();
+                sw.disconnectOutputStream();
                 iter.remove();
             } catch (HARoleUnsupportedException e) {
                 // Switch doesn't support HA role, remove if role is slave
@@ -297,7 +297,7 @@ public class RoleChanger {
                     "role request messages from a controller that went to SLAVE mode");
                     // Closing the channel should result in a call to
                     // channelDisconnect which updates all state 
-                    sw.getChannel().close();
+                    sw.disconnectOutputStream();
                     iter.remove();
                 }
             }

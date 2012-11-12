@@ -1108,8 +1108,7 @@ public class ControllerTest extends FloodlightTestCase
         int xid = 424242;
         Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
         Channel ch = createMock(Channel.class);
-        expect(chdlr.sw.getChannel()).andReturn(ch);
-        expect(ch.close()).andReturn(null);
+        chdlr.sw.disconnectOutputStream();
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 232323);
         replay(chdlr.sw, ch);
         chdlr.processOFMessage(msg);

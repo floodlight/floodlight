@@ -41,17 +41,15 @@ public class RoleChangerTest {
         
         // a switch that doesn't support role requests
         OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
-        Channel channel1 = createMock(Channel.class);
-        expect(sw1.getChannel()).andReturn(channel1);
         // No support for NX_ROLE
         expect(sw1.sendHARoleRequest(Role.SLAVE, 123456))
                 .andThrow(new HARoleUnsupportedException()).once();;
-        expect(channel1.close()).andReturn(null);
+        sw1.disconnectOutputStream();
         switches.add(sw1);
         
-        replay(sw1, channel1);
+        replay(sw1);
         roleChanger.sendRoleRequest(switches, Role.SLAVE, 123456);
-        verify(sw1, channel1);
+        verify(sw1);
         
         // sendRoleRequest needs to remove the switch from the list since
         // it closed its connection
@@ -93,9 +91,7 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw1.sendHARoleRequest(Role.MASTER, 123456))
                     .andThrow(new IOException()).once();
-        Channel channel1 = createMock(Channel.class);
-        expect(sw1.getChannel()).andReturn(channel1);
-        expect(channel1.close()).andReturn(null);
+        sw1.disconnectOutputStream();
         switches.add(sw1);
         
         replay(sw1);

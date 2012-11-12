@@ -101,12 +101,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public Channel getChannel() {
-        assertTrue("Unexpected method call", false);
-        return null;
-    }
-    
-    @Override
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
         assertTrue("Unexpected method call", false);
     }

@@ -167,12 +167,6 @@ public class OFSwitchImpl implements IOFSwitch {
         return this.attributes.containsKey(name);
     }
         
-    @Override
-    @JsonIgnore
-    public Channel getChannel() {
-        return this.channel;
-    }
-
     @JsonIgnore
     public void setChannel(Channel channel) {
         this.channel = channel;

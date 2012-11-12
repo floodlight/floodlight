@@ -865,7 +865,7 @@ public class Controller implements IFloodlightProviderService,
                     break;
                 default:
                     log.error("Invalid role value in role reply message");
-                    sw.getChannel().close();
+                    sw.disconnectOutputStream();
                     return;
             }
             
@@ -1123,7 +1123,7 @@ public class Controller implements IFloodlightProviderService,
                             // to make sure that the switch eventually accepts one
                             // of our requests or disconnect the switch. This feels
                             // cumbersome. 
-                            sw.getChannel().close();
+                            sw.disconnectOutputStream();
                         }
                     }
                     // Once we support OF 1.2, we'd add code to handle it here.
@@ -1479,7 +1479,7 @@ public class Controller implements IFloodlightProviderService,
                 // a "Not removing Switch ... already removed debug message.
                 // TODO: Figure out a way to handle this that avoids the
                 // spurious debug message.
-                oldSw.getChannel().close();
+                oldSw.disconnectOutputStream();
             }
             finally {
                 oldSw.getListenerWriteLock().unlock();
