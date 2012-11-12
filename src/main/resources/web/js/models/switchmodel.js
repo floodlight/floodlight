@@ -74,9 +74,16 @@ window.Switch = Backbone.Model.extend({
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " ports");
                 //console.log(data[self.id]);
+                var old_ids = self.ports.pluck('id');
+                //console.log("old_ids" + old_ids);
+
                 // create port models
                 _.each(data[self.id], function(p) {
+                    // workaround for REST serialization signed/unsigned bug
+                    if(p.portNumber < 0) {p.portNumber = 65536 + p.portNumber};
+                    
                     p.id = self.id+'-'+p.portNumber;
+                    old_ids = _.without(old_ids, p.id);
                     p.dropped = p.receiveDropped + p.transmitDropped;
                     p.errors = p.receiveCRCErrors + p.receiveErrors + p.receiveOverrunErrors +
                         p.receiveFrameErrors + p.transmitErrors;
@@ -88,6 +95,13 @@ window.Switch = Backbone.Model.extend({
                         self.ports.add(p, {silent: true});
                     }
                     //console.log(p);
+                });
+                
+                // old_ids now holds ports that no longer exist; remove them
+                //console.log("old_ids" + old_ids);
+                _.each(old_ids, function(p) {
+                    console.log("removing port " + p);
+                    self.remove({id:p});
                 });
             }
         }),
@@ -260,10 +274,21 @@ window.SwitchCollection = Backbone.Collection.extend({
             success:function (data) {
                 //console.log("fetched  switch list: " + data.length);
                 //console.log(data);
-                _.each(data, function(sw) {self.add({id: sw['dpid'],
-                                                     inetAddress: sw.inetAddress,
-                                                     connectedSince: new Date(sw.connectedSince).toLocaleString()})});
-            }
+                var old_ids = self.pluck('id');
+                //console.log("old_ids" + old_ids);
+                
+                _.each(data, function(sw) {
+                    old_ids = _.without(old_ids, sw['dpid']);
+                    self.add({id: sw['dpid'], inetAddress: sw.inetAddress,
+                              connectedSince: new Date(sw.connectedSince).toLocaleString()})});
+                
+                // old_ids now holds switches that no longer exist; remove them
+                //console.log("old_ids" + old_ids);
+                _.each(old_ids, function(sw) {
+                    console.log("removing switch " + sw);
+                    self.remove({id:sw});
+                });
+            },
         });
     },
 

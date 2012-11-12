@@ -38,7 +38,7 @@ window.HostCollection = Backbone.Collection.extend({
             url:hackBase + "/wm/device/",
             dataType:"json",
             success:function (data) {
-                console.log("fetched  host list: " + data.length);
+                //console.log("fetched  host list: " + data.length);
                 // console.log(data);
                 // data is a list of device hashes
                 var old_ids = self.pluck('id');
@@ -55,7 +55,7 @@ window.HostCollection = Backbone.Collection.extend({
                     }
                 });
                 // old_ids now holds hosts that no longer exist; remove them
-                console.log("old_ids" + old_ids);
+                //console.log("old_ids" + old_ids);
                 _.each(old_ids, function(h) {
                     console.log("---removing host " + h);
                     self.remove({id:h});
