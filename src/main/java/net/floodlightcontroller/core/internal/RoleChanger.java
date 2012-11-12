@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.HARoleUnsupportedException;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -239,6 +238,12 @@ public class RoleChanger {
         } // end loop
     }
     
+    protected class HARoleUnsupportedException extends Exception {
+        
+        private static final long serialVersionUID = -6854500893864114158L;
+        
+    }
+
     public RoleChanger(IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
         this.pendingRequestMap = new ConcurrentHashMap<IOFSwitch,
