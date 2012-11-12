@@ -633,6 +633,8 @@ public class OFSwitchImpl implements IOFSwitch {
         return xid;
     }
     
+    @JsonIgnore
+    @Override
     public void setHARole(Role role, boolean replyReceived) {
         /* null role implies disconnect the switch */
         if (role == null) {
