@@ -265,7 +265,7 @@ window.SwitchCollection = Backbone.Collection.extend({
 
     model:Switch,
     
-    initialize:function () {
+    fetch:function () {
         var self = this;
         //console.log("fetching switch list")
         $.ajax({
@@ -291,10 +291,5 @@ window.SwitchCollection = Backbone.Collection.extend({
             },
         });
     },
-
-  fetch:function () {
-	this.initialize()
-    }
-
 
 });

@@ -31,7 +31,7 @@ window.HostCollection = Backbone.Collection.extend({
 
     model:Host,
 
-    initialize:function () {
+    fetch:function () {
         var self = this;
         //console.log("fetching host list")
         $.ajax({
@@ -65,10 +65,6 @@ window.HostCollection = Backbone.Collection.extend({
         });
 
     },
-
-    fetch:function () {
-        this.initialize();
-    }
 
     /*
      * findByName:function (key) { // TODO: Modify service to include firstName
