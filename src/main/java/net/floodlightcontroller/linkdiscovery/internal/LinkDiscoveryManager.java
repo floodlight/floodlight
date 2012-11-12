@@ -2000,15 +2000,12 @@ IFloodlightModule, IInfoProvider, IHAListener {
             evTopoSwitch = new EventHistoryTopologySwitch();
         }
         evTopoSwitch.dpid     = sw.getId();
-        if ((sw.getChannel() != null) &&
-                (SocketAddress.class.isInstance(
-                                                sw.getChannel().getRemoteAddress()))) {
-            evTopoSwitch.ipv4Addr = 
-                    IPv4.toIPv4Address(((InetSocketAddress)(sw.getChannel().
-                            getRemoteAddress())).getAddress().getAddress());
+        if ((SocketAddress.class.isInstance(sw.getInetAddress()))) {
+            evTopoSwitch.ipv4Addr = IPv4.toIPv4Address(
+                    ((InetSocketAddress)(sw.getInetAddress()))
+                    .getAddress().getAddress());
             evTopoSwitch.l4Port   =
-                    ((InetSocketAddress)(sw.getChannel().
-                            getRemoteAddress())).getPort();
+                    ((InetSocketAddress)(sw.getInetAddress())).getPort();
         } else {
             evTopoSwitch.ipv4Addr = 0;
             evTopoSwitch.l4Port = 0;

@@ -865,7 +865,7 @@ public class Controller implements IFloodlightProviderService,
                     break;
                 default:
                     log.error("Invalid role value in role reply message");
-                    sw.getChannel().close();
+                    sw.disconnectOutputStream();
                     return;
             }
             
@@ -874,9 +874,9 @@ public class Controller implements IFloodlightProviderService,
                       new Object[] { role, sw, Controller.this.role} 
                       );
             
-            sw.deliverRoleReply(vendorMessage.getXid(), role);
+            roleChanger.deliverRoleReply(sw, vendorMessage.getXid(), role);
             
-            if (sw.isActive()) {
+            if (sw.getHARole() != Role.SLAVE) {
             // Transition from SLAVE to MASTER.
                 boolean shouldClearFlowMods = false;
                 if (!state.firstRoleReplyReceived || 
@@ -1060,7 +1060,8 @@ public class Controller implements IFloodlightProviderService,
                     boolean shouldLogError = true;
                     // TODO: should we check that firstRoleReplyReceived is false,
                     // i.e., check only whether the first request fails?
-                    if (sw.checkFirstPendingRoleRequestXid(error.getXid())) {
+                    if (roleChanger.checkFirstPendingRoleRequestXid(
+                            sw, error.getXid())) {
                         boolean isBadVendorError =
                             (error.getErrorType() == OFError.OFErrorType.
                                     OFPET_BAD_REQUEST.getValue());
@@ -1081,17 +1082,16 @@ public class Controller implements IFloodlightProviderService,
                                           +"role reply earlier", sw);
                             }
                             state.firstRoleReplyReceived = true;
-                            sw.deliverRoleRequestNotSupported(error.getXid());
+                            roleChanger.deliverRoleRequestNotSupported(sw, error.getXid());
                             synchronized(roleChanger) {
-                                if (sw.getRole() == null &&
-                                        Controller.this.role==Role.SLAVE) {
+                                if (Controller.this.role==Role.SLAVE) {
                                     // the switch doesn't understand role request
                                     // messages and the current controller role is
                                     // slave. We need to disconnect the switch. 
                                     // @see RoleChanger for rationale
-                                    sw.getChannel().close();
+                                    sw.disconnectOutputStream();
                                 }
-                                else if (sw.getRole() == null) {
+                                else {
                                     // Controller's role is master: add to
                                     // active 
                                     // TODO: check if clearing flow table is
@@ -1123,7 +1123,7 @@ public class Controller implements IFloodlightProviderService,
                             // to make sure that the switch eventually accepts one
                             // of our requests or disconnect the switch. This feels
                             // cumbersome. 
-                            sw.getChannel().close();
+                            sw.disconnectOutputStream();
                         }
                     }
                     // Once we support OF 1.2, we'd add code to handle it here.
@@ -1176,7 +1176,7 @@ public class Controller implements IFloodlightProviderService,
                             // to them. On the other hand there might be special 
                             // modules that care about all of the connected switches
                             // and would like to receive port status notifications.
-                            if (sw.getRole() == Role.SLAVE) {
+                            if (sw.getHARole() == Role.SLAVE) {
                                 // Don't log message if it's a port status message 
                                 // since we expect to receive those from the switch 
                                 // and don't want to emit spurious messages.
@@ -1479,7 +1479,7 @@ public class Controller implements IFloodlightProviderService,
                 // a "Not removing Switch ... already removed debug message.
                 // TODO: Figure out a way to handle this that avoids the
                 // spurious debug message.
-                oldSw.getChannel().close();
+                oldSw.disconnectOutputStream();
             }
             finally {
                 oldSw.getListenerWriteLock().unlock();
@@ -1917,7 +1917,7 @@ public class Controller implements IFloodlightProviderService,
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
         this.role = getInitialRole(configParams);
-        this.roleChanger = new RoleChanger();
+        this.roleChanger = new RoleChanger(this);
         initVendorMessages();
         this.systemStartTime = System.currentTimeMillis();
     }
@@ -2129,5 +2129,5 @@ public class Controller implements IFloodlightProviderService,
             switchDescSortedList.add(description);
         }
     }
-
+    
 }

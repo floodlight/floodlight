@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -53,7 +54,31 @@ public interface IOFSwitch {
     public static final String PROP_SUPPORTS_OFPP_TABLE = "supportsOfppTable";
     public static final String PROP_SUPPORTS_OFPP_FLOOD = "supportsOfppFlood";
     public static final String PROP_SUPPORTS_NETMASK_TBL = "supportsNetmaskTbl";
-    
+
+    /**
+     * Set IFloodlightProviderService for this switch instance
+     * Called immediately after instantiation
+     * 
+     * @param controller
+     */
+    public void setFloodlightProvider(Controller controller);
+
+    /**
+     * Set IThreadPoolService for this switch instance
+     * Called immediately after instantiation
+     * 
+     * @param threadPool
+     */
+    public void setThreadPoolService(IThreadPoolService threadPool);
+
+    /**
+     * Set the netty Channel this switch instance is associated with
+     * Called immediately after instantiation
+     * 
+     * @param channel
+     */
+    public void setChannel(Channel channel);
+
     /**
      * Writes to the OFMessage to the output stream.
      * The message will be handed to the floodlightProvider for possible filtering
@@ -79,13 +104,6 @@ public interface IOFSwitch {
      * @throws IOException
      */
     public void disconnectOutputStream();
-
-    /**
-     * FIXME: remove getChannel(). All access to the channel should be through
-     *        wrapper functions in IOFSwitch
-     * @return
-     */
-    public Channel getChannel();
 
     /**
      * Returns switch features from features Reply
@@ -287,15 +305,19 @@ public interface IOFSwitch {
      * Get the current role of the controller for the switch
      * @return the role of the controller
      */
-    public Role getRole();
+    public Role getHARole();
     
     /**
-     * Check if the controller is an active controller for the switch.
-     * The controller is active if its role is MASTER or EQUAL.
-     * @return whether the controller is active
+     * Set switch's HA role to role. The haRoleReplyReceived indicates
+     * if a reply was received from the switch (error replies excluded).
+     * 
+     * If role is null, the switch should close the channel connection.
+     * 
+     * @param role
+     * @param haRoleReplyReceived
      */
-    public boolean isActive();
-    
+    public void setHARole(Role role, boolean haRoleReplyReceived);
+
     /**
      * Deliver the statistics future reply
      * @param reply the reply to deliver
@@ -382,36 +404,27 @@ public interface IOFSwitch {
     public void flush();
 
     /**
-     * Send HA role request
-     * 
-     * @param role
-     * @param cookie
+     * Return a read lock that must be held while calling the listeners for
+     * messages from the switch. Holding the read lock prevents the active
+     * switch list from being modified out from under the listeners.
      * @return 
-     * @throws IOException 
      */
-    public int sendNxRoleRequest(Role role, long cookie) throws IOException;
-
-    /**
-     * Check HA role request cookie
-     * 
-     * @param cookie
-     * @return
-     */
-    public boolean checkFirstPendingRoleRequestCookie(long cookie);
-
-    public void setChannel(Channel channel);
-
-    public void setFloodlightProvider(Controller controller);
-
-    public void setThreadPoolService(IThreadPoolService threadPool);
-
-    public void deliverRoleReply(int xid, Role role);
-
-    public void deliverRoleRequestNotSupported(int xid);
-
     public Lock getListenerReadLock();
 
-    public boolean checkFirstPendingRoleRequestXid(int xid);
-
+    /**
+     * Return a write lock that must be held when the controllers modifies the
+     * list of active switches. This is to ensure that the active switch list
+     * doesn't change out from under the listeners as they are handling a
+     * message from the switch.
+     * @return
+     */
     public Lock getListenerWriteLock();
+
+    /**
+     * Get the IP Address for the switch
+     * @return the inet address
+     */
+    public SocketAddress getInetAddress();
+
+
 }

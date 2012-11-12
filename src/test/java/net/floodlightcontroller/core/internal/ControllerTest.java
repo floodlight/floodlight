@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +46,7 @@ import net.floodlightcontroller.core.internal.Controller.IUpdate;
 import net.floodlightcontroller.core.internal.Controller.SwitchUpdate;
 import net.floodlightcontroller.core.internal.Controller.SwitchUpdateType;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
+import net.floodlightcontroller.core.internal.RoleChanger.PendingRoleRequestEntry;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -482,6 +484,7 @@ public class ControllerTest extends FloodlightTestCase
 
         Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
+        expect(channel.getRemoteAddress()).andReturn(null);
         expect(channel.close()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
@@ -509,6 +512,7 @@ public class ControllerTest extends FloodlightTestCase
         Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
         expect(channel.close()).andReturn(null);
+        expect(channel.getRemoteAddress()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
         expect(newsw.getId()).andReturn(0L).anyTimes();
@@ -547,7 +551,7 @@ public class ControllerTest extends FloodlightTestCase
                 return "dummy";
             }
             @Override
-            public void switchPortChanged(Long switchId) {
+            public synchronized void switchPortChanged(Long switchId) {
                 nPortChanged++;
                 notifyAll();
             }
@@ -996,11 +1000,9 @@ public class ControllerTest extends FloodlightTestCase
         // in SLAVE mode and the switch does not support role-request messages
         state.firstRoleReplyReceived = false;
         controller.role = Role.SLAVE;
-        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
-        chdlr.sw.deliverRoleRequestNotSupported(xid);
-        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
-        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
-        expect(ch.close()).andReturn(null);
+        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        chdlr.sw.setHARole(Role.SLAVE, false);
+        chdlr.sw.disconnectOutputStream();
         
         replay(ch, chdlr.sw);
         chdlr.processOFMessage(msg);
@@ -1017,11 +1019,9 @@ public class ControllerTest extends FloodlightTestCase
         msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
         state.firstRoleReplyReceived = false;
         controller.role = Role.SLAVE;
-        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
-        chdlr.sw.deliverRoleRequestNotSupported(xid);
-        expect(chdlr.sw.getChannel()).andReturn(ch).anyTimes();
-        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
-        expect(ch.close()).andReturn(null);
+        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        chdlr.sw.setHARole(Role.SLAVE, false);
+        chdlr.sw.disconnectOutputStream();
         replay(ch, chdlr.sw);
         
         chdlr.processOFMessage(msg);
@@ -1037,11 +1037,11 @@ public class ControllerTest extends FloodlightTestCase
         // switches.
         state.firstRoleReplyReceived = false;
         controller.role = Role.MASTER;
-        expect(chdlr.sw.checkFirstPendingRoleRequestXid(xid)).andReturn(true);
-        chdlr.sw.deliverRoleRequestNotSupported(xid);
+        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        chdlr.sw.setHARole(controller.role, false);
         setupSwitchForAddSwitch(chdlr.sw, 0L);
         chdlr.sw.clearAllFlowMods();
-        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
+        expect(chdlr.sw.getHARole()).andReturn(null).anyTimes();
         replay(ch, chdlr.sw);
         
         chdlr.processOFMessage(msg);
@@ -1087,7 +1087,18 @@ public class ControllerTest extends FloodlightTestCase
         roleReplyVendorData.setRole(nicira_role);
         return msg;
     }
-   
+    
+    // Helper function
+    protected void setupPendingRoleRequest(IOFSwitch sw, int xid, Role role,
+            long cookie) {
+        LinkedList<PendingRoleRequestEntry> pendingList =
+                new LinkedList<PendingRoleRequestEntry>();
+        controller.roleChanger.pendingRequestMap.put(sw, pendingList);
+        PendingRoleRequestEntry entry =
+                new PendingRoleRequestEntry(xid, role, cookie);
+        pendingList.add(entry);
+    }
+    
     /** invalid role in role reply */
     @Test 
     public void testNiciraRoleReplyInvalidRole() 
@@ -1095,8 +1106,7 @@ public class ControllerTest extends FloodlightTestCase
         int xid = 424242;
         Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
         Channel ch = createMock(Channel.class);
-        expect(chdlr.sw.getChannel()).andReturn(ch);
-        expect(ch.close()).andReturn(null);
+        chdlr.sw.disconnectOutputStream();
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 232323);
         replay(chdlr.sw, ch);
         chdlr.processOFMessage(msg);
@@ -1111,9 +1121,10 @@ public class ControllerTest extends FloodlightTestCase
         Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
-        
-        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
-        expect(chdlr.sw.isActive()).andReturn(true);
+
+        setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
+        chdlr.sw.setHARole(Role.MASTER, true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         chdlr.state.firstRoleReplyReceived = false;
@@ -1135,9 +1146,10 @@ public class ControllerTest extends FloodlightTestCase
         Controller.OFChannelHandler chdlr = getChannelHandlerForRoleReplyTest();
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
-        
-        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
-        expect(chdlr.sw.isActive()).andReturn(true);
+
+        setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);        
+        chdlr.sw.setHARole(Role.MASTER, true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.state.firstRoleReplyReceived = true;
         // Flow table shouldn't be wipe
@@ -1159,8 +1171,9 @@ public class ControllerTest extends FloodlightTestCase
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid,
                                        OFRoleReplyVendorData.NX_ROLE_OTHER);
         
-        chdlr.sw.deliverRoleReply(xid, Role.EQUAL);
-        expect(chdlr.sw.isActive()).andReturn(true);
+        setupPendingRoleRequest(chdlr.sw, xid, Role.EQUAL, 123456);                
+        chdlr.sw.setHARole(Role.EQUAL, true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.EQUAL);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         chdlr.state.firstRoleReplyReceived = false;
@@ -1181,11 +1194,12 @@ public class ControllerTest extends FloodlightTestCase
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
                                        OFRoleReplyVendorData.NX_ROLE_SLAVE);
         
-        chdlr.sw.deliverRoleReply(xid, Role.SLAVE);
+        setupPendingRoleRequest(chdlr.sw, xid, Role.SLAVE, 123456);                
+        chdlr.sw.setHARole(Role.SLAVE, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.isActive()).andReturn(false);
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         // don't add switch to activeSwitches ==> slave2slave
         chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
@@ -1205,11 +1219,12 @@ public class ControllerTest extends FloodlightTestCase
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
         
-        chdlr.sw.deliverRoleReply(xid, Role.MASTER);
+        setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
+        chdlr.sw.setHARole(Role.MASTER, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.isActive()).andReturn(true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         controller.activeSwitches.put(1L, chdlr.sw);
         chdlr.state.firstRoleReplyReceived = false;
         // Must not clear flow mods
@@ -1230,12 +1245,13 @@ public class ControllerTest extends FloodlightTestCase
         OFVendor msg = getRoleReplyMsgForRoleReplyTest(xid, 
                                        OFRoleReplyVendorData.NX_ROLE_SLAVE);
         
-        chdlr.sw.deliverRoleReply(xid, Role.SLAVE);
+        setupPendingRoleRequest(chdlr.sw, xid, Role.SLAVE, 123456);                
+        chdlr.sw.setHARole(Role.SLAVE, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
         controller.activeSwitches.put(1L, chdlr.sw);
-        expect(chdlr.sw.isActive()).andReturn(false).anyTimes();
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE).anyTimes();
         expect(chdlr.sw.isConnected()).andReturn(true);
         chdlr.sw.cancelAllStatisticsReplies();
         chdlr.state.firstRoleReplyReceived = false;
@@ -1331,4 +1347,5 @@ public class ControllerTest extends FloodlightTestCase
         }
         return null;
     }
+
 }
