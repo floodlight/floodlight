@@ -223,15 +223,9 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public Role getRole() {
+    public Role getHARole() {
         assertTrue("Unexpected method call", false);
         return null;
-    }
-    
-    @Override
-    public boolean isActive() {
-        assertTrue("Unexpected method call", false);
-        return false;
     }
     
     @Override

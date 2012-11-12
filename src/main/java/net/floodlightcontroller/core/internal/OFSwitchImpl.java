@@ -464,14 +464,8 @@ public class OFSwitchImpl implements IOFSwitch {
     }
     
     @Override
-    public Role getRole() {
+    public Role getHARole() {
         return role;
-    }
-    
-    @JsonIgnore
-    @Override
-    public boolean isActive() {
-        return (role != Role.SLAVE);
     }
     
     @Override

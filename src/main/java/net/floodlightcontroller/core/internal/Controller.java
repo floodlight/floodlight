@@ -876,7 +876,7 @@ public class Controller implements IFloodlightProviderService,
             
             roleChanger.deliverRoleReply(sw, vendorMessage.getXid(), role);
             
-            if (sw.isActive()) {
+            if (sw.getHARole() != Role.SLAVE) {
             // Transition from SLAVE to MASTER.
                 boolean shouldClearFlowMods = false;
                 if (!state.firstRoleReplyReceived || 
@@ -1176,7 +1176,7 @@ public class Controller implements IFloodlightProviderService,
                             // to them. On the other hand there might be special 
                             // modules that care about all of the connected switches
                             // and would like to receive port status notifications.
-                            if (sw.getRole() == Role.SLAVE) {
+                            if (sw.getHARole() == Role.SLAVE) {
                                 // Don't log message if it's a port status message 
                                 // since we expect to receive those from the switch 
                                 // and don't want to emit spurious messages.

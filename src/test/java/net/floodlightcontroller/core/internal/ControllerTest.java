@@ -484,6 +484,7 @@ public class ControllerTest extends FloodlightTestCase
 
         Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
+        expect(channel.getRemoteAddress()).andReturn(null);
         expect(channel.close()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
@@ -511,6 +512,7 @@ public class ControllerTest extends FloodlightTestCase
         Channel channel = createMock(Channel.class);
         oldsw.setChannel(channel);
         expect(channel.close()).andReturn(null);
+        expect(channel.getRemoteAddress()).andReturn(null);
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
         expect(newsw.getId()).andReturn(0L).anyTimes();
@@ -549,7 +551,7 @@ public class ControllerTest extends FloodlightTestCase
                 return "dummy";
             }
             @Override
-            public void switchPortChanged(Long switchId) {
+            public synchronized void switchPortChanged(Long switchId) {
                 nPortChanged++;
                 notifyAll();
             }
@@ -1039,7 +1041,7 @@ public class ControllerTest extends FloodlightTestCase
         chdlr.sw.setHARole(controller.role, false);
         setupSwitchForAddSwitch(chdlr.sw, 0L);
         chdlr.sw.clearAllFlowMods();
-        expect(chdlr.sw.getRole()).andReturn(null).anyTimes();
+        expect(chdlr.sw.getHARole()).andReturn(null).anyTimes();
         replay(ch, chdlr.sw);
         
         chdlr.processOFMessage(msg);
@@ -1122,7 +1124,7 @@ public class ControllerTest extends FloodlightTestCase
 
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
         chdlr.sw.setHARole(Role.MASTER, true);
-        expect(chdlr.sw.isActive()).andReturn(true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         chdlr.state.firstRoleReplyReceived = false;
@@ -1147,7 +1149,7 @@ public class ControllerTest extends FloodlightTestCase
 
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);        
         chdlr.sw.setHARole(Role.MASTER, true);
-        expect(chdlr.sw.isActive()).andReturn(true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.state.firstRoleReplyReceived = true;
         // Flow table shouldn't be wipe
@@ -1171,7 +1173,7 @@ public class ControllerTest extends FloodlightTestCase
         
         setupPendingRoleRequest(chdlr.sw, xid, Role.EQUAL, 123456);                
         chdlr.sw.setHARole(Role.EQUAL, true);
-        expect(chdlr.sw.isActive()).andReturn(true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.EQUAL);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         chdlr.state.firstRoleReplyReceived = false;
@@ -1197,7 +1199,7 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.isActive()).andReturn(false);
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         // don't add switch to activeSwitches ==> slave2slave
         chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
@@ -1222,7 +1224,7 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.isActive()).andReturn(true);
+        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         controller.activeSwitches.put(1L, chdlr.sw);
         chdlr.state.firstRoleReplyReceived = false;
         // Must not clear flow mods
@@ -1249,7 +1251,7 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
         controller.activeSwitches.put(1L, chdlr.sw);
-        expect(chdlr.sw.isActive()).andReturn(false).anyTimes();
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE).anyTimes();
         expect(chdlr.sw.isConnected()).andReturn(true);
         chdlr.sw.cancelAllStatisticsReplies();
         chdlr.state.firstRoleReplyReceived = false;

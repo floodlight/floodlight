@@ -305,15 +305,19 @@ public interface IOFSwitch {
      * Get the current role of the controller for the switch
      * @return the role of the controller
      */
-    public Role getRole();
+    public Role getHARole();
     
     /**
-     * Check if the controller is an active controller for the switch.
-     * The controller is active if its role is MASTER or EQUAL.
-     * @return whether the controller is active
+     * Set switch's HA role to role. The haRoleReplyReceived indicates
+     * if a reply was received from the switch (error replies excluded).
+     * 
+     * If role is null, the switch should close the channel connection.
+     * 
+     * @param role
+     * @param haRoleReplyReceived
      */
-    public boolean isActive();
-    
+    public void setHARole(Role role, boolean haRoleReplyReceived);
+
     /**
      * Deliver the statistics future reply
      * @param reply the reply to deliver
@@ -398,17 +402,6 @@ public interface IOFSwitch {
      * NOTE: The contract is limited to the current thread
      */
     public void flush();
-
-    /**
-     * Set switch's HA role to role. The haRoleReplyReceived indicates
-     * if a reply was received from the switch (error replies excluded).
-     * 
-     * If role is null, the switch should close the channel connection.
-     * 
-     * @param role
-     * @param haRoleReplyReceived
-     */
-    public void setHARole(Role role, boolean haRoleReplyReceived);
 
     /**
      * Return a read lock that must be held while calling the listeners for
