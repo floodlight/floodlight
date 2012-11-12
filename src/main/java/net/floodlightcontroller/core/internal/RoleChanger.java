@@ -5,15 +5,24 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFVendor;
+import org.openflow.vendor.nicira.OFNiciraVendorData;
+import org.openflow.vendor.nicira.OFRoleRequestVendorData;
+import org.openflow.vendor.nicira.OFRoleVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HARoleUnsupportedException;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -125,6 +134,7 @@ public class RoleChanger {
     protected long timeout;
     protected ConcurrentHashMap<IOFSwitch, LinkedList<PendingRoleRequestEntry>>
                 pendingRequestMap;
+    private IFloodlightProviderService floodlightProvider;
     
     protected static long DEFAULT_TIMEOUT = 15L*1000*1000*1000L; // 15s
     protected static Logger log = LoggerFactory.getLogger(RoleChanger.class);
@@ -229,7 +239,8 @@ public class RoleChanger {
         } // end loop
     }
     
-    public RoleChanger() {
+    public RoleChanger(IFloodlightProviderService floodlightProvider) {
+        this.floodlightProvider = floodlightProvider;
         this.pendingRequestMap = new ConcurrentHashMap<IOFSwitch,
                 LinkedList<PendingRoleRequestEntry>>();
         this.pendingTasks = new DelayQueue<RoleChangeTask>();
@@ -271,7 +282,7 @@ public class RoleChanger {
         while(iter.hasNext()) {
             IOFSwitch sw = iter.next();
             try {
-                int xid = sw.sendHARoleRequest(role, cookie);
+                int xid = sendHARoleRequest(sw, role, cookie);
                 PendingRoleRequestEntry entry =
                         new PendingRoleRequestEntry(xid, role, cookie);
                 LinkedList<PendingRoleRequestEntry> pendingList
@@ -464,5 +475,82 @@ public class RoleChanger {
             }
         }
     }
+    
+    /**
+     * Send NX role request message to the switch requesting the specified role.
+     * 
+     * @param sw switch to send the role request message to
+     * @param role role to request
+     * @param cookie an opaque value that will be stored in the pending queue so
+     *        RoleChanger can check for timeouts.
+     * @return transaction id of the role request message that was sent
+     */
+    protected int sendHARoleRequest(IOFSwitch sw, Role role, long cookie)
+            throws IOException, HARoleUnsupportedException {
+        // There are three cases to consider:
+        //
+        // 1) If the controller role at the point the switch connected was
+        //    null/disabled, then we never sent the role request probe to the
+        //    switch and therefore never set the SWITCH_SUPPORTS_NX_ROLE
+        //    attribute for the switch, so supportsNxRole is null. In that
+        //    case since we're now enabling role support for the controller
+        //    we should send out the role request probe/update to the switch.
+        //
+        // 2) If supportsNxRole == Boolean.TRUE then that means we've already
+        //    sent the role request probe to the switch and it replied with
+        //    a role reply message, so we know it supports role request
+        //    messages. Now we're changing the role and we want to send
+        //    it another role request message to inform it of the new role
+        //    for the controller.
+        //
+        // 3) If supportsNxRole == Boolean.FALSE, then that means we sent the
+        //    role request probe to the switch but it responded with an error
+        //    indicating that it didn't understand the role request message.
+        //    In that case, we simply throw an unsupported exception.
+        Boolean supportsNxRole = (Boolean)
+                sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
+        if ((supportsNxRole != null) && !supportsNxRole) {
+            throw new HARoleUnsupportedException();
+        }
+
+        int xid = sw.getNextTransactionId();
+        // Convert the role enum to the appropriate integer constant used
+        // in the NX role request message
+        int nxRole = 0;
+        switch (role) {
+        case EQUAL:
+            nxRole = OFRoleVendorData.NX_ROLE_OTHER;
+            break;
+        case MASTER:
+            nxRole = OFRoleVendorData.NX_ROLE_MASTER;
+            break;
+        case SLAVE:
+            nxRole = OFRoleVendorData.NX_ROLE_SLAVE;
+            break;
+        default:
+            log.error("Invalid Role specified for switch {}."
+                    + " Disconnecting.", sw);
+            throw new HARoleUnsupportedException();
+        }
+
+        // Construct the role request message
+        OFVendor roleRequest = (OFVendor)floodlightProvider.
+                getOFMessageFactory().getMessage(OFType.VENDOR);
+        roleRequest.setXid(xid);
+        roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
+        OFRoleRequestVendorData roleRequestData = new OFRoleRequestVendorData();
+        roleRequestData.setRole(nxRole);
+        roleRequest.setVendorData(roleRequestData);
+        roleRequest.setLengthU(OFVendor.MINIMUM_LENGTH + 
+                roleRequestData.getLength());
+
+        // Send it to the switch
+        List<OFMessage> msgList = new ArrayList<OFMessage>(1);
+        msgList.add(roleRequest);
+        sw.write(msgList, new FloodlightContext());
+
+        return xid;
+    }
+    
 
 }

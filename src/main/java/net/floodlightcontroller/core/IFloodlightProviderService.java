@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.core;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -215,18 +214,5 @@ public interface IFloodlightProviderService extends
     * @param driver The object implementing OFSwitchDriver interface
     */
    public void addOFSwitchDriver(String desc, IOFSwitchDriver driver);
-
-   /**
-    * Send an HA role request to switch with the given paramaters in the
-    * form of Nicira Vendor extensions.
-    * 
-    * @param sw Switch to send the request
-    * @param xid Transaction ID of the OF message
-    * @param role The role to set the switch to
-    * @param cookie Cookie from IOFSwitch.sendHARoleRequest
-    * @throws IOException 
-    */
-   public void sendNxRoleRequest(IOFSwitch sw, int xid, Role role, long cookie)
-           throws IOException;
 
 }

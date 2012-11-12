@@ -1917,7 +1917,7 @@ public class Controller implements IFloodlightProviderService,
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
         this.role = getInitialRole(configParams);
-        this.roleChanger = new RoleChanger();
+        this.roleChanger = new RoleChanger(this);
         initVendorMessages();
         this.systemStartTime = System.currentTimeMillis();
     }
@@ -2130,43 +2130,4 @@ public class Controller implements IFloodlightProviderService,
         }
     }
     
-    public void sendNxRoleRequest(IOFSwitch sw, int xid,
-            Role role, long cookie) throws IOException {
-        // Convert the role enum to the appropriate integer constant used
-        // in the NX role request message
-        int nxRole = 0;
-        switch (role) {
-            case EQUAL:
-                nxRole = OFRoleVendorData.NX_ROLE_OTHER;
-                break;
-            case MASTER:
-                nxRole = OFRoleVendorData.NX_ROLE_MASTER;
-                break;
-            case SLAVE:
-                nxRole = OFRoleVendorData.NX_ROLE_SLAVE;
-                break;
-            default:
-                log.error("Invalid Role specified for switch {}."
-                          + " Disconnecting.", sw);
-                // TODO: should throw an error
-                return;
-        }
-        
-        // Construct the role request message
-        OFVendor roleRequest = (OFVendor)this.
-                getOFMessageFactory().getMessage(OFType.VENDOR);
-        roleRequest.setXid(xid);
-        roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
-        OFRoleRequestVendorData roleRequestData = new OFRoleRequestVendorData();
-        roleRequestData.setRole(nxRole);
-        roleRequest.setVendorData(roleRequestData);
-        roleRequest.setLengthU(OFVendor.MINIMUM_LENGTH + 
-                               roleRequestData.getLength());
-        
-        // Send it to the switch
-        List<OFMessage> msglist = new ArrayList<OFMessage>(1);
-        msglist.add(roleRequest);
-        sw.write(msglist, new FloodlightContext());
-    }
-
 }

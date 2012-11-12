@@ -34,7 +34,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.HARoleUnsupportedException;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
@@ -579,52 +578,6 @@ public class OFSwitchImpl implements IOFSwitch {
     @JsonSerialize(using=ToStringSerializer.class)
     public SocketAddress getInetAddress() {
         return channel.getRemoteAddress();
-    }
-    
-    /**
-     * Send NX role request message to the switch requesting the specified role.
-     * 
-     * This method should ONLY be called by @see RoleChanger.submitRequest(). 
-     * 
-     * After sending the request add it to the queue of pending request. We
-     * use the queue to later verify that we indeed receive the correct reply.
-     * @param sw switch to send the role request message to
-     * @param role role to request
-     * @param cookie an opaque value that will be stored in the pending queue so
-     *        RoleChanger can check for timeouts.
-     * @return transaction id of the role request message that was sent
-     */
-    public int sendHARoleRequest(Role role, long cookie)
-            throws IOException, HARoleUnsupportedException {
-        // There are three cases to consider:
-        //
-        // 1) If the controller role at the point the switch connected was
-        //    null/disabled, then we never sent the role request probe to the
-        //    switch and therefore never set the SWITCH_SUPPORTS_NX_ROLE
-        //    attribute for the switch, so supportsNxRole is null. In that
-        //    case since we're now enabling role support for the controller
-        //    we should send out the role request probe/update to the switch.
-        //
-        // 2) If supportsNxRole == Boolean.TRUE then that means we've already
-        //    sent the role request probe to the switch and it replied with
-        //    a role reply message, so we know it supports role request
-        //    messages. Now we're changing the role and we want to send
-        //    it another role request message to inform it of the new role
-        //    for the controller.
-        //
-        // 3) If supportsNxRole == Boolean.FALSE, then that means we sent the
-        //    role request probe to the switch but it responded with an error
-        //    indicating that it didn't understand the role request message.
-        //    In that case, we simply throw an unsupported exception.
-        Boolean supportsNxRole = (Boolean)
-                getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE);
-        if ((supportsNxRole != null) && !supportsNxRole) {
-            throw new HARoleUnsupportedException();
-        }
-
-        int xid = this.getNextTransactionId();
-        floodlightProvider.sendNxRoleRequest(this, xid, role, cookie);
-        return xid;
     }
     
     @JsonIgnore

@@ -73,7 +73,6 @@ import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFError.OFBadRequestCode;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
@@ -91,12 +90,9 @@ import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFFlowStatisticsReply;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
-import org.openflow.protocol.vendor.OFVendorData;
 import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorData;
 import org.openflow.vendor.nicira.OFRoleReplyVendorData;
-import org.openflow.vendor.nicira.OFRoleRequestVendorData;
-import org.openflow.vendor.nicira.OFRoleVendorData;
 
 /**
  *
@@ -1348,44 +1344,6 @@ public class ControllerTest extends FloodlightTestCase
             return new TestSwitchClass();
         }
         return null;
-    }
-    
-    public void doSendNxRoleRequest(Role role, int nx_role) throws Exception {
-        long cookie = System.nanoTime();
-        OFSwitchImpl sw = new OFSwitchImpl();
-        Channel ch = createMock(Channel.class);
-        sw.setChannel(ch);
-        sw.setFloodlightProvider(controller);
-        
-        // verify that the correct OFMessage is sent
-        Capture<List<OFMessage>> msgCapture = new Capture<List<OFMessage>>();
-        expect(sw.channel.write(capture(msgCapture))).andReturn(null);
-        replay(sw.channel);
-        int xid = sw.sendHARoleRequest(role, cookie);
-        verify(sw.channel);
-        List<OFMessage> msgList = msgCapture.getValue();
-        assertEquals(1, msgList.size());
-        OFMessage msg = msgList.get(0);
-        assertEquals("Transaction Ids must match", xid, msg.getXid()); 
-        assertTrue("Message must be an OFVendor type", msg instanceof OFVendor);
-        assertEquals(OFType.VENDOR, msg.getType());
-        OFVendor vendorMsg = (OFVendor)msg;
-        assertEquals("Vendor message must be vendor Nicira",
-                     OFNiciraVendorData.NX_VENDOR_ID, vendorMsg.getVendor());
-        OFVendorData vendorData = vendorMsg.getVendorData();
-        assertTrue("Vendor Data must be an OFRoleRequestVendorData",
-                     vendorData instanceof OFRoleRequestVendorData);
-        OFRoleRequestVendorData roleRequest = (OFRoleRequestVendorData)vendorData;
-        assertEquals(nx_role, roleRequest.getRole());
-        
-        reset(sw.channel);
-    }
-    
-    @Test
-    public void testSendNxRoleRequest() throws Exception {
-        doSendNxRoleRequest(Role.MASTER, OFRoleVendorData.NX_ROLE_MASTER);
-        doSendNxRoleRequest(Role.SLAVE, OFRoleVendorData.NX_ROLE_SLAVE);
-        doSendNxRoleRequest(Role.EQUAL, OFRoleVendorData.NX_ROLE_OTHER);
     }
 
 }

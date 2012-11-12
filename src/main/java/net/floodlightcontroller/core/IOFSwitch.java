@@ -400,17 +400,6 @@ public interface IOFSwitch {
     public void flush();
 
     /**
-     * Send HA role request
-     * 
-     * @param role
-     * @param cookie
-     * @return 
-     * @throws IOException 
-     */
-    public int sendHARoleRequest(Role role, long cookie)
-            throws IOException, HARoleUnsupportedException;
-    
-    /**
      * Set switch's HA role to role. The haRoleReplyReceived indicates
      * if a reply was received from the switch (error replies excluded).
      * 

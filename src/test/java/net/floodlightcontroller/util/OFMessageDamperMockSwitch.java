@@ -345,12 +345,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public int sendHARoleRequest(Role role, long cookie) {
-        // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
     public void setChannel(Channel channel) {
         // TODO Auto-generated method stub
         
