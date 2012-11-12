@@ -39,15 +39,19 @@ import com.google.common.base.Joiner;
  */
 public class Wildcards {
 
-    public final static Wildcards ALL = new Wildcards(
-            OFMatch.OFPFW_ALL_SANITIZED);
-    public final static Wildcards NONE = new Wildcards(0);
+    public final static Wildcards FULL = new Wildcards(OFMatch.OFPFW_ALL_SANITIZED);
+
+    public final static Wildcards EXACT = new Wildcards(0);
 
     // floodlight common case: matches on inport + l2
     public final static int INT_INPORT_L2_MATCH = 0x3820e0;
     public final static Wildcards INPORT_L2_MATCH = new Wildcards(
             INT_INPORT_L2_MATCH);
 
+    /**
+     * enum type for the binary flags that can be set in the wildcards field of
+     * an OFMatch. Replaces the unwieldy c-ish int constants in OFMatch.
+     */
     public static enum Flag {
         IN_PORT(OFMatch.OFPFW_IN_PORT),  /* Switch input port. */
         DL_VLAN(OFMatch.OFPFW_DL_VLAN), /* VLAN id. */
@@ -85,10 +89,10 @@ public class Wildcards {
     public static Wildcards of(int flags) {
         switch(flags) {
             case 0x0000:
-                return NONE;
+                return EXACT;
             case OFMatch.OFPFW_ALL:
             case OFMatch.OFPFW_ALL_SANITIZED:
-                return ALL;
+                return FULL;
             case INT_INPORT_L2_MATCH:
                 return INPORT_L2_MATCH;
             default:
@@ -371,12 +375,12 @@ public class Wildcards {
      * is this a wildcard set that has all flags set + and full (/0) nw_src and
      * nw_dst wildcarding ?
      */
-    public boolean isAll() {
+    public boolean isFull() {
         return flags == OFMatch.OFPFW_ALL || flags == OFMatch.OFPFW_ALL_SANITIZED;
     }
 
     /** is this a wildcard of an exact match */
-    public boolean isNone() {
+    public boolean isExact() {
         return flags == 0;
     }
 
