@@ -2,8 +2,8 @@ package org.openflow.protocol;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import com.google.common.base.Joiner;
 
@@ -40,6 +40,7 @@ import com.google.common.base.Joiner;
 public class Wildcards {
 
     public final static Wildcards FULL = new Wildcards(OFMatch.OFPFW_ALL_SANITIZED);
+    private static final int FULL_INT = FULL.getInt();
 
     public final static Wildcards EXACT = new Wildcards(0);
 
@@ -62,6 +63,81 @@ public class Wildcards {
         TP_SRC(OFMatch.OFPFW_TP_SRC), /* TCP/UDP source port. */
         TP_DST(OFMatch.OFPFW_TP_DST), /* TCP/UDP destination port. */
         DL_VLAN_PCP(OFMatch.OFPFW_DL_VLAN_PCP), /* VLAN priority. */
+        NW_SRC(-1) { /*
+                      * virtual NW_SRC flag => translates to the strange 6 bits
+                      * in the header
+                      */
+            @Override
+            boolean isBolean() {
+                return false;
+            }
+
+            @Override
+            int getInt(int flags) {
+                return ((flags & OFMatch.OFPFW_NW_SRC_MASK) >> OFMatch.OFPFW_NW_SRC_SHIFT);
+            }
+
+            @Override
+            int setInt(int flags, int srcMask) {
+                return (flags & ~OFMatch.OFPFW_NW_SRC_MASK) | (srcMask << OFMatch.OFPFW_NW_SRC_SHIFT);
+            }
+
+            @Override
+            int wildcard(int flags) {
+                return flags & ~OFMatch.OFPFW_NW_SRC_MASK;
+            }
+
+            @Override
+            int matchOn(int flags) {
+                return flags | OFMatch.OFPFW_NW_SRC_ALL;
+            }
+
+            @Override
+            boolean isPartiallyOn(int flags) {
+                int intValue = getInt(flags);
+                return intValue > 0 && intValue < 32;
+            }
+
+            @Override
+            boolean isFullyOn(int flags) {
+                return getInt(flags) >= 32;
+            }
+
+        },
+        NW_DST(-1) { /*
+                      * virtual NW_SRC flag => translates to the strange 6 bits
+                      * in the header
+                      */
+            @Override
+            boolean isBolean() {
+                return false;
+            }
+
+            @Override
+            int getInt(int flags) {
+                return ((flags & OFMatch.OFPFW_NW_DST_MASK) >> OFMatch.OFPFW_NW_DST_SHIFT);
+            }
+
+            @Override
+            int setInt(int flags, int srcMask) {
+                return (flags & ~OFMatch.OFPFW_NW_DST_MASK) | (srcMask << OFMatch.OFPFW_NW_DST_SHIFT);
+            }
+
+            @Override
+            int wildcard(int flags) {
+                return flags & ~OFMatch.OFPFW_NW_DST_MASK;
+            }
+
+            @Override
+            int matchOn(int flags) {
+                return flags | OFMatch.OFPFW_NW_DST_ALL;
+            }
+
+            @Override
+            boolean isFullyOn(int flags) {
+                return getInt(flags) >= 32;
+            }
+        },
         NW_TOS(OFMatch.OFPFW_NW_TOS); /* IP ToS (DSCP field, 6 bits). */
 
         final int bitPosition;
@@ -69,6 +145,69 @@ public class Wildcards {
         Flag(int bitPosition) {
             this.bitPosition = bitPosition;
         }
+
+        /**
+         * @return a modified OF-1.0 flags field with this flag cleared (match
+         *         on this field)
+         */
+        int matchOn(int flags) {
+            return flags & ~this.bitPosition;
+        }
+
+        /**
+         * @return a modified OF-1.0 flags field with this flag set (wildcard
+         *         this field)
+         */
+        int wildcard(int flags) {
+            return flags | this.bitPosition;
+        }
+
+        /**
+         * @return true iff this is a true boolean flag that can either be off
+         *         or on.True in OF-1.0 for all fields except NW_SRC and NW_DST
+         */
+        boolean isBolean() {
+            return false;
+        }
+
+        /**
+         * @return true iff this wildcard field is currently 'partially on'.
+         *         Always false for true Boolean Flags. Can be true in OF-1.0
+         *         for NW_SRC, NW_DST.
+         */
+        boolean isPartiallyOn(int flags) {
+            return false;
+        }
+
+        /**
+         * @return true iff this wildcard field currently fully on (fully
+         *         wildcarded). Equivalent to the boolean flag being set in the
+         *         bitmask for bit flags, and to the wildcarded bit length set
+         *         to >=32 for NW_SRC and NW_DST
+         * @param flags
+         * @return
+         */
+        boolean isFullyOn(int flags) {
+            return (flags & this.bitPosition) != 0;
+        }
+
+        /**
+         * set the integer representation of this flag. only for NW_SRC and
+         * NW_DST
+         */
+        int setInt(int flags, int srcMask) {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * set the integer representation of this flag. only for NW_SRC and
+         * NW_DST
+         */
+        int getInt(int flags) {
+            throw new UnsupportedOperationException();
+        }
+
+
     }
 
     private final int flags;
@@ -86,11 +225,11 @@ public class Wildcards {
      * @param flags
      * @return
      */
-    public static Wildcards of(int flags) {
+    public static Wildcards of(int paramFlags) {
+        int flags = sanitizeInt(paramFlags);
         switch(flags) {
             case 0x0000:
                 return EXACT;
-            case OFMatch.OFPFW_ALL:
             case OFMatch.OFPFW_ALL_SANITIZED:
                 return FULL;
             case INT_INPORT_L2_MATCH:
@@ -102,87 +241,54 @@ public class Wildcards {
 
     /** convience method return a wildcard for exactly one set flag */
     public static Wildcards of(Wildcards.Flag setFlag) {
-        return Wildcards.of(setFlag.bitPosition);
+        return Wildcards.of(setFlag.wildcard(0));
     }
 
     /** convience method return a wildcard for exactly two set flags */
     public static Wildcards of(Wildcards.Flag setFlag, Wildcards.Flag setFlag2) {
-        return Wildcards.of(setFlag.bitPosition | setFlag2.bitPosition);
+        return Wildcards.of(setFlag.wildcard(setFlag2.wildcard(0)));
     }
 
     /** convience method return a wildcard for an arbitrary number of set flags */
     public static Wildcards of(Wildcards.Flag... setFlags) {
         int flags = 0;
         for (Wildcards.Flag flag : setFlags)
-            flags |= flag.bitPosition;
+            flags = flag.wildcard(0);
         return Wildcards.of(flags);
     }
 
-    /**
-     * convience method return a wildcard for exactly one set flag and nwSrc/Dst
-     * masks
-     *
-     * @param nwSrcCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     * @param nwDstCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     **/
-    public static Wildcards of(Wildcards.Flag setFlag, int nwSrcCidrMask,
-                               int nwDstCidrMask) {
-        int flags = setFlag.bitPosition
-                        | Math.max(0, 32 - nwSrcCidrMask) << OFMatch.OFPFW_NW_SRC_SHIFT
-                        | Math.max(0, 32 - nwDstCidrMask) << OFMatch.OFPFW_NW_DST_SHIFT;
-        return Wildcards.of(flags);
+    /** convience method return a wildcards for ofmatches that match on one flag */
+    public static Wildcards ofMatches(Wildcards.Flag setFlag) {
+        return Wildcards.of(setFlag.matchOn(FULL_INT));
     }
 
     /**
-     * convience method return a wildcard for exactly two set flags and
-     * nwSrc/Dst masks
-     *
-     * @param nwSrcCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     * @param nwDstCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     **/
-    public static Wildcards of(Wildcards.Flag setFlag, Wildcards.Flag setFlag2,
-                               int nwSrcCidrMask, int nwDstCidrMask) {
-        int flags =
-                setFlag.bitPosition
-                        | Math.max(0, 32 - nwSrcCidrMask) << OFMatch.OFPFW_NW_SRC_SHIFT
-                        | Math.max(0, 32 - nwDstCidrMask) << OFMatch.OFPFW_NW_DST_SHIFT;
-        return Wildcards.of(flags);
+     * convience method return a wildcard for for an ofmatch that match on two
+     * flags
+     */
+    public static Wildcards ofMatches(Wildcards.Flag setFlag, Wildcards.Flag setFlag2) {
+        return Wildcards.of(setFlag.matchOn(setFlag2.matchOn(FULL_INT)));
     }
 
     /**
-     * convience method return a wildcard for a set of flags and nwSrc/Dst masks
-     *
-     * @param nwSrcCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     * @param nwDstCidrMask
-     *            netmask for nw (IP) matches in <b>standard CIDR notation</b>
-     **/
-    public static Wildcards of(Set<Flag> setFlags, int nwSrcCidrMask, int nwDstCidrMask) {
-        int flags = 0;
+     * convience method return a wildcard for an ofmatch that amtch on an
+     * arbitrary number of set flags
+     */
+    public static Wildcards ofMatches(Wildcards.Flag... setFlags) {
+        int flags = FULL_INT;
         for (Wildcards.Flag flag : setFlags)
-            flags |= flag.bitPosition;
-        flags |= Math.max(0, 32 - nwSrcCidrMask) << OFMatch.OFPFW_NW_SRC_SHIFT
-              | Math.max(0, 32 - nwDstCidrMask) << OFMatch.OFPFW_NW_DST_SHIFT;
+           flags = flag.matchOn(flags);
         return Wildcards.of(flags);
     }
 
-    /** is the given wildcard flag set */
-    public boolean hasFlag(Wildcards.Flag flag) {
-        return (flags & flag.bitPosition) != 0;
-    }
-
     /**
-     * return a Wildcards object that has the given flag set
+     * return a Wildcards object that has the given flags set
      * <p>
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards set(Wildcards.Flag flag) {
-        int flags = this.flags | flag.bitPosition;
+    public Wildcards wildcard(Wildcards.Flag flag) {
+        int flags = flag.wildcard(this.flags);
         if (flags == this.flags)
             return this;
         else
@@ -195,8 +301,8 @@ public class Wildcards {
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards set(Wildcards.Flag flag, Wildcards.Flag flag2) {
-        int flags = this.flags | flag.bitPosition | flag2.bitPosition;
+    public Wildcards wildcard(Wildcards.Flag flag, Wildcards.Flag flag2) {
+        int flags = flag.wildcard(flag2.wildcard(this.flags));
         if (flags == this.flags)
             return this;
         else
@@ -204,15 +310,15 @@ public class Wildcards {
     }
 
     /**
-     * return a Wildcards object that has the given flags set
+     * return a Wildcards object that has the given flags wildcarded
      * <p>
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards set(Wildcards.Flag... setFlags) {
+    public Wildcards wildcard(Wildcards.Flag... setFlags) {
         int flags = this.flags;
         for (Wildcards.Flag flag : setFlags)
-            flags |= flag.bitPosition;
+            flags = flag.wildcard(flags);
         if (flags == this.flags)
             return this;
         else
@@ -220,13 +326,13 @@ public class Wildcards {
     }
 
     /**
-     * return a Wildcards object that has the given flags unset
+     * return a Wildcards object that matches on exactly the given flag
      * <p>
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards unset(Wildcards.Flag flag) {
-        int flags = this.flags & ~flag.bitPosition;
+    public Wildcards matchOn(Wildcards.Flag flag) {
+        int flags = flag.matchOn(this.flags);
         if (flags == this.flags)
             return this;
         else
@@ -234,13 +340,13 @@ public class Wildcards {
     }
 
     /**
-     * return a Wildcards object that has the given flags unset
+     * return a Wildcards object that matches on exactly the given flags
      * <p>
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards unset(Wildcards.Flag flag, Wildcards.Flag flag2) {
-        int flags = this.flags & ~flag.bitPosition & ~flag2.bitPosition;
+    public Wildcards matchOn(Wildcards.Flag flag, Wildcards.Flag flag2) {
+        int flags = flag.matchOn(flag2.matchOn(this.flags));
         if (flags == this.flags)
             return this;
         else
@@ -248,15 +354,15 @@ public class Wildcards {
     }
 
     /**
-     * return a Wildcards object that has the given flags unset
+     * return a Wildcards object that matches on exactly the given flags
      * <p>
      * <b>NOTE:</b> NOT a mutator function. 'this' wildcard object stays
      * unmodified. </b>
      */
-    public Wildcards unset(Wildcards.Flag... setFlags) {
+    public Wildcards matchOn(Wildcards.Flag... setFlags) {
         int flags = this.flags;
         for (Wildcards.Flag flag : setFlags)
-            flags &= ~flag.bitPosition;
+            flags = flag.matchOn(flags);
         if (flags == this.flags)
             return this;
         else
@@ -268,9 +374,7 @@ public class Wildcards {
      * means 8 bits wildcarded
      */
     public int getNwSrcMask() {
-        return Math.max(
-                0,
-                32 - ((flags & OFMatch.OFPFW_NW_SRC_MASK) >> OFMatch.OFPFW_NW_SRC_SHIFT));
+        return Math.max(0, 32 - Flag.NW_SRC.getInt(flags));
     }
 
     /**
@@ -278,9 +382,7 @@ public class Wildcards {
      * means 8 bits wildcarded
      */
     public int getNwDstMask() {
-        return Math.max(
-                0,
-                32 - ((flags & OFMatch.OFPFW_NW_DST_MASK) >> OFMatch.OFPFW_NW_DST_SHIFT));
+        return Math.max(0, 32 - Flag.NW_DST.getInt(flags));
     }
 
     /**
@@ -293,11 +395,8 @@ public class Wildcards {
      *            means x.x.x.x/8
      * @return a modified object
      */
-    public Wildcards setNwSrcMask(int srcCidrMask) {
-        int flags =
-                this.flags
-                        & ~OFMatch.OFPFW_NW_SRC_MASK
-                        | (Math.max(0, 32 - srcCidrMask)) << OFMatch.OFPFW_NW_SRC_SHIFT;
+    public Wildcards withNwSrcMask(int srcCidrMask) {
+        int flags = Flag.NW_SRC.setInt(this.flags, Math.max(0, 32 - srcCidrMask));
         if (flags == this.flags)
             return this;
         else
@@ -314,11 +413,8 @@ public class Wildcards {
      *            x.x.x.x/8
      * @return a modified object
      */
-    public Wildcards setNwDstMask(int dstCidrMask) {
-        int flags =
-                this.flags
-                        & ~OFMatch.OFPFW_NW_DST_MASK
-                        | (Math.max(0, 32 - dstCidrMask)) << OFMatch.OFPFW_NW_DST_SHIFT;
+    public Wildcards withNwDstMask(int dstCidrMask) {
+        int flags = Flag.NW_DST.setInt(this.flags, Math.max(0, 32 - dstCidrMask));
         if (flags == this.flags)
             return this;
         else
@@ -332,18 +428,24 @@ public class Wildcards {
      * @return a modified object
      */
     public Wildcards inverted() {
-        return Wildcards.of(getIntSanitized() ^ OFMatch.OFPFW_ALL_SANITIZED);
+        return Wildcards.of(flags ^ OFMatch.OFPFW_ALL_SANITIZED);
+    }
+
+    public boolean isWildcarded(Flag flag) {
+        return flag.isFullyOn(flags);
     }
 
     /**
-     * return the binary wildcard flags as an EnumSet. Do not modify.
+     * return all wildcard flags that are fully wildcarded as an EnumSet. Do not
+     * modify. Note: some flags (like NW_SRC and NW_DST) that are partially
+     * wildcarded are not returned in this set.
      *
-     * @return a modified object
+     * @return the EnumSet of wildcards
      */
-    public EnumSet<Wildcards.Flag> getFlags() {
+    public EnumSet<Wildcards.Flag> getWildcardedFlags() {
         EnumSet<Wildcards.Flag> res = EnumSet.noneOf(Wildcards.Flag.class);
         for (Wildcards.Flag flag : Flag.values()) {
-            if ((flags & flag.bitPosition) != 0) {
+            if (flag.isFullyOn(flags)) {
                 res.add(flag);
             }
         }
@@ -360,8 +462,7 @@ public class Wildcards {
      * Sanitize nw_src and nw_dst to be max. 32 (values > 32 are technically
      * possible, but don't make semantic sense)
      */
-    public int getIntSanitized() {
-        int flags = this.flags;
+    public static int sanitizeInt(int flags) {
         if (((flags & OFMatch.OFPFW_NW_SRC_MASK) >> OFMatch.OFPFW_NW_SRC_SHIFT) > 32) {
             flags = (flags & ~OFMatch.OFPFW_NW_SRC_MASK) | OFMatch.OFPFW_NW_SRC_ALL;
         }
@@ -412,20 +513,75 @@ public class Wildcards {
     public String toString() {
         List<String> res = new ArrayList<String>();
         for (Wildcards.Flag flag : Flag.values()) {
-            if ((flags & flag.bitPosition) != 0) {
+            if (flag.isFullyOn(flags)) {
                 res.add(flag.name().toLowerCase());
             }
         }
-        int nwSrcMask = getNwSrcMask();
-        if (nwSrcMask < 32) {
-            res.add("nw_src(/" + nwSrcMask + ")");
+
+        if (Flag.NW_SRC.isPartiallyOn(flags)) {
+            res.add("nw_src(/" + getNwSrcMask() + ")");
         }
-        int nwDstMask = getNwDstMask();
-        if (nwDstMask < 32) {
-            res.add("nw_dst(/" + nwDstMask + ")");
+
+        if (Flag.NW_DST.isPartiallyOn(flags)) {
+            res.add("nw_dst(/" + getNwDstMask() + ")");
         }
 
         return pipeJoiner.join(res);
     }
+
+    private final static Joiner commaJoiner = Joiner.on(", ");
+
+    /** a Java expression that constructs 'this' wildcards set */
+    public String toJava() {
+        if(isFull()) {
+            return "Wildcards.FULL";
+        } else  if (isExact()){
+            return "Wildcards.EXACT";
+        }
+
+        StringBuilder b = new StringBuilder();
+
+        EnumSet<Flag> myFlags = getWildcardedFlags();
+        if (myFlags.size() < 3) {
+            // default to start with empty
+            b.append("Wildcards.of("
+                     + commaJoiner.join(prefix("Flag.", myFlags.iterator())) + ")");
+        } else {
+            // too many - start with full
+
+            EnumSet<Flag> invFlags = inverted().getWildcardedFlags();
+            b.append("Wildcards.ofMatches("
+                     + commaJoiner.join(prefix("Flag.", invFlags.iterator())) + ")");
+        }
+        if (Flag.NW_SRC.isPartiallyOn(flags)) {
+            b.append(".setNwSrcMask(" + getNwSrcMask() + ")");
+        }
+        if (Flag.NW_DST.isPartiallyOn(flags)) {
+            b.append(".setNwDstMask(" + getNwDstMask() + ")");
+        }
+        return b.toString();
+    }
+
+    private Iterator<String> prefix(final String prefix, final Iterator<?> i) {
+        return new Iterator<String>() {
+
+            @Override
+            public boolean hasNext() {
+                return i.hasNext();
+            }
+
+            @Override
+            public String next() {
+                Object next = i.next();
+                return next == null ? null : prefix + next.toString();
+            }
+
+            @Override
+            public void remove() {
+                i.remove();
+            }
+        };
+    }
+
 
 }
