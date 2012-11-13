@@ -120,7 +120,6 @@ import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorData;
 import org.openflow.vendor.nicira.OFRoleReplyVendorData;
 import org.openflow.vendor.nicira.OFRoleRequestVendorData;
-import org.openflow.vendor.nicira.OFRoleVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -817,104 +816,6 @@ public class Controller implements IFloodlightProviderService,
             }
         }
 
-        /* Handle a role reply message we received from the switch. Since
-         * netty serializes message dispatch we don't need to synchronize 
-         * against other receive operations from the same switch, so no need
-         * to synchronize addSwitch(), removeSwitch() operations from the same
-         * connection. 
-         * FIXME: However, when a switch with the same DPID connects we do
-         * need some synchronization. However, handling switches with same
-         * DPID needs to be revisited anyways (get rid of r/w-lock and synchronous
-         * removedSwitch notification):1
-         * 
-         */
-        @LogMessageDoc(level="ERROR",
-                message="Invalid role value in role reply message",
-                explanation="Was unable to set the HA role (master or slave) " +
-                        "for the controller.",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER)
-        protected void handleRoleReplyMessage(OFVendor vendorMessage,
-                                    OFRoleReplyVendorData roleReplyVendorData) {
-            // Map from the role code in the message to our role enum
-            int nxRole = roleReplyVendorData.getRole();
-            Role role = null;
-            switch (nxRole) {
-                case OFRoleVendorData.NX_ROLE_OTHER:
-                    role = Role.EQUAL;
-                    break;
-                case OFRoleVendorData.NX_ROLE_MASTER:
-                    role = Role.MASTER;
-                    break;
-                case OFRoleVendorData.NX_ROLE_SLAVE:
-                    role = Role.SLAVE;
-                    break;
-                default:
-                    log.error("Invalid role value in role reply message");
-                    sw.disconnectOutputStream();
-                    return;
-            }
-            
-            log.debug("Handling role reply for role {} from {}. " +
-                      "Controller's role is {} ", 
-                      new Object[] { role, sw, Controller.this.role} 
-                      );
-            
-            roleChanger.deliverRoleReply(sw, vendorMessage.getXid(), role);
-            
-            if (sw.getHARole() != Role.SLAVE) {
-            // Transition from SLAVE to MASTER.
-                boolean shouldClearFlowMods = false;
-                if (!state.firstRoleReplyReceived || 
-                    getAlwaysClearFlowsOnSwAdd()) {
-                    // This is the first role-reply message we receive from
-                    // this switch or roles were disabled when the switch
-                    // connected: 
-                    // Delete all pre-existing flows for new connections to 
-                    // the master
-                    //
-                    // FIXME: Need to think more about what the test should 
-                    // be for when we flush the flow-table? For example, 
-                    // if all the controllers are temporarily in the backup 
-                    // role (e.g. right after a failure of the master 
-                    // controller) at the point the switch connects, then 
-                    // all of the controllers will initially connect as 
-                    // backup controllers and not flush the flow-table. 
-                    // Then when one of them is promoted to master following
-                    // the master controller election the flow-table
-                    // will still not be flushed because that's treated as 
-                    // a failover event where we don't want to flush the 
-                    // flow-table. The end result would be that the flow 
-                    // table for a newly connected switch is never
-                    // flushed. Not sure how to handle that case though...
-                    shouldClearFlowMods = true;
-                    log.debug("First role reply from master switch {}, " +
-                              "clear FlowTable to active switch list",
-                             HexString.toHexString(sw.getId()));
-                }
-                
-                // Only add the switch to the active switch list if 
-                // we're not in the slave role. Note that if the role 
-                // attribute is null, then that means that the switch 
-                // doesn't support the role request messages, so in that
-                // case we're effectively in the EQUAL role and the 
-                // switch should be included in the active switch list.
-                addSwitch(sw, shouldClearFlowMods);
-                log.debug("Added master switch {} to active switch list",
-                         HexString.toHexString(sw.getId()));
-
-            } 
-            else {
-                // Transition from MASTER to SLAVE: remove switch 
-                // from active switch list. 
-                log.debug("Removed slave switch {} from active switch" +
-                          " list", HexString.toHexString(sw.getId()));
-                removeSwitch(sw);
-            }
-            
-            // Indicate that we have received a role reply message. 
-            state.firstRoleReplyReceived = true;
-        }
-
         protected boolean handleVendorMessage(OFVendor vendorMessage) {
             boolean shouldHandleMessage = false;
             int vendor = vendorMessage.getVendor();
@@ -927,8 +828,8 @@ public class Controller implements IFloodlightProviderService,
                         case OFRoleReplyVendorData.NXT_ROLE_REPLY:
                             OFRoleReplyVendorData roleReplyVendorData =
                                     (OFRoleReplyVendorData) niciraVendorData;
-                            handleRoleReplyMessage(vendorMessage, 
-                                                   roleReplyVendorData);
+                            roleChanger.handleRoleReplyMessage(sw,
+                                    vendorMessage, roleReplyVendorData);
                             break;
                         default:
                             log.warn("Unhandled Nicira VENDOR message; " +
@@ -1061,13 +962,13 @@ public class Controller implements IFloodlightProviderService,
                         // is not a spurious error
                         shouldLogError = !isBadVendorError;
                         if (isBadVendorError) {
-                            if (state.firstRoleReplyReceived) {
+                            if (sw.getHARole() != null) {
                                 log.warn("Received ERROR from sw {} that "
                                           +"indicates roles are not supported "
                                           +"but we have received a valid "
                                           +"role reply earlier", sw);
                             }
-                            state.firstRoleReplyReceived = true;
+
                             roleChanger.deliverRoleRequestNotSupported(sw, error.getXid());
                             synchronized(roleChanger) {
                                 if (Controller.this.role==Role.SLAVE) {

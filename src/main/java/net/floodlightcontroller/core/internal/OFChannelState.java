@@ -60,12 +60,4 @@ class OFChannelState {
     
     protected OFFeaturesReply featuresReply = null;
     protected OFDescriptionStatistics description = null;
-    
-    // The firstRoleReplyRecevied flag indicates if we have received the
-    // first role reply message on this connection (in response to the 
-    // role request sent after the handshake). If role support is disabled
-    // on the controller we also set this flag to true. 
-    // The flag is used to decide if the flow table should be wiped
-    // @see Controller.handleRoleReplyMessage()
-    protected boolean firstRoleReplyReceived = false;
 }
