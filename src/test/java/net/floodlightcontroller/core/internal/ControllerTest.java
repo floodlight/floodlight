@@ -762,10 +762,11 @@ public class ControllerTest extends FloodlightTestCase
         assertTrue("Check that update is HARoleUpdate", 
                    upd instanceof Controller.HARoleUpdate);
         Controller.HARoleUpdate roleUpd = (Controller.HARoleUpdate)upd;
-        assertSame(null, roleUpd.oldRole);
+        assertSame(Role.MASTER, roleUpd.oldRole);
         assertSame(Role.SLAVE, roleUpd.newRole);
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void testCheckSwitchReady() {
         OFChannelState state = new OFChannelState();
@@ -825,13 +826,14 @@ public class ControllerTest extends FloodlightTestCase
         // setupSwitchForAddSwitch(chdlr.sw, 0L);
         // chdlr.sw.clearAllFlowMods();
         desc.setManufacturerDescription("test vendor");
+        controller.roleChanger.submitRequest(
+                (List<IOFSwitch>)EasyMock.anyObject(),
+                (Role)EasyMock.anyObject());
         replay(controller.roleChanger);
         chdlr.checkSwitchReady();
         verify(controller.roleChanger);
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
-        assertSame(chdlr.sw, controller.activeSwitches.get(0L));
-        assertTrue(controller.connectedSwitches.contains(chdlr.sw));
-        assertTrue(state.firstRoleReplyReceived);
+        assertFalse(state.firstRoleReplyReceived);
         reset(controller.roleChanger);
         controller.connectedSwitches.clear();
         controller.activeSwitches.clear();
@@ -850,7 +852,7 @@ public class ControllerTest extends FloodlightTestCase
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
         assertTrue(controller.activeSwitches.isEmpty());
         assertFalse(controller.connectedSwitches.isEmpty());
-        assertTrue(state.firstRoleReplyReceived);
+        assertFalse(state.firstRoleReplyReceived);
         Collection<IOFSwitch> swList = swListCapture.getValue();
         assertEquals(1, swList.size());
     }

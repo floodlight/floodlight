@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFVendor;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.vendor.nicira.OFNiciraVendorData;
 import org.openflow.vendor.nicira.OFRoleRequestVendorData;
 import org.openflow.vendor.nicira.OFRoleVendorData;
@@ -21,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -133,9 +133,9 @@ public class RoleChanger {
     protected long timeout;
     protected ConcurrentHashMap<IOFSwitch, LinkedList<PendingRoleRequestEntry>>
                 pendingRequestMap;
-    private IFloodlightProviderService floodlightProvider;
+    private Controller controller;
     
-    protected static long DEFAULT_TIMEOUT = 15L*1000*1000*1000L; // 15s
+    protected static long DEFAULT_TIMEOUT = 5L*1000*1000*1000L; // 5s
     protected static Logger log = LoggerFactory.getLogger(RoleChanger.class);
     private static final String HA_CHECK_SWITCH = 
             "Check the health of the indicated switch.  If the problem " +
@@ -207,17 +207,25 @@ public class RoleChanger {
             try {
                 while (true) {
                     try {
-                        t = pendingTasks.take();
+                        t = pendingTasks.poll();
+                        if (t == null) {
+                            // Notify when there is no immediate tasks to run
+                            // For the convenience of RoleChanger unit tests
+                            synchronized (pendingTasks) {
+                                pendingTasks.notifyAll();
+                            }
+                            t = pendingTasks.take();
+                        }
                     } catch (InterruptedException e) {
                         // see http://www.ibm.com/developerworks/java/library/j-jtp05236/index.html
                         interrupted = true;
                         continue;
                     }
                     if (t.type == RoleChangeTask.Type.REQUEST) {
+                        t.deadline += timeout;
                         sendRoleRequest(t.switches, t.role, t.deadline);
                         // Queue the timeout
                         t.type = RoleChangeTask.Type.TIMEOUT;
-                        t.deadline += timeout;
                         pendingTasks.put(t);
                     }
                     else {
@@ -244,8 +252,8 @@ public class RoleChanger {
         
     }
 
-    public RoleChanger(IFloodlightProviderService floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
+    public RoleChanger(Controller controller) {
+        this.controller = controller;
         this.pendingRequestMap = new ConcurrentHashMap<IOFSwitch,
                 LinkedList<PendingRoleRequestEntry>>();
         this.pendingTasks = new DelayQueue<RoleChangeTask>();
@@ -334,10 +342,18 @@ public class RoleChanger {
     protected void verifyRoleReplyReceived(Collection<IOFSwitch> switches,
                                    long cookie) {
         for (IOFSwitch sw: switches) {
-            if (checkFirstPendingRoleRequestCookie(sw, cookie)) {
-                sw.setHARole(null,  false);
-                log.warn("Timeout while waiting for role reply from switch {}."
-                         + " Disconnecting", sw);
+            PendingRoleRequestEntry entry =
+                    checkFirstPendingRoleRequestCookie(sw, cookie);
+            if (entry != null){
+                log.warn("Timeout while waiting for role reply from switch {}"
+                         + " with datapath {}", sw,
+                         sw.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA));
+                sw.setHARole(entry.role, false);
+                if (entry.role == Role.SLAVE) {
+                    sw.disconnectOutputStream();
+                } else {
+                    controller.addSwitch(sw, true);
+                }
             }
         }
     }
@@ -436,24 +452,27 @@ public class RoleChanger {
     
     /**
      * Checks whether the given request cookie matches the cookie of the first 
-     * pending request
+     * pending request. If so, return the entry
      * @param cookie
      * @return
      */
-    public boolean checkFirstPendingRoleRequestCookie(IOFSwitch sw, long cookie)
+    protected PendingRoleRequestEntry checkFirstPendingRoleRequestCookie(
+            IOFSwitch sw, long cookie)
     {
         LinkedList<PendingRoleRequestEntry> pendingRoleRequests =
                 pendingRequestMap.get(sw);
         if (pendingRoleRequests == null) {
-            return false;
+            return null;
         }
         synchronized(pendingRoleRequests) {
             PendingRoleRequestEntry head = pendingRoleRequests.peek();
             if (head == null)
-                return false;
-            else 
-                return head.cookie == cookie;
+                return null;
+            if (head.cookie == cookie) {
+                return pendingRoleRequests.poll();
+            }
         }
+        return null;
     }
     
     /**
@@ -539,7 +558,7 @@ public class RoleChanger {
         }
 
         // Construct the role request message
-        OFVendor roleRequest = (OFVendor)floodlightProvider.
+        OFVendor roleRequest = (OFVendor)controller.
                 getOFMessageFactory().getMessage(OFType.VENDOR);
         roleRequest.setXid(xid);
         roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);

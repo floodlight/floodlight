@@ -722,32 +722,19 @@ public class Controller implements IFloodlightProviderService,
                     // *and* send the current role to the new switch.
                     connectedSwitches.add(sw);
                     
-                    if (role != null) {
-                        // Send a role request if role support is enabled for the controller
-                        // This is a probe that we'll use to determine if the switch
-                        // actually supports the role request message. If it does we'll
-                        // get back a role reply message. If it doesn't we'll get back an
-                        // OFError message. 
-                        // If role is MASTER we will promote switch to active
-                        // list when we receive the switch's role reply messages
-                        log.debug("This controller's role is {}, " + 
-                                "sending initial role request msg to {}",
-                                role, sw);
-                        Collection<IOFSwitch> swList = new ArrayList<IOFSwitch>(1);
-                        swList.add(sw);
-                        roleChanger.submitRequest(swList, role);
-                    }
-                    else {
-                        // Role supported not enabled on controller (for now)
-                        // automatically promote switch to active state. 
-                        log.debug("This controller's role is null, " + 
-                                "not sending role request msg to {}",
-                                role, sw);
-                        // Need to clear FlowMods before we add the switch
-                        // and dispatch updates otherwise we have a race condition.
-                        addSwitch(sw, true);
-                        state.firstRoleReplyReceived = true;
-                    }
+                    // Send a role request.
+                    // This is a probe that we'll use to determine if the switch
+                    // actually supports the role request message. If it does we'll
+                    // get back a role reply message. If it doesn't we'll get back an
+                    // OFError message. 
+                    // If role is MASTER we will promote switch to active
+                    // list when we receive the switch's role reply messages
+                    log.debug("This controller's role is {}, " + 
+                            "sending initial role request msg to {}",
+                            role, sw);
+                    Collection<IOFSwitch> swList = new ArrayList<IOFSwitch>(1);
+                    swList.add(sw);
+                    roleChanger.submitRequest(swList, role);
                 }
             }
         }
@@ -783,8 +770,6 @@ public class Controller implements IFloodlightProviderService,
             sw.setFloodlightProvider(Controller.this);
             sw.setThreadPoolService(threadPool);
             sw.setFeaturesReply(state.featuresReply);
-            sw.setAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA,
-                        state.description);
             sw.setSwitchProperties(state.description);
             readPropertyFromStorage();
 
@@ -1058,6 +1043,7 @@ public class Controller implements IFloodlightProviderService,
                     // request/reply style messages.
                     OFError error = (OFError) m;
                     boolean shouldLogError = true;
+
                     // TODO: should we check that firstRoleReplyReceived is false,
                     // i.e., check only whether the first request fails?
                     if (roleChanger.checkFirstPendingRoleRequestXid(
@@ -1075,7 +1061,7 @@ public class Controller implements IFloodlightProviderService,
                         // is not a spurious error
                         shouldLogError = !isBadVendorError;
                         if (isBadVendorError) {
-                            if (state.firstRoleReplyReceived && (role != null)) {
+                            if (state.firstRoleReplyReceived) {
                                 log.warn("Received ERROR from sw {} that "
                                           +"indicates roles are not supported "
                                           +"but we have received a valid "
@@ -1749,7 +1735,7 @@ public class Controller implements IFloodlightProviderService,
                 recommendation=LogMessageDoc.CHECK_CONTROLLER)
     })
     protected Role getInitialRole(Map<String, String> configParams) {
-        Role role = null;
+        Role role = Role.MASTER;
         String roleString = configParams.get("role");
         if (roleString == null) {
             String rolePath = configParams.get("rolepath");
