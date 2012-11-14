@@ -57,7 +57,7 @@ public class RoleChangerTest {
         LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that doesn't support role requests
-        OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createMock(IOFSwitch.class);
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(false);
@@ -82,7 +82,7 @@ public class RoleChangerTest {
         LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that doesn't support role requests
-        OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createMock(IOFSwitch.class);
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(false);
@@ -105,7 +105,7 @@ public class RoleChangerTest {
         LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that supports role requests
-        OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createMock(IOFSwitch.class);
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(true);
@@ -133,7 +133,7 @@ public class RoleChangerTest {
         LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // a switch that supports role requests
-        OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createMock(IOFSwitch.class);
         // Support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(true);
@@ -143,7 +143,7 @@ public class RoleChangerTest {
         switches.add(sw1);
         
         // second switch
-        OFSwitchImpl sw2 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw2 = EasyMock.createMock(IOFSwitch.class);
         // No role request yet
         expect(sw2.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(null);
@@ -164,14 +164,14 @@ public class RoleChangerTest {
         Collection<IOFSwitch> switches = new LinkedList<IOFSwitch>();
         
         // Add a switch that has received a role reply
-        OFSwitchImpl sw1 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createMock(IOFSwitch.class);
         LinkedList<PendingRoleRequestEntry> pendingList1 =
                 new LinkedList<PendingRoleRequestEntry>();
         roleChanger.pendingRequestMap.put(sw1, pendingList1);
         switches.add(sw1);
         
         // Add a switch that has not yet received a role reply
-        OFSwitchImpl sw2 = EasyMock.createMock(OFSwitchImpl.class);
+        IOFSwitch sw2 = EasyMock.createMock(IOFSwitch.class);
         LinkedList<PendingRoleRequestEntry> pendingList2 =
                 new LinkedList<PendingRoleRequestEntry>();
         roleChanger.pendingRequestMap.put(sw2, pendingList2);
@@ -223,7 +223,7 @@ public class RoleChangerTest {
         roleChanger.timeout = 100*1000*1000; // 100 ms
         
         // a switch that supports role requests
-        OFSwitchImpl sw1 = EasyMock.createStrictMock(OFSwitchImpl.class);
+        IOFSwitch sw1 = EasyMock.createStrictMock(IOFSwitch.class);
         // Support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(true);
@@ -297,7 +297,7 @@ public class RoleChangerTest {
         setupPendingRoleRequest(sw, xid, role, cookie);
         roleChanger.deliverRoleReply(sw, xid, role);
         assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        assertEquals(role, sw.role);
+        assertEquals(role, sw.getHARole());
         assertEquals(0, roleChanger.pendingRequestMap.get(sw).size());
     }
     
@@ -312,7 +312,7 @@ public class RoleChangerTest {
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         roleChanger.deliverRoleReply(sw, xid, role);
         assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        assertEquals(role, sw.role);
+        assertEquals(role, sw.getHARole());
         assertEquals(0, roleChanger.pendingRequestMap.get(sw).size());
     }
     
@@ -325,7 +325,7 @@ public class RoleChangerTest {
         expect(ch.getRemoteAddress()).andReturn(sa).anyTimes();
         sw.setChannel(ch);
         roleChanger.deliverRoleReply(sw, 1, Role.MASTER);
-        assertEquals(null, sw.role);
+        assertEquals(null, sw.getHARole());
     }
     
     @Test
@@ -410,7 +410,7 @@ public class RoleChangerTest {
         setupPendingRoleRequest(sw, xid, role, cookie);
         roleChanger.deliverRoleRequestNotSupported(sw, xid);
         assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        assertEquals(role, sw.role);
+        assertEquals(role, sw.getHARole());
         assertEquals(0, roleChanger.pendingRequestMap.get(sw).size());
     }
     
@@ -423,7 +423,7 @@ public class RoleChangerTest {
         expect(ch.getRemoteAddress()).andReturn(sa).anyTimes();
         sw.setChannel(ch);
         roleChanger.deliverRoleRequestNotSupported(sw, 1);
-        assertEquals(null, sw.role);
+        assertEquals(null, sw.getHARole());
     }
     
     @Test
