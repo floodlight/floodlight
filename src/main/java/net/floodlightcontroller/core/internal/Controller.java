@@ -755,7 +755,7 @@ public class Controller implements IFloodlightProviderService,
                 if (state.description.getManufacturerDescription()
                         .startsWith(desc)) {
                     sw = switchBindingMap.get(desc)
-                            .getOFSwitchImpl(state.description);
+                            .getOFSwitchImpl(desc, state.description);
                     if (sw != null) {
                         break;
                     }
@@ -2007,7 +2007,7 @@ public class Controller implements IFloodlightProviderService,
         // Sort so we match the longest string first
         int index = -1;
         for (String desc : switchDescSortedList) {
-            if (description.compareTo(desc) < 0) {
+            if (description.compareTo(desc) > 0) {
                 index = switchDescSortedList.indexOf(desc);
                 switchDescSortedList.add(index, description);
                 break;

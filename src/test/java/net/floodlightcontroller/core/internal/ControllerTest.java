@@ -103,6 +103,8 @@ public class ControllerTest extends FloodlightTestCase
    
     private Controller controller;
     private MockThreadPoolService tp;
+    private boolean test_bind_order = false;
+    private List<String> bind_order;
 
     @Override
     public void setUp() throws Exception {
@@ -868,8 +870,6 @@ public class ControllerTest extends FloodlightTestCase
         OFChannelState state = new OFChannelState();
         Controller.OFChannelHandler chdlr =
                 controller.new OFChannelHandler(state);
-        OFSwitchImpl sw = new OFSwitchImpl();
-        chdlr.sw = sw;
         
         // Swith should be bound of OFSwitchImpl (default)
         state.hsState = OFChannelState.HandshakeState.HELLO;
@@ -889,7 +889,6 @@ public class ControllerTest extends FloodlightTestCase
         assertTrue(!(chdlr.sw instanceof TestSwitchClass));
         
         // Switch should be bound to TestSwitchImpl
-        chdlr.sw = sw;
         state.switchBindingDone = false;
         desc.setManufacturerDescription("test1 switch");
         desc.setHardwareDescription("version 1.0");
@@ -900,7 +899,6 @@ public class ControllerTest extends FloodlightTestCase
         assertTrue(chdlr.sw instanceof TestSwitchClass);
 
         // Switch should be bound to Test11SwitchImpl
-        chdlr.sw = sw;
         state.switchBindingDone = false;
         desc.setManufacturerDescription("test11 switch");
         desc.setHardwareDescription("version 1.1");
@@ -910,6 +908,44 @@ public class ControllerTest extends FloodlightTestCase
         chdlr.bindSwitchToDriver();
         assertTrue(chdlr.sw instanceof Test11SwitchClass);
     }
+    
+    @Test
+    public void testBindSwitchOrder() {
+        List<String> order = new ArrayList<String>(3);
+        controller.addOFSwitchDriver("", this);
+        controller.addOFSwitchDriver("test switch", this);
+        controller.addOFSwitchDriver("test", this);
+        order.add("test switch");
+        order.add("test");
+        order.add("");
+        test_bind_order = true;
+        
+        OFChannelState state = new OFChannelState();
+        Controller.OFChannelHandler chdlr =
+                controller.new OFChannelHandler(state);
+        chdlr.sw = null;
+        
+        // Swith should be bound of OFSwitchImpl (default)
+        state.hsState = OFChannelState.HandshakeState.HELLO;
+        state.hasDescription = true;
+        state.hasGetConfigReply = true;
+        state.switchBindingDone = false;
+        OFDescriptionStatistics desc = new OFDescriptionStatistics();
+        desc.setManufacturerDescription("test switch");
+        desc.setHardwareDescription("version 0.9");
+        state.description = desc;
+        OFFeaturesReply featuresReply = new OFFeaturesReply();
+        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
+        state.featuresReply = featuresReply;
+
+        chdlr.bindSwitchToDriver();
+        assertTrue(chdlr.sw instanceof OFSwitchImpl);
+        assertTrue(!(chdlr.sw instanceof TestSwitchClass));
+        // Verify bind_order is called as expected
+        assertTrue(order.equals(bind_order));
+        test_bind_order = false;
+        bind_order = null;
+   }
     
     @Test
     public void testChannelDisconnected() throws Exception {
@@ -1318,7 +1354,16 @@ public class ControllerTest extends FloodlightTestCase
     }
 
     @Override
-    public IOFSwitch getOFSwitchImpl(OFDescriptionStatistics description) {
+    public IOFSwitch getOFSwitchImpl(String regis_desc,
+            OFDescriptionStatistics description) {
+        // If testing bind order, just record registered desc string
+        if (test_bind_order) {
+            if (bind_order == null) {
+                bind_order = new ArrayList<String>();
+            }
+            bind_order.add(regis_desc);
+            return null;
+        }
         String hw_desc = description.getHardwareDescription();
         if (hw_desc.equals("version 1.1")) {
             return new Test11SwitchClass();
