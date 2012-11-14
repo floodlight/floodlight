@@ -113,7 +113,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
     
 
-    protected static final ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
+    protected static  ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
         @Override
         protected Map<IOFSwitch,List<OFMessage>> initialValue() {
@@ -122,7 +122,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     };
     
     // for managing our map sizes
-    protected static final int MAX_MACS_PER_SWITCH  = 1000;
+    protected static  int MAX_MACS_PER_SWITCH  = 1000;
     
     public OFSwitchBase() {
         this.stringId = null;
@@ -149,7 +149,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     
 
     @Override
-    public final Object getAttribute(String name) {
+    public Object getAttribute(String name) {
         if (this.attributes.containsKey(name)) {
             return this.attributes.get(name);
         }
@@ -157,28 +157,28 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
     @Override
-    public final void setAttribute(String name, Object value) {
+    public void setAttribute(String name, Object value) {
         this.attributes.put(name, value);
         return;
     }
 
     @Override
-    public final Object removeAttribute(String name) {
+    public Object removeAttribute(String name) {
         return this.attributes.remove(name);
     }
     
     @Override
-    public final boolean hasAttribute(String name) {
+    public boolean hasAttribute(String name) {
         return this.attributes.containsKey(name);
     }
         
     @JsonIgnore
-    public final void setChannel(Channel channel) {
+    public void setChannel(Channel channel) {
         this.channel = channel;
     }
     
     @Override
-    public final void write(OFMessage m, FloodlightContext bc)
+    public void write(OFMessage m, FloodlightContext bc)
             throws IOException {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
@@ -204,7 +204,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                    explanation="An application has sent a message to a switch " +
                            "that is not valid when the switch is in a slave role",
                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public final void write(List<OFMessage> msglist, 
+    public void write(List<OFMessage> msglist, 
                       FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
@@ -230,13 +230,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
     @Override
-    public final void disconnectOutputStream() {
+    public void disconnectOutputStream() {
         channel.close();
     }
 
     @Override
     @JsonIgnore
-    public final void setFeaturesReply(OFFeaturesReply featuresReply) {
+    public void setFeaturesReply(OFFeaturesReply featuresReply) {
         synchronized(portLock) {
             if (stringId == null) {
                 /* ports are updated via port status message, so we
@@ -257,7 +257,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public final Collection<OFPhysicalPort> getEnabledPorts() {
+    public Collection<OFPhysicalPort> getEnabledPorts() {
         List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
         for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
@@ -269,7 +269,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     
     @Override
     @JsonIgnore
-    public final Collection<Short> getEnabledPortNumbers() {
+    public Collection<Short> getEnabledPortNumbers() {
         List<Short> result = new ArrayList<Short>();
         for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
@@ -280,18 +280,18 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final OFPhysicalPort getPort(short portNumber) {
+    public OFPhysicalPort getPort(short portNumber) {
         return portsByNumber.get(portNumber);
     }
     
     @Override
-    public final OFPhysicalPort getPort(String portName) {
+    public OFPhysicalPort getPort(String portName) {
         return portsByName.get(portName);
     }
 
     @Override
     @JsonIgnore
-    public final void setPort(OFPhysicalPort port) {
+    public void setPort(OFPhysicalPort port) {
         synchronized(portLock) {
             portsByNumber.put(port.getPortNumber(), port);
             portsByName.put(port.getName(), port);
@@ -300,12 +300,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
     
     @Override
     @JsonProperty("ports")
-    public final Collection<OFPhysicalPort> getPorts() {
+    public Collection<OFPhysicalPort> getPorts() {
         return Collections.unmodifiableCollection(portsByNumber.values());
     }
     
     @Override
-    public final void deletePort(short portNumber) {
+    public void deletePort(short portNumber) {
         synchronized(portLock) {
             portsByName.remove(portsByNumber.get(portNumber).getName());
             portsByNumber.remove(portNumber);
@@ -313,7 +313,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
     @Override
-    public final void deletePort(String portName) {
+    public void deletePort(String portName) {
         synchronized(portLock) {
             portsByNumber.remove(portsByName.get(portName).getPortNumber());
             portsByName.remove(portName);
@@ -321,19 +321,19 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final boolean portEnabled(short portNumber) {
+    public boolean portEnabled(short portNumber) {
         if (portsByNumber.get(portNumber) == null) return false;
         return portEnabled(portsByNumber.get(portNumber));
     }
     
     @Override
-    public final boolean portEnabled(String portName) {
+    public boolean portEnabled(String portName) {
         if (portsByName.get(portName) == null) return false;
         return portEnabled(portsByName.get(portName));
     }
     
     @Override
-    public final boolean portEnabled(OFPhysicalPort port) {
+    public boolean portEnabled(OFPhysicalPort port) {
         if (port == null)
             return false;
         if ((port.getConfig() & OFPortConfig.OFPPC_PORT_DOWN.getValue()) > 0)
@@ -349,7 +349,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonSerialize(using=DPIDSerializer.class)
     @JsonProperty("dpid")
-    public final long getId() {
+    public long getId() {
         if (this.stringId == null)
             throw new RuntimeException("Features reply has not yet been set");
         return this.datapathId;
@@ -357,7 +357,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @JsonIgnore
     @Override
-    public final String getStringId() {
+    public String getStringId() {
         return stringId;
     }
 
@@ -370,23 +370,23 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final ConcurrentMap<Object, Object> getAttributes() {
+    public ConcurrentMap<Object, Object> getAttributes() {
         return this.attributes;
     }
 
     @Override
-    public final Date getConnectedSince() {
+    public Date getConnectedSince() {
         return connectedSince;
     }
 
     @JsonIgnore
     @Override
-    public final int getNextTransactionId() {
+    public int getNextTransactionId() {
         return this.transactionIdSource.incrementAndGet();
     }
 
     @Override
-    public final void sendStatsQuery(OFStatisticsRequest request, int xid,
+    public void sendStatsQuery(OFStatisticsRequest request, int xid,
                                 IOFMessageListener caller) throws IOException {
         request.setXid(xid);
         this.iofMsgListenersMap.put(xid, caller);
@@ -397,7 +397,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
+    public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
         request.setXid(getNextTransactionId());
         OFStatisticsFuture future = new OFStatisticsFuture(threadPool, this, request.getXid());
         this.statsFutureMap.put(request.getXid(), future);
@@ -408,7 +408,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final void deliverStatisticsReply(OFMessage reply) {
+    public void deliverStatisticsReply(OFMessage reply) {
         OFStatisticsFuture future = this.statsFutureMap.get(reply.getXid());
         if (future != null) {
             future.deliverFuture(this, reply);
@@ -424,14 +424,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final void cancelStatisticsReply(int transactionId) {
+    public void cancelStatisticsReply(int transactionId) {
         if (null ==  this.statsFutureMap.remove(transactionId)) {
             this.iofMsgListenersMap.remove(transactionId);
         }
     }
 
     @Override
-    public final void cancelAllStatisticsReplies() {
+    public void cancelAllStatisticsReplies() {
         /* we don't need to be synchronized here. Even if another thread
          * modifies the map while we're cleaning up the future will eventuall
          * timeout */
@@ -447,32 +447,32 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @param floodlightProvider the floodlightProvider to set
      */
     @JsonIgnore
-    public final void setFloodlightProvider(
+    public void setFloodlightProvider(
             IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
     
     @JsonIgnore
-    public final void setThreadPoolService(IThreadPoolService tp) {
+    public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
     }
 
     @JsonIgnore
     @Override
-    public final boolean isConnected() {
+    public boolean isConnected() {
         // No lock needed since we use volatile
         return connected;
     }
 
     @Override
     @JsonIgnore
-    public final void setConnected(boolean connected) {
+    public void setConnected(boolean connected) {
         // No lock needed since we use volatile
         this.connected = connected;
     }
     
     @Override
-    public final Role getHARole() {
+    public Role getHARole() {
         return role;
     }
 
@@ -494,7 +494,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                    explanation="An I/O error occured while trying to clear " +
                                "flows on the switch.",
                    recommendation=LogMessageDoc.CHECK_SWITCH)
-    public final void clearAllFlowMods() {
+    public void clearAllFlowMods() {
         // Delete all pre-existing flows
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
@@ -513,7 +513,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public final boolean updateBroadcastCache(Long entry, Short port) {
+    public boolean updateBroadcastCache(Long entry, Short port) {
         if (timedCache.update(entry)) {
             Long count = portBroadcastCacheHitMap.putIfAbsent(port, new Long(1));
             if (count != null) {
@@ -527,13 +527,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public final Map<Short, Long> getPortBroadcastHits() {
+    public Map<Short, Long> getPortBroadcastHits() {
         return this.portBroadcastCacheHitMap;
     }
     
 
     @Override
-    public final void flush() {
+    public void flush() {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
         if ((msglist != null) && (msglist.size() > 0)) {
@@ -561,7 +561,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @return 
      */
     @JsonIgnore
-    public final Lock getListenerReadLock() {
+    public Lock getListenerReadLock() {
         return listenerLock.readLock();
     }
 
@@ -573,7 +573,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @return
      */
     @JsonIgnore
-    public final Lock getListenerWriteLock() {
+    public Lock getListenerWriteLock() {
         return listenerLock.writeLock();
     }
 
@@ -582,7 +582,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @return the inet address
      */
     @JsonSerialize(using=ToStringSerializer.class)
-    public final SocketAddress getInetAddress() {
+    public SocketAddress getInetAddress() {
         return channel.getRemoteAddress();
     }
     
