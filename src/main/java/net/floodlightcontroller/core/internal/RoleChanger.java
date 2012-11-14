@@ -14,14 +14,15 @@ import java.util.concurrent.TimeUnit;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFVendor;
+import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorData;
+import org.openflow.vendor.nicira.OFRoleReplyVendorData;
 import org.openflow.vendor.nicira.OFRoleRequestVendorData;
 import org.openflow.vendor.nicira.OFRoleVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -133,9 +134,9 @@ public class RoleChanger {
     protected long timeout;
     protected ConcurrentHashMap<IOFSwitch, LinkedList<PendingRoleRequestEntry>>
                 pendingRequestMap;
-    private IFloodlightProviderService floodlightProvider;
+    private Controller controller;
     
-    protected static long DEFAULT_TIMEOUT = 15L*1000*1000*1000L; // 15s
+    protected static long DEFAULT_TIMEOUT = 5L*1000*1000*1000L; // 5s
     protected static Logger log = LoggerFactory.getLogger(RoleChanger.class);
     private static final String HA_CHECK_SWITCH = 
             "Check the health of the indicated switch.  If the problem " +
@@ -207,17 +208,25 @@ public class RoleChanger {
             try {
                 while (true) {
                     try {
-                        t = pendingTasks.take();
+                        t = pendingTasks.poll();
+                        if (t == null) {
+                            // Notify when there is no immediate tasks to run
+                            // For the convenience of RoleChanger unit tests
+                            synchronized (pendingTasks) {
+                                pendingTasks.notifyAll();
+                            }
+                            t = pendingTasks.take();
+                        }
                     } catch (InterruptedException e) {
                         // see http://www.ibm.com/developerworks/java/library/j-jtp05236/index.html
                         interrupted = true;
                         continue;
                     }
                     if (t.type == RoleChangeTask.Type.REQUEST) {
+                        t.deadline += timeout;
                         sendRoleRequest(t.switches, t.role, t.deadline);
                         // Queue the timeout
                         t.type = RoleChangeTask.Type.TIMEOUT;
-                        t.deadline += timeout;
                         pendingTasks.put(t);
                     }
                     else {
@@ -244,8 +253,8 @@ public class RoleChanger {
         
     }
 
-    public RoleChanger(IFloodlightProviderService floodlightProvider) {
-        this.floodlightProvider = floodlightProvider;
+    public RoleChanger(Controller controller) {
+        this.controller = controller;
         this.pendingRequestMap = new ConcurrentHashMap<IOFSwitch,
                 LinkedList<PendingRoleRequestEntry>>();
         this.pendingTasks = new DelayQueue<RoleChangeTask>();
@@ -334,10 +343,18 @@ public class RoleChanger {
     protected void verifyRoleReplyReceived(Collection<IOFSwitch> switches,
                                    long cookie) {
         for (IOFSwitch sw: switches) {
-            if (checkFirstPendingRoleRequestCookie(sw, cookie)) {
-                sw.setHARole(null,  false);
-                log.warn("Timeout while waiting for role reply from switch {}."
-                         + " Disconnecting", sw);
+            PendingRoleRequestEntry entry =
+                    checkFirstPendingRoleRequestCookie(sw, cookie);
+            if (entry != null){
+                log.warn("Timeout while waiting for role reply from switch {}"
+                         + " with datapath {}", sw,
+                         sw.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA));
+                sw.setHARole(entry.role, false);
+                if (entry.role == Role.SLAVE) {
+                    sw.disconnectOutputStream();
+                } else {
+                    controller.addSwitch(sw, true);
+                }
             }
         }
     }
@@ -375,7 +392,7 @@ public class RoleChanger {
                 recommendation=HA_CHECK_SWITCH)                           
     })
     
-    public void deliverRoleReply(IOFSwitch sw, int xid, Role role) {
+    protected void deliverRoleReply(IOFSwitch sw, int xid, Role role) {
         LinkedList<PendingRoleRequestEntry> pendingRoleRequests =
                 pendingRequestMap.get(sw);
         if (pendingRoleRequests == null) {
@@ -436,24 +453,27 @@ public class RoleChanger {
     
     /**
      * Checks whether the given request cookie matches the cookie of the first 
-     * pending request
+     * pending request. If so, return the entry
      * @param cookie
      * @return
      */
-    public boolean checkFirstPendingRoleRequestCookie(IOFSwitch sw, long cookie)
+    protected PendingRoleRequestEntry checkFirstPendingRoleRequestCookie(
+            IOFSwitch sw, long cookie)
     {
         LinkedList<PendingRoleRequestEntry> pendingRoleRequests =
                 pendingRequestMap.get(sw);
         if (pendingRoleRequests == null) {
-            return false;
+            return null;
         }
         synchronized(pendingRoleRequests) {
             PendingRoleRequestEntry head = pendingRoleRequests.peek();
             if (head == null)
-                return false;
-            else 
-                return head.cookie == cookie;
+                return null;
+            if (head.cookie == cookie) {
+                return pendingRoleRequests.poll();
+            }
         }
+        return null;
     }
     
     /**
@@ -539,7 +559,7 @@ public class RoleChanger {
         }
 
         // Construct the role request message
-        OFVendor roleRequest = (OFVendor)floodlightProvider.
+        OFVendor roleRequest = (OFVendor)controller.
                 getOFMessageFactory().getMessage(OFType.VENDOR);
         roleRequest.setXid(xid);
         roleRequest.setVendor(OFNiciraVendorData.NX_VENDOR_ID);
@@ -557,5 +577,98 @@ public class RoleChanger {
         return xid;
     }
     
+    /* Handle a role reply message we received from the switch. Since
+     * netty serializes message dispatch we don't need to synchronize 
+     * against other receive operations from the same switch, so no need
+     * to synchronize addSwitch(), removeSwitch() operations from the same
+     * connection. 
+     * FIXME: However, when a switch with the same DPID connects we do
+     * need some synchronization. However, handling switches with same
+     * DPID needs to be revisited anyways (get rid of r/w-lock and synchronous
+     * removedSwitch notification):1
+     * 
+     */
+    @LogMessageDoc(level="ERROR",
+            message="Invalid role value in role reply message",
+            explanation="Was unable to set the HA role (master or slave) " +
+                    "for the controller.",
+            recommendation=LogMessageDoc.CHECK_CONTROLLER)
+    protected void handleRoleReplyMessage(IOFSwitch sw, OFVendor vendorMessage,
+                                OFRoleReplyVendorData roleReplyVendorData) {
+        // Map from the role code in the message to our role enum
+        int nxRole = roleReplyVendorData.getRole();
+        Role role = null;
+        switch (nxRole) {
+            case OFRoleVendorData.NX_ROLE_OTHER:
+                role = Role.EQUAL;
+                break;
+            case OFRoleVendorData.NX_ROLE_MASTER:
+                role = Role.MASTER;
+                break;
+            case OFRoleVendorData.NX_ROLE_SLAVE:
+                role = Role.SLAVE;
+                break;
+            default:
+                log.error("Invalid role value in role reply message");
+                sw.disconnectOutputStream();
+                return;
+        }
+        
+        log.debug("Handling role reply for role {} from {}. " +
+                  "Controller's role is {} ", 
+                  new Object[] { role, sw, controller.role} 
+                  );
+        
+        Role oldRole = sw.getHARole();
+        deliverRoleReply(sw, vendorMessage.getXid(), role);
+        
+        if (sw.getHARole() != Role.SLAVE) {
+            // Transition from SLAVE to MASTER.
+            boolean shouldClearFlowMods =
+                    controller.getAlwaysClearFlowsOnSwAdd();
+            if (oldRole == null) {
+                // This is the first role-reply message we receive from
+                // this switch. Delete all pre-existing flows for new
+                // connections to the master.
+                //
+                // FIXME: Need to think more about what the test should 
+                // be for when we flush the flow-table? For example, 
+                // if all the controllers are temporarily in the backup 
+                // role (e.g. right after a failure of the master 
+                // controller) at the point the switch connects, then 
+                // all of the controllers will initially connect as 
+                // backup controllers and not flush the flow-table. 
+                // Then when one of them is promoted to master following
+                // the master controller election the flow-table
+                // will still not be flushed because that's treated as 
+                // a failover event where we don't want to flush the 
+                // flow-table. The end result would be that the flow 
+                // table for a newly connected switch is never
+                // flushed. Not sure how to handle that case though...
+                shouldClearFlowMods = true;
+                log.debug("First role reply from master switch {}, " +
+                          "clear FlowTable to active switch list",
+                         HexString.toHexString(sw.getId()));
+            }
+            
+            // Only add the switch to the active switch list if 
+            // we're not in the slave role. Note that if the role 
+            // attribute is null, then that means that the switch 
+            // doesn't support the role request messages, so in that
+            // case we're effectively in the EQUAL role and the 
+            // switch should be included in the active switch list.
+            controller.addSwitch(sw, shouldClearFlowMods);
+            log.debug("Added master switch {} to active switch list",
+                     HexString.toHexString(sw.getId()));
+        } 
+        else {
+            // Transition from MASTER to SLAVE: remove switch 
+            // from active switch list. 
+            log.debug("Removed slave switch {} from active switch" +
+                      " list", HexString.toHexString(sw.getId()));
+            controller.removeSwitch(sw);
+        }
+    }
+
 
 }

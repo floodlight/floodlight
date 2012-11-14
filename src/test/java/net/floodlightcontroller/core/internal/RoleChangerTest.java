@@ -17,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.RoleChanger.PendingRoleRequestEntry;
@@ -39,11 +38,11 @@ import org.openflow.vendor.nicira.OFRoleVendorData;
 
 public class RoleChangerTest {
     public RoleChanger roleChanger;
-    IFloodlightProviderService controller;
+    Controller controller;
     
     @Before
     public void setUp() throws Exception {
-        controller = createMock(IFloodlightProviderService.class);
+        controller = createMock(Controller.class);
         roleChanger = new RoleChanger(controller);
         BasicFactory factory = new BasicFactory();
         expect(controller.getOFMessageFactory()).andReturn(factory).anyTimes();
@@ -179,8 +178,10 @@ public class RoleChangerTest {
         PendingRoleRequestEntry entry =
                 new PendingRoleRequestEntry(1, Role.MASTER, 123456);
         pendingList2.add(entry);
-        // Timed out switch should disconnect
-        sw2.setHARole(null, false);
+        // Timed out switch should become active
+        expect(sw2.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
+                .andReturn(null);
+        sw2.setHARole(Role.MASTER, false);
         EasyMock.expectLastCall();
         switches.add(sw2);
         
@@ -219,7 +220,7 @@ public class RoleChangerTest {
     @Test
     public void testSubmitRequest() throws Exception {
         LinkedList<IOFSwitch> switches = new LinkedList<IOFSwitch>();
-        roleChanger.timeout = 500*1000*1000; // 500 ms
+        roleChanger.timeout = 100*1000*1000; // 100 ms
         
         // a switch that supports role requests
         OFSwitchImpl sw1 = EasyMock.createStrictMock(OFSwitchImpl.class);
@@ -235,26 +236,41 @@ public class RoleChangerTest {
         expect(sw1.getNextTransactionId()).andReturn(2);
         sw1.write((List<OFMessage>)EasyMock.anyObject(),
                 (FloodlightContext)EasyMock.anyObject());
+        expect(sw1.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
+                .andReturn(null);
+        sw1.setHARole(Role.MASTER, false);
+        expect(sw1.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
+                .andReturn(null);
+        sw1.setHARole(Role.SLAVE, false);
+        // Disconnect on timing out SLAVE request
+        sw1.disconnectOutputStream();
         switches.add(sw1);
         
+        // Add to switch when timing out the MASTER request
+        controller.addSwitch(sw1, true);
+        
+
         replay(sw1, controller);
         roleChanger.submitRequest(switches, Role.MASTER);
         roleChanger.submitRequest(switches, Role.SLAVE);
-        // Wait until role request has been sent. 
-        // TODO: need to get rid of this sleep somehow
-        Thread.sleep(100);
-        // Now there should be exactly one timeout task pending
+        // Wait until role request has been sent.
+        synchronized (roleChanger.pendingTasks) { 
+            while (RoleChanger.RoleChangeTask.Type.TIMEOUT !=
+                     roleChanger.pendingTasks.peek().type) {
+                roleChanger.pendingTasks.wait();
+            }
+        }
+        // Now there should be exactly one timeout task pending for each request
         assertEquals(2, roleChanger.pendingTasks.size());
-        // Make sure it's indeed a timeout task
-        assertSame(RoleChanger.RoleChangeTask.Type.TIMEOUT, 
-                     roleChanger.pendingTasks.peek().type);
         // Check that RoleChanger indeed made a copy of switches collection
         assertNotSame(switches, roleChanger.pendingTasks.peek().switches);
         
         // Wait until the timeout triggers 
-        // TODO: get rid of this sleep too.
-        Thread.sleep(500);
-        assertEquals(0, roleChanger.pendingTasks.size());
+        synchronized (roleChanger.pendingTasks) { 
+            while (roleChanger.pendingTasks.size() != 0) {
+                roleChanger.pendingTasks.wait();
+            }
+        }
         verify(sw1, controller);
         
     }
@@ -375,12 +391,12 @@ public class RoleChangerTest {
         Role role = Role.MASTER;
         OFSwitchImpl sw = new OFSwitchImpl();
         setupPendingRoleRequest(sw, xid, role, cookie);
-        assertEquals(true,
+        assertNotSame(null,
                 roleChanger.checkFirstPendingRoleRequestCookie(sw, cookie));
-        assertEquals(false,
+        assertEquals(null,
                 roleChanger.checkFirstPendingRoleRequestCookie(sw, 0));
         roleChanger.pendingRequestMap.get(sw).clear();
-        assertEquals(false,
+        assertEquals(null,
                 roleChanger.checkFirstPendingRoleRequestCookie(sw, cookie));
     }
     

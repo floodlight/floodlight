@@ -762,10 +762,11 @@ public class ControllerTest extends FloodlightTestCase
         assertTrue("Check that update is HARoleUpdate", 
                    upd instanceof Controller.HARoleUpdate);
         Controller.HARoleUpdate roleUpd = (Controller.HARoleUpdate)upd;
-        assertSame(null, roleUpd.oldRole);
+        assertSame(Role.MASTER, roleUpd.oldRole);
         assertSame(Role.SLAVE, roleUpd.newRole);
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void testCheckSwitchReady() {
         OFChannelState state = new OFChannelState();
@@ -825,13 +826,13 @@ public class ControllerTest extends FloodlightTestCase
         // setupSwitchForAddSwitch(chdlr.sw, 0L);
         // chdlr.sw.clearAllFlowMods();
         desc.setManufacturerDescription("test vendor");
+        controller.roleChanger.submitRequest(
+                (List<IOFSwitch>)EasyMock.anyObject(),
+                (Role)EasyMock.anyObject());
         replay(controller.roleChanger);
         chdlr.checkSwitchReady();
         verify(controller.roleChanger);
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
-        assertSame(chdlr.sw, controller.activeSwitches.get(0L));
-        assertTrue(controller.connectedSwitches.contains(chdlr.sw));
-        assertTrue(state.firstRoleReplyReceived);
         reset(controller.roleChanger);
         controller.connectedSwitches.clear();
         controller.activeSwitches.clear();
@@ -850,7 +851,6 @@ public class ControllerTest extends FloodlightTestCase
         assertSame(OFChannelState.HandshakeState.READY, state.hsState);
         assertTrue(controller.activeSwitches.isEmpty());
         assertFalse(controller.connectedSwitches.isEmpty());
-        assertTrue(state.firstRoleReplyReceived);
         Collection<IOFSwitch> swList = swListCapture.getValue();
         assertEquals(1, swList.size());
     }
@@ -998,17 +998,15 @@ public class ControllerTest extends FloodlightTestCase
         
         // the switch connection should get disconnected when the controller is
         // in SLAVE mode and the switch does not support role-request messages
-        state.firstRoleReplyReceived = false;
         controller.role = Role.SLAVE;
         setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.SLAVE, false);
         chdlr.sw.disconnectOutputStream();
         
         replay(ch, chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(ch, chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   state.firstRoleReplyReceived);
         assertTrue("activeSwitches must be empty",
                    controller.activeSwitches.isEmpty());
         reset(ch, chdlr.sw);
@@ -1017,17 +1015,15 @@ public class ControllerTest extends FloodlightTestCase
         // a different error message - should also reject role request
         msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
         msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
-        state.firstRoleReplyReceived = false;
         controller.role = Role.SLAVE;
         setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.SLAVE, false);
         chdlr.sw.disconnectOutputStream();
         replay(ch, chdlr.sw);
         
         chdlr.processOFMessage(msg);
         verify(ch, chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be True even with EPERM",
-                   state.firstRoleReplyReceived);
         assertTrue("activeSwitches must be empty", 
                    controller.activeSwitches.isEmpty());
         reset(ch, chdlr.sw);
@@ -1035,9 +1031,9 @@ public class ControllerTest extends FloodlightTestCase
         
         // We are MASTER, the switch should be added to the list of active
         // switches.
-        state.firstRoleReplyReceived = false;
         controller.role = Role.MASTER;
         setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(controller.role, false);
         setupSwitchForAddSwitch(chdlr.sw, 0L);
         chdlr.sw.clearAllFlowMods();
@@ -1046,8 +1042,6 @@ public class ControllerTest extends FloodlightTestCase
         
         chdlr.processOFMessage(msg);
         verify(ch, chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   state.firstRoleReplyReceived);
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(0L));
         reset(ch, chdlr.sw);
@@ -1123,16 +1117,14 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
 
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.MASTER, true);
         expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
-        chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(1L));
     }
@@ -1148,16 +1140,14 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
 
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);        
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         chdlr.sw.setHARole(Role.MASTER, true);
         expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
-        chdlr.state.firstRoleReplyReceived = true;
         // Flow table shouldn't be wipe
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(1L));
     }
@@ -1172,16 +1162,14 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_OTHER);
         
         setupPendingRoleRequest(chdlr.sw, xid, Role.EQUAL, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.EQUAL, true);
         expect(chdlr.sw.getHARole()).andReturn(Role.EQUAL);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
-        chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(1L));
     };
@@ -1195,18 +1183,16 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_SLAVE);
         
         setupPendingRoleRequest(chdlr.sw, xid, Role.SLAVE, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.SLAVE, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
         expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         // don't add switch to activeSwitches ==> slave2slave
-        chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertTrue("activeSwitches must be empty", 
                    controller.activeSwitches.isEmpty());
     }
@@ -1220,19 +1206,17 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_MASTER);
         
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.MASTER, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
         expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         controller.activeSwitches.put(1L, chdlr.sw);
-        chdlr.state.firstRoleReplyReceived = false;
         // Must not clear flow mods
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertSame("activeSwitches must contain this switch",
                    chdlr.sw, controller.activeSwitches.get(1L));
     }
@@ -1246,6 +1230,7 @@ public class ControllerTest extends FloodlightTestCase
                                        OFRoleReplyVendorData.NX_ROLE_SLAVE);
         
         setupPendingRoleRequest(chdlr.sw, xid, Role.SLAVE, 123456);                
+        expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.SLAVE, true);
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
@@ -1254,12 +1239,9 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE).anyTimes();
         expect(chdlr.sw.isConnected()).andReturn(true);
         chdlr.sw.cancelAllStatisticsReplies();
-        chdlr.state.firstRoleReplyReceived = false;
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
         verify(chdlr.sw);
-        assertTrue("state.firstRoleReplyReceived must be true", 
-                   chdlr.state.firstRoleReplyReceived);
         assertTrue("activeSwitches must be empty", 
                    controller.activeSwitches.isEmpty());
     }

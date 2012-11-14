@@ -25,132 +25,136 @@ public class WildcardsTest {
     public void testAllSanitize() {
         Wildcards w = Wildcards.of(OFMatch.OFPFW_ALL);
         assertEquals(OFMatch.OFPFW_ALL_SANITIZED, w.getInt());
-        assertTrue(w.isAll());
-        assertFalse(w.isNone());
+        assertTrue(w.isFull());
+        assertFalse(w.isExact());
     }
 
     @Test
     public void testAll() {
-        Wildcards all = Wildcards.ALL;
-        assertTrue(all.isAll());
-        assertFalse(all.isNone());
+        Wildcards all = Wildcards.FULL;
+        assertTrue(all.isFull());
+        assertFalse(all.isExact());
         assertEquals(0, all.getNwDstMask());
         assertEquals(0, all.getNwSrcMask());
 
         // unsetting flags from NONE is a no-op
-        Wildcards stillAll = all.set(Flag.IN_PORT);
-        assertTrue(stillAll.isAll());
+        Wildcards stillAll = all.wildcard(Flag.IN_PORT);
+        assertTrue(stillAll.isFull());
         assertEquals(all, stillAll);
 
         // so is setting a >= 32 netmask
 
-        stillAll = all.setNwSrcMask(0);
-        assertTrue(stillAll.isAll());
+        stillAll = all.withNwSrcMask(0);
+        assertTrue(stillAll.isFull());
         assertEquals(all, stillAll);
 
-        stillAll = all.setNwDstMask(0);
-        assertTrue(stillAll.isAll());
+        stillAll = all.withNwDstMask(0);
+        assertTrue(stillAll.isFull());
         assertEquals(all, stillAll);
     }
 
     @Test
     public void testNone() {
-        Wildcards none = Wildcards.NONE;
-        assertTrue(none.isNone());
+        Wildcards none = Wildcards.EXACT;
+        assertTrue(none.isExact());
         assertEquals(32, none.getNwDstMask());
         assertEquals(32, none.getNwSrcMask());
 
         // unsetting flags from NONE is a no-op
-        Wildcards stillNone = none.unset(Flag.IN_PORT);
-        assertTrue(stillNone.isNone());
+        Wildcards stillNone = none.matchOn(Flag.IN_PORT);
+        assertTrue(stillNone.isExact());
         assertEquals(none, stillNone);
 
         // so is setting a >= 32 netmask
-        stillNone = none.setNwSrcMask(32);
-        assertTrue(stillNone.isNone());
+        stillNone = none.withNwSrcMask(32);
+        assertTrue(stillNone.isExact());
         assertEquals(none, stillNone);
 
-        stillNone = none.setNwDstMask(32);
-        assertTrue(stillNone.isNone());
+        stillNone = none.withNwDstMask(32);
+        assertTrue(stillNone.isExact());
         assertEquals(none, stillNone);
     }
 
     @Test
     public void testSetOneFlag() {
-        Wildcards none = Wildcards.NONE;
-        assertTrue(none.isNone());
-        assertFalse(none.hasFlag(Flag.DL_SRC));
-        Wildcards one = none.set(Flag.DL_SRC);
-        assertFalse(one.isNone());
-        assertTrue(one.hasFlag(Flag.DL_SRC));
+        Wildcards none = Wildcards.EXACT;
+        assertTrue(none.isExact());
+        assertFalse(none.isWildcarded(Flag.DL_SRC));
+        Wildcards one = none.wildcard(Flag.DL_SRC);
+        assertFalse(one.isExact());
+        assertTrue(one.isWildcarded(Flag.DL_SRC));
         assertEquals(OFMatch.OFPFW_DL_SRC, one.getInt());
-        assertEquals(EnumSet.of(Flag.DL_SRC), one.getFlags());
+        assertEquals(EnumSet.of(Flag.DL_SRC), one.getWildcardedFlags());
     }
 
     @Test
     public void testSetTwoFlags() {
-        Wildcards none = Wildcards.NONE;
+        Wildcards none = Wildcards.EXACT;
 
         // set two flags
-        Wildcards two = none.set(Flag.DL_SRC, Flag.DL_DST);
-        assertFalse(two.isNone());
-        assertTrue(two.hasFlag(Flag.DL_SRC));
-        assertTrue(two.hasFlag(Flag.DL_DST));
+        Wildcards two = none.wildcard(Flag.DL_SRC, Flag.DL_DST);
+        assertFalse(two.isExact());
+        assertTrue(two.isWildcarded(Flag.DL_SRC));
+        assertTrue(two.isWildcarded(Flag.DL_DST));
         assertEquals(OFMatch.OFPFW_DL_SRC | OFMatch.OFPFW_DL_DST, two.getInt());
-        assertEquals(EnumSet.of(Flag.DL_SRC, Flag.DL_DST), two.getFlags());
+        assertEquals(EnumSet.of(Flag.DL_SRC, Flag.DL_DST), two.getWildcardedFlags());
 
         // unset dl_dst
-        Wildcards gone = two.unset(Flag.DL_DST);
-        assertFalse(gone.isNone());
-        assertTrue(gone.hasFlag(Flag.DL_SRC));
-        assertFalse(gone.hasFlag(Flag.DL_DST));
+        Wildcards gone = two.matchOn(Flag.DL_DST);
+        assertFalse(gone.isExact());
+        assertTrue(gone.isWildcarded(Flag.DL_SRC));
+        assertFalse(gone.isWildcarded(Flag.DL_DST));
         assertEquals(OFMatch.OFPFW_DL_SRC, gone.getInt());
-        assertEquals(EnumSet.of(Flag.DL_SRC), gone.getFlags());
+        assertEquals(EnumSet.of(Flag.DL_SRC), gone.getWildcardedFlags());
     }
 
     @Test
     public void testSetNwSrc() {
-        Wildcards none = Wildcards.NONE;
+        Wildcards none = Wildcards.EXACT;
         assertEquals(32, none.getNwSrcMask());
 
         // unsetting flags from NONE is a no-op
-        Wildcards nwSet = none.setNwSrcMask(8);
-        assertFalse(nwSet.isNone());
-        assertEquals(EnumSet.noneOf(Flag.class), nwSet.getFlags());
+        Wildcards nwSet = none.withNwSrcMask(8);
+        assertFalse(nwSet.isExact());
+        assertEquals(EnumSet.noneOf(Flag.class), nwSet.getWildcardedFlags());
         assertEquals(8, nwSet.getNwSrcMask());
         assertEquals((32 - 8) << OFMatch.OFPFW_NW_SRC_SHIFT, nwSet.getInt());
     }
 
     @Test
     public void testSetNwDst() {
-        Wildcards none = Wildcards.NONE;
+        Wildcards none = Wildcards.EXACT;
         assertEquals(32, none.getNwDstMask());
 
         // unsetting flags from NONE is a no-op
-        Wildcards nwSet = none.setNwDstMask(8);
-        assertFalse(nwSet.isNone());
-        assertEquals(EnumSet.noneOf(Flag.class), nwSet.getFlags());
+        Wildcards nwSet = none.withNwDstMask(8);
+        assertFalse(nwSet.isExact());
+        assertEquals(EnumSet.noneOf(Flag.class), nwSet.getWildcardedFlags());
         assertEquals(8, nwSet.getNwDstMask());
         assertEquals((32 - 8) << OFMatch.OFPFW_NW_DST_SHIFT, nwSet.getInt());
     }
 
     @Test
     public void testToString() {
-        String s = Wildcards.ALL.toString();
+        String s = Wildcards.FULL.toString();
         assertNotNull(s);
         assertTrue(s.length() > 0);
     }
 
     @Test
     public void testInvert() {
-        assertEquals(Wildcards.ALL, Wildcards.NONE.inverted());
+        assertEquals(Wildcards.FULL, Wildcards.EXACT.inverted());
 
         Wildcards some = Wildcards.of(Flag.DL_VLAN, Flag.DL_VLAN_PCP);
         Wildcards inv = some.inverted();
 
         for(Flag f : Flag.values()) {
-            assertEquals( f == Flag.DL_VLAN || f == Flag.DL_VLAN_PCP, some.hasFlag(f));
-            assertEquals(!(f == Flag.DL_VLAN || f == Flag.DL_VLAN_PCP), inv.hasFlag(f));
+            boolean shouldBeSet = (f == Flag.DL_VLAN || f == Flag.DL_VLAN_PCP);
+
+            assertEquals("Flag " + f + " "
+                         + (shouldBeSet ? "should be set " : "should not be set"),
+                    shouldBeSet, some.isWildcarded(f));
+            assertEquals(!(f == Flag.DL_VLAN || f == Flag.DL_VLAN_PCP), inv.isWildcarded(f));
         }
         assertEquals(0, inv.getNwDstMask());
         assertEquals(0, inv.getNwSrcMask());
