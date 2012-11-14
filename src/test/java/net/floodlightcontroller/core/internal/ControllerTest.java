@@ -869,7 +869,6 @@ public class ControllerTest extends FloodlightTestCase
         Controller.OFChannelHandler chdlr =
                 controller.new OFChannelHandler(state);
         OFSwitchImpl sw = new OFSwitchImpl();
-        sw.stringId = "1";
         chdlr.sw = sw;
         
         // Swith should be bound of OFSwitchImpl (default)
@@ -917,7 +916,7 @@ public class ControllerTest extends FloodlightTestCase
         OFChannelState state = new OFChannelState();
         state.hsState = OFChannelState.HandshakeState.READY;
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
-        chdlr.sw = createMock(OFSwitchImpl.class);
+        chdlr.sw = createMock(IOFSwitch.class);
         
         // Switch is active 
         expect(chdlr.sw.getId()).andReturn(0L).anyTimes();
@@ -986,7 +985,7 @@ public class ControllerTest extends FloodlightTestCase
         OFChannelState state = new OFChannelState();
         state.hsState = HandshakeState.READY;
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
-        chdlr.sw = createMock(OFSwitchImpl.class);
+        chdlr.sw = createMock(IOFSwitch.class);
         Channel ch = createMock(Channel.class);
         
         // the error returned when role request message is not supported by sw
@@ -1066,7 +1065,7 @@ public class ControllerTest extends FloodlightTestCase
         OFChannelState state = new OFChannelState();
         state.hsState = HandshakeState.READY;
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
-        chdlr.sw = createMock(OFSwitchImpl.class);
+        chdlr.sw = createMock(IOFSwitch.class);
         return chdlr;
     }
     

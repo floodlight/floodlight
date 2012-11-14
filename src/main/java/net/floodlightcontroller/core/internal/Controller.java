@@ -51,6 +51,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.OFSwitchBase;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
@@ -206,7 +207,7 @@ public class Controller implements IFloodlightProviderService,
     
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
-    protected static final int BATCH_MAX_SIZE = 100;
+    public static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
     // Load monitor for overload protection
@@ -623,7 +624,7 @@ public class Controller implements IFloodlightProviderService,
                 }
 
                 // Flush all flow-mods/packet-out/stats generated from this "train"
-                OFSwitchImpl.flush_all();
+                OFSwitchBase.flush_all();
                 counterStore.updateFlush();
                 bigFlowCacheMgr.updateFlush();
             }
@@ -781,7 +782,7 @@ public class Controller implements IFloodlightProviderService,
             return;
         }
         
-        private void readPropertyFromStorage() {
+       private void readPropertyFromStorage() {
             // At this time, also set other switch properties from storage
             boolean is_core_switch = false;
             IResultSet resultSet = null;
