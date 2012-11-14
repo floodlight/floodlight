@@ -24,6 +24,9 @@ window.HeaderView = Backbone.View.extend({
 
     render:function (eventName) {
         $(this.el).html(this.template());
+        $('#live-updates', this.el).change(function () {
+            updating = $(this).is(':checked');
+        })
         // $('.navbar-search', this.el).append(this.searchresultsView.render().el);
         return this;
     },

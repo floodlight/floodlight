@@ -91,11 +91,13 @@ var AppRouter = Backbone.Router.extend({
 var swl = new SwitchCollection();
 var hl  = new HostCollection();
 
+var updating = true;
+
 tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-list', 'switch-list-item', 'host', 'host-list', 'host-list-item', 'port-list', 'port-list-item', 'flow-list', 'flow-list-item'],
     function () {
         app = new AppRouter();
         Backbone.history.start({pushState: true});
-        // console.log("started history")
+        //console.log("started history")
         
         $(document).ready(function () {
             // trigger Backbone routing when clicking on links, thanks to Atinux and pbnv
@@ -113,15 +115,16 @@ tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-lis
             window.addEventListener('popstate', function(e) {
                 app.navigate(location.pathname.substr(1), true);
             });
-
+            
+            // wait for the page to be rendered before loading any data
+            swl.fetch();
+            hl.fetch();
+            
+            setInterval(function () {
+                if(updating) {
+                    swl.fetch();
+                    hl.fetch();
+                }
+            }, 3000);
         });
     });
-
-setInterval(function () {
-    swl.fetch();
-}, 3000);
-
-setInterval(function () {
-    hl.fetch();
-}, 3000);
-

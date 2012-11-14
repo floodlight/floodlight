@@ -57,6 +57,7 @@ window.SwitchListView = Backbone.View.extend({
     initialize:function () {
         this.template = _.template(tpl.get('switch-list'));
         this.model.bind("change", this.render, this);
+        this.model.bind("remove", this.render, this);
     },
 
     render:function (eventName) {
