@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.util.List;
+
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 
@@ -30,9 +32,23 @@ public class OFSwitchImpl extends OFSwitchBase {
     @Override
     @JsonIgnore
     public void setSwitchProperties(OFDescriptionStatistics description) {
-        if (switchFeatures != null) {
-            switchFeatures.setFromDescription(this, description);
-        }
+        // Nothing to do at the moment
+    }
+
+    @Override
+    public OFPortType getPortType(short port_num) {
+        return OFPortType.NORMAL;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isFastPort(short port_num) {
+        return false;
+    }
+
+    @Override
+    public List<Short> getUplinkPorts() {
+        return null;
     }
 
      

@@ -55,6 +55,32 @@ public interface IOFSwitch {
     public static final String PROP_SUPPORTS_OFPP_FLOOD = "supportsOfppFlood";
     public static final String PROP_SUPPORTS_NETMASK_TBL = "supportsNetmaskTbl";
 
+    public enum OFPortType {
+        NORMAL("normal"),         // normal port (default)
+        TUNNEL("tunnel"),         // tunnel port
+        UPLINK("uplink"),         // uplink port (on a virtual switch)
+        MANAGEMENT("management"); // for in-band management
+        
+        private String value;
+        OFPortType(String v) {
+            value = v;
+        }
+        
+        @Override
+        public String toString() {
+            return value;
+        }
+
+        public static OFPortType fromString(String str) {
+            for (OFPortType m : OFPortType.values()) {
+                if (m.value.equals(str)) {
+                    return m;
+                }
+            }
+            return OFPortType.NORMAL;
+        }
+    }
+
     /**
      * Set IFloodlightProviderService for this switch instance
      * Called immediately after instantiation
@@ -124,12 +150,6 @@ public interface IOFSwitch {
      */
     public void setFeaturesReply(OFFeaturesReply featuresReply);
     
-    /**
-     * Set the SwitchProperties based on it's description
-     * @param description
-     */
-    public void setSwitchProperties(OFDescriptionStatistics description);    
-
     /**
      * Get list of all enabled ports. This will typically be different from
      * the list of ports in the OFFeaturesReply, since that one is a static
@@ -427,4 +447,36 @@ public interface IOFSwitch {
     public SocketAddress getInetAddress();
 
 
+    /***********************************************
+     * The following method can be overridden by
+     * specific types of switches
+     ***********************************************
+     */
+    
+    /**
+     * Set the SwitchProperties based on it's description
+     * @param description
+     */
+    public void setSwitchProperties(OFDescriptionStatistics description);    
+
+    /**
+     * Return the type of OFPort
+     * @param port_num
+     * @return
+     */
+    public OFPortType getPortType(short port_num);
+    
+    /**
+     * Can the port be turned on without forming a new loop?
+     * @param port_num
+     * @return
+     */
+    public boolean isFastPort(short port_num);
+
+    /**
+     * Retun a list of uplink port (for virtual switches only)
+     * @return
+     */
+    public List<Short> getUplinkPorts();
+    
 }

@@ -40,7 +40,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.core.internal.IOFSwitchFeatures;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
@@ -114,7 +113,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
     
 
-    public static IOFSwitchFeatures switchFeatures;
     protected static final ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
         @Override
