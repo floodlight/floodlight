@@ -35,6 +35,7 @@ public class RestApiServer
     protected List<RestletRoutable> restlets;
     protected FloodlightModuleContext fmlContext;
     protected int restPort = 8080;
+    private RestApplication restApp = null;
     
     // ***********
     // Application
@@ -131,10 +132,15 @@ public class RestApiServer
             logger.debug(sb.toString());
         }
         
-        RestApplication restApp = new RestApplication();
+        restApp = new RestApplication();
         restApp.run(fmlContext, restPort);
     }
-    
+
+    @Override
+    public void stop() throws Exception {
+    	restApp.stop();
+    }
+
     // *****************
     // IFloodlightModule
     // *****************

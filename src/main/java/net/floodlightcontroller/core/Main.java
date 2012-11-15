@@ -74,7 +74,11 @@ public class Main {
         }
         if(controller != null){
             controller.interrupt();
-            controller.join();
+            try {
+				controller.join();
+			} catch (InterruptedException e) {
+				throw new FloodlightModuleException("controller join failed");
+			}
             controller = null;
         }
     }

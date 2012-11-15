@@ -13,4 +13,9 @@ public interface IRestApiService extends IFloodlightService {
      * Runs the REST API server
      */
     public void run();
+    
+    /**
+     * Stops the REST API server
+     */
+    public void stop() throws Exception;
 }
