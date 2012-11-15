@@ -304,10 +304,6 @@ IFloodlightModule, IInfoProvider, IHAListener {
         return shuttingDown;
     }
 
-    public boolean isFastPort(long sw, short port) {
-        return false;
-    }
-
     public boolean isTunnelPort(long sw, short port) {
         return false;
     }
@@ -567,7 +563,7 @@ IFloodlightModule, IInfoProvider, IHAListener {
         }
 
         // For fast ports, do not send forward LLDPs or BDDPs.
-        if (!isReverse && autoPortFastFeature && isFastPort(sw, port))
+        if (!isReverse && autoPortFastFeature && iofSwitch.isFastPort(port))
             return;
 
         if (log.isTraceEnabled()) {
@@ -692,7 +688,8 @@ IFloodlightModule, IInfoProvider, IHAListener {
                 for (OFPhysicalPort ofp: iofSwitch.getEnabledPorts()) {
                     if (isLinkDiscoverySuppressed(sw, ofp.getPortNumber()))
                         continue;
-                    if (autoPortFastFeature && isFastPort(sw, ofp.getPortNumber()))
+                    if (autoPortFastFeature &&
+                            iofSwitch.isFastPort(ofp.getPortNumber()))
                         continue;
 
                     // sends forward LLDP only non-fastports.
@@ -1326,21 +1323,23 @@ IFloodlightModule, IInfoProvider, IHAListener {
     private void processNewPort(long sw, short p) {
         if (isLinkDiscoverySuppressed(sw, p)) {
             // Do nothing as link discovery is suppressed.
+            return;
         }
-        else if (autoPortFastFeature && isFastPort(sw, p)) {
+
+        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
             // Do nothing as the port is a fast port.
+            return;
         }
-        else {
-            NodePortTuple npt = new NodePortTuple(sw, p);
-            discover(sw, p);
-            // if it is not a fast port, add it to quarantine.
-            if (!isFastPort(sw, p)) {
-                addToQuarantineQueue(npt);
-            } else {
-                // Add to maintenance queue to ensure that BDDP packets
-                // are sent out.
-                addToMaintenanceQueue(npt);
-            }
+        NodePortTuple npt = new NodePortTuple(sw, p);
+        discover(sw, p);
+        // if it is not a fast port, add it to quarantine.
+        if (!iofSwitch.isFastPort(p)) {
+            addToQuarantineQueue(npt);
+        } else {
+            // Add to maintenance queue to ensure that BDDP packets
+            // are sent out.
+            addToMaintenanceQueue(npt);
         }
     }
 
