@@ -138,7 +138,7 @@ public class RestApiServer
 
     @Override
     public void stop() throws Exception {
-    	restApp.stop();
+        restApp.stop();
     }
 
     // *****************

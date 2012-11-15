@@ -75,10 +75,10 @@ public class Main {
         if(controller != null){
             controller.interrupt();
             try {
-				controller.join();
-			} catch (InterruptedException e) {
-				throw new FloodlightModuleException("controller join failed");
-			}
+                controller.join();
+            } catch (InterruptedException e) {
+                throw new FloodlightModuleException("controller join failed");
+            }
             controller = null;
         }
     }
