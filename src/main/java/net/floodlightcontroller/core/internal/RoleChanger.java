@@ -296,15 +296,15 @@ public class RoleChanger {
         while(iter.hasNext()) {
             IOFSwitch sw = iter.next();
             try {
-                int xid = sendHARoleRequest(sw, role, cookie);
-                PendingRoleRequestEntry entry =
-                        new PendingRoleRequestEntry(xid, role, cookie);
                 LinkedList<PendingRoleRequestEntry> pendingList
                     = pendingRequestMap.get(sw);
                 if (pendingList == null) {
                     pendingList = new LinkedList<PendingRoleRequestEntry>();
                     pendingRequestMap.put(sw, pendingList);
                 }
+                int xid = sendHARoleRequest(sw, role, cookie);
+                PendingRoleRequestEntry entry =
+                        new PendingRoleRequestEntry(xid, role, cookie);
                 // Need to synchronize against removal from list
                 synchronized(pendingList) {
                     pendingList.add(entry);

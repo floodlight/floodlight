@@ -773,13 +773,13 @@ public class Controller implements IFloodlightProviderService,
             sw.setSwitchProperties(state.description);
             readPropertyFromStorage();
 
+            log.info("Switch {} bound to class {}",
+                    HexString.toHexString(sw.getId()), sw.getClass().getName());
+            log.info("{}", state.description);
+
             state.featuresReply = null;
             state.description = null;
             state.switchBindingDone = true;
-
-            log.info("Switch {} bound to class {}",
-                    HexString.toHexString(sw.getId()), sw.getClass().getName());
-            return;
         }
         
        private void readPropertyFromStorage() {
