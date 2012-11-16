@@ -17,7 +17,11 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 
 /**
@@ -60,4 +64,5 @@ class OFChannelState {
     
     protected OFFeaturesReply featuresReply = null;
     protected OFDescriptionStatistics description = null;
+    protected List<OFMessage> queuedOFMessages = new ArrayList<OFMessage>();
 }

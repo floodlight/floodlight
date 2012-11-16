@@ -713,6 +713,17 @@ public class Controller implements IFloodlightProviderService,
 
                 state.hsState = HandshakeState.READY;
 
+                // replay queued port status messages
+                for (OFMessage m : state.queuedOFMessages) {
+                    try {
+                        processOFMessage(m);
+                    } catch (Exception e) {
+                        log.error("Failed to process delayed OFMessage {} {}",
+                                m, e.getCause());
+                    }
+                }
+
+                state.queuedOFMessages.clear();
                 synchronized(roleChanger) {
                     // We need to keep track of all of the switches that are connected
                     // to the controller, in any role, so that we can later send the
@@ -1034,8 +1045,13 @@ public class Controller implements IFloodlightProviderService,
                     }
                     break;
                 case PORT_STATUS:
-                    handlePortStatusMessage(sw, (OFPortStatus)m);
-                    shouldHandleMessage = true;
+                    if (sw != null) {
+                        handlePortStatusMessage(sw, (OFPortStatus)m);
+                        shouldHandleMessage = true;
+                    } else {
+                        // Queue till we complete driver binding
+                        state.queuedOFMessages.add((OFPortStatus) m);
+                    }
                     break;
 
                 default:

@@ -324,6 +324,9 @@ public class RoleChanger {
                     // channelDisconnect which updates all state 
                     sw.disconnectOutputStream();
                     iter.remove();
+                } else {
+                    sw.setHARole(role, false);
+                    controller.addSwitch(sw, true);
                 }
             }
         }

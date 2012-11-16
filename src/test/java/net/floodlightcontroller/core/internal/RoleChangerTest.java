@@ -86,6 +86,7 @@ public class RoleChangerTest {
         // No support for NX_ROLE
         expect(sw1.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
                 .andReturn(false);
+        sw1.setHARole(Role.MASTER, false);
         switches.add(sw1);
         
         replay(sw1);
