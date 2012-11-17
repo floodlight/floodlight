@@ -449,6 +449,7 @@ public class Controller implements IFloodlightProviderService,
                 }
                 synchronized(roleChanger) {
                     connectedSwitches.remove(sw);
+                    roleChanger.removePendingRequests(sw);
                 }
                 sw.setConnected(false);
             }
@@ -917,9 +918,6 @@ public class Controller implements IFloodlightProviderService,
                         sendFeatureReplyConfiguration();
                         state.featuresReply = (OFFeaturesReply) m;
                         state.hsState = HandshakeState.FEATURES_REPLY;
-                        // uncomment to enable "dumb" switches like cbench
-                        // state.hsState = HandshakeState.READY;
-                        // addSwitch(sw);
                     } else {
                         // return results to rest api caller
                         sw.setFeaturesReply((OFFeaturesReply) m);
@@ -956,81 +954,14 @@ public class Controller implements IFloodlightProviderService,
                     // This will probable involve rewriting the way we handle
                     // request/reply style messages.
                     OFError error = (OFError) m;
-                    boolean shouldLogError = true;
 
-                    // TODO: should we check that firstRoleReplyReceived is false,
-                    // i.e., check only whether the first request fails?
                     if (roleChanger.checkFirstPendingRoleRequestXid(
                             sw, error.getXid())) {
-                        boolean isBadVendorError =
-                            (error.getErrorType() == OFError.OFErrorType.
-                                    OFPET_BAD_REQUEST.getValue());
-                        // We expect to receive a bad vendor error when
-                        // we're connected to a switch that doesn't support
-                        // the Nicira vendor extensions (i.e. not OVS or
-                        // derived from OVS).  By protocol, it should also be
-                        // BAD_VENDOR, but too many switch implementations
-                        // get it wrong and we can already check the xid()
-                        // so we can ignore the type with confidence that this
-                        // is not a spurious error
-                        shouldLogError = !isBadVendorError;
-                        if (isBadVendorError) {
-                            if (sw.getHARole() != null) {
-                                log.warn("Received ERROR from sw {} that "
-                                          +"indicates roles are not supported "
-                                          +"but we have received a valid "
-                                          +"role reply earlier", sw);
-                            }
-
-                            roleChanger.deliverRoleRequestNotSupported(sw, error.getXid());
-                            synchronized(roleChanger) {
-                                if (Controller.this.role==Role.SLAVE) {
-                                    // the switch doesn't understand role request
-                                    // messages and the current controller role is
-                                    // slave. We need to disconnect the switch.
-                                    // @see RoleChanger for rationale
-                                    sw.disconnectOutputStream();
-                                }
-                                else {
-                                    // Controller's role is master: add to
-                                    // active
-                                    // TODO: check if clearing flow table is
-                                    // right choice here.
-                                    // Need to clear FlowMods before we add the switch
-                                    // and dispatch updates otherwise we have a race condition.
-                                    // TODO: switch update is async. Won't we still have a potential
-                                    //       race condition?
-                                    addSwitch(sw, true);
-                                }
-                            }
-                        }
-                        else {
-                            // TODO: Is this the right thing to do if we receive
-                            // some other error besides a bad vendor error?
-                            // Presumably that means the switch did actually
-                            // understand the role request message, but there
-                            // was some other error from processing the message.
-                            // OF 1.2 specifies a OFPET_ROLE_REQUEST_FAILED
-                            // error code, but it doesn't look like the Nicira
-                            // role request has that. Should check OVS source
-                            // code to see if it's possible for any other errors
-                            // to be returned.
-                            // If we received an error the switch is not
-                            // in the correct role, so we need to disconnect it.
-                            // We could also resend the request but then we need to
-                            // check if there are other pending request in which
-                            // case we shouldn't resend. If we do resend we need
-                            // to make sure that the switch eventually accepts one
-                            // of our requests or disconnect the switch. This feels
-                            // cumbersome.
-                            sw.disconnectOutputStream();
-                        }
+                        roleChanger.deliverRoleRequestError(sw, error);
                     }
-                    // Once we support OF 1.2, we'd add code to handle it here.
-                    //if (error.getXid() == state.ofRoleRequestXid) {
-                    //}
-                    if (shouldLogError)
+                    else {
                         logError(sw, error);
+                    }
                     break;
                 case STATS_REPLY:
                     if (state.hsState.ordinal() <

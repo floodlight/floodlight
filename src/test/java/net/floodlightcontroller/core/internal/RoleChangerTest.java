@@ -27,6 +27,8 @@ import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Before;
 import org.junit.Test;
+import org.openflow.protocol.OFError;
+import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFVendor;
@@ -182,6 +184,7 @@ public class RoleChangerTest {
         // Timed out switch should become active
         expect(sw2.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
                 .andReturn(null);
+        expect(sw2.getHARole()).andReturn(null);
         sw2.setHARole(Role.MASTER, false);
         EasyMock.expectLastCall();
         switches.add(sw2);
@@ -239,9 +242,11 @@ public class RoleChangerTest {
                 (FloodlightContext)EasyMock.anyObject());
         expect(sw1.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
                 .andReturn(null);
+        expect(sw1.getHARole()).andReturn(null);
         sw1.setHARole(Role.MASTER, false);
         expect(sw1.getAttribute(IOFSwitch.SWITCH_DESCRIPTION_DATA))
                 .andReturn(null);
+        expect(sw1.getHARole()).andReturn(Role.MASTER);
         sw1.setHARole(Role.SLAVE, false);
         // Disconnect on timing out SLAVE request
         sw1.disconnectOutputStream();
@@ -402,33 +407,47 @@ public class RoleChangerTest {
     }
     
     @Test
-    public void testDeliverRoleRequestNotSupported () {
+    public void testDeliverRoleRequestError() {
         // normal case. xid is pending 
         int xid = (int) System.currentTimeMillis();
         long cookie = System.nanoTime();
         Role role = Role.MASTER;
         OFSwitchImpl sw = new OFSwitchImpl();
+        Channel ch = createMock(Channel.class);
+        SocketAddress sa = new InetSocketAddress(42);
+        expect(ch.getRemoteAddress()).andReturn(sa).anyTimes();
+        sw.setChannel(ch);
         setupPendingRoleRequest(sw, xid, role, cookie);
-        roleChanger.deliverRoleRequestNotSupported(sw, xid);
+        OFError error = new OFError();
+        error.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        error.setXid(xid);
+        replay(ch);
+        roleChanger.deliverRoleRequestError(sw, error);
+        verify(ch);
         assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         assertEquals(role, sw.getHARole());
         assertEquals(0, roleChanger.pendingRequestMap.get(sw).size());
     }
     
     @Test
-    public void testDeliverRoleRequestNotSupportedNonePending() {
+    public void testDeliverRoleRequestErrorNonePending() {
         // nothing pending 
         OFSwitchImpl sw = new OFSwitchImpl();
         Channel ch = createMock(Channel.class);
         SocketAddress sa = new InetSocketAddress(42);
         expect(ch.getRemoteAddress()).andReturn(sa).anyTimes();
         sw.setChannel(ch);
-        roleChanger.deliverRoleRequestNotSupported(sw, 1);
+        OFError error = new OFError();
+        error.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        error.setXid(1);
+        replay(ch);
+        roleChanger.deliverRoleRequestError(sw, error);
+        verify(ch);
         assertEquals(null, sw.getHARole());
     }
     
     @Test
-    public void testDeliverRoleRequestNotSupportedWrongXid() {
+    public void testDeliverRoleRequestErrorWrongXid() {
         // wrong xid received 
         // wrong xid received 
         int xid = (int) System.currentTimeMillis();
@@ -439,13 +458,16 @@ public class RoleChangerTest {
         Channel ch = createMock(Channel.class);
         SocketAddress sa = new InetSocketAddress(42);
         expect(ch.getRemoteAddress()).andReturn(sa).anyTimes();
-        sw.setChannel(ch);
         expect(ch.close()).andReturn(null);
+        sw.setChannel(ch);
         replay(ch);
-        roleChanger.deliverRoleRequestNotSupported(sw, xid+1);
+        OFError error = new OFError();
+        error.setErrorCode(OFError.OFErrorType.OFPET_BAD_REQUEST.getValue());
+        error.setXid(xid + 1);
+        roleChanger.deliverRoleRequestError(sw, error);
         verify(ch);
         assertEquals(null, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        assertEquals(0, roleChanger.pendingRequestMap.get(sw).size());
+        assertEquals(1, roleChanger.pendingRequestMap.get(sw).size());
     }
     
     public void doSendNxRoleRequest(Role role, int nx_role) throws Exception {

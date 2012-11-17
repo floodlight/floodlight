@@ -70,7 +70,6 @@ import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
-import org.openflow.protocol.OFError.OFBadRequestCode;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFPacketIn;
@@ -1029,7 +1028,6 @@ public class ControllerTest extends FloodlightTestCase
         msg.setType(OFType.ERROR);
         msg.setXid(xid);
         msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
-        msg.setErrorCode(OFBadRequestCode.OFPBRC_BAD_VENDOR);
         
         // the switch connection should get disconnected when the controller is
         // in SLAVE mode and the switch does not support role-request messages
@@ -1037,6 +1035,7 @@ public class ControllerTest extends FloodlightTestCase
         setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
         expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.SLAVE, false);
+        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         chdlr.sw.disconnectOutputStream();
         
         replay(ch, chdlr.sw);
@@ -1046,24 +1045,6 @@ public class ControllerTest extends FloodlightTestCase
                    controller.activeSwitches.isEmpty());
         reset(ch, chdlr.sw);
               
-        
-        // a different error message - should also reject role request
-        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
-        msg.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
-        controller.role = Role.SLAVE;
-        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);                
-        expect(chdlr.sw.getHARole()).andReturn(null);
-        chdlr.sw.setHARole(Role.SLAVE, false);
-        chdlr.sw.disconnectOutputStream();
-        replay(ch, chdlr.sw);
-        
-        chdlr.processOFMessage(msg);
-        verify(ch, chdlr.sw);
-        assertTrue("activeSwitches must be empty", 
-                   controller.activeSwitches.isEmpty());
-        reset(ch, chdlr.sw);
-    
-        
         // We are MASTER, the switch should be added to the list of active
         // switches.
         controller.role = Role.MASTER;
