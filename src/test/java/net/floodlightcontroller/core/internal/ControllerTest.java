@@ -1135,7 +1135,6 @@ public class ControllerTest extends FloodlightTestCase
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);                
         expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.MASTER, true);
-        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         replay(chdlr.sw);
@@ -1158,7 +1157,6 @@ public class ControllerTest extends FloodlightTestCase
         setupPendingRoleRequest(chdlr.sw, xid, Role.MASTER, 123456);        
         expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         chdlr.sw.setHARole(Role.MASTER, true);
-        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         // Flow table shouldn't be wipe
         replay(chdlr.sw);
@@ -1180,7 +1178,6 @@ public class ControllerTest extends FloodlightTestCase
         setupPendingRoleRequest(chdlr.sw, xid, Role.EQUAL, 123456);                
         expect(chdlr.sw.getHARole()).andReturn(null);
         chdlr.sw.setHARole(Role.EQUAL, true);
-        expect(chdlr.sw.getHARole()).andReturn(Role.EQUAL);
         setupSwitchForAddSwitch(chdlr.sw, 1L);
         chdlr.sw.clearAllFlowMods();
         replay(chdlr.sw);
@@ -1204,7 +1201,6 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
         // don't add switch to activeSwitches ==> slave2slave
         replay(chdlr.sw);
         chdlr.processOFMessage(msg);
@@ -1227,7 +1223,6 @@ public class ControllerTest extends FloodlightTestCase
         expect(chdlr.sw.getId()).andReturn(1L).anyTimes();
         expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:01")
                     .anyTimes();
-        expect(chdlr.sw.getHARole()).andReturn(Role.MASTER);
         controller.activeSwitches.put(1L, chdlr.sw);
         // Must not clear flow mods
         replay(chdlr.sw);
