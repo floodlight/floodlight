@@ -2,6 +2,7 @@ package net.floodlightcontroller.util;
 
 import static org.junit.Assert.*;
 import java.io.IOException;
+import java.net.SocketAddress;
 
 import java.util.Collection;
 import java.util.Date;
@@ -97,12 +98,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     @Override
     public void disconnectOutputStream() {
         assertTrue("Unexpected method call", false);
-    }
-    
-    @Override
-    public Channel getChannel() {
-        assertTrue("Unexpected method call", false);
-        return null;
     }
     
     @Override
@@ -228,15 +223,9 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public Role getRole() {
+    public Role getHARole() {
         assertTrue("Unexpected method call", false);
         return null;
-    }
-    
-    @Override
-    public boolean isActive() {
-        assertTrue("Unexpected method call", false);
-        return false;
     }
     
     @Override
@@ -350,18 +339,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public int sendNxRoleRequest(Role role, long cookie) {
-        // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
-    public boolean checkFirstPendingRoleRequestCookie(long cookie) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
     public void setChannel(Channel channel) {
         // TODO Auto-generated method stub
         
@@ -380,31 +357,43 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void deliverRoleReply(int xid, Role role) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
-    public void deliverRoleRequestNotSupported(int xid) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
     public Lock getListenerReadLock() {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public boolean checkFirstPendingRoleRequestXid(int xid) {
+    public Lock getListenerWriteLock() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public void setHARole(Role role, boolean haRoleReplyReceived) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public SocketAddress getInetAddress() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public OFPortType getPortType(short port_num) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public boolean isFastPort(short port_num) {
         // TODO Auto-generated method stub
         return false;
     }
 
     @Override
-    public Lock getListenerWriteLock() {
+    public List<Short> getUplinkPorts() {
         // TODO Auto-generated method stub
         return null;
     }

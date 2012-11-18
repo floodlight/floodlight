@@ -17,7 +17,11 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 
 /**
@@ -60,12 +64,5 @@ class OFChannelState {
     
     protected OFFeaturesReply featuresReply = null;
     protected OFDescriptionStatistics description = null;
-    
-    // The firstRoleReplyRecevied flag indicates if we have received the
-    // first role reply message on this connection (in response to the 
-    // role request sent after the handshake). If role support is disabled
-    // on the controller we also set this flag to true. 
-    // The flag is used to decide if the flow table should be wiped
-    // @see Controller.handleRoleReplyMessage()
-    protected boolean firstRoleReplyReceived = false;
+    protected List<OFMessage> queuedOFMessages = new ArrayList<OFMessage>();
 }

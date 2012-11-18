@@ -213,4 +213,13 @@ public class OFDescriptionStatistics implements OFStatistics {
         }
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "Switch Desc - Vendor: " +  manufacturerDescription +
+                "  Model: " + hardwareDescription +
+                "  Make: " + datapathDescription +
+                "  Version: " + softwareDescription +
+                "  S/N: " + serialNumber;
+    }
 }
