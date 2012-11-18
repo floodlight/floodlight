@@ -2,7 +2,9 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.util.Collection;
 
-public interface ILoadBalancerService {
+import net.floodlightcontroller.core.module.IFloodlightService;
+
+public interface ILoadBalancerService extends IFloodlightService {
 
     /**
      * List all current Vips.

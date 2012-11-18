@@ -2,7 +2,9 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.io.IOException;
 import java.util.Collection;
-import net.floodlightcontroller.virtualnetwork.NetworkResource;
+
+import net.floodlightcontroller.packet.IPv4;
+
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
@@ -16,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class VipsResource extends ServerResource {
-    protected static Logger log = LoggerFactory.getLogger(NetworkResource.class);
+    protected static Logger log = LoggerFactory.getLogger(VipsResource.class);
     
     @Get("json")
     public Collection <LBVip> retrieve() {
@@ -54,7 +56,7 @@ public class VipsResource extends ServerResource {
     }
     
     @Delete
-    public int removeVip(String postData) {
+    public int removeVip() {
         
         String vipId = (String) getRequestAttributes().get("vip");
                
@@ -66,6 +68,9 @@ public class VipsResource extends ServerResource {
     }
 
     protected LBVip jsonToVip(String json) throws IOException {
+        
+        if (json==null) return null;
+        
         MappingJsonFactory f = new MappingJsonFactory();
         JsonParser jp;
         LBVip vip = new LBVip();
@@ -90,43 +95,53 @@ public class VipsResource extends ServerResource {
             jp.nextToken();
             if (jp.getText().equals("")) 
                 continue;
-            else if (n.equals("vip")) {
-                while (jp.nextToken() != JsonToken.END_OBJECT) {
-                    String field = jp.getCurrentName();
-                    
-                    if (field.equals("tenant_id")) {
-                        vip.id = jp.getText();
-                        continue;
-                    } 
-                    if (field.equals("name")) {
-                        vip.name = jp.getText();
-                        continue;
-                    }
-                    if (field.equals("network_id")) {
-                        vip.netId = jp.getText();
-                        continue;
-                    }
-                    if (field.equals("protocol")) {
-                        vip.protocol = Byte.parseByte(jp.getText());
-                        continue;
-                    }
-                    if (field.equals("port")) {
-                        vip.port = Short.parseShort(jp.getText());
-                        continue;
-                    }
-                    if (field.equals("pool_id")) {
-                        vip.pools.add(jp.getText());                        
-                        continue;
-                    }                    
-                    
-                    log.warn("Unrecognized field {} in " +
-                            "parsing Vips", 
-                            jp.getText());
-                }
+ 
+            if (n.equals("id")) {
+                vip.id = jp.getText();
+                continue;
+            } 
+            if (n.equals("tenant_id")) {
+                vip.tenantId = jp.getText();
+                continue;
+            } 
+            if (n.equals("name")) {
+                vip.name = jp.getText();
+                continue;
             }
+            if (n.equals("network_id")) {
+                vip.netId = jp.getText();
+                continue;
+            }
+            if (n.equals("protocol")) {
+                String tmp = jp.getText();
+                if (tmp.equalsIgnoreCase("TCP")) {
+                    vip.protocol = IPv4.PROTOCOL_TCP;
+                } else if (tmp.equalsIgnoreCase("UDP")) {
+                    vip.protocol = IPv4.PROTOCOL_UDP;
+                } else if (tmp.equalsIgnoreCase("ICMP")) {
+                    vip.protocol = IPv4.PROTOCOL_ICMP;
+                } 
+                continue;
+            }
+            if (n.equals("address")) {
+                vip.address = IPv4.toIPv4Address(jp.getText());
+                continue;
+            }
+            if (n.equals("port")) {
+                vip.port = Short.parseShort(jp.getText());
+                continue;
+            }
+            if (n.equals("pool_id")) {
+                vip.pools.add(jp.getText());                        
+                continue;
+            }                    
+            
+            log.warn("Unrecognized field {} in " +
+                    "parsing Vips", 
+                    jp.getText());
         }
-        
         jp.close();
+        
         return vip;
     }
     
