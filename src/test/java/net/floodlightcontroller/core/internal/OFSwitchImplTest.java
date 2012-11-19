@@ -21,15 +21,15 @@ public class OFSwitchImplTest extends FloodlightTestCase {
         assertEquals(null, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
 
         sw.setHARole(Role.MASTER, true);
-        assertEquals(Role.MASTER, sw.role);
+        assertEquals(Role.MASTER, sw.getHARole());
         assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
         sw.setHARole(Role.EQUAL, true);
-        assertEquals(Role.EQUAL, sw.role);
+        assertEquals(Role.EQUAL, sw.getHARole());
         assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
         sw.setHARole(Role.SLAVE, true);
-        assertEquals(Role.SLAVE, sw.role);
+        assertEquals(Role.SLAVE, sw.getHARole());
         assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
     }
     
@@ -38,15 +38,15 @@ public class OFSwitchImplTest extends FloodlightTestCase {
         assertEquals(null, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
 
         sw.setHARole(Role.MASTER, false);
-        assertEquals(Role.MASTER, sw.role);
+        assertEquals(Role.MASTER, sw.getHARole());
         assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
         sw.setHARole(Role.EQUAL, false);
-        assertEquals(Role.EQUAL, sw.role);
+        assertEquals(Role.EQUAL, sw.getHARole());
         assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
         sw.setHARole(Role.SLAVE, false);
-        assertEquals(Role.SLAVE, sw.role);
+        assertEquals(Role.SLAVE, sw.getHARole());
         assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
     }
 

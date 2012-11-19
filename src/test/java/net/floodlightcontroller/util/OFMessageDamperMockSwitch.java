@@ -380,4 +380,22 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return null;
     }
 
+    @Override
+    public OFPortType getPortType(short port_num) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public boolean isFastPort(short port_num) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public List<Short> getUplinkPorts() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }
