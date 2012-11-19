@@ -61,10 +61,8 @@ import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -802,8 +800,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
-     * Get IP address from packet if the packet is either an ARP 
-     * or a DHCP packet
+     * Get sender IP address from packet if the packet is either an ARP 
+     * packet. 
      * @param eth
      * @param dlAddr
      * @return
@@ -815,18 +813,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     (Ethernet.toLong(arp.getSenderHardwareAddress()) == dlAddr)) {
                 return IPv4.toIPv4Address(arp.getSenderProtocolAddress());
             }
-        } else if (eth.getPayload() instanceof IPv4) {
-            IPv4 ipv4 = (IPv4) eth.getPayload();
-            if (ipv4.getPayload() instanceof UDP) {
-                UDP udp = (UDP)ipv4.getPayload();
-                if (udp.getPayload() instanceof DHCP) {
-                    DHCP dhcp = (DHCP)udp.getPayload();
-                    if (dhcp.getOpCode() == DHCP.OPCODE_REPLY) {
-                        return ipv4.getSourceAddress();
-                    }
-                }
-            }
-        }
+        } 
         return 0;
     }
 
@@ -1196,6 +1183,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         device.updateAttachmentPoint(entity.getSwitchDPID(),
                                 entity.getSwitchPort().shortValue(),
                                 entity.getLastSeenTimestamp().getTime());
+                // TODO: use update mechanism instead of sending the 
+                // notification directly
                 if (moved) {
                     sendDeviceMovedNotification(device);
                     if (logger.isTraceEnabled()) {
