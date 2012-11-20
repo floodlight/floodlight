@@ -2,6 +2,7 @@ package net.floodlightcontroller.util;
 
 import static org.junit.Assert.*;
 import java.io.IOException;
+import java.net.SocketAddress;
 
 import java.util.Collection;
 import java.util.Date;
@@ -187,6 +188,12 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     
     @Override
     public String getStringId() {
+        assertTrue("Unexpected method call", false);
+        return null;
+    }
+    
+    @Override
+    public SocketAddress getInetAddress() {
         assertTrue("Unexpected method call", false);
         return null;
     }
