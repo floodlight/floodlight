@@ -39,6 +39,15 @@ window.Status = Backbone.Model.extend({
             }
         });
         $.ajax({
+            url:hackBase + "/wm/core/system/uptime/json",
+            dataType:"json",
+            success:function (data) {
+                console.log("fetched controller status: uptime");
+                self.set({uptime:(Math.round(data.systemUptimeMsec / 1000) + ' s')});
+                // console.log(self.toJSON());
+            }
+        });
+        $.ajax({
             url:hackBase + "/wm/core/memory/json",
             dataType:"json",
             success:function (data) {
