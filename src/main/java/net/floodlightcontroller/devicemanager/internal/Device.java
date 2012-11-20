@@ -60,6 +60,10 @@ public class Device implements IDevice {
     protected IEntityClass entityClass;
 
     protected String macAddressString;
+    // the vlan Ids from the entities of this device
+    protected Short[] vlanIds;
+    
+   
 
     /**
      * These are the old attachment points for the device that were
@@ -110,6 +114,7 @@ entity.getLastSeenTimestamp().getTime());
                 this.attachmentPoints.add(ap);
             }
         }
+        computeVlandIds();
     }
 
     /**
@@ -142,23 +147,53 @@ entity.getLastSeenTimestamp().getTime());
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
         this.entityClass = entityClass;
         Arrays.sort(this.entities);
+        computeVlandIds();
     }
 
     /**
      * Construct a new device consisting of the entities from the old device
-     * plus an additional entity
+     * plus an additional entity.
+     * The caller needs to ensure that the additional entity is not already 
+     * present in the array
      * @param device the old device object
      * @param newEntity the entity to add. newEntity must be have the same
      *        entity class as device
+     * @param if positive indicates the index in the entities array were the
+     *        new entity should be inserted. If negative we will compute the
+     *        correct insertion point
      */
     public Device(Device device,
-                  Entity newEntity) {
+                  Entity newEntity,
+                  int insertionpoint) {
         this.deviceManager = device.deviceManager;
         this.deviceKey = device.deviceKey;
+        
+        this.entities = new Entity[device.entities.length + 1];
+        if (insertionpoint < 0) {
+            insertionpoint = -(Arrays.binarySearch(device.entities, 
+                                                   newEntity)+1);
+        }
+        if (insertionpoint > 0) {
+            // insertion point is not the beginning:
+            // copy up to insertion point
+            System.arraycopy(device.entities, 0, 
+                             this.entities, 0,
+                             insertionpoint);
+        }
+        if (insertionpoint < device.entities.length) {
+            // insertion point is not the end 
+            // copy from insertion point
+            System.arraycopy(device.entities, insertionpoint, 
+                             this.entities, insertionpoint+1,
+                             device.entities.length-insertionpoint);
+        }
+        this.entities[insertionpoint] = newEntity;
+        /*
         this.entities = Arrays.<Entity>copyOf(device.entities,
                                               device.entities.length + 1);
         this.entities[this.entities.length - 1] = newEntity;
         Arrays.sort(this.entities);
+        */
         this.oldAPs = null;
         if (device.oldAPs != null) {
             this.oldAPs =
@@ -174,7 +209,28 @@ entity.getLastSeenTimestamp().getTime());
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
 
         this.entityClass = device.entityClass;
+        computeVlandIds();
     }
+    
+    private void computeVlandIds() {
+        if (entities.length == 1) {
+            if (entities[0].getVlan() != null) {
+                vlanIds = new Short[]{ entities[0].getVlan() };
+            } else {
+                vlanIds = new Short[] { Short.valueOf((short)-1) };
+            }
+        }
+
+        TreeSet<Short> vals = new TreeSet<Short>();
+        for (Entity e : entities) {
+            if (e.getVlan() == null)
+                vals.add((short)-1);
+            else
+                vals.add(e.getVlan());
+        }
+        vlanIds = vals.toArray(new Short[vals.size()]);
+    }
+
 
     /**
      * Given a list of attachment points (apList), the procedure would return
@@ -566,22 +622,7 @@ entity.getLastSeenTimestamp().getTime());
 
     @Override
     public Short[] getVlanId() {
-        if (entities.length == 1) {
-            if (entities[0].getVlan() != null) {
-                return new Short[]{ entities[0].getVlan() };
-            } else {
-                return new Short[] { Short.valueOf((short)-1) };
-            }
-        }
-
-        TreeSet<Short> vals = new TreeSet<Short>();
-        for (Entity e : entities) {
-            if (e.getVlan() == null)
-                vals.add((short)-1);
-            else
-                vals.add(e.getVlan());
-        }
-        return vals.toArray(new Short[vals.size()]);
+        return Arrays.copyOf(vlanIds, vlanIds.length);
     }
 
     static final EnumSet<DeviceField> ipv4Fields = EnumSet.of(DeviceField.IPV4);

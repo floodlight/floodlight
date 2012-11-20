@@ -44,9 +44,20 @@ import org.openflow.protocol.vendor.OFVendorId;
  */
 public class BasicFactory implements OFMessageFactory, OFActionFactory,
         OFStatisticsFactory, OFVendorDataFactory {
+
+    /**
+     * create and return a new instance of a message for OFType t. Also injects
+     * factories for those message types that implement the *FactoryAware
+     * interfaces.
+     *
+     * @return a newly created instance that may be modified / used freely by
+     *         the caller
+     */
     @Override
     public OFMessage getMessage(OFType t) {
-        return t.newInstance();
+        OFMessage message = t.newInstance();
+        injectFactories(message);
+        return message;
     }
 
     @Override
@@ -92,18 +103,7 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
             if (ofm == null)
                 return null;
 
-            if (ofm instanceof OFActionFactoryAware) {
-                ((OFActionFactoryAware)ofm).setActionFactory(this);
-            }
-            if (ofm instanceof OFMessageFactoryAware) {
-                ((OFMessageFactoryAware)ofm).setMessageFactory(this);
-            }
-            if (ofm instanceof OFStatisticsFactoryAware) {
-                ((OFStatisticsFactoryAware)ofm).setStatisticsFactory(this);
-            }
-            if (ofm instanceof OFVendorDataFactoryAware) {
-                ((OFVendorDataFactoryAware)ofm).setVendorDataFactory(this);
-            }
+            injectFactories(ofm);
             ofm.readFrom(data);
             if (OFMessage.class.equals(ofm.getClass())) {
                 // advance the position for un-implemented messages
@@ -121,6 +121,21 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
             data.resetReaderIndex();
 
             throw new MessageParseException(msg, e);
+        }
+    }
+
+    private void injectFactories(OFMessage ofm) {
+        if (ofm instanceof OFActionFactoryAware) {
+            ((OFActionFactoryAware)ofm).setActionFactory(this);
+        }
+        if (ofm instanceof OFMessageFactoryAware) {
+            ((OFMessageFactoryAware)ofm).setMessageFactory(this);
+        }
+        if (ofm instanceof OFStatisticsFactoryAware) {
+            ((OFStatisticsFactoryAware)ofm).setStatisticsFactory(this);
+        }
+        if (ofm instanceof OFVendorDataFactoryAware) {
+            ((OFVendorDataFactoryAware)ofm).setVendorDataFactory(this);
         }
     }
 
@@ -194,7 +209,7 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
      *            length of statistics
      * @param limit
      *            number of statistics to grab; 0 == all
-     * 
+     *
      * @return list of statistics
      */
 
@@ -230,7 +245,7 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
                      * though we have a full message. Found when NOX sent
                      * agg_stats request with wrong agg statistics length (52
                      * instead of 56)
-                     * 
+                     *
                      * just throw the rest away, or we will break framing
                      */
                     data.readerIndex(start + length);
@@ -247,7 +262,7 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
                                       OFVendorDataType vendorDataType) {
         if (vendorDataType == null)
             return null;
-        
+
         return vendorDataType.newInstance();
     }
 
@@ -259,6 +274,7 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
      * @param length the length to the end of the enclosing message.
      * @return an OFVendorData instance
      */
+    @Override
     public OFVendorData parseVendorData(int vendor, ChannelBuffer data,
             int length) {
         OFVendorDataType vendorDataType = null;
@@ -268,13 +284,13 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
             vendorDataType = vendorId.parseVendorDataType(data, length);
             data.resetReaderIndex();
         }
-        
+
         OFVendorData vendorData = getVendorData(vendorId, vendorDataType);
         if (vendorData == null)
             vendorData = new OFByteArrayVendorData();
 
         vendorData.readFrom(data, length);
-        
+
         return vendorData;
     }
 

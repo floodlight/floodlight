@@ -35,7 +35,6 @@ import org.junit.Test;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.util.HexString;
-import org.python.modules.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -458,7 +457,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         // Create the set of ports
         List<Short> ports = new ArrayList<Short>();
-        for(short p=1; p<=90; ++p) {
+        for(short p=1; p<=10; ++p) {
             ports.add(p);
         }
 
@@ -480,12 +479,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertNotNull(qPorts);
         assertFalse(qPorts.isEmpty());
 
-        Time.sleep(1);
+        Thread.sleep(100);
         qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());
         assertNotNull(qPorts);
         assertFalse(qPorts.isEmpty());
 
-        Time.sleep(1);
+        Thread.sleep(200);
         qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());
         assertNotNull(qPorts);
         assertTrue(qPorts.isEmpty());

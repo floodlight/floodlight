@@ -35,6 +35,10 @@ public @interface LogMessageDoc {
     public static final String CHECK_SWITCH = 
             "Check the health of the indicated switch.  " + 
             "Test and troubleshoot IP connectivity.";
+    public static final String HA_CHECK_SWITCH = 
+            "Check the health of the indicated switch.  If the problem " +
+            "persists or occurs repeatedly, it likely indicates a defect " +
+            "in the switch HA implementation.";
     public static final String CHECK_CONTROLLER = 
             "Verify controller system health, CPU usage, and memory.  " + 
             "Rebooting the controller node may help if the controller " +
