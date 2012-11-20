@@ -1,26 +1,25 @@
 /**
-*    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
-*    University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
+ *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
+ *    University
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
 
 package org.openflow.protocol;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -34,12 +33,12 @@ import org.openflow.util.U8;
  * 
  * @author David Erickson (daviderickson@cs.stanford.edu)
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
- * 
  */
-@JsonSerialize(using=OFMatchJSONSerializer.class)
+@JsonSerialize(using = OFMatchJSONSerializer.class)
 public class OFMatch implements Cloneable, Serializable {
+
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 1L;
     public static int MINIMUM_LENGTH = 40;
@@ -80,6 +79,11 @@ public class OFMatch implements Cloneable, Serializable {
                                                      * bits).
                                                      */
 
+    final public static int OFPFW_ALL_SANITIZED = (((1 << 22) - 1)
+                                                   & ~OFPFW_NW_SRC_MASK & ~OFPFW_NW_DST_MASK)
+                                                  | OFPFW_NW_SRC_ALL
+                                                  | OFPFW_NW_DST_ALL;
+
     /* List of Strings for marshalling and unmarshalling to human readable forms */
     final public static String STR_IN_PORT = "in_port";
     final public static String STR_DL_DST = "dl_dst";
@@ -109,14 +113,14 @@ public class OFMatch implements Cloneable, Serializable {
     protected short transportDestination;
 
     /**
-     * By default, create a OFMatch that matches everything
-     * 
-     * (mostly because it's the least amount of work to make a valid OFMatch)
+     * By default, create a OFMatch that matches everything (mostly because it's
+     * the least amount of work to make a valid OFMatch)
      */
     public OFMatch() {
         this.wildcards = OFPFW_ALL;
-        this.dataLayerDestination = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
-        this.dataLayerSource = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+        this.dataLayerDestination = new byte[] { 0x0, 0x0, 0x0, 0x0, 0x0,
+                                                0x0 };
+        this.dataLayerSource = new byte[] { 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 };
         this.dataLayerVirtualLan = -1;
         this.dataLayerVirtualLanPriorityCodePoint = 0;
         this.dataLayerType = 0;
@@ -158,8 +162,10 @@ public class OFMatch implements Cloneable, Serializable {
     public OFMatch setDataLayerDestination(String mac) {
         byte bytes[] = HexString.fromHexString(mac);
         if (bytes.length != 6)
-            throw new IllegalArgumentException(
-                    "expected string with 6 octets, got '" + mac + "'");
+                              throw new IllegalArgumentException(
+                                                                 "expected string with 6 octets, got '"
+                                                                         + mac
+                                                                         + "'");
         this.dataLayerDestination = bytes;
         return this;
     }
@@ -193,8 +199,10 @@ public class OFMatch implements Cloneable, Serializable {
     public OFMatch setDataLayerSource(String mac) {
         byte bytes[] = HexString.fromHexString(mac);
         if (bytes.length != 6)
-            throw new IllegalArgumentException(
-                    "expected string with 6 octets, got '" + mac + "'");
+                              throw new IllegalArgumentException(
+                                                                 "expected string with 6 octets, got '"
+                                                                         + mac
+                                                                         + "'");
         this.dataLayerSource = bytes;
         return this;
     }
@@ -296,32 +304,28 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Parse this match's wildcard fields and return the number of significant
-     * bits in the IP destination field.
-     * 
-     * NOTE: this returns the number of bits that are fixed, i.e., like CIDR,
-     * not the number of bits that are free like OpenFlow encodes.
+     * bits in the IP destination field. NOTE: this returns the number of bits
+     * that are fixed, i.e., like CIDR, not the number of bits that are free
+     * like OpenFlow encodes.
      * 
      * @return a number between 0 (matches all IPs) and 63 ( 32>= implies exact
      *         match)
      */
     public int getNetworkDestinationMaskLen() {
-        return Math
-                .max(32 - ((wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT),
+        return Math.max(32 - ((wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT),
                         0);
     }
 
     /**
      * Parse this match's wildcard fields and return the number of significant
-     * bits in the IP destination field.
-     * 
-     * NOTE: this returns the number of bits that are fixed, i.e., like CIDR,
-     * not the number of bits that are free like OpenFlow encodes.
+     * bits in the IP destination field. NOTE: this returns the number of bits
+     * that are fixed, i.e., like CIDR, not the number of bits that are free
+     * like OpenFlow encodes.
      * 
      * @return a number between 0 (matches all IPs) and 32 (exact match)
      */
     public int getNetworkSourceMaskLen() {
-        return Math
-                .max(32 - ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT),
+        return Math.max(32 - ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT),
                         0);
     }
 
@@ -364,9 +368,8 @@ public class OFMatch implements Cloneable, Serializable {
     }
 
     /**
-     * Get nw_tos
-     * OFMatch stores the ToS bits as top 6-bits, so right shift by 2 bits
-     * before returning the value
+     * Get nw_tos OFMatch stores the ToS bits as top 6-bits, so right shift by 2
+     * bits before returning the value
      * 
      * @return : 6-bit DSCP value (0-63)
      */
@@ -375,17 +378,16 @@ public class OFMatch implements Cloneable, Serializable {
     }
 
     /**
-     * Set nw_tos
-     * OFMatch stores the ToS bits as top 6-bits, so left shift by 2 bits
-     * before storing the value
+     * Set nw_tos OFMatch stores the ToS bits as top 6-bits, so left shift by 2
+     * bits before storing the value
      * 
-     * @param networkTypeOfService : 6-bit DSCP value (0-63)
+     * @param networkTypeOfService
+     *            : 6-bit DSCP value (0-63)
      */
     public OFMatch setNetworkTypeOfService(byte networkTypeOfService) {
-        this.networkTypeOfService = (byte)(networkTypeOfService << 2);
+        this.networkTypeOfService = (byte) (networkTypeOfService << 2);
         return this;
     }
-    
 
     /**
      * Get tp_dst
@@ -435,6 +437,15 @@ public class OFMatch implements Cloneable, Serializable {
     }
 
     /**
+     * Get wildcards
+     * 
+     * @return
+     */
+    public Wildcards getWildcardObj() {
+        return Wildcards.of(wildcards);
+    }
+
+    /**
      * Set wildcards
      * 
      * @param wildcards
@@ -444,15 +455,17 @@ public class OFMatch implements Cloneable, Serializable {
         return this;
     }
 
+    /** set the wildcard using the Wildcards convenience object */
+    public OFMatch setWildcards(Wildcards wildcards) {
+        this.wildcards = wildcards.getInt();
+        return this;
+    }
+
     /**
      * Initializes this OFMatch structure with the corresponding data from the
-     * specified packet.
-     * 
-     * Must specify the input port, to ensure that this.in_port is set
-     * correctly.
-     * 
-     * Specify OFPort.NONE or OFPort.ANY if input port not applicable or
-     * available
+     * specified packet. Must specify the input port, to ensure that
+     * this.in_port is set correctly. Specify OFPort.NONE or OFPort.ANY if input
+     * port not applicable or available
      * 
      * @param packetData
      *            The packet's data
@@ -470,7 +483,7 @@ public class OFMatch implements Cloneable, Serializable {
         this.inputPort = inputPort;
 
         if (inputPort == OFPort.OFPP_ALL.getValue())
-            this.wildcards |= OFPFW_IN_PORT;
+                                                    this.wildcards |= OFPFW_IN_PORT;
 
         assert (limit >= 14);
         // dl dst
@@ -495,78 +508,79 @@ public class OFMatch implements Cloneable, Serializable {
         }
 
         switch (getDataLayerType()) {
-        case 0x0800:
-            // ipv4
-            // check packet length
-            scratch = packetDataBB.get();
-            scratch = (short) (0xf & scratch);
-            transportOffset = (packetDataBB.position() - 1) + (scratch * 4);
-            // nw tos (dscp)
-            scratch = packetDataBB.get();
-            setNetworkTypeOfService((byte) ((0xfc & scratch) >> 2));
-            // nw protocol
-            packetDataBB.position(packetDataBB.position() + 7);
-            this.networkProtocol = packetDataBB.get();
-            // nw src
-            packetDataBB.position(packetDataBB.position() + 2);
-            this.networkSource = packetDataBB.getInt();
-            // nw dst
-            this.networkDestination = packetDataBB.getInt();
-            packetDataBB.position(transportOffset);
-            break;
-        case 0x0806:
-            // arp
-            int arpPos = packetDataBB.position();
-            // opcode
-            scratch = packetDataBB.getShort(arpPos + 6);
-            setNetworkProtocol((byte) (0xff & scratch));
-
-            scratch = packetDataBB.getShort(arpPos + 2);
-            // if ipv4 and addr len is 4
-            if (scratch == 0x800 && packetDataBB.get(arpPos + 5) == 4) {
+            case 0x0800:
+                // ipv4
+                // check packet length
+                scratch = packetDataBB.get();
+                scratch = (short) (0xf & scratch);
+                transportOffset = (packetDataBB.position() - 1)
+                                  + (scratch * 4);
+                // nw tos (dscp)
+                scratch = packetDataBB.get();
+                setNetworkTypeOfService((byte) ((0xfc & scratch) >> 2));
+                // nw protocol
+                packetDataBB.position(packetDataBB.position() + 7);
+                this.networkProtocol = packetDataBB.get();
                 // nw src
-                this.networkSource = packetDataBB.getInt(arpPos + 14);
+                packetDataBB.position(packetDataBB.position() + 2);
+                this.networkSource = packetDataBB.getInt();
                 // nw dst
-                this.networkDestination = packetDataBB.getInt(arpPos + 24);
-            } else {
+                this.networkDestination = packetDataBB.getInt();
+                packetDataBB.position(transportOffset);
+                break;
+            case 0x0806:
+                // arp
+                int arpPos = packetDataBB.position();
+                // opcode
+                scratch = packetDataBB.getShort(arpPos + 6);
+                setNetworkProtocol((byte) (0xff & scratch));
+
+                scratch = packetDataBB.getShort(arpPos + 2);
+                // if ipv4 and addr len is 4
+                if (scratch == 0x800 && packetDataBB.get(arpPos + 5) == 4) {
+                    // nw src
+                    this.networkSource = packetDataBB.getInt(arpPos + 14);
+                    // nw dst
+                    this.networkDestination = packetDataBB.getInt(arpPos + 24);
+                } else {
+                    setNetworkSource(0);
+                    setNetworkDestination(0);
+                }
+                break;
+            default:
+                setNetworkTypeOfService((byte) 0);
+                setNetworkProtocol((byte) 0);
                 setNetworkSource(0);
                 setNetworkDestination(0);
-            }
-            break;
-        default:
-            setNetworkTypeOfService((byte) 0);
-            setNetworkProtocol((byte) 0);
-            setNetworkSource(0);
-            setNetworkDestination(0);
-            break;
+                break;
         }
 
         switch (getNetworkProtocol()) {
-        case 0x01:
-            // icmp
-            // type
-            this.transportSource = U8.f(packetDataBB.get());
-            // code
-            this.transportDestination = U8.f(packetDataBB.get());
-            break;
-        case 0x06:
-            // tcp
-            // tcp src
-            this.transportSource = packetDataBB.getShort();
-            // tcp dest
-            this.transportDestination = packetDataBB.getShort();
-            break;
-        case 0x11:
-            // udp
-            // udp src
-            this.transportSource = packetDataBB.getShort();
-            // udp dest
-            this.transportDestination = packetDataBB.getShort();
-            break;
-        default:
-            setTransportDestination((short) 0);
-            setTransportSource((short) 0);
-            break;
+            case 0x01:
+                // icmp
+                // type
+                this.transportSource = U8.f(packetDataBB.get());
+                // code
+                this.transportDestination = U8.f(packetDataBB.get());
+                break;
+            case 0x06:
+                // tcp
+                // tcp src
+                this.transportSource = packetDataBB.getShort();
+                // tcp dest
+                this.transportDestination = packetDataBB.getShort();
+                break;
+            case 0x11:
+                // udp
+                // udp src
+                this.transportSource = packetDataBB.getShort();
+                // udp dest
+                this.transportDestination = packetDataBB.getShort();
+                break;
+            default:
+                setTransportDestination((short) 0);
+                setTransportSource((short) 0);
+                break;
         }
         return this;
     }
@@ -717,9 +731,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Output a dpctl-styled string, i.e., only list the elements that are not
-     * wildcarded
-     * 
-     * A match-everything OFMatch outputs "OFMatch[]"
+     * wildcarded A match-everything OFMatch outputs "OFMatch[]"
      * 
      * @return 
      *         "OFMatch[dl_src:00:20:01:11:22:33,nw_src:192.168.0.0/24,tp_dst:80]"
@@ -730,52 +742,120 @@ public class OFMatch implements Cloneable, Serializable {
 
         // l1
         if ((wildcards & OFPFW_IN_PORT) == 0)
-            str += "," + STR_IN_PORT + "=" + U16.f(this.inputPort);
+                                             str += "," + STR_IN_PORT + "="
+                                                    + U16.f(this.inputPort);
 
         // l2
         if ((wildcards & OFPFW_DL_DST) == 0)
-            str += "," + STR_DL_DST + "="
-                    + HexString.toHexString(this.dataLayerDestination);
+                                            str += ","
+                                                   + STR_DL_DST
+                                                   + "="
+                                                   + HexString.toHexString(this.dataLayerDestination);
         if ((wildcards & OFPFW_DL_SRC) == 0)
-            str += "," + STR_DL_SRC + "="
-                    + HexString.toHexString(this.dataLayerSource);
+                                            str += ","
+                                                   + STR_DL_SRC
+                                                   + "="
+                                                   + HexString.toHexString(this.dataLayerSource);
         if ((wildcards & OFPFW_DL_TYPE) == 0)
-            str += "," + STR_DL_TYPE + "=0x"
-                    + Integer.toHexString(U16.f(this.dataLayerType));
+                                             str += ","
+                                                    + STR_DL_TYPE
+                                                    + "=0x"
+                                                    + Integer.toHexString(U16.f(this.dataLayerType));
         if ((wildcards & OFPFW_DL_VLAN) == 0)
-            str += "," + STR_DL_VLAN + "=0x"
-                    + Integer.toHexString(U16.f(this.dataLayerVirtualLan));
+                                             str += ","
+                                                    + STR_DL_VLAN
+                                                    + "=0x"
+                                                    + Integer.toHexString(U16.f(this.dataLayerVirtualLan));
         if ((wildcards & OFPFW_DL_VLAN_PCP) == 0)
-            str += ","
-                    + STR_DL_VLAN_PCP
-                    + "="
-                    + Integer.toHexString(U8
-                            .f(this.dataLayerVirtualLanPriorityCodePoint));
+                                                 str += ","
+                                                        + STR_DL_VLAN_PCP
+                                                        + "="
+                                                        + Integer.toHexString(U8.f(this.dataLayerVirtualLanPriorityCodePoint));
 
         // l3
         if (getNetworkDestinationMaskLen() > 0)
-            str += ","
-                    + STR_NW_DST
-                    + "="
-                    + cidrToString(networkDestination,
-                            getNetworkDestinationMaskLen());
+                                               str += ","
+                                                      + STR_NW_DST
+                                                      + "="
+                                                      + cidrToString(networkDestination,
+                                                                     getNetworkDestinationMaskLen());
         if (getNetworkSourceMaskLen() > 0)
-            str += "," + STR_NW_SRC + "="
-                    + cidrToString(networkSource, getNetworkSourceMaskLen());
+                                          str += ","
+                                                 + STR_NW_SRC
+                                                 + "="
+                                                 + cidrToString(networkSource,
+                                                                getNetworkSourceMaskLen());
         if ((wildcards & OFPFW_NW_PROTO) == 0)
-            str += "," + STR_NW_PROTO + "=" + this.networkProtocol;
+                                              str += "," + STR_NW_PROTO
+                                                     + "="
+                                                     + this.networkProtocol;
         if ((wildcards & OFPFW_NW_TOS) == 0)
-            str += "," + STR_NW_TOS + "=" + this.getNetworkTypeOfService();
+                                            str += ","
+                                                   + STR_NW_TOS
+                                                   + "="
+                                                   + this.getNetworkTypeOfService();
 
         // l4
         if ((wildcards & OFPFW_TP_DST) == 0)
-            str += "," + STR_TP_DST + "=" + this.transportDestination;
+                                            str += ","
+                                                   + STR_TP_DST
+                                                   + "="
+                                                   + this.transportDestination;
         if ((wildcards & OFPFW_TP_SRC) == 0)
-            str += "," + STR_TP_SRC + "=" + this.transportSource;
+                                            str += "," + STR_TP_SRC + "="
+                                                   + this.transportSource;
         if ((str.length() > 0) && (str.charAt(0) == ','))
-            str = str.substring(1); // trim the leading ","
+                                                         str = str.substring(1); // trim
+                                                                                 // the
+                                                                                 // leading
+                                                                                 // ","
         // done
         return "OFMatch[" + str + "]";
+    }
+
+    /**
+     * debug a set of wildcards
+     */
+    public static String debugWildCards(int wildcards) {
+        String str = "";
+
+        // l1
+        if ((wildcards & OFPFW_IN_PORT) != 0) str += "|" + STR_IN_PORT;
+
+        // l2
+        if ((wildcards & OFPFW_DL_DST) != 0) str += "|" + STR_DL_DST;
+        if ((wildcards & OFPFW_DL_SRC) != 0) str += "|" + STR_DL_SRC;
+        if ((wildcards & OFPFW_DL_TYPE) != 0) str += "|" + STR_DL_TYPE;
+        if ((wildcards & OFPFW_DL_VLAN) != 0) str += "|" + STR_DL_VLAN;
+        if ((wildcards & OFPFW_DL_VLAN_PCP) != 0)
+                                                 str += "|"
+                                                        + STR_DL_VLAN_PCP;
+
+        int nwDstMask = Math.max(32 - ((wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT),
+                                 0);
+        int nwSrcMask = Math.max(32 - ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT),
+                                 0);
+
+        // l3
+        if (nwDstMask < 32)
+                           str += "|" + STR_NW_DST + "(/" + nwDstMask + ")";
+
+        if (nwSrcMask < 32)
+                           str += "|" + STR_NW_SRC + "(/" + nwSrcMask + ")";
+
+        if ((wildcards & OFPFW_NW_PROTO) != 0) str += "|" + STR_NW_PROTO;
+        if ((wildcards & OFPFW_NW_TOS) != 0) str += "|" + STR_NW_TOS;
+
+        // l4
+        if ((wildcards & OFPFW_TP_DST) != 0) str += "|" + STR_TP_DST;
+        if ((wildcards & OFPFW_TP_SRC) != 0) str += "|" + STR_TP_SRC;
+        if ((str.length() > 0) && (str.charAt(0) == '|'))
+                                                         str = str.substring(1); // trim
+                                                                                 // the
+                                                                                 // leading
+                                                                                 // ","
+        // done
+        return str;
     }
 
     private String cidrToString(int ip, int prefix) {
@@ -836,54 +916,66 @@ public class OFMatch implements Cloneable, Serializable {
 
     public void fromString(String match) throws IllegalArgumentException {
         if (match.equals("") || match.equalsIgnoreCase("any")
-                || match.equalsIgnoreCase("all") || match.equals("[]"))
-            match = "OFMatch[]";
+            || match.equalsIgnoreCase("all") || match.equals("[]"))
+                                                                   match = "OFMatch[]";
         String[] tokens = match.split("[\\[,\\]]");
         String[] values;
         int initArg = 0;
-        if (tokens[0].equals("OFMatch"))
-            initArg = 1;
+        if (tokens[0].equals("OFMatch")) initArg = 1;
         this.wildcards = OFPFW_ALL;
         int i;
         for (i = initArg; i < tokens.length; i++) {
             values = tokens[i].split("=");
             if (values.length != 2)
-                throw new IllegalArgumentException("Token " + tokens[i]
-                        + " does not have form 'key=value' parsing " + match);
+                                   throw new IllegalArgumentException(
+                                                                      "Token "
+                                                                              + tokens[i]
+                                                                              + " does not have form 'key=value' parsing "
+                                                                              + match);
             values[0] = values[0].toLowerCase(); // try to make this case insens
-            if (values[0].equals(STR_IN_PORT) || values[0].equals("input_port")) {
+            if (values[0].equals(STR_IN_PORT)
+                || values[0].equals("input_port")) {
                 this.inputPort = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_IN_PORT;
-            } else if (values[0].equals(STR_DL_DST) || values[0].equals("eth_dst")) {
+            } else if (values[0].equals(STR_DL_DST)
+                       || values[0].equals("eth_dst")) {
                 this.dataLayerDestination = HexString.fromHexString(values[1]);
                 this.wildcards &= ~OFPFW_DL_DST;
-            } else if (values[0].equals(STR_DL_SRC) || values[0].equals("eth_src")) {
+            } else if (values[0].equals(STR_DL_SRC)
+                       || values[0].equals("eth_src")) {
                 this.dataLayerSource = HexString.fromHexString(values[1]);
                 this.wildcards &= ~OFPFW_DL_SRC;
-            } else if (values[0].equals(STR_DL_TYPE) || values[0].equals("eth_type")) {
+            } else if (values[0].equals(STR_DL_TYPE)
+                       || values[0].equals("eth_type")) {
                 if (values[1].startsWith("0x"))
-                    this.dataLayerType = U16.t(Integer.valueOf(
-                            values[1].replaceFirst("0x", ""), 16));
+                    this.dataLayerType = U16.t(Integer.valueOf(values[1].replaceFirst("0x",
+                                                                                      ""),
+                                                               16));
                 else
                     this.dataLayerType = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_TYPE;
             } else if (values[0].equals(STR_DL_VLAN)) {
-            	if (values[1].startsWith("0x"))
-            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(
-            				values[1].replaceFirst("0x", ""),16));
-            	else
-            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
+                if (values[1].startsWith("0x"))
+                    this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1].replaceFirst("0x",
+                                                                                            ""),
+                                                                     16));
+                else
+                    this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_VLAN;
             } else if (values[0].equals(STR_DL_VLAN_PCP)) {
-                this.dataLayerVirtualLanPriorityCodePoint = U8.t(Short
-                        .valueOf(values[1]));
+                this.dataLayerVirtualLanPriorityCodePoint = U8.t(Short.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_VLAN_PCP;
-            } else if (values[0].equals(STR_NW_DST) || values[0].equals("ip_dst")) {
+            } else if (values[0].equals(STR_NW_DST)
+                       || values[0].equals("ip_dst")) {
                 setFromCIDR(values[1], STR_NW_DST);
-            } else if (values[0].equals(STR_NW_SRC) || values[0].equals("ip_src")) {
+            } else if (values[0].equals(STR_NW_SRC)
+                       || values[0].equals("ip_src")) {
                 setFromCIDR(values[1], STR_NW_SRC);
             } else if (values[0].equals(STR_NW_PROTO)) {
-                this.networkProtocol = U8.t(Short.valueOf(values[1]));
+                if (values[1].startsWith("0x"))
+                    this.networkProtocol = U8.t(Short.valueOf(values[1].replaceFirst("0x",""),16));
+                else
+                    this.networkProtocol = U8.t(Short.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_NW_PROTO;
             } else if (values[0].equals(STR_NW_TOS)) {
                 this.setNetworkTypeOfService(U8.t(Short.valueOf(values[1])));
@@ -895,8 +987,9 @@ public class OFMatch implements Cloneable, Serializable {
                 this.transportSource = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_TP_SRC;
             } else {
-                throw new IllegalArgumentException("unknown token " + tokens[i]
-                        + " parsing " + match);
+                throw new IllegalArgumentException("unknown token "
+                                                   + tokens[i] + " parsing "
+                                                   + match);
             }
         }
     }
@@ -911,8 +1004,10 @@ public class OFMatch implements Cloneable, Serializable {
      *            one of STR_NW_DST or STR_NW_SRC
      * @throws IllegalArgumentException
      */
-    private void setFromCIDR(String cidr, String which)
-            throws IllegalArgumentException {
+    private
+            void
+            setFromCIDR(String cidr, String which)
+                                                  throws IllegalArgumentException {
         String values[] = cidr.split("/");
         String[] ip_str = values[0].split("\\.");
         int ip = 0;
@@ -922,24 +1017,23 @@ public class OFMatch implements Cloneable, Serializable {
         ip += Integer.valueOf(ip_str[3]);
         int prefix = 32; // all bits are fixed, by default
 
-        if (values.length >= 2)
-            prefix = Integer.valueOf(values[1]);
+        if (values.length >= 2) prefix = Integer.valueOf(values[1]);
         int mask = 32 - prefix;
         if (which.equals(STR_NW_DST)) {
             this.networkDestination = ip;
             this.wildcards = (wildcards & ~OFPFW_NW_DST_MASK)
-                    | (mask << OFPFW_NW_DST_SHIFT);
+                             | (mask << OFPFW_NW_DST_SHIFT);
         } else if (which.equals(STR_NW_SRC)) {
             this.networkSource = ip;
             this.wildcards = (wildcards & ~OFPFW_NW_SRC_MASK)
-                    | (mask << OFPFW_NW_SRC_SHIFT);
+                             | (mask << OFPFW_NW_SRC_SHIFT);
         }
     }
 
     protected static String ipToString(int ip) {
-        return Integer.toString(U8.f((byte) ((ip & 0xff000000) >> 24))) + "."
-                + Integer.toString((ip & 0x00ff0000) >> 16) + "."
-                + Integer.toString((ip & 0x0000ff00) >> 8) + "."
-                + Integer.toString(ip & 0x000000ff);
+        return Integer.toString(U8.f((byte) ((ip & 0xff000000) >> 24)))
+               + "." + Integer.toString((ip & 0x00ff0000) >> 16) + "."
+               + Integer.toString((ip & 0x0000ff00) >> 8) + "."
+               + Integer.toString(ip & 0x000000ff);
     }
 }

@@ -29,18 +29,18 @@ public class SwitchRoleResource extends ServerResource {
         if (switchId.equalsIgnoreCase("all")) {
             HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
             for (IOFSwitch sw: floodlightProvider.getSwitches().values()) {
-            	switchId = sw.getStringId();
-            	roleInfo = new RoleInfo(sw.getRole());
-            	model.put(switchId, roleInfo);
+                switchId = sw.getStringId();
+                roleInfo = new RoleInfo(sw.getHARole());
+                model.put(switchId, roleInfo);
             }
             return model;
         }
         
-    	Long dpid = HexString.toLong(switchId);
-    	IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
-    	if (sw == null)
-    		return null;
-    	roleInfo = new RoleInfo(sw.getRole());
-    	return roleInfo;
+        Long dpid = HexString.toLong(switchId);
+        IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
+        if (sw == null)
+            return null;
+        roleInfo = new RoleInfo(sw.getHARole());
+        return roleInfo;
     }
 }

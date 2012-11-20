@@ -63,6 +63,11 @@ public class MockDeviceManager extends DeviceManagerImpl {
         return res;
     }
     
+    @Override
+    public void deleteDevice(Device device) {
+        super.deleteDevice(device);
+    }
+    
     /**
      * Learn a device using the given characteristics. 
      * @param macAddress the MAC
@@ -97,7 +102,8 @@ public class MockDeviceManager extends DeviceManagerImpl {
     
     @Override
     protected Device allocateDevice(Device device,
-                                    Entity entity) {
-        return new MockDevice(device, entity);
+                                    Entity entity,
+                                    int insertionpoint) {
+        return new MockDevice(device, entity, insertionpoint);
     }
 }
