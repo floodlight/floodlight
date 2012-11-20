@@ -381,12 +381,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public SocketAddress getInetAddress() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
     public OFPortType getPortType(short port_num) {
         // TODO Auto-generated method stub
         return null;
