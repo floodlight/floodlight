@@ -180,6 +180,13 @@ public class Controller implements IFloodlightProviderService,
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
+    // This is the role of the controller based on HARoleChange notifications
+    // we have sent. I.e., this field reflects the last role notification
+    // we have sent to the listeners. On a transition to slave we first set
+    // this role and then notify, on a transition to master we first notify
+    // and then set the role. We then use it to make sure we don't forward
+    // OF messages while the modules are in slave role. 
+    protected volatile Role notifiedRole; 
     // A helper that handles sending and timeout handling for role requests
     protected RoleChanger roleChanger;
 
@@ -286,11 +293,19 @@ public class Controller implements IFloodlightProviderService,
                 log.trace("Dispatching HA Role update newRole = {}, oldRole = {}",
                           newRole, oldRole);
             }
+            // Set notified role to slave before notifying listeners. This
+            // stops OF messages from being sent to listeners 
+            if (newRole == Role.SLAVE)
+                Controller.this.notifiedRole = newRole;
             if (haListeners != null) {
                 for (IHAListener listener : haListeners) {
                         listener.roleChanged(oldRole, newRole);
                 }
             }
+            // Set notified role to master/equal after notifying listeners. 
+            // We now forward messages again
+            if (newRole != Role.SLAVE)
+                Controller.this.notifiedRole = newRole;
         }
     }
 
@@ -981,7 +996,7 @@ public class Controller implements IFloodlightProviderService,
                         shouldHandleMessage = true;
                     } else {
                         // Queue till we complete driver binding
-                        state.queuedOFMessages.add((OFPortStatus) m);
+                        state.queuedOFMessages.add(m);
                     }
                     break;
 
@@ -1001,9 +1016,9 @@ public class Controller implements IFloodlightProviderService,
                     try {
 
                         if (sw.isConnected()) {
-                            // Check if the controller is in the slave role for the
-                            // switch. If it is, then don't dispatch the message to
-                            // the listeners.
+                            // Only dispatch message if the switch is in the
+                            // activeSwitch map and if the switches role is 
+                            // not slave and the modules are not in slave
                             // TODO: Should we dispatch messages that we expect to
                             // receive when we're in the slave role, e.g. port
                             // status messages? Since we're "hiding" switches from
@@ -1012,7 +1027,9 @@ public class Controller implements IFloodlightProviderService,
                             // to them. On the other hand there might be special
                             // modules that care about all of the connected switches
                             // and would like to receive port status notifications.
-                            if (sw.getHARole() == Role.SLAVE) {
+                            if (sw.getHARole() == Role.SLAVE || 
+                                    notifiedRole == Role.SLAVE ||
+                                    !activeSwitches.containsKey(sw.getId())) {
                                 // Don't log message if it's a port status message
                                 // since we expect to receive those from the switch
                                 // and don't want to emit spurious messages.
@@ -1121,7 +1138,7 @@ public class Controller implements IFloodlightProviderService,
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-
+        
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -1742,6 +1759,7 @@ public class Controller implements IFloodlightProviderService,
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
         this.role = getInitialRole(configParams);
+        this.notifiedRole = this.role;
         this.roleChanger = new RoleChanger(this);
         initVendorMessages();
         this.systemStartTime = System.currentTimeMillis();
