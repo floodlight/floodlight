@@ -520,4 +520,48 @@ public class TopologyInstanceTest {
             verifyExpectedBroadcastPortsInClusters(expectedBroadcastPorts);
         }
     }
+
+    @Test
+    public void testLinkRemovalOnBroadcastDomainPorts() throws Exception {
+        {
+            int [][] linkArray = {
+                                  {1, 1, 2, 1, DIRECT_LINK},
+                                  {2, 1, 1, 1, DIRECT_LINK},
+                                  {1, 2, 3, 1, DIRECT_LINK},
+                                  {3, 1, 1, 2, DIRECT_LINK},
+                                  {2, 2, 3, 2, DIRECT_LINK},
+                                  {3, 2, 2, 2, DIRECT_LINK},
+                                  {1, 1, 3, 2, DIRECT_LINK},
+                                  // the last link should make ports
+                                  // (1,1) and (3,2) to be broadcast
+                                  // domain ports, hence all links
+                                  // from these ports must be eliminated.
+            };
+
+            int [][] expectedClusters = {
+                                         {1, 3}, {2},
+            };
+            createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
+            if (topologyManager.getCurrentInstance() instanceof TopologyInstance)
+                verifyClusters(expectedClusters);
+        }
+        {
+            int [][] linkArray = {
+                                  {1, 2, 3, 2, DIRECT_LINK},
+                                  // the last link should make ports
+                                  // (1,1) and (3,2) to be broadcast
+                                  // domain ports, hence all links
+                                  // from these ports must be eliminated.
+            };
+
+            int [][] expectedClusters = {
+                                         {1}, {3}, {2},
+            };
+            createTopologyFromLinks(linkArray);
+            topologyManager.createNewInstance();
+            if (topologyManager.getCurrentInstance() instanceof TopologyInstance)
+                verifyClusters(expectedClusters);
+        }
+    }
 }
