@@ -407,10 +407,6 @@ public abstract class ForwardingBase
 
         if (pi == null) {
             return;
-        } else if (pi.getInPort() == outport){
-            log.warn("Packet out not sent as the outport matches inport. {}",
-                     pi);
-            return;
         }
 
         // The assumption here is (sw) is the switch that generated the 

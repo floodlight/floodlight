@@ -260,7 +260,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                             long cookie = 
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
                             
-                         // if there is prior routing decision use wildcard                                                     
+                            // if there is prior routing decision use wildcard
                             Integer wildcard_hints = null;
                             IRoutingDecision decision = null;
                             if (cntx != null) {

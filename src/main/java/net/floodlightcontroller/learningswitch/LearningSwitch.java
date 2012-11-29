@@ -89,9 +89,9 @@ public class LearningSwitch
     public static final long LEARNING_SWITCH_COOKIE = (long) (LEARNING_SWITCH_APP_ID & ((1 << APP_ID_BITS) - 1)) << APP_ID_SHIFT;
     
     // more flow-mod defaults 
-    protected static final short IDLE_TIMEOUT_DEFAULT = 5;
-    protected static final short HARD_TIMEOUT_DEFAULT = 0;
-    protected static final short PRIORITY_DEFAULT = 100;
+    protected static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+    protected static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+    protected static short FLOWMOD_PRIORITY = 100;
     
     // for managing our map sizes
     protected static final int MAX_MACS_PER_SWITCH  = 1000;    
@@ -228,9 +228,9 @@ public class LearningSwitch
         flowMod.setMatch(match);
         flowMod.setCookie(LearningSwitch.LEARNING_SWITCH_COOKIE);
         flowMod.setCommand(command);
-        flowMod.setIdleTimeout(LearningSwitch.IDLE_TIMEOUT_DEFAULT);
-        flowMod.setHardTimeout(LearningSwitch.HARD_TIMEOUT_DEFAULT);
-        flowMod.setPriority(LearningSwitch.PRIORITY_DEFAULT);
+        flowMod.setIdleTimeout(LearningSwitch.FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        flowMod.setHardTimeout(LearningSwitch.FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        flowMod.setPriority(LearningSwitch.FLOWMOD_PRIORITY);
         flowMod.setBufferId(bufferId);
         flowMod.setOutPort((command == OFFlowMod.OFPFC_DELETE) ? outPort : OFPort.OFPP_NONE.getValue());
         flowMod.setFlags((command == OFFlowMod.OFPFC_DELETE) ? 0 : (short) (1 << 0)); // OFPFF_SEND_FLOW_REM
@@ -258,6 +258,82 @@ public class LearningSwitch
             sw.write(flowMod, null);
         } catch (IOException e) {
             log.error("Failed to write {} to switch {}", new Object[]{ flowMod, sw }, e);
+        }
+    }
+    
+    /**
+     * Pushes a packet-out to a switch.  The assumption here is that
+     * the packet-in was also generated from the same switch.  Thus, if the input
+     * port of the packet-in and the outport are the same, the function will not 
+     * push the packet-out.
+     * @param sw        switch that generated the packet-in, and from which packet-out is sent
+     * @param match     OFmatch
+     * @param pi        packet-in
+     * @param outport   output port
+     */
+    private void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, short outport) {
+        if (pi == null) {
+            return;
+        }
+
+        // The assumption here is (sw) is the switch that generated the 
+        // packet-in. If the input port is the same as output port, then
+        // the packet-out should be ignored.
+        if (pi.getInPort() == outport) {
+            if (log.isDebugEnabled()) {
+                log.debug("Attempting to do packet-out to the same " + 
+                          "interface as packet-in. Dropping packet. " + 
+                          " SrcSwitch={}, match = {}, pi={}", 
+                          new Object[]{sw, match, pi});
+                return;
+            }
+        }
+
+        if (log.isTraceEnabled()) {
+            log.trace("PacketOut srcSwitch={} match={} pi={}", 
+                      new Object[] {sw, match, pi});
+        }
+
+        OFPacketOut po =
+                (OFPacketOut) floodlightProvider.getOFMessageFactory()
+                                                .getMessage(OFType.PACKET_OUT);
+
+        // set actions
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(new OFActionOutput(outport, (short) 0xffff));
+
+        po.setActions(actions)
+          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        short poLength =
+                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
+
+        // If the switch doens't support buffering set the buffer id to be none
+        // otherwise it'll be the the buffer id of the PacketIn
+        if (sw.getBuffers() == 0) {
+            // We set the PI buffer id here so we don't have to check again below
+            pi.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+            po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        } else {
+            po.setBufferId(pi.getBufferId());
+        }
+
+        po.setInPort(pi.getInPort());
+
+        // If the buffer id is none or the switch doesn's support buffering
+        // we send the data with the packet out
+        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
+            byte[] packetData = pi.getPacketData();
+            poLength += packetData.length;
+            po.setPacketData(packetData);
+        }
+
+        po.setLength(poLength);
+
+        try {
+            counterStore.updatePktOutFMCounterStoreLocal(sw, po);
+            sw.write(po, null);
+        } catch (IOException e) {
+            log.error("Failure writing packet out", e);
         }
     }
     
@@ -367,7 +443,9 @@ public class LearningSwitch
                     & ~OFMatch.OFPFW_IN_PORT
                     & ~OFMatch.OFPFW_DL_VLAN & ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST
                     & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK);
-            this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, pi.getBufferId(), match, outPort);
+            // We write FlowMods with Buffer ID none then explicitly PacketOut the buffered packet
+            this.pushPacket(sw, match, pi, outPort);
+            this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, OFPacketOut.BUFFER_ID_NONE, match, outPort);
             if (LEARNING_SWITCH_REVERSE_FLOW) {
                 this.writeFlowMod(sw, OFFlowMod.OFPFC_ADD, -1, match.clone()
                     .setDataLayerSource(match.getDataLayerDestination())
@@ -504,5 +582,44 @@ public class LearningSwitch
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         floodlightProvider.addOFMessageListener(OFType.ERROR, this);
         restApi.addRestletRoutable(new LearningSwitchWebRoutable());
+        
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        try {
+            String idleTimeout = configOptions.get("idletimeout");
+            if (idleTimeout != null) {
+                FLOWMOD_DEFAULT_IDLE_TIMEOUT = Short.parseShort(idleTimeout);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error parsing flow idle timeout, " +
+                     "using default of {} seconds",
+                     FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        }
+        try {
+            String hardTimeout = configOptions.get("hardtimeout");
+            if (hardTimeout != null) {
+                FLOWMOD_DEFAULT_HARD_TIMEOUT = Short.parseShort(hardTimeout);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error parsing flow hard timeout, " +
+                     "using default of {} seconds",
+                     FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        }
+        try {
+            String priority = configOptions.get("priority");
+            if (priority != null) {
+                FLOWMOD_PRIORITY = Short.parseShort(priority);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error parsing flow priority, " +
+                     "using default of {}",
+                     FLOWMOD_PRIORITY);
+        }
+        log.debug("FlowMod idle timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        log.debug("FlowMod hard timeout set to {} seconds", 
+                  FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        log.debug("FlowMod priority set to {}", 
+                FLOWMOD_PRIORITY);
     }
 }
