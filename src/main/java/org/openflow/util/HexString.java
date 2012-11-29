@@ -26,6 +26,7 @@ public class HexString {
      * @return "0f:ca:fe:de:ad:be:ef"
      */
     public static String toHexString(byte[] bytes) {
+        if (bytes == null) return "";
         int i;
         String ret = "";
         String tmp;
