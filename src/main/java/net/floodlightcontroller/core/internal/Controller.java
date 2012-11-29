@@ -757,9 +757,10 @@ public class Controller implements IFloodlightProviderService,
                     // OFError message.
                     // If role is MASTER we will promote switch to active
                     // list when we receive the switch's role reply messages
-                    log.debug("This controller's role is {}, " +
-                            "sending initial role request msg to {}",
-                            role, sw);
+                    if (log.isDebugEnabled())
+                        log.debug("This controller's role is {}, " +
+                                "sending initial role request msg to {}",
+                                role, sw);
                     Collection<IOFSwitch> swList = new ArrayList<IOFSwitch>(1);
                     swList.add(sw);
                     roleChanger.submitRequest(swList, role);
