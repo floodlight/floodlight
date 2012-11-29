@@ -146,6 +146,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING = HexString.fromHexString("01:80:c2:00:00:0e");
     private static final long LINK_LOCAL_MASK = 0xfffffffffff0L;
     private static final long LINK_LOCAL_VALUE = 0x0180c2000000L;
+    protected static int EVENT_HISTORY_SIZE = 1024; // in seconds
 
     // BigSwitch OUI is 5C:16:C7, so 5D:16:C7 is the multicast version
     // private static final String LLDP_BSN_DST_MAC_STRING =
@@ -790,12 +791,18 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return Command.STOP;
         }
 
-        if (isLinkDiscoverySuppressed(sw, pi.getInPort()))
-                                                          return Command.STOP;
+        if (isLinkDiscoverySuppressed(sw, pi.getInPort())) {
+            if (log.isTraceEnabled()) {
+                log.trace("Got a LLDP=[{}] from a supressed switchport sw = {}, port = {}. Not fowarding it.", 
+                        new Object[] {lldp.toString(), HexString.toHexString(sw), pi.getInPort()});
+            }
+            return Command.STOP;
+        }
 
         // If this is a malformed LLDP, or not from us, exit
-        if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3)
-                                                                          return Command.CONTINUE;
+        if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3) {
+            return Command.CONTINUE;
+        }
 
         long myId = ByteBuffer.wrap(controllerTLV.getValue()).getLong();
         long otherId = 0;
@@ -837,7 +844,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             // the packet as a regular packet.
             if (isStandard) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Getting standard LLDP from a different controller and quelching it.");
+                    log.trace("Got a standard LLDP=[{}]. Not fowarding it.", lldp.toString());
                 }
                 return Command.STOP;
             } else if (myId < otherId) {
@@ -1910,6 +1917,18 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
 
+        // read our config options
+        Map<String, String> configOptions = context.getConfigParams(this);
+        try {
+            String histSize = configOptions.get("eventhistorysize");
+            if (histSize != null) {
+                EVENT_HISTORY_SIZE = Short.parseShort(histSize);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Error event history size, using default of {} seconds", EVENT_HISTORY_SIZE);
+        }
+        log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
+        
         // Set the autoportfast feature to false.
         this.autoPortFastFeature = false;
 
@@ -1925,12 +1944,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(
-                                                                                 "Topology: Switch");
-        this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(
-                                                                             "Topology: Link");
-        this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(
-                                                                                   "Topology: Cluster");
+        this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
+        this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
+        this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
     }
 
     @Override
