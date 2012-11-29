@@ -50,6 +50,7 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.action.OFActionType;
 
 /**
  *
@@ -75,7 +76,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         fml.setupModules(mods, null);
         learningSwitch = (LearningSwitch) fml.getModuleByName(LearningSwitch.class);
         mockFloodlightProvider = 
-        		(MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
+                (MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
        
         // Build our test packet
         this.testPacket = new Ethernet()
@@ -128,7 +129,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
 
         // Build the PacketIn
         this.packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-            .setBufferId(-1)
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setInPort((short) 1)
             .setPacketData(this.testPacketSerialized)
             .setReason(OFPacketInReason.NO_MATCH)
@@ -177,7 +178,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         OFMessage fm1 = ((OFFlowMod) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD))
             .setActions(Arrays.asList(new OFAction[] {
                     new OFActionOutput().setPort((short) 2).setMaxLength((short) -1)}))
-            .setBufferId(50)
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setCommand(OFFlowMod.OFPFC_ADD)
             .setIdleTimeout((short) 5)
             .setMatch(new OFMatch()
@@ -205,12 +206,29 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setFlags((short)(1 << 0))
             .setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
 
+        OFActionOutput ofAcOut = new OFActionOutput();
+        ofAcOut.setMaxLength((short) -1);
+        ofAcOut.setPort((short)2);
+        ofAcOut.setLength((short) 8);
+        ofAcOut.setType(OFActionType.OUTPUT);
+        
+        OFPacketOut packetOut = new OFPacketOut();
+        packetOut.setActions(Arrays.asList(new OFAction[] {ofAcOut}))
+        .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
+        .setBufferId(50)
+        .setInPort((short)1)
+        .setPacketData(null)
+        .setLength((short) (OFPacketOut.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH));
+        packetOut.setActionFactory(mockFloodlightProvider.getOFMessageFactory());
+        
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
         expect(mockSwitch.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer) (OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO
                 | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_NW_SRC_ALL
                 | OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_TOS));
+        expect(mockSwitch.getBuffers()).andReturn(100).anyTimes();
+        mockSwitch.write(packetOut, null);
         mockSwitch.write(fm1, null);
         mockSwitch.write(fm2, null);
 

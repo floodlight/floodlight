@@ -918,24 +918,43 @@ public class TopologyManager implements
 
         Map<NodePortTuple, Set<Link>> openflowLinks;
         openflowLinks = 
-                new HashMap<NodePortTuple, Set<Link>>(switchPortLinks);
+                new HashMap<NodePortTuple, Set<Link>>();
+        Set<NodePortTuple> nptList = switchPortLinks.keySet();
+
+        if (nptList != null) {
+            for(NodePortTuple npt: nptList) {
+                Set<Link> linkSet = switchPortLinks.get(npt);
+                if (linkSet == null) continue;
+                openflowLinks.put(npt, new HashSet<Link>(linkSet));
+            }
+        }
+
+        // Identify all broadcast domain ports.
+        // Mark any port that has inconsistent set of links
+        // as broadcast domain ports as well.
+        Set<NodePortTuple> broadcastDomainPorts =
+                identifyBroadcastDomainPorts();
+
+        // Remove all links incident on broadcast domain ports.
+        for(NodePortTuple npt: broadcastDomainPorts) {
+            if (switchPortLinks.get(npt) == null) continue;
+            for(Link link: switchPortLinks.get(npt)) {
+                removeLinkFromStructure(openflowLinks, link);
+            }
+        }
 
         // Remove all tunnel links.
         for(NodePortTuple npt: tunnelLinks.keySet()) {
-            if (openflowLinks.get(npt) != null)
-                openflowLinks.remove(npt);
-        }
-
-        // Remove all broadcast domain links.
-        for(NodePortTuple npt: portBroadcastDomainLinks.keySet()) {
-            if (openflowLinks.get(npt) != null)
-                openflowLinks.remove(npt);
+            if (switchPortLinks.get(npt) == null) continue;
+            for(Link link: switchPortLinks.get(npt)) {
+                removeLinkFromStructure(openflowLinks, link);
+            }
         }
 
         TopologyInstance nt = new TopologyInstance(switchPorts, 
                                                    blockedPorts,
                                                    openflowLinks, 
-                                                   portBroadcastDomainLinks.keySet(), 
+                                                   broadcastDomainPorts,
                                                    tunnelLinks.keySet());
         nt.compute();
         // We set the instances with and without tunnels to be identical.
@@ -944,6 +963,66 @@ public class TopologyManager implements
         currentInstanceWithoutTunnels = nt;
         return true;
     }
+
+    /**
+     *  We expect every switch port to have at most two links.  Both these
+     *  links must be unidirectional links connecting to the same switch port.
+     *  If not, we will mark this as a broadcast domain port.
+     */
+    protected Set<NodePortTuple> identifyBroadcastDomainPorts() {
+
+        Set<NodePortTuple> broadcastDomainPorts =
+                new HashSet<NodePortTuple>();
+        broadcastDomainPorts.addAll(this.portBroadcastDomainLinks.keySet());
+
+        Set<NodePortTuple> additionalNpt =
+                new HashSet<NodePortTuple>();
+
+        // Copy switchPortLinks
+        Map<NodePortTuple, Set<Link>> spLinks =
+                new HashMap<NodePortTuple, Set<Link>>();
+        for(NodePortTuple npt: switchPortLinks.keySet()) {
+            spLinks.put(npt, new HashSet<Link>(switchPortLinks.get(npt)));
+        }
+
+        for(NodePortTuple npt: spLinks.keySet()) {
+            Set<Link> links = spLinks.get(npt);
+            boolean bdPort = false;
+            ArrayList<Link> linkArray = new ArrayList<Link>();
+            if (links.size() > 2) {
+                bdPort = true;
+            } else if (links.size() == 2) {
+                for(Link l: links) {
+                    linkArray.add(l);
+                }
+                // now, there should be two links in [0] and [1].
+                Link l1 = linkArray.get(0);
+                Link l2 = linkArray.get(1);
+
+                // check if these two are symmetric.
+                if (l1.getSrc() != l2.getDst() ||
+                        l1.getSrcPort() != l2.getDstPort() ||
+                        l1.getDst() != l2.getSrc() ||
+                        l1.getDstPort() != l2.getSrcPort()) {
+                    bdPort = true;
+                }
+            }
+
+            if (bdPort && (broadcastDomainPorts.contains(npt) == false)) {
+                additionalNpt.add(npt);
+            }
+        }
+
+        if (additionalNpt.size() > 0) {
+            log.warn("The following switch ports have multiple " +
+                    "links incident on them, so these ports will be treated " +
+                    " as braodcast domain ports. {}", additionalNpt);
+
+            broadcastDomainPorts.addAll(additionalNpt);
+        }
+        return broadcastDomainPorts;
+    }
+
 
 
     public void informListeners() {

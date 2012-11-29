@@ -74,13 +74,14 @@ public class TopologyInstance {
     }
 
     public TopologyInstance(Map<Long, Set<Short>> switchPorts,
-                            Map<NodePortTuple, Set<Link>> switchPortLinks)
+                            Map<NodePortTuple, Set<Link>> switchPortLinks,
+                            Set<NodePortTuple> broadcastDomainPorts)
     {
         this.switches = new HashSet<Long>(switchPorts.keySet());
         this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
         this.switchPortLinks = new HashMap<NodePortTuple, 
                 Set<Link>>(switchPortLinks);
-        this.broadcastDomainPorts = new HashSet<NodePortTuple>();
+        this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
         this.tunnelPorts = new HashSet<NodePortTuple>();
         this.blockedPorts = new HashSet<NodePortTuple>();
         this.blockedLinks = new HashSet<Link>();
