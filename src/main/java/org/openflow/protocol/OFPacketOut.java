@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -47,6 +47,7 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
         super();
         this.type = OFType.PACKET_OUT;
         this.length = U16.t(MINIMUM_LENGTH);
+        this.bufferId = BUFFER_ID_NONE;
     }
 
     /**
@@ -62,6 +63,10 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
      * @param bufferId
      */
     public OFPacketOut setBufferId(int bufferId) {
+        if (packetData != null && packetData.length > 0 && bufferId != BUFFER_ID_NONE) {
+            throw new IllegalArgumentException(
+                    "PacketOut should not have both bufferId and packetData set");
+        }
         this.bufferId = bufferId;
         return this;
     }
@@ -79,6 +84,10 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
      * @param packetData
      */
     public OFPacketOut setPacketData(byte[] packetData) {
+        if (packetData != null && packetData.length > 0 && bufferId != BUFFER_ID_NONE) {
+            throw new IllegalArgumentException(
+                    "PacketOut should not have both bufferId and packetData set");
+        }
         this.packetData = packetData;
         return this;
     }
@@ -167,10 +176,12 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
         this.actions = this.actionFactory.parseActions(data, getActionsLengthU());
         this.packetData = new byte[getLengthU() - MINIMUM_LENGTH - getActionsLengthU()];
         data.readBytes(this.packetData);
+        validate();
     }
 
     @Override
     public void writeTo(ChannelBuffer data) {
+        validate();
         super.writeTo(data);
         data.writeInt(bufferId);
         data.writeShort(inPort);
@@ -180,6 +191,14 @@ public class OFPacketOut extends OFMessage implements OFActionFactoryAware {
         }
         if (this.packetData != null)
             data.writeBytes(this.packetData);
+    }
+
+    /** validate the invariants of this OFMessage hold */
+    public void validate() {
+        if (!((bufferId != BUFFER_ID_NONE) ^ (packetData != null && packetData.length > 0))) {
+            throw new IllegalStateException(
+                    "OFPacketOut must have exactly one of (bufferId, packetData) set (not one, not both)");
+        }
     }
 
     @Override
