@@ -343,13 +343,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
         // set buffer-id, in-port and packet-data based on packet-in
         short poLength = (short)(po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
-        po.setBufferId(pi.getBufferId());
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         po.setInPort(pi.getInPort());
-        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
-            byte[] packetData = pi.getPacketData();
-            poLength += packetData.length;
-            po.setPacketData(packetData);
-        }
+        byte[] packetData = pi.getPacketData();
+        poLength += packetData.length;
+        po.setPacketData(packetData);
         po.setLength(poLength);
         
         try {

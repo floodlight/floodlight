@@ -21,6 +21,8 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import net.floodlightcontroller.packet.Ethernet;
+
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.serializers.OFMatchJSONSerializer;
@@ -121,7 +123,7 @@ public class OFMatch implements Cloneable, Serializable {
         this.dataLayerDestination = new byte[] { 0x0, 0x0, 0x0, 0x0, 0x0,
                                                 0x0 };
         this.dataLayerSource = new byte[] { 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 };
-        this.dataLayerVirtualLan = -1;
+        this.dataLayerVirtualLan = Ethernet.VLAN_UNTAGGED;
         this.dataLayerVirtualLanPriorityCodePoint = 0;
         this.dataLayerType = 0;
         this.inputPort = 0;
