@@ -59,6 +59,7 @@ public class OFFlowMod extends OFMessage implements OFActionFactoryAware, Clonea
 
     public OFFlowMod() {
         super();
+        this.outPort = OFPort.OFPP_NONE.getValue();
         this.type = OFType.FLOW_MOD;
         this.length = U16.t(MINIMUM_LENGTH);
     }
