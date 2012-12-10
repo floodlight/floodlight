@@ -643,13 +643,6 @@ public class StaticFlowEntryPusher
     @Override
     public void addFlow(String name, OFFlowMod fm, String swDpid) {
         Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid, name);
-        entry2dpid.put(name, swDpid);
-        Map<String, OFFlowMod> switchEntries = entriesFromStorage.get(swDpid);
-        if (switchEntries == null) {
-            switchEntries = new HashMap<String, OFFlowMod>();
-            entriesFromStorage.put(swDpid, switchEntries);
-        }
-        switchEntries.put(name, fm);
         storageSource.insertRowAsync(TABLE_NAME, fmMap);
     }
 
