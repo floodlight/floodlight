@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +42,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
@@ -60,6 +60,19 @@ import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.OFMessageDamper;
 
+/**
+ * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
+ * via a REST API defined close to the OpenStack Quantum LBaaS (Load-balancer-as-a-Service)
+ * v1.0 API proposal. Since the proposal has not been final, no efforts have yet been 
+ * made to confirm compatibility at this time. 
+ * 
+ * Limitations:
+ * - client records and static flows not purged after use, will exhaust switch flow tables over time
+ * - round robin policy among servers based on connections, not traffic volume
+ * - health monitoring feature not implemented yet
+ *  
+ * @author kcwang
+ */
 public class LoadBalancer implements IFloodlightModule,
     ILoadBalancerService, IOFMessageListener {
 
@@ -83,11 +96,9 @@ public class LoadBalancer implements IFloodlightModule,
     protected HashMap<Integer, String> memberIpToId;
     protected HashMap<IPClient, LBMember> clientToMember;
     
-    public static final int VIP_APP_ID = 7; 
-    public long appCookie = AppCookie.makeCookie(VIP_APP_ID, 0);
-    protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
+    //Copied from Forwarding with message damper routine for pushing proxy Arp 
+    protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // ms. 
     protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
-
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =
             new Comparator<SwitchPort>() {
@@ -101,7 +112,7 @@ public class LoadBalancer implements IFloodlightModule,
                 }
             };
 
-    
+    // data structure for storing connected
     public class IPClient {
         int ipAddress;
         byte nw_proto;
@@ -166,20 +177,11 @@ public class LoadBalancer implements IFloodlightModule,
                 if (vipIpToId.containsKey(targetProtocolAddress)) {
                     String vipId = vipIpToId.get(targetProtocolAddress);                    
                     vipProxyArpReply(sw, pi, cntx, vipId);
-                
-                    // set routing decision to NONE or DROP
-//                    IRoutingDecision decision = new RoutingDecision(sw.getId(), pi.getInPort()
-//                                                                    , IDeviceService.fcStore.
-//                                                                    get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
-//                                                                    IRoutingDecision.RoutingAction.NONE);
-//                    decision.addToContext(cntx);
                     return Command.STOP;
                 }
-                
             }
         } else {
             // currently only load balance IPv4 packets - no-op for other traffic 
-            
             if (pkt instanceof IPv4) {
                 IPv4 ip_pkt = (IPv4) pkt;                
                 
@@ -216,21 +218,22 @@ public class LoadBalancer implements IFloodlightModule,
                     pushPacket(pkt, sw, pi.getBufferId(), pi.getInPort(), OFPort.OFPP_TABLE.getValue(),
                                 cntx, true);
                                         
-                    // set routing decision to NONE or DROP
-//                    IRoutingDecision decision = new RoutingDecision(sw.getId(), pi.getInPort()
-//                                                                    , IDeviceService.fcStore.
-//                                                                    get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
-//                                                                    IRoutingDecision.RoutingAction.NONE);
-//                    decision.addToContext(cntx);
-                    
                     return Command.STOP;
                 }
             }
         }
-        
+        // bypass non-load-balanced traffic for normal processing (forwarding)
         return Command.CONTINUE;
     }
 
+    /**
+     * used to send proxy Arp for load balanced service requests
+     * @param IOFSwitch sw
+     * @param OFPacketIn pi
+     * @param FloodlightContext cntx
+     * @param String vipId
+     */
+    
     protected void vipProxyArpReply(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, String vipId) {
         log.debug("vipProxyArpReply");
             
@@ -273,6 +276,17 @@ public class LoadBalancer implements IFloodlightModule,
         return;
     }
 
+    /**
+     * used to push any packet - borrowed routine from Forwarding
+     * 
+     * @param OFPacketIn pi
+     * @param IOFSwitch sw
+     * @param int bufferId
+     * @param short inPort
+     * @param short outPort
+     * @param FloodlightContext cntx
+     * @param boolean flush
+     */    
     public void pushPacket(IPacket packet, 
                            IOFSwitch sw,
                            int bufferId,
@@ -326,8 +340,17 @@ public class LoadBalancer implements IFloodlightModule,
         }
     }
 
+    /**
+     * used to find and push in-bound and out-bound routes using StaticFlowEntryPusher
+     * @param IOFSwitch sw
+     * @param OFPacketIn pi
+     * @param FloodlightContext cntx
+     * @param IPClient client
+     * @param LBMember member
+     */
     protected void pushBidirectionalVipRoutes(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, IPClient client, LBMember member) {
         
+        // borrowed code from Forwarding to retrieve src and dst device entities
         // Check if we have the location of the destination
         IDevice srcDevice = null;
         IDevice dstDevice = null;
@@ -402,6 +425,8 @@ public class LoadBalancer implements IFloodlightModule,
         
         int iSrcDaps = 0, iDstDaps = 0;
 
+        // following Forwarding's same routing routine, retrieve both in-bound and out-bound routes for
+        // all clusters.
         while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
             SwitchPort srcDap = srcDaps[iSrcDaps];
             SwitchPort dstDap = dstDaps[iDstDaps];
@@ -450,6 +475,14 @@ public class LoadBalancer implements IFloodlightModule,
         return;
     }
     
+    /**
+     * used to push given route using static flow entry pusher
+     * @param boolean inBound
+     * @param Route route
+     * @param IPClient client
+     * @param LBMember member
+     * @param long pinSwitch
+     */
     @SuppressWarnings("unchecked")
     public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, long pinSwitch) {
         List<NodePortTuple> path = route.getPath();
@@ -465,7 +498,7 @@ public class LoadBalancer implements IFloodlightModule,
                             +"srcswitch-"+path.get(0).getNodeId());
                    json.put("src-ip",IPv4.fromIPv4Address(client.ipAddress));
                    json.put("protocol",String.valueOf(client.nw_proto));
-                   json.put("src-port",String.valueOf(client.srcPort));
+                   json.put("src-port",String.valueOf(client.srcPort & 0xffff));
                    json.put("ether-type","0x800");
                    json.put("priority","32768");
                    json.put("ingress-port",String.valueOf(path.get(i).getPortId()));
@@ -483,7 +516,7 @@ public class LoadBalancer implements IFloodlightModule,
                             +"srcswitch-"+path.get(0).getNodeId());
                    json.put("dst-ip",IPv4.fromIPv4Address(client.ipAddress));
                    json.put("protocol",String.valueOf(client.nw_proto));
-                   json.put("dst-port",String.valueOf(client.targetPort));
+                   json.put("dst-port",String.valueOf(client.srcPort & 0xffff));
                    json.put("ether-type","0x800");
                    json.put("priority","32768");
                    json.put("ingress-port",String.valueOf(path.get(i).getPortId()));
@@ -547,15 +580,14 @@ public class LoadBalancer implements IFloodlightModule,
     
     @Override
     public Collection<LBVip> listVips() {
-        // TODO Auto-generated method stub
-        return null;
+        return vips.values();
     }
 
     @Override
     public Collection<LBVip> listVip(String vipId) {
-        // TODO Auto-generated method stub
-        return null;
-    }
+        Collection<LBVip> result = new HashSet<LBVip>();
+        result.add(vips.get(vipId));
+        return result;    }
 
     @Override
     public LBVip createVip(LBVip vip) {
@@ -571,26 +603,30 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public LBVip updateVip(LBVip vip) {
-        // TODO Auto-generated method stub
-        return null;
+        vips.put(vip.id, vip);
+        return vip;
     }
 
     @Override
     public int removeVip(String vipId) {
-        // TODO Auto-generated method stub
-        return 0;
+        if(vips.containsKey(vipId)){
+            vips.remove(vipId);
+            return 0;
+        } else {
+            return -1;
+        }
     }
 
     @Override
     public Collection<LBPool> listPools() {
-        // TODO Auto-generated method stub
-        return null;
+        return pools.values();
     }
 
     @Override
     public Collection<LBPool> listPool(String poolId) {
-        // TODO Auto-generated method stub
-        return null;
+        Collection<LBPool> result = new HashSet<LBPool>();
+        result.add(pools.get(poolId));
+        return result;
     }
 
     @Override
@@ -609,28 +645,44 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public LBPool updatePool(LBPool pool) {
-        // TODO Auto-generated method stub
+        pools.put(pool.id, pool);
         return null;
     }
 
     @Override
     public int removePool(String poolId) {
-        // TODO Auto-generated method stub
-        return 0;
+        if(pools.containsKey(poolId)){
+            pools.remove(poolId);
+            return 0;
+        } else {
+            return -1;
+        }    
     }
 
     @Override
     public Collection<LBMember> listMembers() {
-        // TODO Auto-generated method stub
-        return null;
+        return members.values();
     }
 
     @Override
     public Collection<LBMember> listMember(String memberId) {
-        // TODO Auto-generated method stub
-        return null;
-    }
+        Collection<LBMember> result = new HashSet<LBMember>();
+        result.add(members.get(memberId));
+        return result;    
+        }
 
+    @Override
+    public Collection<LBMember> listMembersByPool(String poolId) {
+        Collection<LBMember> result = new HashSet<LBMember>();
+        
+        if(pools.containsKey(poolId)) {
+            ArrayList<String> memberIds = pools.get(poolId).members;
+            for (int i=0; i<memberIds.size(); i++)
+                result.add(members.get(memberIds.get(i)));
+        }
+        return result;    
+    }
+    
     @Override
     public LBMember createMember(LBMember member) {
         if (member == null)
@@ -649,14 +701,18 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public LBMember updateMember(LBMember member) {
-        // TODO Auto-generated method stub
-        return null;
+        members.put(member.id, member);
+        return member;
     }
 
     @Override
     public int removeMember(String memberId) {
-        // TODO Auto-generated method stub
-        return 0;
+        if(members.containsKey(memberId)){
+            members.remove(memberId);
+            return 0;
+        } else {
+            return -1;
+        }    
     }
 
     @Override

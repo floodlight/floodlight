@@ -82,6 +82,11 @@ public interface ILoadBalancerService extends IFloodlightService {
     public Collection<LBMember> listMember(String memberId);
 
     /**
+     * List all members in a specified pool.
+     */
+    public Collection<LBMember> listMembersByPool(String poolId);
+    
+    /**
      * Create and return a new member.
      * @param LBMember member: data structure with caller provided member attributes 
      * @return LBMember: Created member 
