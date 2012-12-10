@@ -154,8 +154,8 @@ public class PortDownReconciliation implements IFloodlightModule,
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
-		topology.addListener((ITopologyListener) this);
-		frm.addFlowReconcileListener((IFlowReconcileListener) this);
+		topology.addListener(this);
+		frm.addFlowReconcileListener(this);
 	}
 
 	@Override

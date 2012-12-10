@@ -103,7 +103,8 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
 	protected FloodlightContext cntx;
 	protected List<OFStatistics> statsReply;
 
-	@Before
+	@Override
+    @Before
 	public void setUp() throws Exception {
 		super.setUp();
 
