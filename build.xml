@@ -138,7 +138,7 @@
         </pathconvert>
         <echo message="Running thrift generator on ${thrift.file.list}"/>
         <exec executable="thrift" dir="${basedir}" failonerror="true">
-            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${thrift.file.list}'"/>
         </exec>
         <!-- Get rid of annoying warnings in thrift java: at annotations -->
         <echo message="Adding @SuppressWarning annotations"/>
