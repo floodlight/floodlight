@@ -727,7 +727,13 @@ public class TopologyInstance {
 
     protected Set<Long> getSwitchesInOpenflowDomain(long switchId) {
         Cluster c = switchClusterMap.get(switchId);
-        if (c == null) return null;
+        if (c == null) {
+            // The switch is not known to topology as there
+            // are no links connected to it.
+            Set<Long> nodes = new HashSet<Long>();
+            nodes.add(switchId);
+            return nodes;
+        }
         return (c.getNodes());
     }
 

@@ -41,6 +41,10 @@ public interface ITopologyService extends IFloodlightService  {
     public boolean inSameOpenflowDomain(long switch1, long switch2, 
                                         boolean tunnelEnabled);
 
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID);
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID,
+                                                 boolean tunnelEnabled);
+
     /**
      * Queries whether two switches are in the same island.
      * Currently, island and cluster are the same. In future,

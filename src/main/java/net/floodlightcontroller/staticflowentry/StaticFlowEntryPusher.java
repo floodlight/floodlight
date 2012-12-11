@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,12 +35,13 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 
 import net.floodlightcontroller.storage.StorageException;
+
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFFlowRemoved;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
-import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
@@ -90,18 +91,16 @@ public class StaticFlowEntryPusher
             COLUMN_DL_SRC, COLUMN_DL_DST, COLUMN_DL_VLAN, COLUMN_DL_VLAN_PCP,
             COLUMN_DL_TYPE, COLUMN_NW_TOS, COLUMN_NW_PROTO, COLUMN_NW_SRC,
             COLUMN_NW_DST, COLUMN_TP_DST, COLUMN_TP_SRC, COLUMN_ACTIONS };
- 
+
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IRestApiService restApi;
 
-    // Map<DPID, Map<Name, FlowMod>> ; FlowMod can be null to indicate non-active
+    // Map<DPID, Map<Name, FlowMod>>; FlowMod can be null to indicate non-active
     protected Map<String, Map<String, OFFlowMod>> entriesFromStorage;
     // Entry Name -> DPID of Switch it's on
     protected Map<String, String> entry2dpid;
-
-    private BasicFactory ofMessageFactory;
 
     // Class to sort FlowMod's by priority, from lowest to highest
     class FlowModSorter implements Comparator<String> {
@@ -188,7 +187,7 @@ public class StaticFlowEntryPusher
 
     protected Map<String, String> computeEntry2DpidMap(
                 Map<String, Map<String, OFFlowMod>> map) {
-        Map<String, String> ret = new HashMap<String, String>();
+        Map<String, String> ret = new ConcurrentHashMap<String, String>();
         for(String dpid : map.keySet()) {
             for( String entry: map.get(dpid).keySet())
                 ret.put(entry, dpid);
@@ -234,17 +233,13 @@ public class StaticFlowEntryPusher
      * @param row
      * @param entries
      */
-
-    void parseRow(Map<String, Object> row,
-            Map<String, Map<String, OFFlowMod>> entries) {
+    void parseRow(Map<String, Object> row, Map<String, Map<String, OFFlowMod>> entries) {
         String switchName = null;
         String entryName = null;
 
         StringBuffer matchString = new StringBuffer();
-        if (ofMessageFactory == null) // lazy init
-            ofMessageFactory = new BasicFactory();
 
-        OFFlowMod flowMod = (OFFlowMod) ofMessageFactory
+        OFFlowMod flowMod = (OFFlowMod) floodlightProvider.getOFMessageFactory()
                 .getMessage(OFType.FLOW_MOD);
 
         if (!row.containsKey(COLUMN_SWITCH) || !row.containsKey(COLUMN_NAME)) {
@@ -265,29 +260,28 @@ public class StaticFlowEntryPusher
             for (String key : row.keySet()) {
                 if (row.get(key) == null)
                     continue;
-                if ( key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME)
+                if (key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME)
                         || key.equals("id"))
                     continue; // already handled
                 // explicitly ignore timeouts and wildcards
-                if ( key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT) ||
+                if (key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT) ||
                         key.equals(COLUMN_WILDCARD))
                     continue;
-                if ( key.equals(COLUMN_ACTIVE)) {
-                    if  (! Boolean.valueOf((String) row.get(COLUMN_ACTIVE))) {
+                if (key.equals(COLUMN_ACTIVE)) {
+                    if  (!Boolean.valueOf((String) row.get(COLUMN_ACTIVE))) {
                         log.debug("skipping inactive entry {} for switch {}",
                                 entryName, switchName);
                         entries.get(switchName).put(entryName, null);  // mark this an inactive
                         return;
                     }
-                } else if ( key.equals(COLUMN_ACTIONS)){
+                } else if (key.equals(COLUMN_ACTIONS)){
                     StaticFlowEntries.parseActionString(flowMod, (String) row.get(COLUMN_ACTIONS), log);
-                } else if ( key.equals(COLUMN_COOKIE)) {
+                } else if (key.equals(COLUMN_COOKIE)) {
                     flowMod.setCookie(
                             StaticFlowEntries.computeEntryCookie(flowMod, 
                                     Integer.valueOf((String) row.get(COLUMN_COOKIE)), 
-                                    entryName)
-                        );
-                } else if ( key.equals(COLUMN_PRIORITY)) {
+                                    entryName));
+                } else if (key.equals(COLUMN_PRIORITY)) {
                     flowMod.setPriority(U16.t(Integer.valueOf((String) row.get(COLUMN_PRIORITY))));
                 } else { // the rest of the keys are for OFMatch().fromString()
                     if (matchString.length() > 0)
@@ -296,13 +290,14 @@ public class StaticFlowEntryPusher
                 }
             }
         } catch (ClassCastException e) {
-            if (entryName != null && switchName != null)
-                log.debug(
-                        "skipping entry {} on switch {} with bad data : "
+            if (entryName != null && switchName != null) {
+                log.warn(
+                        "Skipping entry {} on switch {} with bad data : "
                                 + e.getMessage(), entryName, switchName);
-            else
-                log.debug("skipping entry with bad data: {} :: {} ",
+            } else {
+                log.warn("Skipping entry with bad data: {} :: {} ",
                         e.getMessage(), e.getStackTrace());
+            }
         }
 
         OFMatch ofMatch = new OFMatch();
@@ -322,13 +317,12 @@ public class StaticFlowEntryPusher
     
     @Override
     public void addedSwitch(IOFSwitch sw) {
-        log.debug("addedSwitch {}; processing its static entries", sw);
+        log.debug("Switch {} connected; processing its static entries", HexString.toHexString(sw.getId()));
         sendEntriesToSwitch(sw);
     }
 
     @Override
     public void removedSwitch(IOFSwitch sw) {
-        log.debug("removedSwitch {}", sw);
         // do NOT delete from our internal state; we're tracking the rules,
         // not the switches
     }
@@ -338,35 +332,45 @@ public class StaticFlowEntryPusher
         // no-op
     }
 
-    /**
-     * This handles both rowInsert() and rowUpdate()
-     */
-    
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
+        // This handles both rowInsert() and rowUpdate()
         log.debug("Modifying Table {}", tableName);
-
         HashMap<String, Map<String, OFFlowMod>> entriesToAdd = 
             new HashMap<String, Map<String, OFFlowMod>>();
         // build up list of what was added 
-        for(Object key: rowKeys) {
+        for (Object key: rowKeys) {
             IResultSet resultSet = storageSource.getRow(tableName, key);
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+            Iterator<IResultSet> it = resultSet.iterator();
+            while (it.hasNext()) {
                 Map<String, Object> row = it.next().getRow();
                 parseRow(row, entriesToAdd);
-            }            
+            }
         }
         // batch updates by switch and blast them out
         for (String dpid : entriesToAdd.keySet()) {
             if (!entriesFromStorage.containsKey(dpid))
                 entriesFromStorage.put(dpid, new HashMap<String, OFFlowMod>());
+            
             List<OFMessage> outQueue = new ArrayList<OFMessage>();
             for(String entry : entriesToAdd.get(dpid).keySet()) {
                 OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
-                OFFlowMod oldFlowMod = entriesFromStorage.get(dpid).get(entry);
-                if (oldFlowMod != null) {  // remove any pre-existing rule
+                //OFFlowMod oldFlowMod = entriesFromStorage.get(dpid).get(entry);
+                OFFlowMod oldFlowMod = null;
+                String dpidOldFlowMod = entry2dpid.get(entry);
+                if (dpidOldFlowMod != null) {
+                    oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
+                }
+                if (oldFlowMod != null) {
+                    // Remove any pre-existing rule
+                    // If the old rule is on a different switch
+                    // then we have to handle that as well.
                     oldFlowMod.setCommand(OFFlowMod.OFPFC_DELETE_STRICT);
-                    outQueue.add(oldFlowMod);
+                    if (dpidOldFlowMod.equals(dpid)) {
+                        outQueue.add(oldFlowMod);
+                    } else {
+                        writeOFMessageToSwitch(HexString.toLong(dpidOldFlowMod), oldFlowMod);
+                    }
                 }
                 if (newFlowMod != null) {
                     entriesFromStorage.get(dpid).put(entry, newFlowMod);
@@ -385,12 +389,12 @@ public class StaticFlowEntryPusher
     @Override
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         if (log.isDebugEnabled()) {
-            log.debug("deleting from Table {}", tableName);
+            log.debug("Deleting from table {}", tableName);
         }
         
         for(Object obj : rowKeys) {
             if (!(obj instanceof String)) {
-                log.debug("tried to delete non-string key {}; ignoring", obj);
+                log.debug("Tried to delete non-string key {}; ignoring", obj);
                 continue;
             }
             deleteStaticFlowEntry((String) obj);
@@ -400,17 +404,19 @@ public class StaticFlowEntryPusher
     @LogMessageDoc(level="ERROR",
             message="inconsistent internal state: no switch has rule {rule}",
             explanation="Inconsistent internat state discovered while " +
-            		"deleting a static flow rule",
+                    "deleting a static flow rule",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    private boolean deleteStaticFlowEntry(String entryName) {
-        String dpid = entry2dpid.get(entryName);
-        if (log.isDebugEnabled()) {
-            log.debug("Deleting flow {} for switch {}", entryName, dpid);
-        }
+    private void deleteStaticFlowEntry(String entryName) {
+        String dpid = entry2dpid.remove(entryName);
+        
         if (dpid == null) {
-            log.error("inconsistent internal state: no switch has rule {}",
-                    entryName);
-            return false;
+            // assume state has been cleared by deleteFlowsForSwitch() or
+            // deleteAllFlows()
+            return;
+        }
+        
+        if (log.isDebugEnabled()) {
+            log.debug("Sending delete flow mod for flow {} for switch {}", entryName, dpid);
         }
         
         // send flow_mod delete
@@ -423,11 +429,11 @@ public class StaticFlowEntryPusher
         } else { 
             log.debug("Tried to delete non-existent entry {} for switch {}", 
                     entryName, dpid);
-            return false;
+            return;
         }
         
         writeFlowModToSwitch(HexString.toLong(dpid), flowMod);
-        return true;
+        return;
     }
     
     /**
@@ -438,7 +444,7 @@ public class StaticFlowEntryPusher
     @LogMessageDoc(level="ERROR",
             message="Tried to write to switch {switch} but got {error}",
             explanation="An I/O error occured while trying to write a " +
-            		"static flow to a switch",
+                    "static flow to a switch",
             recommendation=LogMessageDoc.CHECK_SWITCH)
     private void writeOFMessagesToSwitch(long dpid, List<OFMessage> messages) {
         IOFSwitch ofswitch = floodlightProvider.getSwitches().get(dpid);
@@ -448,6 +454,31 @@ public class StaticFlowEntryPusher
                     log.debug("Sending {} new entries to {}", messages.size(), dpid);
                 }
                 ofswitch.write(messages, null);
+                ofswitch.flush();
+            } catch (IOException e) {
+                log.error("Tried to write to switch {} but got {}", dpid, e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Writes a single OFMessage to a switch
+     * @param dpid The datapath ID of the switch to write to
+     * @param message The OFMessage to write.
+     */
+    @LogMessageDoc(level="ERROR",
+            message="Tried to write to switch {switch} but got {error}",
+            explanation="An I/O error occured while trying to write a " +
+                    "static flow to a switch",
+            recommendation=LogMessageDoc.CHECK_SWITCH)
+    private void writeOFMessageToSwitch(long dpid, OFMessage message) {
+        IOFSwitch ofswitch = floodlightProvider.getSwitches().get(dpid);
+        if (ofswitch != null) {  // is the switch connected
+            try {
+                if (log.isDebugEnabled()) {
+                    log.debug("Sending 1 new entries to {}", HexString.toHexString(dpid));
+                }
+                ofswitch.write(message, null);
                 ofswitch.flush();
             } catch (IOException e) {
                 log.error("Tried to write to switch {} but got {}", dpid, e.getMessage());
@@ -499,6 +530,32 @@ public class StaticFlowEntryPusher
         return StaticFlowName;
     }
     
+    /**
+     * Handles a flow removed message from a switch. If the flow was removed
+     * and we did not explicitly delete it we re-install it. If we explicitly
+     * removed the flow we stop the processing of the flow removed message.
+     * @param sw The switch that sent the flow removed message.
+     * @param msg The flow removed message.
+     * @param cntx The associated context.
+     * @return Whether to continue processing this message.
+     */
+    public Command handleFlowRemoved(IOFSwitch sw, OFFlowRemoved msg, FloodlightContext cntx) {
+        long cookie = msg.getCookie();
+        /**
+         * This is just to sanity check our assumption that static flows 
+         * never expire.
+         */
+        if (AppCookie.extractApp(cookie) == STATIC_FLOW_APP_ID) {
+            if (msg.getReason() != OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
+                log.error("Got a FlowRemove message for a infinite " +
+                          "timeout flow: {} from switch {}", msg, sw);
+            // Stop the processing chain since we sent the delete.
+            return Command.STOP;
+        }
+        
+        return Command.CONTINUE;
+    }
+    
     @Override
     @LogMessageDoc(level="ERROR",
         message="Got a FlowRemove message for a infinite " +
@@ -509,24 +566,10 @@ public class StaticFlowEntryPusher
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         switch (msg.getType()) {
         case FLOW_REMOVED:
-            break;
+            return handleFlowRemoved(sw, (OFFlowRemoved) msg, cntx);
         default:
             return Command.CONTINUE;
         }
-        OFFlowRemoved flowRemoved = (OFFlowRemoved) msg;
-        long cookie = flowRemoved.getCookie();
-        /**
-         * This is just to sanity check our assumption that static flows 
-         * never expire.
-         */
-        if( AppCookie.extractApp(cookie) == STATIC_FLOW_APP_ID) {
-            if (flowRemoved.getReason() != 
-                    OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
-                log.error("Got a FlowRemove message for a infinite " +
-                		  "timeout flow: {} from switch {}", msg, sw);
-            return Command.STOP;    // only for us
-        } else
-            return Command.CONTINUE;
     }
 
     @Override
@@ -600,36 +643,90 @@ public class StaticFlowEntryPusher
     @Override
     public void addFlow(String name, OFFlowMod fm, String swDpid) {
         Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid, name);
-        entry2dpid.put(name, swDpid);
-        Map<String, OFFlowMod> switchEntries = entriesFromStorage.get(swDpid);
-        if (switchEntries == null) {
-            switchEntries = new HashMap<String, OFFlowMod>();
-            entriesFromStorage.put(swDpid, switchEntries);
-        }
-        switchEntries.put(name, fm);
         storageSource.insertRowAsync(TABLE_NAME, fmMap);
     }
 
     @Override
     public void deleteFlow(String name) {
         storageSource.deleteRowAsync(TABLE_NAME, name);
-        // TODO - What if there is a delay in storage?
     }
     
     @Override
     public void deleteAllFlows() {
-        for (String entry : entry2dpid.keySet()) {
-            deleteFlow(entry);
+        // Send a delete for each switch
+        Set<String> swSet = new HashSet<String>();
+        for (String dpid : entry2dpid.values()) {
+            // Avoid sending duplicate deletes
+            if (!swSet.contains(dpid)) {
+                swSet.add(dpid);
+                sendDeleteByCookie(HexString.toLong(dpid));
+            }
         }
+        
+        // Clear our map
+        entry2dpid.clear();
+        
+        // Clear our book keeping map
+        for (Map<String, OFFlowMod> eMap : entriesFromStorage.values()) {
+            eMap.clear();
+        }
+        
+        // Reset our DB
+        storageSource.deleteMatchingRowsAsync(TABLE_NAME, null);
     }
     
     @Override
     public void deleteFlowsForSwitch(long dpid) {
-        String sDpid = HexString.toHexString(dpid);
+        sendDeleteByCookie(dpid);
         
-        for (Entry<String, String> e : entry2dpid.entrySet()) {
-            if (e.getValue().equals(sDpid))
-                deleteFlow(e.getKey());
+        String sDpid = HexString.toHexString(dpid);
+        // Clear all internal flows for this switch
+        Map<String, OFFlowMod> sMap = entriesFromStorage.get(sDpid);
+        if (sMap != null) {
+            for (String entryName : sMap.keySet()) {
+                entry2dpid.remove(entryName);
+                // Delete from DB
+                deleteFlow(entryName);
+            }
+            sMap.clear();
+        } else {
+            log.warn("Map of storage entries for switch {} was null", sDpid);
+        }
+    }
+    
+    /**
+     * Deletes all flows installed by static flow pusher on a given switch.
+     * We send a delete flow mod with the static flow pusher app ID in the cookie.
+     * Since OF1.0 doesn't support masking based on the cookie we have to 
+     * disable having flow specific cookies.
+     * @param dpid The DPID of the switch to clear all it's flows.
+     */
+    private void sendDeleteByCookie(long dpid) {
+        if (log.isDebugEnabled())
+            log.debug("Deleting all static flows on switch {}", HexString.toHexString(dpid));
+        
+        IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
+        if (sw == null) {
+            log.warn("Tried to delete static flows for non-existant switch {}",
+                    HexString.toHexString(dpid));
+            return;
+        }
+        
+        OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory().
+                getMessage(OFType.FLOW_MOD);
+        OFMatch ofm = new OFMatch();
+        fm.setMatch(ofm);
+        fm.setCookie(AppCookie.makeCookie(StaticFlowEntryPusher.STATIC_FLOW_APP_ID, 0));
+        fm.setCommand(OFFlowMod.OFPFC_DELETE);
+        fm.setOutPort(OFPort.OFPP_NONE);
+
+        try {
+            sw.write(fm, null);
+            sw.flush();
+        } catch (IOException e1) {
+            log.error("Error deleting all flows for switch {}:\n {}", 
+                    HexString.toHexString(dpid), e1.getMessage());
+            return;
         }
     }
     
@@ -642,7 +739,6 @@ public class StaticFlowEntryPusher
     public Map<String, OFFlowMod> getFlows(String dpid) {
         return entriesFromStorage.get(dpid);
     }
-
     
     // IHAListener
     
@@ -675,5 +771,4 @@ public class StaticFlowEntryPusher
             Map<String, String> removedControllerNodeIPs) {
         // ignore
     }
-     
 }
