@@ -75,6 +75,7 @@ DeviceManagerImpl.DeviceUpdate.Change.*;
 import org.openflow.protocol.OFMatchWithSwDpid;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,8 +254,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         @Override
         public int compare(AttachmentPoint oldAP, AttachmentPoint newAP) {
-
             //First compare based on L2 domain ID; 
+
             long oldSw = oldAP.getSw();
             short oldPort = oldAP.getPort();
             long oldDomain = topology.getL2DomainId(oldSw);
@@ -267,6 +268,16 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
             if (oldDomain < newDomain) return -1;
             else if (oldDomain > newDomain) return 1;
+
+
+            // Give preference to OFPP_LOCAL always
+            if (oldPort != OFPort.OFPP_LOCAL.getValue() &&
+                    newPort == OFPort.OFPP_LOCAL.getValue()) {
+                return -1;
+            } else if (oldPort == OFPort.OFPP_LOCAL.getValue() &&
+                    newPort != OFPort.OFPP_LOCAL.getValue()) {
+                return 1;
+            }
 
             // We expect that the last seen of the new AP is higher than
             // old AP, if it is not, just reverse and send the negative

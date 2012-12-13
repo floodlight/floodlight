@@ -46,6 +46,8 @@
     <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
+    <property name="findbugs.home" value="../build/findbugs-2.0.2"/>
+    <property name="findbugs.results" value="findbugs-results" />
     <property name="lib" location="lib"/>
 
     <patternset id="lib">
@@ -65,6 +67,10 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
         <include name="guava-13.0.1.jar" />
+	<include name="commons-logging-1.1.1.jar" />
+	<include name="httpclient-4.2.2.jar" />
+	<include name="httpcore-4.2.2.jar" />
+	<include name="json-simple-1.1.1.jar" />
     </patternset>
 
     <path id="classpath">
@@ -274,6 +280,36 @@
             <arg value="${main-class}"/>
             <arg value="${eclipse-lib}"/>
         </exec>
+    </target>
+
+    <target name="findbugs-xml" depends="init,compile">
+        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpath="${findbugs.home}/lib/findbugs-ant.jar"/>
+        <mkdir dir="${findbugs.results}"/>
+        <findbugs home="${findbugs.home}"
+            output="xml"
+            outputFile="${findbugs.results}/results.xml" >
+           <sourcePath path="${source}" />
+           <sourcePath path="${thrift.out.dir}" />
+           <class location="${build}" />
+           <auxClasspath>
+                <path refid="classpath" />
+           </auxClasspath>
+        </findbugs>
+    </target>
+
+    <target name="findbugs" depends="init,compile">
+        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpath="${findbugs.home}/lib/findbugs-ant.jar"/>
+        <mkdir dir="${findbugs.results}"/>
+        <findbugs home="${findbugs.home}"
+            output="html"
+            outputFile="${findbugs.results}/results.html" >
+           <sourcePath path="${source}" />
+           <sourcePath path="${thrift.out.dir}" />
+           <class location="${build}" />
+           <auxClasspath>
+                <path refid="classpath" />
+           </auxClasspath>
+        </findbugs>
     </target>
 
 </project>

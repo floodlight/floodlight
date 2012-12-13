@@ -377,7 +377,8 @@ public class TopologyManager implements
 
     }
 
-
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     /**
      * Checks if the switchport is a broadcast domain port or not.
      */
@@ -393,7 +394,8 @@ public class TopologyManager implements
         return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
     }
 
-
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     /**
      * Checks if the new attachment point port is consistent with the
      * old attachment point port.
@@ -466,6 +468,22 @@ public class TopologyManager implements
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getAllowedIncomingBroadcastPort(src,srcPort);
     }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID) {
+        return getSwitchesInOpenflowDomain(switchDPID, true);
+    }
+
+    @Override
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID,
+                                                 boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getSwitchesInOpenflowDomain(switchDPID);
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     @Override
     public Set<NodePortTuple> getBroadcastDomainPorts() {
