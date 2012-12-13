@@ -21,7 +21,7 @@ public class OFQueueGetConfigReply extends OFMessage {
         this.type = OFType.QUEUE_GET_CONFIG_REPLY;
         this.length = U16.t(MINIMUM_LENGTH);
     }
-    
+
     /**
      * @return the portNumber
      */
@@ -40,31 +40,31 @@ public class OFQueueGetConfigReply extends OFMessage {
      * @return the port's queues
      */
     public List<OFPacketQueue> getQueues() {
-		return queues;
-	}
+        return queues;
+    }
 
     /**
      * @param queues the queues to set
      */
-	public void setQueues(List<OFPacketQueue> queues) {
-		this.queues = queues;
-	}
+    public void setQueues(List<OFPacketQueue> queues) {
+        this.queues = queues;
+    }
 
-	@Override
+    @Override
     public void readFrom(ChannelBuffer data) {
         super.readFrom(data);
         this.portNumber = data.readShort();
         data.readInt();   // pad
         data.readShort(); // pad
-        
+
         int availLength = (this.length - MINIMUM_LENGTH);
         this.queues.clear();
-        
+
         while (availLength > 0) {
-        	OFPacketQueue queue = new OFPacketQueue();
-        	queue.readFrom(data);
-        	queues.add(queue);
-        	availLength -= queue.getLength();
+            OFPacketQueue queue = new OFPacketQueue();
+            queue.readFrom(data);
+            queues.add(queue);
+            availLength -= queue.getLength();
         }
     }
 
@@ -74,12 +74,12 @@ public class OFQueueGetConfigReply extends OFMessage {
         data.writeShort(this.portNumber);
         data.writeInt(0);   // pad
         data.writeShort(0); // pad
-        
+
         for (OFPacketQueue queue : queues) {
-        	queue.writeTo(data);
+            queue.writeTo(data);
         }
     }
-    
+
     @Override
     public int hashCode() {
         final int prime = 349;

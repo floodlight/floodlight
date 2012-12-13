@@ -4,13 +4,13 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.U16;
 
 public class OFQueueProp {
-	private int NONE_MINIMUM_LENGTH = 8;
-	private int MIN_RATE_MINIMUM_LENGTH = 16;
+    private int NONE_MINIMUM_LENGTH = 8;
+    private int MIN_RATE_MINIMUM_LENGTH = 16;
 
     public enum OFQueuePropType {
-    	OFPQT_NONE       (0),
-    	OFPQT_MIN_RATE   (1);
-    	
+        OFPQT_NONE       (0),
+        OFPQT_MIN_RATE   (1);
+
         protected int value;
 
         private OFQueuePropType(int value) {
@@ -23,15 +23,15 @@ public class OFQueueProp {
         public int getValue() {
             return value;
         }
-        
+
         public static OFQueuePropType fromShort(short x) {
-        	switch (x) {
-        	    case 0:
-        		    return OFPQT_NONE;
-        	    case 1:
-        		    return OFPQT_MIN_RATE;
-        	}
-        	return null;
+            switch (x) {
+                case 0:
+                    return OFPQT_NONE;
+                case 1:
+                    return OFPQT_MIN_RATE;
+            }
+            return null;
         }
     }
 
@@ -43,79 +43,79 @@ public class OFQueueProp {
         this.type = OFQueuePropType.OFPQT_NONE;
         this.length = U16.t(NONE_MINIMUM_LENGTH);
     }
-    
+
     /**
      * @return the type
      */
     public OFQueuePropType getType() {
-		return type;
-	}
+        return type;
+    }
 
     /**
      * @param type the type to set
      */
-	public void setType(OFQueuePropType type) {
-		this.type = type;
-		
-		switch (type) {
-		    case OFPQT_NONE:
-			    this.length = U16.t(NONE_MINIMUM_LENGTH);
+    public void setType(OFQueuePropType type) {
+        this.type = type;
+
+        switch (type) {
+            case OFPQT_NONE:
+                this.length = U16.t(NONE_MINIMUM_LENGTH);
                 break;
             case OFPQT_MIN_RATE:
                 this.length = U16.t(MIN_RATE_MINIMUM_LENGTH);
                 break;
-		}
-	}
+        }
+    }
 
     /**
      * @return the rate
      */
-	public short getRate() {
-		return rate;
-	}
+    public short getRate() {
+        return rate;
+    }
 
-	/**
+    /**
      * @param rate the rate to set
      */
-	public void setRate(short rate) {
-		this.rate = rate;
-	}
-	
+    public void setRate(short rate) {
+        this.rate = rate;
+    }
+
     /**
      * @return the length
      */
-	public short getLength() {
-		return length;
-	}
+    public short getLength() {
+        return length;
+    }
 
-	public void readFrom(ChannelBuffer data) {
+    public void readFrom(ChannelBuffer data) {
         this.type = OFQueuePropType.fromShort(data.readShort());
         this.length = data.readShort();
         data.readInt(); // pad
-       
+
         if (this.type == OFQueuePropType.OFPQT_MIN_RATE) {
-        	assert(this.length == MIN_RATE_MINIMUM_LENGTH);
- 
-        	this.rate = data.readShort();
-        	data.readInt(); // pad
-        	data.readShort(); // pad
+            assert(this.length == MIN_RATE_MINIMUM_LENGTH);
+
+            this.rate = data.readShort();
+            data.readInt(); // pad
+            data.readShort(); // pad
         } else {
-        	assert(this.length == NONE_MINIMUM_LENGTH);
+            assert(this.length == NONE_MINIMUM_LENGTH);
         }
     }
-    
+
     public void writeTo(ChannelBuffer data) {
-    	data.writeShort(this.type.getValue());
-    	data.writeShort(this.length);
-    	data.writeInt(0); // pad
-    	
-    	if (this.type == OFQueuePropType.OFPQT_MIN_RATE) {
-    		data.writeShort(this.rate);
-    		data.writeInt(0); // pad
-    		data.writeShort(0); // pad
-    	}
+        data.writeShort(this.type.getValue());
+        data.writeShort(this.length);
+        data.writeInt(0); // pad
+
+        if (this.type == OFQueuePropType.OFPQT_MIN_RATE) {
+            data.writeShort(this.rate);
+            data.writeInt(0); // pad
+            data.writeShort(0); // pad
+        }
     }
-    
+
     @Override
     public int hashCode() {
         final int prime = 353;
@@ -141,9 +141,9 @@ public class OFQueueProp {
             return false;
         }
         if (type == OFQueuePropType.OFPQT_MIN_RATE) {
-        	if (rate != other.rate) {
-        		return false;
-        	}
+            if (rate != other.rate) {
+                return false;
+            }
         }
         return true;
     }

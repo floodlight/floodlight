@@ -17,7 +17,7 @@ public class OFQueueGetConfigRequest extends OFMessage {
         this.type = OFType.QUEUE_GET_CONFIG_REQUEST;
         this.length = U16.t(MINIMUM_LENGTH);
     }
-    
+
     /**
      * @return the portNumber
      */
@@ -45,7 +45,7 @@ public class OFQueueGetConfigRequest extends OFMessage {
         data.writeShort(this.portNumber);
         data.writeShort(0); // pad
     }
-    
+
     @Override
     public int hashCode() {
         final int prime = 347;
