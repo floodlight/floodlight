@@ -46,6 +46,8 @@
     <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
+    <property name="findbugs.home" value="../build/findbugs-2.0.2"/>
+    <property name="findbugs.results" value="findbugs-results" />
     <property name="lib" location="lib"/>
 
     <patternset id="lib">
@@ -274,6 +276,38 @@
             <arg value="${main-class}"/>
             <arg value="${eclipse-lib}"/>
         </exec>
+    </target>
+
+    <target name="findbugs-xml" depends="init,compile">
+        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpath="${findbugs.home}/lib/findbugs-ant.jar"/>
+        <mkdir dir="${findbugs.results}"/>
+        <findbugs home="${findbugs.home}"
+            output="xml"
+            outputFile="${findbugs.results}/results.xml" >
+           <sourcePath path="${source}" />
+           <sourcePath path="${thrift.out.dir}" />
+           <sourcePath path="${generated-source}" />
+           <class location="${build}" />
+           <auxClasspath>
+                <path refid="classpath" />
+           </auxClasspath>
+        </findbugs>
+    </target>
+
+    <target name="findbugs" depends="init,compile">
+        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpath="${findbugs.home}/lib/findbugs-ant.jar"/>
+        <mkdir dir="${findbugs.results}"/>
+        <findbugs home="${findbugs.home}"
+            output="html"
+            outputFile="${findbugs.results}/results.html" >
+           <sourcePath path="${source}" />
+           <sourcePath path="${thrift.out.dir}" />
+           <sourcePath path="${generated-source}" />
+           <class location="${build}" />
+           <auxClasspath>
+                <path refid="classpath" />
+           </auxClasspath>
+        </findbugs>
     </target>
 
 </project>
