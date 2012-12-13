@@ -8,7 +8,7 @@ import org.openflow.protocol.vendor.OFVendorData;
  *
  * @author Andrew Ferguson (adf@cs.brown.edu)
  */
-public class OFQueueDeleteVendorData {
+public class OFQueueDeleteVendorData extends OFQueueVendorData {
 
     protected static Instantiable<OFVendorData> instantiable =
             new Instantiable<OFVendorData>() {
