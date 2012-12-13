@@ -15,17 +15,17 @@ public class OFOpenFlowVendorExtensions {
         OFBasicVendorId openflowVendorId =
                 new OFBasicVendorId(OFOpenFlowVendorData.OF_VENDOR_ID, 4);
         OFVendorId.registerVendorId(openflowVendorId);
-       
+
         OFBasicVendorDataType queueModifyVendorData =
-        		new OFBasicVendorDataType(OFQueueModifyVendorData.OFP_EXT_QUEUE_MODIFY,
-        				OFQueueModifyVendorData.getInstantiable());
+                new OFBasicVendorDataType(OFQueueModifyVendorData.OFP_EXT_QUEUE_MODIFY,
+                        OFQueueModifyVendorData.getInstantiable());
         openflowVendorId.registerVendorDataType(queueModifyVendorData);
-        
+
         OFBasicVendorDataType queueDeleteVendorData =
-        		new OFBasicVendorDataType(OFQueueDeleteVendorData.OFP_EXT_QUEUE_DELETE,
-        				OFQueueModifyVendorData.getInstantiable());
+                new OFBasicVendorDataType(OFQueueDeleteVendorData.OFP_EXT_QUEUE_DELETE,
+                        OFQueueModifyVendorData.getInstantiable());
         openflowVendorId.registerVendorDataType(queueDeleteVendorData);
-        
+
         initialized = true;
     }
 }

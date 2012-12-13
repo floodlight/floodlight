@@ -5,7 +5,7 @@ import org.openflow.protocol.vendor.OFVendorData;
 
 /**
  * Class that represents the vendor data in the queue modify request
- * 
+ *
  * @author Andrew Ferguson (adf@cs.brown.edu)
  */
 public class OFQueueModifyVendorData extends OFQueueVendorData {
@@ -16,7 +16,7 @@ public class OFQueueModifyVendorData extends OFQueueVendorData {
                     return new OFQueueModifyVendorData();
                 }
             };
-	
+
     /**
      * @return a subclass of Instantiable<OFVendorData> that instantiates
      *         an instance of OFQueueModifyVendorData.
@@ -24,7 +24,7 @@ public class OFQueueModifyVendorData extends OFQueueVendorData {
     public static Instantiable<OFVendorData> getInstantiable() {
         return instantiable;
     }
-            
+
     /**
      * The data type value for a queue modify request
      */

@@ -7,7 +7,7 @@ import org.openflow.protocol.vendor.OFVendorData;
 /**
  * Base class for vendor data corresponding to extensions to OpenFlow 1.0.
  * Based on org.openflow.vendor.nicira
- * 
+ *
  * @author Andrew Ferguson (adf@cs.brown.edu)
  */
 public class OFOpenFlowVendorData implements OFVendorData {
@@ -18,13 +18,13 @@ public class OFOpenFlowVendorData implements OFVendorData {
      * The value of the integer data type at the beginning of the vendor data
      */
     protected int dataType;
-    
+
     /**
      * Construct empty (i.e. unspecified data type) OpenFlow vendor data.
      */
     public OFOpenFlowVendorData() {
     }
-    
+
     /**
      * Construct OpenFlow vendor data with the specified data type
      * @param dataType the data type value at the beginning of the vendor data.
@@ -32,7 +32,7 @@ public class OFOpenFlowVendorData implements OFVendorData {
     public OFOpenFlowVendorData(int dataType) {
         this.dataType = dataType;
     }
-    
+
     /**
      * Get the data type value at the beginning of the vendor data
      * @return the integer data type value
@@ -40,7 +40,7 @@ public class OFOpenFlowVendorData implements OFVendorData {
     public int getDataType() {
         return dataType;
     }
-    
+
     /**
      * Set the data type value
      * @param dataType the integer data type value at the beginning of the
@@ -49,11 +49,11 @@ public class OFOpenFlowVendorData implements OFVendorData {
     public void setDataType(int dataType) {
         this.dataType = dataType;
     }
-    
+
     /**
      * Get the length of the vendor data. This implementation will normally
      * be the superclass for another class that will override this to return
-     * the overall vendor data length. This implementation just returns the 
+     * the overall vendor data length. This implementation just returns the
      * length of the part that includes the 4-byte integer data type value
      * at the beginning of the vendor data.
      */

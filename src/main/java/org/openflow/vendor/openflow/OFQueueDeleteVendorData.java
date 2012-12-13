@@ -5,7 +5,7 @@ import org.openflow.protocol.vendor.OFVendorData;
 
 /**
  * Class that represents the vendor data in the queue delete request
- * 
+ *
  * @author Andrew Ferguson (adf@cs.brown.edu)
  */
 public class OFQueueDeleteVendorData {
@@ -16,7 +16,7 @@ public class OFQueueDeleteVendorData {
                     return new OFQueueModifyVendorData();
                 }
             };
-	
+
     /**
      * @return a subclass of Instantiable<OFVendorData> that instantiates
      *         an instance of OFQueueDeleteVendorData.
@@ -24,7 +24,7 @@ public class OFQueueDeleteVendorData {
     public static Instantiable<OFVendorData> getInstantiable() {
         return instantiable;
     }
-            
+
     /**
      * The data type value for a queue delete request
      */
