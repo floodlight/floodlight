@@ -47,7 +47,8 @@ public class OFQueueGetConfigReply extends OFMessage {
      * @param queues the queues to set
      */
     public void setQueues(List<OFPacketQueue> queues) {
-        this.queues = queues;
+        this.queues.clear();
+        this.queues.addAll(queues);
     }
 
     @Override
