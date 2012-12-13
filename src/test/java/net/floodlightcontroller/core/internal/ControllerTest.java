@@ -18,7 +18,6 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -29,15 +28,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 
-import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHAListener;
+import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -72,15 +72,16 @@ import org.junit.Test;
 import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFType;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFVendor;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -172,6 +173,7 @@ public class ControllerTest extends FloodlightTestCase
      * Run the controller's main loop so that updates are processed
      */
     protected class ControllerRunThread extends Thread {
+        @Override
         public void run() {
             controller.openFlowPort = 0; // Don't listen
             controller.run();
@@ -540,14 +542,17 @@ public class ControllerTest extends FloodlightTestCase
                 nRemoved = 0;
                 nPortChanged = 0;
             }
+            @Override
             public synchronized void addedSwitch(IOFSwitch sw) {
                 nAdded++;
                 notifyAll();
             }
+            @Override
             public synchronized void removedSwitch(IOFSwitch sw) {
                 nRemoved++;
                 notifyAll();
             }
+            @Override
             public String getName() {
                 return "dummy";
             }
@@ -1348,6 +1353,357 @@ public class ControllerTest extends FloodlightTestCase
             return new TestSwitchClass();
         }
         return null;
+    }
+    
+    private void setupSwitchForDispatchTest(IOFSwitch sw, 
+                                            boolean isConnected,
+                                            Role role) {
+        Lock lock = createNiceMock(Lock.class);
+        expect(sw.getId()).andReturn(1L).anyTimes();
+        expect(sw.getStringId()).andReturn("00:00:00:00:00:01").anyTimes();
+        expect(sw.getListenerReadLock()).andReturn(lock).anyTimes();
+        expect(sw.isConnected()).andReturn(isConnected).anyTimes();
+        expect(sw.getHARole()).andReturn(role).anyTimes();
+        replay(lock);
+        
+    }
+    
+    @Test 
+    public void testMessageDispatch() throws Exception {
+        // Mock a dummy packet in
+        // Build our test packet
+        IPacket testPacket = new Ethernet()
+        .setSourceMACAddress("00:44:33:22:11:00")
+        .setDestinationMACAddress("00:11:22:33:44:55")
+        .setEtherType(Ethernet.TYPE_ARP)
+        .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) 6)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REPLY)
+                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
+                .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
+                .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
+                .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+        byte[] testPacketSerialized = testPacket.serialize();
+
+        // Build the PacketIn        
+        OFPacketIn pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+                .setBufferId(-1)
+                .setInPort((short) 1)
+                .setPacketData(testPacketSerialized)
+                .setReason(OFPacketInReason.NO_MATCH)
+                .setTotalLength((short) testPacketSerialized.length);
+
+        
+        // Mock switch and add to data structures 
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        
+        controller.connectedSwitches.add(sw);
+        
+        // create a channel handler 
+        OFChannelState state = new OFChannelState();
+        state.hsState = HandshakeState.READY;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        chdlr.sw = sw;
+        
+        // mock role changer 
+        RoleChanger roleChanger = createMock(RoleChanger.class); 
+        roleChanger.submitRequest(eq(controller.connectedSwitches), 
+                                  anyObject(Role.class));
+        expectLastCall().anyTimes();
+        controller.roleChanger = roleChanger;
+        
+        
+        // Mock message listener and add 
+        IOFMessageListener listener = createNiceMock(IOFMessageListener.class);
+        expect(listener.getName()).andReturn("foobar").anyTimes();
+        replay(listener);
+        controller.addOFMessageListener(OFType.PACKET_IN, listener);
+        resetToStrict(listener);
+        
+        
+        assertEquals("Check that update queue is empty", 0, 
+                    controller.updates.size());
+        
+        
+        replay(roleChanger);
+        
+        //-------------------
+        // Test 1: role is master, switch is master and in activeMap
+        // we expect the msg to be dispatched 
+        reset(sw);
+        resetToDefault(listener);
+        controller.activeSwitches.put(1L, sw);
+        setupSwitchForDispatchTest(sw, true, Role.MASTER);
+        listener.receive(same(sw), same(pi), 
+                         anyObject(FloodlightContext.class));
+        expectLastCall().andReturn(Command.STOP).once();
+        replay(sw, listener);
+        chdlr.processOFMessage(pi);
+        verify(sw, listener);
+        assertEquals(0, controller.updates.size());
+        
+        
+        //-------------------
+        // Test 1b: role is master, switch is master and in activeMap
+        // but switch is not connected 
+        // no message dispatched 
+        reset(sw);
+        resetToDefault(listener);
+        controller.activeSwitches.put(1L, sw);
+        setupSwitchForDispatchTest(sw, false, Role.MASTER);
+        replay(sw, listener);
+        chdlr.processOFMessage(pi);
+        verify(sw, listener);
+        assertEquals(0, controller.updates.size());
+        
+        
+        //-------------------
+        // Test 1c: role is master, switch is slave and in activeMap
+        // no message dispatched 
+        reset(sw);
+        resetToDefault(listener);
+        controller.activeSwitches.put(1L, sw);
+        setupSwitchForDispatchTest(sw, true, Role.SLAVE);
+        replay(sw, listener);
+        chdlr.processOFMessage(pi);
+        verify(sw, listener);
+        assertEquals(0, controller.updates.size());
+        
+        
+        //-------------------
+        // Test 1d: role is master, switch is master but not in activeMap
+        // we expect the msg to be dispatched 
+        reset(sw);
+        resetToDefault(listener);
+        controller.activeSwitches.remove(1L);
+        setupSwitchForDispatchTest(sw, true, Role.MASTER);
+        replay(sw, listener);
+        chdlr.processOFMessage(pi);
+        verify(sw, listener);
+        assertEquals(0, controller.updates.size());        
+        
+        
+        
+        //-------------------
+        // Test 2: check correct dispatch and HA notification behavior
+        // We set the role to slave but do not notify the clients 
+        reset(sw);
+        resetToDefault(listener);
+        controller.activeSwitches.put(1L, sw);
+        setupSwitchForDispatchTest(sw, true, Role.MASTER);
+        listener.receive(same(sw), same(pi), 
+                         anyObject(FloodlightContext.class));
+        expectLastCall().andReturn(Command.STOP).once();
+        replay(sw, listener);
+        controller.setRole(Role.SLAVE);
+        chdlr.processOFMessage(pi);
+        verify(sw, listener);
+        assertEquals(1, controller.updates.size());
+        
+        // Now notify listeners 
+        Controller.IUpdate upd = controller.updates.poll(1, TimeUnit.NANOSECONDS);
+        assertTrue("Check that update is HARoleUpdate", 
+                   upd instanceof Controller.HARoleUpdate);
+        upd.dispatch();
+        resetToDefault(listener);
+        replay(listener);
+        chdlr.processOFMessage(pi);
+        verify(listener);
+        assertEquals(0, controller.updates.size());
+        
+        // transition back to master but don't notify yet
+        resetToDefault(listener);
+        replay(listener);
+        controller.setRole(Role.MASTER);
+        chdlr.processOFMessage(pi);
+        verify(listener);
+        assertEquals(1, controller.updates.size());
+        
+        // now notify listeners 
+        upd = controller.updates.poll(1, TimeUnit.NANOSECONDS);
+        assertTrue("Check that update is HARoleUpdate", 
+                   upd instanceof Controller.HARoleUpdate);
+        upd.dispatch();
+        resetToDefault(listener);
+        listener.receive(same(sw), same(pi), 
+                         anyObject(FloodlightContext.class));
+        expectLastCall().andReturn(Command.STOP).once();
+        replay(listener);
+        chdlr.processOFMessage(pi);
+        verify(listener);
+        assertEquals(0, controller.updates.size());
+        
+        verify(sw);
+    }
+    
+    
+    /*
+     * Test correct timing behavior between HA Role notification and dispatching
+     * OFMessages to listeners. 
+     * When transitioning to SLAVE: stop dispatching message before sending
+     *    notifications
+     * When transitioning to MASTER: start dispatching messages after sending
+     *     notifications
+     * (This implies that messages should not be dispatched while the 
+     * notifications are being sent). 
+     * 
+     * We encapsulate the logic for this in a class that implements both
+     * IHAListener and IOFMessageListener. Then we inject an OFMessage fom
+     * the IHAListener and check that it gets dropped correctly. 
+     */
+    @Test 
+    public void testRoleNotifcationAndMessageDispatch() throws Exception {
+        class TestRoleNotificationsAndDispatch implements IHAListener, IOFMessageListener {
+            OFPacketIn pi;
+            Controller.OFChannelHandler chdlr;
+            IOFSwitch sw;
+            private boolean haveReceived;
+            private boolean doInjectMessageFromHAListener;
+            
+            public TestRoleNotificationsAndDispatch() {
+                IPacket testPacket = new Ethernet()
+                .setSourceMACAddress("00:44:33:22:11:00")
+                .setDestinationMACAddress("00:11:22:33:44:55")
+                .setEtherType(Ethernet.TYPE_ARP)
+                .setPayload(
+                        new ARP()
+                        .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                        .setProtocolType(ARP.PROTO_TYPE_IP)
+                        .setHardwareAddressLength((byte) 6)
+                        .setProtocolAddressLength((byte) 4)
+                        .setOpCode(ARP.OP_REPLY)
+                        .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
+                        .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
+                        .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
+                        .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+                byte[] testPacketSerialized = testPacket.serialize();
+        
+                // Build the PacketIn        
+                pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+                        .setBufferId(-1)
+                        .setInPort((short) 1)
+                        .setPacketData(testPacketSerialized)
+                        .setReason(OFPacketInReason.NO_MATCH)
+                        .setTotalLength((short) testPacketSerialized.length);
+                
+                // Mock switch and add to data structures 
+                sw = createMock(IOFSwitch.class);
+                controller.connectedSwitches.add(sw);
+                controller.activeSwitches.put(1L, sw);
+                setupSwitchForDispatchTest(sw, true, Role.MASTER);
+                replay(sw);
+                
+                // create a channel handler 
+                OFChannelState state = new OFChannelState();
+                state.hsState = HandshakeState.READY;
+                chdlr = controller.new OFChannelHandler(state);
+                chdlr.sw = this.sw;
+                
+                // add ourself as listeners
+                controller.addOFMessageListener(OFType.PACKET_IN, this);
+                controller.addHAListener(this);
+            }
+            
+            
+            private void injectMessage(boolean shouldReceive) throws Exception {
+                haveReceived = false;
+                chdlr.processOFMessage(pi);
+                assertEquals(shouldReceive, haveReceived);
+            }
+            
+            public void transitionToSlave() throws Exception {
+                IUpdate update;
+                
+                // Bring controller into well defined state for MASTER
+                doInjectMessageFromHAListener = false; 
+                update = controller.new HARoleUpdate(Role.MASTER, Role.SLAVE);
+                update.dispatch();
+                doInjectMessageFromHAListener = true;
+                
+                
+                // inject message. Listener called 
+                injectMessage(true);
+                // Dispatch update 
+                update = controller.new HARoleUpdate(Role.SLAVE, Role.MASTER);
+                update.dispatch();
+                // inject message. Listener not called
+                injectMessage(false);
+            }
+            
+            public void transitionToMaster() throws Exception {
+                IUpdate update;
+                
+                // Bring controller into well defined state for SLAVE
+                doInjectMessageFromHAListener = false; 
+                update = controller.new HARoleUpdate(Role.SLAVE, Role.MASTER);
+                update.dispatch();
+                doInjectMessageFromHAListener = true;
+                
+                
+                // inject message. Listener not called 
+                injectMessage(false);
+                // Dispatch update 
+                update = controller.new HARoleUpdate(Role.MASTER, Role.SLAVE);
+                update.dispatch();
+                // inject message. Listener called
+                injectMessage(true);
+            }
+            
+            //---------------
+            // IHAListener
+            //---------------
+            @Override
+            public void roleChanged(Role oldRole, Role newRole) {
+                try {
+                    if (doInjectMessageFromHAListener)
+                        injectMessage(false);
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+            
+            @Override
+            public
+                    void
+                    controllerNodeIPsChanged(Map<String, String> curControllerNodeIPs,
+                                             Map<String, String> addedControllerNodeIPs,
+                                             Map<String, String> removedControllerNodeIPs) {
+                // TODO Auto-generated method stub
+            }
+            
+            //-------------------------
+            // IOFMessageListener
+            //-------------------------
+            @Override
+            public String getName() {
+                return "FooBar";
+            }
+            @Override
+            public boolean isCallbackOrderingPrereq(OFType type, String name) {
+                return false;
+            }
+            @Override
+            public boolean isCallbackOrderingPostreq(OFType type, String name) {
+                return false;
+            }
+            @Override
+            public Command receive(IOFSwitch sw, 
+                                   OFMessage msg, 
+                                   FloodlightContext cntx) {
+                haveReceived = true;
+                return Command.STOP;
+            }
+        }
+        
+        TestRoleNotificationsAndDispatch x = new TestRoleNotificationsAndDispatch();
+        x.transitionToSlave();
+        x.transitionToMaster();
+        
     }
 
 }

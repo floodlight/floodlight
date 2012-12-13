@@ -187,6 +187,12 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
+    public SocketAddress getInetAddress() {
+        assertTrue("Unexpected method call", false);
+        return null;
+    }
+    
+    @Override
     public Map<Object, Object> getAttributes() {
         assertTrue("Unexpected method call", false);
         return null;
@@ -372,12 +378,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public void setHARole(Role role, boolean haRoleReplyReceived) {
         // TODO Auto-generated method stub
         
-    }
-
-    @Override
-    public SocketAddress getInetAddress() {
-        // TODO Auto-generated method stub
-        return null;
     }
 
     @Override

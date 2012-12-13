@@ -36,6 +36,7 @@ window.HostListView = Backbone.View.extend({
         this.template = _.template(tpl.get('host-list'));
         this.model.bind("change", this.render, this);
         this.model.bind("add", this.render, this);
+        this.model.bind("remove", this.render, this);
     },
 
     render:function (eventName) {

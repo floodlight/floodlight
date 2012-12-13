@@ -256,6 +256,12 @@ public interface IOFSwitch {
     public String getStringId();
     
     /**
+     * Get the IP Address for the switch
+     * @return the inet address
+     */
+    public SocketAddress getInetAddress();
+    
+    /**
      * Retrieves attributes of this switch
      * @return
      */
@@ -439,13 +445,6 @@ public interface IOFSwitch {
      * @return
      */
     public Lock getListenerWriteLock();
-
-    /**
-     * Get the IP Address for the switch
-     * @return the inet address
-     */
-    public SocketAddress getInetAddress();
-
 
     /***********************************************
      * The following method can be overridden by

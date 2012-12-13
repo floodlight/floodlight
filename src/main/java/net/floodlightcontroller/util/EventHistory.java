@@ -13,15 +13,11 @@ import java.util.ArrayList;
 public class EventHistory<T> {
     public static final int EV_HISTORY_DEFAULT_SIZE = 1024;
 
-    public String  description;
     public int     event_history_size;
     public int     current_index;
     public boolean full; // true if all are in use
     public ArrayList<Event> events;
 
-    public String getDescription() {
-        return description;
-    }
     public int getEvent_history_size() {
         return event_history_size;
     }
@@ -65,7 +61,7 @@ public class EventHistory<T> {
     }
 
     // Constructor
-    public EventHistory(int maxEvents, String desc) {
+    public EventHistory(int maxEvents) {
         events = new ArrayList<Event>(maxEvents);
 
         for (int idx = 0; idx < maxEvents; idx++) {
@@ -76,23 +72,20 @@ public class EventHistory<T> {
             evH.base_info.idx   = idx;
             events.add(idx, evH);
         }
-
-        description = "Event-History:" + desc;
+        
         event_history_size   = maxEvents;
         current_index        = 0;
         full                 = false;
     }
 
     // Constructor for default size
-    public EventHistory(String desc) {
-        this(EV_HISTORY_DEFAULT_SIZE, desc);
+    public EventHistory() {
+        this(EV_HISTORY_DEFAULT_SIZE);
     }
 
     // Copy constructor - copy latest k items of the event history
     public EventHistory(EventHistory<T> eventHist, int latestK) {
-
         if (eventHist == null) {
-            description = "No event found";
             return;
         }
         int curSize = (eventHist.full)?eventHist.event_history_size:
@@ -119,8 +112,7 @@ public class EventHistory<T> {
             evH.base_info.idx = idx;
             events.add(idx, evH);
         }
-
-        description = eventHist.description;
+        
         event_history_size   = size;
         current_index        = 0; // since it is full
         full                 = true;

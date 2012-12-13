@@ -74,13 +74,14 @@ public class TopologyInstance {
     }
 
     public TopologyInstance(Map<Long, Set<Short>> switchPorts,
-                            Map<NodePortTuple, Set<Link>> switchPortLinks)
+                            Map<NodePortTuple, Set<Link>> switchPortLinks,
+                            Set<NodePortTuple> broadcastDomainPorts)
     {
         this.switches = new HashSet<Long>(switchPorts.keySet());
         this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
         this.switchPortLinks = new HashMap<NodePortTuple, 
                 Set<Link>>(switchPortLinks);
-        this.broadcastDomainPorts = new HashSet<NodePortTuple>();
+        this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
         this.tunnelPorts = new HashSet<NodePortTuple>();
         this.blockedPorts = new HashSet<NodePortTuple>();
         this.blockedLinks = new HashSet<Link>();
@@ -726,7 +727,13 @@ public class TopologyInstance {
 
     protected Set<Long> getSwitchesInOpenflowDomain(long switchId) {
         Cluster c = switchClusterMap.get(switchId);
-        if (c == null) return null;
+        if (c == null) {
+            // The switch is not known to topology as there
+            // are no links connected to it.
+            Set<Long> nodes = new HashSet<Long>();
+            nodes.add(switchId);
+            return nodes;
+        }
         return (c.getNodes());
     }
 

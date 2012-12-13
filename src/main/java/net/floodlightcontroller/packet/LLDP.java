@@ -201,4 +201,19 @@ public class LLDP extends BasePacket {
             return false;
         return true;
     }
+    
+    @Override
+    public String toString() {
+        String str = "";
+        str += "chassisId=" + ((this.chassisId == null) ? "null" : this.chassisId.toString());
+        str += " portId=" + ((this.portId == null) ? "null" : this.portId.toString());
+        str += " ttl=" + ((this.ttl == null) ? "null" : this.ttl.toString());
+        str += " etherType=" + Integer.toString(this.ethType, 16).toUpperCase();
+        str += " optionalTlvList=[";
+        if (this.optionalTLVList != null) {
+            for (LLDPTLV l : optionalTLVList) str += l.toString() + ", ";
+        }
+        str += "]";
+        return str;
+    }
 }
