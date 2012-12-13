@@ -9,3 +9,4 @@ target
 thrift
 *.swp
 *.pyc
+findbugs-results
