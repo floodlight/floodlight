@@ -495,7 +495,7 @@ public class LoadBalancer implements IFloodlightModule,
                json.put("switch", HexString.toHexString(sw));
                if (inBound) {
                    json.put("name","inbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                            +"srcswitch-"+path.get(0).getNodeId());
+                            +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw);
                    json.put("src-ip",IPv4.fromIPv4Address(client.ipAddress));
                    json.put("protocol",String.valueOf(client.nw_proto));
                    json.put("src-port",String.valueOf(client.srcPort & 0xffff));
@@ -513,7 +513,7 @@ public class LoadBalancer implements IFloodlightModule,
                    }
                } else {
                    json.put("name","outbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                            +"srcswitch-"+path.get(0).getNodeId());
+                            +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw);
                    json.put("dst-ip",IPv4.fromIPv4Address(client.ipAddress));
                    json.put("protocol",String.valueOf(client.nw_proto));
                    json.put("dst-port",String.valueOf(client.srcPort & 0xffff));
