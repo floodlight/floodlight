@@ -286,7 +286,6 @@
             outputFile="${findbugs.results}/results.xml" >
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />
-           <sourcePath path="${generated-source}" />
            <class location="${build}" />
            <auxClasspath>
                 <path refid="classpath" />
@@ -302,7 +301,6 @@
             outputFile="${findbugs.results}/results.html" >
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />
-           <sourcePath path="${generated-source}" />
            <class location="${build}" />
            <auxClasspath>
                 <path refid="classpath" />
