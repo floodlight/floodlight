@@ -29,7 +29,7 @@ public class OFQueueDeleteVendorData extends OFQueueVendorData {
     protected static Instantiable<OFVendorData> instantiable =
             new Instantiable<OFVendorData>() {
                 public OFVendorData instantiate() {
-                    return new OFQueueModifyVendorData();
+                    return new OFQueueDeleteVendorData();
                 }
             };
 
@@ -45,4 +45,8 @@ public class OFQueueDeleteVendorData extends OFQueueVendorData {
      * The data type value for a queue delete request
      */
     public static final int OFP_EXT_QUEUE_DELETE = 1;
+
+    public OFQueueDeleteVendorData() {
+        super(OFP_EXT_QUEUE_DELETE);
+    }
 }

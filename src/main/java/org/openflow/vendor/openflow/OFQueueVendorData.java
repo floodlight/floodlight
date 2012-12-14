@@ -28,10 +28,14 @@ import org.openflow.protocol.OFPacketQueue;
  * @author Andrew Ferguson (adf@cs.brown.edu)
  */
 public class OFQueueVendorData extends OFOpenFlowVendorData {
-    public static int MINIMUM_LENGTH = 24;
+    public static int MINIMUM_LENGTH = 8;
 
     protected short portNumber;
     protected List<OFPacketQueue> queues = new ArrayList<OFPacketQueue>();
+
+    public OFQueueVendorData(int dataType) {
+        super(dataType);
+    }
 
     /**
      * @return the portNumber
@@ -73,7 +77,7 @@ public class OFQueueVendorData extends OFOpenFlowVendorData {
             queuesLength += queue.getLength();
         }
 
-        return MINIMUM_LENGTH + queuesLength;
+        return super.getLength() + MINIMUM_LENGTH + queuesLength;
     }
 
     /**

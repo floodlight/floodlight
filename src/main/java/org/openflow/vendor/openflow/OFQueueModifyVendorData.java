@@ -45,4 +45,8 @@ public class OFQueueModifyVendorData extends OFQueueVendorData {
      * The data type value for a queue modify request
      */
     public static final int OFP_EXT_QUEUE_MODIFY = 0;
+
+    public OFQueueModifyVendorData() {
+        super(OFP_EXT_QUEUE_MODIFY);
+    }
 }
