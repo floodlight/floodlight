@@ -28,10 +28,15 @@ public class OFQueueGetConfigRequest extends OFMessage {
 
     protected short portNumber;
 
-    public OFQueueGetConfigRequest() {
+    public OFQueueGetConfigRequest(short portNumber) {
         super();
         this.type = OFType.QUEUE_GET_CONFIG_REQUEST;
         this.length = U16.t(MINIMUM_LENGTH);
+        this.portNumber = portNumber;
+    }
+
+    public OFQueueGetConfigRequest() {
+        this((short) 0);
     }
 
     /**
