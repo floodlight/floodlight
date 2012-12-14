@@ -35,7 +35,7 @@ public class OFPacketQueue {
 
     public OFPacketQueue() {
         this.queueId = -1;
-        this.length = -1;
+        this.length = U16.t(MINIMUM_LENGTH);
     }
 
     public OFPacketQueue(int queueId) {
