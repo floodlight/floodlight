@@ -127,7 +127,17 @@ public enum OFType {
                             @Override
                             public OFMessage instantiate() {
                                 return new OFBarrierReply();
-                            }});
+                            }}),
+    QUEUE_GET_CONFIG_REQUEST    (20, OFQueueGetConfigRequest.class, new Instantiable<OFMessage>() {
+                                    @Override
+                                    public OFMessage instantiate() {
+                                        return new OFQueueGetConfigRequest();
+                                    }}),
+    QUEUE_GET_CONFIG_REPLY      (21, OFQueueGetConfigReply.class, new Instantiable<OFMessage>() {
+                                    @Override
+                                    public OFMessage instantiate() {
+                                        return new OFQueueGetConfigReply();
+                                    }});
 
     static OFType[] mapping;
 
