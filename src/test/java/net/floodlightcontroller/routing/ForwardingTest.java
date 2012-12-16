@@ -15,11 +15,12 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.forwarding;
+package net.floodlightcontroller.routing;
 
 import static org.easymock.EasyMock.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -109,13 +110,13 @@ public class ForwardingTest extends FloodlightTestCase {
         FloodlightTestModuleLoader fml = new FloodlightTestModuleLoader();
         fml.setupModules(mods, mockedServices);
         mockFloodlightProvider =
-        		(MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
+                (MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
         deviceManager =
-        		(MockDeviceManager) fml.getModuleByName(MockDeviceManager.class);
+                (MockDeviceManager) fml.getModuleByName(MockDeviceManager.class);
         threadPool =
-        		(MockThreadPoolService) fml.getModuleByName(MockThreadPoolService.class);
+                (MockThreadPoolService) fml.getModuleByName(MockThreadPoolService.class);
         forwarding =
-        		(Forwarding) fml.getModuleByName(Forwarding.class);
+                (Forwarding) fml.getModuleByName(Forwarding.class);
         */
         mockFloodlightProvider = getMockFloodlightProvider();
         forwarding = new Forwarding();
@@ -178,10 +179,10 @@ public class ForwardingTest extends FloodlightTestCase {
                 OFMatch.OFPFW_NW_DST_ALL |
                 OFMatch.OFPFW_NW_TOS;
 
-        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
+        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn(fastWildcards).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
-        expect(sw2.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
+        expect(sw2.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn(fastWildcards).anyTimes();
         expect(sw2.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
         // Load the switch map
@@ -214,8 +215,8 @@ public class ForwardingTest extends FloodlightTestCase {
         packetIn = 
                 ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
                         getMessage(OFType.PACKET_IN))
-                        .setBufferId(-1)
                         .setInPort((short) 1)
+                        .setBufferId(0x4242)
                         .setPacketData(testPacketSerialized)
                         .setReason(OFPacketInReason.NO_MATCH)
                         .setTotalLength((short) testPacketSerialized.length);
@@ -231,6 +232,7 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOut.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
             .setPacketData(testPacketSerialized)
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setLengthU(OFPacketOut.MINIMUM_LENGTH+
                         packetOut.getActionsLength()+
                         testPacketSerialized.length);
@@ -247,6 +249,7 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOutFlooded.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
             .setPacketData(testPacketSerialized)
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
             .setLengthU(OFPacketOut.MINIMUM_LENGTH+
                         packetOutFlooded.getActionsLength()+
                         testPacketSerialized.length);
@@ -516,5 +519,138 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);
     }
-
+    
+    @Test
+    public void testPushPacketIPacket() throws Exception {
+        FloodlightContext cntx = new FloodlightContext();
+        short inPort = 1;
+        short outPort = 2;
+        int bufferId = 0x42;
+        
+        
+        
+        // Craft the packet out we expect. 
+        OFPacketOut po = (OFPacketOut)
+                mockFloodlightProvider.getOFMessageFactory()
+                                      .getMessage(OFType.PACKET_OUT);
+        po.setInPort(inPort);
+        
+        List<OFAction> actions = Collections.singletonList(
+                (OFAction)new OFActionOutput(outPort, (short) 0xffff));
+        po.setActions(actions)
+          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        short poLength =
+                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
+        po.setLength(poLength);
+        
+        
+        // TEST1: we want to use the bufferId. Packet payload should be 
+        // ignored. 
+        po.setBufferId(bufferId);
+        reset(sw1);
+        expect(sw1.getStringId())
+                .andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        expect(sw1.getId()).andReturn(1L).anyTimes();
+        sw1.write(po, cntx);
+        expectLastCall().once();
+        replay(sw1);
+        forwarding.pushPacket(testPacket, sw1, bufferId, 
+                              inPort, outPort, cntx, false);
+        verify(sw1);
+        
+        // TEST2: do not use buffer Id but also don't set a packet payload.
+        //    nothing should happen. 
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        reset(sw1);
+        replay(sw1);
+        forwarding.pushPacket(null, sw1, OFPacketOut.BUFFER_ID_NONE,
+                              inPort, outPort, cntx, false);
+        verify(sw1);
+        
+        
+        // TEST3: we want to use the bufferId. 
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        po.setPacketData(testPacketSerialized);
+        poLength += testPacketSerialized.length;
+        po.setLength(poLength);
+        reset(sw1);
+        expect(sw1.getStringId())
+                .andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        expect(sw1.getId()).andReturn(1L).anyTimes();
+        sw1.write(po, cntx);
+        expectLastCall().once();
+        replay(sw1);
+        forwarding.pushPacket(testPacket, sw1, OFPacketOut.BUFFER_ID_NONE,
+                              inPort, outPort, cntx, false);
+        verify(sw1);
+        
+    }
+    
+    
+    @Test
+    public void testPushPacketPacketIn() throws Exception {
+        short inPort = 1;
+        short outPort = 2;
+        int bufferId = 0x42;
+        
+        packetIn.setInPort(inPort);
+        packetIn.setBufferId(bufferId);
+        
+        // Craft the packet out we expect. 
+        OFPacketOut po = (OFPacketOut)
+                mockFloodlightProvider.getOFMessageFactory()
+                                      .getMessage(OFType.PACKET_OUT);
+        po.setInPort(inPort);
+        
+        List<OFAction> actions = Collections.singletonList(
+                (OFAction)new OFActionOutput(outPort, (short) 0xffff));
+        po.setActions(actions)
+          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        short poLength =
+                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
+        po.setLength(poLength);
+        
+        
+        // TEST1: we want to use the bufferId. Packet payload should be 
+        // ignored. 
+        po.setBufferId(bufferId);
+        reset(sw1);
+        expect(sw1.getStringId())
+                .andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        expect(sw1.getId()).andReturn(1L).anyTimes();
+        sw1.write(po, cntx);
+        expectLastCall().once();
+        replay(sw1);
+        forwarding.pushPacket(sw1, packetIn, true, outPort, cntx);
+        verify(sw1);
+        
+        // TEST2: we do NOT want to use the bufferId. Packet payload should be 
+        // used. 
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        po.setPacketData(testPacketSerialized);
+        poLength += testPacketSerialized.length;
+        po.setLength(poLength);
+        reset(sw1);
+        expect(sw1.getStringId())
+                .andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        expect(sw1.getId()).andReturn(1L).anyTimes();
+        sw1.write(po, cntx);
+        expectLastCall().once();
+        replay(sw1);
+        forwarding.pushPacket(sw1, packetIn, false, outPort, cntx);
+        verify(sw1);
+        
+        // TEST3: we  want to use the bufferId but the packet in 
+        // doesn't have a buferId set,
+        packetIn.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+        reset(sw1);
+        expect(sw1.getStringId())
+                .andReturn("00:00:00:00:00:00:00:01").anyTimes();
+        expect(sw1.getId()).andReturn(1L).anyTimes();
+        sw1.write(po, cntx);
+        expectLastCall().once();
+        replay(sw1);
+        forwarding.pushPacket(sw1, packetIn, true, outPort, cntx);
+        verify(sw1);
+    }
 }
