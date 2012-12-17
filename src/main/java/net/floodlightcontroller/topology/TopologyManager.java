@@ -377,7 +377,8 @@ public class TopologyManager implements
 
     }
 
-
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     /**
      * Checks if the switchport is a broadcast domain port or not.
      */
@@ -393,7 +394,8 @@ public class TopologyManager implements
         return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
     }
 
-
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     /**
      * Checks if the new attachment point port is consistent with the
      * old attachment point port.
@@ -467,6 +469,22 @@ public class TopologyManager implements
         return ti.getAllowedIncomingBroadcastPort(src,srcPort);
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    @Override
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID) {
+        return getSwitchesInOpenflowDomain(switchDPID, true);
+    }
+
+    @Override
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID,
+                                                 boolean tunnelEnabled) {
+        TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+        return ti.getSwitchesInOpenflowDomain(switchDPID);
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
     @Override
     public Set<NodePortTuple> getBroadcastDomainPorts() {
         return portBroadcastDomainLinks.keySet();
@@ -508,28 +526,28 @@ public class TopologyManager implements
     // ***************
 
     @Override
-    public Route getRoute(long src, long dst) {
-        return getRoute(src, dst, true);
+    public Route getRoute(long src, long dst, long cookie) {
+        return getRoute(src, dst, cookie, true);
     }
 
     @Override
-    public Route getRoute(long src, long dst, boolean tunnelEnabled) {
+    public Route getRoute(long src, long dst, long cookie, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.getRoute(src, dst);
+        return ti.getRoute(src, dst, cookie);
     }
 
     @Override
-    public Route getRoute(long src, short srcPort, long dst, short dstPort) {
-        return getRoute(src, srcPort, dst, dstPort, true);
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie) {
+        return getRoute(src, srcPort, dst, dstPort, cookie, true);
     }
 
     @Override
-    public Route getRoute(long src, short srcPort, long dst, short dstPort, 
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie, 
                           boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.getRoute(src, srcPort, dst, dstPort);
+        return ti.getRoute(src, srcPort, dst, dstPort, cookie);
     }
-
+    
     @Override
     public boolean routeExists(long src, long dst) {
         return routeExists(src, dst, true);
@@ -1262,5 +1280,16 @@ public class TopologyManager implements
 
         ports.addAll(ofpList);
         return ports;
+    }
+
+    @Override
+    public ArrayList<Route> getRoutes(long srcDpid, long dstDpid,
+                                      boolean tunnelEnabled) {
+        // Floodlight supports single path routing now
+        
+        // return single path now
+        ArrayList<Route> result=new ArrayList<Route>();
+        result.add(getRoute(srcDpid, dstDpid, 0, tunnelEnabled));
+        return result;
     }
 }

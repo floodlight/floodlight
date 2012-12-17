@@ -277,7 +277,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             } else if (oldPort == OFPort.OFPP_LOCAL.getValue() &&
                     newPort != OFPort.OFPP_LOCAL.getValue()) {
                 return 1;
-            } 
+            }
 
             // We expect that the last seen of the new AP is higher than
             // old AP, if it is not, just reverse and send the negative

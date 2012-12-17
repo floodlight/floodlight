@@ -17,25 +17,30 @@
 
 package net.floodlightcontroller.routing;
 
+import java.util.ArrayList;
+
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Route;
 
 public interface IRoutingService extends IFloodlightService {
 
     /** Provides a route between src and dst that allows tunnels. */
-    public Route getRoute(long src, long dst);
+    public Route getRoute(long src, long dst, long cookie);
 
     /** Provides a route between src and dst, with option to allow or 
      *  not allow tunnels in the path.*/
-    public Route getRoute(long src, long dst, boolean tunnelEnabled);
+    public Route getRoute(long src, long dst, long cookie, boolean tunnelEnabled);
 
 
     public Route getRoute(long srcId, short srcPort, 
-                             long dstId, short dstPort);
+                             long dstId, short dstPort, long cookie);
 
     public Route getRoute(long srcId, short srcPort, 
-                             long dstId, short dstPort, 
+                             long dstId, short dstPort, long cookie,
                              boolean tunnelEnabled);
+
+    /** return all routes, if available */
+    public ArrayList<Route> getRoutes(long longSrcDpid, long longDstDpid, boolean tunnelEnabled);
 
     /** Check if a route exists between src and dst, including tunnel links
      *  in the path.
@@ -46,4 +51,5 @@ public interface IRoutingService extends IFloodlightService {
      *  or not have tunnels as part of the path.
      */
     public boolean routeExists(long src, long dst, boolean tunnelEnabled);
+
 }
