@@ -72,7 +72,7 @@ public class FlowReconcileManager
     protected static final String EnableConfigKey = "enable";
     protected boolean flowReconcileEnabled;
     
-    public int flowReconcileThreadRunCount;
+    volatile public int flowReconcileThreadRunCount;
     
     @Override
     public synchronized void addFlowReconcileListener(
@@ -311,9 +311,9 @@ public class FlowReconcileManager
                     break;
                 }
             }
-            flowReconcileThreadRunCount++;
             // Flush the flowCache counters.
             updateFlush();
+            flowReconcileThreadRunCount++;
         } else {
             if (logger.isTraceEnabled()) {
                 logger.trace("No flow to be reconciled.");
