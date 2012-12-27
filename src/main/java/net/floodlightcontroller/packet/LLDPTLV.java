@@ -137,4 +137,14 @@ public class LLDPTLV {
             return false;
         return true;
     }
+    
+    @Override
+    public String toString() {
+        String str = "type=" + Integer.toString(this.type, 16).toUpperCase()
+               + " length=" + this.length
+               + " value=";
+        for (byte b : this.value)
+            str+= Integer.toString(b, 16).toUpperCase();
+        return str;
+    }
 }

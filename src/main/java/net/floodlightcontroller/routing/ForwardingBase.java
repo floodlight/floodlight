@@ -284,7 +284,7 @@ public abstract class ForwardingBase
                 if (sw.getId() == pinSwitch) {
                     // TODO: Instead of doing a packetOut here we could also 
                     // send a flowMod with bufferId set.... 
-                    pushPacket(sw, match, pi, outPort, cntx);
+                    pushPacket(sw, pi, false, outPort, cntx);
                     srcSwitchIncluded = true;
                 }
             } catch (IOException e) {
@@ -312,9 +312,9 @@ public abstract class ForwardingBase
     /**
      * Pushes a packet-out to a switch. If bufferId != BUFFER_ID_NONE we 
      * assume that the packetOut switch is the same as the packetIn switch
-     * and we will use the bufferId 
+     * and we will use the bufferId. In this case the packet can be null
      * Caller needs to make sure that inPort and outPort differs
-     * @param packet    packet data to send
+     * @param packet    packet data to send.
      * @param sw        switch from which packet-out is sent
      * @param bufferId  bufferId
      * @param inPort    input port
@@ -397,12 +397,15 @@ public abstract class ForwardingBase
      * port of the packet-in and the outport are the same, the function will not 
      * push the packet-out.
      * @param sw        switch that generated the packet-in, and from which packet-out is sent
-     * @param match     OFmatch
      * @param pi        packet-in
+     * @param useBufferId  if true, use the bufferId from the packet in and 
+     * do not add the packetIn's payload. If false set bufferId to 
+     * BUFFER_ID_NONE and use the packetIn's payload 
      * @param outport   output port
      * @param cntx      context of the packet
      */
-    protected void pushPacket(IOFSwitch sw, OFMatch match, OFPacketIn pi, 
+    protected void pushPacket(IOFSwitch sw, OFPacketIn pi, 
+                           boolean useBufferId, 
                            short outport, FloodlightContext cntx) {
 
         if (pi == null) {
@@ -416,15 +419,15 @@ public abstract class ForwardingBase
             if (log.isDebugEnabled()) {
                 log.debug("Attempting to do packet-out to the same " + 
                           "interface as packet-in. Dropping packet. " + 
-                          " SrcSwitch={}, match = {}, pi={}", 
-                          new Object[]{sw, match, pi});
+                          " SrcSwitch={}, pi={}", 
+                          new Object[]{sw, pi});
                 return;
             }
         }
 
         if (log.isTraceEnabled()) {
-            log.trace("PacketOut srcSwitch={} match={} pi={}", 
-                      new Object[] {sw, match, pi});
+            log.trace("PacketOut srcSwitch={} pi={}", 
+                      new Object[] {sw, pi});
         }
 
         OFPacketOut po =
@@ -440,26 +443,19 @@ public abstract class ForwardingBase
         short poLength =
                 (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
 
-        // If the switch doens't support buffering set the buffer id to be none
-        // otherwise it'll be the the buffer id of the PacketIn
-        if (sw.getBuffers() == 0) {
-            // We set the PI buffer id here so we don't have to check again below
-            pi.setBufferId(OFPacketOut.BUFFER_ID_NONE);
-            po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
-        } else {
+        if (useBufferId) {
             po.setBufferId(pi.getBufferId());
+        } else {
+            po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         }
-
-        po.setInPort(pi.getInPort());
-
-        // If the buffer id is none or the switch doesn's support buffering
-        // we send the data with the packet out
-        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
+        
+        if (po.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
             poLength += packetData.length;
             po.setPacketData(packetData);
         }
 
+        po.setInPort(pi.getInPort());
         po.setLength(poLength);
 
         try {
@@ -629,7 +625,7 @@ public abstract class ForwardingBase
              .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
                      & ~OFMatch.OFPFW_IN_PORT);
         fm.setCookie(cookie)
-          .setHardTimeout((short) hardTimeout)
+          .setHardTimeout(hardTimeout)
           .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
           .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)

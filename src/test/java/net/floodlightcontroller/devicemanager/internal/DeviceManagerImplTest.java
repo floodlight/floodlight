@@ -80,6 +80,7 @@ import org.junit.Test;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.util.HexString;
 import org.slf4j.Logger;
@@ -866,6 +867,73 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 2) }, aps);
+    }
+
+    /**
+     * This test verifies that the learning behavior on OFPP_LOCAL ports.
+     * Once a host is learned on OFPP_LOCAL, it is allowed to move only from
+     * one OFPP_LOCAL to another OFPP_LOCAL port.
+     * @throws Exception
+     */
+    @Test
+    public void testLOCALAttachmentPointLearning() throws Exception {
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.getL2DomainId(anyLong())).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.isAttachmentPointPort(anyLong(), anyShort())).
+        andReturn(true).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)1)).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(1L, OFPort.OFPP_LOCAL.getValue())).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(1L, (short)2)).
+        andReturn(true).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)1,
+                                                    1L, OFPort.OFPP_LOCAL.getValue())).andReturn(true).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, OFPort.OFPP_LOCAL.getValue(),
+                                                    1L, (short)2)).andReturn(true).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(1L, (short)2,
+                                                    1L, OFPort.OFPP_LOCAL.getValue())).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(anyLong(), anyShort(), anyLong(), anyShort())).andReturn(false).anyTimes();
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
+        replay(mockTopology);
+
+        deviceManager.topology = mockTopology;
+
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, 1, 1L, 1, c.getTime());
+        c.add(Calendar.MILLISECOND,
+              (int)AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT/ 2);
+        Entity entity2 = new Entity(1L, null, null, 1L, (int)OFPort.OFPP_LOCAL.getValue(), c.getTime());
+        c.add(Calendar.MILLISECOND,
+              (int)AttachmentPoint.OPENFLOW_TO_EXTERNAL_TIMEOUT + 1);
+        Entity entity3 = new Entity(1L, null, null, 1L, 2, c.getTime());
+
+        IDevice d;
+        SwitchPort[] aps;
+
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+
+        // Ensure that the attachment point changes to OFPP_LOCAL
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, OFPort.OFPP_LOCAL.getValue()) }, aps);
+
+        // Even though the new attachment point is consistent with old
+        // and the time has elapsed, OFPP_LOCAL attachment point should
+        // be maintained.
+        d = deviceManager.learnDeviceByEntity(entity3);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, OFPort.OFPP_LOCAL.getValue()) }, aps);
     }
 
 
