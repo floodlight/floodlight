@@ -47,7 +47,6 @@ public class FirewallRuleSerializer extends JsonSerializer<FirewallRule> {
         jGen.writeBooleanField("wildcard_tp_dst", rule.wildcard_tp_dst);
         jGen.writeNumberField("priority", rule.priority);
         jGen.writeStringField("action", String.valueOf(rule.action));
-        jGen.writeEndArray();
         
         jGen.writeEndObject();
     }
