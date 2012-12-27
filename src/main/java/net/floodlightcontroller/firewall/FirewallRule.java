@@ -1,5 +1,7 @@
 package net.floodlightcontroller.firewall;
 
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 import org.openflow.protocol.OFMatch;
 
 import net.floodlightcontroller.packet.Ethernet;
@@ -8,6 +10,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
+@JsonSerialize(using=FirewallRuleSerializer.class)
 public class FirewallRule implements Comparable<FirewallRule> {
     public int ruleid;
 
