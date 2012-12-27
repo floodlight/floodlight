@@ -25,7 +25,7 @@ public class FirewallRuleSerializer extends JsonSerializer<FirewallRule> {
         jGen.writeNumberField("ruleid", rule.ruleid);
         jGen.writeNumberField("dpid", rule.dpid);
         jGen.writeNumberField("in_port", rule.in_port);
-        jGen.writeNumberField("dl_src", 0);
+        jGen.writeNumberField("dl_src", rule.dl_src);
         jGen.writeNumberField("dl_dst", rule.dl_dst);
         jGen.writeNumberField("dl_type", rule.dl_type);
         jGen.writeStringField("nw_src_prefix", IPv4.fromIPv4Address(rule.nw_src_prefix));
