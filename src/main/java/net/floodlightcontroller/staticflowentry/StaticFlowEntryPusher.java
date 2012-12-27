@@ -355,24 +355,25 @@ public class StaticFlowEntryPusher
             List<OFMessage> outQueue = new ArrayList<OFMessage>();
             for(String entry : entriesToAdd.get(dpid).keySet()) {
                 OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
-                //OFFlowMod oldFlowMod = entriesFromStorage.get(dpid).get(entry);
-                OFFlowMod oldFlowMod = null;
-                String dpidOldFlowMod = entry2dpid.get(entry);
-                if (dpidOldFlowMod != null) {
-                    oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
+                OFFlowMod oldFlowMod = entriesFromStorage.get(dpid).get(entry);
+                if (oldFlowMod != null && newFlowMod != null) {  
+                	// modify a pre-existing rule if these fields match
+                	if(oldFlowMod.getMatch().equals(newFlowMod.getMatch())
+                			&& oldFlowMod.getCookie() == newFlowMod.getCookie()
+                			&& oldFlowMod.getPriority() == newFlowMod.getPriority()){
+	                    newFlowMod.setCommand(OFFlowMod.OFPFC_MODIFY_STRICT);
+	                    outQueue.add(newFlowMod);
+	                // if they don't match delete the old flow and write the new flow
+                	} else{
+                		oldFlowMod.setCommand(OFFlowMod.OFPFC_DELETE_STRICT);
+                		outQueue.add(oldFlowMod);
+                		entriesFromStorage.get(dpid).put(entry, newFlowMod);
+                        outQueue.add(newFlowMod);
+                        entry2dpid.put(entry, dpid);
+                	}
                 }
-                if (oldFlowMod != null) {
-                    // Remove any pre-existing rule
-                    // If the old rule is on a different switch
-                    // then we have to handle that as well.
-                    oldFlowMod.setCommand(OFFlowMod.OFPFC_DELETE_STRICT);
-                    if (dpidOldFlowMod.equals(dpid)) {
-                        outQueue.add(oldFlowMod);
-                    } else {
-                        writeOFMessageToSwitch(HexString.toLong(dpidOldFlowMod), oldFlowMod);
-                    }
-                }
-                if (newFlowMod != null) {
+                // if there are no pre-existing flows just write the new flow
+                else if (newFlowMod != null) {
                     entriesFromStorage.get(dpid).put(entry, newFlowMod);
                     outQueue.add(newFlowMod);
                     entry2dpid.put(entry, dpid);
@@ -381,7 +382,6 @@ public class StaticFlowEntryPusher
                     entry2dpid.remove(entry);
                 }
             }
-            
             writeOFMessagesToSwitch(HexString.toLong(dpid), outQueue);
         }
     }
