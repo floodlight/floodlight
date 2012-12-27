@@ -27,7 +27,7 @@ public class FirewallRulesResource extends ServerResource {
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
-        System.out.println(firewall.getRules().size());
+        
         return firewall.getRules();
     }
 
