@@ -67,6 +67,10 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
         <include name="guava-13.0.1.jar" />
+	<include name="commons-logging-1.1.1.jar" />
+	<include name="httpclient-4.2.2.jar" />
+	<include name="httpcore-4.2.2.jar" />
+	<include name="json-simple-1.1.1.jar" />
     </patternset>
 
     <path id="classpath">
@@ -140,7 +144,7 @@
         </pathconvert>
         <echo message="Running thrift generator on ${thrift.file.list}"/>
         <exec executable="thrift" dir="${basedir}" failonerror="true">
-            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${thrift.file.list}'"/>
         </exec>
         <!-- Get rid of annoying warnings in thrift java: at annotations -->
         <echo message="Adding @SuppressWarning annotations"/>
