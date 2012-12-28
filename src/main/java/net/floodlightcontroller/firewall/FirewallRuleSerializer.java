@@ -9,6 +9,7 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
+import org.openflow.util.HexString;
 
 /**
  * Serialize a FirewallRule object
@@ -24,7 +25,7 @@ public class FirewallRuleSerializer extends JsonSerializer<FirewallRule> {
         jGen.writeStartObject();
         
         jGen.writeNumberField("ruleid", rule.ruleid);
-        jGen.writeNumberField("dpid", rule.dpid);
+        jGen.writeStringField("dpid", HexString.toHexString(rule.dpid));
         jGen.writeNumberField("in_port", rule.in_port);
         jGen.writeStringField("dl_src",String.valueOf(MACAddress.valueOf(rule.dl_src)));
         jGen.writeStringField("dl_dst", String.valueOf(MACAddress.valueOf(rule.dl_dst)));
