@@ -444,12 +444,12 @@ public class LoadBalancer implements IFloodlightModule,
                             routingEngine.getRoute(srcDap.getSwitchDPID(),
                                                    (short)srcDap.getPort(),
                                                    dstDap.getSwitchDPID(),
-                                                   (short)dstDap.getPort());
+                                                   (short)dstDap.getPort(), 0);
                     Route routeOut = 
                             routingEngine.getRoute(dstDap.getSwitchDPID(),
                                                    (short)dstDap.getPort(),
                                                    srcDap.getSwitchDPID(),
-                                                   (short)srcDap.getPort());
+                                                   (short)srcDap.getPort(), 0);
 
                     // use static flow entry pusher to push flow mod along in and out path
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward

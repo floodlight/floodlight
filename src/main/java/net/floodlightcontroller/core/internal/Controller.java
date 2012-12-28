@@ -868,7 +868,7 @@ public class Controller implements IFloodlightProviderService,
                     }
                     break;
                 default:
-                    log.warn("Unhandled VENDOR message; vendor id = {}", vendor);
+                    shouldHandleMessage = true;
                     break;
             }
 
@@ -977,6 +977,8 @@ public class Controller implements IFloodlightProviderService,
                     }
                     else {
                         logError(sw, error);
+                        // allow registered listeners to receive error messages
+                        shouldHandleMessage = true;
                     }
                     break;
                 case STATS_REPLY:

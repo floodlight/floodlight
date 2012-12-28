@@ -421,7 +421,7 @@ public class TopologyInstance {
         return broadcastDomainPorts.contains(npt);
     }
 
-    class NodeDist implements Comparable<NodeDist> {
+    protected class NodeDist implements Comparable<NodeDist> {
         private Long node;
         public Long getNode() {
             return node;
@@ -652,7 +652,7 @@ public class TopologyInstance {
     }
 
     protected Route getRoute(long srcId, short srcPort,
-                             long dstId, short dstPort) {
+                             long dstId, short dstPort, long cookie) {
 
 
         // Return null the route source and desitnation are the
@@ -662,7 +662,7 @@ public class TopologyInstance {
 
         List<NodePortTuple> nptList;
         NodePortTuple npt;
-        Route r = getRoute(srcId, dstId);
+        Route r = getRoute(srcId, dstId, 0);
         if (r == null && srcId != dstId) return null;
 
         if (r != null) {
@@ -680,7 +680,7 @@ public class TopologyInstance {
         return r;
     }
 
-    protected Route getRoute(long srcId, long dstId) {
+    protected Route getRoute(long srcId, long dstId, long cookie) {
         RouteId id = new RouteId(srcId, dstId);
         Route result = null;
         if (pathcache.containsKey(id)) {
