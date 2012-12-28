@@ -23,7 +23,7 @@ public class FirewallRulesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(FirewallRulesResource.class);
 
     @Get("json")
-    public Object handleRequest() {
+    public List<FirewallRule> retrieve() {
         IFirewallService firewall = 
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
