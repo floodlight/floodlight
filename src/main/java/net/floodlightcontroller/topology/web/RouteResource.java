@@ -34,10 +34,10 @@ public class RouteResource extends ServerResource {
         long longDstDpid = HexString.toLong(dstDpid);
         short shortDstPort = Short.parseShort(dstPort);
         
-        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort);
+        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0);
         
         if (result!=null) {
-            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort).getPath();
+            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0).getPath();
         }
         else {
             log.debug("ERROR! no route found");

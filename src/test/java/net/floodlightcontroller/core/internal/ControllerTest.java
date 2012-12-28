@@ -50,6 +50,7 @@ import net.floodlightcontroller.core.internal.RoleChanger.PendingRoleRequestEntr
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.ARP;
@@ -1073,11 +1074,41 @@ public class ControllerTest extends FloodlightTestCase
     @Test 
     public void testVendorMessageUnknown() throws Exception {
         // Check behavior with an unknown vendor id
+        // Ensure that vendor message listeners get called, even for Vendors 
+        // unknown to floodlight. It is the responsibility of the listener to
+        // discard unknown vendors.
         OFChannelState state = new OFChannelState();
         state.hsState = HandshakeState.READY;
         Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
         OFVendor msg = new OFVendor();
         msg.setVendor(0);
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        chdlr.sw = sw;
+        controller.activeSwitches.put(1L, sw);
+        
+        // prepare the Vendor Message Listener expectations
+        ListenerDispatcher<OFType, IOFMessageListener> ld = 
+                new ListenerDispatcher<OFType, IOFMessageListener>();
+        IOFMessageListener ml = createMock(IOFMessageListener.class);
+        expect(ml.getName()).andReturn("Dummy").anyTimes();
+        expect(ml.isCallbackOrderingPrereq((OFType)anyObject(), 
+                (String)anyObject())).andReturn(false).anyTimes();
+        expect(ml.isCallbackOrderingPostreq((OFType)anyObject(), 
+                (String)anyObject())).andReturn(false).anyTimes();
+        expect(ml.receive(eq(sw), eq(msg), isA(FloodlightContext.class))).
+                andReturn(Command.CONTINUE).once();
+        controller.messageListeners.put(OFType.VENDOR, ld);
+
+        // prepare the switch and lock expectations
+        Lock lock = createNiceMock(Lock.class);
+        expect(sw.getListenerReadLock()).andReturn(lock).anyTimes();
+        expect(sw.isConnected()).andReturn(true).anyTimes();
+        expect(sw.getHARole()).andReturn(Role.MASTER).anyTimes();
+        expect(sw.getId()).andReturn(1L).anyTimes();
+        
+        // test
+        replay(chdlr.sw, lock, ml);
+        ld.addListener(OFType.VENDOR, ml);
         chdlr.processOFMessage(msg);
     }
     

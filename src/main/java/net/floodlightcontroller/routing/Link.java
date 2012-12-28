@@ -24,7 +24,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
-public class Link {
+public class Link implements Comparable<Link> {
     private long src;
     private short srcPort;
     private long dst;
@@ -117,6 +117,21 @@ public class Link {
     			(this.srcPort & 0xffff) + "|" +
     			HexString.toHexString(this.dst) + "|" +
     		    (this.dstPort & 0xffff) );
+    }
+
+    @Override
+    public int compareTo(Link a) {
+        // compare link based on natural ordering - src id, src port, dst id, dst port
+        if (this.getSrc() != a.getSrc())
+            return (int) (this.getSrc() - a.getSrc());
+        
+        if (this.getSrcPort() != a.getSrcPort())
+            return (int) (this.getSrc() - a.getSrc());
+        
+        if (this.getDst() != a.getDst())
+            return (int) (this.getDst() - a.getDst());
+        
+        return (int) (this.getDstPort() - a.getDstPort());
     }
 }
 

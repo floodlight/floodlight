@@ -10,6 +10,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -64,7 +65,8 @@ public class FlowReconcileManager
     /** a minimum flow reconcile rate so that it won't stave */
     protected static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
     
-    /** once per second */
+    /** start flow reconcile in 10ms after a new reconcile request is received.
+     *  The max delay is 1 second. */
     protected static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
     protected Date lastReconcileTime;
     
@@ -72,7 +74,7 @@ public class FlowReconcileManager
     protected static final String EnableConfigKey = "enable";
     protected boolean flowReconcileEnabled;
     
-    public int flowReconcileThreadRunCount;
+    public AtomicInteger flowReconcileThreadRunCount;
     
     @Override
     public synchronized void addFlowReconcileListener(
@@ -215,7 +217,7 @@ public class FlowReconcileManager
             flowReconcileEnabled = false;
         }
         
-        flowReconcileThreadRunCount = 0;
+        flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);
     }
@@ -311,9 +313,9 @@ public class FlowReconcileManager
                     break;
                 }
             }
-            flowReconcileThreadRunCount++;
             // Flush the flowCache counters.
             updateFlush();
+            flowReconcileThreadRunCount.incrementAndGet();
         } else {
             if (logger.isTraceEnabled()) {
                 logger.trace("No flow to be reconciled.");
