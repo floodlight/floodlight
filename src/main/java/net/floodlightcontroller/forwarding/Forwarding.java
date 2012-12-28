@@ -248,7 +248,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                 routingEngine.getRoute(srcDap.getSwitchDPID(),
                                                        (short)srcDap.getPort(),
                                                        dstDap.getSwitchDPID(),
-                                                       (short)dstDap.getPort());
+                                                       (short)dstDap.getPort(), 0); //cookie = 0, i.e., default route
                         if (route != null) {
                             if (log.isTraceEnabled()) {
                                 log.trace("pushRoute match={} route={} " + 
