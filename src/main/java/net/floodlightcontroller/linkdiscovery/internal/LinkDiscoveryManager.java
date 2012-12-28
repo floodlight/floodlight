@@ -558,8 +558,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         if (isLinkDiscoverySuppressed(sw, port)) {
-            /*
-             * Dont send LLDPs out of this port as suppressLLDPs set
+            /* Dont send LLDPs out of this port as suppressLLDPs set
+             * 
              */
             return;
         }

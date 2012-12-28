@@ -50,6 +50,4 @@ public class OFSwitchImpl extends OFSwitchBase {
     public List<Short> getUplinkPorts() {
         return null;
     }
-
-     
 }
