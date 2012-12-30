@@ -1446,6 +1446,7 @@ public class Controller implements IFloodlightProviderService,
 
     @Override
     public Map<Long, IOFSwitch> getSwitches() {
+        if (activeSwitches == null) return null;
         return Collections.unmodifiableMap(this.activeSwitches);
     }
 

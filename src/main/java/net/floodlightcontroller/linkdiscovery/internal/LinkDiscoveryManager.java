@@ -188,7 +188,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * to false -- Initialized in the init method as well.
      */
     public final boolean AUTOPORTFAST_DEFAULT = false;
-    boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
+    protected boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -349,7 +349,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } while (updates.peek() != null);
     }
 
-    private boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
+    protected boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
         return this.suppressLinkDiscovery.contains(new NodePortTuple(sw,
                                                                      portNumber));
     }
