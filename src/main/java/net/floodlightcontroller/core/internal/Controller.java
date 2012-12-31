@@ -977,6 +977,7 @@ public class Controller implements IFloodlightProviderService,
                     }
                     else {
                         logError(sw, error);
+
                         // allow registered listeners to receive error messages
                         shouldHandleMessage = true;
                     }
