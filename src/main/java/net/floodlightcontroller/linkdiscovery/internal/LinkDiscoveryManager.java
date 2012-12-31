@@ -188,7 +188,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * to false -- Initialized in the init method as well.
      */
     public final boolean AUTOPORTFAST_DEFAULT = false;
-    boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
+    protected boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
     /**
      * Map from link to the most recent time it was verified functioning
@@ -349,7 +349,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } while (updates.peek() != null);
     }
 
-    private boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
+    protected boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
         return this.suppressLinkDiscovery.contains(new NodePortTuple(sw,
                                                                      portNumber));
     }
@@ -519,6 +519,94 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
+     * Check if incoming discovery messages are enabled or not.
+     * @param sw
+     * @param port
+     * @param isStandard
+     * @return
+     */
+    protected boolean isIncomingDiscoveryAllowed(long sw, short port,
+                                                 boolean isStandard) {
+
+        if (isLinkDiscoverySuppressed(sw, port)) {
+            /* Do not process LLDPs from this port as suppressLLDP is set */
+            return false;
+        }
+
+        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) {
+            return false;
+        }
+
+        if (port == OFPort.OFPP_LOCAL.getValue()) return false;
+
+        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        if (ofpPort == null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Null physical port. sw={}, port={}",
+                          HexString.toHexString(sw), port);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if outgoing discovery messages are enabled or not.
+     * @param sw
+     * @param port
+     * @param isStandard
+     * @param isReverse
+     * @return
+     */
+    protected boolean isOutgoingDiscoveryAllowed(long sw, short port,
+                                                 boolean isStandard,
+                                                 boolean isReverse) {
+
+        if (isLinkDiscoverySuppressed(sw, port)) {
+            /* Dont send LLDPs out of this port as suppressLLDP is set */
+            return false;
+        }
+
+        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) {
+            return false;
+        }
+
+        if (port == OFPort.OFPP_LOCAL.getValue()) return false;
+
+        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        if (ofpPort == null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Null physical port. sw={}, port={}",
+                          HexString.toHexString(sw), port);
+            }
+            return false;
+        }
+
+        // For fast ports, do not send forward LLDPs or BDDPs.
+        if (!isReverse && autoPortFastFeature && iofSwitch.isFastPort(port))
+            return false;
+        return true;
+    }
+
+    /**
+     * Get the actions for packet-out corresponding to a specific port.
+     * This is a placeholder for adding actions if any port-specific
+     * actions are desired.  The default action is simply to output to
+     * the given port.
+     * @param port
+     * @return
+     */
+    protected List<OFAction> getDiscoveryActions (short port){
+        // set actions
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(new OFActionOutput(port, (short) 0));
+        return actions;
+    }
+
+    /**
      * Send link discovery message out of a given switch port. The discovery
      * message may be a standard LLDP or a modified LLDP, where the dst mac
      * address is set to :ff. TODO: The modified LLDP will updated in the future
@@ -540,33 +628,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             void sendDiscoveryMessage(long sw, short port,
                                       boolean isStandard, boolean isReverse) {
 
+        // Takes care of all checks including null pointer checks.
+        if (!isOutgoingDiscoveryAllowed(sw, port, isStandard, isReverse))
+            return;
+
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
-        if (iofSwitch == null) {
-            return;
-        }
-
-        if (port == OFPort.OFPP_LOCAL.getValue()) return;
-
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
-
-        if (ofpPort == null) {
-            if (log.isTraceEnabled()) {
-                log.trace("Null physical port. sw={}, port={}",
-                          HexString.toHexString(sw), port);
-            }
-            return;
-        }
-
-        if (isLinkDiscoverySuppressed(sw, port)) {
-            /* Dont send LLDPs out of this port as suppressLLDPs set
-             * 
-             */
-            return;
-        }
-
-        // For fast ports, do not send forward LLDPs or BDDPs.
-        if (!isReverse && autoPortFastFeature && iofSwitch.isFastPort(port))
-                                                                            return;
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -664,9 +731,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         po.setInPort(OFPort.OFPP_NONE);
 
-        // set actions
-        List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(new OFActionOutput(port, (short) 0));
+        List<OFAction> actions = getDiscoveryActions(port);
         po.setActions(actions);
         po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
 
@@ -787,17 +852,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                boolean isStandard, FloodlightContext cntx) {
         // If LLDP is suppressed on this port, ignore received packet as well
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
-        if (iofSwitch == null) {
-            return Command.STOP;
-        }
 
-        if (isLinkDiscoverySuppressed(sw, pi.getInPort())) {
-            if (log.isTraceEnabled()) {
-                log.trace("Got a LLDP=[{}] from a supressed switchport sw = {}, port = {}. Not fowarding it.", 
-                        new Object[] {lldp.toString(), HexString.toHexString(sw), pi.getInPort()});
-            }
+        if (!isIncomingDiscoveryAllowed(sw, pi.getInPort(), isStandard))
             return Command.STOP;
-        }
 
         // If this is a malformed LLDP, or not from us, exit
         if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3) {

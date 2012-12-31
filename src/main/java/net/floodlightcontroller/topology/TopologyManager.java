@@ -89,7 +89,7 @@ public class TopologyManager implements
     /**
      * set of tunnel links
      */
-    protected Map<NodePortTuple, Set<Link>> tunnelLinks; 
+    protected Set<NodePortTuple> tunnelPorts;
 
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
@@ -492,10 +492,9 @@ public class TopologyManager implements
 
     @Override
     public Set<NodePortTuple> getTunnelPorts() {
-        return tunnelLinks.keySet();
+        return tunnelPorts;
     }
 
-    @Override
     public Set<NodePortTuple> getBlockedPorts() {
         Set<NodePortTuple> bp;
         Set<NodePortTuple> blockedPorts =
@@ -679,7 +678,7 @@ public class TopologyManager implements
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         directLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
-        tunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
+        tunnelPorts = new HashSet<NodePortTuple>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new ArrayList<LDUpdate>();
@@ -800,6 +799,27 @@ public class TopologyManager implements
         }
     }
 
+    /**
+     * Get the set of ports to eliminate for sending out BDDP.  The method
+     * returns all the ports that are suppressed for link discovery on the
+     * switch.
+     * packets.
+     * @param sid
+     * @return
+     */
+    protected Set<Short> getPortsToEliminateForBDDP(long sid) {
+        Set<NodePortTuple> suppressedNptList = linkDiscovery.getSuppressLLDPsInfo();
+        if (suppressedNptList == null) return null;
+
+        Set<Short> resultPorts = new HashSet<Short>();
+        for(NodePortTuple npt: suppressedNptList) {
+            if (npt.getNodeId() == sid) {
+                resultPorts.add(npt.getPortId());
+            }
+        }
+
+        return resultPorts;
+    }
 
     /**
      * The BDDP packets are forwarded out of all the ports out of an
@@ -846,6 +866,11 @@ public class TopologyManager implements
                         ports.remove(p);
                     }
                 }
+            }
+
+            Set<Short> portsToEliminate = getPortsToEliminateForBDDP(sid);
+            if (portsToEliminate != null) {
+                ports.removeAll(portsToEliminate);
             }
 
             // remove the incoming switch port
@@ -914,10 +939,24 @@ public class TopologyManager implements
             } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
                 removeLink(update.getSrc(), update.getSrcPort(), 
                            update.getDst(), update.getDstPort());
+            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_ADDED) {
+                addTunnelPort(update.getSrc(), update.getSrcPort());
+            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
+                removeTunnelPort(update.getSrc(), update.getSrcPort());
             }
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
+    }
+
+    public void addTunnelPort(long sw, short port) {
+        NodePortTuple npt = new NodePortTuple(sw, port);
+        tunnelPorts.add(npt);
+    }
+
+    public void removeTunnelPort(long sw, short port) {
+        NodePortTuple npt = new NodePortTuple(sw, port);
+        tunnelPorts.remove(npt);
     }
 
     /**
@@ -962,7 +1001,7 @@ public class TopologyManager implements
         }
 
         // Remove all tunnel links.
-        for(NodePortTuple npt: tunnelLinks.keySet()) {
+        for(NodePortTuple npt: tunnelPorts) {
             if (switchPortLinks.get(npt) == null) continue;
             for(Link link: switchPortLinks.get(npt)) {
                 removeLinkFromStructure(openflowLinks, link);
@@ -973,7 +1012,7 @@ public class TopologyManager implements
                                                    blockedPorts,
                                                    openflowLinks, 
                                                    broadcastDomainPorts,
-                                                   tunnelLinks.keySet());
+                                                   tunnelPorts);
         nt.compute();
         // We set the instances with and without tunnels to be identical.
         // If needed, we may compute them differently.
@@ -1146,8 +1185,6 @@ public class TopologyManager implements
 
     public void addOrUpdateLink(long srcId, short srcPort, long dstId, 
                                 short dstPort, LinkType type) {
-        boolean flag1 = false, flag2 = false;
-
         Link link = new Link(srcId, srcPort, dstId, dstPort);
         addPortToSwitch(srcId, srcPort);
         addPortToSwitch(dstId, dstPort);
@@ -1156,17 +1193,9 @@ public class TopologyManager implements
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
             addLinkToStructure(portBroadcastDomainLinks, link);
-            flag1 = removeLinkFromStructure(tunnelLinks, link);
-            flag2 = removeLinkFromStructure(directLinks, link);
-            dtLinksUpdated = flag1 || flag2;
-        } else if (type.equals(LinkType.TUNNEL)) {
-            addLinkToStructure(tunnelLinks, link);
-            removeLinkFromStructure(portBroadcastDomainLinks, link);
-            removeLinkFromStructure(directLinks, link);
-            dtLinksUpdated = true;
+            dtLinksUpdated = removeLinkFromStructure(directLinks, link);
         } else if (type.equals(LinkType.DIRECT_LINK)) {
             addLinkToStructure(directLinks, link);
-            removeLinkFromStructure(tunnelLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
             dtLinksUpdated = true;
         }
@@ -1174,14 +1203,8 @@ public class TopologyManager implements
     }
 
     public void removeLink(Link link)  {
-        boolean flag1 = false, flag2 = false;
-
-        flag1 = removeLinkFromStructure(directLinks, link);
-        flag2 = removeLinkFromStructure(tunnelLinks, link);
-
         linksUpdated = true;
-        dtLinksUpdated = flag1 || flag2;
-
+        dtLinksUpdated = removeLinkFromStructure(directLinks, link);
         removeLinkFromStructure(portBroadcastDomainLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
@@ -1219,9 +1242,9 @@ public class TopologyManager implements
 
     public void clear() {
         switchPorts.clear();
+        tunnelPorts.clear();
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
-        tunnelLinks.clear();
         directLinks.clear();
         appliedUpdates.clear();
     }
