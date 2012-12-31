@@ -115,7 +115,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
     public boolean isSameAs(FirewallRule r) {
         if (this.action != r.action
                 || this.wildcard_dl_type != r.wildcard_dl_type
-                || (this.wildcard_dl_type == false && this.dl_type == r.dl_type)
+                || (this.wildcard_dl_type == false && this.dl_type != r.dl_type)
                 || this.wildcard_tp_src != r.wildcard_tp_src
                 || (this.wildcard_tp_src == false && this.tp_src != r.tp_src)
                 || this.wildcard_tp_dst != r.wildcard_tp_dst
