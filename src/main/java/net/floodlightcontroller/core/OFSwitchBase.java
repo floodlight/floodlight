@@ -147,13 +147,20 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
     }
     
+    
+    @Override
+    public boolean attributeEquals(String name, Object other) {
+        Object attr = this.attributes.get(name);
+        if (attr == null)
+            return false;
+        return attr.equals(other);
+    }
+    
 
     @Override
     public Object getAttribute(String name) {
-        if (this.attributes.containsKey(name)) {
-            return this.attributes.get(name);
-        }
-        return null;
+        // returns null if key doesn't exist
+        return this.attributes.get(name);
     }
     
     @Override
@@ -172,6 +179,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         return this.attributes.containsKey(name);
     }
         
+    @Override
     @JsonIgnore
     public void setChannel(Channel channel) {
         this.channel = channel;
@@ -452,6 +460,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.floodlightProvider = floodlightProvider;
     }
     
+    @Override
     @JsonIgnore
     public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
@@ -560,6 +569,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * switch list from being modified out from under the listeners.
      * @return 
      */
+    @Override
     @JsonIgnore
     public Lock getListenerReadLock() {
         return listenerLock.readLock();
@@ -572,6 +582,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * message from the switch.
      * @return
      */
+    @Override
     @JsonIgnore
     public Lock getListenerWriteLock() {
         return listenerLock.writeLock();
@@ -581,6 +592,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * Get the IP Address for the switch
      * @return the inet address
      */
+    @Override
     @JsonSerialize(using=ToStringSerializer.class)
     public SocketAddress getInetAddress() {
         return channel.getRemoteAddress();

@@ -374,6 +374,16 @@ public interface IOFSwitch {
      * @return value for name
      */
     Object getAttribute(String name);
+    
+    /**
+     * Check if the given attribute is present and if so whether it is equal
+     * to "other"
+     * @param name the name of the attribute to check
+     * @param other the object to compare the attribute against.
+     * @return true iff the specified attribute is set and equals() the given
+     * other object.
+     */
+    boolean attributeEquals(String name, Object other);
 
     /**
      * Set properties for switch specific behavior
