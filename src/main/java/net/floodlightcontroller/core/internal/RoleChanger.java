@@ -425,8 +425,11 @@ public class RoleChanger {
      * @return 
      */
     public boolean checkFirstPendingRoleRequestXid (IOFSwitch sw, int xid) {
-        LinkedList<PendingRoleRequestEntry> pendingRoleRequests =
-                pendingRequestMap.get(sw);
+        LinkedList<PendingRoleRequestEntry> pendingRoleRequests;
+        if (sw == null) {
+            return false;
+        }
+        pendingRoleRequests = pendingRequestMap.get(sw);
         if (pendingRoleRequests == null) {
             return false;
         }
