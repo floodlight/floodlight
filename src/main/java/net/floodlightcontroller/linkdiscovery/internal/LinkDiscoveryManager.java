@@ -349,7 +349,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } while (updates.peek() != null);
     }
 
-    private boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
+    protected boolean isLinkDiscoverySuppressed(long sw, short portNumber) {
         return this.suppressLinkDiscovery.contains(new NodePortTuple(sw,
                                                                      portNumber));
     }
@@ -599,10 +599,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * @param port
      * @return
      */
-    protected List<OFAction> getDiscoveryActions (short port){
+    protected List<OFAction> getDiscoveryActions (IOFSwitch sw, OFPhysicalPort port){
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(new OFActionOutput(port, (short) 0));
+        actions.add(new OFActionOutput(port.getPortNumber(), (short) 0));
         return actions;
     }
 
@@ -731,9 +731,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         po.setInPort(OFPort.OFPP_NONE);
 
-        List<OFAction> actions = getDiscoveryActions(port);
+        List<OFAction> actions = getDiscoveryActions(iofSwitch, ofpPort);
         po.setActions(actions);
-        po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        po.setActionsLength(getDiscoveryActionsLength(iofSwitch, ofpPort));
 
         // set data
         po.setLengthU(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength()
@@ -751,7 +751,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     }
 
-    /**
+    protected short getDiscoveryActionsLength(IOFSwitch iofSwitch,
+			OFPhysicalPort ofpPort) {
+		return (short) OFActionOutput.MINIMUM_LENGTH;
+	}
+
+	/**
      * Send LLDPs to all switch-ports
      */
     protected void discoverOnAllPorts() {
