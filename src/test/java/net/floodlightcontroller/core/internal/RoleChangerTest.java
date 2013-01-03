@@ -391,6 +391,19 @@ public class RoleChangerTest {
     }
     
     @Test
+    public void testCheckFirstPendingRoleRequestNullSw() {
+        int xid = 54321;
+        long cookie = 232323;
+        Role role = Role.MASTER;
+        OFSwitchImpl sw = new OFSwitchImpl();
+        setupPendingRoleRequest(sw, xid, role, cookie);
+        // pass null as sw object, which is true during handshake
+        assertEquals(false,
+                roleChanger.checkFirstPendingRoleRequestXid(null, xid));
+        roleChanger.pendingRequestMap.get(sw).clear();
+    }
+    
+    @Test
     public void testCheckFirstPendingRoleRequestCookie() {
         int xid = 54321;
         long cookie = 232323;
