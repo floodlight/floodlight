@@ -67,9 +67,6 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
         <include name="guava-13.0.1.jar" />
-        <include name="httpclient-4.2.2.jar" />
-        <include name="httpcore-4.2.2.jar" />
-        <include name="json-simple-1.1.1.jar" />
     </patternset>
 
     <path id="classpath">
