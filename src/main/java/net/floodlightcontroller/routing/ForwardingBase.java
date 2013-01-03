@@ -336,60 +336,6 @@ public abstract class ForwardingBase
                     "packet out to a switch",
             recommendation=LogMessageDoc.CHECK_SWITCH)            
     })
-    public void pushPacket(IPacket packet, 
-                           IOFSwitch sw,
-                           int bufferId,
-                           short inPort,
-                           short outPort, 
-                           FloodlightContext cntx,
-                           boolean flush) {
-        
-        
-        if (log.isTraceEnabled()) {
-            log.trace("PacketOut srcSwitch={} inPort={} outPort={}", 
-                      new Object[] {sw, inPort, outPort});
-        }
-
-        OFPacketOut po =
-                (OFPacketOut) floodlightProvider.getOFMessageFactory()
-                                                .getMessage(OFType.PACKET_OUT);
-
-        // set actions
-        List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(new OFActionOutput(outPort, (short) 0xffff));
-
-        po.setActions(actions)
-          .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
-        short poLength =
-                (short) (po.getActionsLength() + OFPacketOut.MINIMUM_LENGTH);
-
-        // set buffer_id, in_port
-        po.setBufferId(bufferId);
-        po.setInPort(inPort);
-
-        // set data - only if buffer_id == -1
-        if (po.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
-            if (packet == null) {
-                log.error("BufferId is not set and packet data is null. " +
-                          "Cannot send packetOut. " +
-                        "srcSwitch={} inPort={} outPort={}",
-                        new Object[] {sw, inPort, outPort});
-                return;
-            }
-            byte[] packetData = packet.serialize();
-            poLength += packetData.length;
-            po.setPacketData(packetData);
-        }
-
-        po.setLength(poLength);
-
-        try {
-            counterStore.updatePktOutFMCounterStoreLocal(sw, po);
-            messageDamper.write(sw, po, cntx, flush);
-        } catch (IOException e) {
-            log.error("Failure writing packet out", e);
-        }
-    }
 
     /**
      * Pushes a packet-out to a switch.  The assumption here is that
