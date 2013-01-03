@@ -1,9 +1,6 @@
 package net.floodlightcontroller.loadbalancer;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,15 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.HTTP;
-import org.json.simple.JSONObject;
+import org.openflow.protocol.OFFlowMod;
+import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
@@ -31,6 +21,7 @@ import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
+import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +46,8 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
+import net.floodlightcontroller.staticflowentry.StaticFlowEntries;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.MACAddress;
@@ -87,6 +80,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected IDeviceService deviceManager;
     protected IRoutingService routingEngine;
     protected ITopologyService topology;
+    protected IStaticFlowEntryPusherService sfp;
     
     protected HashMap<String, LBVip> vips;
     protected HashMap<String, LBPool> pools;
@@ -99,6 +93,9 @@ public class LoadBalancer implements IFloodlightModule,
     //Copied from Forwarding with message damper routine for pushing proxy Arp 
     protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // ms. 
     protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
+    protected static String LB_ETHER_TYPE = "0x800";
+    protected static int LB_PRIORITY = 32768;
+    
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =
             new Comparator<SwitchPort>() {
@@ -483,97 +480,84 @@ public class LoadBalancer implements IFloodlightModule,
      * @param LBMember member
      * @param long pinSwitch
      */
-    @SuppressWarnings("unchecked")
     public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, long pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size()>0) {
-            
            for (int i = 0; i < path.size(); i+=2) {
-               JSONObject json = new JSONObject();
+               
                long sw = path.get(i).getNodeId();
+               String swString = HexString.toHexString(path.get(i).getNodeId());
+               String entryName;
+               String matchString = null;
+               String actionString = null;
+               
+               OFFlowMod fm = (OFFlowMod) floodlightProvider.getOFMessageFactory()
+                       .getMessage(OFType.FLOW_MOD);
 
-               json.put("switch", HexString.toHexString(sw));
+               fm.setIdleTimeout((short) 0);   // infinite
+               fm.setHardTimeout((short) 0);   // infinite
+               fm.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+               fm.setCommand((short) 0);
+               fm.setFlags((short) 0);
+               fm.setOutPort(OFPort.OFPP_NONE.getValue());
+               fm.setCookie((long) 0);  
+               fm.setPriority(Short.MAX_VALUE);
+               
                if (inBound) {
-                   json.put("name","inbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                            +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw);
-                   json.put("src-ip",IPv4.fromIPv4Address(client.ipAddress));
-                   json.put("protocol",String.valueOf(client.nw_proto));
-                   json.put("src-port",String.valueOf(client.srcPort & 0xffff));
-                   json.put("ether-type","0x800");
-                   json.put("priority","32768");
-                   json.put("ingress-port",String.valueOf(path.get(i).getPortId()));
-                   json.put("active","true");
+                   entryName = "inbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
+                           +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw;
+                   matchString = "nw_src="+IPv4.fromIPv4Address(client.ipAddress)+","
+                               + "nw_proto="+String.valueOf(client.nw_proto)+","
+                               + "tp_src="+String.valueOf(client.srcPort & 0xffff)+","
+                               + "dl_type="+LB_ETHER_TYPE+","
+                               + "in_port="+String.valueOf(path.get(i).getPortId());
+
                    if (sw == pinSwitch) {
-                       json.put("actions","set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
+                       actionString = "set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
                                 + "set-dst-mac="+member.macString+","
-                                + "output="+path.get(i+1).getPortId());
+                                + "output="+path.get(i+1).getPortId();
                    } else {
-                       json.put("actions",
-                               "output="+path.get(i+1).getPortId());
+                       actionString =
+                               "output="+path.get(i+1).getPortId();
                    }
                } else {
-                   json.put("name","outbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                            +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw);
-                   json.put("dst-ip",IPv4.fromIPv4Address(client.ipAddress));
-                   json.put("protocol",String.valueOf(client.nw_proto));
-                   json.put("dst-port",String.valueOf(client.srcPort & 0xffff));
-                   json.put("ether-type","0x800");
-                   json.put("priority","32768");
-                   json.put("ingress-port",String.valueOf(path.get(i).getPortId()));
-                   json.put("active","true");
+                   entryName = "outbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
+                           +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw;
+                   matchString = "nw_dst="+IPv4.fromIPv4Address(client.ipAddress)+","
+                               + "nw_proto="+String.valueOf(client.nw_proto)+","
+                               + "tp_dst="+String.valueOf(client.srcPort & 0xffff)+","
+                               + "dl_type="+LB_ETHER_TYPE+","
+                               + "in_port="+String.valueOf(path.get(i).getPortId());
+
                    if (sw == pinSwitch) {
-                       json.put("actions","set-src-ip="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
+                       actionString = "set-src-ip="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
                                + "set-src-mac="+vips.get(member.vipId).proxyMac.toString()+","
-                               + "output="+path.get(i+1).getPortId());
+                               + "output="+path.get(i+1).getPortId();
                    } else {
-                       json.put("actions",
-                               "output="+path.get(i+1).getPortId());
+                       actionString = "output="+path.get(i+1).getPortId();
                    }
                    
                }
-               try {
-                   HttpClient httpclient = new DefaultHttpClient();
-                   HttpPost httpPost = new HttpPost("http://127.0.0.1:8080/wm/staticflowentrypusher/json");
-                   StringEntity se = new StringEntity(json.toString());  
-                   se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
-                   httpPost.setEntity(se);
-                   
-                   HttpResponse response = null;
+               
+               StaticFlowEntries.parseActionString(fm, actionString, log);
 
-                   try {
-                       response = httpclient.execute(httpPost);
-                   } catch (ClientProtocolException cliente) {
-                       cliente.printStackTrace();
-                   } catch (IOException ioe) {
-                       ioe.printStackTrace();
-                   }
-                   
-                   BufferedReader rd = null;
-                   try {
-                       if (response !=null)
-                           rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                   } catch (IllegalStateException statee) {
-                       statee.printStackTrace();
-                   } catch (IOException ioe) {
-                       ioe.printStackTrace();
-                   }
-                   
-                   String line = "";
-                   try {
-                       if (rd!= null) {
-                           while ((line = rd.readLine()) != null) {
-                               System.out.println(line);
-                           }
-                       }
-                   } catch (IOException e) {
-                       e.printStackTrace();
-                   }
-               } catch (UnsupportedEncodingException e) {
-                   e.printStackTrace();
-               }            
+               fm.setPriority(U16.t(LB_PRIORITY));
+
+               OFMatch ofMatch = new OFMatch();
+               try {
+                   ofMatch.fromString(matchString);
+               } catch (IllegalArgumentException e) {
+                   log.debug(
+                             "ignoring flow entry {} on switch {} with illegal OFMatch() key: "
+                                     + matchString, entryName, swString);
+               }
+        
+               fm.setMatch(ofMatch);
+               sfp.addFlow(entryName, fm, swString);
+
            }
         }
-        
+               
         return;
     }
 
@@ -775,6 +759,7 @@ public class LoadBalancer implements IFloodlightModule,
         l.add(IDeviceService.class);
         l.add(ITopologyService.class);
         l.add(IRoutingService.class);
+        l.add(IStaticFlowEntryPusherService.class);
 
         return l;
     }
@@ -788,6 +773,7 @@ public class LoadBalancer implements IFloodlightModule,
         deviceManager = context.getServiceImpl(IDeviceService.class);
         routingEngine = context.getServiceImpl(IRoutingService.class);
         topology = context.getServiceImpl(ITopologyService.class);
+        sfp = context.getServiceImpl(IStaticFlowEntryPusherService.class);
         
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY, 
                                             EnumSet.of(OFType.FLOW_MOD),
