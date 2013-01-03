@@ -120,6 +120,10 @@ public class TopologyManager implements
      */
     protected boolean dtLinksUpdated;
 
+    /** Flag that indicates if tunnel ports were updated or not
+     */
+    protected boolean tunnelPortsUpdated;
+
     protected final int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
 
     /**
@@ -152,6 +156,7 @@ public class TopologyManager implements
         boolean newInstanceFlag;
         linksUpdated = false;
         dtLinksUpdated = false;
+        tunnelPortsUpdated = false;
         applyUpdates();
         newInstanceFlag = createNewInstance();
         lastUpdateTime = new Date();
@@ -952,11 +957,13 @@ public class TopologyManager implements
     public void addTunnelPort(long sw, short port) {
         NodePortTuple npt = new NodePortTuple(sw, port);
         tunnelPorts.add(npt);
+        tunnelPortsUpdated = true;
     }
 
     public void removeTunnelPort(long sw, short port) {
         NodePortTuple npt = new NodePortTuple(sw, port);
         tunnelPorts.remove(npt);
+        tunnelPortsUpdated = true;
     }
 
     /**
@@ -1257,6 +1264,7 @@ public class TopologyManager implements
         this.clear();
         linksUpdated = true;
         dtLinksUpdated = true;
+        tunnelPortsUpdated = true;
         createNewInstance();
         lastUpdateTime = new Date();
     }
