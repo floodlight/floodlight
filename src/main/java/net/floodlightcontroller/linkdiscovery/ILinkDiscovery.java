@@ -13,13 +13,15 @@ public interface ILinkDiscovery {
         SWITCH_UPDATED("Switch Updated"),
         SWITCH_REMOVED("Switch Removed"),
         PORT_UP("Port Up"),
-        PORT_DOWN("Port Down");
-        
+        PORT_DOWN("Port Down"),
+        TUNNEL_PORT_ADDED("Tunnel Port Added"),
+        TUNNEL_PORT_REMOVED("Tunnel Port Removed");
+
         private String value;
         UpdateOperation(String v) {
             value = v;
         }
-        
+
         @Override
         public String toString() {
             return value;
@@ -64,7 +66,7 @@ public interface ILinkDiscovery {
             this.srcType = stype;
         }
 
-        // For port up or port down.
+        // For port up or port down; and tunnel port added and removed.
         public LDUpdate(long sw, short port, UpdateOperation operation) {
             this.src = sw;
             this.srcPort = port;

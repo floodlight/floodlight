@@ -187,7 +187,7 @@ public class RoleChanger {
     @LogMessageDoc(level="ERROR",
                    message="RoleRequestWorker task had an uncaught exception.",
                    explanation="An unknown occured while processing an HA " +
-                   		"role change event.",
+                               "role change event.",
                    recommendation=LogMessageDoc.GENERIC_ACTION)                              
     protected class RoleRequestWorker extends Thread  {
         @Override
@@ -278,7 +278,7 @@ public class RoleChanger {
             message="Failed to send role request message " + 
                     "to switch {switch}: {message}. Disconnecting",
             explanation="An I/O error occurred while attempting to change " +
-            		"the switch HA role.",
+                        "the switch HA role.",
             recommendation=LogMessageDoc.CHECK_SWITCH)                              
     protected void sendRoleRequest(Collection<IOFSwitch> switches,
                                    Role role, long cookie) {
@@ -331,7 +331,7 @@ public class RoleChanger {
             message="Timeout while waiting for role reply from switch {switch}."
                     + " Disconnecting",
             explanation="Timed out waiting for the switch to respond to " +
-            		"a request to change the HA role.",
+                        "a request to change the HA role.",
             recommendation=LogMessageDoc.CHECK_SWITCH)                              
     protected void verifyRoleReplyReceived(Collection<IOFSwitch> switches,
                                    long cookie) {
@@ -425,8 +425,11 @@ public class RoleChanger {
      * @return 
      */
     public boolean checkFirstPendingRoleRequestXid (IOFSwitch sw, int xid) {
-        LinkedList<PendingRoleRequestEntry> pendingRoleRequests =
-                pendingRequestMap.get(sw);
+        LinkedList<PendingRoleRequestEntry> pendingRoleRequests;
+        if (sw == null) {
+            return false;
+        }
+        pendingRoleRequests = pendingRequestMap.get(sw);
         if (pendingRoleRequests == null) {
             return false;
         }

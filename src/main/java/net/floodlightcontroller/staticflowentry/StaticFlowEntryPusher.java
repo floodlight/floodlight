@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,18 +29,15 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryWebRoutable;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.IStorageSourceListener;
-
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFFlowRemoved;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
@@ -653,6 +650,16 @@ public class StaticFlowEntryPusher
     
     @Override
     public void deleteAllFlows() {
+        for (String entry : entry2dpid.keySet()) {
+            deleteFlow(entry);
+        }
+        
+        /*
+        FIXME: Since the OF spec 1.0 is not clear on how
+        to match on cookies. Once all switches come to a
+        common implementation we can possibly re-enable this
+        fix.
+        
         // Send a delete for each switch
         Set<String> swSet = new HashSet<String>();
         for (String dpid : entry2dpid.values()) {
@@ -673,11 +680,24 @@ public class StaticFlowEntryPusher
         
         // Reset our DB
         storageSource.deleteMatchingRowsAsync(TABLE_NAME, null);
+        */
     }
     
     @Override
     public void deleteFlowsForSwitch(long dpid) {
-        sendDeleteByCookie(dpid);
+        String sDpid = HexString.toHexString(dpid);
+        
+        for (Entry<String, String> e : entry2dpid.entrySet()) {
+            if (e.getValue().equals(sDpid))
+                deleteFlow(e.getKey());
+        }
+        
+        /*
+        FIXME: Since the OF spec 1.0 is not clear on how
+        to match on cookies. Once all switches come to a
+        common implementation we can possibly re-enable this
+        fix.
+        //sendDeleteByCookie(dpid);
         
         String sDpid = HexString.toHexString(dpid);
         // Clear all internal flows for this switch
@@ -692,6 +712,7 @@ public class StaticFlowEntryPusher
         } else {
             log.warn("Map of storage entries for switch {} was null", sDpid);
         }
+        */
     }
     
     /**
@@ -701,6 +722,11 @@ public class StaticFlowEntryPusher
      * disable having flow specific cookies.
      * @param dpid The DPID of the switch to clear all it's flows.
      */
+    /*
+    FIXME: Since the OF spec 1.0 is not clear on how
+    to match on cookies. Once all switches come to a
+    common implementation we can possibly re-enable this
+    fix.
     private void sendDeleteByCookie(long dpid) {
         if (log.isDebugEnabled())
             log.debug("Deleting all static flows on switch {}", HexString.toHexString(dpid));
@@ -729,6 +755,7 @@ public class StaticFlowEntryPusher
             return;
         }
     }
+    */
     
     @Override
     public Map<String, Map<String, OFFlowMod>> getFlows() {
