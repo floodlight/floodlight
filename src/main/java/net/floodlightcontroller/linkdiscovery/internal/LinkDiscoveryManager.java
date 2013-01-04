@@ -733,7 +733,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         List<OFAction> actions = getDiscoveryActions(iofSwitch, ofpPort);
         po.setActions(actions);
-        po.setActionsLength(getDiscoveryActionsLength(iofSwitch, ofpPort));
+        
+        short  actionLength = 0;
+        Iterator <OFAction> actionIter = actions.iterator();
+        while (actionIter.hasNext()) {
+            actionLength += actionIter.next().getLength();
+        }
+        po.setActionsLength(actionLength);
 
         // set data
         po.setLengthU(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength()
@@ -749,11 +755,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                       new Object[] { port, iofSwitch.getStringId() }, e);
         }
 
-    }
-
-    protected short getDiscoveryActionsLength(IOFSwitch iofSwitch,
-            OFPhysicalPort ofpPort) {
-        return (short) OFActionOutput.MINIMUM_LENGTH;
     }
 
     /**
