@@ -88,7 +88,10 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
      *        element
      */
     public OFStatistics getFirstStatistics() {
-        if (statistics == null || statistics.size() != 1) {
+        if (statistics == null ) {
+            throw new IllegalArgumentException("Invariant violation: statistics message of type "+statisticType+" is null");
+        }
+        if (statistics.size() != 1) {
             throw new IllegalArgumentException("Invariant violation: statistics message of type "+statisticType+" contains "+statistics.size() +" statreq/reply messages in its body (should be 1)");
         }
 
