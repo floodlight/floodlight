@@ -752,11 +752,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     protected short getDiscoveryActionsLength(IOFSwitch iofSwitch,
-			OFPhysicalPort ofpPort) {
-		return (short) OFActionOutput.MINIMUM_LENGTH;
-	}
+            OFPhysicalPort ofpPort) {
+        return (short) OFActionOutput.MINIMUM_LENGTH;
+    }
 
-	/**
+    /**
      * Send LLDPs to all switch-ports
      */
     protected void discoverOnAllPorts() {
