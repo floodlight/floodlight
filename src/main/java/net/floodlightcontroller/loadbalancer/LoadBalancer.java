@@ -133,7 +133,8 @@ public class LoadBalancer implements IFloodlightModule,
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         return (type.equals(OFType.PACKET_IN) && 
                 (name.equals("topology") || 
-                 name.equals("devicemanager")));
+                 name.equals("devicemanager") ||
+                 name.equals("virtualizer")));
     }
 
     @Override
@@ -504,8 +505,8 @@ public class LoadBalancer implements IFloodlightModule,
                fm.setPriority(Short.MAX_VALUE);
                
                if (inBound) {
-                   entryName = "inbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                           +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw;
+                   entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                           +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    matchString = "nw_src="+IPv4.fromIPv4Address(client.ipAddress)+","
                                + "nw_proto="+String.valueOf(client.nw_proto)+","
                                + "tp_src="+String.valueOf(client.srcPort & 0xffff)+","
@@ -521,8 +522,8 @@ public class LoadBalancer implements IFloodlightModule,
                                "output="+path.get(i+1).getPortId();
                    }
                } else {
-                   entryName = "outbound-vip-"+ member.vipId+"client-"+client.ipAddress+"-port-"+client.targetPort
-                           +"srcswitch-"+path.get(0).getNodeId()+"sw-"+sw;
+                   entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                           +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    matchString = "nw_dst="+IPv4.fromIPv4Address(client.ipAddress)+","
                                + "nw_proto="+String.valueOf(client.nw_proto)+","
                                + "tp_dst="+String.valueOf(client.srcPort & 0xffff)+","
@@ -619,11 +620,13 @@ public class LoadBalancer implements IFloodlightModule,
             pool = new LBPool();
         
         pools.put(pool.id, pool);
-        if (pool.vipId != null)
+        if (pool.vipId != null && vips.containsKey(pool.vipId))
             vips.get(pool.vipId).pools.add(pool.id);
-        else
-            log.error("pool must be specified with non-null vip-id");
-
+        else {
+            log.error("specified vip-id must exist");
+            pool.vipId = null;
+            pools.put(pool.id, pool);
+        }
         return pool;
     }
 
@@ -635,7 +638,12 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public int removePool(String poolId) {
-        if(pools.containsKey(poolId)){
+        LBPool pool;
+        pool = pools.get(poolId);
+        
+        if(pools!=null){
+            if (pool.vipId != null)
+                vips.get(pool.vipId).pools.remove(poolId);
             pools.remove(poolId);
             return 0;
         } else {
@@ -671,12 +679,14 @@ public class LoadBalancer implements IFloodlightModule,
     public LBMember createMember(LBMember member) {
         if (member == null)
             member = new LBMember();
-        
+
+        members.put(member.id, member);
+        memberIpToId.put(member.address, member.id);
+
         if (member.poolId != null && pools.get(member.poolId) != null) {
             member.vipId = pools.get(member.poolId).vipId;
-            members.put(member.id, member);
-            pools.get(member.poolId).members.add(member.id);
-            memberIpToId.put(member.address, member.id);
+            if (!pools.get(member.poolId).members.contains(member.id))
+                pools.get(member.poolId).members.add(member.id);
         } else
             log.error("member must be specified with non-null pool_id");
         
@@ -691,7 +701,12 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public int removeMember(String memberId) {
-        if(members.containsKey(memberId)){
+        LBMember member;
+        member = members.get(memberId);
+        
+        if(member != null){
+            if (member.poolId != null)
+                pools.get(member.poolId).members.remove(memberId);
             members.remove(memberId);
             return 0;
         } else {

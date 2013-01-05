@@ -32,6 +32,8 @@ public class LBVip {
     
     protected MACAddress proxyMac;
     
+    public static String LB_PROXY_MAC= "12:34:56:78:90:12";
+    
     public LBVip() {
         this.id = String.valueOf((int) (Math.random()*10000));
         this.name = null;
@@ -47,7 +49,7 @@ public class LBVip {
         this.address = 0;
         this.status = 0;
         
-        this.proxyMac = MACAddress.valueOf("12:34:56:78:90:12");
+        this.proxyMac = MACAddress.valueOf(LB_PROXY_MAC);
     }
     
     public String pickPool(IPClient client) {
