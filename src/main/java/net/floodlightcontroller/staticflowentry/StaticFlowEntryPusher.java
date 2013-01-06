@@ -358,17 +358,23 @@ public class StaticFlowEntryPusher
                 if (dpidOldFlowMod != null) {
                     oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
                 }
-                if (oldFlowMod != null) {
-                    // Remove any pre-existing rule
-                    // If the old rule is on a different switch
-                    // then we have to handle that as well.
-                    oldFlowMod.setCommand(OFFlowMod.OFPFC_DELETE_STRICT);
-                    if (dpidOldFlowMod.equals(dpid)) {
-                        outQueue.add(oldFlowMod);
-                    } else {
-                        writeOFMessageToSwitch(HexString.toLong(dpidOldFlowMod), oldFlowMod);
+                if (oldFlowMod != null && newFlowMod != null) {  
+                    // set the new flow mod to modify a pre-existing rule if these fields match
+                    if(oldFlowMod.getMatch().equals(newFlowMod.getMatch())
+                            && oldFlowMod.getCookie() == newFlowMod.getCookie()
+                            && oldFlowMod.getPriority() == newFlowMod.getPriority()){
+                        newFlowMod.setCommand(OFFlowMod.OFPFC_MODIFY_STRICT);
+                    // if they don't match delete the old flow 
+                    } else{
+                        oldFlowMod.setCommand(OFFlowMod.OFPFC_DELETE_STRICT);
+                        if (dpidOldFlowMod.equals(dpid)) {
+                            outQueue.add(oldFlowMod);
+                        } else {
+                            writeOFMessageToSwitch(HexString.toLong(dpidOldFlowMod), oldFlowMod);
+                        }
                     }
                 }
+                // write the new flow 
                 if (newFlowMod != null) {
                     entriesFromStorage.get(dpid).put(entry, newFlowMod);
                     outQueue.add(newFlowMod);
@@ -378,7 +384,6 @@ public class StaticFlowEntryPusher
                     entry2dpid.remove(entry);
                 }
             }
-            
             writeOFMessagesToSwitch(HexString.toLong(dpid), outQueue);
         }
     }
