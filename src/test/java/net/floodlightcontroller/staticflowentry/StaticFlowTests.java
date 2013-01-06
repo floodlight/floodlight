@@ -18,6 +18,7 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.action.OFActionStripVirtualLan;
 import org.openflow.util.HexString;
 
 
@@ -259,7 +260,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         contextCapture.reset();
         writeCaptureList.reset();
         
-        // now try an update, calling staticFlowPusher.rowUpdated()
+        // now try an overwriting update, calling staticFlowPusher.rowUpdated()
         TestRule3.put(COLUMN_DL_VLAN, 333);
         storage.updateRow(StaticFlowEntryPusher.TABLE_NAME, TestRule3);
         assertEquals(2, staticFlowEntryPusher.countEntries());
@@ -274,6 +275,23 @@ public class StaticFlowTests extends FloodlightTestCase {
         FlowMod3.getMatch().fromString("dl_dst=00:20:30:40:50:60,dl_vlan=333");
         OFFlowMod updateFlowMod = (OFFlowMod) outList.get(1);
         verifyFlowMod(updateFlowMod, FlowMod3);
+        writeCaptureList.reset();
+        
+        // now try an action modifying update, calling staticFlowPusher.rowUpdated()
+        TestRule3.put(COLUMN_ACTIONS, "output=controller,strip-vlan"); // added strip-vlan
+        storage.updateRow(StaticFlowEntryPusher.TABLE_NAME, TestRule3);
+        assertEquals(2, staticFlowEntryPusher.countEntries());
+        assertEquals(1, writeCaptureList.getValues().size());
+
+        outList = (List<OFMessage>) writeCaptureList.getValues().get(0);
+        assertEquals(1, outList.size());
+        OFFlowMod modifyFlowMod = (OFFlowMod) outList.get(0);
+        FlowMod3.setCommand(OFFlowMod.OFPFC_MODIFY_STRICT);
+        List<OFAction> modifiedActions = FlowMod3.getActions();
+        modifiedActions.add(new OFActionStripVirtualLan()); // add the new action to what we should expect
+        FlowMod3.setActions(modifiedActions);
+        FlowMod3.setLengthU(OFFlowMod.MINIMUM_LENGTH + 16); // accommodate the addition of new actions
+        verifyFlowMod(modifyFlowMod, FlowMod3);
 
     }
 
