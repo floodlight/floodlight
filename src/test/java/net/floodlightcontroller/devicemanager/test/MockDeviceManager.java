@@ -93,6 +93,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
     
     @Override
     protected Device allocateDevice(Long deviceKey,
+                                    String dhcpClientName,
                                     List<AttachmentPoint> aps,
                                     List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
