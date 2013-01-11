@@ -403,7 +403,11 @@ public class IPv4 extends BasePacket {
 
         int result = 0;
         for (int i = 0; i < 4; ++i) {
-            result |= Integer.valueOf(octets[i]) << ((3-i)*8);
+            int oct = Integer.valueOf(octets[i]);
+            if (oct > 255 || oct < 0)
+                throw new IllegalArgumentException("Octet values in specified" +
+                        " IPv4 address must be 0 <= value <= 255");
+            result |=  oct << ((3-i)*8);
         }
         return result;
     }
