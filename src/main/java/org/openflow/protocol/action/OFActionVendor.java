@@ -86,4 +86,9 @@ public abstract class OFActionVendor extends OFAction {
         }
         return true;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + "; vendor=" + vendor;
+    }
 }
