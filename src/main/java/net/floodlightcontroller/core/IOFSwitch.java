@@ -59,7 +59,8 @@ public interface IOFSwitch {
         NORMAL("normal"),         // normal port (default)
         TUNNEL("tunnel"),         // tunnel port
         UPLINK("uplink"),         // uplink port (on a virtual switch)
-        MANAGEMENT("management"); // for in-band management
+        MANAGEMENT("management"), // for in-band management
+        TUNNEL_LOOPBACK("tunnel-loopback");
         
         private String value;
         OFPortType(String v) {
