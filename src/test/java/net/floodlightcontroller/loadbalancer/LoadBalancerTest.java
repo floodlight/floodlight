@@ -390,16 +390,16 @@ public class LoadBalancerTest extends FloodlightTestCase {
      
      IOFSwitch sw1;
      
-     IPacket arpRequest1, arpRequest2, arpReply1, arpReply2, icmpPacket1, icmpPacket2;
+     IPacket arpRequest1, arpReply1, icmpPacket1, icmpPacket2;
      
-     byte[] arpRequest1Serialized, arpRequest2Serialized;
-     byte[] arpReply1Serialized, arpReply2Serialized;
+     byte[] arpRequest1Serialized;
+     byte[] arpReply1Serialized;
      byte[] icmpPacket1Serialized, icmpPacket2Serialized;
           
-     OFPacketIn arpRequestPacketIn1, arpRequestPacketIn2;
+     OFPacketIn arpRequestPacketIn1;
      OFPacketIn icmpPacketIn1, icmpPacketIn2;
      
-     OFPacketOut arpReplyPacketOut1, arpReplyPacketOut2; 
+     OFPacketOut arpReplyPacketOut1; 
 
      Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
      Capture<FloodlightContext> bc1 = 
