@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -25,6 +25,7 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionType;
+import org.openflow.protocol.action.OFActionVendor;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
 import org.openflow.protocol.statistics.OFVendorStatistics;
@@ -44,6 +45,12 @@ import org.openflow.protocol.vendor.OFVendorId;
  */
 public class BasicFactory implements OFMessageFactory, OFActionFactory,
         OFStatisticsFactory, OFVendorDataFactory {
+
+    private final OFVendorActionRegistry vendorActionRegistry;
+
+    public BasicFactory() {
+        vendorActionRegistry = OFVendorActionRegistry.getInstance();
+    }
 
     /**
      * create and return a new instance of a message for OFType t. Also injects
@@ -169,17 +176,40 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory,
                 (data.readerIndex() + demux.getLengthU()) > end))
                 return results;
 
-            ofa = getAction(demux.getType());
-            ofa.readFrom(data);
-            if (OFAction.class.equals(ofa.getClass())) {
-                // advance the position for un-implemented messages
-                data.readerIndex(data.readerIndex()+(ofa.getLengthU() -
-                        OFAction.MINIMUM_LENGTH));
-            }
+            ofa = parseActionOne(demux.getType(), data);
             results.add(ofa);
         }
 
         return results;
+    }
+
+    private OFAction parseActionOne(OFActionType type, ChannelBuffer data) {
+        OFAction ofa;
+        data.markReaderIndex();
+        ofa = getAction(type);
+        ofa.readFrom(data);
+
+        if(type == OFActionType.VENDOR) {
+            OFActionVendor vendorAction = (OFActionVendor) ofa;
+
+            OFVendorActionFactory vendorActionFactory = vendorActionRegistry.get(vendorAction.getVendor());
+
+            if(vendorActionFactory != null) {
+                // if we have a specific vendorActionFactory for this vendor id,
+                // delegate to it for vendor-specific reparsing of the message
+                data.resetReaderIndex();
+                OFActionVendor newAction = vendorActionFactory.readFrom(data);
+                if(newAction != null)
+                    ofa = newAction;
+            }
+        }
+
+        if (OFAction.class.equals(ofa.getClass())) {
+            // advance the position for un-implemented messages
+            data.readerIndex(data.readerIndex()+(ofa.getLengthU() -
+                    OFAction.MINIMUM_LENGTH));
+        }
+        return ofa;
     }
 
     @Override
