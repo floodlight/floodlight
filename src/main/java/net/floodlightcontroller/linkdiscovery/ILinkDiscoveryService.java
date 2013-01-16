@@ -19,7 +19,6 @@ package net.floodlightcontroller.linkdiscovery;
 
 import java.util.Map;
 import java.util.Set;
-
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.NodePortTuple;
@@ -87,4 +86,10 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @param autoPortFastFeature
      */
     public void setAutoPortFastFeature(boolean autoPortFastFeature);
+
+    /**
+     * Get the map of node-port tuples from link DB
+     */
+    public Map<NodePortTuple, Set<Link>> getPortLinks();
+    
 }
