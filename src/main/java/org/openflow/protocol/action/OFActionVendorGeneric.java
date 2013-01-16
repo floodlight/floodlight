@@ -18,54 +18,61 @@
 package org.openflow.protocol.action;
 
 
+import java.util.Arrays;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 
-/**
+/** A generic / unparsed vendor action. This action is returned by
+ *  BasicFactory.readFromWire if no more specific OFVendorActionFactory
+ *  is registered.
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
+ * @author Andreas Wundsam <andreas.wundsam@bigswitch.com>
  */
-public abstract class OFActionVendor extends OFAction {
+public class OFActionVendorGeneric extends OFActionVendor {
     public static int MINIMUM_LENGTH = 8;
 
-    protected int vendor;
+    private final static byte[] EMPTY_ARRAY = new byte[0];
 
-    public OFActionVendor() {
+    protected byte[] vendorData;
+
+    public OFActionVendorGeneric() {
         super();
-        super.setType(OFActionType.VENDOR);
-        super.setLength((short) MINIMUM_LENGTH);
     }
 
-    /**
-     * @return the vendor
-     */
-    public int getVendor() {
-        return vendor;
+    public byte[] getVendorData() {
+        return vendorData;
     }
 
-    /**
-     * @param vendor the vendor to set
-     */
-    public void setVendor(int vendor) {
-        this.vendor = vendor;
+    public void setVendorData(byte[] vendorData) {
+        this.vendorData = vendorData;
     }
 
     @Override
     public void readFrom(ChannelBuffer data) {
         super.readFrom(data);
-        this.vendor = data.readInt();
+
+        int vendorDataLength = this.getLength() - MINIMUM_LENGTH;
+        if (vendorDataLength > 0) {
+            vendorData = new byte[vendorDataLength];
+            data.readBytes(vendorData);
+        } else {
+            vendorData = EMPTY_ARRAY;
+        }
     }
 
     @Override
     public void writeTo(ChannelBuffer data) {
         super.writeTo(data);
         data.writeInt(this.vendor);
+        data.writeBytes(vendorData);
     }
 
     @Override
     public int hashCode() {
         final int prime = 379;
         int result = super.hashCode();
-        result = prime * result + vendor;
+        result = prime * result + Arrays.hashCode(vendorData);
         return result;
     }
 
@@ -77,18 +84,13 @@ public abstract class OFActionVendor extends OFAction {
         if (!super.equals(obj)) {
             return false;
         }
-        if (!(obj instanceof OFActionVendor)) {
+        if (!(obj instanceof OFActionVendorGeneric)) {
             return false;
         }
-        OFActionVendor other = (OFActionVendor) obj;
-        if (vendor != other.vendor) {
+        OFActionVendorGeneric other = (OFActionVendorGeneric) obj;
+        if (!Arrays.equals(vendorData, other.vendorData)) {
             return false;
         }
         return true;
-    }
-
-    @Override
-    public String toString() {
-        return super.toString() + "; vendor=" + vendor;
     }
 }

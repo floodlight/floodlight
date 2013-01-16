@@ -97,9 +97,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
     // Lock to protect modification of the port maps. We only need to 
     // synchronize on modifications. For read operations we are fine since
     // we rely on ConcurrentMaps which works for our use case.
-    private Object portLock;
+    protected Object portLock;
     // Map port numbers to the appropriate OFPhysicalPort
-    private ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
+    protected ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
     // Map port names to the appropriate OFPhyiscalPort
     // XXX: The OF spec doesn't specify if port names need to be unique but
     //      according it's always the case in practice. 
