@@ -230,6 +230,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                       FloodlightContext bc) throws IOException {
         for (OFMessage m : msglist)
         	this.write(m, bc);
+        
+        flush ();
     }
 
     private void write(List<OFMessage> msglist) throws IOException {
