@@ -63,6 +63,7 @@ public class DHCP extends BasePacket {
     
     public enum DHCPOptionCode {
         OptionCode_SubnetMask           ((byte)1),
+        OptionCode_Hostname             ((byte)12),
         OptionCode_RequestedIP          ((byte)50),
         OptionCode_LeaseTime            ((byte)51),
         OptionCode_MessageType          ((byte)53),

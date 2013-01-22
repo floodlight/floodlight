@@ -1877,7 +1877,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
             Entity[] entities = new Entity[] { entity1, entity2,
                                                entity3, entity4
                                              };
-            Device d = new Device(null,1L, null, null, Arrays.asList(entities), null);
+            Device d = new Device(null,1L, null, null, null,
+                                  Arrays.asList(entities), null);
             SwitchPort swp1x1 = new SwitchPort(1L, 1);
             SwitchPort swp1x2 = new SwitchPort(1L, 2);
             SwitchPort swp2x1 = new SwitchPort(2L, 1);

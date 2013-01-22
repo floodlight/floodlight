@@ -61,8 +61,12 @@ import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.DHCP;
+import net.floodlightcontroller.packet.DHCPOption;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.packet.DHCP.DHCPOptionCode;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -788,7 +792,35 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         new Object[] { pi, sw.getStringId(), pi.getInPort(), eth,
                         srcDevice, dstDevice });
        }
+
+        snoopDHCPClientName(eth, srcDevice);
+
         return Command.CONTINUE;
+    }
+
+    /**
+     * Snoop and record client-provided host name from DHCP requests
+     * @param eth
+     * @param srcDevice
+     */
+    private void snoopDHCPClientName(Ethernet eth, Device srcDevice) {
+        if (eth.getEtherType() != Ethernet.TYPE_IPv4)
+            return;
+        IPv4 ipv4 = (IPv4) eth.getPayload();
+        if (ipv4.getProtocol() != IPv4.PROTOCOL_UDP)
+            return;
+        UDP udp = (UDP) ipv4.getPayload();
+        if (!(udp.getPayload() instanceof DHCP))
+            return;
+        DHCP dhcp = (DHCP) udp.getPayload();
+        byte opcode = dhcp.getOpCode();
+        if (opcode == DHCP.OPCODE_REQUEST) {
+            DHCPOption dhcpOption = dhcp.getOption(
+                    DHCPOptionCode.OptionCode_Hostname);
+            if (dhcpOption != null) {
+                srcDevice.dhcpClientName = new String(dhcpOption.getData());
+            }
+        }
     }
 
     /**
@@ -1477,6 +1509,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 if (toKeep.size() > 0) {
                     Device newDevice = allocateDevice(d.getDeviceKey(),
+                                                      d.getDHCPClientName(),
                                                       d.oldAPs,
                                                       d.attachmentPoints,
                                                       toKeep,
@@ -1595,11 +1628,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     // TODO: FIX THIS.
     protected Device allocateDevice(Long deviceKey,
+                                    String dhcpClientName,
                                     List<AttachmentPoint> aps,
                                     List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
                                     IEntityClass entityClass) {
-        return new Device(this, deviceKey, aps, trueAPs, entities, entityClass);
+        return new Device(this, deviceKey, dhcpClientName, aps, trueAPs,
+                          entities, entityClass);
     }
 
     protected Device allocateDevice(Device device,
@@ -1630,8 +1665,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
         if (newAPs.isEmpty())
             newAPs = null;
-        Device d = new Device(this, device.getDeviceKey(),newAPs, null,
-                        entities, device.getEntityClass());
+        Device d = new Device(this, device.getDeviceKey(),
+                              device.getDHCPClientName(), newAPs, null,
+                              entities, device.getEntityClass());
         d.updateAttachmentPoint();
         return d;
     }
