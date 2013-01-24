@@ -6,4 +6,16 @@ public class FloodlightModuleException extends Exception {
 	public FloodlightModuleException(String error) {
 		super(error);
 	}
+
+    public FloodlightModuleException() {
+        super();
+    }
+
+    public FloodlightModuleException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public FloodlightModuleException(Throwable cause) {
+        super(cause);
+    }
 }
