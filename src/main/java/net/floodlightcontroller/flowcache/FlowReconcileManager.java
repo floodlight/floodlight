@@ -274,8 +274,8 @@ public class FlowReconcileManager
         
         // Get the maximum number of flows that can be reconciled.
         int reconcileCapacity = getCurrentCapacity();
-        if (logger.isTraceEnabled()) {
-            logger.trace("Reconcile capacity {} flows", reconcileCapacity);
+        if (logger.isInfoEnabled()) {
+            logger.info("Reconcile capacity {} flows", reconcileCapacity);
         }
         while (!flowQueue.isEmpty() && reconcileCapacity > 0) {
             OFMatchReconcile ofmRc = flowQueue.poll();
