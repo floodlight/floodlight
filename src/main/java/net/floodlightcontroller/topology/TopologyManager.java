@@ -1223,16 +1223,20 @@ public class TopologyManager implements
     public void addOrUpdateLink(long srcId, short srcPort, long dstId, 
                                 short dstPort, LinkType type) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
-        addPortToSwitch(srcId, srcPort);
-        addPortToSwitch(dstId, dstPort);
-
-        addLinkToStructure(switchPortLinks, link);
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
+
             addLinkToStructure(portBroadcastDomainLinks, link);
             dtLinksUpdated = removeLinkFromStructure(directLinks, link);
             linksUpdated = true;
         } else if (type.equals(LinkType.DIRECT_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
+
             addLinkToStructure(directLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
             dtLinksUpdated = true;
