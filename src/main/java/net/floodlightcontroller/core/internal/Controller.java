@@ -289,8 +289,8 @@ public class Controller implements IFloodlightProviderService,
                 }
                 return;
             }
-            if (log.isTraceEnabled()) {
-                log.trace("Dispatching HA Role update newRole = {}, oldRole = {}",
+            if (log.isDebugEnabled()) {
+                log.debug("Dispatching HA Role update newRole = {}, oldRole = {}",
                           newRole, oldRole);
             }
             // Set notified role to slave before notifying listeners. This
