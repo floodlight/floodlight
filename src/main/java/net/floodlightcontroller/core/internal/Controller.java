@@ -1795,14 +1795,6 @@ public class Controller implements IFloodlightProviderService,
         this.roleChanger = new RoleChanger(this);
         initVendorMessages();
         this.systemStartTime = System.currentTimeMillis();
-
-        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
-        roleChangeDamper = new SingletonTask(ses, new Runnable() {
-            @Override
-            public void run() {
-                doSetRole();
-            }
-        });
     }
 
     /**
@@ -1844,6 +1836,15 @@ public class Controller implements IFloodlightProviderService,
 
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
+
+        // Start role change task
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
+        roleChangeDamper = new SingletonTask(ses, new Runnable() {
+            @Override
+            public void run() {
+                doSetRole();
+            }
+        });
     }
 
     @Override
