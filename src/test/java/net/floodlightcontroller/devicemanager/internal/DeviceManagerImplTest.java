@@ -277,7 +277,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createStrictMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
         deviceManager.entityClassifier= new MockEntityClassifier();
         deviceManager.startUp(null);
 
@@ -483,7 +483,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createStrictMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -591,7 +591,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -706,7 +706,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -1097,7 +1097,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
 
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 
@@ -1160,7 +1160,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity1);
         assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
 
-        deviceManager.addListener(mockListener);
+        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 

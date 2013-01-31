@@ -197,8 +197,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     /**
      * Device manager event listeners
+     * reclassifyDeviceListeners are notified first before reconcileDeviceListeners.
+     * This is to make sure devices are correctly reclassified before reconciliation.
      */
-    protected Set<IDeviceListener> deviceListeners;
+    protected Set<IDeviceListener> reclassifyDeviceListeners;
+    protected Set<IDeviceListener> reconcileDeviceListeners;
 
     /**
      * A device update event to be dispatched
@@ -523,8 +526,15 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     @Override
-    public void addListener(IDeviceListener listener) {
-        deviceListeners.add(listener);
+    public void addListener(IDeviceListener listener, ListenerType type) {
+        switch (type) {
+            case DeviceClassifier:
+                reclassifyDeviceListeners.add(listener);
+                break;
+            case DeviceReconciler:
+                reconcileDeviceListeners.add(listener);
+                break;
+        }
     }
 
     // *************
@@ -674,7 +684,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 new HashSet<EnumSet<DeviceField>>();
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
-        this.deviceListeners = new HashSet<IDeviceListener>();
+        this.reclassifyDeviceListeners = new HashSet<IDeviceListener>();
+        this.reconcileDeviceListeners = new HashSet<IDeviceListener>();
         this.suppressAPs = Collections.newSetFromMap(
                                new ConcurrentHashMap<SwitchPort, Boolean>());
 
@@ -1312,39 +1323,44 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (logger.isTraceEnabled()) {
                 logger.trace("Dispatching device update: {}", update);
             }
-            for (IDeviceListener listener : deviceListeners) {
-                switch (update.change) {
-                    case ADD:
-                        listener.deviceAdded(update.device);
-                        break;
-                    case DELETE:
-                        listener.deviceRemoved(update.device);
-                        break;
-                    case CHANGE:
-                        for (DeviceField field : update.fieldsChanged) {
-                            switch (field) {
-                                case IPV4:
-                                    listener.deviceIPV4AddrChanged(update.device);
-                                    break;
-                                case SWITCH:
-                                case PORT:
-                                    //listener.deviceMoved(update.device);
-                                    break;
-                                case VLAN:
-                                    listener.deviceVlanChanged(update.device);
-                                    break;
-                                default:
-                                    logger.debug("Unknown device field changed {}",
-                                                update.fieldsChanged.toString());
-                                    break;
-                            }
+            notifyListeners(reclassifyDeviceListeners, update);
+            notifyListeners(reconcileDeviceListeners, update);
+        }
+    }
+
+    protected void notifyListeners(Set<IDeviceListener> listeners, DeviceUpdate update) {
+        for (IDeviceListener listener : listeners) {
+            switch (update.change) {
+                case ADD:
+                    listener.deviceAdded(update.device);
+                    break;
+                case DELETE:
+                    listener.deviceRemoved(update.device);
+                    break;
+                case CHANGE:
+                    for (DeviceField field : update.fieldsChanged) {
+                        switch (field) {
+                            case IPV4:
+                                listener.deviceIPV4AddrChanged(update.device);
+                                break;
+                            case SWITCH:
+                            case PORT:
+                                //listener.deviceMoved(update.device);
+                                break;
+                            case VLAN:
+                                listener.deviceVlanChanged(update.device);
+                                break;
+                            default:
+                                logger.debug("Unknown device field changed {}",
+                                            update.fieldsChanged.toString());
+                                break;
                         }
-                        break;
-                }
+                    }
+                    break;
             }
         }
     }
-    
+
     /**
      * Check if the entity e has all the keyFields set. Returns false if not
      * @param e entity to check 
@@ -1713,7 +1729,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
-        for (IDeviceListener listener : deviceListeners) {
+        for (IDeviceListener listener : reclassifyDeviceListeners) {
+            listener.deviceMoved(d);
+        }
+        for (IDeviceListener listener : reconcileDeviceListeners) {
             listener.deviceMoved(d);
         }
     }
