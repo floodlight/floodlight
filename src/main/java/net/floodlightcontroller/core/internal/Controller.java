@@ -987,8 +987,22 @@ public class Controller implements IFloodlightProviderService,
                     if (roleChanger.checkFirstPendingRoleRequestXid(
                             sw, error.getXid())) {
                         roleChanger.deliverRoleRequestError(sw, error);
-                    }
-                    else {
+                    } else if (error.getErrorCode() ==
+                            OFErrorType.OFPET_BAD_REQUEST.getValue() &&
+                            error.getErrorType() ==
+                            OFBadRequestCode.OFPBRC_EPERM.ordinal() &&
+                            role.equals(Role.MASTER)) {
+                        // We are the master and the switch returned permission
+                        // error. Send a role change request in case switch set
+                        // the master to someone else.
+                        // Only send if there are no pending requests.
+                        synchronized(roleChanger) {
+                            if (roleChanger.pendingRequestMap.get(sw) == null) {
+                                log.info("Tell switch {} who is the master", sw);
+                                roleChanger.submitRequest(Collections.singleton(sw), role);
+                            }
+                        }
+                    } else {
                         logError(sw, error);
 
                         // allow registered listeners to receive error messages
