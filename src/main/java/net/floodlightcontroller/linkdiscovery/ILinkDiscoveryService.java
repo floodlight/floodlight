@@ -19,6 +19,9 @@ package net.floodlightcontroller.linkdiscovery;
 
 import java.util.Map;
 import java.util.Set;
+
+import org.openflow.protocol.OFPacketOut;
+
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.NodePortTuple;
@@ -43,6 +46,15 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * @return
      */
     public ILinkDiscovery.LinkType getLinkType(Link lt, LinkInfo info);
+
+    /**
+     * Returns OFPacketOut which contains the LLDP data corresponding
+     * to switchport (sw, port). PacketOut does not contain actions.
+     * PacketOut length includes the minimum length and data length.
+     */
+    public OFPacketOut generateLLDPMessage(long sw, short port,
+                                           boolean isStandard,
+                                           boolean isReverse);
 
     /**
      * Returns an unmodifiable map from switch id to a set of all links with it 
@@ -91,5 +103,5 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * Get the map of node-port tuples from link DB
      */
     public Map<NodePortTuple, Set<Link>> getPortLinks();
-    
+
 }

@@ -34,8 +34,6 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
@@ -66,7 +64,7 @@ import org.slf4j.LoggerFactory;
  */
 @LogMessageCategory("Flow Programming")
 public abstract class ForwardingBase 
-    implements IOFMessageListener, IDeviceListener {
+    implements IOFMessageListener {
     
     protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
@@ -124,7 +122,6 @@ public abstract class ForwardingBase
      * Adds a listener for devicemanager and registers for PacketIns.
      */
     protected void startUp() {
-        deviceManager.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
 
@@ -589,30 +586,6 @@ public abstract class ForwardingBase
             return false;
         }
         return true;
-
-    }
-
-    @Override
-    public void deviceAdded(IDevice device) {
-        // NOOP
-    }
-
-    @Override
-    public void deviceRemoved(IDevice device) {
-        // NOOP
-    }
-
-    @Override
-    public void deviceMoved(IDevice device) {
-    }
-
-    @Override
-    public void deviceIPV4AddrChanged(IDevice device) {
-
-    }
-
-    @Override
-    public void deviceVlanChanged(IDevice device) {
 
     }
 

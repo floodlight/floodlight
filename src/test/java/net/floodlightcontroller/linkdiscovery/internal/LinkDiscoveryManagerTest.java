@@ -95,7 +95,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         return ldm;
     }
 
-    public IOFSwitch createMockSwitch(Long id) {
+    private IOFSwitch createMockSwitch(Long id) {
         IOFSwitch mockSwitch = createNiceMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(id).anyTimes();
         return mockSwitch;
