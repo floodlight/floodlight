@@ -63,9 +63,11 @@ public class MockDeviceManager extends DeviceManagerImpl {
                                Integer ipv4Address, Long switchDPID, 
                                Integer switchPort,
                                boolean processUpdates) {
-        Set<IDeviceListener> listeners = deviceListeners;
+        Set<IDeviceListener> reclassifyListeners = reclassifyDeviceListeners;
+        Set<IDeviceListener> reconcileListeners = reconcileDeviceListeners;
         if (!processUpdates) {
-            deviceListeners = Collections.<IDeviceListener>emptySet();
+            reclassifyDeviceListeners = Collections.<IDeviceListener>emptySet();
+            reconcileDeviceListeners = Collections.<IDeviceListener>emptySet();
         }
         
         if (vlan != null && vlan.shortValue() <= 0)
@@ -75,7 +77,8 @@ public class MockDeviceManager extends DeviceManagerImpl {
         IDevice res =  learnDeviceByEntity(new Entity(macAddress, vlan, 
                                                       ipv4Address, switchDPID, 
                                                       switchPort, new Date()));
-        deviceListeners = listeners;
+        reclassifyDeviceListeners = reclassifyListeners;
+        reconcileDeviceListeners = reconcileListeners;
         return res;
     }
     
@@ -109,6 +112,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
     
     @Override
     protected Device allocateDevice(Long deviceKey,
+                                    String dhcpClientName,
                                     List<AttachmentPoint> aps,
                                     List<AttachmentPoint> trueAPs,
                                     Collection<Entity> entities,
