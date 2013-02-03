@@ -51,7 +51,8 @@ public class MockDevice extends Device {
                       List<AttachmentPoint> trueAPs,
                       Collection<Entity> entities,
                       IEntityClass entityClass) {
-        super(deviceManager, deviceKey, aps, trueAPs, entities, entityClass);
+        super(deviceManager, deviceKey, null, aps, trueAPs,
+              entities, entityClass);
     }
 
     @Override

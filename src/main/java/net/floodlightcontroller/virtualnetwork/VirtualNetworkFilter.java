@@ -312,7 +312,7 @@ public class VirtualNetworkFilter
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         restApi.addRestletRoutable(new VirtualNetworkWebRoutable());
-        deviceService.addListener(this);
+        deviceService.addListener(this, IDeviceService.ListenerType.DeviceClassifier);
     }
 
     // IOFMessageListener

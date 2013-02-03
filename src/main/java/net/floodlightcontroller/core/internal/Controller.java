@@ -41,6 +41,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -57,6 +59,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.flowcache.IFlowCacheService;
@@ -186,9 +189,12 @@ public class Controller implements IFloodlightProviderService,
     // this role and then notify, on a transition to master we first notify
     // and then set the role. We then use it to make sure we don't forward
     // OF messages while the modules are in slave role. 
-    protected volatile Role notifiedRole; 
+    // The pendingRole is a role change just received, but not sent out
+    // notifications yet.
+    protected Role pendingRole;protected volatile Role notifiedRole;
     // A helper that handles sending and timeout handling for role requests
     protected RoleChanger roleChanger;
+    protected SingletonTask roleChangeDamper;
 
     // Start time of the controller
     protected long systemStartTime;
@@ -289,8 +295,8 @@ public class Controller implements IFloodlightProviderService,
                 }
                 return;
             }
-            if (log.isTraceEnabled()) {
-                log.trace("Dispatching HA Role update newRole = {}, oldRole = {}",
+            if (log.isDebugEnabled()) {
+                log.debug("Dispatching HA Role update newRole = {}, oldRole = {}",
                           newRole, oldRole);
             }
             // Set notified role to slave before notifying listeners. This
@@ -382,19 +388,26 @@ public class Controller implements IFloodlightProviderService,
     public void setRole(Role role) {
         if (role == null) throw new NullPointerException("Role can not be null.");
 
+        // If role is changed in quick succession for some reason,
+        // the 2 second delay will dampen the frequency.
+        this.pendingRole = role;
+        roleChangeDamper.reschedule(2000, TimeUnit.MILLISECONDS);
+    }
+
+    protected void doSetRole() {
         // Need to synchronize to ensure a reliable ordering on role request
         // messages send and to ensure the list of connected switches is stable
         // RoleChanger will handle the actual sending of the message and
         // timeout handling
         // @see RoleChanger
         synchronized(roleChanger) {
-            if (role.equals(this.role)) {
+            if (pendingRole.equals(this.role)) {
                 log.debug("Ignoring role change: role is already {}", role);
                 return;
             }
 
             Role oldRole = this.role;
-            this.role = role;
+            this.role = pendingRole;
 
             log.debug("Submitting role change request to role {}", role);
             roleChanger.submitRequest(connectedSwitches, role);
@@ -974,8 +987,22 @@ public class Controller implements IFloodlightProviderService,
                     if (roleChanger.checkFirstPendingRoleRequestXid(
                             sw, error.getXid())) {
                         roleChanger.deliverRoleRequestError(sw, error);
-                    }
-                    else {
+                    } else if (error.getErrorCode() ==
+                            OFErrorType.OFPET_BAD_REQUEST.getValue() &&
+                            error.getErrorType() ==
+                            OFBadRequestCode.OFPBRC_EPERM.ordinal() &&
+                            role.equals(Role.MASTER)) {
+                        // We are the master and the switch returned permission
+                        // error. Send a role change request in case switch set
+                        // the master to someone else.
+                        // Only send if there are no pending requests.
+                        synchronized(roleChanger) {
+                            if (roleChanger.pendingRequestMap.get(sw) == null) {
+                                log.info("Tell switch {} who is the master", sw);
+                                roleChanger.submitRequest(Collections.singleton(sw), role);
+                            }
+                        }
+                    } else {
                         logError(sw, error);
 
                         // allow registered listeners to receive error messages
@@ -1809,6 +1836,15 @@ public class Controller implements IFloodlightProviderService,
 
         // Add our REST API
         restApi.addRestletRoutable(new CoreWebRoutable());
+
+        // Start role change task
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
+        roleChangeDamper = new SingletonTask(ses, new Runnable() {
+            @Override
+            public void run() {
+                doSetRole();
+            }
+        });
     }
 
     @Override
