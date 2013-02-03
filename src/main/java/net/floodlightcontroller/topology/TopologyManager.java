@@ -117,11 +117,11 @@ public class TopologyManager implements
 
     protected BlockingQueue<LDUpdate> ldUpdates;
     protected List<LDUpdate> appliedUpdates;
-    
+
     // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
     protected TopologyInstance currentInstanceWithoutTunnels;
-    
+
     protected SingletonTask newInstanceTask;
     private Date lastUpdateTime;
 
@@ -140,10 +140,29 @@ public class TopologyManager implements
      */
     protected boolean tunnelPortsUpdated;
 
-    protected final int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+    protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+
+   //  Getter/Setter methods
+    /**
+     * Get the time interval for the period topology updates, if any.
+     * The time returned is in milliseconds.
+     * @return
+     */
+    public int getTopologyComputeInterval() {
+        return TOPOLOGY_COMPUTE_INTERVAL_MS;
+    }
 
     /**
-     * Thread for recomputing topology.  The thread is always running, 
+     * Set the time interval for the period topology updates, if any.
+     * The time is in milliseconds.
+     * @return
+     */
+    public void setTopologyComputeInterval(int time_ms) {
+        TOPOLOGY_COMPUTE_INTERVAL_MS = time_ms;
+    }
+
+    /**
+     * Thread for recomputing topology.  The thread is always running,
      * however the function applyUpdates() has a blocking call.
      */
     @LogMessageDoc(level="ERROR",
@@ -157,6 +176,7 @@ public class TopologyManager implements
             try {
                 if (ldUpdates.peek() != null)
                     updateTopology();
+                handleMiscellaneousPeriodicEvents();
             }
             catch (Exception e) {
                 log.error("Error in topology instance task thread", e);
@@ -166,6 +186,11 @@ public class TopologyManager implements
                                            TimeUnit.MILLISECONDS);
             }
         }
+    }
+
+    // To be used for adding any periodic events that's required by topology.
+    protected void handleMiscellaneousPeriodicEvents() {
+        return;
     }
 
     public boolean updateTopology() {
@@ -1206,23 +1231,35 @@ public class TopologyManager implements
         return result1 || result2;
     }
 
+    protected void addOrUpdateTunnelLink(long srcId, short srcPort, long dstId,
+                                    short dstPort) {
+        // If you need to handle tunnel links, this is a placeholder.
+    }
+
     public void addOrUpdateLink(long srcId, short srcPort, long dstId, 
                                 short dstPort, LinkType type) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
-        addPortToSwitch(srcId, srcPort);
-        addPortToSwitch(dstId, dstPort);
-
-        addLinkToStructure(switchPortLinks, link);
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
+
             addLinkToStructure(portBroadcastDomainLinks, link);
             dtLinksUpdated = removeLinkFromStructure(directLinks, link);
+            linksUpdated = true;
         } else if (type.equals(LinkType.DIRECT_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
+
             addLinkToStructure(directLinks, link);
             removeLinkFromStructure(portBroadcastDomainLinks, link);
             dtLinksUpdated = true;
+            linksUpdated = true;
+        } else if (type.equals(LinkType.TUNNEL)) {
+            addOrUpdateTunnelLink(srcId, srcPort, dstId, dstPort);
         }
-        linksUpdated = true;
     }
 
     public void removeLink(Link link)  {

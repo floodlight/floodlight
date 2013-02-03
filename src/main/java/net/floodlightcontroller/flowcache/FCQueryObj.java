@@ -68,11 +68,7 @@ public class FCQueryObj {
         if (vlan != null) {
         	this.vlans = new Short[] { vlan };
         } else {
-	        if (srcDevice != null) {
-	        	this.vlans = srcDevice.getVlanId();
-	        } else if (dstDevice != null) {
-	            this.vlans = dstDevice.getVlanId();
-	        }
+            this.vlans = null;
         }
     }
 

@@ -762,6 +762,7 @@ public class ControllerTest extends FloodlightTestCase
         
         replay(roleChanger);
         controller.setRole(Role.SLAVE);
+        controller.doSetRole(); // avoid wait
         verify(roleChanger);
         
         Controller.IUpdate upd = controller.updates.poll();
@@ -1531,6 +1532,7 @@ public class ControllerTest extends FloodlightTestCase
         expectLastCall().andReturn(Command.STOP).once();
         replay(sw, listener);
         controller.setRole(Role.SLAVE);
+        controller.doSetRole();  // avoid the wait
         chdlr.processOFMessage(pi);
         verify(sw, listener);
         assertEquals(1, controller.updates.size());
@@ -1550,6 +1552,7 @@ public class ControllerTest extends FloodlightTestCase
         resetToDefault(listener);
         replay(listener);
         controller.setRole(Role.MASTER);
+        controller.doSetRole(); // avoid the wait
         chdlr.processOFMessage(pi);
         verify(listener);
         assertEquals(1, controller.updates.size());
