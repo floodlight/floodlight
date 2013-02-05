@@ -229,10 +229,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         msg_buffer.add(m);
 
         if ((msg_buffer.size() >= Controller.BATCH_MAX_SIZE) ||
-            ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
-            this.write(msg_buffer);
-            msg_buffer.clear();
-        }
+            ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD)))
+            flush (msg_buffer);
     }
    
     @Override
@@ -565,17 +563,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
 
-    protected void flush(List<OFMessage> msglist) {
+    protected void flush(List<OFMessage> msglist) throws IOException {
     	if (msglist == null)
     		msglist = getMessageBuffer (false);
 
     	if ((msglist != null) && (msglist.size() > 0)) {
-            try {
-                this.write(msglist);
-            } catch (IOException e) {
-                // TODO: log exception
-                e.printStackTrace();
-            }
+    		this.write(msglist);
             msglist.clear();
         }
     }
@@ -583,7 +576,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     public void flush() {
-        flush (null);
+        try {
+            flush (null);
+        } catch (IOException e) {
+            // TODO: log exception
+            e.printStackTrace();
+        }
     }
 
     public static void flush_all() {
