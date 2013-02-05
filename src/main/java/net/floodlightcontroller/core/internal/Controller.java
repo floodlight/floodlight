@@ -1795,7 +1795,17 @@ public class Controller implements IFloodlightProviderService,
         this.roleChanger = new RoleChanger(this);
         initVendorMessages();
         this.systemStartTime = System.currentTimeMillis();
-    }
+
+        String option = configParams.get("flushSwitchesOnReconnect");
+
+        if (option != null && option.equalsIgnoreCase("true")) {
+            this.setAlwaysClearFlowsOnSwAdd(true);
+            log.info("Flush switches on reconnect -- Enabled.");
+        } else {
+            this.setAlwaysClearFlowsOnSwAdd(false);
+            log.info("Flush switches on reconnect -- Disabled");
+        }
+     }
 
     /**
      * Startup all of the controller's components
@@ -2014,5 +2024,4 @@ public class Controller implements IFloodlightProviderService,
             switchDescSortedList.add(description);
         }
     }
-
 }
