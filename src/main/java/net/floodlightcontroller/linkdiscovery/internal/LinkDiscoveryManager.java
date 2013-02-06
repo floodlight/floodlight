@@ -1477,6 +1477,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) return;
+
         if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
             // Do nothing as the port is a fast port.
             return;
