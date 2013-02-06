@@ -1477,6 +1477,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) return;
+
         if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
             // Do nothing as the port is a fast port.
             return;
@@ -1690,14 +1692,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
         dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
 
-        if (!portBroadcastDomainLinks.containsKey(lt.getSrc()))
-                                                               portBroadcastDomainLinks.put(srcNpt,
-                                                                                            new HashSet<Link>());
+        if (!portBroadcastDomainLinks.containsKey(srcNpt))
+            portBroadcastDomainLinks.put(srcNpt,
+                                         new HashSet<Link>());
         portBroadcastDomainLinks.get(srcNpt).add(lt);
 
-        if (!portBroadcastDomainLinks.containsKey(lt.getDst()))
-                                                               portBroadcastDomainLinks.put(dstNpt,
-                                                                                            new HashSet<Link>());
+        if (!portBroadcastDomainLinks.containsKey(dstNpt))
+            portBroadcastDomainLinks.put(dstNpt,
+                                         new HashSet<Link>());
         portBroadcastDomainLinks.get(dstNpt).add(lt);
     }
 

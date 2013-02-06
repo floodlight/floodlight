@@ -64,7 +64,10 @@ public class DeviceSerializer extends JsonSerializer<Device> {
 
         jGen.writeNumberField("lastSeen", device.getLastSeen().getTime());
         
-        jGen.writeStringField("dhcpClientName", device.getDHCPClientName());
+        String dhcpClientName = device.getDHCPClientName();
+        if (dhcpClientName != null) {
+            jGen.writeStringField("dhcpClientName", dhcpClientName);
+        }
 
         jGen.writeEndObject();
     }

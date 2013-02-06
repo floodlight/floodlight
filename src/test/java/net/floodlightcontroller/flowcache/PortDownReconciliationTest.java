@@ -95,7 +95,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
     protected Map<Long, IOFSwitch> switches;
     protected Capture<List<OFMessage>> wc1, wc2, wc3, wc4;
     protected Capture<FloodlightContext> bc1, bc2, bc3, bc4;
-    protected OFMessage fmd, fmd2;
+    protected OFMessage fm, fm2;
     protected ArrayList<OFMatchReconcile> lofmr;
     protected OFMatchReconcile ofmr;
     protected static Logger log;
@@ -152,7 +152,6 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         req.setLengthU(requestLength);
 
         // Actions for the STATS_REPLY object
-        OFFlowMod flow = new OFFlowMod();
         OFActionOutput action = new OFActionOutput((short) 3, (short) 0xffff);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
@@ -234,8 +233,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         // Create the only OFMatch Reconcile object that will be in the list
         ofmr = new OFMatchReconcile();
         long affectedSwitch = sw1.getId();
-        OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
-        OFMatchWithSwDpid ofmatchsw = new OFMatchWithSwDpid(match,
+        OFMatchWithSwDpid ofmatchsw = new OFMatchWithSwDpid(new OFMatch().setWildcards(OFMatch.OFPFW_ALL),
                                                             affectedSwitch);
         ofmr.rcAction = OFMatchReconcile.ReconcileAction.UPDATE_PATH;
         ofmr.ofmWithSwDpid = ofmatchsw;
@@ -248,7 +246,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
 
         // Expected Flow Mod Deletes Messages
         // Flow Mod Delete for base switch
-        fmd = ((OFFlowMod) mockFloodlightProvider.getOFMessageFactory()
+        fm = ((OFFlowMod) mockFloodlightProvider.getOFMessageFactory()
                                                  .getMessage(OFType.FLOW_MOD)).setMatch(new OFMatch().setWildcards(OFMatch.OFPFW_ALL))
                                                                               .setCommand(OFFlowMod.OFPFC_DELETE)
                                                                               // Notice
@@ -260,10 +258,10 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
                                                                               .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
 
         // Flow Mod Delete for the neighborswitches
-        fmd2 = ((OFFlowMod) mockFloodlightProvider.getOFMessageFactory()
+        fm2 = ((OFFlowMod) mockFloodlightProvider.getOFMessageFactory()
                                                   .getMessage(OFType.FLOW_MOD))
-        // Notice we used the base switch's flow's match
-        .setMatch(flow.getMatch())
+        // Notice that this Match object is more specific
+        .setMatch(reply.getMatch())
                                                                                .setCommand(OFFlowMod.OFPFC_DELETE)
                                                                                // Notice
                                                                                // we
@@ -314,14 +312,14 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         pdr.reconcileFlows(lofmr);
         // Validate results
         verify(sw1);
-
+        
         assertTrue(wc1.hasCaptured());
 
-        List<List<OFMessage>> msglist = wc1.getValues();
+        List<OFMessage> msglist = wc1.getValues().get(0);
 
         // Make sure the messages we captures correct
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd, m);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm, m);
         }
     }
 
@@ -375,19 +373,19 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
 
         // Make sure each capture has captured the proper Flow Mod Delete
         // message
-        List<List<OFMessage>> msglist = wc2.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        List<OFMessage> msglist = wc2.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
 
-        msglist = wc3.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        msglist = wc3.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
 
-        msglist = wc4.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        msglist = wc4.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
     }
 
@@ -443,19 +441,19 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
 
         // Make sure each capture has captured the proper Flow Mod Delete
         // message
-        List<List<OFMessage>> msglist = wc2.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        List<OFMessage> msglist = wc2.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
 
-        msglist = wc3.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        msglist = wc3.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
 
-        msglist = wc4.getValues();
-        for (List<OFMessage> m : msglist) {
-            if (m instanceof OFFlowMod) assertEquals(fmd2, m);
+        msglist = wc4.getValues().get(0);
+        for (OFMessage m : msglist) {
+            if (m instanceof OFFlowMod) assertEquals(fm2, m);
         }
     }
 }
