@@ -99,19 +99,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class sends out LLDP messages containing the sending switch's datapath
- * id as well as the outgoing port number. Received LLrescDP messages that match
- * a known switch cause a new LinkTuple to be created according to the invariant
- * rules listed below. This new LinkTuple is also passed to routing if it exists
+ * This class sends out <a href="http://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol">LLDP</a>
+ * messages containing the sending switch's datapath id as well as the outgoing
+ * port number. Received LLDP messages that match a known switch cause a new
+ * <code>Link</code> to be created according to the invariant rules listed
+ * below. This new <code>Link</code> is also passed to routing if it exists
  * to trigger updates. This class also handles removing links that are
  * associated to switch ports that go down, and switches that are disconnected.
- * Invariants: -portLinks and switchLinks will not contain empty Sets outside of
- * critical sections -portLinks contains LinkTuples where one of the src or dst
- * SwitchPortTuple matches the map key -switchLinks contains LinkTuples where
- * one of the src or dst SwitchPortTuple's id matches the switch id -Each
- * LinkTuple will be indexed into switchLinks for both src.id and dst.id, and
- * portLinks for each src and dst -The updates queue is only added to from
- * within a held write lock
+ * <p>
+ * <b>Invariants:</b>
+ * <ul>
+ * <li><code>portLinks</code> and <code>switchLinks</code> will not contain
+ * empty <code>Set</code>s outside of critical sections.</li>
+ * <li><code>portLinks</code> contains set of <code>Link</code>s where one of
+ * the <code>src</code> or <code>dst</code> <code>NodePortTuple</code> matches
+ * the map key.</li>
+ * <li><code>switchLinks</code> contains set of <code>Link</code>s where
+ * one of the <code>src</code> or <code>dst</code> <code>NodePortTuple</code>'s
+ * id matches the switch id.</li>
+ * <li>Each <code>Link</code> will be indexed into <code>switchLinks</code> for
+ * both <code>src.id</code> and <code>dst.id</code>, and <code>portLinks</code>
+ * for each <code>src</code> and <code>dst</code>.</li>
+ * <li>The updates queue is only added to from within a held write lock.</li>
+ * </ul>
  */
 @LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager implements IOFMessageListener,
@@ -388,8 +398,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      * Add a switch port to the quarantine queue. Schedule the quarantine task
      * if the quarantine queue was empty before adding this switch port.
-     * 
-     * @param npt
      */
     protected void addToQuarantineQueue(NodePortTuple npt) {
         if (quarantineQueue.contains(npt) == false)
@@ -407,8 +415,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * Add a switch port to maintenance queue.
-     * 
-     * @param npt
      */
     protected void addToMaintenanceQueue(NodePortTuple npt) {
         // TODO We are not checking if the switch port tuple is already
@@ -431,11 +437,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * This method processes the quarantine list in bursts. The task is at most
-     * once per BDDP_TASK_INTERVAL. One each call, BDDP_TASK_SIZE number of
-     * switch ports are processed. Once the BDDP packets are sent out through
-     * the switch ports, the ports are removed from the quarantine list.
+     * once per <code>BDDP_TASK_INTERVAL</code>. One each call,
+     * <code>BDDP_TASK_SIZE</code> number of switch ports are processed. Once the
+     * BDDP packets are sent out through the switch ports, the ports are
+     * removed from the quarantine list.
      */
-
     protected void processBDDPLists() {
         int count = 0;
         Set<NodePortTuple> nptList = new HashSet<NodePortTuple>();
@@ -519,13 +525,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * This method is used to specifically ignore/consider specific
-     * links.
-     * @param src
-     * @param srcPort
-     * @param dst
-     * @param dstPort
-     * @return
+     * This method is used to specifically ignore/consider specific links.
      */
     protected boolean isLinkAllowed(long src, short srcPort,
                                     long dst, short dstPort) {
@@ -534,10 +534,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * Check if incoming discovery messages are enabled or not.
-     * @param sw
-     * @param port
-     * @param isStandard
-     * @return
      */
     protected boolean isIncomingDiscoveryAllowed(long sw, short port,
                                                  boolean isStandard) {
@@ -568,11 +564,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * Check if outgoing discovery messages are enabled or not.
-     * @param sw
-     * @param port
-     * @param isStandard
-     * @param isReverse
-     * @return
      */
     protected boolean isOutgoingDiscoveryAllowed(long sw, short port,
                                                  boolean isStandard,
@@ -610,8 +601,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * This is a placeholder for adding actions if any port-specific
      * actions are desired.  The default action is simply to output to
      * the given port.
-     * @param port
-     * @return
      */
     protected List<OFAction> getDiscoveryActions (IOFSwitch sw, OFPhysicalPort port){
         // set actions
@@ -733,8 +722,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      * Send link discovery message out of a given switch port. The discovery
      * message may be a standard LLDP or a modified LLDP, where the dst mac
-     * address is set to :ff. TODO: The modified LLDP will updated in the future
-     * and may use a different eth-type.
+     * address is set to <code>:ff</code>. TODO: The modified LLDP will
+     * updated in the future and may use a different eth-type.
      *
      * @param sw
      * @param port
@@ -1271,7 +1260,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * Removes links from memory and storage.
      * 
      * @param links
-     *            The List of @LinkTuple to delete.
+     *            The <code>List</code> of <code>Link</code> to delete.
      */
     protected void deleteLinks(List<Link> links, String reason) {
         deleteLinks(links, reason, null);
@@ -1281,7 +1270,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * Removes links from memory and storage.
      * 
      * @param links
-     *            The List of @LinkTuple to delete.
+     *            The <code>List</code> of <code>Link</code> to delete.
      */
     protected void deleteLinks(List<Link> links, String reason,
                                List<LDUpdate> updateList) {
@@ -1347,14 +1336,17 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Handles an OFPortStatus message from a switch. We will add or delete
-     * LinkTupes as well re-compute the topology if needed.
+     * Handles an <code>OFPortStatus</code> message from a switch. We will
+     * add or delete <code>Link</code>s as well re-compute the topology if
+     * needed.
      * 
      * @param sw
-     *            The IOFSwitch that sent the port status message
+     *            The switch id that sent the port status message
      * @param ps
-     *            The OFPortStatus message
-     * @return The Command to continue or stop after we process this message
+     *            The <code>OFPortStatus</code> message
+     * @return
+     *            The <code>Command</code> to continue or stop after we process
+     *            this message.
      */
     protected Command handlePortStatus(long sw, OFPortStatus ps) {
 
@@ -1466,9 +1458,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * nothing. If autoportfast feature is enabled and the port is a fast port,
      * then do nothing. Otherwise, send LLDP message. Add the port to
      * quarantine.
-     * 
-     * @param sw
-     * @param p
      */
     private void processNewPort(long sw, short p) {
         if (isLinkDiscoverySuppressed(sw, p)) {
@@ -1494,10 +1483,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * We send out LLDP messages when a switch is added to discover the topology
+     * We send out LLDP messages when a switch is added to discover the
+     * topology.
      * 
      * @param sw
-     *            The IOFSwitch that connected to the controller
+     *            The <code>IOFSwitch</code> that connected to the controller
      */
     @Override
     public void addedSwitch(IOFSwitch sw) {
@@ -1517,8 +1507,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      * When a switch disconnects we remove any links from our map and notify.
      * 
-     * @param The
-     *            id of the switch
+     * @param iofSwitch
+     *            the removed switch
      */
     @Override
     public void removedSwitch(IOFSwitch iofSwitch) {
@@ -1557,8 +1547,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * We don't react the port changed notifications here. we listen for
-     * OFPortStatus messages directly. Might consider using this notifier
-     * instead
+     * <code>OFPortStatus</code> messages directly. Might consider using this
+     * notifier instead.
      */
     @Override
     public void switchPortChanged(Long switchId) {
@@ -1567,9 +1557,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     /**
      * Delete links incident on a given switch port.
-     * 
-     * @param npt
-     * @param reason
      */
     protected void deleteLinksOnPort(NodePortTuple npt, String reason) {
         List<Link> eraseList = new ArrayList<Link>();
@@ -1729,11 +1716,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Gets the storage key for a LinkTuple
+     * Gets the storage key for a <code>Link</code>
      * 
      * @param lt
-     *            The LinkTuple to get
-     * @return The storage key as a String
+     *            The <code>Link</code> to get
+     * @return
+     *            The storage key as a <code>String</code>
      */
     private String getLinkId(Link lt) {
         return HexString.toHexString(lt.getSrc()) + "-" + lt.getSrcPort()
@@ -1742,12 +1730,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Writes a LinkTuple and corresponding LinkInfo to storage
+     * Writes a <code>Link</code> and corresponding <code>LinkInfo</code> to
+     * storage.
      * 
      * @param lt
-     *            The LinkTuple to write
+     *            The <code>Link</code> to write
      * @param linkInfo
-     *            The LinkInfo to write
+     *            The <code>LinkInfo</code> to write
      */
     protected void writeLinkToStorage(Link lt, LinkInfo linkInfo) {
         LinkType type = getLinkType(lt, linkInfo);
@@ -1842,7 +1831,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * Removes a link from storage using an asynchronous call.
      * 
      * @param lt
-     *            The LinkTuple to delete.
+     *            The <code>Link</code> to delete.
      */
     protected void removeLinkFromStorage(Link lt) {
         String id = getLinkId(lt);
@@ -1855,9 +1844,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Register a link discovery aware component
-     * 
-     * @param linkDiscoveryAwareComponent
+     * Register a link discovery aware component.
      */
     public
             void
@@ -1867,9 +1854,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Deregister a link discovery aware component
-     * 
-     * @param linkDiscoveryAwareComponent
+     * Deregister a link discovery aware component.
      */
     public
             void
@@ -1879,7 +1864,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Sets the IStorageSource to use for ITology
+     * Sets the <code>IStorageSource</code> to use for <code>ITopology</code>
      * 
      * @param storageSource
      *            the storage source to use
@@ -1889,9 +1874,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     /**
-     * Gets the storage source for this ITopology
+     * Gets the storage source for this <code>ITopology</code>.
      * 
-     * @return The IStorageSource ITopology is writing to
+     * @return   
+     *            The <code>IStorageSource</code> <code>ITopology</code> is
+     *            writing to
      */
     public IStorageSourceService getStorageSource() {
         return storageSource;
