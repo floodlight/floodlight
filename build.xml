@@ -285,7 +285,8 @@
         <mkdir dir="${findbugs.results}"/>
         <findbugs home="${findbugs.home}"
             output="xml"
-            outputFile="${findbugs.results}/results.xml" >
+            excludeFilter="${basedir}/findbugs-exclude.xml"
+            outputFile="${findbugs.results}/results.xml" reportLevel='high'>
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />
            <class location="${build}" />
@@ -298,8 +299,10 @@
     <target name="findbugs" depends="init,compile">
         <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpath="${findbugs.home}/lib/findbugs-ant.jar"/>
         <mkdir dir="${findbugs.results}"/>
+        <echo message="${basedir}/findbugs-exclude.xml"/>
         <findbugs home="${findbugs.home}"
             output="html"
+            excludeFilter="${basedir}/findbugs-exclude.xml"
             outputFile="${findbugs.results}/results.html" >
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />
