@@ -43,7 +43,6 @@ import org.openflow.protocol.OFType;
 
 public class FlowReconcileMgrTest extends FloodlightTestCase {
 
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected FlowReconcileManager flowReconcileMgr;
     protected MockThreadPoolService threadPool;
     protected ICounterStoreService counterStore;

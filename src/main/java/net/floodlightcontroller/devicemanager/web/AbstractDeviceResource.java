@@ -156,8 +156,9 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 if (ipv4StartsWith != null) {
                     boolean match = false;
                     for (Integer v : value.getIPv4Addresses()) {
-                        String str = IPv4.fromIPv4Address(v);
+                        String str;
                         if (v != null && 
+                            (str = IPv4.fromIPv4Address(v)) != null &&
                             str.startsWith(ipv4StartsWith)) {
                             match = true;
                             break;
@@ -168,9 +169,10 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 if (dpidStartsWith != null) {
                     boolean match = false;
                     for (SwitchPort v : value.getAttachmentPoints(true)) {
-                        String str = 
-                                HexString.toHexString(v.getSwitchDPID(), 8);
+                        String str;
                         if (v != null && 
+                            (str = HexString.toHexString(v.getSwitchDPID(), 
+                                                         8)) != null &&
                             str.startsWith(dpidStartsWith)) {
                             match = true;
                             break;
@@ -181,8 +183,9 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 if (portStartsWith != null) {
                     boolean match = false;
                     for (SwitchPort v : value.getAttachmentPoints(true)) {
-                        String str = Integer.toString(v.getPort());
+                        String str;
                         if (v != null && 
+                            (str = Integer.toString(v.getPort())) != null &&
                             str.startsWith(portStartsWith)) {
                             match = true;
                             break;

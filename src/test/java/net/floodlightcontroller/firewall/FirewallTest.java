@@ -60,7 +60,6 @@ import org.openflow.util.HexString;
  * @author Amer Tahir
  */
 public class FirewallTest extends FloodlightTestCase {
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightContext cntx;
     protected OFPacketIn packetIn;
     protected IOFSwitch sw;

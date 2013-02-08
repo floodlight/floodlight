@@ -18,6 +18,7 @@
 package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  *
@@ -253,7 +254,7 @@ public class TCP extends BasePacket {
                (flags == other.flags) &&
                (windowSize == other.windowSize) &&
                (urgentPointer == other.urgentPointer) &&
-               (dataOffset == 5 || options.equals(other.options));
+               (dataOffset == 5 || Arrays.equals(options,other.options));
     }
 
     @Override

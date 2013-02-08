@@ -97,7 +97,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
     protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
     private byte[] testARPReplyPacket_3_Serialized;
-    MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
     FlowReconcileManager flowReconcileMgr;

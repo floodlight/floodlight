@@ -668,9 +668,8 @@ public class LoadBalancer implements IFloodlightModule,
     @Override
     public int removePool(String poolId) {
         LBPool pool;
-        pool = pools.get(poolId);
-        
         if(pools!=null){
+            pool = pools.get(poolId);
             if (pool.vipId != null)
                 vips.get(pool.vipId).pools.remove(poolId);
             pools.remove(poolId);

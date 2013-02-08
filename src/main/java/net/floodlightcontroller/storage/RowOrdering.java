@@ -43,6 +43,36 @@ public class RowOrdering {
         public Direction getDirection() {
             return direction;
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + getOuterType().hashCode();
+            result = prime * result
+                     + ((column == null) ? 0 : column.hashCode());
+            result = prime * result
+                     + ((direction == null) ? 0 : direction.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (getClass() != obj.getClass()) return false;
+            Item other = (Item) obj;
+            if (!getOuterType().equals(other.getOuterType())) return false;
+            if (column == null) {
+                if (other.column != null) return false;
+            } else if (!column.equals(other.column)) return false;
+            if (direction != other.direction) return false;
+            return true;
+        }
+
+        private RowOrdering getOuterType() {
+            return RowOrdering.this;
+        }
     }
     
     private List<Item> itemList = new ArrayList<Item>();
@@ -96,24 +126,25 @@ public class RowOrdering {
     public List<Item> getItemList() {
         return itemList;
     }
-    
-    public boolean equals(RowOrdering rowOrdering) {
-        if (rowOrdering == null)
-            return false;
-        
-        int len1 = itemList.size();
-        int len2 = rowOrdering.getItemList().size();
-        if (len1 != len2)
-            return false;
-        
-        for (int i = 0; i < len1; i++) {
-            Item item1 = itemList.get(i);
-            Item item2 = rowOrdering.getItemList().get(i);
-            if (!item1.getColumn().equals(item2.getColumn()) ||
-                    item1.getDirection() != item2.getDirection())
-                return false;
-        }
-        
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                 + ((itemList == null) ? 0 : itemList.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        RowOrdering other = (RowOrdering) obj;
+        if (itemList == null) {
+            if (other.itemList != null) return false;
+        } else if (!itemList.equals(other.itemList)) return false;
         return true;
     }
 }

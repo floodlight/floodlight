@@ -1901,7 +1901,6 @@ public class Controller implements IFloodlightProviderService,
     /**
      * Handle changes to the controller nodes IPs and dispatch update.
      */
-    @SuppressWarnings("unchecked")
     protected void handleControllerNodeIPChanges() {
         HashMap<String,String> curControllerNodeIPs = new HashMap<String,String>();
         HashMap<String,String> addedControllerNodeIPs = new HashMap<String,String>();
@@ -1931,7 +1930,7 @@ public class Controller implements IFloodlightProviderService,
                         // new controller node IP
                         addedControllerNodeIPs.put(controllerID, discoveredIP);
                     }
-                    else if (curIP != discoveredIP) {
+                    else if (!curIP.equals(discoveredIP)) {
                         // IP changed
                         removedControllerNodeIPs.put(controllerID, curIP);
                         addedControllerNodeIPs.put(controllerID, discoveredIP);
@@ -1946,7 +1945,8 @@ public class Controller implements IFloodlightProviderService,
             removedEntries.removeAll(curEntries);
             for (String removedControllerID : removedEntries)
                 removedControllerNodeIPs.put(removedControllerID, controllerNodeIPsCache.get(removedControllerID));
-            controllerNodeIPsCache = (HashMap<String, String>) curControllerNodeIPs.clone();
+            controllerNodeIPsCache.clear();
+            controllerNodeIPsCache.putAll(curControllerNodeIPs);
             HAControllerNodeIPUpdate update = new HAControllerNodeIPUpdate(
                                 curControllerNodeIPs, addedControllerNodeIPs,
                                 removedControllerNodeIPs);
