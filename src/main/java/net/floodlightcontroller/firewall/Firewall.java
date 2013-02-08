@@ -359,9 +359,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // storage, create table and read rules
         storageSource.createTable(TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(TABLE_NAME, COLUMN_RULEID);
-        synchronized (rules) {
-            this.rules = readRulesFromStorage();
-        }
+        this.rules = readRulesFromStorage();
     }
 
     @Override

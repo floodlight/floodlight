@@ -72,7 +72,6 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
 
 public class ForwardingTest extends FloodlightTestCase {
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightContext cntx;
     protected MockDeviceManager deviceManager;
     protected IRoutingService routingEngine;

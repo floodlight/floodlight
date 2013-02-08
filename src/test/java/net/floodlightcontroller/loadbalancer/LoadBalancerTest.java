@@ -85,7 +85,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
     
     protected FloodlightContext cntx;
     protected FloodlightModuleContext fmc;
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected MockDeviceManager deviceManager;
     protected MockThreadPoolService tps;
     protected FlowReconcileManager frm;

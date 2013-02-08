@@ -83,7 +83,6 @@ import net.floodlightcontroller.topology.ITopologyService;
 
 public class PortDownReconciliationTest extends FloodlightTestCase {
 
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected FloodlightModuleContext fmc;
     protected ILinkDiscoveryService lds;
     protected FlowReconcileManager flowReconcileMgr;

@@ -246,6 +246,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected Map<NodePortTuple, Long> broadcastDomainPortTimeMap;
 
+    private class MACRange {
+        long baseMAC;
+        int ignoreBits;
+    }
+    protected Set<MACRange> ignoreMACSet;
+
     /**
      * Get the LLDP sending period in seconds.
      * 
@@ -1096,6 +1102,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 }
                 return Command.STOP;
             }
+        }
+
+        if (ignorePacketInFromSource(eth.getSourceMAC().toLong())) {
+            return Command.STOP;
         }
 
         // If packet-in is from a quarantine port, stop processing.
@@ -2053,6 +2063,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
+        this.ignoreMACSet = new HashSet<MACRange>();
     }
 
     @Override
@@ -2314,6 +2325,29 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     public void setAutoPortFastFeature(boolean autoPortFastFeature) {
         this.autoPortFastFeature = autoPortFastFeature;
+    }
+
+    @Override
+    public void addMACToIgnoreList(long mac, int ignoreBits) {
+        MACRange range = new MACRange();
+        range.baseMAC = mac;
+        range.ignoreBits = ignoreBits;
+        ignoreMACSet.add(range);
+    }
+
+    private boolean ignorePacketInFromSource(long srcMAC) {
+        Iterator<MACRange> it = ignoreMACSet.iterator();
+        while (it.hasNext()) {
+            MACRange range = it.next();
+            long mask = ~0;
+            if (range.ignoreBits >= 0 && range.ignoreBits <= 48) {
+                mask = mask << range.ignoreBits;
+                if ((range.baseMAC & mask) == (srcMAC & mask)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void readTopologyConfigFromStorage() {
