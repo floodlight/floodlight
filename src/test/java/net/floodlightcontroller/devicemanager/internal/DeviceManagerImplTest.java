@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
