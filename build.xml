@@ -67,6 +67,8 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
         <include name="guava-13.0.1.jar" />
+        <include name="findbugs-annotations-2.0.1.jar" />
+        <include name="findbugs-jsr305-2.0.1.jar" />
     </patternset>
 
     <path id="classpath">

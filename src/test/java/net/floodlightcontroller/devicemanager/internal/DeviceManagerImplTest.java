@@ -85,6 +85,8 @@ import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 public class DeviceManagerImplTest extends FloodlightTestCase {
 
     protected static Logger logger =
@@ -96,6 +98,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
     protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
     private byte[] testARPReplyPacket_3_Serialized;
+    @SuppressFBWarnings("MF_CLASS_MASKS_FIELD")
+    MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
     FlowReconcileManager flowReconcileMgr;
