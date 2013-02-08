@@ -250,7 +250,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         long baseMAC;
         int ignoreBits;
     }
-    protected List<MACRange> ignoreMACList;
+    protected Set<MACRange> ignoreMACSet;
 
     /**
      * Get the LLDP sending period in seconds.
@@ -2063,7 +2063,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
-        this.ignoreMACList = new ArrayList<MACRange>();
+        this.ignoreMACSet = new HashSet<MACRange>();
     }
 
     @Override
@@ -2332,11 +2332,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         MACRange range = new MACRange();
         range.baseMAC = mac;
         range.ignoreBits = ignoreBits;
-        ignoreMACList.add(range);
+        ignoreMACSet.add(range);
     }
 
     private boolean ignorePacketInFromSource(long srcMAC) {
-        Iterator<MACRange> it = ignoreMACList.iterator();
+        Iterator<MACRange> it = ignoreMACSet.iterator();
         while (it.hasNext()) {
             MACRange range = it.next();
             long mask = ~0;
