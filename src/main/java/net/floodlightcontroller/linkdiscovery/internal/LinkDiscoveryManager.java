@@ -187,7 +187,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * Flag to indicate if automatic port fast is enabled or not. Default is set
      * to false -- Initialized in the init method as well.
      */
-    public final boolean AUTOPORTFAST_DEFAULT = false;
+    protected boolean AUTOPORTFAST_DEFAULT = false;
     protected boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
     /**
@@ -2046,7 +2046,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
         
         // Set the autoportfast feature to false.
-        this.autoPortFastFeature = false;
+        this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
         // We create this here because there is no ordering guarantee
         this.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
