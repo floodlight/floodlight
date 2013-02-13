@@ -60,7 +60,7 @@ public class VirtualNetworkFilter
     implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener, IDeviceListener {
     protected static Logger log = LoggerFactory.getLogger(VirtualNetworkFilter.class);
     
-    private final short APP_ID = 20;
+    private final int APP_ID = AppCookie.registerClass (VirtualNetworkFilter.class);
     
     // Our dependencies
     IFloodlightProviderService floodlightProvider;

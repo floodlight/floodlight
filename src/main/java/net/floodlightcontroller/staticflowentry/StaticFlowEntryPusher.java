@@ -56,7 +56,7 @@ public class StaticFlowEntryPusher
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
     public static final String StaticFlowName = "staticflowentry";
     
-    public static final int STATIC_FLOW_APP_ID = 10;
+    public static final int STATIC_FLOW_APP_ID = AppCookie.registerClass(StaticFlowEntryPusher.class);
 
     public static final String TABLE_NAME = "controller_staticflowtableentry";
     public static final String COLUMN_NAME = "name";
@@ -543,7 +543,7 @@ public class StaticFlowEntryPusher
          * never expire.
          */
         if (AppCookie.extractApp(cookie) == STATIC_FLOW_APP_ID) {
-            if (msg.getReason() != OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
+        	if (msg.getReason() != OFFlowRemoved.OFFlowRemovedReason.OFPRR_DELETE)
                 log.error("Got a FlowRemove message for a infinite " +
                           "timeout flow: {} from switch {}", msg, sw);
             // Stop the processing chain since we sent the delete.
