@@ -528,6 +528,20 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     @Override
     public void addListener(IDeviceListener listener) {
          deviceListeners.addListener("device", listener);
+         logListeners();
+    }
+
+    private void logListeners() {
+        List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
+        if (listeners != null) {
+            StringBuffer sb = new StringBuffer();
+            sb.append("DeviceListeners: ");
+            for (IDeviceListener l : listeners) {
+                sb.append(l.getName());
+                sb.append(",");
+            }
+            logger.debug(sb.toString());
+        }
     }
 
     // *************
