@@ -32,22 +32,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public interface IDeviceService extends IFloodlightService {
 
     /**
-     * IDeviceListeners do one of two actions on devices in response to the device events:
-     * 1. Reclassify device
-     * 2. Reconcile flows for the device.
-     *
-     * We must make sure all device classification are done before flow reconciliation.
-     * So all listeners are grouped into two groups based on their types.
-     * Reclassification group is notified first, then the reconciliation group.
-     *
-     * When a module registers as a listener, it must specify the type.
-     */
-    enum ListenerType {
-        DeviceClassifier, // Listener should only do device classification change.
-        DeviceReconciler, // Listener should do reconciliation only
-    }
-
-    /**
      * Fields used in devices for indexes and querying
      * @see IDeviceService#addIndex
      */
@@ -208,7 +192,7 @@ public interface IDeviceService extends IFloodlightService {
      * @param listener The listener that wants the notifications
      * @param type     The type of the listener
      */
-    public void addListener(IDeviceListener listener, ListenerType type);
+    public void addListener(IDeviceListener listener);
     
     /**
      * Specify points in the network where attachment points are not to

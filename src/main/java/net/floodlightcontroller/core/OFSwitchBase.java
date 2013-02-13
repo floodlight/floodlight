@@ -30,14 +30,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
@@ -56,11 +53,11 @@ import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsRequest;
+import org.openflow.protocol.OFType;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
@@ -93,8 +90,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * Members hidden from subclasses
      */
     private Channel channel;
-    private AtomicInteger transactionIdSource;
-    // Lock to protect modification of the port maps. We only need to 
+    private final AtomicInteger transactionIdSource;
+    // Lock to protect modification of the port maps. We only need to
     // synchronize on modifications. For read operations we are fine since
     // we rely on ConcurrentMaps which works for our use case.
     protected Object portLock;
@@ -102,18 +99,18 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
     // Map port names to the appropriate OFPhyiscalPort
     // XXX: The OF spec doesn't specify if port names need to be unique but
-    //      according it's always the case in practice. 
-    private ConcurrentHashMap<String, OFPhysicalPort> portsByName;
-    private Map<Integer,OFStatisticsFuture> statsFutureMap;
-    private Map<Integer, IOFMessageListener> iofMsgListenersMap;
-    private Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
+    //      according it's always the case in practice.
+    private final ConcurrentHashMap<String, OFPhysicalPort> portsByName;
+    private final Map<Integer,OFStatisticsFuture> statsFutureMap;
+    private final Map<Integer, IOFMessageListener> iofMsgListenersMap;
+    private final Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
     private volatile boolean connected;
-    private TimedCache<Long> timedCache;
-    private ReentrantReadWriteLock listenerLock;
-    private ConcurrentMap<Short, Long> portBroadcastCacheHitMap;
-    
+    private final TimedCache<Long> timedCache;
+    private final ReentrantReadWriteLock listenerLock;
+    private final ConcurrentMap<Short, AtomicLong> portBroadcastCacheHitMap;
 
-    protected static  ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
+
+    protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
         @Override
         protected Map<IOFSwitch,List<OFMessage>> initialValue() {
@@ -139,8 +136,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.listenerLock = new ReentrantReadWriteLock();
-        this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, Long>();
-        
+        this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, AtomicLong>();
+
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
@@ -524,10 +521,17 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public boolean updateBroadcastCache(Long entry, Short port) {
         if (timedCache.update(entry)) {
-            Long count = portBroadcastCacheHitMap.putIfAbsent(port, new Long(1));
-            if (count != null) {
-                count++;
+            AtomicLong count = portBroadcastCacheHitMap.get(port);
+            if(count == null) {
+                AtomicLong newCount = new AtomicLong(0);
+                AtomicLong retrieved;
+                if((retrieved = portBroadcastCacheHitMap.putIfAbsent(port, newCount)) == null ) {
+                    count = newCount;
+                } else {
+                    count = retrieved;
+                }
             }
+            count.incrementAndGet();
             return true;
         } else {
             return false;
@@ -537,20 +541,36 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public Map<Short, Long> getPortBroadcastHits() {
-        return this.portBroadcastCacheHitMap;
+        Map<Short, Long> res = new HashMap<Short, Long>();
+        for (Map.Entry<Short, AtomicLong> entry : portBroadcastCacheHitMap.entrySet()) {
+            res.put(entry.getKey(), entry.getValue().get());
+        }
+        return res;
     }
-    
 
     @Override
     public void flush() {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
         if ((msglist != null) && (msglist.size() > 0)) {
+            /* ============================ BIG CAVEAT ===============================
+             * This code currently works, but relies on undocumented behavior of
+             * netty.
+             *
+             * The method org.jboss.netty.channel.Channel.write(Object)
+             * (invoked from this.write(List<OFMessage> msg) is currently
+             * documented to be <emph>asynchronous</emph>. If the method /were/ truely
+             * asynchronous, this would break our code (because we are clearing the
+             * msglist right after calling write.
+             *
+             * For now, Netty actually invokes the conversion pipeline before doing
+             * anything asynchronous, so we are safe. But we should probably change
+             * that behavior.
+             */
             try {
                 this.write(msglist);
             } catch (IOException e) {
-                // TODO: log exception
-                e.printStackTrace();
+                log.error("Error flushing local message buffer: "+e.getMessage(), e);
             }
             msglist.clear();
         }
