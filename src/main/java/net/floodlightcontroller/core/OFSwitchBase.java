@@ -547,18 +547,30 @@ public abstract class OFSwitchBase implements IOFSwitch {
         }
         return res;
     }
-    
 
     @Override
     public void flush() {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msglist = msg_buffer_map.get(this);
         if ((msglist != null) && (msglist.size() > 0)) {
+            /* ============================ BIG CAVEAT ===============================
+             * This code currently works, but relies on undocumented behavior of
+             * netty.
+             *
+             * The method org.jboss.netty.channel.Channel.write(Object)
+             * (invoked from this.write(List<OFMessage> msg) is currently
+             * documented to be <emph>asynchronous</emph>. If the method /were/ truely
+             * asynchronous, this would break our code (because we are clearing the
+             * msglist right after calling write.
+             *
+             * For now, Netty actually invokes the conversion pipeline before doing
+             * anything asynchronous, so we are safe. But we should probably change
+             * that behavior.
+             */
             try {
                 this.write(msglist);
             } catch (IOException e) {
-                // TODO: log exception
-                e.printStackTrace();
+                log.error("Error flushing local message buffer: "+e.getMessage(), e);
             }
             msglist.clear();
         }
