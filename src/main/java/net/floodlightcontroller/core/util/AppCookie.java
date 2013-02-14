@@ -69,17 +69,20 @@ public class AppCookie {
      */
     static protected int applicationFromClass (Class<?> aClass)
     {
-    	long application = 0;
-    	long hash		 = aClass.hashCode ();
+    	byte [] nameBytes	= aClass.getName ().getBytes ();
+    	int		application = 0;
     	
-    	for (int i = Long.SIZE; i > 0; i -= APP_ID_BITS) {
-    		long bits = hash & APP_ID_BIT_MASK;
+    	for (byte aByte: nameBytes) {
+    		application <<= Byte.SIZE;
     		
-    		application ^=  bits;
-    		hash		>>= APP_ID_BITS;
+    		byte wrappedByte = (byte) (application >> APP_ID_BITS);
+    		
+    		application &= APP_ID_BIT_MASK;
+
+    		application |= (wrappedByte ^ aByte);
     	}
     	
-    	return (int) (application & APP_ID_BIT_MASK);
+    	return application;
     }
 
     /**
