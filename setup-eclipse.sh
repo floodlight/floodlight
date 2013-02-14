@@ -47,3 +47,8 @@ cat >>"$d/.classpath" <<EOF
 	<classpathentry kind="output" path="target/bin"/>
 </classpath>
 EOF
+
+mkdir -p $d/.settings
+cat >$d/.settings/edu.umd.cs.findbugs.core.prefs  <<EOF
+excludefilter0=findbugs-exclude.xml|true
+EOF
