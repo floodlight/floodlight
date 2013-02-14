@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.MacVlanPair;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -81,12 +82,8 @@ public class LearningSwitch
     protected Map<IOFSwitch, Map<MacVlanPair,Short>> macVlanToSwitchPortMap;
 
     // flow-mod - for use in the cookie
-    public static final int LEARNING_SWITCH_APP_ID = 1;
-    // LOOK! This should probably go in some class that encapsulates
-    // the app cookie management
-    public static final int APP_ID_BITS = 12;
-    public static final int APP_ID_SHIFT = (64 - APP_ID_BITS);
-    public static final long LEARNING_SWITCH_COOKIE = (long) (LEARNING_SWITCH_APP_ID & ((1 << APP_ID_BITS) - 1)) << APP_ID_SHIFT;
+    public static final int  LEARNING_SWITCH_APP_ID = AppCookie.registerClass (LearningSwitch.class);
+    public static final long LEARNING_SWITCH_COOKIE = AppCookie.makeCookie (LEARNING_SWITCH_APP_ID, 0);
     
     // more flow-mod defaults 
     protected static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds

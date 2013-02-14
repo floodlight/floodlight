@@ -101,7 +101,7 @@ public class FloodlightModuleLoader {
                 try {
                     m = moduleIter.next();
                 } catch (ServiceConfigurationError sce) {
-                    logger.debug("Could not find module");
+                    logger.debug("Could not find module (\"" + sce.getMessage() + "\")");
                     //moduleIter.remove();
                     continue;
                 }

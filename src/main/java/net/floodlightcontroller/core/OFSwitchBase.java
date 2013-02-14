@@ -185,22 +185,32 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.channel = channel;
     }
     
-    @Override
+    protected List<OFMessage> getMessageBuffer (boolean fDoCreate)
+    {
+    	Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
+    	List<OFMessage> msg_buffer = msg_buffer_map.get(this);
+    	if (msg_buffer == null && fDoCreate) {
+    		msg_buffer = new ArrayList<OFMessage>();
+    		msg_buffer_map.put(this, msg_buffer);
+    	}
+    	
+    	return msg_buffer;
+    }
+
     @LogMessageDoc(level="WARN",
     message="Sending OF message that modifies switch " +
             "state while in the slave role: {switch}",
     explanation="An application has sent a message to a switch " +
             "that is not valid when the switch is in a slave role",
     recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public void write(OFMessage m, FloodlightContext bc)
+    protected void write(OFMessage m, FloodlightContext bc, List<OFMessage> msg_buffer)
             throws IOException {
-        Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
-        List<OFMessage> msg_buffer = msg_buffer_map.get(this);
-        if (msg_buffer == null) {
-            msg_buffer = new ArrayList<OFMessage>();
-            msg_buffer_map.put(this, msg_buffer);
-        }
+//    	if (((Controller) this.floodlightProvider).shouldDiscard(this, m, bc))
+//    		return;
 
+    	if (msg_buffer == null)
+    		msg_buffer = this.getMessageBuffer (true);
+    	
         if (role == Role.SLAVE) {
             switch (m.getType()) {
                 case PACKET_OUT:
@@ -219,19 +229,30 @@ public abstract class OFSwitchBase implements IOFSwitch {
         msg_buffer.add(m);
 
         if ((msg_buffer.size() >= Controller.BATCH_MAX_SIZE) ||
-            ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
-            this.write(msg_buffer);
-            msg_buffer.clear();
-        }
+            ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD)))
+            flush (msg_buffer);
+    }
+   
+    @Override
+    @LogMessageDoc(level="WARN",
+    message="Sending OF message that modifies switch " +
+            "state while in the slave role: {switch}",
+    explanation="An application has sent a message to a switch " +
+            "that is not valid when the switch is in a slave role",
+    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    public void write(OFMessage m, FloodlightContext bc)
+            throws IOException {
+    	this.write(m, bc, null);
     }
 
     @Override
     public void write(List<OFMessage> msglist, 
                       FloodlightContext bc) throws IOException {
+    	List<OFMessage> msg_buffer = this.getMessageBuffer (true);
         for (OFMessage m : msglist)
-        	this.write(m, bc);
+        	this.write(m, bc, msg_buffer);
         
-        flush ();
+        flush (msg_buffer);
     }
 
     private void write(List<OFMessage> msglist) throws IOException {
@@ -542,18 +563,24 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
 
+    protected void flush(List<OFMessage> msglist) throws IOException {
+    	if (msglist == null)
+    		msglist = getMessageBuffer (false);
+
+    	if ((msglist != null) && (msglist.size() > 0)) {
+    		this.write(msglist);
+            msglist.clear();
+        }
+    }
+    
+
     @Override
     public void flush() {
-        Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
-        List<OFMessage> msglist = msg_buffer_map.get(this);
-        if ((msglist != null) && (msglist.size() > 0)) {
-            try {
-                this.write(msglist);
-            } catch (IOException e) {
-                // TODO: log exception
-                e.printStackTrace();
-            }
-            msglist.clear();
+        try {
+            flush (null);
+        } catch (IOException e) {
+            // TODO: log exception
+            e.printStackTrace();
         }
     }
 

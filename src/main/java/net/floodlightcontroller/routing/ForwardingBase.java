@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -91,8 +90,7 @@ public abstract class ForwardingBase
         new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
 
     // flow-mod - for use in the cookie
-    public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
-                                                   // by a global APP_ID class
+    public static final int FORWARDING_APP_ID = AppCookie.registerClass(ForwardingBase.class);
     public long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
     
     // Comparator for sorting by SwitchCluster
@@ -427,20 +425,15 @@ public abstract class ForwardingBase
         //setting actions
         List<OFAction> actions = new ArrayList<OFAction>();
 
-        Iterator<Integer> j = outPorts.iterator();
-
-        while (j.hasNext())
-        {
-            actions.add(new OFActionOutput(j.next().shortValue(), 
-                                           (short) 0));
-        }
+        for (Integer outPort: outPorts)
+        	actions.add(new OFActionOutput(outPort.shortValue(), (short) 0));
 
         OFPacketOut po = 
                 (OFPacketOut) floodlightProvider.getOFMessageFactory().
                 getMessage(OFType.PACKET_OUT);
         po.setActions(actions);
         po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * 
-                outPorts.size()));
+        		actions.size()));
 
         // set buffer-id to BUFFER_ID_NONE, and set in-port to OFPP_NONE
         po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
