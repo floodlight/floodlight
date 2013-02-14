@@ -31,7 +31,7 @@ public class AppCookie {
     static final int APP_ID_BITS = 12;
     static final int APP_ID_SHIFT = (Long.SIZE - APP_ID_BITS);
     // we have bits 13-31 unused here ... that's ok!
-    static final int USER_BITS = Short.SIZE;
+    static final int USER_BITS = Integer.SIZE;
     static final int USER_SHIFT = 0;
 
     static final long APP_ID_BIT_MASK = (1L << APP_ID_BITS) - 1;
