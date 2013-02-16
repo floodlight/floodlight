@@ -95,10 +95,6 @@ public interface IFloodlightProviderService extends
      */
     public Map<String,String> getControllerNodeIPs();
     
-    /**
-     * Gets the ID of the controller
-     */
-    public String getControllerId();
     
     /**
      * Set the role of the controller

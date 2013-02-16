@@ -304,10 +304,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
 
-    @Override
-    public String getControllerId() {
-        return "localhost";
-    }
 
     @Override
     public Map<String, String> getControllerNodeIPs() {

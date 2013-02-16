@@ -176,9 +176,6 @@ public class Controller implements IFloodlightProviderService,
     // Configuration options
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
-    // The id for this controller node. Should be unique for each controller
-    // node in a controller cluster.
-    protected String controllerId = "localhost";
 
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
@@ -1586,22 +1583,9 @@ public class Controller implements IFloodlightProviderService,
         return factory;
     }
 
-    @Override
-    public String getControllerId() {
-        return controllerId;
-    }
-
     // **************
     // Initialization
     // **************
-
-    protected void updateControllerInfo() {
-        // Write out the controller info to the storage source
-        Map<String, Object> controllerInfo = new HashMap<String, Object>();
-        String id = getControllerId();
-        controllerInfo.put(CONTROLLER_ID, id);
-        storageSource.updateRow(CONTROLLER_TABLE_NAME, controllerInfo);
-    }
 
 
     /**
@@ -1755,11 +1739,7 @@ public class Controller implements IFloodlightProviderService,
             this.workerThreads = Integer.parseInt(threads);
         }
         log.debug("Number of worker threads set to {}", this.workerThreads);
-        String controllerId = configParams.get("controllerid");
-        if (controllerId != null) {
-            this.controllerId = controllerId;
-        }
-        log.debug("ControllerId set to {}", this.controllerId);
+        
     }
 
     private void initVendorMessages() {
@@ -1823,20 +1803,6 @@ public class Controller implements IFloodlightProviderService,
         storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
                                              CONTROLLER_ID);
         storageSource.addListener(CONTROLLER_INTERFACE_TABLE_NAME, this);
-
-        while (true) {
-            try {
-                updateControllerInfo();
-                break;
-            }
-            catch (StorageException e) {
-                log.info("Waiting for storage source");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                }
-            }
-        }
 
         // Startup load monitoring
         if (overload_drop) {
