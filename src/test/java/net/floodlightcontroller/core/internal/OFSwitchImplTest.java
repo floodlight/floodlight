@@ -29,6 +29,7 @@ public class OFSwitchImplTest extends FloodlightTestCase {
     
     @Before
     public void setUp() throws Exception {
+        super.setUp();
         sw = new OFSwitchImpl();
     }    
     

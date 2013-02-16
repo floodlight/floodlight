@@ -48,12 +48,12 @@ public class HexString {
         int i = 0;
         for (; i < (padTo * 2 - arr.length); i++) {
             ret += "0";
-            if ((i % 2) == 1)
+            if ((i % 2) != 0)
                 ret += ":";
         }
         for (int j = 0; j < arr.length; j++) {
             ret += arr[j];
-            if ((((i + j) % 2) == 1) && (j < (arr.length - 1)))
+            if ((((i + j) % 2) != 0) && (j < (arr.length - 1)))
                 ret += ":";
         }
         return ret;        

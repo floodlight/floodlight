@@ -83,45 +83,57 @@ public class FCQueryObj {
     }
 
     @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                 + ((applInstName == null) ? 0 : applInstName.hashCode());
+        result = prime * result
+                 + ((callerName == null) ? 0 : callerName.hashCode());
+        result = prime
+                 * result
+                 + ((callerOpaqueObj == null) ? 0
+                                             : callerOpaqueObj.hashCode());
+        result = prime * result
+                 + ((dstDevice == null) ? 0 : dstDevice.hashCode());
+        result = prime * result + ((evType == null) ? 0 : evType.hashCode());
+        result = prime
+                 * result
+                 + ((fcQueryHandler == null) ? 0 : fcQueryHandler.hashCode());
+        result = prime * result
+                 + ((srcDevice == null) ? 0 : srcDevice.hashCode());
+        result = prime * result + Arrays.hashCode(vlans);
+        return result;
+    }
+
+    @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
         FCQueryObj other = (FCQueryObj) obj;
         if (applInstName == null) {
-            if (other.applInstName != null)
-                return false;
-        } else if (!applInstName.equals(other.applInstName))
-            return false;
+            if (other.applInstName != null) return false;
+        } else if (!applInstName.equals(other.applInstName)) return false;
         if (callerName == null) {
-            if (other.callerName != null)
-                return false;
-        } else if (!callerName.equals(other.callerName))
-            return false;
+            if (other.callerName != null) return false;
+        } else if (!callerName.equals(other.callerName)) return false;
         if (callerOpaqueObj == null) {
-            if (other.callerOpaqueObj != null)
-                return false;
+            if (other.callerOpaqueObj != null) return false;
         } else if (!callerOpaqueObj.equals(other.callerOpaqueObj))
-            return false;
+                                                                  return false;
         if (dstDevice == null) {
-            if (other.dstDevice != null)
-                return false;
-        } else if (!dstDevice.equals(other.dstDevice))
-            return false;
-        if (evType != other.evType)
-            return false;
-        if (fcQueryHandler != other.fcQueryHandler)
-            return false;
+            if (other.dstDevice != null) return false;
+        } else if (!dstDevice.equals(other.dstDevice)) return false;
+        if (evType != other.evType) return false;
+        if (fcQueryHandler == null) {
+            if (other.fcQueryHandler != null) return false;
+        } else if (!fcQueryHandler.equals(other.fcQueryHandler))
+                                                                return false;
         if (srcDevice == null) {
-            if (other.srcDevice != null)
-                return false;
-        } else if (!srcDevice.equals(other.srcDevice))
-            return false;
-        if (!Arrays.equals(vlans, other.vlans))
-            return false;
+            if (other.srcDevice != null) return false;
+        } else if (!srcDevice.equals(other.srcDevice)) return false;
+        if (!Arrays.equals(vlans, other.vlans)) return false;
         return true;
     }
     

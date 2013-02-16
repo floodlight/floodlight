@@ -24,7 +24,6 @@ import java.util.ListIterator;
 
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.SimpleCounter;
@@ -43,7 +42,6 @@ import org.openflow.protocol.OFType;
 
 public class FlowReconcileMgrTest extends FloodlightTestCase {
 
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected FlowReconcileManager flowReconcileMgr;
     protected MockThreadPoolService threadPool;
     protected ICounterStoreService counterStore;

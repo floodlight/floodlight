@@ -19,10 +19,10 @@ package net.floodlightcontroller.devicemanager.internal;
 
 
 import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.anyShort;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
-import static org.easymock.EasyMock.createStrictMock;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
@@ -97,7 +96,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
     protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
     private byte[] testARPReplyPacket_3_Serialized;
-    MockFloodlightProvider mockFloodlightProvider;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
     FlowReconcileManager flowReconcileMgr;
@@ -275,9 +273,17 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testEntityLearning() throws Exception {
         IDeviceListener mockListener =
-                createStrictMock(IDeviceListener.class);
+                createMock(IDeviceListener.class);
+        expect(mockListener.getName()).andReturn("mockListener").atLeastOnce();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
         deviceManager.entityClassifier= new MockEntityClassifier();
         deviceManager.startUp(null);
 
@@ -481,9 +487,17 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Test
     public void testAttachmentPointLearning() throws Exception {
         IDeviceListener mockListener =
-                createStrictMock(IDeviceListener.class);
+                createMock(IDeviceListener.class);
+        expect(mockListener.getName()).andReturn("mockListener").atLeastOnce();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -591,7 +605,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        expect(mockListener.getName()).andReturn("mockListener").anyTimes();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -706,7 +729,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IDeviceListener mockListener =
                 createMock(IDeviceListener.class);
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        expect(mockListener.getName()).andReturn("mockListener").anyTimes();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.getL2DomainId(1L)).
@@ -1053,8 +1085,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
      */
     public void doTestEntityExpiration() throws Exception {
         IDeviceListener mockListener =
-                createStrictMock(IDeviceListener.class);
-        mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
+                createMock(IDeviceListener.class);
+        expect(mockListener.getName()).andReturn("mockListener").anyTimes();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
@@ -1096,8 +1132,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertTrue(diter.hasNext());
         assertEquals(d.getDeviceKey(), diter.next().getDeviceKey());
 
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        mockListener.deviceIPV4AddrChanged(isA(IDevice.class));
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 
@@ -1129,8 +1169,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
     public void doTestDeviceExpiration() throws Exception {
         IDeviceListener mockListener =
-                createStrictMock(IDeviceListener.class);
-        mockListener.deviceRemoved(isA(IDevice.class));
+                createMock(IDeviceListener.class);
+        expect(mockListener.getName()).andReturn("mockListener").anyTimes();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
         
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -DeviceManagerImpl.ENTITY_TIMEOUT-1);
@@ -1160,7 +1204,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         d = deviceManager.learnDeviceByEntity(entity1);
         assertArrayEquals(new Integer[] { 1, 2 }, d.getIPv4Addresses());
 
-        deviceManager.addListener(mockListener, IDeviceService.ListenerType.DeviceClassifier);
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
+
+        mockListener.deviceRemoved(isA(IDevice.class));
         replay(mockListener);
         deviceManager.entityCleanupTask.reschedule(0, null);
 

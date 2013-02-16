@@ -52,7 +52,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
@@ -85,7 +84,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
     
     protected FloodlightContext cntx;
     protected FloodlightModuleContext fmc;
-    protected MockFloodlightProvider mockFloodlightProvider;
     protected MockDeviceManager deviceManager;
     protected MockThreadPoolService tps;
     protected FlowReconcileManager frm;

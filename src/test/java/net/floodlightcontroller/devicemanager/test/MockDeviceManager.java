@@ -17,10 +17,8 @@
 package net.floodlightcontroller.devicemanager.test;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
@@ -63,11 +61,9 @@ public class MockDeviceManager extends DeviceManagerImpl {
                                Integer ipv4Address, Long switchDPID, 
                                Integer switchPort,
                                boolean processUpdates) {
-        Set<IDeviceListener> reclassifyListeners = reclassifyDeviceListeners;
-        Set<IDeviceListener> reconcileListeners = reconcileDeviceListeners;
+        List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (!processUpdates) {
-            reclassifyDeviceListeners = Collections.<IDeviceListener>emptySet();
-            reconcileDeviceListeners = Collections.<IDeviceListener>emptySet();
+            deviceListeners.clearListeners();
         }
         
         if (vlan != null && vlan.shortValue() <= 0)
@@ -77,8 +73,12 @@ public class MockDeviceManager extends DeviceManagerImpl {
         IDevice res =  learnDeviceByEntity(new Entity(macAddress, vlan, 
                                                       ipv4Address, switchDPID, 
                                                       switchPort, new Date()));
-        reclassifyDeviceListeners = reclassifyListeners;
-        reconcileDeviceListeners = reconcileListeners;
+        // Restore listeners
+        if (listeners != null) {
+            for (IDeviceListener listener : listeners) {
+                deviceListeners.addListener("device", listener);
+            }
+        }
         return res;
     }
     

@@ -306,7 +306,9 @@ public class RoleChanger {
                     = pendingRequestMap.get(sw);
                 if (pendingList == null) {
                     pendingList = new LinkedList<PendingRoleRequestEntry>();
-                    pendingRequestMap.put(sw, pendingList);
+                    LinkedList<PendingRoleRequestEntry> r = 
+                            pendingRequestMap.putIfAbsent(sw, pendingList);
+                    if (r != null) pendingList = r;
                 }
                 int xid = sendHARoleRequest(sw, role, cookie);
                 PendingRoleRequestEntry entry =

@@ -187,7 +187,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * Flag to indicate if automatic port fast is enabled or not. Default is set
      * to false -- Initialized in the init method as well.
      */
-    public final boolean AUTOPORTFAST_DEFAULT = false;
+    protected boolean AUTOPORTFAST_DEFAULT = false;
     protected boolean autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
     /**
@@ -245,6 +245,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * received on that port.
      */
     protected Map<NodePortTuple, Long> broadcastDomainPortTimeMap;
+
+    private class MACRange {
+        long baseMAC;
+        int ignoreBits;
+    }
+    protected Set<MACRange> ignoreMACSet;
 
     /**
      * Get the LLDP sending period in seconds.
@@ -1098,6 +1104,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             }
         }
 
+        if (ignorePacketInFromSource(eth.getSourceMAC().toLong())) {
+            return Command.STOP;
+        }
+
         // If packet-in is from a quarantine port, stop processing.
         NodePortTuple npt = new NodePortTuple(sw, pi.getInPort());
         if (quarantineQueue.contains(npt)) return Command.STOP;
@@ -1477,6 +1487,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        if (iofSwitch == null) return;
+
         if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
             // Do nothing as the port is a fast port.
             return;
@@ -1690,14 +1702,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
         dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
 
-        if (!portBroadcastDomainLinks.containsKey(lt.getSrc()))
-                                                               portBroadcastDomainLinks.put(srcNpt,
-                                                                                            new HashSet<Link>());
+        if (!portBroadcastDomainLinks.containsKey(srcNpt))
+            portBroadcastDomainLinks.put(srcNpt,
+                                         new HashSet<Link>());
         portBroadcastDomainLinks.get(srcNpt).add(lt);
 
-        if (!portBroadcastDomainLinks.containsKey(lt.getDst()))
-                                                               portBroadcastDomainLinks.put(dstNpt,
-                                                                                            new HashSet<Link>());
+        if (!portBroadcastDomainLinks.containsKey(dstNpt))
+            portBroadcastDomainLinks.put(dstNpt,
+                                         new HashSet<Link>());
         portBroadcastDomainLinks.get(dstNpt).add(lt);
     }
 
@@ -2034,7 +2046,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
         
         // Set the autoportfast feature to false.
-        this.autoPortFastFeature = false;
+        this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;
 
         // We create this here because there is no ordering guarantee
         this.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
@@ -2051,6 +2063,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
+        this.ignoreMACSet = new HashSet<MACRange>();
     }
 
     @Override
@@ -2312,6 +2325,29 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     public void setAutoPortFastFeature(boolean autoPortFastFeature) {
         this.autoPortFastFeature = autoPortFastFeature;
+    }
+
+    @Override
+    public void addMACToIgnoreList(long mac, int ignoreBits) {
+        MACRange range = new MACRange();
+        range.baseMAC = mac;
+        range.ignoreBits = ignoreBits;
+        ignoreMACSet.add(range);
+    }
+
+    private boolean ignorePacketInFromSource(long srcMAC) {
+        Iterator<MACRange> it = ignoreMACSet.iterator();
+        while (it.hasNext()) {
+            MACRange range = it.next();
+            long mask = ~0;
+            if (range.ignoreBits >= 0 && range.ignoreBits <= 48) {
+                mask = mask << range.ignoreBits;
+                if ((range.baseMAC & mask) == (srcMAC & mask)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void readTopologyConfigFromStorage() {

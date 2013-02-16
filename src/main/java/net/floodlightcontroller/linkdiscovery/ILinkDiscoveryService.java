@@ -104,4 +104,14 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      */
     public Map<NodePortTuple, Set<Link>> getPortLinks();
 
+    /**
+     * Add a MAC address range to ignore list. All packet ins from this range
+     * will be dropped
+     * @param mac The base MAC address that is to be ignored
+     * @param ignoreBits The number of LSBs to ignore. A value of 0 will add
+     *        only one MAC address 'mac' to ignore list. A value of 48 will add
+     *        ALL MAC addresses to the ignore list. This will cause a drop of
+     *        ALL packet ins.
+     */
+    public void addMACToIgnoreList(long mac, int ignoreBits);
 }
