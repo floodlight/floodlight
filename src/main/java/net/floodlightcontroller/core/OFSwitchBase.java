@@ -186,12 +186,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
     
     @Override
-    @LogMessageDoc(level="WARN",
-    message="Sending OF message that modifies switch " +
-            "state while in the slave role: {switch}",
-    explanation="An application has sent a message to a switch " +
-            "that is not valid when the switch is in a slave role",
-    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void write(OFMessage m, FloodlightContext bc)
             throws IOException {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
@@ -199,20 +193,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
         if (msg_buffer == null) {
             msg_buffer = new ArrayList<OFMessage>();
             msg_buffer_map.put(this, msg_buffer);
-        }
-
-        if (role == Role.SLAVE) {
-            switch (m.getType()) {
-                case PACKET_OUT:
-                case FLOW_MOD:
-                case PORT_MOD:
-                    log.warn("Sending OF message that modifies switch " +
-                             "state while in the slave role: {}", 
-                             m.getType().name());
-                    break;
-                default:
-                    break;
-            }
         }
 
         this.floodlightProvider.handleOutgoingMessage(this, m, bc);
@@ -226,12 +206,31 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
+    @LogMessageDoc(level="WARN",
+                   message="Sending OF message that modifies switch " +
+                           "state while in the slave role: {switch}",
+                   explanation="An application has sent a message to a switch " +
+                           "that is not valid when the switch is in a slave role",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void write(List<OFMessage> msglist, 
                       FloodlightContext bc) throws IOException {
-        for (OFMessage m : msglist)
-        	this.write(m, bc);
-        
-        flush ();
+        for (OFMessage m : msglist) {
+            if (role == Role.SLAVE) {
+                switch (m.getType()) {
+                    case PACKET_OUT:
+                    case FLOW_MOD:
+                    case PORT_MOD:
+                        log.warn("Sending OF message that modifies switch " +
+                                 "state while in the slave role: {}", 
+                                 m.getType().name());
+                        break;
+                    default:
+                        break;
+                }
+            }
+            this.floodlightProvider.handleOutgoingMessage(this, m, bc);
+        }
+        this.write(msglist);
     }
 
     private void write(List<OFMessage> msglist) throws IOException {
