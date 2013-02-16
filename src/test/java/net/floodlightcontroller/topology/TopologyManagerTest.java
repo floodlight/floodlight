@@ -126,9 +126,9 @@ public class TopologyManagerTest extends FloodlightTestCase {
     public void testHARoleChange() throws Exception {
         testBasic2();
         getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
-        assert(tm.switchPorts.isEmpty());
-        assert(tm.switchPortLinks.isEmpty());
-        assert(tm.portBroadcastDomainLinks.isEmpty());
-        assert(tm.tunnelPorts.isEmpty());
+        assertTrue(tm.switchPorts.isEmpty());
+        assertTrue(tm.switchPortLinks.isEmpty());
+        assertTrue(tm.portBroadcastDomainLinks.isEmpty());
+        assertTrue(tm.tunnelPorts.isEmpty());
     }
 }

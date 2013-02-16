@@ -126,7 +126,7 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        assert(m.equals(po));
+        assertEquals(po, m);
     }
 
     @Test
@@ -162,6 +162,6 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        assert(m.equals(po));
+        assertEquals(po, m);
     }
 }

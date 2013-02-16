@@ -87,7 +87,7 @@ public class OFBasicVendorId extends OFVendorId {
      * @return
      */
     public OFVendorDataType lookupVendorDataType(int vendorDataType) {
-        return dataTypeMap.get(vendorDataType);
+        return dataTypeMap.get(Long.valueOf(vendorDataType));
     }
 
     /**

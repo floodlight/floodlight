@@ -479,6 +479,12 @@ public class TopologyInstance {
             return true;
         }
 
+        @Override
+        public int hashCode() {
+            assert false : "hashCode not designed";
+            return 42;
+        }
+
         private TopologyInstance getOuterType() {
             return TopologyInstance.this;
         }

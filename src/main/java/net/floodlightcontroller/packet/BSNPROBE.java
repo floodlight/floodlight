@@ -143,43 +143,38 @@ public class BSNPROBE extends BasePacket {
         
         return this;
     }
-
-    /* (non-Javadoc)
-     * @see java.lang.Object#hashCode()
-     */
+    
     @Override
     public int hashCode() {
-        final int prime = 883;
+        final int prime = 31;
         int result = super.hashCode();
-        result = prime * result + srcMac.hashCode();
-        result = prime * result + dstMac.hashCode();
-        result = prime * result + (int) (srcSwDpid >> 32) + (int) srcSwDpid;
+        result = prime * result
+                 + (int) (controllerId ^ (controllerId >>> 32));
+        result = prime * result + Arrays.hashCode(dstMac);
+        result = prime * result + sequenceId;
+        result = prime * result + Arrays.hashCode(srcMac);
         result = prime * result + srcPortNo;
+        result = prime * result + (int) (srcSwDpid ^ (srcSwDpid >>> 32));
         return result;
     }
 
-    /* (non-Javadoc)
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
+
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (!(obj instanceof BSNPROBE))
-            return false;
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
         BSNPROBE other = (BSNPROBE) obj;
-        if (!Arrays.equals(srcMac, other.srcMac))
-            return false;
-        if (!Arrays.equals(dstMac, other.dstMac))
-        	return false;
-        return (sequenceId == other.sequenceId &&
-        	    srcSwDpid == other.srcSwDpid &&
-        	    srcPortNo == other.srcPortNo
-        	    );
+        if (controllerId != other.controllerId) return false;
+        if (!Arrays.equals(dstMac, other.dstMac)) return false;
+        if (sequenceId != other.sequenceId) return false;
+        if (!Arrays.equals(srcMac, other.srcMac)) return false;
+        if (srcPortNo != other.srcPortNo) return false;
+        if (srcSwDpid != other.srcSwDpid) return false;
+        return true;
     }
-    
+
+
     public String toString() {
     	StringBuffer sb = new StringBuffer("\n");
     	sb.append("BSN Probe packet");

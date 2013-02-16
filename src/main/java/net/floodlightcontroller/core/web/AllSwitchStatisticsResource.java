@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.types.MacVlanPair;
-
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
@@ -136,7 +134,6 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         private OFStatisticsType statType;
         private REQUESTTYPE requestType;
         private OFFeaturesReply featuresReply;
-        private Map<MacVlanPair, Short> switchTable;
         
         public GetConcurrentStatsThread(long switchId, REQUESTTYPE requestType, OFStatisticsType statType) {
             this.switchId = switchId;
@@ -144,7 +141,6 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             this.statType = statType;
             this.switchReply = null;
             this.featuresReply = null;
-            this.switchTable = null;
         }
         
         public List<OFStatistics> getStatisticsReply() {
@@ -153,10 +149,6 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         
         public OFFeaturesReply getFeaturesReply() {
             return featuresReply;
-        }
-        
-        public Map<MacVlanPair, Short> getSwitchTable() {
-            return switchTable;
         }
         
         public long getSwitchId() {

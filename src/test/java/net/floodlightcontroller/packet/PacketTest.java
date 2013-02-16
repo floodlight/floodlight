@@ -17,6 +17,9 @@
 package net.floodlightcontroller.packet;
 
 import static org.junit.Assert.*;
+
+import java.util.Arrays;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -121,8 +124,8 @@ public class PacketTest {
             ARP arp = (ARP)pkt;
             ARP newArp = (ARP)newPkt;
             newArp.setSenderProtocolAddress(new byte[] {1,2,3,4});
-            assertEquals(false, newArp.getSenderProtocolAddress()
-                                .equals(arp.getSenderProtocolAddress()));
+            assertEquals(false, Arrays.equals(newArp.getSenderProtocolAddress(),
+                                              arp.getSenderProtocolAddress()));
             assertEquals(false, newPkt.equals(pkt));
         }
         

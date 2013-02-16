@@ -67,6 +67,8 @@
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
         <include name="guava-13.0.1.jar" />
+        <include name="findbugs-annotations-2.0.1.jar" />
+        <include name="findbugs-jsr305-2.0.1.jar" />
     </patternset>
 
     <path id="classpath">
@@ -283,7 +285,8 @@
         <mkdir dir="${findbugs.results}"/>
         <findbugs home="${findbugs.home}"
             output="xml"
-            outputFile="${findbugs.results}/results.xml" >
+            excludeFilter="${basedir}/findbugs-exclude.xml"
+            outputFile="${findbugs.results}/results.xml" reportLevel='high'>
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />
            <class location="${build}" />
@@ -298,6 +301,7 @@
         <mkdir dir="${findbugs.results}"/>
         <findbugs home="${findbugs.home}"
             output="html"
+            excludeFilter="${basedir}/findbugs-exclude.xml"
             outputFile="${findbugs.results}/results.html" >
            <sourcePath path="${source}" />
            <sourcePath path="${thrift.out.dir}" />

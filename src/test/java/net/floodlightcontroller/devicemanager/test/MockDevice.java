@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager.test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.TreeSet;
@@ -81,12 +82,11 @@ public class MockDevice extends Device {
         }
         return vals.toArray(new SwitchPort[vals.size()]);
     }
-    
+
     @Override
     public String toString() {
-        String rv = "MockDevice[entities=+";
-        rv += entities.toString();
-        rv += "]";
-        return rv;
+        return "MockDevice [getEntityClass()=" + getEntityClass()
+               + ", getEntities()=" + Arrays.toString(getEntities()) + "]";
     }
+    
 }

@@ -173,7 +173,7 @@ public abstract class StorageTest extends FloodlightTestCase {
                 else if (expectedObject instanceof Double)
                     assertEquals(((Double)expectedObject).doubleValue(), resultSet.getDouble(columnName), 0.00001);
                 else if (expectedObject instanceof byte[])
-                    assertEquals((byte[])expectedObject, resultSet.getByteArray(columnName));
+                    assertTrue(Arrays.equals((byte[])expectedObject, resultSet.getByteArray(columnName)));
                 else if (expectedObject instanceof String)
                     assertEquals((String)expectedObject, resultSet.getString(columnName));
                 else

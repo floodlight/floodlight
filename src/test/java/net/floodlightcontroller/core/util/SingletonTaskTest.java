@@ -33,7 +33,9 @@ public class SingletonTaskTest extends FloodlightTestCase {
     public long time = 0;
     
     @Before
-    public void setup() {
+    public void setUp() throws Exception {
+        super.setUp();
+        
         ran = 0;
         finished = 0;
         time = 0;

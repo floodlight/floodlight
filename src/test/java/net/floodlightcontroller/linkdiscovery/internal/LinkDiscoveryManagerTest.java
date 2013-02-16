@@ -33,7 +33,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -48,6 +53,11 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
+import net.floodlightcontroller.packet.Data;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -494,5 +504,96 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(wc.hasCaptured());
         List<OFMessage> msgList = wc.getValues();
         assertTrue(msgList.size() == ports.size() * 2);
+    }
+
+    private OFPacketIn createPacketIn(String srcMAC, String dstMAC,
+                                      String srcIp, String dstIp, short vlan) {
+        IPacket testPacket = new Ethernet()
+        .setDestinationMACAddress(dstMAC)
+        .setSourceMACAddress(srcMAC)
+        .setVlanID(vlan)
+        .setEtherType(Ethernet.TYPE_IPv4)
+        .setPayload(
+                new IPv4()
+                .setTtl((byte) 128)
+                .setSourceAddress(srcIp)
+                .setDestinationAddress(dstIp)
+                .setPayload(new UDP()
+                .setSourcePort((short) 5000)
+                .setDestinationPort((short) 5001)
+                .setPayload(new Data(new byte[] {0x01}))));
+        byte[] testPacketSerialized = testPacket.serialize();
+        OFPacketIn pi;
+        // build out input packet
+        pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+                .setBufferId(-1)
+                .setInPort((short) 1)
+                .setPacketData(testPacketSerialized)
+                .setReason(OFPacketInReason.NO_MATCH)
+                .setTotalLength((short) testPacketSerialized.length);
+        return pi;
+    }
+
+    @Test
+    public void testIgnoreSrcMAC() throws Exception {
+        String mac1 = "00:11:22:33:44:55";
+        String mac2 = "00:44:33:22:11:00";
+        String mac3 = "00:44:33:22:11:02";
+        String srcIp = "192.168.1.1";
+        String dstIp = "192.168.1.2";
+        short vlan = 42;
+
+        IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        expect(mockSwitch.getId()).andReturn(1L).anyTimes();
+        replay(mockSwitch);
+
+        /* TEST1: See basic packet flow */
+        OFPacketIn pi;
+        pi = createPacketIn(mac1, mac2, srcIp, dstIp, vlan);
+        FloodlightContext cntx = new FloodlightContext();
+        Ethernet eth = new Ethernet();
+        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        IFloodlightProviderService.bcStore.put(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
+                eth);
+        Command ret;
+        ret = ldm.receive(mockSwitch, pi, cntx);
+        assertEquals(Command.CONTINUE, ret);
+
+        /* TEST2: Add mac1 to the ignore MAC list and see that the packet is
+         * dropped
+         */
+        ldm.addMACToIgnoreList(HexString.toLong(mac1), 0);
+        ret = ldm.receive(mockSwitch, pi, cntx);
+        assertEquals(Command.STOP, ret);
+        /* Verify that if we send a packet with another MAC it still works */
+        pi = createPacketIn(mac2, mac3, srcIp, dstIp, vlan);
+        cntx = new FloodlightContext();
+        eth = new Ethernet();
+        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        IFloodlightProviderService.bcStore.put(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
+                eth);
+        ret = ldm.receive(mockSwitch, pi, cntx);
+        assertEquals(Command.CONTINUE, ret);
+
+        /* TEST3: Add a MAC range and see if that is ignored */
+        ldm.addMACToIgnoreList(HexString.toLong(mac2), 8);
+        ret = ldm.receive(mockSwitch, pi, cntx);
+        assertEquals(Command.STOP, ret);
+        /* Send a packet with source MAC as mac3 and see that that is ignored
+         * as well.
+         */
+        pi = createPacketIn(mac3, mac1, srcIp, dstIp, vlan);
+        cntx = new FloodlightContext();
+        eth = new Ethernet();
+        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        IFloodlightProviderService.bcStore.put(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
+                eth);
+        ret = ldm.receive(mockSwitch, pi, cntx);
+        assertEquals(Command.STOP, ret);
+
+        verify(mockSwitch);
     }
 }
