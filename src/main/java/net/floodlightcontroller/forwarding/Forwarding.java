@@ -234,6 +234,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
                 SwitchPort srcDap = srcDaps[iSrcDaps];
                 SwitchPort dstDap = dstDaps[iDstDaps];
+
+                // srcCluster and dstCluster here cannot be null as
+                // every switch will be at least in its own L2 domain.
                 Long srcCluster = 
                         topology.getL2DomainId(srcDap.getSwitchDPID());
                 Long dstCluster = 
@@ -241,9 +244,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
-                    if (!srcDap.equals(dstDap) && 
-                        (srcCluster != null) && 
-                        (dstCluster != null)) {
+                    if (!srcDap.equals(dstDap)) {
                         Route route = 
                                 routingEngine.getRoute(srcDap.getSwitchDPID(),
                                                        (short)srcDap.getPort(),

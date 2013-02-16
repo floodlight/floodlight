@@ -1,0 +1,23 @@
+<FindBugsFilter>
+    <!--- Checks disabled on generated code -->
+    <Match>
+        <!-- don't complain about switch statements / external representation exposed
+             by generated parser files -->
+        <Class name="~net\.bigdb\.(query|yang)\.parser\..*(Lexer|Parser)" />
+        <Bug pattern="SF_SWITCH_NO_DEFAULT,EI_EXPOSE_REP" />
+    </Match>
+
+    <!-- checks disabled because of too many false positives -->
+    <Match>
+            <!-- BC_UNFIRMED_CAST complains about too many pseudo violations, where
+             we know an object is of a specific type (e.g., by checking the type field
+             of an openflow message -->
+        <Bug pattern="BC_UNCONFIRMED_CAST" />
+    </Match>
+
+    <!-- checks disabled because they are just not important -->
+    <Match>
+        <!-- RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE is not an important check -->
+            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+    </Match>
+</FindBugsFilter>
