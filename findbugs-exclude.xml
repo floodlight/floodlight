@@ -1,10 +1,14 @@
 <FindBugsFilter>
     <!--- Checks disabled on generated code -->
+
     <Match>
         <!-- don't complain about switch statements / external representation exposed
              by generated parser files -->
         <Class name="~net\.bigdb\.(query|yang)\.parser\..*(Lexer|Parser)" />
-        <Bug pattern="SF_SWITCH_NO_DEFAULT,EI_EXPOSE_REP" />
+        <Or>
+            <Bug pattern="SF_SWITCH_NO_DEFAULT,EI_EXPOSE_REP,SBSC_USE_STRINGBUFFER_CONCATENATION" />
+            <Bug category="PERFORMANCE,MALICIOUS_CODE" />
+        </Or>
     </Match>
 
     <Match>
