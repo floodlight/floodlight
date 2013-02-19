@@ -7,6 +7,12 @@
         <Bug pattern="SF_SWITCH_NO_DEFAULT,EI_EXPOSE_REP" />
     </Match>
 
+    <Match>
+        <!-- Exclude warnings in generated thrift class files -->
+        <Class name="~net\.floodlightcontroller\.packetstreamer\.thrift\..*" />
+        <Bug pattern="CN_IDIOM,DLS_DEAD_LOCAL_STORE" />
+    </Match>
+
     <!-- checks disabled because of too many false positives -->
     <Match>
             <!-- BC_UNFIRMED_CAST complains about too many pseudo violations, where
