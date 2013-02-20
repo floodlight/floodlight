@@ -205,17 +205,23 @@ public class LoadMonitor implements Runnable {
 
     protected long readIdle() {
         long idle = 0;
-
+        FileInputStream fs = null;
+        BufferedReader reader = null;
         try {
-            FileInputStream fs = new FileInputStream("/proc/stat");
-            BufferedReader reader =
-                new BufferedReader(new InputStreamReader(fs));
-            idle = Long.parseLong(reader.readLine().split("\\s+")[4]);
-            reader.close();
-            fs.close();
-        }
-        catch (IOException ex) {
-            ex.printStackTrace();
+            try {
+                fs = new FileInputStream("/proc/stat");
+                reader = new BufferedReader(new InputStreamReader(fs));
+                String line = reader.readLine();
+                if (line == null) throw new IOException("Empty file");
+                idle = Long.parseLong(line.split("\\s+")[4]);
+            } finally {
+                if (reader != null)
+                    reader.close();
+                if (fs != null)
+                    fs.close();
+            }
+        } catch (IOException ex) {
+            log.error("Error reading idle time from /proc/stat", ex);
         }
         return idle;
 

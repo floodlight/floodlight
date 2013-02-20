@@ -17,13 +17,15 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import net.floodlightcontroller.core.IListener;
+
 /**
  * Implementors of this interface can receive updates from DeviceManager about
  * the state of devices under its control.
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public interface IDeviceListener {
+public interface IDeviceListener extends IListener<String> {
     /**
      * Called when a new Device is found
      * @param device the device that changed

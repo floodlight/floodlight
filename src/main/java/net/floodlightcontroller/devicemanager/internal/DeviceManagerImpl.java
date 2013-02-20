@@ -47,6 +47,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
@@ -200,8 +201,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * reclassifyDeviceListeners are notified first before reconcileDeviceListeners.
      * This is to make sure devices are correctly reclassified before reconciliation.
      */
-    protected Set<IDeviceListener> reclassifyDeviceListeners;
-    protected Set<IDeviceListener> reconcileDeviceListeners;
+    protected ListenerDispatcher<String,IDeviceListener> deviceListeners;
 
     /**
      * A device update event to be dispatched
@@ -526,14 +526,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     @Override
-    public void addListener(IDeviceListener listener, ListenerType type) {
-        switch (type) {
-            case DeviceClassifier:
-                reclassifyDeviceListeners.add(listener);
-                break;
-            case DeviceReconciler:
-                reconcileDeviceListeners.add(listener);
-                break;
+    public void addListener(IDeviceListener listener) {
+         deviceListeners.addListener("device", listener);
+         logListeners();
+    }
+
+    private void logListeners() {
+        List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
+        if (listeners != null) {
+            StringBuffer sb = new StringBuffer();
+            sb.append("DeviceListeners: ");
+            for (IDeviceListener l : listeners) {
+                sb.append(l.getName());
+                sb.append(",");
+            }
+            logger.debug(sb.toString());
         }
     }
 
@@ -684,8 +691,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 new HashSet<EnumSet<DeviceField>>();
         addIndex(true, EnumSet.of(DeviceField.IPV4));
 
-        this.reclassifyDeviceListeners = new HashSet<IDeviceListener>();
-        this.reconcileDeviceListeners = new HashSet<IDeviceListener>();
+        this.deviceListeners = new ListenerDispatcher<String, IDeviceListener>();
         this.suppressAPs = Collections.newSetFromMap(
                                new ConcurrentHashMap<SwitchPort, Boolean>());
 
@@ -1323,12 +1329,15 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (logger.isTraceEnabled()) {
                 logger.trace("Dispatching device update: {}", update);
             }
-            notifyListeners(reclassifyDeviceListeners, update);
-            notifyListeners(reconcileDeviceListeners, update);
+            List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
+            notifyListeners(listeners, update);
         }
     }
 
-    protected void notifyListeners(Set<IDeviceListener> listeners, DeviceUpdate update) {
+    protected void notifyListeners(List<IDeviceListener> listeners, DeviceUpdate update) {
+        if (listeners == null) {
+            return;
+        }
         for (IDeviceListener listener : listeners) {
             switch (update.change) {
                 case ADD:
@@ -1729,11 +1738,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
-        for (IDeviceListener listener : reclassifyDeviceListeners) {
-            listener.deviceMoved(d);
-        }
-        for (IDeviceListener listener : reconcileDeviceListeners) {
-            listener.deviceMoved(d);
+        List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
+        if (listeners != null) {
+            for (IDeviceListener listener : listeners) {
+                listener.deviceMoved(d);
+            }
         }
     }
     

@@ -69,8 +69,8 @@ public class OFMessageFilterManager
     // The port and client reference for packet streaming
     protected int serverPort = 9090;
     protected final int MaxRetry = 1;
-    protected static TTransport transport = null;
-    protected static PacketStreamer.Client packetClient = null;
+    protected static volatile TTransport transport = null;
+    protected static volatile PacketStreamer.Client packetClient = null;
 
     protected IFloodlightProviderService floodlightProvider = null;
     protected IThreadPoolService threadPool = null;
@@ -112,7 +112,7 @@ public class OFMessageFilterManager
         int i;
 
         if ((filterMap == null) || (filterTimeoutMap == null))
-            return  String.format("%d", FILTER_SETUP_FAILED);
+            return String.format("%s", FILTER_SETUP_FAILED);
 
         for (i=0; i<MAX_FILTERS; ++i) {
             Integer x = prime + i;
@@ -287,15 +287,17 @@ public class OFMessageFilterManager
 
         while (numRetries++ < MaxRetry) {
             try {
-                transport = new TFramedTransport(new TSocket("localhost", 
-                                                             serverPort));
-                transport.open();
+                TFramedTransport t = 
+                        new TFramedTransport(new TSocket("localhost", 
+                                                         serverPort));
+                t.open();
 
-                TProtocol protocol = new  TBinaryProtocol(transport);
+                TProtocol protocol = new  TBinaryProtocol(t);
                 packetClient = new PacketStreamer.Client(protocol);
 
                 log.debug("Have a connection to packetstreamer server " +
                 		  "localhost:{}", serverPort);
+                transport = t;
                 break;
             } catch (TException x) {
                 try {

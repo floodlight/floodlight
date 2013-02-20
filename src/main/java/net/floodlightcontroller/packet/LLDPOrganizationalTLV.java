@@ -139,43 +139,23 @@ public class LLDPOrganizationalTLV extends LLDPTLV {
 
     @Override
     public int hashCode() {
-        final int prime = 1423;
-        int result = 1;
-        result = prime * result + type;
-        result = prime * result + length;
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + Arrays.hashCode(infoString);
         result = prime * result + Arrays.hashCode(oui);
         result = prime * result + subType;
-        result = prime * result + Arrays.hashCode(infoString);
         return result;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        }
-
-        if (!(o instanceof LLDPOrganizationalTLV)) {
-            return false;
-        }
-
-        LLDPOrganizationalTLV other = (LLDPOrganizationalTLV)o;
-        if (this.type != other.type) {
-            return false;
-        }
-        if (this.length != other.length) {
-            return false;
-        }
-        if (!Arrays.equals(this.oui, other.oui)) {
-            return false;
-        }
-        if (this.subType != other.subType) {
-            return false;
-        }
-        if (!Arrays.equals(this.infoString, other.infoString)) {
-            return false;
-        }
-
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        LLDPOrganizationalTLV other = (LLDPOrganizationalTLV) obj;
+        if (!Arrays.equals(infoString, other.infoString)) return false;
+        if (!Arrays.equals(oui, other.oui)) return false;
+        if (subType != other.subType) return false;
         return true;
     }
 }
