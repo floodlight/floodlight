@@ -635,7 +635,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                       HexString.toHexString(sw), port);
-            return null;
         }
 
         // using "nearest customer bridge" MAC address for broadest possible
@@ -768,7 +767,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
                       HexString.toHexString(sw), port);
-            return;
         }
         OFPacketOut po = generateLLDPMessage(sw, port, isStandard, isReverse);
 
