@@ -142,6 +142,7 @@ public abstract class StorageTest extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         Set<String> indexedColumnNames = new HashSet<String>();
+        indexedColumnNames.add(PERSON_FIRST_NAME);
         indexedColumnNames.add(PERSON_LAST_NAME);
         storageSource.setExceptionHandler(null);
         storageSource.createTable(PERSON_TABLE_NAME, indexedColumnNames);
@@ -223,6 +224,38 @@ public abstract class StorageTest extends FloodlightTestCase {
         checkExpectedResults(resultSet, columnList, expectedResults);
     }
     
+    @Test
+    public void testEfficientOrQuery() {
+        String[] columnList = {PERSON_FIRST_NAME,PERSON_LAST_NAME};
+        Object[][] expectedResults = {
+                {"John", "Smith"},
+                {"Lisa", "Jones"},
+                {"Susan", "Jones"}
+        };
+        IResultSet resultSet = storageSource.executeQuery(PERSON_TABLE_NAME, columnList,
+                new CompoundPredicate(CompoundPredicate.Operator.OR, false,
+                        new OperatorPredicate(PERSON_LAST_NAME, OperatorPredicate.Operator.EQ, "Jones"),
+                        new OperatorPredicate(PERSON_LAST_NAME, OperatorPredicate.Operator.EQ, "Smith")
+                ),
+                new RowOrdering(PERSON_SSN));
+        checkExpectedResults(resultSet, columnList, expectedResults);
+    }
+
+    @Test
+    public void testEfficientAndQuery() {
+        String[] columnList = {PERSON_FIRST_NAME,PERSON_LAST_NAME};
+        Object[][] expectedResults = {
+                {"Lisa", "Jones"}
+        };
+        IResultSet resultSet = storageSource.executeQuery(PERSON_TABLE_NAME, columnList,
+                new CompoundPredicate(CompoundPredicate.Operator.AND, false,
+                        new OperatorPredicate(PERSON_LAST_NAME, OperatorPredicate.Operator.EQ, "Jones"),
+                        new OperatorPredicate(PERSON_FIRST_NAME, OperatorPredicate.Operator.EQ, "Lisa")
+                ),
+                new RowOrdering(PERSON_SSN));
+        checkExpectedResults(resultSet, columnList, expectedResults);
+    }
+
     @Test
     public void testOrQuery() {
         String[] columnList = {PERSON_FIRST_NAME,PERSON_LAST_NAME, PERSON_AGE};        
