@@ -568,16 +568,11 @@ entity.getLastSeenTimestamp().getTime());
         if (attachmentPoints == null) return returnSwitchPorts;
         if (attachmentPoints.isEmpty()) return returnSwitchPorts;
 
-
         // copy ap list.
-        List<AttachmentPoint> apList;
-        apList = new ArrayList<AttachmentPoint>();
-        if (attachmentPoints != null) apList.addAll(attachmentPoints);
-        // get AP map.
-        Map<Long, AttachmentPoint> apMap = getAPMap(apList);
+        List<AttachmentPoint> apList = attachmentPoints;
 
-        if (apMap != null) {
-            for(AttachmentPoint ap: apMap.values()) {
+        if (apList != null) {
+            for(AttachmentPoint ap: apList) {
                 SwitchPort swport = new SwitchPort(ap.getSw(),
                                                    ap.getPort());
                     sp.add(swport);
@@ -596,6 +591,8 @@ entity.getLastSeenTimestamp().getTime());
             this.oldAPs = oldAPList;
 
         List<AttachmentPoint> dupList;
+        // get AP map.
+        Map<Long, AttachmentPoint> apMap = getAPMap(apList);
         dupList = this.getDuplicateAttachmentPoints(oldAPList, apMap);
         if (dupList != null) {
             for(AttachmentPoint ap: dupList) {
