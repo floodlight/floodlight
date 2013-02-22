@@ -34,15 +34,18 @@ import org.slf4j.LoggerFactory;
 public class JythonServer extends Thread {
     protected static Logger log = LoggerFactory.getLogger(JythonServer.class);
 
+    String host;
 	int port;
 	Map<String, Object> locals;
 	
 	/**
+	 * @param host_ Host to use for jython server
 	 * @param port_ Port to use for jython server
 	 * @param locals_ Locals to add to the interpreters top level name space
 	 */
-	public JythonServer(int port_, Map<String, Object> locals_) {
-		this.port = port_ ;
+	public JythonServer(String host_, int port_, Map<String, Object> locals_) {
+		this.host = host_;
+		this.port = port_;
 		this.locals = locals_;
 		if (this.locals == null) {
 			this.locals = new HashMap<String, Object>();
@@ -73,7 +76,10 @@ public class JythonServer extends Thread {
         p.exec("import sys");
         p.exec("sys.path.append('" + jarPath + "')");
         p.exec("from debugserver import run_server");
-        p.exec("run_server(" + this.port + ", '0.0.0.0', locals())");
+        if (this.host == null) {
+        	p.exec("run_server(port=" + this.port + ", locals=locals())");
+        } else {
+        	p.exec("run_server(port=" + this.port + ", host='" + this.host + "', locals=locals())");
+        }
     }
-
 }

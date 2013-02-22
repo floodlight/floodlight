@@ -23,6 +23,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -31,6 +32,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public class JythonDebugInterface implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(JythonDebugInterface.class);
     protected JythonServer debug_server;
+    protected String jythonHost = null;
     protected int jythonPort = 6655;
     
     @Override
@@ -72,13 +74,22 @@ public class JythonDebugInterface implements IFloodlightModule {
         
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
+        jythonHost = configOptions.get("host");
+        if (jythonHost == null) {
+        	Map<String, String> providerConfigOptions = context.getConfigParams(
+            		FloodlightProvider.class);
+            jythonHost = providerConfigOptions.get("openflowhost");
+        }
+        if (jythonHost != null) {
+        	log.debug("Jython host set to {}", jythonHost);
+        }
         String port = configOptions.get("port");
         if (port != null) {
             jythonPort = Integer.parseInt(port);
         }
         log.debug("Jython port set to {}", jythonPort);
         
-        JythonServer debug_server = new JythonServer(port, locals);
+        JythonServer debug_server = new JythonServer(jythonHost, jythonPort, locals);
         debug_server.start();
     }
 }
