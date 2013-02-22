@@ -80,18 +80,23 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 	 */
 	@Override
 	public Map<String, String> getConfigParams(IFloodlightModule module) {
-	    Map<String, String> retMap = configParams.get(module.getClass());
+		return getConfigParams(module.getClass());
+	}
+
+	@Override
+	public Map<String, String> getConfigParams(Class<? extends IFloodlightModule> moduleClass) {
+	    Map<String, String> retMap = configParams.get(moduleClass);
 	    if (retMap == null) {
 	        // Return an empty map if none exists so the module does not
 	        // need to null check the map
 	        retMap = new HashMap<String, String>();
-	        configParams.put(module.getClass(), retMap);
+	        configParams.put(moduleClass, retMap);
 	    }
 
 	    // also add any configuration parameters for superclasses, but
 	    // only if more specific configuration does not override it
 	    for (Class<? extends IFloodlightModule> c : configParams.keySet()) {
-	        if (c.isInstance(module)) {
+	        if (c.equals(moduleClass)) {
 	            for (Map.Entry<String, String> ent : configParams.get(c).entrySet()) {
 	                if (!retMap.containsKey(ent.getKey())) {
 	                    retMap.put(ent.getKey(), ent.getValue());
