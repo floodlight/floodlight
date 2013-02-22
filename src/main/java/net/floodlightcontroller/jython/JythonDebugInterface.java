@@ -31,7 +31,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 public class JythonDebugInterface implements IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(JythonDebugInterface.class);
     protected JythonServer debug_server;
-    protected static int JYTHON_PORT = 6655;
+    protected int jythonPort = 6655;
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -72,11 +72,11 @@ public class JythonDebugInterface implements IFloodlightModule {
         
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
-        int port = JYTHON_PORT;
-        String portNum = configOptions.get("port");
-        if (portNum != null) {
-            port = Integer.parseInt(portNum);
+        String port = configOptions.get("port");
+        if (port != null) {
+            jythonPort = Integer.parseInt(port);
         }
+        log.debug("Jython port set to {}", jythonPort);
         
         JythonServer debug_server = new JythonServer(port, locals);
         debug_server.start();
