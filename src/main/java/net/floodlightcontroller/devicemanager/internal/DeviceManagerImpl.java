@@ -784,6 +784,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (srcEntity == null)
             return Command.STOP;
 
+        // Learn from ARP packet.
+        // In VRRP settings, the source MAC address and sender MAC
+        // addresses can be different.  In such cases, we need to learn
+        // the IP to MAC mapping of the VRRP IP address.  The source
+        // entity will not have that information.  Hence, a separate call
+        // to learn devices in such cases.
+        learnDeviceFromArpResponseData(eth, sw.getId(), pi.getInPort());
+
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
         if (srcDevice == null)
@@ -873,7 +881,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     (Ethernet.toLong(arp.getSenderHardwareAddress()) == dlAddr)) {
                 return IPv4.toIPv4Address(arp.getSenderProtocolAddress());
             }
-        } 
+        }
         return 0;
     }
 
@@ -902,6 +910,43 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           swdpid,
                           port,
                           new Date());
+    }
+
+    /**
+     * Learn device from ARP data in scenarios where the
+     * Ethernet source MAC is different from the sender hardware
+     * address in ARP data.
+     */
+    protected void learnDeviceFromArpResponseData(Ethernet eth,
+                                            long swdpid,
+                                            int port) {
+
+        if (!(eth.getPayload() instanceof ARP)) return;
+        ARP arp = (ARP) eth.getPayload();
+
+        byte[] dlAddrArr = eth.getSourceMACAddress();
+        long dlAddr = Ethernet.toLong(dlAddrArr);
+
+        byte[] senderHardwareAddr = arp.getSenderHardwareAddress();
+        long senderAddr = Ethernet.toLong(senderHardwareAddr);
+
+        if (dlAddr == senderAddr) return;
+
+        // Ignore broadcast/multicast source
+        if ((senderHardwareAddr[0] & 0x1) != 0)
+            return;
+
+        short vlan = eth.getVlanID();
+        int nwSrc = IPv4.toIPv4Address(arp.getSenderProtocolAddress());
+
+        Entity e =  new Entity(senderAddr,
+                ((vlan >= 0) ? vlan : null),
+                ((nwSrc != 0) ? nwSrc : null),
+                swdpid,
+                port,
+                new Date());
+
+        learnDeviceByEntity(e);
     }
 
     /**
