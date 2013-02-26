@@ -28,8 +28,8 @@ public class ICMP extends BasePacket {
     protected byte icmpCode;
     protected short checksum;
 
-    public static byte ECHO_REPLY = 0x0;
-    public static byte ECHO_REQUEST = 0x8;
+    public static final byte ECHO_REPLY = 0x0;
+    public static final byte ECHO_REQUEST = 0x8;
 
     /**
      * @return the icmpType
