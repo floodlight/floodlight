@@ -95,7 +95,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     testARPReplyPacket_3;
     protected IPacket testARPReqPacket_1, testARPReqPacket_2;
     protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
-    private byte[] testARPReplyPacket_3_Serialized;
     DeviceManagerImpl deviceManager;
     MemoryStorageSource storageSource;
     FlowReconcileManager flowReconcileMgr;
@@ -185,9 +184,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Another test packet with a different source IP
         this.testARPReplyPacket_2 = new Ethernet()
-        .setSourceMACAddress("00:44:33:22:11:01")
+        .setSourceMACAddress("00:99:88:77:66:55")
         .setDestinationMACAddress("00:11:22:33:44:55")
         .setEtherType(Ethernet.TYPE_ARP)
+        .setVlanID((short)5)
         .setPayload(
                     new ARP()
                     .setHardwareType(ARP.HW_TYPE_ETHERNET)
@@ -201,23 +201,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
         this.testARPReplyPacket_2_Srld = testARPReplyPacket_2.serialize();
 
-        this.testARPReplyPacket_3 = new Ethernet()
-        .setSourceMACAddress("00:44:33:22:11:01")
-        .setDestinationMACAddress("00:11:22:33:44:55")
-        .setEtherType(Ethernet.TYPE_ARP)
-        .setPayload(
-                    new ARP()
-                    .setHardwareType(ARP.HW_TYPE_ETHERNET)
-                    .setProtocolType(ARP.PROTO_TYPE_IP)
-                    .setHardwareAddressLength((byte) 6)
-                    .setProtocolAddressLength((byte) 4)
-                    .setOpCode(ARP.OP_REPLY)
-                    .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
-                    .setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.3"))
-                    .setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
-                    .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
-        this.testARPReplyPacket_3_Serialized = testARPReplyPacket_3.serialize();
-        
         // Build the PacketIn
         this.packetIn_1 = ((OFPacketIn) mockFloodlightProvider.
                 getOFMessageFactory().getMessage(OFType.PACKET_IN))
@@ -235,15 +218,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 .setPacketData(this.testARPReplyPacket_2_Srld)
                 .setReason(OFPacketInReason.NO_MATCH)
                 .setTotalLength((short) this.testARPReplyPacket_2_Srld.length);
-
-        // Build the PacketIn
-        this.packetIn_3 = ((OFPacketIn) mockFloodlightProvider.
-                getOFMessageFactory().getMessage(OFType.PACKET_IN))
-                .setBufferId(-1)
-                .setInPort((short) 1)
-                .setPacketData(this.testARPReplyPacket_3_Serialized)
-                .setReason(OFPacketInReason.NO_MATCH)
-                .setTotalLength((short) this.testARPReplyPacket_3_Serialized.length);
     }
 
 
@@ -968,23 +942,19 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, OFPort.OFPP_LOCAL.getValue()) }, aps);
     }
 
-
     @Test
-    public void testPacketIn() throws Exception {
-        byte[] dataLayerSource =
-                ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
-
+    public void testPacketInBasic(byte[] deviceMac, OFPacketIn packetIn) {
         // Mock up our expected behavior
         ITopologyService mockTopology = createMock(ITopologyService.class);
         deviceManager.topology = mockTopology;
         expect(mockTopology.isAttachmentPointPort(EasyMock.anyLong(),
-                                                  EasyMock.anyShort())).
-                                                  andReturn(true).anyTimes();
+                EasyMock.anyShort())).
+                andReturn(true).anyTimes();
         expect(mockTopology.isConsistent(EasyMock.anyLong(),
-                                         EasyMock.anyShort(),
-                                         EasyMock.anyLong(),
-                                         EasyMock.anyShort())).andReturn(false).
-                                         anyTimes();
+                EasyMock.anyShort(),
+                EasyMock.anyLong(),
+                EasyMock.anyShort())).andReturn(false).
+                anyTimes();
         expect(mockTopology.getL2DomainId(EasyMock.anyLong())).andReturn(1L).anyTimes();
         replay(mockTopology);
 
@@ -994,29 +964,26 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
         Device device =
                 new Device(deviceManager,
-                           new Long(deviceManager.deviceKeyCounter),
-                           new Entity(Ethernet.toLong(dataLayerSource),
-                                      (short)5,
-                                      ipaddr,
-                                      1L,
-                                      1,
-                                      currentDate),
-                                      DefaultEntityClassifier.entityClass);
-
-
-
+                        new Long(deviceManager.deviceKeyCounter),
+                        new Entity(Ethernet.toLong(deviceMac),
+                                (short)5,
+                                ipaddr,
+                                1L,
+                                1,
+                                currentDate),
+                                DefaultEntityClassifier.entityClass);
 
         // Get the listener and trigger the packet in
         IOFSwitch switch1 = mockFloodlightProvider.getSwitches().get(1L);
-        mockFloodlightProvider.dispatchMessage(switch1, this.packetIn_1);
+        mockFloodlightProvider.dispatchMessage(switch1, packetIn);
 
         // Verify the replay matched our expectations
         // verify(mockTopology);
 
         // Verify the device
         Device rdevice = (Device)
-                deviceManager.findDevice(Ethernet.toLong(dataLayerSource),
-                                         (short)5, null, null, null);
+                deviceManager.findDevice(Ethernet.toLong(deviceMac),
+                        (short)5, null, null, null);
 
         assertEquals(device, rdevice);
         assertEquals(new Short((short)5), rdevice.getVlanId()[0]);
@@ -1024,8 +991,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device result = null;
         Iterator<? extends IDevice> dstiter =
                 deviceManager.queryClassDevices(device.getEntityClass(),
-                                                null, null, ipaddr,
-                                                null, null);
+                        null, null, ipaddr,
+                        null, null);
         if (dstiter.hasNext()) {
             result = (Device)dstiter.next();
         }
@@ -1034,32 +1001,32 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         device =
                 new Device(device,
-                           new Entity(Ethernet.toLong(dataLayerSource),
-                                      (short)5,
-                                      ipaddr,
-                                      5L,
-                                      2,
-                                      currentDate),
-                                      -1);
+                        new Entity(Ethernet.toLong(deviceMac),
+                                (short)5,
+                                ipaddr,
+                                5L,
+                                2,
+                                currentDate),
+                                -1);
 
         reset(mockTopology);
         expect(mockTopology.isAttachmentPointPort(anyLong(),
-                                                  anyShort())).
-                                                  andReturn(true).
-                                                  anyTimes();
+                anyShort())).
+                andReturn(true).
+                anyTimes();
         expect(mockTopology.isConsistent(EasyMock.anyLong(),
-                                         EasyMock.anyShort(),
-                                         EasyMock.anyLong(),
-                                         EasyMock.anyShort())).andReturn(false).
-                                         anyTimes();
+                EasyMock.anyShort(),
+                EasyMock.anyLong(),
+                EasyMock.anyShort())).andReturn(false).
+                anyTimes();
         expect(mockTopology.isBroadcastDomainPort(EasyMock.anyLong(),
-                                                  EasyMock.anyShort()))
-                                                  .andReturn(false)
-                                                  .anyTimes();
+                EasyMock.anyShort()))
+                .andReturn(false)
+                .anyTimes();
         expect(mockTopology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(mockTopology.getL2DomainId(5L)).andReturn(1L).anyTimes();
         expect(mockTopology.isInSameBroadcastDomain(1L, (short)1, 5L, (short)2)).
-               andReturn(false).anyTimes();
+        andReturn(false).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockTopology);
@@ -1073,12 +1040,36 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Verify the device
         rdevice = (Device)
-                deviceManager.findDevice(Ethernet.toLong(dataLayerSource),
-                                         (short)5, null, null, null);
+                deviceManager.findDevice(Ethernet.toLong(deviceMac),
+                        (short)5, null, null, null);
         assertEquals(device, rdevice);
     }
 
-    
+    @Test
+    public void testPacketIn() throws Exception {
+        byte[] deviceMac1 =
+                ((Ethernet)this.testARPReplyPacket_1).getSourceMACAddress();
+        testPacketInBasic(deviceMac1, packetIn_1);
+    }
+
+    /**
+     * This test ensures the device manager learns the source device
+     * corresponding to the senderHardwareAddress and senderProtocolAddress
+     * in an ARP response whenever the senderHardwareAddress is different
+     * from the source MAC address of the Ethernet frame.
+     *
+     * This test is the same as testPacketIn method, except for the
+     * packet-in that's used.
+     * @throws Exception
+     */
+    @Test
+    public void testDeviceLearningFromArpResponseData() throws Exception {
+        ARP arp = (ARP)((Ethernet)this.testARPReplyPacket_2).getPayload();
+        byte[] deviceMac2 = arp.getSenderHardwareAddress();
+
+        testPacketInBasic(deviceMac2, packetIn_2);
+    }
+
     /**
      * Note: Entity expiration does not result in device moved notification.
      * @throws Exception
@@ -1802,7 +1793,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                                   (short) -1,
                                                   0));
     }
+
     
+
     @Test
     public void testGetIPv4Addresses() {
         // Looks like Date is only 1s granularity
