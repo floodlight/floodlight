@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -717,16 +718,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                             lastBddpTime, srcPortState,
                                             dstPortState);
 
-
         addOrUpdateLink(lt, newLinkInfo);
-
-        // Continue only if addOrUpdateLink was successful.
 
         // Check if reverse link exists.
         // If it doesn't exist and if the forward link was seen
         // first seen within a small interval, send probe on the
         // reverse link.
-
         newLinkInfo = links.get(lt);
         if (newLinkInfo != null && isStandard && isReverse == false) {
             Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
@@ -1357,8 +1354,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             // put the new info. if an old info exists, it will be returned.
             LinkInfo oldInfo = links.put(lt, newInfo);
             if (oldInfo != null
-                && oldInfo.getFirstSeenTime() < newInfo.getFirstSeenTime())
-                                                                           newInfo.setFirstSeenTime(oldInfo.getFirstSeenTime());
+                    && oldInfo.getFirstSeenTime() < newInfo.getFirstSeenTime())
+                newInfo.setFirstSeenTime(oldInfo.getFirstSeenTime());
 
             if (log.isTraceEnabled()) {
                 log.trace("addOrUpdateLink: {} {}",
@@ -1376,30 +1373,26 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             if (oldInfo == null) {
                 // index it by switch source
                 if (!switchLinks.containsKey(lt.getSrc()))
-                                                          switchLinks.put(lt.getSrc(),
-                                                                          new HashSet<Link>());
+                    switchLinks.put(lt.getSrc(), new HashSet<Link>());
                 switchLinks.get(lt.getSrc()).add(lt);
 
                 // index it by switch dest
                 if (!switchLinks.containsKey(lt.getDst()))
-                                                          switchLinks.put(lt.getDst(),
-                                                                          new HashSet<Link>());
+                    switchLinks.put(lt.getDst(), new HashSet<Link>());
                 switchLinks.get(lt.getDst()).add(lt);
 
                 // index both ends by switch:port
                 if (!portLinks.containsKey(srcNpt))
-                                                   portLinks.put(srcNpt,
-                                                                 new HashSet<Link>());
+                    portLinks.put(srcNpt, new HashSet<Link>());
                 portLinks.get(srcNpt).add(lt);
 
                 if (!portLinks.containsKey(dstNpt))
-                                                   portLinks.put(dstNpt,
-                                                                 new HashSet<Link>());
+                    portLinks.put(dstNpt, new HashSet<Link>());
                 portLinks.get(dstNpt).add(lt);
 
                 // Add to portNOFLinks if the unicast valid time is null
                 if (newInfo.getUnicastValidTime() == null)
-                                                          addLinkToBroadcastDomain(lt);
+                    addLinkToBroadcastDomain(lt);
 
                 writeLinkToStorage(lt, newInfo);
                 updateOperation = UpdateOperation.LINK_UPDATED;
@@ -2132,7 +2125,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
-        this.ignoreMACSet = new HashSet<MACRange>();
+        this.ignoreMACSet = Collections.newSetFromMap(
+                                new ConcurrentHashMap<MACRange,Boolean>());
     }
 
     @Override
