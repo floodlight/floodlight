@@ -595,9 +595,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (!isIncomingDiscoveryAllowed(sw, inPort, isStandard))
             return Command.STOP;
 
-        // If this is a malformed LLDP, or not from us, exit
+        // If this is a malformed LLDP exit
         if (lldp.getPortId() == null || lldp.getPortId().getLength() != 3) {
-            return Command.CONTINUE;
+            return Command.STOP;
         }
 
         long myId = ByteBuffer.wrap(controllerTLV.getValue()).getLong();
@@ -636,8 +636,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (myLLDP == false) {
             // This is not the LLDP sent by this controller.
             // If the LLDP message has multicast bit set, then we need to
-            // broadcast
-            // the packet as a regular packet.
+            // broadcast the packet as a regular packet (after checking IDs)
             if (isStandard) {
                 if (log.isTraceEnabled()) {
                     log.trace("Got a standard LLDP=[{}]. Not fowarding it.", lldp.toString());
@@ -650,6 +649,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 }
                 return Command.CONTINUE;
             }
+            return Command.STOP;
         }
 
         if (remoteSwitch == null) {
