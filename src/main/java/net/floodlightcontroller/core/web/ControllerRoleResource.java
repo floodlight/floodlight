@@ -20,6 +20,7 @@ import org.restlet.data.Status;
 import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
@@ -37,7 +38,7 @@ public class ControllerRoleResource extends ServerResource {
         IFloodlightProviderService floodlightProvider = 
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
-        return new RoleInfo(floodlightProvider.getRole());
+        return floodlightProvider.getRoleInfo();
     }
     
     @Post("json")
@@ -68,6 +69,6 @@ public class ControllerRoleResource extends ServerResource {
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
         
-        floodlightProvider.setRole(role);
+        floodlightProvider.setRole(role, roleInfo.getRoleChangeDescription());
     }
 }

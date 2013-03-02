@@ -742,7 +742,7 @@ public class ControllerTest extends FloodlightTestCase
     @Test
     public void testSetRoleNull() {
         try {
-            controller.setRole(null);
+            controller.setRole(null, null);
             fail("Should have thrown an Exception");
         }
         catch (NullPointerException e) {
@@ -761,7 +761,7 @@ public class ControllerTest extends FloodlightTestCase
                     controller.updates.size());
         
         replay(roleChanger);
-        controller.setRole(Role.SLAVE);
+        controller.setRole(Role.SLAVE, "Testing");
         controller.doSetRole(); // avoid wait
         verify(roleChanger);
         
@@ -1531,7 +1531,7 @@ public class ControllerTest extends FloodlightTestCase
                          anyObject(FloodlightContext.class));
         expectLastCall().andReturn(Command.STOP).once();
         replay(sw, listener);
-        controller.setRole(Role.SLAVE);
+        controller.setRole(Role.SLAVE, "Testing");
         controller.doSetRole();  // avoid the wait
         chdlr.processOFMessage(pi);
         verify(sw, listener);
@@ -1551,7 +1551,7 @@ public class ControllerTest extends FloodlightTestCase
         // transition back to master but don't notify yet
         resetToDefault(listener);
         replay(listener);
-        controller.setRole(Role.MASTER);
+        controller.setRole(Role.MASTER, "Testing");
         controller.doSetRole(); // avoid the wait
         chdlr.processOFMessage(pi);
         verify(listener);
