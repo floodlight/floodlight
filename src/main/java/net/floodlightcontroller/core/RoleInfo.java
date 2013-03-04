@@ -14,29 +14,57 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.core.web;
+package net.floodlightcontroller.core;
+
+import java.util.Date;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
+
 public class RoleInfo {
     protected String role;
-    
+    protected String roleChangeDescription;
+    protected Date roleChangeDateTime;
+
     public RoleInfo() {
     }
-    
+
     public RoleInfo(String role) {
         setRole(role);
     }
-    
-    public RoleInfo(Role role) {
+
+    public RoleInfo(Role role, String description) {
         this.role = (role != null) ? role.name() : "DISABLED";
+        this.roleChangeDescription = description;
     }
-    
+
+    public RoleInfo(Role role, String description, Date dt) {
+        this.role = (role != null) ? role.name() : "DISABLED";
+        this.roleChangeDescription = description;
+        this.roleChangeDateTime = dt;
+    }
+
     public String getRole() {
         return role;
     }
-    
+
     public void setRole(String role) {
         this.role = role;
     }
+
+    @JsonProperty(value="change-description")
+    public String getRoleChangeDescription() {
+        return roleChangeDescription;
+    }
+    @JsonProperty(value="change-description")
+    public void setRoleChangeDescription(String roleChangeDescription) {
+        this.roleChangeDescription = roleChangeDescription;
+    }
+    @JsonProperty(value="change-date-time")
+    public String getRoleChangeDateTime() {
+        return roleChangeDateTime == null ? "" : roleChangeDateTime.toString();
+    }
+
 }

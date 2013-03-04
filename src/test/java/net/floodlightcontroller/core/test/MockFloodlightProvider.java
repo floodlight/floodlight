@@ -39,6 +39,7 @@ import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
+import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -102,6 +103,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     /**
      * @return the listeners
      */
+    @Override
     public Map<OFType, List<IOFMessageListener>> getListeners() {
         Map<OFType, List<IOFMessageListener>> lers = 
                 new HashMap<OFType, List<IOFMessageListener>>();
@@ -158,6 +160,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
     
+    @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m, FloodlightContext bc) {
         List<IOFMessageListener> msgListeners = null;
         if (listeners.containsKey(m.getType())) {
@@ -191,6 +194,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         return switchListeners;
     }
     
+    @Override
     public void terminate() {
     }
 
@@ -289,7 +293,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
     
     @Override
-    public void setRole(Role role) {
+    public void setRole(Role role, String roleChangeDescription) {
         
     }
     
@@ -349,6 +353,12 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public void addOFSwitchDriver(String desc, IOFSwitchDriver driver) {
         // TODO Auto-generated method stub
         
+    }
+
+    @Override
+    public RoleInfo getRoleInfo() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

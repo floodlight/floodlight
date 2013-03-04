@@ -89,6 +89,11 @@ public interface IFloodlightProviderService extends
     public Role getRole();
     
     /**
+     * Get the current role of the controller
+     */
+    public RoleInfo getRoleInfo();
+
+    /**
      * Get the current mapping of controller IDs to their IP addresses
      * Returns a copy of the current mapping. 
      * @see IHAListener
@@ -98,8 +103,10 @@ public interface IFloodlightProviderService extends
     
     /**
      * Set the role of the controller
+     * @param role The new role for the controller node
+     * @param changeDescription The reason or other information for this role change
      */
-    public void setRole(Role role);
+    public void setRole(Role role, String changeDescription);
     
     /**
      * Add a switch listener
