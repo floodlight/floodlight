@@ -63,8 +63,6 @@ public class Device implements IDevice {
     // the vlan Ids from the entities of this device
     protected Short[] vlanIds;
     protected String dhcpClientName;
-    
-   
 
     /**
      * These are the old attachment points for the device that were
@@ -75,6 +73,7 @@ public class Device implements IDevice {
      * The current attachment points for the device.
      */
     protected List<AttachmentPoint> attachmentPoints;
+
     // ************
     // Constructors
     // ************
@@ -110,7 +109,7 @@ public class Device implements IDevice {
             if (deviceManager.isValidAttachmentPoint(sw, port)) {
                 AttachmentPoint ap;
                 ap = new AttachmentPoint(sw, port,
-entity.getLastSeenTimestamp().getTime());
+                                         entity.getLastSeenTimestamp().getTime());
 
                 this.attachmentPoints = new ArrayList<AttachmentPoint>();
                 this.attachmentPoints.add(ap);
@@ -157,7 +156,7 @@ entity.getLastSeenTimestamp().getTime());
     /**
      * Construct a new device consisting of the entities from the old device
      * plus an additional entity.
-     * The caller needs to ensure that the additional entity is not already 
+     * The caller needs to ensure that the additional entity is not already
      * present in the array
      * @param device the old device object
      * @param newEntity the entity to add. newEntity must be have the same
@@ -172,23 +171,23 @@ entity.getLastSeenTimestamp().getTime());
         this.deviceManager = device.deviceManager;
         this.deviceKey = device.deviceKey;
         this.dhcpClientName = device.dhcpClientName;
-        
+
         this.entities = new Entity[device.entities.length + 1];
         if (insertionpoint < 0) {
-            insertionpoint = -(Arrays.binarySearch(device.entities, 
+            insertionpoint = -(Arrays.binarySearch(device.entities,
                                                    newEntity)+1);
         }
         if (insertionpoint > 0) {
             // insertion point is not the beginning:
             // copy up to insertion point
-            System.arraycopy(device.entities, 0, 
+            System.arraycopy(device.entities, 0,
                              this.entities, 0,
                              insertionpoint);
         }
         if (insertionpoint < device.entities.length) {
-            // insertion point is not the end 
+            // insertion point is not the end
             // copy from insertion point
-            System.arraycopy(device.entities, insertionpoint, 
+            System.arraycopy(device.entities, insertionpoint,
                              this.entities, insertionpoint+1,
                              device.entities.length-insertionpoint);
         }
@@ -216,7 +215,7 @@ entity.getLastSeenTimestamp().getTime());
         this.entityClass = device.entityClass;
         computeVlandIds();
     }
-    
+
     private void computeVlandIds() {
         if (entities.length == 1) {
             if (entities[0].getVlan() != null) {
@@ -224,6 +223,7 @@ entity.getLastSeenTimestamp().getTime());
             } else {
                 vlanIds = new Short[] { Short.valueOf((short)-1) };
             }
+            return;
         }
 
         TreeSet<Short> vals = new TreeSet<Short>();
@@ -235,7 +235,6 @@ entity.getLastSeenTimestamp().getTime());
         }
         vlanIds = vals.toArray(new Short[vals.size()]);
     }
-
 
     /**
      * Given a list of attachment points (apList), the procedure would return
@@ -555,6 +554,9 @@ entity.getLastSeenTimestamp().getTime());
         return false;
     }
 
+    // *******
+    // IDevice
+    // *******
 
     @Override
     public SwitchPort[] getAttachmentPoints() {
@@ -605,10 +607,6 @@ entity.getLastSeenTimestamp().getTime());
         return sp.toArray(new SwitchPort[sp.size()]);
     }
 
-    // *******
-    // IDevice
-    // *******
-
     @Override
     public Long getDeviceKey() {
         return deviceKey;
@@ -648,7 +646,7 @@ entity.getLastSeenTimestamp().getTime());
                     deviceManager.queryClassByEntity(entityClass, ipv4Fields, e);
             while (devices.hasNext()) {
                 Device d = devices.next();
-                if (deviceKey.equals(d.getDeviceKey())) 
+                if (deviceKey.equals(d.getDeviceKey()))
                     continue;
                 for (Entity se : d.entities) {
                     if (se.getIpv4Address() != null &&
@@ -675,7 +673,7 @@ entity.getLastSeenTimestamp().getTime());
     public Short[] getSwitchPortVlanIds(SwitchPort swp) {
         TreeSet<Short> vals = new TreeSet<Short>();
         for (Entity e : entities) {
-            if (e.switchDPID == swp.getSwitchDPID() 
+            if (e.switchDPID == swp.getSwitchDPID()
                     && e.switchPort == swp.getPort()) {
                 if (e.getVlan() == null)
                     vals.add(Ethernet.VLAN_UNTAGGED);
