@@ -418,7 +418,9 @@ public class Device implements IDevice {
         if (apMap == null || apMap.isEmpty()) {
             apList.add(newAP);
             attachmentPoints = apList;
-            return true;
+            // there are no old attachement points - we should not treat this
+            // as a device moved.
+            return false;
         }
 
         long id = topology.getL2DomainId(sw);

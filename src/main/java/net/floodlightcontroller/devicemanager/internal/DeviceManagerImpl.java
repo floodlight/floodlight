@@ -1036,6 +1036,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           (learnap ? (int)inPort : null),
                           new Date());
     }
+
     /**
      * Look up a {@link Device} based on the provided {@link Entity}. We first
      * check the primary index. If we do not find an entry there we classify
@@ -1106,7 +1107,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (deviceKey == null) return null;
         return deviceMap.get(deviceKey);
     }
-
 
     /**
      * Look up a {@link Device} within a particular entity class based on
@@ -1707,6 +1707,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return new Device(device, entity, insertionpoint);
     }
 
+    //not used
     protected Device allocateDevice(Device device, Set <Entity> entities) {
         List <AttachmentPoint> newPossibleAPs =
                 new ArrayList<AttachmentPoint>();
@@ -1737,7 +1738,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     // *********************
-    // IEntityClassListener
+    // ITopologyListener
     // *********************
 
     /**
