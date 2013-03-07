@@ -418,7 +418,7 @@ public class Device implements IDevice {
         if (apMap == null || apMap.isEmpty()) {
             apList.add(newAP);
             attachmentPoints = apList;
-            // there are no old attachement points - we should not treat this
+            // there are no old attachment points - we should not treat this
             // as a device moved.
             return false;
         }
