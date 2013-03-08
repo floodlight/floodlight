@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.core.test;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -361,4 +363,18 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         return null;
     }
 
+    @Override
+    public Map<String, Long> getMemory() {
+        Map<String, Long> m = new HashMap<String, Long>();
+        Runtime runtime = Runtime.getRuntime();
+        m.put("total", runtime.totalMemory());
+        m.put("free", runtime.freeMemory());
+        return m;
+    }
+
+    @Override
+    public Long getUptime() {
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getUptime();
+    }
 }
