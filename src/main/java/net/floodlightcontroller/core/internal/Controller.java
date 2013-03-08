@@ -19,6 +19,8 @@ package net.floodlightcontroller.core.internal;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
@@ -198,9 +200,6 @@ public class Controller implements IFloodlightProviderService,
     // A helper that handles sending and timeout handling for role requests
     protected RoleChanger roleChanger;
     protected SingletonTask roleChangeDamper;
-
-    // Start time of the controller
-    protected long systemStartTime;
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
     protected boolean alwaysClearFlowsOnSwAdd = false;
@@ -1791,7 +1790,6 @@ public class Controller implements IFloodlightProviderService,
         this.notifiedRole = this.role;
         this.roleChanger = new RoleChanger(this);
         initVendorMessages();
-        this.systemStartTime = System.currentTimeMillis();
 
         String option = configParams.get("flushSwitchesOnReconnect");
 
@@ -1972,7 +1970,8 @@ public class Controller implements IFloodlightProviderService,
 
     @Override
     public long getSystemStartTime() {
-        return (this.systemStartTime);
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getStartTime();
     }
 
     @Override
@@ -1982,6 +1981,21 @@ public class Controller implements IFloodlightProviderService,
 
     public boolean getAlwaysClearFlowsOnSwAdd() {
         return this.alwaysClearFlowsOnSwAdd;
+    }
+
+    @Override
+    public Map<String, Long> getMemory() {
+        Map<String, Long> m = new HashMap<String, Long>();
+        Runtime runtime = Runtime.getRuntime();
+        m.put("total", runtime.totalMemory());
+        m.put("free", runtime.freeMemory());
+        return m;
+    }
+
+    @Override
+    public Long getUptime() {
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getUptime();
     }
 
     @Override
