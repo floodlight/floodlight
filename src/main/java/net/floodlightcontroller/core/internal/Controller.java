@@ -1000,9 +1000,9 @@ public class Controller implements IFloodlightProviderService,
                     if (roleChanger.checkFirstPendingRoleRequestXid(
                             sw, error.getXid())) {
                         roleChanger.deliverRoleRequestError(sw, error);
-                    } else if (error.getErrorCode() ==
+                    } else if (error.getErrorType() ==
                             OFErrorType.OFPET_BAD_REQUEST.getValue() &&
-                            error.getErrorType() ==
+                            error.getErrorCode() ==
                             OFBadRequestCode.OFPBRC_EPERM.ordinal() &&
                             role.equals(Role.MASTER)) {
                         // We are the master and the switch returned permission
