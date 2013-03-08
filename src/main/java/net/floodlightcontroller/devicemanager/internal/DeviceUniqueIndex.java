@@ -1,7 +1,7 @@
 /**
-*    Copyright 2012 Big Switch Networks, Inc. 
+*    Copyright 2012 Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -31,7 +31,7 @@ public class DeviceUniqueIndex extends DeviceIndex {
     /**
      * The index
      */
-    private ConcurrentHashMap<IndexedEntity, Long> index;
+    private final ConcurrentHashMap<IndexedEntity, Long> index;
 
     /**
      * Construct a new device index using the provided key fields
@@ -51,10 +51,10 @@ public class DeviceUniqueIndex extends DeviceIndex {
         final Long deviceKey = findByEntity(entity);
         if (deviceKey != null)
             return Collections.<Long>singleton(deviceKey).iterator();
-        
+
         return Collections.<Long>emptySet().iterator();
     }
-    
+
     @Override
     public Iterator<Long> getAll() {
         return index.values().iterator();
@@ -68,15 +68,15 @@ public class DeviceUniqueIndex extends DeviceIndex {
 
             Long ret = index.putIfAbsent(ie, deviceKey);
             if (ret != null && !ret.equals(deviceKey)) {
-                // If the return value is non-null, then fail the insert 
-                // (this implies that a device using this entity has 
+                // If the return value is non-null, then fail the insert
+                // (this implies that a device using this entity has
                 // already been created in another thread).
                 return false;
             }
         }
         return true;
     }
-    
+
     @Override
     public void updateIndex(Entity entity, Long deviceKey) {
         IndexedEntity ie = new IndexedEntity(keyFields, entity);
