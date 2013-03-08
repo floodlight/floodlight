@@ -18,6 +18,9 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -71,6 +74,7 @@ import org.easymock.EasyMock;
 import org.jboss.netty.channel.Channel;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
+import org.openflow.protocol.OFError.OFBadRequestCode;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFMessage;
@@ -91,9 +95,11 @@ import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFFlowStatisticsReply;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.protocol.statistics.OFStatisticsType;
+import org.openflow.protocol.vendor.OFVendorData;
 import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorData;
 import org.openflow.vendor.nicira.OFRoleReplyVendorData;
+import org.openflow.vendor.nicira.OFRoleRequestVendorData;
 
 /**
  *
@@ -1112,8 +1118,39 @@ public class ControllerTest extends FloodlightTestCase
         ld.addListener(OFType.VENDOR, ml);
         chdlr.processOFMessage(msg);
     }
-    
-    
+
+    @Test
+    public void testErrorEPERM() throws Exception {
+        // Check behavior with a BAD_REQUEST/EPERM error
+        // Ensure controller attempts to reset switch role.
+        OFChannelState state = new OFChannelState();
+        state.hsState = HandshakeState.READY;
+        Controller.OFChannelHandler chdlr = controller.new OFChannelHandler(state);
+        OFError error = new OFError();
+        error.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        error.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        chdlr.sw = sw;
+        controller.activeSwitches.put(1L, sw);
+
+        // prepare the switch and lock expectations
+        Lock lock = createNiceMock(Lock.class);
+        expect(sw.getListenerReadLock()).andReturn(lock).anyTimes();
+        expect(sw.isConnected()).andReturn(true).anyTimes();
+        expect(sw.getHARole()).andReturn(Role.MASTER).anyTimes();
+        expect(sw.getId()).andReturn(1L).anyTimes();
+
+        // Make sure controller attempts to reset switch master
+        expect(sw.getAttribute("supportsNxRole")).andReturn(true).anyTimes();
+        expect(sw.getNextTransactionId()).andReturn(0).anyTimes();
+
+        // test
+        replay(sw, lock);
+        chdlr.processOFMessage(error);
+        // Verify there is a pending role change request
+        assertTrue(controller.roleChanger.pendingTasks.poll() != null);
+   }
+
     // Helper function.
     protected Controller.OFChannelHandler getChannelHandlerForRoleReplyTest() {
         OFChannelState state = new OFChannelState();
