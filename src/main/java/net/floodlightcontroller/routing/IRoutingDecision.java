@@ -54,4 +54,6 @@ public interface IRoutingDecision {
     public void setMulticastInterfaces(List<SwitchPort> lspt);
     public Integer getWildcards();
     public void setWildcards(Integer wildcards);
+    public short getHardTimeout();
+    public void setHardTimeout(short hardTimeout);
 }

@@ -29,6 +29,7 @@ public class RoutingDecision implements IRoutingDecision {
 
     protected RoutingAction action;
     protected Integer wildcards;
+    protected short hardTimeout;
     protected SwitchPort srcPort;
     protected IDevice srcDevice;
     protected List<IDevice> destDevices;
@@ -46,6 +47,7 @@ public class RoutingDecision implements IRoutingDecision {
                 Collections.synchronizedList(new ArrayList<SwitchPort>());
         this.action = action;
         this.wildcards = null;
+        this.hardTimeout = ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT;
     }
     
     @Override
@@ -100,6 +102,16 @@ public class RoutingDecision implements IRoutingDecision {
         this.wildcards = wildcards;
     }
    
+    @Override
+    public short getHardTimeout() {
+        return hardTimeout;
+    }
+
+    @Override
+    public void setHardTimeout(short hardTimeout) {
+        this.hardTimeout = hardTimeout;
+    }
+
     @Override
     public void addToContext(FloodlightContext cntx) {
         rtStore.put(cntx, IRoutingDecision.CONTEXT_DECISION, this);

@@ -794,7 +794,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (srcEntity == null)
             return Command.STOP;
 
-        // Learn from ARP packet.
+        // Learn from ARP packet for special VRRP settings.
         // In VRRP settings, the source MAC address and sender MAC
         // addresses can be different.  In such cases, we need to learn
         // the IP to MAC mapping of the VRRP IP address.  The source
@@ -1036,6 +1036,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           (learnap ? (int)inPort : null),
                           new Date());
     }
+
     /**
      * Look up a {@link Device} based on the provided {@link Entity}. We first
      * check the primary index. If we do not find an entry there we classify
@@ -1076,9 +1077,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * the given source device.  The source device is important since
      * there could be ambiguity in the destination device without the
      * attachment point information.
-     * @param source the source device.  The returned destination will be
-     * in the same entity class as the source.
-     * @param dstEntity the entity to look up
+     * @param reference  the source device's entity class.
+     *                   The returned destination will be
+     *                   in the same entity class as the source.
+     * @param dstEntity  the entity to look up
      * @return an {@link Device} or null if no device is found.
      */
     protected Device findDestByEntity(IEntityClass reference,
@@ -1106,7 +1108,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (deviceKey == null) return null;
         return deviceMap.get(deviceKey);
     }
-
 
     /**
      * Look up a {@link Device} within a particular entity class based on
@@ -1707,6 +1708,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return new Device(device, entity, insertionpoint);
     }
 
+    //not used
     protected Device allocateDevice(Device device, Set <Entity> entities) {
         List <AttachmentPoint> newPossibleAPs =
                 new ArrayList<AttachmentPoint>();
@@ -1737,7 +1739,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     // *********************
-    // IEntityClassListener
+    // ITopologyListener
     // *********************
 
     /**

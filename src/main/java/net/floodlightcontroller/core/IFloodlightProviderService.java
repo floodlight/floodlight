@@ -212,6 +212,17 @@ public interface IFloodlightProviderService extends
    public void setAlwaysClearFlowsOnSwAdd(boolean value);
    
    /**
+    * Get controller memory information
+    */
+   public Map<String, Long> getMemory();
+
+   /**
+    * returns the uptime of this controller.
+    * @return
+    */
+   public Long getUptime();
+   
+   /**
     * Adds an OFSwitch driver
     * @param desc The starting portion of switch's manufacturer string
     * @param driver The object implementing OFSwitchDriver interface
