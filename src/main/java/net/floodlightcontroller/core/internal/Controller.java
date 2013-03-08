@@ -19,11 +19,14 @@ package net.floodlightcontroller.core.internal;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -55,6 +58,7 @@ import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFSwitchBase;
+import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
@@ -176,13 +180,12 @@ public class Controller implements IFloodlightProviderService,
     // Configuration options
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
-    // The id for this controller node. Should be unique for each controller
-    // node in a controller cluster.
-    protected String controllerId = "localhost";
 
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
+    protected String lastRoleChangeDescription = "Inital role set during startup.";
+    protected Date roleChangeDateTime = new Date();
     // This is the role of the controller based on HARoleChange notifications
     // we have sent. I.e., this field reflects the last role notification
     // we have sent to the listeners. On a transition to slave we first set
@@ -191,13 +194,12 @@ public class Controller implements IFloodlightProviderService,
     // OF messages while the modules are in slave role. 
     // The pendingRole is a role change just received, but not sent out
     // notifications yet.
-    protected Role pendingRole;protected volatile Role notifiedRole;
+    protected Role pendingRole;
+    protected String pendRoleChangeDescription;
+    protected volatile Role notifiedRole;
     // A helper that handles sending and timeout handling for role requests
     protected RoleChanger roleChanger;
     protected SingletonTask roleChangeDamper;
-
-    // Start time of the controller
-    protected long systemStartTime;
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
     protected boolean alwaysClearFlowsOnSwAdd = false;
@@ -385,12 +387,20 @@ public class Controller implements IFloodlightProviderService,
     }
 
     @Override
-    public void setRole(Role role) {
+    public RoleInfo getRoleInfo() {
+        synchronized(roleChanger) {
+            return new RoleInfo(role, lastRoleChangeDescription, roleChangeDateTime);
+        }
+    }
+
+    @Override
+    public void setRole(Role role, String roleChangeDescription) {
         if (role == null) throw new NullPointerException("Role can not be null.");
 
         // If role is changed in quick succession for some reason,
         // the 2 second delay will dampen the frequency.
         this.pendingRole = role;
+        pendRoleChangeDescription = roleChangeDescription;
         roleChangeDamper.reschedule(2000, TimeUnit.MILLISECONDS);
     }
 
@@ -408,6 +418,9 @@ public class Controller implements IFloodlightProviderService,
 
             Role oldRole = this.role;
             this.role = pendingRole;
+            this.lastRoleChangeDescription = this.pendRoleChangeDescription;
+            this.pendRoleChangeDescription = null;
+            this.roleChangeDateTime = new Date();
 
             log.debug("Submitting role change request to role {}", role);
             roleChanger.submitRequest(connectedSwitches, role);
@@ -1586,22 +1599,9 @@ public class Controller implements IFloodlightProviderService,
         return factory;
     }
 
-    @Override
-    public String getControllerId() {
-        return controllerId;
-    }
-
     // **************
     // Initialization
     // **************
-
-    protected void updateControllerInfo() {
-        // Write out the controller info to the storage source
-        Map<String, Object> controllerInfo = new HashMap<String, Object>();
-        String id = getControllerId();
-        controllerInfo.put(CONTROLLER_ID, id);
-        storageSource.updateRow(CONTROLLER_TABLE_NAME, controllerInfo);
-    }
 
 
     /**
@@ -1755,11 +1755,7 @@ public class Controller implements IFloodlightProviderService,
             this.workerThreads = Integer.parseInt(threads);
         }
         log.debug("Number of worker threads set to {}", this.workerThreads);
-        String controllerId = configParams.get("controllerid");
-        if (controllerId != null) {
-            this.controllerId = controllerId;
-        }
-        log.debug("ControllerId set to {}", this.controllerId);
+        
     }
 
     private void initVendorMessages() {
@@ -1794,7 +1790,6 @@ public class Controller implements IFloodlightProviderService,
         this.notifiedRole = this.role;
         this.roleChanger = new RoleChanger(this);
         initVendorMessages();
-        this.systemStartTime = System.currentTimeMillis();
 
         String option = configParams.get("flushSwitchesOnReconnect");
 
@@ -1823,20 +1818,6 @@ public class Controller implements IFloodlightProviderService,
         storageSource.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
                                              CONTROLLER_ID);
         storageSource.addListener(CONTROLLER_INTERFACE_TABLE_NAME, this);
-
-        while (true) {
-            try {
-                updateControllerInfo();
-                break;
-            }
-            catch (StorageException e) {
-                log.info("Waiting for storage source");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                }
-            }
-        }
 
         // Startup load monitoring
         if (overload_drop) {
@@ -1989,7 +1970,8 @@ public class Controller implements IFloodlightProviderService,
 
     @Override
     public long getSystemStartTime() {
-        return (this.systemStartTime);
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getStartTime();
     }
 
     @Override
@@ -1999,6 +1981,21 @@ public class Controller implements IFloodlightProviderService,
 
     public boolean getAlwaysClearFlowsOnSwAdd() {
         return this.alwaysClearFlowsOnSwAdd;
+    }
+
+    @Override
+    public Map<String, Long> getMemory() {
+        Map<String, Long> m = new HashMap<String, Long>();
+        Runtime runtime = Runtime.getRuntime();
+        m.put("total", runtime.totalMemory());
+        m.put("free", runtime.freeMemory());
+        return m;
+    }
+
+    @Override
+    public Long getUptime() {
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getUptime();
     }
 
     @Override

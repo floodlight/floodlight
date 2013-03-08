@@ -19,7 +19,6 @@ package net.floodlightcontroller.topology;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +39,7 @@ import net.floodlightcontroller.routing.RouteId;
 import net.floodlightcontroller.util.LRUHashMap;
 
 /**
- * A representation of a network topology.  Used internally by 
+ * A representation of a network topology.  Used internally by
  * {@link TopologyManager}
  */
 @LogMessageCategory("Network Topology")
@@ -48,7 +47,7 @@ public class TopologyInstance {
 
     public static final short LT_SH_LINK = 1;
     public static final short LT_BD_LINK = 2;
-    public static final short LT_TUNNEL  = 3; 
+    public static final short LT_TUNNEL  = 3;
 
     public static final int MAX_LINK_WEIGHT = 10000;
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;
@@ -61,7 +60,7 @@ public class TopologyInstance {
      * switch ports may be provided at the time of instantiation. In addition,
      * we may add additional ports to this set.
      */
-    protected Set<NodePortTuple> blockedPorts;  
+    protected Set<NodePortTuple> blockedPorts;
     protected Map<NodePortTuple, Set<Link>> switchPortLinks; // Set of links organized by node port tuple
     /** Set of links that are blocked. */
     protected Set<Link> blockedLinks;
@@ -95,7 +94,7 @@ public class TopologyInstance {
     {
         this.switches = new HashSet<Long>(switchPorts.keySet());
         this.switchPorts = new HashMap<Long, Set<Short>>(switchPorts);
-        this.switchPortLinks = new HashMap<NodePortTuple, 
+        this.switchPortLinks = new HashMap<NodePortTuple,
                 Set<Link>>(switchPortLinks);
         this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
         this.tunnelPorts = new HashSet<NodePortTuple>();
@@ -121,7 +120,7 @@ public class TopologyInstance {
         this.blockedPorts = new HashSet<NodePortTuple>(blockedPorts);
         this.switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         for(NodePortTuple npt: switchPortLinks.keySet()) {
-            this.switchPortLinks.put(npt, 
+            this.switchPortLinks.put(npt,
                                      new HashSet<Link>(switchPortLinks.get(npt)));
         }
         this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
@@ -143,23 +142,19 @@ public class TopologyInstance {
         // Must ignore blocked links.
         identifyOpenflowDomains();
 
-        // Step 0: Remove all links connected to blocked ports.
-        // removeLinksOnBlockedPorts();
-
-
         // Step 1.1: Add links to clusters
         // Avoid adding blocked links to clusters
         addLinksToOpenflowDomains();
 
-        // Step 2. Compute shortest path trees in each cluster for 
+        // Step 2. Compute shortest path trees in each cluster for
         // unicast routing.  The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
         calculateShortestPathTreeInClusters();
 
         // Step 3. Compute broadcast tree in each cluster.
-        // Cost for tunnel links are high to discourage use of 
+        // Cost for tunnel links are high to discourage use of
         // tunnel links.  The cost is set to the number of nodes
-        // in the cluster + 1, to use as minimum number of 
+        // in the cluster + 1, to use as minimum number of
         // clusters as possible.
         calculateBroadcastNodePortsInClusters();
 
@@ -268,7 +263,6 @@ public class TopologyInstance {
      * @param currSet: Set of nodes in the current cluster in formation
      * @return long: DSF index to be used when a new node is visited
      */
-
     private long dfsTraverse (long parentIndex, long currIndex, long currSw,
                               Map<Long, ClusterDFS> dfsList, Set <Long> currSet) {
 
@@ -296,7 +290,7 @@ public class TopologyInstance {
                     // ignore incoming links.
                     if (dstSw == currSw) continue;
 
-                    // ignore if the destination is already added to 
+                    // ignore if the destination is already added to
                     // another cluster
                     if (switchClusterMap.get(dstSw) != null) continue;
 
@@ -359,41 +353,6 @@ public class TopologyInstance {
         return currIndex;
     }
 
-    /**
-     *  Go through every link and identify it is a blocked link or not.
-     *  If blocked, remove it from the switchport links and put them in the
-     *  blocked link category.
-     *
-     *  Note that we do not update the tunnel ports and broadcast domain 
-     *  port structures.  We need those to still answer the question if the
-     *  ports are tunnel or broadcast domain ports.
-     *
-     *  If we add additional ports to blocked ports later on, we may simply
-     *  call this method again to remove the links on the newly blocked ports.
-     */
-    protected void removeLinksOnBlockedPorts() {
-        Iterator<NodePortTuple> nptIter;
-        Iterator<Link> linkIter;
-
-        // Iterate through all the links and all the switch ports
-        // and move the links on blocked switch ports to blocked links
-        nptIter = this.switchPortLinks.keySet().iterator();
-        while (nptIter.hasNext()) {
-            NodePortTuple npt = nptIter.next();
-            linkIter = switchPortLinks.get(npt).iterator();
-            while (linkIter.hasNext()) {
-                Link link = linkIter.next();
-                if (isBlockedLink(link)) {
-                    this.blockedLinks.add(link);
-                    linkIter.remove();
-                }
-            }
-            // Note that at this point, the switchport may have
-            // no links in it.  We could delete the switch port, 
-            // but we will leave it as is.
-        }
-    }
-
     public Set<NodePortTuple> getBlockedPorts() {
         return this.blockedPorts;
     }
@@ -402,7 +361,7 @@ public class TopologyInstance {
         return this.blockedLinks;
     }
 
-    /** Returns true if a link has either one of its switch ports 
+    /** Returns true if a link has either one of its switch ports
      * blocked.
      * @param l
      * @return
@@ -438,12 +397,12 @@ public class TopologyInstance {
     }
 
     protected class NodeDist implements Comparable<NodeDist> {
-        private Long node;
+        private final Long node;
         public Long getNode() {
             return node;
         }
 
-        private int dist; 
+        private final int dist;
         public int getDist() {
             return dist;
         }
@@ -453,6 +412,7 @@ public class TopologyInstance {
             this.dist = dist;
         }
 
+        @Override
         public int compareTo(NodeDist o) {
             if (o.dist == this.dist) {
                 return (int)(this.node - o.node);
@@ -490,7 +450,7 @@ public class TopologyInstance {
         }
     }
 
-    protected BroadcastTree dijkstra(Cluster c, Long root, 
+    protected BroadcastTree dijkstra(Cluster c, Long root,
                                      Map<Link, Integer> linkCost,
                                      boolean isDstRooted) {
         HashMap<Long, Link> nexthoplinks = new HashMap<Long, Link>();
@@ -642,7 +602,7 @@ public class TopologyInstance {
         // else, no path exists, and path equals null
 
         Route result = null;
-        if (switchPorts != null && !switchPorts.isEmpty()) 
+        if (switchPorts != null && !switchPorts.isEmpty())
             result = new Route(id, switchPorts);
         if (log.isTraceEnabled()) {
             log.trace("buildroute: {}", result);
@@ -656,7 +616,7 @@ public class TopologyInstance {
         return (bt.getCost(srcId));
     }
 
-    /* 
+    /*
      * Getter Functions
      */
 
@@ -723,9 +683,9 @@ public class TopologyInstance {
         return clusterBroadcastTrees.get(c.id);
     }
 
-    // 
+    //
     //  ITopologyService interface method helpers.
-    // 
+    //
 
     protected boolean isInternalToOpenflowDomain(long switchid, short port) {
         return !isAttachmentPointPort(switchid, port);
@@ -811,7 +771,7 @@ public class TopologyInstance {
 
     public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort) {
-        // Use this function to reinject traffic from a 
+        // Use this function to reinject traffic from a
         // different port if needed.
         return new NodePortTuple(src, srcPort);
     }

@@ -46,6 +46,7 @@ import net.floodlightcontroller.storage.web.StorageWebRoutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 @LogMessageCategory("System Database")
 public abstract class AbstractStorageSource 
     implements IStorageSourceService, IFloodlightModule {
@@ -460,6 +461,9 @@ public abstract class AbstractStorageSource
             		" storage listeners",
             recommendation=LogMessageDoc.GENERIC_ACTION)
     protected synchronized void notifyListeners(StorageSourceNotification notification) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("Notifying storage listeneres: {}", notification);
+        }
         String tableName = notification.getTableName();
         Set<Object> keys = notification.getKeys();
         Set<IStorageSourceListener> tableListeners = listeners.get(tableName);

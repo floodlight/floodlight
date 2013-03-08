@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -27,6 +27,9 @@ public class ICMP extends BasePacket {
     protected byte icmpType;
     protected byte icmpCode;
     protected short checksum;
+
+    public static final byte ECHO_REPLY = 0x0;
+    public static final byte ECHO_REQUEST = 0x8;
 
     /**
      * @return the icmpType
@@ -79,6 +82,7 @@ public class ICMP extends BasePacket {
      *      -checksum : 0
      *      -length : 0
      */
+    @Override
     public byte[] serialize() {
         int length = 4;
         byte[] payloadData = null;
@@ -161,7 +165,7 @@ public class ICMP extends BasePacket {
         this.icmpType = bb.get();
         this.icmpCode = bb.get();
         this.checksum = bb.getShort();
-        
+
         this.payload = new Data();
         this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         this.payload.setParent(this);
