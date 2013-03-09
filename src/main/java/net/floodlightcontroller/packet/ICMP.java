@@ -18,6 +18,8 @@
 package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Implements ICMP packet format
@@ -28,8 +30,23 @@ public class ICMP extends BasePacket {
     protected byte icmpCode;
     protected short checksum;
 
+    // The value is the number of bytes of padding
+    public static final Map<Byte, Short> paddingMap;
+
     public static final byte ECHO_REPLY = 0x0;
     public static final byte ECHO_REQUEST = 0x8;
+    public static final byte TIME_EXCEEDED = 0xB;
+    public static final byte DESTINATION_UNREACHABLE = 0x3;
+
+    public static final byte CODE_PORT_UNREACHABLE = 0x3;
+
+    static {
+        paddingMap = new HashMap<Byte, Short>();
+        ICMP.paddingMap.put(ICMP.ECHO_REPLY, (short) 0);
+        ICMP.paddingMap.put(ICMP.ECHO_REQUEST, (short) 0);
+        ICMP.paddingMap.put(ICMP.TIME_EXCEEDED, (short) 4);
+        ICMP.paddingMap.put(ICMP.DESTINATION_UNREACHABLE, (short) 4);
+    }
 
     /**
      * @return the icmpType
@@ -84,7 +101,11 @@ public class ICMP extends BasePacket {
      */
     @Override
     public byte[] serialize() {
-        int length = 4;
+        short padding = 0;
+        if (paddingMap.containsKey(this.icmpType))
+            padding = paddingMap.get(this.icmpType);
+
+        int length = 4 + padding;
         byte[] payloadData = null;
         if (payload != null) {
             payload.setParent(this);
@@ -98,6 +119,9 @@ public class ICMP extends BasePacket {
         bb.put(this.icmpType);
         bb.put(this.icmpCode);
         bb.putShort(this.checksum);
+        for (int i = 0; i < padding; i++)
+            bb.put((byte) 0);
+
         if (payloadData != null)
             bb.put(payloadData);
 
@@ -165,6 +189,12 @@ public class ICMP extends BasePacket {
         this.icmpType = bb.get();
         this.icmpCode = bb.get();
         this.checksum = bb.getShort();
+
+        short padding = 0;
+        if (paddingMap.containsKey(this.icmpType))
+            padding = paddingMap.get(this.icmpType);
+
+        bb.position(bb.position() + padding);
 
         this.payload = new Data();
         this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
