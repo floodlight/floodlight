@@ -184,7 +184,7 @@ public class Controller implements IFloodlightProviderService,
     // The current role of the controller.
     // If the controller isn't configured to support roles, then this is null.
     protected Role role;
-    protected String lastRoleChangeDescription = "Inital role set during startup.";
+    protected String lastRoleChangeDescription = "Controller startup.";
     protected Date roleChangeDateTime = new Date();
     // This is the role of the controller based on HARoleChange notifications
     // we have sent. I.e., this field reflects the last role notification
