@@ -20,7 +20,7 @@ package net.floodlightcontroller.devicemanager;
 import java.util.Set;
 
 /**
- * Implementors of this interface can receive updates from DeviceManager about
+ * Implementors of this interface can receive updates from the Entity Classifier about
  * the changes to entity Classes.
  *
  * @author Ananth Suryanarayana (Ananth.Suryanarayana@bigswitch.com)
