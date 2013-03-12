@@ -567,8 +567,10 @@ public class TopologyInstance {
         }
     }
 
-    protected Route buildroute(RouteId id, long srcId, long dstId) {
+    protected Route buildroute(RouteId id) {
         NodePortTuple npt;
+        long srcId = id.getSrc();
+        long dstId = id.getDst();
 
         LinkedList<NodePortTuple> switchPorts =
                 new LinkedList<NodePortTuple>();
@@ -668,7 +670,7 @@ public class TopologyInstance {
         if (pathcache.containsKey(id)) {
             result = pathcache.get(id);
         } else {
-            result = buildroute(id, srcId, dstId);
+            result = buildroute(id);
             pathcache.put(id, result);
         }
         if (log.isTraceEnabled()) {
