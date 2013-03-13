@@ -16,7 +16,9 @@
 
 package net.floodlightcontroller.core;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
@@ -64,7 +66,11 @@ public class RoleInfo {
     }
     @JsonProperty(value="change-date-time")
     public String getRoleChangeDateTime() {
-        return roleChangeDateTime == null ? "" : roleChangeDateTime.toString();
+        SimpleDateFormat formatter =
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return roleChangeDateTime == null ?
+                  "" : formatter.format(roleChangeDateTime);
     }
 
 }
