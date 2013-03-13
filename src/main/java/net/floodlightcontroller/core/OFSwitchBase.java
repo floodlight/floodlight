@@ -511,9 +511,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
             .setOutPort(OFPort.OFPP_NONE)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
         fm.setXid(getNextTransactionId());
-        OFMessage barrierMsg = (OFBarrierRequest) 
-        		floodlightProvider.getOFMessageFactory().getMessage(
-        				OFType.BARRIER_REQUEST);
+        OFMessage barrierMsg = (OFBarrierRequest)
+                floodlightProvider.getOFMessageFactory().getMessage(
+                        OFType.BARRIER_REQUEST);
         barrierMsg.setXid(getNextTransactionId());
         try {
             List<OFMessage> msglist = new ArrayList<OFMessage>(1);
