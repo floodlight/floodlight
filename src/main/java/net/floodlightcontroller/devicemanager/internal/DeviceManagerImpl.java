@@ -1239,9 +1239,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                             device.getEntityClass().getName(), entity);
                 return null;
             }
-            // If this is an internal port we don't learn the new entity
-            // and don't update indexes. We only learn on attachment point
-            // ports.
+            // If this is not an attachment point port we don't learn the new entity
+            // and don't update indexes. But we do allow the device to continue up
+            // the chain.
             if (entity.hasSwitchPort() &&
                     !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {

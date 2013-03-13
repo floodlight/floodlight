@@ -250,7 +250,7 @@ public class TopologyManager implements
     public boolean isAttachmentPointPort(long switchid, short port,
                                          boolean tunnelEnabled) {
 
-        // If the switch port is a tunnel endpoint, it is not
+        // If the switch port is 'tun-bsn' port, it is not
         // an attachment point port, irrespective of whether
         // a link is found through it or not.
         if (linkDiscovery.isTunnelPort(switchid, port))

@@ -639,7 +639,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             // broadcast the packet as a regular packet (after checking IDs)
             if (isStandard) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Got a standard LLDP=[{}]. Not fowarding it.", lldp.toString());
+                    log.trace("Got a standard LLDP=[{}] that was not sent by" +
+                              " this controller. Not fowarding it.", lldp.toString());
                 }
                 return Command.STOP;
             } else if (myId < otherId) {
