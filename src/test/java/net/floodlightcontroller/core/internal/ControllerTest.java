@@ -1138,12 +1138,14 @@ public class ControllerTest extends FloodlightTestCase
         // Make sure controller attempts to reset switch master
         expect(sw.getAttribute("supportsNxRole")).andReturn(true).anyTimes();
         expect(sw.getNextTransactionId()).andReturn(0).anyTimes();
+        sw.write(EasyMock.<List<OFMessage>> anyObject(),
+                 (FloodlightContext)anyObject());
 
         // test
         replay(sw, lock);
         chdlr.processOFMessage(error);
         // Verify there is a pending role change request
-        assertTrue(controller.roleChanger.pendingTasks.poll() != null);
+        assertTrue(controller.roleChanger.pendingTasks.peek() != null);
    }
 
     // Helper function.
