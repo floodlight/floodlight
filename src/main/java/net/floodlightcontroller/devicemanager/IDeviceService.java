@@ -52,6 +52,12 @@ public interface IDeviceService extends IFloodlightService {
             "net.floodlightcontroller.devicemanager.dstDevice"; 
 
     /**
+     * The original destination device for the current packet-in
+     */
+    public static final String CONTEXT_ORIG_DST_DEVICE =
+            "net.floodlightcontroller.devicemanager.origDstDevice";
+
+    /**
      * A FloodlightContextStore object that can be used to interact with the 
      * FloodlightContext information created by BVS manager.
      */
