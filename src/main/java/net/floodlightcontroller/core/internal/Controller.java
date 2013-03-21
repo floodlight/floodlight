@@ -1248,7 +1248,10 @@ public class Controller implements IFloodlightProviderService,
                     }
                     pktinProcTime.recordEndTimePktIn(sw, m, bc);
                 } else {
-                    log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    if (m.getType() != OFType.BARRIER_REPLY) 
+                        log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    else 
+                        log.debug("Received a Barrier Reply, no listeners for it");
                 }
 
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
