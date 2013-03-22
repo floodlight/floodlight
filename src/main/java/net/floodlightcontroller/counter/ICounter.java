@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -28,46 +28,37 @@ import java.util.Date;
  *
  */
 public interface ICounter {
-  
+
   /**
    * Most commonly used method
    */
   public void increment();
-  
+
   /**
    * Used primarily for flushing thread local updates
    */
   public void increment(Date d, long delta);
-  
+
   /**
    * Counter value setter
    */
   public void setCounter(Date d, CounterValue value);
-  
+
   /**
    * Return the most current value
    */
   public Date getCounterDate();
-  
+
   /**
    * Return the most current value
    */
   public CounterValue getCounterValue();
-  
+
   /**
    * Reset the value
    */
   public void reset(Date d);
-  
-  /**
-   * Returns a CountSeries that is a snapshot of the counter's values for the given dateSpan.  (Further changes
-   * to this counter won't be reflected in the CountSeries that comes  back.)
-   * 
-   * @param dateSpan
-   * @return
-   */
-  public CountSeries snapshot(DateSpan dateSpan);
-  
+
 
   public static enum DateSpan {
     REALTIME,

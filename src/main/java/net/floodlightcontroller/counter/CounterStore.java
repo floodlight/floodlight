@@ -1,7 +1,7 @@
 /**
- *    Copyright 2011, Big Switch Networks, Inc. 
+ *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
- * 
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
@@ -27,11 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -46,11 +41,6 @@ import org.openflow.protocol.OFPacketIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-/**
- * @author kyle
- *
- */
 public class CounterStore implements IFloodlightModule, ICounterStoreService {
     protected static Logger log = LoggerFactory.getLogger(CounterStore.class);
 
@@ -70,69 +60,104 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
           public void set(int val) { value = val; }
         }
 
+    protected class CounterKeyTuple {
+        byte msgType;
+        long dpid;
+        short l3type;
+        byte l4type;
+
+        public CounterKeyTuple(byte msgType, long dpid, short l3type, byte l4type){
+            this.msgType = msgType;
+            this.dpid = dpid;
+            this.l3type = l3type;
+            this.l4type = l4type;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (!(obj instanceof CounterKeyTuple)) return false;
+            CounterKeyTuple other = (CounterKeyTuple) obj;
+            if (this.msgType == other.msgType &&
+                this.dpid == other.dpid &&
+                this.l3type == other.l3type &&
+                this.l4type == other.l4type)
+                    return true;
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 283;
+            int result = 1;
+            result = prime * result + msgType;
+            result = prime * result + (int) (dpid ^ (dpid >>> 32));
+            result = prime * result + l3type;
+            result = prime * result + l4type;
+            return result;
+        }
+    }
+
     /**
-     * A map of counterName --> Counter
+     * Counter storage across all threads. These are periodically updated from the
+     * local per thread counters by the updateFlush method.
      */
-    protected ConcurrentHashMap<String, CounterEntry> nameToCEIndex = 
+    protected ConcurrentHashMap<CounterKeyTuple, List<ICounter>>
+        pktinCounters = new ConcurrentHashMap<CounterKeyTuple, List<ICounter>>();
+    protected ConcurrentHashMap<CounterKeyTuple, List<ICounter>>
+        pktoutCounters = new ConcurrentHashMap<CounterKeyTuple, List<ICounter>>();
+
+    /**
+     * Thread local counter stores
+     */
+    protected final ThreadLocal<Map<CounterKeyTuple,MutableInt>> pktin_local_buffer =
+        new ThreadLocal<Map<CounterKeyTuple,MutableInt>>() {
+        @Override
+        protected Map<CounterKeyTuple,MutableInt> initialValue() {
+            return new HashMap<CounterKeyTuple,MutableInt>();
+        }
+    };
+
+    protected final ThreadLocal<Map<CounterKeyTuple,MutableInt>> pktout_local_buffer =
+        new ThreadLocal<Map<CounterKeyTuple,MutableInt>>() {
+        @Override
+        protected Map<CounterKeyTuple,MutableInt> initialValue() {
+            return new HashMap<CounterKeyTuple,MutableInt>();
+        }
+    };
+
+    /**
+     * A cache of counterName --> Counter used to retrieve counters quickly via
+     * string-counter-keys
+     */
+    protected ConcurrentHashMap<String, CounterEntry> nameToCEIndex =
             new ConcurrentHashMap<String, CounterEntry>();
 
-    protected ICounter heartbeatCounter;
-    protected ICounter randomCounter;
-
-    protected ConcurrentHashMap<String, List<ICounter>>
-        pktinCounters = new ConcurrentHashMap<String, List<ICounter>>();
-    protected ConcurrentHashMap<String, List<ICounter>>
-        pktoutCounters = new ConcurrentHashMap<String, List<ICounter>>();
-
-    protected final ThreadLocal<Map<String,MutableInt>> pktin_local_buffer =
-        new ThreadLocal<Map<String,MutableInt>>() {
-        @Override
-        protected Map<String,MutableInt> initialValue() {
-            return new HashMap<String,MutableInt>();
-        }
-    };
-    protected final ThreadLocal<Map<String,MutableInt>> pktout_local_buffer =
-        new ThreadLocal<Map<String,MutableInt>>() {
-        @Override
-        protected Map<String,MutableInt> initialValue() {
-            return new HashMap<String,MutableInt>();
-        }
-    };
 
 
     /**
      * Counter Categories grouped by network layers
      * NetworkLayer -> CounterToCategories
      */
-    protected static Map<NetworkLayer, Map<String, List<String>>> layeredCategories = 
+    protected static Map<NetworkLayer, Map<String, List<String>>> layeredCategories =
             new ConcurrentHashMap<NetworkLayer, Map<String, List<String>>> ();
 
-    public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        if (((OFPacketIn)m).getPacketData().length <= 0) {
-            return;
-        }
-
-        List<ICounter> counters = this.getPacketInCounters(sw, m, eth);
-        if (counters != null) {
-            for (ICounter c : counters) {
-                c.increment();
-            }
-        }
-        return;
-    }
+    //*******************************
+    //   ICounterStoreService
+    //*******************************
 
     @Override
     public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
         if (((OFPacketIn)m).getPacketData().length <= 0) {
             return;
         }
-
-        String countersKey = this.getCountersKey(sw, m, eth);
-        Map<String, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
+        CounterKeyTuple countersKey = this.getCountersKey(sw, m, eth);
+        Map<CounterKeyTuple, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
         MutableInt currval = pktin_buffer.get(countersKey);
 
-        if ( currval == null ) {
-            this.getPacketInCounters(sw, m, eth); // create counters as side effect (if required)
+        if (currval == null) {
+            this.createPacketInCounters(sw, m, eth); // create counters as side effect (if required)
             currval = new MutableInt();
             pktin_buffer.put(countersKey, currval);
         }
@@ -140,30 +165,13 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         return;
     }
 
-    /**
-     * This method can only be used to update packetOut and flowmod counters
-     *  NOTE: flowmod is counted per switch and for controller, not per port/proto
-     *
-     * @param sw
-     * @param m
-     */
-    public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage m) {
-        List<ICounter> counters = this.getPktOutFMCounters(sw, m);
-        if (counters != null) {
-            for (ICounter c : counters) {
-                c.increment();
-            }
-        }
-        return;
-    }
-
     @Override
     public void updatePktOutFMCounterStoreLocal(IOFSwitch sw, OFMessage m) {
-        String countersKey = this.getCountersKey(sw, m, null);
-        Map<String, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
+        CounterKeyTuple countersKey = this.getCountersKey(sw, m, null);
+        Map<CounterKeyTuple, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
         MutableInt currval = pktout_buffer.get(countersKey);
 
-        if ( currval == null ) {
+        if (currval == null) {
             this.getPktOutFMCounters(sw, m); // create counters as side effect (if required)
             currval = new MutableInt();
             pktout_buffer.put(countersKey, currval);
@@ -175,8 +183,8 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     @Override
     public void updateFlush() {
         Date date = new Date();
-        Map<String, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
-        for (String key : pktin_buffer.keySet()) {
+        Map<CounterKeyTuple, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
+        for (CounterKeyTuple key : pktin_buffer.keySet()) {
                 MutableInt currval = pktin_buffer.get(key);
                 int delta = currval.get();
 
@@ -192,8 +200,8 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         // We could do better "GC" of counters that have not been update "recently"
         pktin_buffer.clear();
 
-        Map<String, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
-        for (String key : pktout_buffer.keySet()) {
+        Map<CounterKeyTuple, MutableInt> pktout_buffer = this.pktout_local_buffer.get();
+        for (CounterKeyTuple key : pktout_buffer.keySet()) {
                 MutableInt currval = pktout_buffer.get(key);
                 int delta = currval.get();
 
@@ -210,56 +218,119 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         pktout_buffer.clear();
     }
 
-    protected String getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
+    @Override
+    public ICounter createCounter(String key, CounterValue.CounterType type) {
+        CounterEntry ce;
+        ICounter c;
+
+        c = SimpleCounter.createCounter(new Date(), type);
+        ce = new CounterEntry();
+        ce.counter = c;
+        ce.title = key;
+        nameToCEIndex.putIfAbsent(key, ce);
+
+        return nameToCEIndex.get(key).counter;
+    }
+
+    @Override
+    public ICounter getCounter(String key) {
+        CounterEntry counter = nameToCEIndex.get(key);
+        if (counter != null) {
+            return counter.counter;
+        } else {
+            return null;
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see net.floodlightcontroller.counter.ICounterStoreService#getAll()
+     */
+    @Override
+    public Map<String, ICounter> getAll() {
+        Map<String, ICounter> ret = new ConcurrentHashMap<String, ICounter>();
+        for(Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
+            String key = counterEntry.getKey();
+            ICounter counter = counterEntry.getValue().counter;
+            ret.put(key, counter);
+        }
+        return ret;
+    }
+
+    @Override
+    public List<String> getAllCategories(String counterName, NetworkLayer layer) {
+        if (layeredCategories.containsKey(layer)) {
+            Map<String, List<String>> counterToCategories = layeredCategories.get(layer);
+            if (counterToCategories.containsKey(counterName)) {
+                return counterToCategories.get(counterName);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create a title based on switch ID, portID, vlanID, and counterName
+     * If portID is -1, the title represents the given switch only
+     * If portID is a non-negative number, the title represents the port on the given switch
+     */
+    public static String createCounterName(String switchID, int portID, String counterName) {
+        if (portID < 0) {
+            return switchID + TitleDelimitor + counterName;
+        } else {
+            return switchID + TitleDelimitor + portID + TitleDelimitor + counterName;
+        }
+    }
+
+    //*******************************
+    //   Internal Methods
+    //*******************************
+
+    protected void printAllKeys() {
+
+        for (Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
+            log.info("concurrenthashmapkeys: {}", counterEntry.getKey());
+        }
+
+        for (CounterKeyTuple ctr : pktinCounters.keySet()) {
+            log.info("pktinglobalkeys: {}", ctr);
+        }
+
+        Map<CounterKeyTuple, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
+        for (CounterKeyTuple key : pktin_buffer.keySet()) {
+            log.info("localbufferkeys: {}", key);
+        }
+        log.info("done");
+    }
+
+    protected CounterKeyTuple getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
         byte mtype = m.getType().getTypeValue();
-        //long swid = sw.getId();
-        String swsid = sw.getStringId();
-        short port = 0;
         short l3type = 0;
         byte l4type = 0;
-        
+
         if (eth != null) {
-            // Packet in counters
-            // Need port and protocol level differentiation
-            OFPacketIn packet = (OFPacketIn)m;
-            port = packet.getInPort();
             l3type = eth.getEtherType();
             if (l3type == (short)0x0800) {
                 IPv4 ipV4 = (IPv4)eth.getPayload();
                 l4type = ipV4.getProtocol();
             }
         }
-
-        /* If possible, find and return counters for this tuple
-         *
-         * NOTE: this can be converted to a tuple for better performance,
-         * for now we are using a string representation as a the key
-         */
-        String countersKey =
-            Byte.toString(mtype) + "-" +
-            swsid + "-" + Short.toString(port) + "-" +
-            Short.toString(l3type) + "-" +
-            Byte.toString(l4type);
-        return countersKey;
+        return new CounterKeyTuple(mtype, sw.getId(), l3type, l4type);
     }
 
-    protected List<ICounter> getPacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
+    protected List<ICounter> createPacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
         /* If possible, find and return counters for this tuple */
-        String countersKey = this.getCountersKey(sw, m, eth);
+        CounterKeyTuple countersKey = this.getCountersKey(sw, m, eth);
         List<ICounter> counters =
                 this.pktinCounters.get(countersKey);
         if (counters != null) {
                 return counters;
         }
-        
+
         /*
          *  Create the required counters
          */
         counters = new ArrayList<ICounter>();
 
-        /* values for names */
-        short port = ((OFPacketIn)m).getInPort();
-        short l3type = eth.getEtherType();
+        int l3type = eth.getEtherType() & 0xffff;
         String switchIdHex = sw.getStringId();
         String etherType = String.format("%04x", eth.getEtherType());
         String packetName = m.getType().toClass().getName();
@@ -285,14 +356,14 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         if (l3type < 0x0600) {
             etherType = "0599";
         }
-        if (TypeAliases.l3TypeAliasMap != null && 
+        if (TypeAliases.l3TypeAliasMap != null &&
             TypeAliases.l3TypeAliasMap.containsKey(etherType)) {
             etherType = TypeAliases.l3TypeAliasMap.get(etherType);
         }
         else {
             etherType = "L3_" + etherType;
         }
-   
+
         // overall controller packet counter names
         String controllerCounterName =
             CounterStore.createCounterName(
@@ -308,14 +379,6 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
                 -1,
                 packetName);
         counters.add(createCounter(switchCounterName,
-                                   CounterType.LONG));
-
-        String portCounterName =
-            CounterStore.createCounterName(
-                switchIdHex,
-                port,
-                packetName);
-        counters.add(createCounter(portCounterName,
                                    CounterType.LONG));
 
         // L2 counter names
@@ -339,16 +402,6 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             counters.add(createCounter(switchL2CategoryCounterName,
                                        CounterType.LONG));
 
-            String portL2CategoryCounterName =
-                CounterStore.createCounterName(
-                    switchIdHex,
-                    port,
-                    packetName,
-                    l2Type,
-                    NetworkLayer.L2);
-            counters.add(createCounter(portL2CategoryCounterName,
-                                       CounterType.LONG));
-
         // L3 counter names
             String controllerL3CategoryCounterName =
                 CounterStore.createCounterName(
@@ -370,23 +423,13 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             counters.add(createCounter(switchL3CategoryCounterName,
                                        CounterType.LONG));
 
-            String portL3CategoryCounterName =
-                CounterStore.createCounterName(
-                    switchIdHex,
-                    port,
-                    packetName,
-                    etherType,
-                    NetworkLayer.L3);
-            counters.add(createCounter(portL3CategoryCounterName,
-                                       CounterType.LONG));
-
         // L4 counters
         if (l3type == (short)0x0800) {
 
             // resolve protocol alias
             IPv4 ipV4 = (IPv4)eth.getPayload();
             String l4name = String.format("%02x", ipV4.getProtocol());
-            if (TypeAliases.l4TypeAliasMap != null && 
+            if (TypeAliases.l4TypeAliasMap != null &&
                 TypeAliases.l4TypeAliasMap.containsKey(l4name)) {
                 l4name = TypeAliases.l4TypeAliasMap.get(l4name);
             }
@@ -415,25 +458,16 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             counters.add(createCounter(switchL4CategoryCounterName,
                                        CounterType.LONG));
 
-            String portL4CategoryCounterName =
-                CounterStore.createCounterName(
-                    switchIdHex,
-                    port,
-                    packetName,
-                    l4name,
-                    NetworkLayer.L4);
-            counters.add(createCounter(portL4CategoryCounterName,
-                                       CounterType.LONG));
         }
 
         /* Add to map and return */
         this.pktinCounters.putIfAbsent(countersKey, counters);
         return this.pktinCounters.get(countersKey);
     }
-    
+
     protected List<ICounter> getPktOutFMCounters(IOFSwitch sw, OFMessage m) {
         /* If possible, find and return counters for this tuple */
-        String countersKey = this.getCountersKey(sw, m, null);
+        CounterKeyTuple countersKey = this.getCountersKey(sw, m, null);
         List<ICounter> counters =
             this.pktoutCounters.get(countersKey);
         if (counters != null) {
@@ -473,25 +507,12 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     }
 
     /**
-     * Create a title based on switch ID, portID, vlanID, and counterName
-     * If portID is -1, the title represents the given switch only
-     * If portID is a non-negative number, the title represents the port on the given switch
-     */
-    public static String createCounterName(String switchID, int portID, String counterName) {
-        if (portID < 0) {
-            return switchID + TitleDelimitor + counterName;
-        } else {
-            return switchID + TitleDelimitor + portID + TitleDelimitor + counterName;
-        }
-    }
-
-    /**
      * Create a title based on switch ID, portID, vlanID, counterName, and subCategory
      * If portID is -1, the title represents the given switch only
      * If portID is a non-negative number, the title represents the port on the given switch
      * For example: PacketIns can be further categorized based on L2 etherType or L3 protocol
      */
-    public static String createCounterName(String switchID, int portID, String counterName,
+    protected static String createCounterName(String switchID, int portID, String counterName,
             String subCategory, NetworkLayer layer) {
         String fullCounterName = "";
         String groupCounterName = "";
@@ -504,7 +525,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
             fullCounterName = groupCounterName + TitleDelimitor + subCategory;
         }
 
-        Map<String, List<String>> counterToCategories;      
+        Map<String, List<String>> counterToCategories;
         if (layeredCategories.containsKey(layer)) {
             counterToCategories = layeredCategories.get(layer);
         } else {
@@ -526,69 +547,9 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         return fullCounterName;
     }
 
-    @Override
-    public List<String> getAllCategories(String counterName, NetworkLayer layer) {
-        if (layeredCategories.containsKey(layer)) {
-            Map<String, List<String>> counterToCategories = layeredCategories.get(layer);
-            if (counterToCategories.containsKey(counterName)) {
-                return counterToCategories.get(counterName);
-            }
-        }
-        return null;
-    }
-    
-    @Override
-    public ICounter createCounter(String key, CounterValue.CounterType type) {
-        CounterEntry ce;
-        ICounter c;
-
-        c = SimpleCounter.createCounter(new Date(), type);
-        ce = new CounterEntry();
-        ce.counter = c;
-        ce.title = key;
-        nameToCEIndex.putIfAbsent(key, ce);
-        
-        return nameToCEIndex.get(key).counter;
-    }
-
-    /**
-     * Post construction init method to kick off the health check and random (test) counter threads
-     */
-    @PostConstruct
-    public void startUp() {
-        this.heartbeatCounter = this.createCounter("CounterStore heartbeat", CounterValue.CounterType.LONG);
-        this.randomCounter = this.createCounter("CounterStore random", CounterValue.CounterType.LONG);
-        //Set a background thread to flush any liveCounters every 100 milliseconds
-        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new Runnable() {
-            public void run() {
-                heartbeatCounter.increment();
-                randomCounter.increment(new Date(), (long) (Math.random() * 100)); //TODO - pull this in to random timing
-            }}, 100, 100, TimeUnit.MILLISECONDS);
-    }
-    
-    @Override
-    public ICounter getCounter(String key) {
-        CounterEntry counter = nameToCEIndex.get(key);
-        if (counter != null) {
-            return counter.counter;
-        } else {
-            return null;
-        }
-    }
-
-    /* (non-Javadoc)
-     * @see net.floodlightcontroller.counter.ICounterStoreService#getAll()
-     */
-    @Override
-    public Map<String, ICounter> getAll() {
-        Map<String, ICounter> ret = new ConcurrentHashMap<String, ICounter>();
-        for(Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
-            String key = counterEntry.getKey();
-            ICounter counter = counterEntry.getValue().counter;
-            ret.put(key, counter);
-        }
-        return ret;
-    }
+    //*******************************
+    //   IFloodlightProvider
+    //*******************************
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -602,7 +563,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                     IFloodlightService>();
         m.put(ICounterStoreService.class, this);
@@ -625,4 +586,5 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     public void startUp(FloodlightModuleContext context) {
         // no-op for now
     }
+
 }
