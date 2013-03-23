@@ -26,6 +26,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
  *
@@ -334,6 +336,11 @@ public class IPv4 extends BasePacket {
         return data;
     }
 
+    @LogMessageDoc(level="INFO",
+            message="IP fragment detected",
+            explanation="Packet in is an IP fragment. Controller forwards " +
+                    "it using IP header only. Transport headers are ignored.",
+            recommendation=LogMessageDoc.GENERIC_ACTION)
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
@@ -361,7 +368,8 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        if (IPv4.protocolClassMap.containsKey(this.protocol)) {
+        boolean is_frag = ((this.flags & 0x1) != 0) || (this.fragmentOffset != 0);
+        if (!is_frag && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
                 payload = clazz.newInstance();
@@ -369,6 +377,11 @@ public class IPv4 extends BasePacket {
                 throw new RuntimeException("Error parsing payload for IPv4 packet", e);
             }
         } else {
+            if (is_frag) {
+                log.info("IPv4 fragment detected {}->{}, forward using IP header only",
+                        fromIPv4Address(this.sourceAddress),
+                        fromIPv4Address(this.destinationAddress));
+            }
             payload = new Data();
         }
         int payloadLength = this.totalLength - this.headerLength * 4;
@@ -493,7 +506,7 @@ public class IPv4 extends BasePacket {
      * @return The IP address separated into bytes.
      */
     public static byte[] toIPv4AddressBytes(int ipAddress) {
-    	return new byte[] {
+        return new byte[] {
                 (byte)(ipAddress >>> 24),
                 (byte)(ipAddress >>> 16),
                 (byte)(ipAddress >>> 8),
