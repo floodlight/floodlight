@@ -78,7 +78,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
         po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
 
         // set data if is is included in the packetin
-        if (pi.getBufferId() == 0xffffffff) {
+        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
             po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
                     + po.getActionsLength() + packetData.length));
