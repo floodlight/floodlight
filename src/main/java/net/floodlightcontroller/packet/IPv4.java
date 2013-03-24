@@ -26,8 +26,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
  *
@@ -60,6 +58,7 @@ public class IPv4 extends BasePacket {
     protected byte[] options;
 
     protected boolean isTruncated;
+    protected boolean isFragment;
 
     /**
      * Default constructor that sets the version to 4.
@@ -68,6 +67,7 @@ public class IPv4 extends BasePacket {
         super();
         this.version = 4;
         isTruncated = false;
+        isFragment = false;
     }
 
     /**
@@ -127,6 +127,14 @@ public class IPv4 extends BasePacket {
 
     public void setTruncated(boolean isTruncated) {
         this.isTruncated = isTruncated;
+    }
+
+    public boolean isFragment() {
+        return isFragment;
+    }
+
+    public void setFragment(boolean isFrag) {
+        this.isFragment = isFrag;
     }
 
     /**
@@ -336,11 +344,6 @@ public class IPv4 extends BasePacket {
         return data;
     }
 
-    @LogMessageDoc(level="INFO",
-            message="IP fragment detected",
-            explanation="Packet in is an IP fragment. Controller forwards " +
-                    "it using IP header only. Transport headers are ignored.",
-            recommendation=LogMessageDoc.GENERIC_ACTION)
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
@@ -368,8 +371,8 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        boolean is_frag = ((this.flags & 0x1) != 0) || (this.fragmentOffset != 0);
-        if (!is_frag && IPv4.protocolClassMap.containsKey(this.protocol)) {
+        isFragment = ((this.flags & 0x1) != 0) || (this.fragmentOffset != 0);
+        if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
                 payload = clazz.newInstance();
@@ -377,8 +380,8 @@ public class IPv4 extends BasePacket {
                 throw new RuntimeException("Error parsing payload for IPv4 packet", e);
             }
         } else {
-            if (is_frag) {
-                log.info("IPv4 fragment detected {}->{}, forward using IP header only",
+            if (log.isTraceEnabled() && isFragment) {
+                log.trace("IPv4 fragment detected {}->{}, forward using IP header only",
                         fromIPv4Address(this.sourceAddress),
                         fromIPv4Address(this.destinationAddress));
             }

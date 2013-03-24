@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.util.MACAddress;
 import org.openflow.util.HexString;
 
@@ -229,12 +228,6 @@ public class Ethernet extends BasePacket {
         return data;
     }
 
-    @LogMessageDoc(level="INFO",
-            message="Failed to parse ethernet packet payload",
-            explanation="Was unable to parse ethernet payload, often caused " +
-                    "by packet truncation. Packet is forwarded as a plain " +
-                    "ethernet packet.",
-            recommendation=LogMessageDoc.GENERIC_ACTION)
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
         if (length <= 16)  // Ethernet packet minium should be 60, this is reasonable
@@ -270,12 +263,13 @@ public class Ethernet extends BasePacket {
                 payload = clazz.newInstance();
                 this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
             } catch (Exception e) {
-                log.info("Failed to parse ethernet packet {}->{} payload as {}," +
-                         " treat as plain ethernet packet",
-                         new Object[] {this.sourceMACAddress, this.destinationMACAddress,
-                                       clazz.getClass().getName()});
-                if (log.isDebugEnabled()) {
-                    log.debug("Exception from parsing {}", e);
+                if (log.isTraceEnabled()) {
+                    log.trace("Failed to parse ethernet packet {}->{}" +
+                            " payload as {}, treat as plain ethernet packet",
+                            new Object[] {this.sourceMACAddress,
+                                          this.destinationMACAddress,
+                                          clazz.getClass().getName()});
+                    log.trace("Exception from parsing {}", e);
                 }
                 payload = new Data();
                 this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
