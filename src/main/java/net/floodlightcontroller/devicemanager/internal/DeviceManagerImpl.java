@@ -241,16 +241,16 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             return "DeviceUpdate [device=" + devIdStr + ", change=" + change
                    + ", fieldsChanged=" + fieldsChanged + "]";
         }
-        
+
     }
 
     /**
      * AttachmentPointComparator
-     * 
+     *
      * Compares two attachment points and returns the latest one.
      * It is assumed that the two attachment points are in the same
      * L2 domain.
-     * 
+     *
      * @author srini
      */
     protected class AttachmentPointComparator
@@ -261,7 +261,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         @Override
         public int compare(AttachmentPoint oldAP, AttachmentPoint newAP) {
-            //First compare based on L2 domain ID; 
+            //First compare based on L2 domain ID;
 
             long oldSw = oldAP.getSw();
             short oldPort = oldAP.getPort();
@@ -362,7 +362,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     @Override
     public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
-                                  Short vlan, Integer ipv4Address) 
+                                  Short vlan, Integer ipv4Address)
                                   throws IllegalArgumentException {
         if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
@@ -370,10 +370,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address,
                               null, null, null);
-        if (entityClass == null || 
+        if (entityClass == null ||
                 !allKeyFieldsPresent(e, entityClass.getKeyFields())) {
             throw new IllegalArgumentException("Not all key fields and/or "
-                    + " no source device specified. Required fields: " + 
+                    + " no source device specified. Required fields: " +
                     entityClassifier.getKeyFields());
         }
         return findDestByEntity(entityClass, e);
@@ -446,7 +446,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
         ClassState classState = getClassState(entityClass);
-        
+
         DeviceIndex index = null;
         if (classState.secondaryIndexMap.size() > 0) {
             EnumSet<DeviceField> keys =
@@ -454,7 +454,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                   switchDPID, switchPort);
             index = classState.secondaryIndexMap.get(keys);
         }
-        
+
         Iterator<Device> iter;
         if (index == null) {
             index = classState.classIndex;
@@ -481,10 +481,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                             index.queryByEntity(entity));
         }
         iterators.add(iter);
-        
+
         return new MultiIterator<Device>(iterators.iterator());
     }
-    
+
     protected Iterator<Device> getDeviceIteratorForQuery(Long macAddress,
                                                         Short vlan,
                                                         Integer ipv4Address,
@@ -529,6 +529,16 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     public void addListener(IDeviceListener listener) {
          deviceListeners.addListener("device", listener);
          logListeners();
+    }
+
+    @Override
+    public void addSuppressAPs(long swId, short port) {
+        suppressAPs.add(new SwitchPort(swId, port));
+    }
+
+    @Override
+    public void removeSuppressAPs(long swId, short port) {
+        suppressAPs.remove(new SwitchPort(swId, port));
     }
 
     private void logListeners() {
@@ -599,13 +609,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         ListIterator<OFMatchReconcile> iter = ofmRcList.listIterator();
         while (iter.hasNext()) {
             OFMatchReconcile ofm = iter.next();
-            
+
             // Remove the STOPPed flow.
             if (Command.STOP == reconcileFlow(ofm)) {
                 iter.remove();
             }
         }
-        
+
         if (ofmRcList.size() > 0) {
             return Command.CONTINUE;
         } else {
@@ -638,10 +648,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
         }
         if (logger.isTraceEnabled()) {
-            logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, " 
+            logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, "
                          + "dstEntity={}, dstDev={}",
                          new Object[] {ofm.ofmWithSwDpid.getOfMatch(),
-                                       srcEntity, srcDevice, 
+                                       srcEntity, srcDevice,
                                        dstEntity, dstDevice } );
         }
         return Command.CONTINUE;
@@ -784,6 +794,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (srcEntity == null)
             return Command.STOP;
 
+        // Learn from ARP packet for special VRRP settings.
+        // In VRRP settings, the source MAC address and sender MAC
+        // addresses can be different.  In such cases, we need to learn
+        // the IP to MAC mapping of the VRRP IP address.  The source
+        // entity will not have that information.  Hence, a separate call
+        // to learn devices in such cases.
+        learnDeviceFromArpResponseData(eth, sw.getId(), pi.getInPort());
+
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
         if (srcDevice == null)
@@ -860,8 +878,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
-     * Get sender IP address from packet if the packet is either an ARP 
-     * packet. 
+     * Get sender IP address from packet if the packet is either an ARP
+     * packet.
      * @param eth
      * @param dlAddr
      * @return
@@ -873,7 +891,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     (Ethernet.toLong(arp.getSenderHardwareAddress()) == dlAddr)) {
                 return IPv4.toIPv4Address(arp.getSenderProtocolAddress());
             }
-        } 
+        }
         return 0;
     }
 
@@ -902,6 +920,43 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           swdpid,
                           port,
                           new Date());
+    }
+
+    /**
+     * Learn device from ARP data in scenarios where the
+     * Ethernet source MAC is different from the sender hardware
+     * address in ARP data.
+     */
+    protected void learnDeviceFromArpResponseData(Ethernet eth,
+                                            long swdpid,
+                                            int port) {
+
+        if (!(eth.getPayload() instanceof ARP)) return;
+        ARP arp = (ARP) eth.getPayload();
+
+        byte[] dlAddrArr = eth.getSourceMACAddress();
+        long dlAddr = Ethernet.toLong(dlAddrArr);
+
+        byte[] senderHardwareAddr = arp.getSenderHardwareAddress();
+        long senderAddr = Ethernet.toLong(senderHardwareAddr);
+
+        if (dlAddr == senderAddr) return;
+
+        // Ignore broadcast/multicast source
+        if ((senderHardwareAddr[0] & 0x1) != 0)
+            return;
+
+        short vlan = eth.getVlanID();
+        int nwSrc = IPv4.toIPv4Address(arp.getSenderProtocolAddress());
+
+        Entity e =  new Entity(senderAddr,
+                ((vlan >= 0) ? vlan : null),
+                ((nwSrc != 0) ? nwSrc : null),
+                swdpid,
+                port,
+                new Date());
+
+        learnDeviceByEntity(e);
     }
 
     /**
@@ -954,7 +1009,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         Long swDpid = null;
         Short inPort = null;
-        
+
         if (isSource) {
             swDpid = ofmWithSwDpid.getSwitchDataPathId();
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
@@ -981,11 +1036,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                           (learnap ? (int)inPort : null),
                           new Date());
     }
+
     /**
      * Look up a {@link Device} based on the provided {@link Entity}. We first
      * check the primary index. If we do not find an entry there we classify
-     * the device into its IEntityClass and query the classIndex. 
-     * This implies that all key field of the current IEntityClassifier must 
+     * the device into its IEntityClass and query the classIndex.
+     * This implies that all key field of the current IEntityClassifier must
      * be present in the entity for the lookup to succeed!
      * @param entity the entity to search for
      * @return The {@link Device} object if found
@@ -1021,18 +1077,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * the given source device.  The source device is important since
      * there could be ambiguity in the destination device without the
      * attachment point information.
-     * @param source the source device.  The returned destination will be
-     * in the same entity class as the source.
-     * @param dstEntity the entity to look up
+     * @param reference  the source device's entity class.
+     *                   The returned destination will be
+     *                   in the same entity class as the source.
+     * @param dstEntity  the entity to look up
      * @return an {@link Device} or null if no device is found.
      */
     protected Device findDestByEntity(IEntityClass reference,
                                       Entity dstEntity) {
-        
-        // Look  up the fully-qualified entity to see if it 
+
+        // Look  up the fully-qualified entity to see if it
         // exists in the primary entity index
         Long deviceKey = primaryIndex.findByEntity(dstEntity);
-         
+
         if (deviceKey == null) {
             // This could happen because:
             // 1) no destination known, or a broadcast destination
@@ -1051,7 +1108,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (deviceKey == null) return null;
         return deviceMap.get(deviceKey);
     }
-    
 
     /**
      * Look up a {@link Device} within a particular entity class based on
@@ -1115,20 +1171,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 // device map, and use the referenced Device below.
                 device = deviceMap.get(deviceKey);
                 if (device == null) {
-                    // This can happen due to concurrent modification 
+                    // This can happen due to concurrent modification
                     if (logger.isDebugEnabled()) {
                         logger.debug("No device for deviceKey {} while "
                                      + "while processing entity {}",
                                      deviceKey, entity);
                     }
+                    // if so, then try again till we don't even get the device key
+                    // and so we recreate the device
+                    continue;
                 }
             } else {
                 // If the secondary index does not contain the entity,
                 // create a new Device object containing the entity, and
-                // generate a new device ID if the the entity is on an 
-                // attachment point port. Otherwise ignore. 
+                // generate a new device ID if the the entity is on an
+                // attachment point port. Otherwise ignore.
                 if (entity.hasSwitchPort() &&
-                        !topology.isAttachmentPointPort(entity.getSwitchDPID(), 
+                        !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
@@ -1137,10 +1196,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     device = null;
                     break;
                 }
-                // Before we create the new device also check if 
+                // Before we create the new device also check if
                 // the entity is allowed (e.g., for spoofing protection)
                 if (!isEntityAllowed(entity, entityClass)) {
-                    logger.info("PacketIn is not allowed {} {}", 
+                    logger.info("PacketIn is not allowed {} {}",
                                 entityClass.getName(), entity);
                     device = null;
                     break;
@@ -1174,23 +1233,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 break;
             }
-
+            // if it gets here, we have a pre-existing Device for this Entity
             if (!isEntityAllowed(entity, device.getEntityClass())) {
-                logger.info("PacketIn is not allowed {} {}", 
+                logger.info("PacketIn is not allowed {} {}",
                             device.getEntityClass().getName(), entity);
                 return null;
             }
-            // If this is an internal port we don't learn the new entity
-            // and don't update indexes. We only learn on attachment point
-            // ports.
+            // If this is not an attachment point port we don't learn the new entity
+            // and don't update indexes. But we do allow the device to continue up
+            // the chain.
             if (entity.hasSwitchPort() &&
-                    !topology.isAttachmentPointPort(entity.getSwitchDPID(), 
+                    !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
                 break;
             }
             int entityindex = -1;
             if ((entityindex = device.entityIndex(entity)) >= 0) {
-                // Entity already exists 
+                // Entity already exists
                 // update timestamp on the found entity
                 Date lastSeen = entity.getLastSeenTimestamp();
                 if (lastSeen == null) {
@@ -1198,15 +1257,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     entity.setLastSeenTimestamp(lastSeen);
                 }
                 device.entities[entityindex].setLastSeenTimestamp(lastSeen);
-                // we break the loop after the else block and after checking
-                // for new AP
+                // we break the loop after checking for changes to the AP
             } else {
-                // New entity for this devce
+                // New entity for this device
                 // compute the insertion point for the entity.
                 // see Arrays.binarySearch()
                 entityindex = -(entityindex + 1);
                 Device newDevice = allocateDevice(device, entity, entityindex);
- 
+
                 // generate updates
                 EnumSet<DeviceField> changedFields =
                         findChangedFields(device, entity);
@@ -1227,23 +1285,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 updateSecondaryIndices(entity,
                                        device.getEntityClass(),
                                        deviceKey);
-                
+
                 if (changedFields.size() > 0) {
                     deviceUpdates =
                     updateUpdates(deviceUpdates,
                                   new DeviceUpdate(newDevice, CHANGE,
                                                    changedFields));
                 }
-                // we break the loop after checking for changed AP 
+                // we break the loop after checking for changed AP
             }
-            // Update attachment point (will only be hit if the device 
-            // already existed and no concurrent modification
+            // Update attachment point (will only be hit if the device
+            // already existed and no concurrent modification)
             if (entity.hasSwitchPort()) {
-                boolean moved = 
+                boolean moved =
                         device.updateAttachmentPoint(entity.getSwitchDPID(),
                                 entity.getSwitchPort().shortValue(),
                                 entity.getLastSeenTimestamp().getTime());
-                // TODO: use update mechanism instead of sending the 
+                // TODO: use update mechanism instead of sending the
                 // notification directly
                 if (moved) {
                     sendDeviceMovedNotification(device);
@@ -1261,7 +1319,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     }
                 }
             }
-            break; 
+            break;
         }
 
         if (deleteQueue != null) {
@@ -1372,7 +1430,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     /**
      * Check if the entity e has all the keyFields set. Returns false if not
-     * @param e entity to check 
+     * @param e entity to check
      * @param keyFields the key fields to check e against
      * @return
      */
@@ -1397,7 +1455,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     //if (e.vlan == null) return false;
                     break;
                 default:
-                    // we should never get here. unless somebody extended 
+                    // we should never get here. unless somebody extended
                     // DeviceFields
                     throw new IllegalStateException();
             }
@@ -1472,23 +1530,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         ClassState state = getClassState(entityClass);
         for (DeviceIndex index : state.secondaryIndexMap.values()) {
             index.updateIndex(entity, deviceKey);
-        }
-    }
-
-    // *********************
-    // IEntityClassListener
-    // *********************
-    @Override
-    public void entityClassChanged (Set<String> entityClassNames) {
-        /* iterate through the devices, reclassify the devices that belong
-         * to these entity class names
-         */
-        Iterator<Device> diter = deviceMap.values().iterator();
-        while (diter.hasNext()) {
-            Device d = diter.next();
-            if (d.getEntityClass() == null ||
-                entityClassNames.contains(d.getEntityClass().getName()))
-                reclassifyDevice(d);
         }
     }
 
@@ -1599,7 +1640,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                        others);
         }
     }
-    
+
     /**
      * method to delete a given device, remove all entities first and then
      * finally delete the device itself.
@@ -1608,12 +1649,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected void deleteDevice(Device device) {
         ArrayList<Entity> emptyToKeep = new ArrayList<Entity>();
         for (Entity entity : device.getEntities()) {
-            this.removeEntity(entity, device.getEntityClass(), 
+            this.removeEntity(entity, device.getEntityClass(),
                 device.getDeviceKey(), emptyToKeep);
         }
         if (!deviceMap.remove(device.getDeviceKey(), device)) {
             if (logger.isDebugEnabled())
-                logger.debug("device map does not have this device -" + 
+                logger.debug("device map does not have this device -" +
                     device.toString());
         }
     }
@@ -1624,7 +1665,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                Long switchDPID,
                                                Integer switchPort) {
         // FIXME: vlan==null is a valid search. Need to handle this
-        // case correctly. Note that the code will still work correctly. 
+        // case correctly. Note that the code will still work correctly.
         // But we might do a full device search instead of using an index.
         EnumSet<DeviceField> keys = EnumSet.noneOf(DeviceField.class);
         if (macAddress != null) keys.add(DeviceField.MAC);
@@ -1634,7 +1675,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (switchPort != null) keys.add(DeviceField.PORT);
         return keys;
     }
-
 
     protected Iterator<Device> queryClassByEntity(IEntityClass clazz,
                                                   EnumSet<DeviceField> keyFields,
@@ -1667,16 +1707,17 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                     int insertionpoint) {
         return new Device(device, entity, insertionpoint);
     }
-    
+
+    //not used
     protected Device allocateDevice(Device device, Set <Entity> entities) {
-        List <AttachmentPoint> newPossibleAPs = 
+        List <AttachmentPoint> newPossibleAPs =
                 new ArrayList<AttachmentPoint>();
-        List <AttachmentPoint> newAPs = 
+        List <AttachmentPoint> newAPs =
                 new ArrayList<AttachmentPoint>();
-        for (Entity entity : entities) { 
+        for (Entity entity : entities) {
             if (entity.switchDPID != null && entity.switchPort != null) {
-                AttachmentPoint aP = 
-                        new AttachmentPoint(entity.switchDPID.longValue(), 
+                AttachmentPoint aP =
+                        new AttachmentPoint(entity.switchDPID.longValue(),
                                     entity.switchPort.shortValue(), 0);
                 newPossibleAPs.add(aP);
             }
@@ -1697,15 +1738,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         return d;
     }
 
-    @Override
-    public void addSuppressAPs(long swId, short port) {
-        suppressAPs.add(new SwitchPort(swId, port));
-    }
-
-    @Override
-    public void removeSuppressAPs(long swId, short port) {
-        suppressAPs.remove(new SwitchPort(swId, port));
-    }
+    // *********************
+    // ITopologyListener
+    // *********************
 
     /**
      * Topology listener method.
@@ -1745,10 +1780,28 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             }
         }
     }
-    
+
+    // *********************
+    // IEntityClassListener
+    // *********************
+
+    @Override
+    public void entityClassChanged (Set<String> entityClassNames) {
+        /* iterate through the devices, reclassify the devices that belong
+         * to these entity class names
+         */
+        Iterator<Device> diter = deviceMap.values().iterator();
+        while (diter.hasNext()) {
+            Device d = diter.next();
+            if (d.getEntityClass() == null ||
+                entityClassNames.contains(d.getEntityClass().getName()))
+                reclassifyDevice(d);
+        }
+    }
+
     /**
      * this method will reclassify and reconcile a device - possibilities
-     * are - create new device(s), remove entities from this device. If the 
+     * are - create new device(s), remove entities from this device. If the
      * device entity class did not change then it returns false else true.
      * @param device
      */
@@ -1761,10 +1814,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
         boolean needToReclassify = false;
         for (Entity entity : device.entities) {
-            IEntityClass entityClass = 
+            IEntityClass entityClass =
                     this.entityClassifier.classifyEntity(entity);
             if (entityClass == null || device.getEntityClass() == null) {
-                needToReclassify = true;                
+                needToReclassify = true;
                 break;
             }
             if (!entityClass.getName().
@@ -1776,12 +1829,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         if (needToReclassify == false) {
             return false;
         }
-            
+
         LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
         // delete this device and then re-learn all the entities
         this.deleteDevice(device);
-        deviceUpdates.add(new DeviceUpdate(device, 
+        deviceUpdates.add(new DeviceUpdate(device,
                 DeviceUpdate.Change.DELETE, null));
         if (!deviceUpdates.isEmpty())
             processUpdates(deviceUpdates);
@@ -1789,5 +1842,5 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             this.learnDeviceByEntity(entity);
         }
         return true;
-    }   
+    }
 }

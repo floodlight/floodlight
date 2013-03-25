@@ -29,7 +29,8 @@ import org.openflow.util.HexString;
  * to the actual objects.
  * @author srini
  */
-public class NodePortTuple {
+
+public class NodePortTuple implements Comparable<NodePortTuple> {
     protected long nodeId; // switch DPID
     protected short portId; // switch port id
 
@@ -93,7 +94,7 @@ public class NodePortTuple {
             return false;
         return true;
     }
-    
+
     /**
      * API to return a String value formed wtih NodeID and PortID
      * The portID is a 16-bit field, so mask it as an integer to get full
@@ -102,5 +103,24 @@ public class NodePortTuple {
      */
     public String toKeyString() {
         return (HexString.toHexString(nodeId)+ "|" + (portId & 0xffff));
+    }
+
+    @Override
+    public int compareTo(NodePortTuple obj) {
+        final int BEFORE = -1;
+        final int EQUAL = 0;
+        final int AFTER = 1;
+
+        if (this.getNodeId() < obj.getNodeId())
+            return BEFORE;
+        if (this.getNodeId() > obj.getNodeId())
+            return AFTER;
+
+        if (this.getPortId() < obj.getPortId())
+            return BEFORE;
+        if (this.getPortId() > obj.getPortId())
+            return AFTER;
+
+        return EQUAL;
     }
 }

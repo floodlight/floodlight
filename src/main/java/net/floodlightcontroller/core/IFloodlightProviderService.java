@@ -89,21 +89,24 @@ public interface IFloodlightProviderService extends
     public Role getRole();
     
     /**
+     * Get the current role of the controller
+     */
+    public RoleInfo getRoleInfo();
+
+    /**
      * Get the current mapping of controller IDs to their IP addresses
      * Returns a copy of the current mapping. 
      * @see IHAListener
      */
     public Map<String,String> getControllerNodeIPs();
     
-    /**
-     * Gets the ID of the controller
-     */
-    public String getControllerId();
     
     /**
      * Set the role of the controller
+     * @param role The new role for the controller node
+     * @param changeDescription The reason or other information for this role change
      */
-    public void setRole(Role role);
+    public void setRole(Role role, String changeDescription);
     
     /**
      * Add a switch listener
@@ -207,6 +210,17 @@ public interface IFloodlightProviderService extends
     * switch over to ACTIVE role
     */
    public void setAlwaysClearFlowsOnSwAdd(boolean value);
+   
+   /**
+    * Get controller memory information
+    */
+   public Map<String, Long> getMemory();
+
+   /**
+    * returns the uptime of this controller.
+    * @return
+    */
+   public Long getUptime();
    
    /**
     * Adds an OFSwitch driver

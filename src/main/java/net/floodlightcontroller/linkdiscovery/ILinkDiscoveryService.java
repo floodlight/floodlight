@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -57,7 +57,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
                                            boolean isReverse);
 
     /**
-     * Returns an unmodifiable map from switch id to a set of all links with it 
+     * Returns an unmodifiable map from switch id to a set of all links with it
      * as an endpoint.
      */
     public Map<Long, Set<Link>> getSwitchLinks();
@@ -74,7 +74,8 @@ public interface ILinkDiscoveryService extends IFloodlightService {
     public Set<NodePortTuple> getSuppressLLDPsInfo();
 
     /**
-     * Adds a switch port to suppress lldp set
+     * Adds a switch port to suppress lldp set. LLDPs and BDDPs will not be sent
+     * out, and if any are received on this port then they will be dropped.
      */
     public void AddToSuppressLLDPs(long sw, short port);
 
@@ -105,8 +106,13 @@ public interface ILinkDiscoveryService extends IFloodlightService {
     public Map<NodePortTuple, Set<Link>> getPortLinks();
 
     /**
+     * addMACToIgnoreList is a service provided by LinkDiscovery to ignore
+     * certain packets early in the packet-in processing chain. Since LinkDiscovery
+     * is first in the packet-in processing pipeline, it can efficiently drop these
+     * packets. Currently these packets are identified only by their source MAC address.
+     *
      * Add a MAC address range to ignore list. All packet ins from this range
-     * will be dropped
+     * will be dropped - use with care!
      * @param mac The base MAC address that is to be ignored
      * @param ignoreBits The number of LSBs to ignore. A value of 0 will add
      *        only one MAC address 'mac' to ignore list. A value of 48 will add
