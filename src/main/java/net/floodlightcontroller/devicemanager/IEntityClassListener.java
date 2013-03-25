@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -20,8 +20,8 @@ package net.floodlightcontroller.devicemanager;
 import java.util.Set;
 
 /**
- * Implementors of this interface can receive updates from DeviceManager about
- * the changes entity Classes.
+ * Implementors of this interface can receive updates from the Entity Classifier about
+ * the changes to entity Classes.
  *
  * @author Ananth Suryanarayana (Ananth.Suryanarayana@bigswitch.com)
  */

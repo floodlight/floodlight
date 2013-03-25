@@ -48,6 +48,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFBarrierRequest;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -509,9 +510,17 @@ public abstract class OFSwitchBase implements IOFSwitch {
             .setCommand(OFFlowMod.OFPFC_DELETE)
             .setOutPort(OFPort.OFPP_NONE)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
+        fm.setXid(getNextTransactionId());
+        OFMessage barrierMsg = (OFBarrierRequest)
+                floodlightProvider.getOFMessageFactory().getMessage(
+                        OFType.BARRIER_REQUEST);
+        barrierMsg.setXid(getNextTransactionId());
         try {
             List<OFMessage> msglist = new ArrayList<OFMessage>(1);
             msglist.add(fm);
+            channel.write(msglist);
+            msglist = new ArrayList<OFMessage>(1);
+            msglist.add(barrierMsg);
             channel.write(msglist);
         } catch (Exception e) {
             log.error("Failed to clear all flows on switch " + this, e);

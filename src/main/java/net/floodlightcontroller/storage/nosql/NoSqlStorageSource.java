@@ -59,7 +59,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     private Map<String, Map<String,ColumnIndexMode>> tableIndexedColumnMap =
         new HashMap<String,Map<String,ColumnIndexMode>>();
     
-    abstract class NoSqlPredicate {
+    abstract static class NoSqlPredicate {
 
         public boolean incorporateComparison(String columnName,
                 OperatorPredicate.Operator operator, Comparable<?> value,
@@ -80,7 +80,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    class NoSqlRangePredicate extends NoSqlPredicate {
+    static class NoSqlRangePredicate extends NoSqlPredicate {
         NoSqlStorageSource storageSource;
         String tableName;
         String columnName;
@@ -320,7 +320,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
         }
     }
     
-    class NoSqlOperatorPredicate extends NoSqlPredicate {
+    static class NoSqlOperatorPredicate extends NoSqlPredicate {
         
         NoSqlStorageSource storageSource;
         String columnName;
@@ -354,16 +354,19 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
         }
     }
     
-    class NoSqlCompoundPredicate extends NoSqlPredicate {
+    static class NoSqlCompoundPredicate extends NoSqlPredicate {
         
         NoSqlStorageSource storageSource;
         CompoundPredicate.Operator operator;
         boolean negated;
+        String tableName;
         List<NoSqlPredicate> predicateList;
         
-        NoSqlCompoundPredicate(NoSqlStorageSource storageSource, CompoundPredicate.Operator operator,
-                boolean negated, List<NoSqlPredicate> predicateList) {
+        NoSqlCompoundPredicate(NoSqlStorageSource storageSource, String tableName,
+                CompoundPredicate.Operator operator, boolean negated,
+                List<NoSqlPredicate> predicateList) {
             this.storageSource = storageSource;
+            this.tableName = tableName;
             this.operator = operator;
             this.negated = negated;
             this.predicateList = predicateList;
@@ -404,7 +407,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
         }
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
-        class RowComparator implements Comparator<Map<String,Object>> {
+        static class RowComparator implements Comparator<Map<String,Object>> {
             private String primaryKeyName;
             
             public RowComparator(String primaryKeyName) {
@@ -456,31 +459,48 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
                 }
                 if (update2) {
                     if (iterator2.hasNext()) {
-                        row2 = iterator1.next();
+                        row2 = iterator2.next();
                         key2 = (Comparable<?>)row2.get(primaryKeyName);
                     } else {
                         row2 = null;
                     }
                 }
+                update1 = update2 = false;
                 if (operator == CompoundPredicate.Operator.AND) {
                     if ((row1 == null) || (row2 == null))
                         break;
-                    if (key1.equals(key2))
+                    int result = ((Comparable)key1).compareTo(key2);
+                    if (result == 0) {
                         combinedRowList.add(row1);
-                } else {
-                    if (row1 == null) {
-                        if (row2 == null)
-                            break;
-                        combinedRowList.add(row2);
-                    } else if ((row2 == null) || (((Comparable)key1).compareTo(key2) <= 0)) {
-                        combinedRowList.add(row2);
+                        update1 = update2 = true;
+                    } else if (result < 0) {
+                        update1 = true;
                     } else {
-                        combinedRowList.add(row1);
+                        update2 = true;
+                    }
+                } else {
+                    if (row1 != null) {
+                        if (row2 != null) {
+                            int result = ((Comparable)key1).compareTo(key2);
+                            if (result <= 0) {
+                                combinedRowList.add(row1);
+                                update1 = true;
+                                update2 = (result == 0);
+                            } else {
+                                combinedRowList.add(row2);
+                                update2 = true;
+                            }
+                        } else {
+                            combinedRowList.add(row1);
+                            update1 = true;
+                        }
+                    } else if (row2 != null) {
+                        combinedRowList.add(row2);
+                        update2 = true;
+                    } else {
+                        break;
                     }
                 }
-                
-                update1 = (key2 == null) || (((Comparable)key1).compareTo(key2) <= 0);
-                update2 = (key1 == null) || (((Comparable)key2).compareTo(key1) <= 0);
             }
             
             return combinedRowList;
@@ -488,15 +508,35 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
         
         public List<Map<String,Object>> execute(String columnNames[]) {
             List<Map<String,Object>> combinedRowList = null;
+            Set<NoSqlPredicate> inefficientPredicates = new HashSet<NoSqlPredicate>();
             for (NoSqlPredicate predicate: predicateList) {
-                List<Map<String,Object>> rowList = predicate.execute(columnNames);
-                if (combinedRowList != null) {
-                    combinedRowList = combineRowLists("id", combinedRowList, rowList, operator);
+                if (predicate.canExecuteEfficiently()) {
+                    List<Map<String,Object>> rowList = predicate.execute(columnNames);
+                    if (combinedRowList != null) {
+                        String primaryKeyName = storageSource.getTablePrimaryKeyName(tableName);
+                        combinedRowList = combineRowLists(primaryKeyName,
+                                combinedRowList, rowList, operator);
+                    } else {
+                        combinedRowList = rowList;
+                    }
                 } else {
-                    combinedRowList = rowList;
+                    inefficientPredicates.add(predicate);
                 }
             }
-            return combinedRowList;
+
+            if (inefficientPredicates.isEmpty())
+                return combinedRowList;
+
+            List<Map<String,Object>> filteredRowList = new ArrayList<Map<String,Object>>();
+            for (Map<String,Object> row: combinedRowList) {
+                for (NoSqlPredicate predicate: inefficientPredicates) {
+                    if (predicate.matchesRow(row)) {
+                        filteredRowList.add(row);
+                    }
+                }
+            }
+
+            return filteredRowList;
         }
 
         public boolean matchesRow(Map<String,Object> row) {
@@ -602,7 +642,8 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
                     noSqlPredicateList.add(noSqlPredicate);
                 }
             }
-            convertedPredicate = new NoSqlCompoundPredicate(this, compoundPredicate.getOperator(),
+            convertedPredicate = new NoSqlCompoundPredicate(this, tableName,
+                    compoundPredicate.getOperator(),
                     compoundPredicate.isNegated(), noSqlPredicateList);
         } else if (predicate instanceof OperatorPredicate) {
             OperatorPredicate operatorPredicate = (OperatorPredicate) predicate;
