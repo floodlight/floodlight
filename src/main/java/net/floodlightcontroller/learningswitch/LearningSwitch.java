@@ -380,7 +380,7 @@ public class LearningSwitch
 
         // and write it out
         try {
-        	counterStore.updatePktOutFMCounterStoreLocal(sw, packetOutMessage);
+            counterStore.updatePktOutFMCounterStoreLocal(sw, packetOutMessage);
             sw.write(packetOutMessage, null);
         } catch (IOException e) {
             log.error("Failed to write {} to switch {}: {}", new Object[]{ packetOutMessage, sw, e });
@@ -514,7 +514,7 @@ public class LearningSwitch
                 log.info("received an error {} from switch {}", msg, sw);
                 return Command.CONTINUE;
             default:
-            	break;
+                break;
         }
         log.error("received an unexpected message {} from switch {}", msg, sw);
         return Command.CONTINUE;
