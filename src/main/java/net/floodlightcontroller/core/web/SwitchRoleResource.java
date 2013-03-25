@@ -23,6 +23,7 @@ import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.RoleInfo;
 
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ public class SwitchRoleResource extends ServerResource {
             HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
             for (IOFSwitch sw: floodlightProvider.getSwitches().values()) {
                 switchId = sw.getStringId();
-                roleInfo = new RoleInfo(sw.getHARole());
+                roleInfo = new RoleInfo(sw.getHARole(), null);
                 model.put(switchId, roleInfo);
             }
             return model;
@@ -56,7 +57,7 @@ public class SwitchRoleResource extends ServerResource {
         IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
         if (sw == null)
             return null;
-        roleInfo = new RoleInfo(sw.getHARole());
+        roleInfo = new RoleInfo(sw.getHARole(), null);
         return roleInfo;
     }
 }
