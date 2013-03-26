@@ -158,7 +158,6 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                curval.set(0);
            }
        }
-       printAllCounters();
    }
 
    @Override
