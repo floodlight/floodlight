@@ -18,6 +18,8 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -47,6 +50,7 @@ import net.floodlightcontroller.core.internal.Controller.SwitchUpdate;
 import net.floodlightcontroller.core.internal.Controller.SwitchUpdateType;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
 import net.floodlightcontroller.core.internal.RoleChanger.PendingRoleRequestEntry;
+import net.floodlightcontroller.core.internal.RoleChanger.RoleChangeTask;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -1144,8 +1148,17 @@ public class ControllerTest extends FloodlightTestCase
         // test
         replay(sw, lock);
         chdlr.processOFMessage(error);
-        // Verify there is a pending role change request
-        assertTrue(controller.roleChanger.pendingTasks.peek() != null);
+        DelayQueue<RoleChangeTask> pendingTasks =
+                controller.roleChanger.pendingTasks;
+        synchronized (pendingTasks) {
+            RoleChangeTask t;
+            while ((t = pendingTasks.peek()) == null ||
+                    RoleChanger.RoleChangeTask.Type.TIMEOUT != t.type) {
+                pendingTasks.wait();
+            }
+        }
+        // Now there should be exactly one timeout task pending
+        assertEquals(1, pendingTasks.size());
    }
 
     // Helper function.
