@@ -18,8 +18,6 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
-import static org.junit.Assert.assertEquals;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
