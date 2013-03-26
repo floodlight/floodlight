@@ -15,9 +15,6 @@
  *    under the License.
  **/
 
-/**
- * Implements a very simple central store for system counters
- */
 package net.floodlightcontroller.counter;
 
 import java.util.ArrayList;
@@ -41,6 +38,17 @@ import org.openflow.protocol.OFPacketIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implements a central store for system counters. These counters include
+ * overall packet-in, packet-out, and flow-mod counters. Additional packet-in
+ * counters are maintained for bcast/unicast/multicast traffic, as well as counters
+ * for traffic types based on ethertype and ip-proto (maintained on a per switch
+ * and controller level). These counters are maintained without the involvement of
+ * any other module in the system. For per-module counters and other detailed
+ * debug services, consider IDebugCounterService.
+ *
+ *  @authors Kyle, Kanzhe, Mandeep and Saurav
+ */
 public class CounterStore implements IFloodlightModule, ICounterStoreService {
     protected static Logger log = LoggerFactory.getLogger(CounterStore.class);
 
@@ -133,8 +141,6 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
      */
     protected ConcurrentHashMap<String, CounterEntry> nameToCEIndex =
             new ConcurrentHashMap<String, CounterEntry>();
-
-
 
     /**
      * Counter Categories grouped by network layers
@@ -283,23 +289,6 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     //*******************************
     //   Internal Methods
     //*******************************
-
-    protected void printAllKeys() {
-
-        for (Map.Entry<String, CounterEntry> counterEntry : this.nameToCEIndex.entrySet()) {
-            log.info("concurrenthashmapkeys: {}", counterEntry.getKey());
-        }
-
-        for (CounterKeyTuple ctr : pktinCounters.keySet()) {
-            log.info("pktinglobalkeys: {}", ctr);
-        }
-
-        Map<CounterKeyTuple, MutableInt> pktin_buffer = this.pktin_local_buffer.get();
-        for (CounterKeyTuple key : pktin_buffer.keySet()) {
-            log.info("localbufferkeys: {}", key);
-        }
-        log.info("done");
-    }
 
     protected CounterKeyTuple getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
         byte mtype = m.getType().getTypeValue();
