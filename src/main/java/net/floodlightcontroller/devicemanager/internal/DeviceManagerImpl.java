@@ -598,8 +598,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         switch (msg.getType()) {
             case PACKET_IN:
                 debugCounters.updateCounter("devicemanager-incoming");
-                logger.info("Received PI: {} on switch {}, port {} ***",
-                        new Object[] { (OFPacketIn)msg, sw.getStringId() });
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
