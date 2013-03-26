@@ -7,4 +7,4 @@ University. It is available under the Apache 2.0 license.
 
 For documentation, forums, issue tracking and more visit:
 
-      http://www.openflowhub.org/display/Floodlight/Floodlight+Home
+      http://www.projectfloodlight.org/floodlight
