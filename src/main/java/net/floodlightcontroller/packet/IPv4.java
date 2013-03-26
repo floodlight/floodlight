@@ -43,6 +43,12 @@ public class IPv4 extends BasePacket {
         protocolClassMap.put(PROTOCOL_UDP, UDP.class);
     }
 
+    public static final byte IPV4_FLAGS_MOREFRAG = 0x1;
+    public static final byte IPV4_FLAGS_DONTFRAG = 0x2;
+    public static final byte IPV4_FLAGS_MASK = 0x7;
+    public static final byte IPV4_FLAGS_SHIFT = 13;
+    public static final short IPV4_OFFSET_MASK = (1 << IPV4_FLAGS_SHIFT) - 1;
+
     protected byte version;
     protected byte headerLength;
     protected byte diffServ;
@@ -318,7 +324,8 @@ public class IPv4 extends BasePacket {
         bb.put(this.diffServ);
         bb.putShort(this.totalLength);
         bb.putShort(this.identification);
-        bb.putShort((short) (((this.flags & 0x7) << 13) | (this.fragmentOffset & 0x1fff)));
+        bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
+                | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
         bb.put(this.protocol);
         bb.putShort(this.checksum);
@@ -356,8 +363,8 @@ public class IPv4 extends BasePacket {
         this.totalLength = bb.getShort();
         this.identification = bb.getShort();
         sscratch = bb.getShort();
-        this.flags = (byte) ((sscratch >> 13) & 0x7);
-        this.fragmentOffset = (short) (sscratch & 0x1fff);
+        this.flags = (byte) ((sscratch >> IPV4_FLAGS_SHIFT) & IPV4_FLAGS_MASK);
+        this.fragmentOffset = (short) (sscratch & IPV4_OFFSET_MASK);
         this.ttl = bb.get();
         this.protocol = bb.get();
         this.checksum = bb.getShort();
@@ -371,7 +378,8 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        isFragment = ((this.flags & 0x1) != 0) || (this.fragmentOffset != 0);
+        isFragment = ((this.flags & IPV4_FLAGS_MOREFRAG) != 0) ||
+                (this.fragmentOffset != 0);
         if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
