@@ -213,7 +213,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    //   Internal Methods
    //*******************************
 
-   private void printAllCounters() {
+   protected void printAllCounters() {
        for (List<CounterInfo> cilist : moduleCounters.values()) {
            for (CounterInfo ci : cilist) {
                log.info("Countername {} Countervalue {}", new Object[] {
