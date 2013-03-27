@@ -31,9 +31,9 @@ public interface IListener<T> {
     /**
      * Check if the module called name is a callback ordering prerequisite
      * for this module.  In other words, if this function returns true for 
-     * the given name, then this message listener will be called after that
+     * the given name, then this listener will be called after that
      * message listener.
-     * @param type the message type to which this applies
+     * @param type the object type to which this applies
      * @param name the name of the module
      * @return whether name is a prerequisite.
      */
@@ -42,9 +42,9 @@ public interface IListener<T> {
     /**
      * Check if the module called name is a callback ordering post-requisite
      * for this module.  In other words, if this function returns true for 
-     * the given name, then this message listener will be called before that
+     * the given name, then this listener will be called before that
      * message listener.
-     * @param type the message type to which this applies
+     * @param type the object type to which this applies
      * @param name the name of the module
      * @return whether name is a post-requisite.
      */

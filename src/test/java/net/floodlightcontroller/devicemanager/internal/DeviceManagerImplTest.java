@@ -780,10 +780,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         verify(mockListener);
 
         reset(mockListener);
-        //mockListener.deviceMoved((isA(IDevice.class)));
+        mockListener.deviceMoved((isA(IDevice.class)));
         //mockListener.deviceIPV4AddrChanged((isA(IDevice.class)));
         replay(mockListener);
-        // there is no device moved because entity 1 was not learned due to suppression
         d = deviceManager.learnDeviceByEntity(entity2);
         assertEquals(1, deviceManager.getAllDevices().size());
         aps = d.getAttachmentPoints();
