@@ -305,6 +305,7 @@ public class FloodlightModuleLoader {
                                 throw new FloodlightModuleException("ERROR! Found more " + 
                                     "than one (" + mods.size() + ") IFloodlightModules that provides " +
                                     "service " + c.toString() + 
+                                    ". This service is required for " + moduleName + 
                                     ". Please specify one of the following modules in the config: " + 
                                     duplicateMods);
                             }
