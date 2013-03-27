@@ -561,6 +561,30 @@ public class Device implements IDevice {
     // *******
 
     @Override
+    public SwitchPort[] getOldAP() {
+        List<SwitchPort> sp = new ArrayList<SwitchPort>();
+        SwitchPort [] returnSwitchPorts = new SwitchPort[] {};
+        if (oldAPs == null) return returnSwitchPorts;
+        if (oldAPs.isEmpty()) return returnSwitchPorts;
+
+        // copy ap list.
+        List<AttachmentPoint> oldAPList;
+        oldAPList = new ArrayList<AttachmentPoint>();
+
+        if (oldAPs != null) oldAPList.addAll(oldAPs);
+        removeExpiredAttachmentPoints(oldAPList);
+
+        if (oldAPList != null) {
+            for(AttachmentPoint ap: oldAPList) {
+                SwitchPort swport = new SwitchPort(ap.getSw(),
+                                                   ap.getPort());
+                    sp.add(swport);
+            }
+        }
+        return sp.toArray(new SwitchPort[sp.size()]);
+    }
+
+    @Override
     public SwitchPort[] getAttachmentPoints() {
         return getAttachmentPoints(false);
     }

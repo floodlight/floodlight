@@ -16,7 +16,8 @@
 
 package net.floodlightcontroller.flowcache;
 
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
+
 
 /**
  * The Class PendingSwitchResp. This object is used to track the pending

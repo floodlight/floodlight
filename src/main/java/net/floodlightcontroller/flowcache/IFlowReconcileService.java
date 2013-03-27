@@ -22,7 +22,8 @@ package net.floodlightcontroller.flowcache;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
 public interface IFlowReconcileService extends IFloodlightService {
     /**
@@ -49,7 +50,7 @@ public interface IFlowReconcileService extends IFloodlightService {
      *
      * @param ofmRcIn the ofm rc in
      */
-    public void reconcileFlow(OFMatchReconcile ofmRcIn);
+    public void reconcileFlow(OFMatchReconcile ofmRcIn, EventPriority priority) ;
     
     /**
      * Updates the flows to a device after the device moved to a new location
@@ -88,4 +89,5 @@ public interface IFlowReconcileService extends IFloodlightService {
      * @param flowResp
      */
     public void flowQueryGenericHandler(FlowCacheQueryResp flowResp);
+
 }

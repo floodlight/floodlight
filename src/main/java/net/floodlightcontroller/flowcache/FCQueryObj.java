@@ -17,9 +17,14 @@
 package net.floodlightcontroller.flowcache;
 
 import java.util.Arrays;
+import java.util.List;
+
+import org.openflow.protocol.OFPort;
 
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
+import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
 
 /**
@@ -27,33 +32,100 @@ import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
  */
 public class FCQueryObj {
 
-    /** The caller of the flow cache query. */
+    /** The caller of the flow query. */
     public IFlowQueryHandler fcQueryHandler;
     /** The application instance name. */
     public String applInstName;
+    /*BVS interface name*/
+    public String appInstInterfaceName;
     /** The vlan Id. */
     public Short[] vlans;
     /** The destination device. */
     public IDevice dstDevice;
     /** The source device. */
     public IDevice srcDevice;
+    /*source switch DPID*/
+    public long srcSwId;
+    /*switch port */
+    public short swPort;
+    public List<String> swPortList;
+    /*ip subnet*/
+    public String srcIpsubnet;
+    public String destIpsubnet;
+    public String srcBVS;
+    public String destBVS;
+    /*BVS priority change*/
+    public int lowP;
+    public int highP;
     /** The caller name */
     public String callerName;
-    /** Event type that triggered this flow query submission */
+    /** Event type and priority that triggered this flow query submission */
     public FCQueryEvType evType;
+    public EventPriority evPriority;
     /** The caller opaque data. Returned unchanged in the query response
      * via the callback. The type of this object could be different for
      * different callers */
     public Object callerOpaqueObj;
+    public DIRECTION direction;
+    public SwitchPort[] oldAp;
+    public enum DIRECTION {
+        INGRESS,
+        EGRESS,
+        BOTH
+    };
 
     /**
-     * Instantiates a new flow cache query object
+     * Instantiates a new flow query object
      */
+    public FCQueryObj(FCQueryEvType evType) {
+        this.evType = evType;
+        this.evPriority = mapEventToPriority(evType);
+        this.fcQueryHandler    = null;
+        this.applInstName     = null;
+        this.srcDevice        = null;
+        this.dstDevice        = null;
+        this.callerName       = null;
+        this.callerOpaqueObj  = null;
+        this.vlans=null;
+        this.appInstInterfaceName = null;
+        this.srcSwId = 0L;
+        this.swPort = OFPort.OFPP_NONE.getValue();
+        this.srcIpsubnet = null;
+        this.destIpsubnet = null;
+        this.srcBVS = null;
+        this.destBVS = null;
+        this.lowP = -1;
+        this.highP = -1;
+        this.oldAp =null;
+        this.direction=null;
+    }
+
+    public static EventPriority mapEventToPriority(FCQueryEvType type) {
+        EventPriority priority=EventPriority.EVENT_LOW;
+        switch (type) {
+            case DEVICE_MOVED:
+                priority=EventPriority.EVENT_HIGH;
+                break;
+            case LINK_DOWN:
+                priority=EventPriority.EVENT_MEDIUM;
+                break;
+            default:
+                break;
+        }
+        return priority;
+    }
+
+    /**
+     * Instantiates a new flow query object
     public FCQueryObj(IFlowQueryHandler fcQueryHandler,
             String        applInstName,
+            String        appInstInterfaceName,
             Short         vlan,
             IDevice       srcDevice,
             IDevice       dstDevice,
+            IOFSwitch     srcSW,
+            short           swPort,
+            String        ipSubnet,
             String        callerName,
             FCQueryEvType evType,
             Object        callerOpaqueObj) {
@@ -64,14 +136,33 @@ public class FCQueryObj {
         this.callerName       = callerName;
         this.evType           = evType;
         this.callerOpaqueObj  = callerOpaqueObj;
-        
         if (vlan != null) {
         	this.vlans = new Short[] { vlan };
         } else {
             this.vlans = null;
         }
+        if (appInstInterfaceName != null) {
+            this.appInstInterfaceName = new String(appInstInterfaceName);
+        } else {
+            this.appInstInterfaceName = null;
+        }
+        if (srcSW != null) {
+            this.srcSW =  srcSW;
+        } else {
+            this.srcSW = null;
+        }
+        if (swPort != OFPort.OFPP_NONE.getValue()) {
+            this.swPort =  swPort;
+        } else {
+            this.swPort = OFPort.OFPP_NONE.getValue();
+        }
+        if (srcIpsubnet != null) {
+            this.srcIpsubnet =new String(ipSubnet);
+        } else {
+            this.srcIpsubnet =null;
+        }
     }
-
+*/
     @Override
     public String toString() {
         return "FCQueryObj [fcQueryCaller=" + fcQueryHandler
@@ -134,8 +225,18 @@ public class FCQueryObj {
             if (other.srcDevice != null) return false;
         } else if (!srcDevice.equals(other.srcDevice)) return false;
         if (!Arrays.equals(vlans, other.vlans)) return false;
+
+        if (srcSwId == 0L) {
+            if (other.srcSwId != 0L) return false;
+        } else if (srcSwId != other.srcSwId) return false;
+        if (!Arrays.equals(vlans, other.vlans)) return false;
+        if (swPort != other.swPort) return false;
+        if (srcIpsubnet == null) {
+            if (other.srcIpsubnet != null) return false;
+        } else if (!srcIpsubnet.equals(other.srcIpsubnet)) return false;
+        if (appInstInterfaceName == null) {
+            if (other.appInstInterfaceName != null) return false;
+        } else if (!appInstInterfaceName.equals(other.appInstInterfaceName)) return false;
         return true;
     }
-    
-    
 }

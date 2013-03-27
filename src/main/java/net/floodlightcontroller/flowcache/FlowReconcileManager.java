@@ -22,8 +22,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,9 +37,10 @@ import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.SimpleCounter;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.openflow.protocol.OFType;
@@ -69,7 +68,7 @@ public class FlowReconcileManager
                                                flowReconcileListeners;
 
     /** A FIFO queue to keep all outstanding flows for reconciliation */
-    Queue<OFMatchReconcile> flowQueue;
+    PriorityPendingQueue <OFMatchReconcile> flowQueue;
     
     /** Asynchronous task to feed the flowReconcile pipeline */
     protected SingletonTask flowReconcileTask;
@@ -125,13 +124,13 @@ public class FlowReconcileManager
      *
      * @param ofmRcIn the ofm rc in
      */
-    public void reconcileFlow(OFMatchReconcile ofmRcIn) {
+    public void reconcileFlow(OFMatchReconcile ofmRcIn, EventPriority priority) {
         if (ofmRcIn == null) return;
         
         // Make a copy before putting on the queue.
         OFMatchReconcile myOfmRc = new OFMatchReconcile(ofmRcIn);
     
-        flowQueue.add(myOfmRc);
+        flowQueue.offer(myOfmRc, priority);
     
         Date currTime = new Date();
         long delay = 0;
@@ -169,17 +168,17 @@ public class FlowReconcileManager
     
     @Override
     public void flowQueryGenericHandler(FlowCacheQueryResp flowResp) {
+/** remove temporarily -- meiyang rivisit needed
         if (flowResp.queryObj.evType != FCQueryEvType.GET) {
             OFMatchReconcile ofmRc = new OFMatchReconcile();;
-            /* Re-provision these flows */
             for (QRFlowCacheObj entry : flowResp.qrFlowCacheObjList) {
-                /* reconcile the flows in entry */
                 entry.toOFMatchReconcile(ofmRc,
                         flowResp.queryObj.applInstName,
                         OFMatchReconcile.ReconcileAction.UPDATE_PATH);
                 reconcileFlow(ofmRc);
             }
         }
+        */
         return;
     }
     
@@ -220,7 +219,7 @@ public class FlowReconcileManager
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         counterStore = context.getServiceImpl(ICounterStoreService.class);
     
-        flowQueue = new ConcurrentLinkedQueue<OFMatchReconcile>();
+        flowQueue = new PriorityPendingQueue<OFMatchReconcile>();
         flowReconcileListeners = 
                 new ListenerDispatcher<OFType, IFlowReconcileListener>();
         
@@ -298,8 +297,9 @@ public class FlowReconcileManager
             reconcileCapacity--;
             if (ofmRc != null) {
                 ofmRcList.add(ofmRc);
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Add flow {} to be the reconcileList", ofmRc.cookie);
+               // if (logger.isTraceEnabled())
+                {
+                    logger.info("Add flow {} to be the reconcileList", ofmRc.cookie);
                 }
             } else {
                 break;
@@ -320,8 +320,9 @@ public class FlowReconcileManager
         
             for (IFlowReconcileListener flowReconciler :
                 flowReconcileListeners.getOrderedListeners()) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Reconciling flow: call listener {}",
+               // if (logger.isTraceEnabled())
+                {
+                    logger.info("Reconciling flow: call listener {}",
                             flowReconciler.getName());
                 }
                 retCmd = flowReconciler.reconcileFlows(ofmRcList);

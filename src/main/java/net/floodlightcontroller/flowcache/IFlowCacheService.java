@@ -50,23 +50,17 @@ public interface IFlowCacheService extends IFloodlightService {
         /** The GET query. Flows need not be reconciled for this query type */
         GET,
         /** A new App was added. */
-        APP_ADDED,
+        BVS_ADDED,
         /** An App was deleted. */
-        APP_DELETED,
+        BVS_DELETED,
         /** Interface rule of an app was modified */
-        APP_INTERFACE_RULE_CHANGED,
+        BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT,
         /** Some App configuration was changed */
-        APP_CONFIG_CHANGED,
-        /** An ACL was added */
-        ACL_ADDED,
-        /** An ACL was deleted */
-        ACL_DELETED,
-        /** An ACL rule was added */
-        ACL_RULE_ADDED,
-        /** An ACL rule was deleted */
-        ACL_RULE_DELETED,
+        BVS_PRIORITY_CHANGED,
         /** ACL configuration was changed */
         ACL_CONFIG_CHANGED,
+        /** VRS routing rule was changed */
+        VRS_ROUTING_RULE_CHANGED,
         /** device had moved to a different port in the network */
         DEVICE_MOVED,
         /** device's property had changed, such as tag assignment */

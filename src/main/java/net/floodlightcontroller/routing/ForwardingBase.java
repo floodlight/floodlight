@@ -250,7 +250,9 @@ public abstract class ForwardingBase
                 // cache. Don't set the flag for ARP messages - TODO generalize check
                 if ((reqeustFlowRemovedNotifn)
                         && (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
+                    /**with new flow cache design, we don't need the flow removal message from switch anymore
                     fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+                    */
                     match.setWildcards(fm.getMatch().getWildcards());
                 }
             }

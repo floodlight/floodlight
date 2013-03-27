@@ -634,7 +634,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         Device srcDevice = findDeviceByEntity(srcEntity);
         if (srcDevice == null)
             return Command.STOP;
-
         // Store the source device in the context
         fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -1015,8 +1014,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
         }
 
-        boolean learnap = true;
-        if (swDpid == null ||
+        /**for the new flow cache design, the flow mods retrived are not always from the source, learn AP should be disabled --meiyang*/
+        boolean learnap = false;
+        /**
+         * if (swDpid == null ||
             inPort == null ||
             !isValidAttachmentPoint(swDpid, inPort)) {
             // If this is an internal port or we otherwise don't want
@@ -1027,6 +1028,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // as a key field.
             learnap = false;
         }
+        */
 
         short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
         return new Entity(dlAddr,
