@@ -48,4 +48,12 @@ public interface IFloodlightModuleContext {
      * @return A key, value map of the configuration options
      */
     public Map<String, String> getConfigParams(IFloodlightModule module);
+
+    /**
+     * Gets module specific configuration parameters.
+     * @param clazz The class of the module to get configuration parameters for
+     * @return A key, value map of the configuration options
+     */
+    public Map<String, String> getConfigParams(Class<? extends
+                                                     IFloodlightModule> clazz);
 }

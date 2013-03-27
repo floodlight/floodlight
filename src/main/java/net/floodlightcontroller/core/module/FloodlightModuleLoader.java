@@ -406,8 +406,10 @@ public class FloodlightModuleLoader {
     /**
      * Call each loaded module's startup method
      * @param moduleSet the module set to start up
+     * @throws FloodlightModuleException 
      */
-    protected void startupModules(Collection<IFloodlightModule> moduleSet) {
+    protected void startupModules(Collection<IFloodlightModule> moduleSet) 
+            throws FloodlightModuleException {
         for (IFloodlightModule m : moduleSet) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Starting " + m.getClass().getCanonicalName());
