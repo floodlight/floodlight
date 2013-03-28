@@ -164,6 +164,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    @Override
    public void flushCounters() {
        Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
+       ArrayList<String> deleteKeys = new ArrayList<String>();
        for (String key : thismap.keySet()) {
            MutableLong curval = thismap.get(key);
            long delta = curval.get();
@@ -177,13 +178,16 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                    // recreated (see updateCounter)
                    Set<String> thisset = this.threadlocalCurrentCounters.get();
                    thisset.remove(key);
-                   thismap.remove(key);
+                   deleteKeys.add(key);
                } else {
                    ctr.addAndGet(delta);
                    curval.set(0);
                }
            }
        }
+       for (String dkey : deleteKeys)
+           thismap.remove(dkey);
+
        // At this point it is also possible that the threadlocal map/set does not
        // include a counter that has been enabled and is present in the global
        // current counter store. If so we need to sync such state so that the
@@ -192,7 +196,6 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        if (thisset.size() != currentCounters.size()) {
            thisset.addAll(currentCounters);
        }
-       //printAllCounters();
    }
 
    @Override

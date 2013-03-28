@@ -7,13 +7,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Reset debug counter values
  *
- * URI must be in one of the following forms: " +
- * "http://<controller-hostname>:8080/wm/core/debugcounter/reset/<param>/json
+ * URI must be in one of the following forms:
+ * "http://{controller-hostname}:8080/wm/core/debugcounter/reset/{param}/json
  *
- *  where <param> must be one of (no quotes)
- *       all                  resets all active counters
- *       <moduleName>         resets all active counters for the specified module
- *       <moduleCounterName>  resets specific counter if it is enabled
+ *  where {param} must be one of (no quotes):
+ *       "all"                  resets all active counters.
+ *       "{moduleName}"         resets all active counters for the specified module.
+ *       "{moduleCounterName}"  resets specific counter if it is enabled.
  *
  * @author Saurav
  */

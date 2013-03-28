@@ -770,6 +770,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         removeFromMaintenanceQueue(nptDst);
 
         // Consume this message
+        debugCounters.updateCounter("linkdiscovery-lldpeol");
         return Command.STOP;
     }
 
@@ -2267,6 +2268,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
         debugCounters.registerCounter(getName() + "-" + "incoming",
             "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        debugCounters.registerCounter(getName() + "-" + "lldpeol",
+            "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
     }
 
     // ****************************************************

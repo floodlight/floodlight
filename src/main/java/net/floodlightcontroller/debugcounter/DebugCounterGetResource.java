@@ -14,12 +14,12 @@ import org.slf4j.LoggerFactory;
  * Return the debug counter data for the get rest-api call
  *
  * URI must be in one of the following forms:
- * "http://<controller-hostname>:8080/wm/core/debugcounter/<param>/json
+ * "http://{controller-hostname}:8080/wm/core/debugcounter/{param}/json
  *
- *  where <param> must be one of (no quotes)
- *       all                  returns value/info on all active counters
- *       <moduleName>         returns value/info on all active counters for the specified module
- *       <moduleCounterName>  returns value/info for specific counter if it is enabled
+ *  where {param} must be one of (no quotes):
+ *       "all"                  returns value/info on all active counters.
+ *       "{moduleName}"         returns value/info on all active counters for the specified module.
+ *       "{moduleCounterName}"  returns value/info for specific counter if it is enabled.
  *
  * @author Saurav
  */
