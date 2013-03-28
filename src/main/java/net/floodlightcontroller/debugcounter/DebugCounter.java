@@ -74,6 +74,12 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
             this.counterDesc = desc;
             this.ctype = ctype;
         }
+
+        public String getModuleCounterName() { return moduleCounterName; }
+        public String getCounterDesc() { return counterDesc; }
+        public CounterType getCtype() { return ctype; }
+        public String getModuleName() { return moduleName; }
+        public String getCounterName() { return counterName; }
     }
 
     /**
@@ -258,7 +264,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        for (CounterInfo ci : cil) {
            if (ci.moduleCounterName.equals(moduleCounterName)) {
                DebugCounterInfo dci = new DebugCounterInfo();
-               dci.counterinfo = ci;
+               dci.counterInfo = ci;
                dci.counterValue = counterValue;
                return dci;
            }
@@ -274,7 +280,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
                if (ctr != null) {
                    DebugCounterInfo dci = new DebugCounterInfo();
-                   dci.counterinfo = ci;
+                   dci.counterInfo = ci;
                    dci.counterValue = ctr.longValue();
                    dcilist.add(dci);
                }
@@ -292,7 +298,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
                if (ctr != null) {
                    DebugCounterInfo dci = new DebugCounterInfo();
-                   dci.counterinfo = ci;
+                   dci.counterInfo = ci;
                    dci.counterValue = ctr.longValue();
                    dcilist.add(dci);
                }
@@ -301,6 +307,23 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        return dcilist;
    }
 
+   @Override
+   public boolean containsMCName(String moduleCounterName) {
+       if (debugCounters.containsKey(moduleCounterName)) return true;
+       // it is possible that the counter may be disabled
+       for (List<CounterInfo> cil : moduleCounters.values()) {
+           for (CounterInfo ci : cil) {
+               if (ci.moduleCounterName.equals(moduleCounterName))
+                   return true;
+           }
+       }
+       return false;
+   }
+
+   @Override
+   public boolean containsModName(String moduleName) {
+       return  (moduleCounters.containsKey(moduleName)) ? true : false;
+   }
 
    //*******************************
    //   Internal Methods
@@ -316,40 +339,41 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        }
    }
 
+   //*******************************
+   //   IFloodlightModule
+   //*******************************
 
-    //*******************************
-    //   IFloodlightModule
-    //*******************************
+   @Override
+   public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+       Collection<Class<? extends IFloodlightService>> l =
+               new ArrayList<Class<? extends IFloodlightService>>();
+       l.add(IDebugCounterService.class);
+       return l;
+   }
 
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l =
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IDebugCounterService.class);
-        return l;
-    }
+   @Override
+   public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+       Map<Class<? extends IFloodlightService>, IFloodlightService> m =
+               new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+       m.put(IDebugCounterService.class, this);
+       return m;
+   }
 
-    @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>, IFloodlightService> m =
-                new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-        m.put(IDebugCounterService.class, this);
-        return m;
-    }
+   @Override
+   public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+       return null;
+   }
 
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return null;
-    }
+   @Override
+   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 
-    @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+   }
 
-    }
+   @Override
+   public void startUp(FloodlightModuleContext context) {
 
-    @Override
-    public void startUp(FloodlightModuleContext context) {
+   }
 
-    }
+
 
 }

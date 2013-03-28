@@ -766,10 +766,10 @@ public class TopologyManager implements
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
-        registerLinkDiscoveryDebugCounters();
+        registerTopologyDebugCounters();
     }
 
-    private void registerLinkDiscoveryDebugCounters() {
+    private void registerTopologyDebugCounters() {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
