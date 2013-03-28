@@ -397,7 +397,10 @@ public class LoadBalancer implements IFloodlightModule,
                     if (srcDevice != null && dstDevice != null)
                         break;
             }
-        }   
+        }  
+        
+        // srcDevice and/or dstDevice is null, no route can be pushed
+        if (srcDevice == null || dstDevice == null) return;
         
         Long srcIsland = topology.getL2DomainId(sw.getId());
 
