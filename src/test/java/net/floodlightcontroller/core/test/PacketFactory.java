@@ -41,7 +41,7 @@ import org.openflow.protocol.factory.BasicFactory;
 public class PacketFactory {
     public static String broadcastMac = "ff:ff:ff:ff:ff:ff";
     public static String broadcastIp = "255.255.255.255";
-    protected static BasicFactory OFMessageFactory = new BasicFactory();
+    protected static BasicFactory OFMessageFactory = BasicFactory.getInstance();
     
     /**
      * Generates a DHCP request OFPacketIn.

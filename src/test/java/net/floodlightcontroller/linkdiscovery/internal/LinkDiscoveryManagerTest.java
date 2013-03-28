@@ -111,6 +111,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         return mockSwitch;
     }
 
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -525,7 +526,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         byte[] testPacketSerialized = testPacket.serialize();
         OFPacketIn pi;
         // build out input packet
-        pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+        pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                 .setBufferId(-1)
                 .setInPort((short) 1)
                 .setPacketData(testPacketSerialized)

@@ -77,7 +77,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switchListeners = new CopyOnWriteArrayList<IOFSwitchListener>();
         haListeners = new CopyOnWriteArrayList<IHAListener>();
-        factory = new BasicFactory();
+        factory = BasicFactory.getInstance();
     }
 
     @Override
