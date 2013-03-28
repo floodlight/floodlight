@@ -99,4 +99,14 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
         return null;
     }
 
+    @Override
+    public boolean containsMCName(String moduleCounterName) {
+        return false;
+    }
+
+    @Override
+    public boolean containsModName(String moduleName) {
+        return false;
+    }
+
 }

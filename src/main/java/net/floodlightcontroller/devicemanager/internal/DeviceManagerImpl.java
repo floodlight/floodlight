@@ -759,10 +759,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             logger.debug("Could not instantiate REST API");
         }
 
-        registerLinkDiscoveryDebugCounters();
+        registerDeviceManagerDebugCounters();
     }
 
-    private void registerLinkDiscoveryDebugCounters() {
+    private void registerDeviceManagerDebugCounters() {
         if (debugCounters == null) {
             logger.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();

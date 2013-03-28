@@ -16,8 +16,15 @@ public interface IDebugCounterService extends IFloodlightService {
     }
 
     public class DebugCounterInfo {
-        CounterInfo counterinfo;
+        CounterInfo counterInfo;
         Long counterValue;
+
+        public CounterInfo getCounterInfo() {
+            return counterInfo;
+        }
+        public Long getCounterValue() {
+            return counterValue;
+        }
     }
 
     /**
@@ -103,7 +110,8 @@ public interface IDebugCounterService extends IFloodlightService {
     public void disableCtrOnDemand(String moduleCounterName);
 
     /**
-     * Get counter value and associated information for a specific counter
+     * Get counter value and associated information for a specific counter if it
+     * is active.
      *
      * @param moduleCounterName
      * @return DebugCounterInfo or null if the counter could not be found
@@ -111,19 +119,41 @@ public interface IDebugCounterService extends IFloodlightService {
     public DebugCounterInfo getCounterValue(String moduleCounterName);
 
     /**
-     * Get counter values and associated information for all counters
+     * Get counter values and associated information for all active counters
      *
      * @return the list of values/info or an empty list
      */
     public  List<DebugCounterInfo> getAllCounterValues();
 
     /**
-     * Get counter values and associated information for all counters associated
+     * Get counter values and associated information for all active counters associated
      * with a module.
      *
      * @param moduleName
      * @return the list of values/info or an empty list
      */
     public  List<DebugCounterInfo> getModuleCounterValues(String moduleName);
+
+    /**
+     * Convenience method to figure out if the the given 'moduleCounterName' corresponds
+     * to a registered moduleCounterName or not. Note that the counter may or
+     * may not be enabled for counting, but if it is registered the method will
+     * return true.
+     *
+     * @param param
+     * @return false if moduleCounterName is not a registered counter
+     */
+    public boolean containsMCName(String moduleCounterName);
+
+    /**
+     * Convenience method to figure out if the the given 'moduleName' corresponds
+     * to a registered moduleName or not. Note that the module may or may not have
+     * a counter enabled for counting, but if it is registered the method will
+     * return true.
+     *
+     * @param param
+     * @return false if moduleName is not a registered counter
+     */
+    public boolean containsModName(String moduleName);
 
 }

@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -18,6 +18,9 @@
 package net.floodlightcontroller.core.web;
 
 import net.floodlightcontroller.core.module.ModuleLoaderResource;
+import net.floodlightcontroller.debugcounter.DebugCounterGetResource;
+import net.floodlightcontroller.debugcounter.DebugCounterResetResource;
+import net.floodlightcontroller.debugcounter.DebugCounterStateResource;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
 import org.restlet.Context;
@@ -60,6 +63,9 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/role/json", ControllerRoleResource.class);
         router.attach("/health/json", HealthCheckResource.class);
         router.attach("/system/uptime/json", SystemUptimeResource.class);
+        router.attach("/debugcounter/{param}/json", DebugCounterGetResource.class);
+        router.attach("/debugcounter/reset/{param}/json", DebugCounterResetResource.class);
+        router.attach("/debugcounter/{moduleCounterName}/{state}/json", DebugCounterStateResource.class);
         return router;
     }
 }
