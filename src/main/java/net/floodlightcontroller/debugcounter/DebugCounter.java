@@ -190,7 +190,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
        // At this point it is also possible that the threadlocal map/set does not
        // include a counter that has been enabled and is present in the global
-       // current counter store. If so we need to sync such state so that the
+       // currentCounters set. If so we need to sync such state so that the
        // thread local counter can be created (in the updateCounter method)
        Set<String> thisset = this.threadlocalCurrentCounters.get();
        if (thisset.size() != currentCounters.size()) {
