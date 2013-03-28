@@ -24,16 +24,17 @@ import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
 public class NoOp extends ServerResource {
-	/**
-	 * Does nothing and returns 200 OK with a status message
-	 * @return status: ok
-	 */
-	@Get
-	@Put
-	@Post
-	@Delete
-	public String noOp(String postdata) {
-		setStatus(Status.SUCCESS_OK);
+    /**
+     * Does nothing and returns 200 OK with a status message
+     * 
+     * @return status: ok
+     */
+    @Get
+    @Put
+    @Post
+    @Delete
+    public String noOp(String postdata) {
+        setStatus(Status.SUCCESS_OK);
         return "{\"status\":\"ok\"}";
-	}
+    }
 }
