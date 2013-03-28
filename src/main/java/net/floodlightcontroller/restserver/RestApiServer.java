@@ -40,6 +40,7 @@ import org.restlet.service.StatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -50,6 +51,7 @@ public class RestApiServer
     protected static Logger logger = LoggerFactory.getLogger(RestApiServer.class);
     protected List<RestletRoutable> restlets;
     protected FloodlightModuleContext fmlContext;
+    protected String restHost = null;
     protected int restPort = 8080;
     
     // ***********
@@ -91,7 +93,7 @@ public class RestApiServer
             return slashFilter;
         }
         
-        public void run(FloodlightModuleContext fmlContext, int restPort) {
+        public void run(FloodlightModuleContext fmlContext, String restHost, int restPort) {
             setStatusService(new StatusService() {
                 @Override
                 public Representation getRepresentation(Status status,
@@ -114,7 +116,11 @@ public class RestApiServer
             // Start listening for REST requests
             try {
                 final Component component = new Component();
-                component.getServers().add(Protocol.HTTP, restPort);
+                if (restHost == null) {
+                	component.getServers().add(Protocol.HTTP, restPort);
+                } else {
+                	component.getServers().add(Protocol.HTTP, restHost, restPort);
+                }
                 component.getClients().add(Protocol.CLAP);
                 component.getDefaultHost().attach(this);
                 component.start();
@@ -148,7 +154,7 @@ public class RestApiServer
         }
         
         RestApplication restApp = new RestApplication();
-        restApp.run(fmlContext, restPort);
+        restApp.run(fmlContext, restHost, restPort);
     }
     
     // *****************
@@ -190,6 +196,15 @@ public class RestApiServer
         
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
+        restHost = configOptions.get("host");
+        if (restHost == null) {
+            Map<String, String> providerConfigOptions = context.getConfigParams(
+            		FloodlightProvider.class);
+            restHost = providerConfigOptions.get("openflowhost");
+        }
+        if (restHost != null) {
+        	logger.debug("REST host set to {}", restHost);
+        }
         String port = configOptions.get("port");
         if (port != null) {
             restPort = Integer.parseInt(port);
