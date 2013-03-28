@@ -41,7 +41,7 @@ public interface IFloodlightModuleContext {
      * @return All Floodlight modules that are going to be loaded
      */
     public Collection<IFloodlightModule> getAllModules();
-    
+
     /**
      * Gets module specific configuration parameters.
      * @param module The module to get the configuration parameters for

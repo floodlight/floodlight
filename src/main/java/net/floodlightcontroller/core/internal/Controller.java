@@ -180,6 +180,7 @@ public class Controller implements IFloodlightProviderService,
     protected IThreadPoolService threadPool;
 
     // Configuration options
+    protected String openFlowHost = null;
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
 
@@ -1714,7 +1715,10 @@ public class Controller implements IFloodlightProviderService,
             ChannelPipelineFactory pfact =
                     new OpenflowPipelineFactory(this, null);
             bootstrap.setPipelineFactory(pfact);
-            InetSocketAddress sa = new InetSocketAddress(openFlowPort);
+            InetSocketAddress sa =
+            		(openFlowHost == null)
+            		? new InetSocketAddress(openFlowPort)
+            		: new InetSocketAddress(openFlowHost, openFlowPort);
             final ChannelGroup cg = new DefaultChannelGroup();
             cg.add(bootstrap.bind(sa));
 
@@ -1755,6 +1759,11 @@ public class Controller implements IFloodlightProviderService,
     }
 
     public void setConfigParams(Map<String, String> configParams) {
+    	String ofHost = configParams.get("openflowhost");
+    	if (ofHost != null) {
+    		this.openFlowHost = ofHost;
+        	log.debug("OpenFlow host set to {}", this.openFlowHost);
+    	}
         String ofPort = configParams.get("openflowport");
         if (ofPort != null) {
             this.openFlowPort = Integer.parseInt(ofPort);
