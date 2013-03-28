@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
  * @author Saurav
  */
 public class DebugCounterStateResource extends DebugCounterResourceBase {
+
     protected static Logger logger =
             LoggerFactory.getLogger(DebugCounterStateResource.class);
 

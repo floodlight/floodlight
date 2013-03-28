@@ -377,6 +377,4 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    }
 
-
-
 }
