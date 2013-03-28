@@ -305,6 +305,7 @@ public class FloodlightModuleLoader {
                                 throw new FloodlightModuleException("ERROR! Found more " + 
                                     "than one (" + mods.size() + ") IFloodlightModules that provides " +
                                     "service " + c.toString() + 
+                                    ". This service is required for " + moduleName + 
                                     ". Please specify one of the following modules in the config: " + 
                                     duplicateMods);
                             }
@@ -405,8 +406,10 @@ public class FloodlightModuleLoader {
     /**
      * Call each loaded module's startup method
      * @param moduleSet the module set to start up
+     * @throws FloodlightModuleException 
      */
-    protected void startupModules(Collection<IFloodlightModule> moduleSet) {
+    protected void startupModules(Collection<IFloodlightModule> moduleSet) 
+            throws FloodlightModuleException {
         for (IFloodlightModule m : moduleSet) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Starting " + m.getClass().getCanonicalName());

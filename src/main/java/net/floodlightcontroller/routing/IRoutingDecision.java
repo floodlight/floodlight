@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -29,18 +29,23 @@ public interface IRoutingDecision {
         /*
          * NONE:                    NO-OP, continue with the packet processing chain
          * DROP:                    Drop this packet and this flow
-         * FORWARD:                 Forward this packet, and this flow, to the first (and only device) in getDestinationDevices(),
-         *                          if the destination is not known at this time, initiate a discovery action for it (e.g. ARP)
-         * FORWARD_OR_FLOOD:        Forward this packet, and this flow, to the first (and only device) in getDestinationDevices(),
-         *                          if the destination is not known at this time, flood this packet on the source switch
-         * MULTICAST:               Multicast this packet to all the interfaces and devices attached
+         * FORWARD:                 Forward this packet, and this flow, to the first
+         *                          (and only device) in getDestinationDevices(),
+         *                          if the destination is not known at this time,
+         *                          initiate a discovery action for it (e.g. ARP)
+         * FORWARD_OR_FLOOD:        Forward this packet, and this flow, to the first
+         *                          (and only device) in getDestinationDevices(),
+         *                          if the destination is not known at this time,
+         *                          flood this packet on the source switch
+         * MULTICAST:               Multicast this packet to all the interfaces
+         *                          and devices attached
          */
         NONE, DROP, FORWARD, FORWARD_OR_FLOOD, MULTICAST
     }
-    
+
     public static final FloodlightContextStore<IRoutingDecision> rtStore =
         new FloodlightContextStore<IRoutingDecision>();
-    public static final String CONTEXT_DECISION = 
+    public static final String CONTEXT_DECISION =
             "net.floodlightcontroller.routing.decision";
 
     public void addToContext(FloodlightContext cntx);
@@ -54,4 +59,6 @@ public interface IRoutingDecision {
     public void setMulticastInterfaces(List<SwitchPort> lspt);
     public Integer getWildcards();
     public void setWildcards(Integer wildcards);
+    public short getHardTimeout();
+    public void setHardTimeout(short hardTimeout);
 }

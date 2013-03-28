@@ -44,6 +44,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -68,21 +71,21 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Topology manager is responsible for maintaining the controller's notion
- * of the network graph, as well as implementing tools for finding routes 
+ * of the network graph, as well as implementing tools for finding routes
  * through the topology.
  */
 @LogMessageCategory("Network Topology")
-public class TopologyManager implements 
-        IFloodlightModule, ITopologyService, 
+public class TopologyManager implements
+        IFloodlightModule, ITopologyService,
         IRoutingService, ILinkDiscoveryListener,
         IOFMessageListener, IHAListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
-    public static final String CONTEXT_TUNNEL_ENABLED = 
+    public static final String CONTEXT_TUNNEL_ENABLED =
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
 
-    /** 
+    /**
      * Set of ports for each switch
      */
     protected Map<Long, Set<Short>> switchPorts;
@@ -111,6 +114,7 @@ public class TopologyManager implements
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
     protected IRestApiService restApi;
+    protected IDebugCounterService debugCounters;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -171,7 +175,7 @@ public class TopologyManager implements
             		"discovery module.",
             recommendation=LogMessageDoc.CHECK_CONTROLLER)
     protected class UpdateTopologyWorker implements Runnable {
-        @Override 
+        @Override
         public void run() {
             try {
                 if (ldUpdates.peek() != null)
@@ -223,7 +227,7 @@ public class TopologyManager implements
         }
         ldUpdates.add(update);
     }
-    
+
     // ****************
     // ITopologyService
     // ****************
@@ -241,16 +245,16 @@ public class TopologyManager implements
         topologyAware.add(listener);
     }
 
-    @Override 
+    @Override
     public boolean isAttachmentPointPort(long switchid, short port) {
         return isAttachmentPointPort(switchid, port, true);
     }
 
     @Override
-    public boolean isAttachmentPointPort(long switchid, short port, 
+    public boolean isAttachmentPointPort(long switchid, short port,
                                          boolean tunnelEnabled) {
 
-        // If the switch port is a tunnel endpoint, it is not
+        // If the switch port is 'tun-bsn' port, it is not
         // an attachment point port, irrespective of whether
         // a link is found through it or not.
         if (linkDiscovery.isTunnelPort(switchid, port))
@@ -273,10 +277,12 @@ public class TopologyManager implements
         return (sw.portEnabled(port));
     }
 
+    @Override
     public long getOpenflowDomainId(long switchId) {
         return getOpenflowDomainId(switchId, true);
     }
 
+    @Override
     public long getOpenflowDomainId(long switchId, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getOpenflowDomainId(switchId);
@@ -323,6 +329,7 @@ public class TopologyManager implements
         return isIncomingBroadcastAllowed(sw, portId, true);
     }
 
+    @Override
     public boolean isIncomingBroadcastAllowed(long sw, short portId,
                                               boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
@@ -346,20 +353,22 @@ public class TopologyManager implements
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
-    /** Get all the ports on the target switch (targetSw) on which a 
+    /** Get all the ports on the target switch (targetSw) on which a
      * broadcast packet must be sent from a host whose attachment point
      * is on switch port (src, srcPort).
      */
-    public Set<Short> getBroadcastPorts(long targetSw, 
+    @Override
+    public Set<Short> getBroadcastPorts(long targetSw,
                                         long src, short srcPort) {
         return getBroadcastPorts(targetSw, src, srcPort, true);
     }
 
-    /** Get all the ports on the target switch (targetSw) on which a 
+    /** Get all the ports on the target switch (targetSw) on which a
      * broadcast packet must be sent from a host whose attachment point
      * is on switch port (src, srcPort).
      */
-    public Set<Short> getBroadcastPorts(long targetSw, 
+    @Override
+    public Set<Short> getBroadcastPorts(long targetSw,
                                         long src, short srcPort,
                                         boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
@@ -374,7 +383,7 @@ public class TopologyManager implements
         // Use this function to redirect traffic if needed.
         return getOutgoingSwitchPort(src, srcPort, dst, dstPort, true);
     }
-    
+
     @Override
     public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
                                                long dst, short dstPort,
@@ -502,13 +511,13 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public NodePortTuple 
+    public NodePortTuple
     getAllowedIncomingBroadcastPort(long src, short srcPort) {
         return getAllowedIncomingBroadcastPort(src,srcPort, true);
     }
 
     @Override
-    public NodePortTuple 
+    public NodePortTuple
     getAllowedIncomingBroadcastPort(long src, short srcPort,
                                     boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
@@ -541,6 +550,7 @@ public class TopologyManager implements
         return tunnelPorts;
     }
 
+    @Override
     public Set<NodePortTuple> getBlockedPorts() {
         Set<NodePortTuple> bp;
         Set<NodePortTuple> blockedPorts =
@@ -587,12 +597,12 @@ public class TopologyManager implements
     }
 
     @Override
-    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie, 
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie,
                           boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getRoute(src, srcPort, dst, dstPort, cookie);
     }
-    
+
     @Override
     public boolean routeExists(long src, long dst) {
         return routeExists(src, dst, true);
@@ -604,6 +614,16 @@ public class TopologyManager implements
         return ti.routeExists(src, dst);
     }
 
+    @Override
+    public ArrayList<Route> getRoutes(long srcDpid, long dstDpid,
+                                      boolean tunnelEnabled) {
+        // Floodlight supports single path routing now
+
+        // return single path now
+        ArrayList<Route> result=new ArrayList<Route>();
+        result.add(getRoute(srcDpid, dstDpid, 0, tunnelEnabled));
+        return result;
+    }
 
     // ******************
     // IOFMessageListener
@@ -629,10 +649,11 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                return this.processPacketInMessage(sw, 
+                debugCounters.updateCounter("topology-incoming");
+                return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
-            	break;
+                break;
         }
 
         return Command.CONTINUE;
@@ -678,7 +699,7 @@ public class TopologyManager implements
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ITopologyService.class);
         l.add(IRoutingService.class);
@@ -689,7 +710,7 @@ public class TopologyManager implements
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
+        IFloodlightService> m =
             new HashMap<Class<? extends IFloodlightService>,
                 IFloodlightService>();
         // We are the class that implements the service
@@ -699,9 +720,9 @@ public class TopologyManager implements
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> 
+    public Collection<Class<? extends IFloodlightService>>
             getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
@@ -716,9 +737,10 @@ public class TopologyManager implements
             throws FloodlightModuleException {
         linkDiscovery = context.getServiceImpl(ILinkDiscoveryService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
-        floodlightProvider = 
+        floodlightProvider =
                 context.getServiceImpl(IFloodlightProviderService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
+        debugCounters = context.getServiceImpl(IDebugCounterService.class);
 
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -744,6 +766,17 @@ public class TopologyManager implements
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
+        registerLinkDiscoveryDebugCounters();
+    }
+
+    private void registerLinkDiscoveryDebugCounters() {
+        if (debugCounters == null) {
+            log.error("Debug Counter Service not found.");
+            debugCounters = new NullDebugCounter();
+            return;
+        }
+        debugCounters.registerCounter(getName() + "-" + "incoming",
+            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
     }
 
     protected void addRestletRoutable() {
@@ -776,13 +809,10 @@ public class TopologyManager implements
                 result = Command.STOP;
             }
         }
-
-        // if sufficient information is available, then drop broadcast
-        // packets here as well.
         return result;
     }
 
-    /** 
+    /**
      * TODO This method must be moved to a layer below forwarding
      * so that anyone can use it.
      * @param packetData
@@ -795,14 +825,14 @@ public class TopologyManager implements
             explanation="An I/O error occured while trying send " +
             		"topology discovery packet",
             recommendation=LogMessageDoc.CHECK_SWITCH)
-    public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw, 
+    public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw,
                                        Set<Short> ports,
                                        FloodlightContext cntx) {
 
         if (ports == null) return;
         if (packetData == null || packetData.length <= 0) return;
 
-        OFPacketOut po = 
+        OFPacketOut po =
                 (OFPacketOut) floodlightProvider.getOFMessageFactory().
                 getMessage(OFType.PACKET_OUT);
 
@@ -814,7 +844,7 @@ public class TopologyManager implements
         // set actions
         po.setActions(actions);
         // set action length
-        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * 
+        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH *
                 ports.size()));
         // set buffer-id to BUFFER_ID_NONE
         po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
@@ -825,8 +855,8 @@ public class TopologyManager implements
         po.setPacketData(packetData);
 
         // compute and set packet length.
-        short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + 
-                po.getActionsLength() + 
+        short poLength = (short)(OFPacketOut.MINIMUM_LENGTH +
+                po.getActionsLength() +
                 packetData.length);
 
         po.setLength(poLength);
@@ -834,7 +864,7 @@ public class TopologyManager implements
         try {
             //counterStore.updatePktOutFMCounterStore(sw, po);
             if (log.isTraceEnabled()) {
-                log.trace("write broadcast packet on switch-id={} " + 
+                log.trace("write broadcast packet on switch-id={} " +
                         "interaces={} packet-data={} packet-out={}",
                         new Object[] {sw.getId(), ports, packetData, po});
             }
@@ -870,13 +900,13 @@ public class TopologyManager implements
     /**
      * The BDDP packets are forwarded out of all the ports out of an
      * openflowdomain.  Get all the switches in the same openflow
-     * domain as the sw (disabling tunnels).  Then get all the 
+     * domain as the sw (disabling tunnels).  Then get all the
      * external switch ports and send these packets out.
      * @param sw
      * @param pi
      * @param cntx
      */
-    protected void doFloodBDDP(long pinSwitch, OFPacketIn pi, 
+    protected void doFloodBDDP(long pinSwitch, OFPacketIn pi,
                                FloodlightContext cntx) {
 
         TopologyInstance ti = getCurrentInstance(false);
@@ -900,13 +930,13 @@ public class TopologyManager implements
             ports.addAll(enabledPorts);
 
             // all the ports known to topology // without tunnels.
-            // out of these, we need to choose only those that are 
+            // out of these, we need to choose only those that are
             // broadcast port, otherwise, we should eliminate.
             Set<Short> portsKnownToTopo = ti.getPortsWithLinks(sid);
 
             if (portsKnownToTopo != null) {
                 for(short p: portsKnownToTopo) {
-                    NodePortTuple npt = 
+                    NodePortTuple npt =
                             new NodePortTuple(sid, p);
                     if (ti.isBroadcastDomainPort(npt) == false) {
                         ports.remove(p);
@@ -930,11 +960,11 @@ public class TopologyManager implements
 
     }
 
-    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
+    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
                                              FloodlightContext cntx) {
 
         // get the packet-in switch.
-        Ethernet eth = 
+        Ethernet eth =
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
@@ -949,12 +979,11 @@ public class TopologyManager implements
                 return Command.CONTINUE;
 
             doFloodBDDP(sw.getId(), pi, cntx);
+            return Command.STOP;
         } else {
             return dropFilter(sw.getId(), pi, cntx);
         }
-        return Command.STOP;
     }
-
 
     /**
      * Updates concerning switch disconnect and port down are not processed.
@@ -983,7 +1012,7 @@ public class TopologyManager implements
                                 update.getDst(), update.getDstPort(),
                                 update.getType());
             } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
-                removeLink(update.getSrc(), update.getSrcPort(), 
+                removeLink(update.getSrc(), update.getSrcPort(),
                            update.getDst(), update.getDstPort());
             } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_ADDED) {
                 addTunnelPort(update.getSrc(), update.getSrcPort());
@@ -1008,9 +1037,6 @@ public class TopologyManager implements
     }
 
     /**
-     * This function computes a new topology.
-     */
-    /**
      * This function computes a new topology instance.
      * It ignores links connected to all broadcast domain ports
      * and tunnel ports. The method returns if a new instance of
@@ -1022,7 +1048,7 @@ public class TopologyManager implements
         if (!linksUpdated) return false;
 
         Map<NodePortTuple, Set<Link>> openflowLinks;
-        openflowLinks = 
+        openflowLinks =
                 new HashMap<NodePortTuple, Set<Link>>();
         Set<NodePortTuple> nptList = switchPortLinks.keySet();
 
@@ -1056,9 +1082,9 @@ public class TopologyManager implements
             }
         }
 
-        TopologyInstance nt = new TopologyInstance(switchPorts, 
+        TopologyInstance nt = new TopologyInstance(switchPorts,
                                                    blockedPorts,
-                                                   openflowLinks, 
+                                                   openflowLinks,
                                                    broadcastDomainPorts,
                                                    tunnelPorts);
         nt.compute();
@@ -1162,7 +1188,7 @@ public class TopologyManager implements
     }
 
     public boolean removeSwitch(long sid) {
-        // Delete all the links in the switch, switch and all 
+        // Delete all the links in the switch, switch and all
         // associated data should be deleted.
         if (switchPorts.containsKey(sid) == false) return false;
 
@@ -1187,9 +1213,9 @@ public class TopologyManager implements
      * @param l
      * @return
      */
-    private boolean addLinkToStructure(Map<NodePortTuple, 
+    private boolean addLinkToStructure(Map<NodePortTuple,
                                        Set<Link>> s, Link l) {
-        boolean result1 = false, result2 = false; 
+        boolean result1 = false, result2 = false;
 
         NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
         NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
@@ -1213,7 +1239,7 @@ public class TopologyManager implements
      * @param l
      * @return
      */
-    private boolean removeLinkFromStructure(Map<NodePortTuple, 
+    private boolean removeLinkFromStructure(Map<NodePortTuple,
                                             Set<Link>> s, Link l) {
 
         boolean result1 = false, result2 = false;
@@ -1236,7 +1262,7 @@ public class TopologyManager implements
         // If you need to handle tunnel links, this is a placeholder.
     }
 
-    public void addOrUpdateLink(long srcId, short srcPort, long dstId, 
+    public void addOrUpdateLink(long srcId, short srcPort, long dstId,
                                 short dstPort, LinkType type) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
 
@@ -1268,9 +1294,9 @@ public class TopologyManager implements
         removeLinkFromStructure(portBroadcastDomainLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
-        NodePortTuple srcNpt = 
+        NodePortTuple srcNpt =
                 new NodePortTuple(link.getSrc(), link.getSrcPort());
-        NodePortTuple dstNpt = 
+        NodePortTuple dstNpt =
                 new NodePortTuple(link.getDst(), link.getDstPort());
 
         // Remove switch ports if there are no links through those switch ports
@@ -1284,11 +1310,11 @@ public class TopologyManager implements
         }
 
         // Remove the node if no ports are present
-        if (switchPorts.get(srcNpt.getNodeId())!=null && 
+        if (switchPorts.get(srcNpt.getNodeId())!=null &&
                 switchPorts.get(srcNpt.getNodeId()).isEmpty()) {
             switchPorts.remove(srcNpt.getNodeId());
         }
-        if (switchPorts.get(dstNpt.getNodeId())!=null && 
+        if (switchPorts.get(dstNpt.getNodeId())!=null &&
                 switchPorts.get(dstNpt.getNodeId()).isEmpty()) {
             switchPorts.remove(dstNpt.getNodeId());
         }
@@ -1350,6 +1376,7 @@ public class TopologyManager implements
     /**
      *  Switch methods
      */
+    @Override
     public Set<Short> getPorts(long sw) {
         Set<Short> ports = new HashSet<Short>();
         IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
@@ -1366,14 +1393,5 @@ public class TopologyManager implements
         return ports;
     }
 
-    @Override
-    public ArrayList<Route> getRoutes(long srcDpid, long dstDpid,
-                                      boolean tunnelEnabled) {
-        // Floodlight supports single path routing now
-        
-        // return single path now
-        ArrayList<Route> result=new ArrayList<Route>();
-        result.add(getRoute(srcDpid, dstDpid, 0, tunnelEnabled));
-        return result;
-    }
+
 }

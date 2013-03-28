@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.core.test;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +41,7 @@ import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
+import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -102,6 +105,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     /**
      * @return the listeners
      */
+    @Override
     public Map<OFType, List<IOFMessageListener>> getListeners() {
         Map<OFType, List<IOFMessageListener>> lers = 
                 new HashMap<OFType, List<IOFMessageListener>>();
@@ -158,6 +162,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
     
+    @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m, FloodlightContext bc) {
         List<IOFMessageListener> msgListeners = null;
         if (listeners.containsKey(m.getType())) {
@@ -191,6 +196,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         return switchListeners;
     }
     
+    @Override
     public void terminate() {
     }
 
@@ -289,7 +295,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
     
     @Override
-    public void setRole(Role role) {
+    public void setRole(Role role, String roleChangeDescription) {
         
     }
     
@@ -304,10 +310,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
 
-    @Override
-    public String getControllerId() {
-        return "localhost";
-    }
 
     @Override
     public Map<String, String> getControllerNodeIPs() {
@@ -355,4 +357,24 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         
     }
 
+    @Override
+    public RoleInfo getRoleInfo() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<String, Long> getMemory() {
+        Map<String, Long> m = new HashMap<String, Long>();
+        Runtime runtime = Runtime.getRuntime();
+        m.put("total", runtime.totalMemory());
+        m.put("free", runtime.freeMemory());
+        return m;
+    }
+
+    @Override
+    public Long getUptime() {
+        RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+        return rb.getUptime();
+    }
 }
