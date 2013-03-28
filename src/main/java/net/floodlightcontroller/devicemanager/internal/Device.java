@@ -352,7 +352,7 @@ public class Device implements IDevice {
      */
     protected boolean updateAttachmentPoint() {
         boolean moved = false;
-
+        this.oldAPs = attachmentPoints;
         if (attachmentPoints == null || attachmentPoints.isEmpty())
             return false;
 
@@ -365,6 +365,7 @@ public class Device implements IDevice {
 
         // Prepare the new attachment point list.
         if (moved) {
+            log.info("updateAttachmentPoint: ap {}  newmap {} ", attachmentPoints, newMap);
             List<AttachmentPoint> newAPList =
                     new ArrayList<AttachmentPoint>();
             if (newMap != null) newAPList.addAll(newMap.values());
@@ -372,7 +373,6 @@ public class Device implements IDevice {
         }
 
         // Set the oldAPs to null.
-        this.oldAPs = null;
         return moved;
     }
 
@@ -394,7 +394,6 @@ public class Device implements IDevice {
 
         if (!deviceManager.isValidAttachmentPoint(sw, port)) return false;
         AttachmentPoint newAP = new AttachmentPoint(sw, port, lastSeen);
-
         //Copy the oldAP and ap list.
         apList = new ArrayList<AttachmentPoint>();
         if (attachmentPoints != null) apList.addAll(attachmentPoints);

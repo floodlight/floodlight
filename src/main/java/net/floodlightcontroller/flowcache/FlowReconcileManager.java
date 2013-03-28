@@ -320,9 +320,9 @@ public class FlowReconcileManager
         
             for (IFlowReconcileListener flowReconciler :
                 flowReconcileListeners.getOrderedListeners()) {
-               // if (logger.isTraceEnabled())
+                if (logger.isTraceEnabled())
                 {
-                    logger.info("Reconciling flow: call listener {}",
+                    logger.trace("Reconciling flow: call listener {}",
                             flowReconciler.getName());
                 }
                 retCmd = flowReconciler.reconcileFlows(ofmRcList);
