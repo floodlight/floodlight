@@ -951,7 +951,7 @@ public class TopologyManager implements
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getEtherType() == Ethernet.TYPE_BSN) {
+        if (eth.getPayload() instanceof BSN) {
             BSN bsn = (BSN) eth.getPayload();
             if (bsn == null) return Command.STOP;
             if (bsn.getPayload() == null) return Command.STOP;

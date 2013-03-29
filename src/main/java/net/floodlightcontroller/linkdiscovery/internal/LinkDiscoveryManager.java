@@ -539,7 +539,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getEtherType() == Ethernet.TYPE_BSN) {
+        if (eth.getPayload() instanceof BSN) {
             BSN bsn = (BSN) eth.getPayload();
             if (bsn == null) return Command.STOP;
             if (bsn.getPayload() == null) return Command.STOP;
@@ -548,7 +548,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             if (bsn.getPayload() instanceof LLDP == false)
                 return Command.CONTINUE;
             return handleLldp((LLDP) bsn.getPayload(), sw, pi.getInPort(), false, cntx);
-        } else if (eth.getEtherType() == Ethernet.TYPE_LLDP) {
+        } else if (eth.getPayload() instanceof LLDP) {
             return handleLldp((LLDP) eth.getPayload(), sw, pi.getInPort(), true, cntx);
         } else if (eth.getEtherType() < 1500) {
             long destMac = eth.getDestinationMAC().toLong();

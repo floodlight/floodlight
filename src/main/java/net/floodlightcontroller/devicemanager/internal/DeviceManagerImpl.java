@@ -839,10 +839,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param srcDevice
      */
     private void snoopDHCPClientName(Ethernet eth, Device srcDevice) {
-        if (eth.getEtherType() != Ethernet.TYPE_IPv4)
+        if (! (eth.getPayload() instanceof IPv4) )
             return;
         IPv4 ipv4 = (IPv4) eth.getPayload();
-        if (ipv4.getProtocol() != IPv4.PROTOCOL_UDP)
+        if (! (ipv4.getPayload() instanceof UDP) )
             return;
         UDP udp = (UDP) ipv4.getPayload();
         if (!(udp.getPayload() instanceof DHCP))
