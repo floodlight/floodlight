@@ -43,6 +43,12 @@ public class IPv4 extends BasePacket {
         protocolClassMap.put(PROTOCOL_UDP, UDP.class);
     }
 
+    public static final byte IPV4_FLAGS_MOREFRAG = 0x1;
+    public static final byte IPV4_FLAGS_DONTFRAG = 0x2;
+    public static final byte IPV4_FLAGS_MASK = 0x7;
+    public static final byte IPV4_FLAGS_SHIFT = 13;
+    public static final short IPV4_OFFSET_MASK = (1 << IPV4_FLAGS_SHIFT) - 1;
+
     protected byte version;
     protected byte headerLength;
     protected byte diffServ;
@@ -58,6 +64,7 @@ public class IPv4 extends BasePacket {
     protected byte[] options;
 
     protected boolean isTruncated;
+    protected boolean isFragment;
 
     /**
      * Default constructor that sets the version to 4.
@@ -66,6 +73,7 @@ public class IPv4 extends BasePacket {
         super();
         this.version = 4;
         isTruncated = false;
+        isFragment = false;
     }
 
     /**
@@ -125,6 +133,14 @@ public class IPv4 extends BasePacket {
 
     public void setTruncated(boolean isTruncated) {
         this.isTruncated = isTruncated;
+    }
+
+    public boolean isFragment() {
+        return isFragment;
+    }
+
+    public void setFragment(boolean isFrag) {
+        this.isFragment = isFrag;
     }
 
     /**
@@ -308,7 +324,8 @@ public class IPv4 extends BasePacket {
         bb.put(this.diffServ);
         bb.putShort(this.totalLength);
         bb.putShort(this.identification);
-        bb.putShort((short) (((this.flags & 0x7) << 13) | (this.fragmentOffset & 0x1fff)));
+        bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
+                | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
         bb.put(this.protocol);
         bb.putShort(this.checksum);
@@ -346,8 +363,8 @@ public class IPv4 extends BasePacket {
         this.totalLength = bb.getShort();
         this.identification = bb.getShort();
         sscratch = bb.getShort();
-        this.flags = (byte) ((sscratch >> 13) & 0x7);
-        this.fragmentOffset = (short) (sscratch & 0x1fff);
+        this.flags = (byte) ((sscratch >> IPV4_FLAGS_SHIFT) & IPV4_FLAGS_MASK);
+        this.fragmentOffset = (short) (sscratch & IPV4_OFFSET_MASK);
         this.ttl = bb.get();
         this.protocol = bb.get();
         this.checksum = bb.getShort();
@@ -361,7 +378,9 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        if (IPv4.protocolClassMap.containsKey(this.protocol)) {
+        isFragment = ((this.flags & IPV4_FLAGS_MOREFRAG) != 0) ||
+                (this.fragmentOffset != 0);
+        if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
                 payload = clazz.newInstance();
@@ -369,6 +388,11 @@ public class IPv4 extends BasePacket {
                 throw new RuntimeException("Error parsing payload for IPv4 packet", e);
             }
         } else {
+            if (log.isTraceEnabled() && isFragment) {
+                log.trace("IPv4 fragment detected {}->{}, forward using IP header only",
+                        fromIPv4Address(this.sourceAddress),
+                        fromIPv4Address(this.destinationAddress));
+            }
             payload = new Data();
         }
         int payloadLength = this.totalLength - this.headerLength * 4;
@@ -493,7 +517,7 @@ public class IPv4 extends BasePacket {
      * @return The IP address separated into bytes.
      */
     public static byte[] toIPv4AddressBytes(int ipAddress) {
-    	return new byte[] {
+        return new byte[] {
                 (byte)(ipAddress >>> 24),
                 (byte)(ipAddress >>> 16),
                 (byte)(ipAddress >>> 8),

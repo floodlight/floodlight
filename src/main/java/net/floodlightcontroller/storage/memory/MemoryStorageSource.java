@@ -70,7 +70,10 @@ public class MemoryStorageSource extends NoSqlStorageSource {
             Collection<Map<String,Object>> allRows = table.getAllRows();
             for (Map<String,Object> row : allRows) {
                 Object v = row.get(predicateColumnName);
-                if (value.equals(v)) {
+                if (value != null) {
+                    if ((v != null) && value.equals(v))
+                        result.add(row);
+                } else if (v == null) {
                     result.add(row);
                 }
             }

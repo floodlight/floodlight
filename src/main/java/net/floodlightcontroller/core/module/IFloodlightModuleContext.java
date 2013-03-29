@@ -41,11 +41,19 @@ public interface IFloodlightModuleContext {
      * @return All Floodlight modules that are going to be loaded
      */
     public Collection<IFloodlightModule> getAllModules();
-    
+
     /**
      * Gets module specific configuration parameters.
      * @param module The module to get the configuration parameters for
      * @return A key, value map of the configuration options
      */
     public Map<String, String> getConfigParams(IFloodlightModule module);
+
+    /**
+     * Gets module specific configuration parameters.
+     * @param clazz The class of the module to get configuration parameters for
+     * @return A key, value map of the configuration options
+     */
+    public Map<String, String> getConfigParams(Class<? extends
+                                                     IFloodlightModule> clazz);
 }

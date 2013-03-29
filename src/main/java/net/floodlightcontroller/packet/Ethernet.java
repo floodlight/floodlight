@@ -230,7 +230,7 @@ public class Ethernet extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
-        if (length <= 0)
+        if (length <= 16)  // Ethernet packet minium should be 60, this is reasonable
             return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
@@ -261,13 +261,23 @@ public class Ethernet extends BasePacket {
             Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get(this.etherType);
             try {
                 payload = clazz.newInstance();
+                this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
             } catch (Exception e) {
-                throw new RuntimeException("Error parsing payload for Ethernet packet", e);
+                if (log.isTraceEnabled()) {
+                    log.trace("Failed to parse ethernet packet {}->{}" +
+                            " payload as {}, treat as plain ethernet packet",
+                            new Object[] {this.sourceMACAddress,
+                                          this.destinationMACAddress,
+                                          clazz.getClass().getName()});
+                    log.trace("Exception from parsing {}", e);
+                }
+                payload = new Data();
+                this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
             }
         } else {
             payload = new Data();
+            this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         }
-        this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         this.payload.setParent(this);
         return this;
     }
