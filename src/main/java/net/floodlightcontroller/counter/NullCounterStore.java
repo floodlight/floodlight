@@ -47,19 +47,9 @@ public class NullCounterStore implements IFloodlightModule,
     private ICounter emptyCounter;
     private List<String> emptyList;
     private Map<String, ICounter> emptyMap;
-    
-    @Override
-    public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        // no-op
-    }
 
     @Override
     public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        // no-op
-    }
-
-    @Override
-    public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage ofMsg) {
         // no-op
     }
 
@@ -106,7 +96,7 @@ public class NullCounterStore implements IFloodlightModule,
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
         m.put(ICounterStoreService.class, this);

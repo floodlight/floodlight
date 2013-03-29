@@ -418,9 +418,11 @@ public class Device implements IDevice {
         if (apMap == null || apMap.isEmpty()) {
             apList.add(newAP);
             attachmentPoints = apList;
-            // there are no old attachment points - we should not treat this
-            // as a device moved.
-            return false;
+            // there are no old attachment points - since the device exists, this
+            // may be because the host really moved (so the old AP port went down);
+            // or it may be because the switch restarted (so old APs were nullified).
+            // For now we will treat both cases as host moved.
+            return true;
         }
 
         long id = topology.getL2DomainId(sw);

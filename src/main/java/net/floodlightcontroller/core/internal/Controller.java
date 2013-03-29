@@ -66,6 +66,7 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.flowcache.IFlowCacheService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -172,6 +173,7 @@ public class Controller implements IFloodlightProviderService,
     // Module dependencies
     protected IRestApiService restApi;
     protected ICounterStoreService counterStore = null;
+    protected IDebugCounterService debugCounter;
     protected IFlowCacheService bigFlowCacheMgr;
     protected IStorageSourceService storageSource;
     protected IPktInProcessingTimeService pktinProcTime;
@@ -191,7 +193,7 @@ public class Controller implements IFloodlightProviderService,
     // we have sent to the listeners. On a transition to slave we first set
     // this role and then notify, on a transition to master we first notify
     // and then set the role. We then use it to make sure we don't forward
-    // OF messages while the modules are in slave role. 
+    // OF messages while the modules are in slave role.
     // The pendingRole is a role change just received, but not sent out
     // notifications yet.
     protected Role pendingRole;
@@ -302,7 +304,7 @@ public class Controller implements IFloodlightProviderService,
                           newRole, oldRole);
             }
             // Set notified role to slave before notifying listeners. This
-            // stops OF messages from being sent to listeners 
+            // stops OF messages from being sent to listeners
             if (newRole == Role.SLAVE)
                 Controller.this.notifiedRole = newRole;
             if (haListeners != null) {
@@ -310,7 +312,7 @@ public class Controller implements IFloodlightProviderService,
                         listener.roleChanged(oldRole, newRole);
                 }
             }
-            // Set notified role to master/equal after notifying listeners. 
+            // Set notified role to master/equal after notifying listeners.
             // We now forward messages again
             if (newRole != Role.SLAVE)
                 Controller.this.notifiedRole = newRole;
@@ -361,6 +363,10 @@ public class Controller implements IFloodlightProviderService,
 
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
+    }
+
+    public void setDebugCounter(IDebugCounterService debugCounter) {
+        this.debugCounter = debugCounter;
     }
 
     public void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
@@ -669,6 +675,7 @@ public class Controller implements IFloodlightProviderService,
                 // Flush all flow-mods/packet-out/stats generated from this "train"
                 OFSwitchBase.flush_all();
                 counterStore.updateFlush();
+                debugCounter.flushCounters();
                 bigFlowCacheMgr.updateFlush();
             }
         }
@@ -1061,7 +1068,7 @@ public class Controller implements IFloodlightProviderService,
 
                         if (sw.isConnected()) {
                             // Only dispatch message if the switch is in the
-                            // activeSwitch map and if the switches role is 
+                            // activeSwitch map and if the switches role is
                             // not slave and the modules are not in slave
                             // TODO: Should we dispatch messages that we expect to
                             // receive when we're in the slave role, e.g. port
@@ -1071,7 +1078,7 @@ public class Controller implements IFloodlightProviderService,
                             // to them. On the other hand there might be special
                             // modules that care about all of the connected switches
                             // and would like to receive port status notifications.
-                            if (sw.getHARole() == Role.SLAVE || 
+                            if (sw.getHARole() == Role.SLAVE ||
                                     notifiedRole == Role.SLAVE ||
                                     !activeSwitches.containsKey(sw.getId())) {
                                 // Don't log message if it's a port status message
@@ -1182,7 +1189,7 @@ public class Controller implements IFloodlightProviderService,
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-        
+
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -1248,7 +1255,10 @@ public class Controller implements IFloodlightProviderService,
                     }
                     pktinProcTime.recordEndTimePktIn(sw, m, bc);
                 } else {
-                    log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    if (m.getType() != OFType.BARRIER_REPLY)
+                        log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    else
+                        log.debug("Received a Barrier Reply, no listeners for it");
                 }
 
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
@@ -1755,7 +1765,7 @@ public class Controller implements IFloodlightProviderService,
             this.workerThreads = Integer.parseInt(threads);
         }
         log.debug("Number of worker threads set to {}", this.workerThreads);
-        
+
     }
 
     private void initVendorMessages() {

@@ -57,6 +57,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
@@ -142,6 +145,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     protected IStorageSourceService storageSource;
     protected IThreadPoolService threadPool;
     protected IRestApiService restApi;
+    protected IDebugCounterService debugCounters;
 
     // LLDP and BDDP fields
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING =
@@ -510,6 +514,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
+                debugCounters.updateCounter("linkdiscovery-incoming");
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg,
                                            cntx);
             case PORT_STATUS:
@@ -765,6 +770,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         removeFromMaintenanceQueue(nptDst);
 
         // Consume this message
+        debugCounters.updateCounter("linkdiscovery-lldpeol");
         return Command.STOP;
     }
 
@@ -991,7 +997,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         lldpClock = (lldpClock + 1) % LLDP_TO_ALL_INTERVAL;
 
         if (lldpClock == 0) {
-            log.debug("Sending LLDP out on all ports.");
+            if (log.isTraceEnabled())
+                log.trace("Sending LLDP out on all ports.");
             discoverOnAllPorts();
         }
     }
@@ -2095,6 +2102,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
+        debugCounters = context.getServiceImpl(IDebugCounterService.class);
 
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
@@ -2177,6 +2185,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                       + "switch table {}", SWITCH_CONFIG_TABLE_NAME);
         }
 
+        registerLinkDiscoveryDebugCounters();
+
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         // To be started by the first switch connection
@@ -2248,6 +2258,18 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (restApi != null)
                             restApi.addRestletRoutable(new LinkDiscoveryWebRoutable());
         setControllerTLV();
+    }
+
+    private void registerLinkDiscoveryDebugCounters() {
+        if (debugCounters == null) {
+            log.error("Debug Counter Service not found.");
+            debugCounters = new NullDebugCounter();
+            return;
+        }
+        debugCounters.registerCounter(getName() + "-" + "incoming",
+            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        debugCounters.registerCounter(getName() + "-" + "lldpeol",
+            "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
     }
 
     // ****************************************************

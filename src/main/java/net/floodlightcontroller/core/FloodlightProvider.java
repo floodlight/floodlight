@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.flowcache.IFlowCacheService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -35,7 +36,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 public class FloodlightProvider implements IFloodlightModule {
     Controller controller;
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> services =
@@ -48,9 +49,9 @@ public class FloodlightProvider implements IFloodlightModule {
     public Map<Class<? extends IFloodlightService>,
                IFloodlightService> getServiceImpls() {
         controller = new Controller();
-        
+
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightService>();
         m.put(IFloodlightProviderService.class, controller);
@@ -78,6 +79,8 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IPktInProcessingTimeService.class));
        controller.setCounterStore(
            context.getServiceImpl(ICounterStoreService.class));
+       controller.setDebugCounter(
+           context.getServiceImpl(IDebugCounterService.class));
        controller.setFlowCacheMgr(
            context.getServiceImpl(IFlowCacheService.class));
        controller.setRestApiService(
