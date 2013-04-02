@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
@@ -39,7 +40,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
     /**
      * Global debug-counter storage across all threads. These are
-     * updated from the local per thread counters by the update FIXME method.
+     * updated from the local per thread counters by the flush counters method.
      */
     protected ConcurrentHashMap<String, AtomicLong> debugCounters =
             new ConcurrentHashMap<String, AtomicLong>();
@@ -73,6 +74,12 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
             this.counterDesc = desc;
             this.ctype = ctype;
         }
+
+        public String getModuleCounterName() { return moduleCounterName; }
+        public String getCounterDesc() { return counterDesc; }
+        public CounterType getCtype() { return ctype; }
+        public String getModuleName() { return moduleName; }
+        public String getCounterName() { return counterName; }
     }
 
     /**
@@ -82,10 +89,21 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
             new ConcurrentHashMap<String, List<CounterInfo>>();
 
     /**
-     * fast cache for counter names that are currently active
+     * fast global cache for counter names that are currently active
      */
     Set<String> currentCounters = Collections.newSetFromMap(
                                       new ConcurrentHashMap<String,Boolean>());
+
+    /**
+     * Thread local cache for counter names that are currently active.
+     */
+    protected final ThreadLocal<Set<String>> threadlocalCurrentCounters =
+            new ThreadLocal<Set<String>>() {
+        @Override
+        protected Set<String> initialValue() {
+            return new HashSet<String>();
+        }
+    };
 
    //*******************************
    //   IDebugCounterService
@@ -118,31 +136,27 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        a.add(new CounterInfo(moduleCounterName, counterDescription, counterType));
 
        // create counter in global map
-       debugCounters.put(moduleCounterName, new AtomicLong());
-
-       // create counter in local thread map
-       Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
-       MutableLong ml = thismap.get(moduleCounterName);
-       if (ml == null) {
-           thismap.put(moduleCounterName, new MutableLong());
-       }
-
-       // finally add to cache if it is meant to be always counted
+       // and add to counter name cache if it is meant to be always counted
        if (counterType == CounterType.ALWAYS_COUNT) {
            currentCounters.add(moduleCounterName);
+           debugCounters.put(moduleCounterName, new AtomicLong());
        }
        return true;
    }
 
    @Override
    public void updateCounter(String moduleCounterName) {
-       if (currentCounters.contains(moduleCounterName)) {
-           Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
-           MutableLong ml = thismap.get(moduleCounterName);
-           if (ml == null) {
+       Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
+       MutableLong ml = thismap.get(moduleCounterName);
+       if (ml == null) {
+           // check locally to see if this counter should be created or not
+           Set<String> thisset = this.threadlocalCurrentCounters.get();
+           if (thisset.contains(moduleCounterName)) {
                ml = new MutableLong();
+               ml.increment();
                thismap.put(moduleCounterName, ml);
            }
+       } else {
            ml.increment();
        }
    }
@@ -150,64 +164,169 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    @Override
    public void flushCounters() {
        Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
+       ArrayList<String> deleteKeys = new ArrayList<String>();
        for (String key : thismap.keySet()) {
            MutableLong curval = thismap.get(key);
            long delta = curval.get();
            if (delta > 0) {
-               debugCounters.get(key).addAndGet(delta);
-               curval.set(0);
+               AtomicLong ctr = debugCounters.get(key);
+               if (ctr == null) {
+                   // The global counter does not exist possibly because it has been
+                   // disabled. It should thus be removed from the thread-local
+                   // map (the counter) and set (the counter name). Removing it
+                   // from the threadlocal set ensures that the counter will not be
+                   // recreated (see updateCounter)
+                   Set<String> thisset = this.threadlocalCurrentCounters.get();
+                   thisset.remove(key);
+                   deleteKeys.add(key);
+               } else {
+                   ctr.addAndGet(delta);
+                   curval.set(0);
+               }
            }
+       }
+       for (String dkey : deleteKeys)
+           thismap.remove(dkey);
+
+       // At this point it is also possible that the threadlocal map/set does not
+       // include a counter that has been enabled and is present in the global
+       // currentCounters set. If so we need to sync such state so that the
+       // thread local counter can be created (in the updateCounter method)
+       Set<String> thisset = this.threadlocalCurrentCounters.get();
+       if (thisset.size() != currentCounters.size()) {
+           thisset.addAll(currentCounters);
        }
    }
 
    @Override
    public void resetCounter(String moduleCounterName) {
-       // TODO Auto-generated method stub
-
+       if (debugCounters.containsKey(moduleCounterName)) {
+           debugCounters.get(moduleCounterName).set(0);
+       }
    }
 
    @Override
    public void resetAllCounters() {
-       // TODO Auto-generated method stub
-
+       for (AtomicLong v : debugCounters.values()) {
+           v.set(0);
+       }
    }
 
    @Override
    public void resetAllModuleCounters(String moduleName) {
-       // TODO Auto-generated method stub
-
+       List<CounterInfo> cil = moduleCounters.get(moduleName);
+       if (cil != null) {
+           for (CounterInfo ci : cil) {
+               if (debugCounters.containsKey(ci.moduleCounterName)) {
+                   debugCounters.get(ci.moduleCounterName).set(0);
+               }
+           }
+       } else {
+           if (log.isDebugEnabled())
+               log.debug("No module found with name {}", moduleName);
+       }
    }
 
    @Override
    public void enableCtrOnDemand(String moduleCounterName) {
-       // TODO Auto-generated method stub
-
+       currentCounters.add(moduleCounterName);
+       debugCounters.putIfAbsent(moduleCounterName, new AtomicLong());
    }
 
    @Override
    public void disableCtrOnDemand(String moduleCounterName) {
-       // TODO Auto-generated method stub
-
+       String[] temp = moduleCounterName.split("-");
+       if (temp.length < 2) {
+           log.error("moduleCounterName {} not recognized", moduleCounterName);
+           return;
+       }
+       String moduleName = temp[0];
+       List<CounterInfo> cil = moduleCounters.get(moduleName);
+       for (CounterInfo ci : cil) {
+           if (ci.moduleCounterName.equals(moduleCounterName) &&
+               ci.ctype == CounterType.COUNT_ON_DEMAND) {
+               currentCounters.remove(moduleCounterName);
+               debugCounters.remove(moduleCounterName);
+               return;
+           }
+       }
    }
 
    @Override
    public DebugCounterInfo getCounterValue(String moduleCounterName) {
-       // TODO Auto-generated method stub
+       if (!debugCounters.containsKey(moduleCounterName)) return null;
+       long counterValue = debugCounters.get(moduleCounterName).longValue();
+
+       String[] temp = moduleCounterName.split("-");
+       if (temp.length < 2) {
+           log.error("moduleCounterName {} not recognized", moduleCounterName);
+           return null;
+       }
+       String moduleName = temp[0];
+       List<CounterInfo> cil = moduleCounters.get(moduleName);
+       for (CounterInfo ci : cil) {
+           if (ci.moduleCounterName.equals(moduleCounterName)) {
+               DebugCounterInfo dci = new DebugCounterInfo();
+               dci.counterInfo = ci;
+               dci.counterValue = counterValue;
+               return dci;
+           }
+       }
        return null;
    }
 
    @Override
    public List<DebugCounterInfo> getAllCounterValues() {
-       // TODO Auto-generated method stub
-       return null;
+       List<DebugCounterInfo> dcilist = new ArrayList<DebugCounterInfo>();
+       for (List<CounterInfo> cil : moduleCounters.values()) {
+           for (CounterInfo ci : cil) {
+               AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
+               if (ctr != null) {
+                   DebugCounterInfo dci = new DebugCounterInfo();
+                   dci.counterInfo = ci;
+                   dci.counterValue = ctr.longValue();
+                   dcilist.add(dci);
+               }
+           }
+       }
+       return dcilist;
    }
 
    @Override
-   public List<DebugCounterInfo> getModuleCounterValues() {
-       // TODO Auto-generated method stub
-       return null;
+   public List<DebugCounterInfo> getModuleCounterValues(String moduleName) {
+       List<DebugCounterInfo> dcilist = new ArrayList<DebugCounterInfo>();
+       if (moduleCounters.containsKey(moduleName)) {
+           List<CounterInfo> cil = moduleCounters.get(moduleName);
+           for (CounterInfo ci : cil) {
+               AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
+               if (ctr != null) {
+                   DebugCounterInfo dci = new DebugCounterInfo();
+                   dci.counterInfo = ci;
+                   dci.counterValue = ctr.longValue();
+                   dcilist.add(dci);
+               }
+           }
+       }
+       return dcilist;
    }
 
+   @Override
+   public boolean containsMCName(String moduleCounterName) {
+       if (debugCounters.containsKey(moduleCounterName)) return true;
+       // it is possible that the counter may be disabled
+       for (List<CounterInfo> cil : moduleCounters.values()) {
+           for (CounterInfo ci : cil) {
+               if (ci.moduleCounterName.equals(moduleCounterName))
+                   return true;
+           }
+       }
+       return false;
+   }
+
+   @Override
+   public boolean containsModName(String moduleName) {
+       return  (moduleCounters.containsKey(moduleName)) ? true : false;
+   }
 
    //*******************************
    //   Internal Methods
@@ -223,42 +342,39 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        }
    }
 
+   //*******************************
+   //   IFloodlightModule
+   //*******************************
 
-    //*******************************
-    //   IFloodlightModule
-    //*******************************
+   @Override
+   public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+       Collection<Class<? extends IFloodlightService>> l =
+               new ArrayList<Class<? extends IFloodlightService>>();
+       l.add(IDebugCounterService.class);
+       return l;
+   }
 
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l =
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IDebugCounterService.class);
-        return l;
-    }
+   @Override
+   public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+       Map<Class<? extends IFloodlightService>, IFloodlightService> m =
+               new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+       m.put(IDebugCounterService.class, this);
+       return m;
+   }
 
-    @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>, IFloodlightService> m =
-                new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-        m.put(IDebugCounterService.class, this);
-        return m;
-    }
+   @Override
+   public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+       return null;
+   }
 
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        // TODO Auto-generated method stub
-        return null;
-    }
+   @Override
+   public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 
-    @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        // TODO Auto-generated method stub
+   }
 
-    }
+   @Override
+   public void startUp(FloodlightModuleContext context) {
 
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // TODO Auto-generated method stub
-    }
+   }
 
 }

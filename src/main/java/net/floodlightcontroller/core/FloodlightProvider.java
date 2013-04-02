@@ -66,6 +66,7 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
         dependencies.add(ICounterStoreService.class);
+        dependencies.add(IDebugCounterService.class);
         dependencies.add(IFlowCacheService.class);
         dependencies.add(IThreadPoolService.class);
         return dependencies;

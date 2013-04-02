@@ -766,10 +766,10 @@ public class TopologyManager implements
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
-        registerLinkDiscoveryDebugCounters();
+        registerTopologyDebugCounters();
     }
 
-    private void registerLinkDiscoveryDebugCounters() {
+    private void registerTopologyDebugCounters() {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
@@ -968,7 +968,7 @@ public class TopologyManager implements
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getEtherType() == Ethernet.TYPE_BSN) {
+        if (eth.getPayload() instanceof BSN) {
             BSN bsn = (BSN) eth.getPayload();
             if (bsn == null) return Command.STOP;
             if (bsn.getPayload() == null) return Command.STOP;
