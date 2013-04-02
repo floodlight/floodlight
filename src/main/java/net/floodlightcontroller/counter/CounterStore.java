@@ -297,7 +297,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
 
         if (eth != null) {
             l3type = eth.getEtherType();
-            if (l3type == (short)0x0800) {
+            if (eth.getPayload() instanceof IPv4) {
                 IPv4 ipV4 = (IPv4)eth.getPayload();
                 l4type = ipV4.getProtocol();
             }
@@ -413,7 +413,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
                                        CounterType.LONG));
 
         // L4 counters
-        if (l3type == (short)0x0800) {
+        if (eth.getPayload() instanceof IPv4) {
 
             // resolve protocol alias
             IPv4 ipV4 = (IPv4)eth.getPayload();

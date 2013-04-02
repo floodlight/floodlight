@@ -595,7 +595,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
             // the case to determine if we have L2 broadcast + L3 unicast
             // don't allow this broadcast packet if such is the case (malformed
             // packet)
-            if (eth.getEtherType() == Ethernet.TYPE_IPv4
+            if ((eth.getPayload() instanceof IPv4)
                     && this.IPIsBroadcast(((IPv4) eth.getPayload())
                             .getDestinationAddress()) == false) {
                 allowBroadcast = false;
