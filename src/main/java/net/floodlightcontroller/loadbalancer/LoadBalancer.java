@@ -69,6 +69,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
@@ -194,7 +195,7 @@ public class LoadBalancer implements IFloodlightModule,
  
         if (eth.isBroadcast() || eth.isMulticast()) {
             // handle ARP for VIP
-            if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+            if (pkt instanceof ARP) {
                 // retrieve arp to determine target IP address                                                       
                 ARP arpRequest = (ARP) eth.getPayload();
 
@@ -219,17 +220,17 @@ public class LoadBalancer implements IFloodlightModule,
                     IPClient client = new IPClient();
                     client.ipAddress = ip_pkt.getSourceAddress();
                     client.nw_proto = ip_pkt.getProtocol();
-                    if (client.nw_proto == IPv4.PROTOCOL_TCP) {
+                    if (ip_pkt.getPayload() instanceof TCP) {
                         TCP tcp_pkt = (TCP) ip_pkt.getPayload();
                         client.srcPort = tcp_pkt.getSourcePort();
                         client.targetPort = tcp_pkt.getDestinationPort();
                     }
-                    if (client.nw_proto == IPv4.PROTOCOL_UDP) {
+                    if (ip_pkt.getPayload() instanceof UDP) {
                         UDP udp_pkt = (UDP) ip_pkt.getPayload();
                         client.srcPort = udp_pkt.getSourcePort();
                         client.targetPort = udp_pkt.getDestinationPort();
                     }
-                    if (client.nw_proto == IPv4.PROTOCOL_ICMP) {
+                    if (ip_pkt.getPayload() instanceof ICMP) {
                         client.srcPort = 8; 
                         client.targetPort = 0; 
                     }
@@ -268,6 +269,8 @@ public class LoadBalancer implements IFloodlightModule,
                                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         // retrieve original arp to determine host configured gw IP address                                          
+        if (! (eth.getPayload() instanceof ARP))
+            return;
         ARP arpRequest = (ARP) eth.getPayload();
         
         // have to do proxy arp reply since at this point we cannot determine the requesting application type
