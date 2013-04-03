@@ -16,7 +16,6 @@
 
 package net.floodlightcontroller.flowcache;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.openflow.protocol.OFPort;
@@ -38,18 +37,20 @@ public class FCQueryObj {
     public String applInstName;
     /*BVS interface name*/
     public String appInstInterfaceName;
-    /** The vlan Id. */
-    public Short[] vlans;
-    /** The destination device. */
-    public IDevice dstDevice;
-    /** The source device. */
-    public IDevice srcDevice;
-    /*source switch DPID*/
+    /** The match vlan Id. */
+    public List<Integer> vlans;
+    /*the match mac*/
+    public String mac;
+    /** The moved device. */
+    public List<String> tag;
+    public IDevice deviceMoved;
+    /*switch DPID: match switch port + Link down event*/
     public long srcSwId;
-    /*switch port */
-    public short swPort;
-    public List<String> swPortList;
-    /*ip subnet*/
+    /*List of ports: match switch port*/
+    public List<String> matchPortList;
+    /*switch port: link down event */
+    public short portDown;
+    /*match ip subnet*/
     public String srcIpsubnet;
     public String destIpsubnet;
     public String srcBVS;
@@ -82,14 +83,15 @@ public class FCQueryObj {
         this.evPriority = mapEventToPriority(evType);
         this.fcQueryHandler    = null;
         this.applInstName     = null;
-        this.srcDevice        = null;
-        this.dstDevice        = null;
+        this.deviceMoved        = null;
         this.callerName       = null;
         this.callerOpaqueObj  = null;
         this.vlans=null;
+        this.mac=null;
+        this.tag=null;
         this.appInstInterfaceName = null;
         this.srcSwId = 0L;
-        this.swPort = OFPort.OFPP_NONE.getValue();
+        this.portDown = OFPort.OFPP_NONE.getValue();
         this.srcIpsubnet = null;
         this.destIpsubnet = null;
         this.srcBVS = null;
@@ -109,68 +111,20 @@ public class FCQueryObj {
             case LINK_DOWN:
                 priority=EventPriority.EVENT_MEDIUM;
                 break;
+            case REWRITE_QUERY:  /**rewrite query is triggered by Link_down event*/
+                priority=EventPriority.EVENT_MEDIUM;
+                break;
             default:
                 break;
         }
         return priority;
     }
 
-    /**
-     * Instantiates a new flow query object
-    public FCQueryObj(IFlowQueryHandler fcQueryHandler,
-            String        applInstName,
-            String        appInstInterfaceName,
-            Short         vlan,
-            IDevice       srcDevice,
-            IDevice       dstDevice,
-            IOFSwitch     srcSW,
-            short           swPort,
-            String        ipSubnet,
-            String        callerName,
-            FCQueryEvType evType,
-            Object        callerOpaqueObj) {
-        this.fcQueryHandler    = fcQueryHandler;
-        this.applInstName     = applInstName;
-        this.srcDevice        = srcDevice;
-        this.dstDevice        = dstDevice;
-        this.callerName       = callerName;
-        this.evType           = evType;
-        this.callerOpaqueObj  = callerOpaqueObj;
-        if (vlan != null) {
-        	this.vlans = new Short[] { vlan };
-        } else {
-            this.vlans = null;
-        }
-        if (appInstInterfaceName != null) {
-            this.appInstInterfaceName = new String(appInstInterfaceName);
-        } else {
-            this.appInstInterfaceName = null;
-        }
-        if (srcSW != null) {
-            this.srcSW =  srcSW;
-        } else {
-            this.srcSW = null;
-        }
-        if (swPort != OFPort.OFPP_NONE.getValue()) {
-            this.swPort =  swPort;
-        } else {
-            this.swPort = OFPort.OFPP_NONE.getValue();
-        }
-        if (srcIpsubnet != null) {
-            this.srcIpsubnet =new String(ipSubnet);
-        } else {
-            this.srcIpsubnet =null;
-        }
-    }
-*/
     @Override
     public String toString() {
-        return "FCQueryObj [fcQueryCaller=" + fcQueryHandler
-                + ", applInstName="
-                + applInstName + ", vlans=" + Arrays.toString(vlans)
-                + ", dstDevice=" + dstDevice + ", srcDevice="
-                + srcDevice + ", callerName=" + callerName + ", evType="
-                + evType + ", callerOpaqueObj=" + callerOpaqueObj + "]";
+        return "FCQueryObj [applInstName="
+                + applInstName + ", callerName=" + callerName + ", evType="
+                + evType + "]";
     }
 
     @Override
@@ -185,15 +139,9 @@ public class FCQueryObj {
                  * result
                  + ((callerOpaqueObj == null) ? 0
                                              : callerOpaqueObj.hashCode());
-        result = prime * result
-                 + ((dstDevice == null) ? 0 : dstDevice.hashCode());
         result = prime * result + ((evType == null) ? 0 : evType.hashCode());
-        result = prime
-                 * result
-                 + ((fcQueryHandler == null) ? 0 : fcQueryHandler.hashCode());
-        result = prime * result
-                 + ((srcDevice == null) ? 0 : srcDevice.hashCode());
-        result = prime * result + Arrays.hashCode(vlans);
+        result = prime * result + ((mac == null) ? 0 : mac.hashCode());
+        result = prime * result + (int) srcSwId;
         return result;
     }
 
@@ -213,24 +161,21 @@ public class FCQueryObj {
             if (other.callerOpaqueObj != null) return false;
         } else if (!callerOpaqueObj.equals(other.callerOpaqueObj))
                                                                   return false;
-        if (dstDevice == null) {
-            if (other.dstDevice != null) return false;
-        } else if (!dstDevice.equals(other.dstDevice)) return false;
         if (evType != other.evType) return false;
         if (fcQueryHandler == null) {
             if (other.fcQueryHandler != null) return false;
         } else if (!fcQueryHandler.equals(other.fcQueryHandler))
                                                                 return false;
-        if (srcDevice == null) {
-            if (other.srcDevice != null) return false;
-        } else if (!srcDevice.equals(other.srcDevice)) return false;
-        if (!Arrays.equals(vlans, other.vlans)) return false;
+        if (!vlans.equals(other.vlans)) return false;
 
         if (srcSwId == 0L) {
             if (other.srcSwId != 0L) return false;
         } else if (srcSwId != other.srcSwId) return false;
-        if (!Arrays.equals(vlans, other.vlans)) return false;
-        if (swPort != other.swPort) return false;
+        if (!matchPortList.equals(other.matchPortList)) return false;
+        if (!vlans.equals(other.vlans)) return false;
+        if (portDown != other.portDown) return false;
+        if (mac != other.mac) return false;
+        if (tag != other.tag) return false;
         if (srcIpsubnet == null) {
             if (other.srcIpsubnet != null) return false;
         } else if (!srcIpsubnet.equals(other.srcIpsubnet)) return false;

@@ -48,7 +48,12 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
         /** An App was deleted. */
         BVS_DELETED,
         /** Interface rule of an app was modified */
+        BVS_INTERFACE_RULE_CHANGED,
         BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT,
+        BVS_INTERFACE_RULE_CHANGED_MATCH_MAC,
+        BVS_INTERFACE_RULE_CHANGED_MATCH_VLAN,
+        BVS_INTERFACE_RULE_CHANGED_MATCH_IPSUBNET,
+        BVS_INTERFACE_RULE_CHANGED_MATCH_TAG,
         /** Some App configuration was changed */
         BVS_PRIORITY_CHANGED,
         /** ACL configuration was changed */
