@@ -1310,7 +1310,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     sendDiscoveryMessage(sw, ofp.getPortNumber(), true,
                                          false);
 
-                    // If the switch port is not alreayd in the maintenance
+                    // If the switch port is not already in the maintenance
                     // queue, add it.
                     NodePortTuple npt = new NodePortTuple(
                                                           sw,
