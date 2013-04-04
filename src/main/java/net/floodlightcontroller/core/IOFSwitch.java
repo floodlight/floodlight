@@ -107,7 +107,17 @@ public interface IOFSwitch {
     public void setChannel(Channel channel);
 
     /**
-     * Writes to the OFMessage to the output stream.
+     * Write OFMessage to the output stream, subject to switch rate limiting.
+     * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners
+     * @param msg
+     * @param cntx
+     * @throws IOException
+     */
+    public void writeThrottled(OFMessage msg, FloodlightContext cntx) throws IOException;
+
+    /**
+     * Writes to the OFMessage to the output stream, bypassing rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners
      * @param m   
