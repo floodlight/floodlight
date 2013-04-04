@@ -102,6 +102,12 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         writtenContext = bc;
         writtenMessage = m;
     }
+
+    @Override
+    public void writeThrottled(OFMessage msg, FloodlightContext cntx)
+            throws IOException {
+        write(msg, cntx);
+    }
     
     //-------------------------------------------------------
     // IOFSwitch: not-implemented methods
