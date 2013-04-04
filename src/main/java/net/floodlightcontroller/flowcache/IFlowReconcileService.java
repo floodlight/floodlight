@@ -65,7 +65,6 @@ public interface IFlowReconcileService extends IFloodlightService {
      *
      */
     public void updateFlowForDestinationDevice(IDevice device,
-            IFlowQueryHandler handler,
     		FCQueryEvType fcEvType);
     
     /**
@@ -81,13 +80,6 @@ public interface IFlowReconcileService extends IFloodlightService {
      *
      */
     public void updateFlowForSourceDevice(IDevice device,
-            IFlowQueryHandler handler,
     		FCQueryEvType fcEvType);
-
-    /**
-     * Generic flow query handler to insert FlowMods into the reconcile pipeline.
-     * @param flowResp
-     */
-    public void flowQueryGenericHandler(FlowCacheQueryResp flowResp);
 
 }

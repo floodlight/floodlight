@@ -66,7 +66,6 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.flowcache.IFlowCacheService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -172,7 +171,6 @@ public class Controller implements IFloodlightProviderService,
     // Module dependencies
     protected IRestApiService restApi;
     protected ICounterStoreService counterStore = null;
-    protected IFlowCacheService bigFlowCacheMgr;
     protected IStorageSourceService storageSource;
     protected IPktInProcessingTimeService pktinProcTime;
     protected IThreadPoolService threadPool;
@@ -361,10 +359,6 @@ public class Controller implements IFloodlightProviderService,
 
     public void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
-    }
-
-    public void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
-        this.bigFlowCacheMgr = flowCacheMgr;
     }
 
     public void setPktInProcessingService(IPktInProcessingTimeService pits) {
@@ -669,7 +663,6 @@ public class Controller implements IFloodlightProviderService,
                 // Flush all flow-mods/packet-out/stats generated from this "train"
                 OFSwitchBase.flush_all();
                 counterStore.updateFlush();
-                bigFlowCacheMgr.updateFlush();
             }
         }
 

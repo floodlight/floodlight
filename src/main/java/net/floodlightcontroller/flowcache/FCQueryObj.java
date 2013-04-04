@@ -30,9 +30,6 @@ import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
  * The Class FCQueryObj.
  */
 public class FCQueryObj {
-
-    /** The caller of the flow query. */
-    public IFlowQueryHandler fcQueryHandler;
     /** The application instance name. */
     public String applInstName;
     /*BVS interface name*/
@@ -81,7 +78,6 @@ public class FCQueryObj {
     public FCQueryObj(FCQueryEvType evType) {
         this.evType = evType;
         this.evPriority = mapEventToPriority(evType);
-        this.fcQueryHandler    = null;
         this.applInstName     = null;
         this.deviceMoved        = null;
         this.callerName       = null;
@@ -162,10 +158,6 @@ public class FCQueryObj {
         } else if (!callerOpaqueObj.equals(other.callerOpaqueObj))
                                                                   return false;
         if (evType != other.evType) return false;
-        if (fcQueryHandler == null) {
-            if (other.fcQueryHandler != null) return false;
-        } else if (!fcQueryHandler.equals(other.fcQueryHandler))
-                                                                return false;
         if (!vlans.equals(other.vlans)) return false;
 
         if (srcSwId == 0L) {
