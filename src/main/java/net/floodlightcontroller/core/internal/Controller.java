@@ -1106,19 +1106,31 @@ public class Controller implements IFloodlightProviderService,
     // Message handlers
     // ****************
 
+    @LogMessageDocs({
+        @LogMessageDoc(message="Port modified on switch {switch}: {port} ",
+                explanation="Received notification from switch about port status change"),
+        @LogMessageDoc(message="Port added on switch {switch}: {port} ",
+                explanation="Received notification from switch about a new port addition"),
+        @LogMessageDoc(message="Port deleted on switch {switch}: port_no = {port} ",
+                explanation="Received notification from switch about a port removal"),
+        @LogMessageDoc(level="ERROR",
+                message="Failure adding update to queue",
+                explanation="Failed to add port status change to internal queue for processing",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    })
     protected void handlePortStatusMessage(IOFSwitch sw, OFPortStatus m) {
         short portNumber = m.getDesc().getPortNumber();
         OFPhysicalPort port = m.getDesc();
         if (m.getReason() == (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} modified for {}", portNumber, sw);
+            log.info("Port modified on switch {}: {}", sw, port);
         } else if (m.getReason() == (byte)OFPortReason.OFPPR_ADD.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} added for {}", portNumber, sw);
+            log.info("Port added on switch {}: {}", sw, port);
         } else if (m.getReason() ==
                    (byte)OFPortReason.OFPPR_DELETE.ordinal()) {
             sw.deletePort(portNumber);
-            log.debug("Port #{} deleted for {}", portNumber, sw);
+            log.info("Port deleted on switch {}: port_no = {}", sw, portNumber);
         }
         SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
         try {
