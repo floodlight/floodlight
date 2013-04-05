@@ -45,13 +45,13 @@ public class VipsResource extends ServerResource {
         String vipId = (String) getRequestAttributes().get("vip");
         if (vipId!=null)
             return lbs.listVip(vipId);
-        else        
-            return lbs.listVips();               
+        else
+            return lbs.listVips();
     }
     
     @Put
     @Post
-    public LBVip createVip(String postData) {        
+    public LBVip createVip(String postData) {
 
         LBVip vip=null;
         try {
@@ -67,7 +67,7 @@ public class VipsResource extends ServerResource {
         String vipId = (String) getRequestAttributes().get("vip");
         if (vipId != null)
             return lbs.updateVip(vip);
-        else        
+        else
             return lbs.createVip(vip);
     }
     
@@ -75,7 +75,7 @@ public class VipsResource extends ServerResource {
     public int removeVip() {
         
         String vipId = (String) getRequestAttributes().get("vip");
-               
+        
         ILoadBalancerService lbs =
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
@@ -148,9 +148,9 @@ public class VipsResource extends ServerResource {
                 continue;
             }
             if (n.equals("pool_id")) {
-                vip.pools.add(jp.getText());                        
+                vip.pools.add(jp.getText());
                 continue;
-            }                    
+            }
             
             log.warn("Unrecognized field {} in " +
                     "parsing Vips", 
