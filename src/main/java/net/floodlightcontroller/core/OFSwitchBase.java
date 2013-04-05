@@ -231,7 +231,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.write(msglist);
     }
 
-    private void write(List<OFMessage> msglist) throws IOException {
+    /**
+     * Not callable by writers, but allow IOFSwitch implementation to override
+     * @param msglist
+     * @throws IOException
+     */
+    public void write(List<OFMessage> msglist) throws IOException {
         this.channel.write(msglist);
     }
     
@@ -398,7 +403,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.iofMsgListenersMap.put(xid, caller);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return;
     }
 
@@ -409,7 +414,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.statsFutureMap.put(request.getXid(), future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return future;
     }
 
@@ -518,10 +523,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
         try {
             List<OFMessage> msglist = new ArrayList<OFMessage>(1);
             msglist.add(fm);
-            channel.write(msglist);
+            write(msglist);
             msglist = new ArrayList<OFMessage>(1);
             msglist.add(barrierMsg);
-            channel.write(msglist);
+            write(msglist);
         } catch (Exception e) {
             log.error("Failed to clear all flows on switch " + this, e);
         }
@@ -639,7 +644,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.featuresFutureMap.put(request.getXid(), future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return future;
     }
 

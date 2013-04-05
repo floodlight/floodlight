@@ -37,6 +37,6 @@ public class VirtualNetworkWebRoutable implements RestletRoutable {
 
     @Override
     public String basePath() {
-        return "/quantum/v1.0";
+        return "/networkService/v1.1";
     }
 }

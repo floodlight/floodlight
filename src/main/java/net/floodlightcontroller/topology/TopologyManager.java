@@ -44,6 +44,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -111,6 +114,7 @@ public class TopologyManager implements
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
     protected IRestApiService restApi;
+    protected IDebugCounterService debugCounters;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -645,6 +649,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
+                debugCounters.updateCounter("topology-incoming");
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -735,6 +740,7 @@ public class TopologyManager implements
         floodlightProvider =
                 context.getServiceImpl(IFloodlightProviderService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
+        debugCounters = context.getServiceImpl(IDebugCounterService.class);
 
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -760,6 +766,17 @@ public class TopologyManager implements
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this);
         addRestletRoutable();
+        registerTopologyDebugCounters();
+    }
+
+    private void registerTopologyDebugCounters() {
+        if (debugCounters == null) {
+            log.error("Debug Counter Service not found.");
+            debugCounters = new NullDebugCounter();
+            return;
+        }
+        debugCounters.registerCounter(getName() + "-" + "incoming",
+            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
     }
 
     protected void addRestletRoutable() {
@@ -951,7 +968,7 @@ public class TopologyManager implements
                 IFloodlightProviderService.bcStore.
                 get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        if (eth.getEtherType() == Ethernet.TYPE_BSN) {
+        if (eth.getPayload() instanceof BSN) {
             BSN bsn = (BSN) eth.getPayload();
             if (bsn == null) return Command.STOP;
             if (bsn.getPayload() == null) return Command.STOP;
