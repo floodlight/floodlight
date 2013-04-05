@@ -43,13 +43,13 @@ public class MonitorsResource extends ServerResource {
         String monitorId = (String) getRequestAttributes().get("monitor");
         if (monitorId!=null)
             return lbs.listMonitor(monitorId);
-        else        
-            return lbs.listMonitors();               
+        else
+            return lbs.listMonitors();
     }
     
     @Put
     @Post
-    public LBMonitor createMonitor(String postData) {        
+    public LBMonitor createMonitor(String postData) {
 
         LBMonitor monitor=null;
         try {
@@ -65,7 +65,7 @@ public class MonitorsResource extends ServerResource {
         String monitorId = (String) getRequestAttributes().get("monitor");
         if (monitorId != null)
             return lbs.updateMonitor(monitor);
-        else        
+        else
             return lbs.createMonitor(monitor);
     }
     
@@ -73,7 +73,7 @@ public class MonitorsResource extends ServerResource {
     public int removeMonitor() {
         
         String monitorId = (String) getRequestAttributes().get("monitor");
-               
+        
         ILoadBalancerService lbs =
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());

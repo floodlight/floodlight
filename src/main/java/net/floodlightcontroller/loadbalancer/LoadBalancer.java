@@ -196,14 +196,14 @@ public class LoadBalancer implements IFloodlightModule,
         if (eth.isBroadcast() || eth.isMulticast()) {
             // handle ARP for VIP
             if (pkt instanceof ARP) {
-                // retrieve arp to determine target IP address                                                       
+                // retrieve arp to determine target IP address
                 ARP arpRequest = (ARP) eth.getPayload();
 
                 int targetProtocolAddress = IPv4.toIPv4Address(arpRequest
                                                                .getTargetProtocolAddress());
 
                 if (vipIpToId.containsKey(targetProtocolAddress)) {
-                    String vipId = vipIpToId.get(targetProtocolAddress);                    
+                    String vipId = vipIpToId.get(targetProtocolAddress);
                     vipProxyArpReply(sw, pi, cntx, vipId);
                     return Command.STOP;
                 }
@@ -211,7 +211,7 @@ public class LoadBalancer implements IFloodlightModule,
         } else {
             // currently only load balance IPv4 packets - no-op for other traffic 
             if (pkt instanceof IPv4) {
-                IPv4 ip_pkt = (IPv4) pkt;                
+                IPv4 ip_pkt = (IPv4) pkt;
                 
                 // If match Vip and port, check pool and choose member
                 int destIpAddress = ip_pkt.getDestinationAddress();
@@ -245,7 +245,7 @@ public class LoadBalancer implements IFloodlightModule,
                     // packet out based on table rule
                     pushPacket(pkt, sw, pi.getBufferId(), pi.getInPort(), OFPort.OFPP_TABLE.getValue(),
                                 cntx, true);
-                                        
+
                     return Command.STOP;
                 }
             }
@@ -268,7 +268,7 @@ public class LoadBalancer implements IFloodlightModule,
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // retrieve original arp to determine host configured gw IP address                                          
+        // retrieve original arp to determine host configured gw IP address
         if (! (eth.getPayload() instanceof ARP))
             return;
         ARP arpRequest = (ARP) eth.getPayload();
@@ -385,7 +385,7 @@ public class LoadBalancer implements IFloodlightModule,
         IDevice srcDevice = null;
         IDevice dstDevice = null;
         
-        // retrieve all known devices                                                          
+        // retrieve all known devices
         Collection<? extends IDevice> allDevices = deviceManager
                 .getAllDevices();
         
@@ -488,11 +488,11 @@ public class LoadBalancer implements IFloodlightModule,
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward
                     // out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
                     
-                    if (routeIn != null) {                            
+                    if (routeIn != null) {
                         pushStaticVipRoute(true, routeIn, client, member, sw.getId());
                     }
-                        
-                    if (routeOut != null) {                            
+                    
+                    if (routeOut != null) {
                         pushStaticVipRoute(false, routeOut, client, member, sw.getId());
                     }
 
@@ -583,8 +583,7 @@ public class LoadBalancer implements IFloodlightModule,
                try {
                    ofMatch.fromString(matchString);
                } catch (IllegalArgumentException e) {
-                   log.debug(
-                             "ignoring flow entry {} on switch {} with illegal OFMatch() key: "
+                   log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: "
                                      + matchString, entryName, swString);
                }
         
@@ -593,7 +592,6 @@ public class LoadBalancer implements IFloodlightModule,
 
            }
         }
-               
         return;
     }
 
@@ -607,7 +605,8 @@ public class LoadBalancer implements IFloodlightModule,
     public Collection<LBVip> listVip(String vipId) {
         Collection<LBVip> result = new HashSet<LBVip>();
         result.add(vips.get(vipId));
-        return result;    }
+        return result;
+    }
 
     @Override
     public LBVip createVip(LBVip vip) {
@@ -682,7 +681,7 @@ public class LoadBalancer implements IFloodlightModule,
             return 0;
         } else {
             return -1;
-        }    
+        }
     }
 
     @Override
@@ -694,7 +693,7 @@ public class LoadBalancer implements IFloodlightModule,
     public Collection<LBMember> listMember(String memberId) {
         Collection<LBMember> result = new HashSet<LBMember>();
         result.add(members.get(memberId));
-        return result;    
+        return result;
         }
 
     @Override
@@ -706,7 +705,7 @@ public class LoadBalancer implements IFloodlightModule,
             for (int i=0; i<memberIds.size(); i++)
                 result.add(members.get(memberIds.get(i)));
         }
-        return result;    
+        return result;
     }
     
     @Override
@@ -1060,7 +1059,7 @@ public class LoadBalancer implements IFloodlightModule,
         SubActionStruct sa = null;
         Matcher n = Pattern.compile("set-vlan-priority=((?:0x)?\\d+)").matcher(subaction); 
         
-        if (n.matches()) {            
+        if (n.matches()) {
             if (n.group(1) != null) {
                 try {
                     byte prior = get_byte(n.group(1));
@@ -1100,7 +1099,7 @@ public class LoadBalancer implements IFloodlightModule,
                 sa = new SubActionStruct();
                 sa.action = action;
                 sa.len = OFActionDataLayerSource.MINIMUM_LENGTH;
-            }            
+            }
         }
         else {
             log.debug("Invalid action: '{}'", subaction);
@@ -1115,7 +1114,7 @@ public class LoadBalancer implements IFloodlightModule,
         Matcher n = Pattern.compile("set-dst-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
         
         if (n.matches()) {
-            byte[] macaddr = get_mac_addr(n, subaction, log);            
+            byte[] macaddr = get_mac_addr(n, subaction, log);
             if (macaddr != null) {
                 OFActionDataLayerDestination action = new OFActionDataLayerDestination();
                 action.setDataLayerAddress(macaddr);
