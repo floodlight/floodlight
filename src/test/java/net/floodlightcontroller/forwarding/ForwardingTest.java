@@ -357,9 +357,9 @@ public class ForwardingTest extends FloodlightTestCase {
         OFFlowMod fm2 = fm1.clone();
         ((OFActionOutput)fm2.getActions().get(0)).setPort((short) 3);
 
-        sw1.write(capture(wc1), capture(bc1));
+        sw1.writeThrottled(capture(wc1), capture(bc1));
         expectLastCall().anyTimes(); 
-        sw2.write(capture(wc2), capture(bc2));
+        sw2.writeThrottled(capture(wc2), capture(bc2));
         expectLastCall().anyTimes(); 
 
         reset(topology);
@@ -420,8 +420,8 @@ public class ForwardingTest extends FloodlightTestCase {
                         OFActionOutput.MINIMUM_LENGTH);
 
         // Record expected packet-outs/flow-mods
-        sw1.write(fm1, cntx);
-        sw1.write(packetOut, cntx);
+        sw1.writeThrottled(fm1, cntx);
+        sw1.writeThrottled(packetOut, cntx);
         
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
@@ -473,9 +473,9 @@ public class ForwardingTest extends FloodlightTestCase {
         // Record expected packet-outs/flow-mods
         // We will inject the packet_in 3 times and expect 1 flow mod and
         // 3 packet outs due to flow mod dampening
-        sw1.write(fm1, cntx);
+        sw1.writeThrottled(fm1, cntx);
         expectLastCall().once();
-        sw1.write(packetOut, cntx);
+        sw1.writeThrottled(packetOut, cntx);
         expectLastCall().times(3);
         
         reset(topology);
@@ -508,7 +508,7 @@ public class ForwardingTest extends FloodlightTestCase {
                                               .anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
                 .andReturn(true).anyTimes();
-        sw1.write(packetOutFlooded, cntx);
+        sw1.writeThrottled(packetOutFlooded, cntx);
         expectLastCall().once();
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
