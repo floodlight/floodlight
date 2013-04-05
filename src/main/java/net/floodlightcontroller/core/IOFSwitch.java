@@ -117,6 +117,17 @@ public interface IOFSwitch {
     public void writeThrottled(OFMessage msg, FloodlightContext cntx) throws IOException;
 
     /**
+     * Writes the list of messages to the output stream, subject to rate limiting.
+     * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners.
+     * @param msglist
+     * @param bc
+     * @throws IOException
+     */
+    void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException;
+
+    /**
      * Writes to the OFMessage to the output stream, bypassing rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners
@@ -127,7 +138,7 @@ public interface IOFSwitch {
     public void write(OFMessage m, FloodlightContext bc) throws IOException; 
     
     /**
-     * Writes the list of messages to the output stream
+     * Writes the list of messages to the output stream, bypassing rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners.
      * @param msglist
@@ -498,5 +509,4 @@ public interface IOFSwitch {
      * @return
      */
     public List<Short> getUplinkPorts();
-    
 }

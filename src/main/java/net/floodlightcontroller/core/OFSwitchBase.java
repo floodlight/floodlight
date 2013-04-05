@@ -191,6 +191,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
+    public void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException {
+        // By default, there is no throttling
+        write(msglist, bc);
+    }
+
+    @Override
     public void write(OFMessage m, FloodlightContext bc)
             throws IOException {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
@@ -209,7 +216,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
             msg_buffer.clear();
         }
     }
-
     @Override
     @LogMessageDoc(level="WARN",
                    message="Sending OF message that modifies switch " +

@@ -111,6 +111,13 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     
     //-------------------------------------------------------
     // IOFSwitch: not-implemented methods
+
+    @Override
+    public void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException {
+        assertTrue("Unexpected method call", false);
+    }
+
     @Override
     public void write(List<OFMessage> msglist, FloodlightContext bc) 
             throws IOException {
