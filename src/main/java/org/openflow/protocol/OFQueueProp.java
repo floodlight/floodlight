@@ -21,11 +21,12 @@ import org.openflow.util.U16;
 
 public class OFQueueProp {
     private int NONE_MINIMUM_LENGTH = 8;
-    private int MIN_RATE_MINIMUM_LENGTH = 16;
+    private int RATE_MINIMUM_LENGTH = 16;
 
     public enum OFQueuePropType {
         OFPQT_NONE       (0),
-        OFPQT_MIN_RATE   (1);
+        OFPQT_MIN_RATE   (1),
+        OFPQT_MAX_RATE   (2);
 
         protected int value;
 
@@ -46,6 +47,8 @@ public class OFQueueProp {
                     return OFPQT_NONE;
                 case 1:
                     return OFPQT_MIN_RATE;
+                case 2:
+                    return OFPQT_MAX_RATE;
             }
             return null;
         }
@@ -53,7 +56,7 @@ public class OFQueueProp {
 
     protected OFQueuePropType type;
     protected short length;
-    protected short rate = -1; // not valid unless type == OFPQT_MIN_RATE
+    protected short rate = -1; // not valid if type == OFPQT_NONE
 
     public OFQueueProp() {
         this.type = OFQueuePropType.OFPQT_NONE;
@@ -78,7 +81,10 @@ public class OFQueueProp {
                 this.length = U16.t(NONE_MINIMUM_LENGTH);
                 break;
             case OFPQT_MIN_RATE:
-                this.length = U16.t(MIN_RATE_MINIMUM_LENGTH);
+                this.length = U16.t(RATE_MINIMUM_LENGTH);
+                break;
+            case OFPQT_MAX_RATE:
+                this.length = U16.t(RATE_MINIMUM_LENGTH);
                 break;
         }
     }
@@ -109,8 +115,9 @@ public class OFQueueProp {
         this.length = data.readShort();
         data.readInt(); // pad
 
-        if (this.type == OFQueuePropType.OFPQT_MIN_RATE) {
-            assert(this.length == MIN_RATE_MINIMUM_LENGTH);
+        if (this.type == OFQueuePropType.OFPQT_MIN_RATE ||
+            this.type == OFQueuePropType.OFPQT_MAX_RATE) {
+            assert(this.length == RATE_MINIMUM_LENGTH);
 
             this.rate = data.readShort();
             data.readInt(); // pad
@@ -125,7 +132,8 @@ public class OFQueueProp {
         data.writeShort(this.length);
         data.writeInt(0); // pad
 
-        if (this.type == OFQueuePropType.OFPQT_MIN_RATE) {
+        if (this.type == OFQueuePropType.OFPQT_MIN_RATE ||
+            this.type == OFQueuePropType.OFPQT_MAX_RATE) {
             data.writeShort(this.rate);
             data.writeInt(0); // pad
             data.writeShort(0); // pad
@@ -156,7 +164,8 @@ public class OFQueueProp {
         if (type != other.type) {
             return false;
         }
-        if (type == OFQueuePropType.OFPQT_MIN_RATE) {
+        if (type == OFQueuePropType.OFPQT_MIN_RATE ||
+            type == OFQueuePropType.OFPQT_MAX_RATE) {
             if (rate != other.rate) {
                 return false;
             }
