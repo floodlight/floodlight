@@ -41,7 +41,7 @@ public class LBPool {
     protected ArrayList<String> members;
     protected ArrayList<String> monitors;
     protected short adminState;
-    protected short status;    
+    protected short status;
     
     protected String vipId;
     
