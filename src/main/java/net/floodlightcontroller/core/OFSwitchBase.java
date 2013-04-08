@@ -187,7 +187,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     // For driver subclass to set throttling
-    public void enableWriteThrottle(boolean enable) {
+    protected void enableWriteThrottle(boolean enable) {
         this.writeThrottleEnabled = enable;
     }
 
