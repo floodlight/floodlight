@@ -49,6 +49,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
@@ -104,6 +107,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
+    protected IDebugCounterService debugCounters;
 
     /**
      * Time in milliseconds before entities will expire
@@ -595,6 +599,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
+                debugCounters.updateCounter("devicemanager-incoming");
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -716,6 +721,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
+        this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
     }
 
     @Override
@@ -753,6 +759,18 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         } else {
             logger.debug("Could not instantiate REST API");
         }
+
+        registerDeviceManagerDebugCounters();
+    }
+
+    private void registerDeviceManagerDebugCounters() {
+        if (debugCounters == null) {
+            logger.error("Debug Counter Service not found.");
+            debugCounters = new NullDebugCounter();
+            return;
+        }
+        debugCounters.registerCounter(getName() + "-" + "incoming",
+            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
     }
 
     // ***************
@@ -840,10 +858,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param srcDevice
      */
     private void snoopDHCPClientName(Ethernet eth, Device srcDevice) {
-        if (eth.getEtherType() != Ethernet.TYPE_IPv4)
+        if (! (eth.getPayload() instanceof IPv4) )
             return;
         IPv4 ipv4 = (IPv4) eth.getPayload();
-        if (ipv4.getProtocol() != IPv4.PROTOCOL_UDP)
+        if (! (ipv4.getPayload() instanceof UDP) )
             return;
         UDP udp = (UDP) ipv4.getPayload();
         if (!(udp.getPayload() instanceof DHCP))
@@ -1243,9 +1261,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                             device.getEntityClass().getName(), entity);
                 return null;
             }
-            // If this is an internal port we don't learn the new entity
-            // and don't update indexes. We only learn on attachment point
-            // ports.
+            // If this is not an attachment point port we don't learn the new entity
+            // and don't update indexes. But we do allow the device to continue up
+            // the chain.
             if (entity.hasSwitchPort() &&
                     !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {

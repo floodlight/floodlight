@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -16,7 +16,7 @@
 **/
 
 /**
- * 
+ *
  */
 package net.floodlightcontroller.counter;
 
@@ -28,7 +28,7 @@ import java.util.Date;
  * This is a simple counter implementation that doesn't support data series.
  * The idea is that floodlight only keeps the realtime value for each counter,
  * statd, a statistics collection daemon, samples counters at a user-defined interval
- * and pushes the values to a database, which keeps time-based data series. 
+ * and pushes the values to a database, which keeps time-based data series.
  * @author Kanzhe
  *
  */
@@ -37,10 +37,10 @@ public class SimpleCounter implements ICounter {
   protected CounterValue counter;
   protected Date samplingTime;
   protected Date startDate;
-  
+
   /**
-   * Factory method to create a new counter instance.  
-   * 
+   * Factory method to create a new counter instance.
+   *
    * @param startDate
    * @return
    */
@@ -48,10 +48,10 @@ public class SimpleCounter implements ICounter {
     SimpleCounter cc = new SimpleCounter(startDate, type);
     return cc;
   }
-  
+
   /**
-   * Factory method to create a copy of a counter instance.  
-   * 
+   * Factory method to create a copy of a counter instance.
+   *
    * @param startDate
    * @return
    */
@@ -67,7 +67,7 @@ public class SimpleCounter implements ICounter {
      cc.setCounter(copy.getCounterDate(), copy.getCounterValue());
      return cc;
   }
-  
+
   /**
    * Protected constructor - use createCounter factory method instead
    * @param startDate
@@ -75,32 +75,33 @@ public class SimpleCounter implements ICounter {
   protected SimpleCounter(Date startDate, CounterValue.CounterType type) {
     init(startDate, type);
   }
-  
+
   protected void init(Date startDate, CounterValue.CounterType type) {
     this.startDate = startDate;
     this.samplingTime = new Date();
     this.counter = new CounterValue(type);
   }
-  
+
   /**
    * This is the key method that has to be both fast and very thread-safe.
    */
   @Override
   synchronized public void increment() {
-    this.increment(new Date(), (long)1);
+    this.increment(new Date(), 1);
   }
-  
+
   @Override
   synchronized public void increment(Date d, long delta) {
     this.samplingTime = d;
     this.counter.increment(delta);
   }
-  
-  synchronized public void setCounter(Date d, CounterValue value) {
+
+  @Override
+synchronized public void setCounter(Date d, CounterValue value) {
       this.samplingTime = d;
       this.counter = value;
   }
-  
+
   /**
    * This is the method to retrieve the current value.
    */
@@ -116,7 +117,7 @@ public class SimpleCounter implements ICounter {
   synchronized public Date getCounterDate() {
     return this.samplingTime;
   }
-  
+
   /**
    * Reset value.
    */
@@ -124,14 +125,5 @@ public class SimpleCounter implements ICounter {
   synchronized public void reset(Date startDate) {
     init(startDate, this.counter.getType());
   }
-  
-  @Override
-  /**
-   * This method only returns the real-time value.
-   */
-  synchronized public CountSeries snapshot(DateSpan dateSpan) {
-    long[] values = new long[1];
-    values[0] = this.counter.getLong();
-    return new CountSeries(this.samplingTime, DateSpan.DAYS, values);
-  }
+
 }

@@ -27,6 +27,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.counter.ICounterStoreService;
+<<<<<<< HEAD
+=======
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.flowcache.IFlowCacheService;
+>>>>>>> bigswitch/master
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -34,7 +39,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 public class FloodlightProvider implements IFloodlightModule {
     Controller controller;
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> services =
@@ -47,9 +52,9 @@ public class FloodlightProvider implements IFloodlightModule {
     public Map<Class<? extends IFloodlightService>,
                IFloodlightService> getServiceImpls() {
         controller = new Controller();
-        
+
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                             IFloodlightService>();
         m.put(IFloodlightProviderService.class, controller);
@@ -64,6 +69,11 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
         dependencies.add(ICounterStoreService.class);
+<<<<<<< HEAD
+=======
+        dependencies.add(IDebugCounterService.class);
+        dependencies.add(IFlowCacheService.class);
+>>>>>>> bigswitch/master
         dependencies.add(IThreadPoolService.class);
         return dependencies;
     }
@@ -76,6 +86,13 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IPktInProcessingTimeService.class));
        controller.setCounterStore(
            context.getServiceImpl(ICounterStoreService.class));
+<<<<<<< HEAD
+=======
+       controller.setDebugCounter(
+           context.getServiceImpl(IDebugCounterService.class));
+       controller.setFlowCacheMgr(
+           context.getServiceImpl(IFlowCacheService.class));
+>>>>>>> bigswitch/master
        controller.setRestApiService(
            context.getServiceImpl(IRestApiService.class));
        controller.setThreadPoolService(

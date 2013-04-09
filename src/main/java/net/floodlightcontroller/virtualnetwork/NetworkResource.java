@@ -70,6 +70,7 @@ public class NetworkResource extends ServerResource {
             else if (n.equals("network")) {
                 while (jp.nextToken() != JsonToken.END_OBJECT) {
                     String field = jp.getCurrentName();
+                    if (field == null) continue;
                     if (field.equals("name")) {
                         network.name = jp.getText();
                     } else if (field.equals("gateway")) {

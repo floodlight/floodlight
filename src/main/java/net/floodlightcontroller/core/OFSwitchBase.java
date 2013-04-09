@@ -36,6 +36,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
@@ -48,6 +49,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFBarrierRequest;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -109,6 +111,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private final ReentrantReadWriteLock listenerLock;
     private final ConcurrentMap<Short, AtomicLong> portBroadcastCacheHitMap;
 
+    // Private members for throttling
+    private boolean writeThrottleEnabled = false;
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
@@ -181,7 +185,52 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public void setChannel(Channel channel) {
         this.channel = channel;
     }
-    
+
+    // For driver subclass to set throttling
+    protected void enableWriteThrottle(boolean enable) {
+        this.writeThrottleEnabled = enable;
+    }
+
+    @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="WARN",
+                message="Drop throttled OF message to switch {switch}",
+                explanation="The controller is sending more messages" +
+                "than the switch can handle. Some messages are dropped" +
+                "to prevent switch outage",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    })
+    public void writeThrottled(OFMessage m, FloodlightContext bc)
+            throws IOException {
+        /**
+         * By default, channel uses an unbounded send queue. Enable throttling
+         * prevents the queue from growing big.
+         *
+         * channel.isWritable() returns true when queue length is less than
+         * high water mark (64 kbytes). Once exceeded, isWritable() becomes
+         * false after queue length drops below low water mark (32 kbytes).
+         */
+        if (!writeThrottleEnabled || channel.isWritable()) {
+            write(m, bc);
+        } else {
+            // Let logback duplicate filtering take care of excessive logs
+            // TODO Convert to counter and events
+            log.warn("Drop throttled OF message to switch {}", this);
+        }
+    }
+
+    @Override
+    public void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException {
+        if (!writeThrottleEnabled || channel.isWritable()) {
+            write(msglist, bc);
+        } else {
+            // Let logback duplicate filtering take care of excessive logs
+            // TODO Convert to counter and events
+            log.warn("Drop throttled OF message to switch {}", this);
+        }
+    }
+
     @Override
     public void write(OFMessage m, FloodlightContext bc)
             throws IOException {
@@ -201,7 +250,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
             msg_buffer.clear();
         }
     }
-
     @Override
     @LogMessageDoc(level="WARN",
                    message="Sending OF message that modifies switch " +
@@ -230,6 +278,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.write(msglist);
     }
 
+    /**
+     * Not callable by writers, but allow IOFSwitch implementation to override
+     * @param msglist
+     * @throws IOException
+     */
     private void write(List<OFMessage> msglist) throws IOException {
         this.channel.write(msglist);
     }
@@ -397,7 +450,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.iofMsgListenersMap.put(xid, caller);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return;
     }
 
@@ -408,7 +461,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.statsFutureMap.put(request.getXid(), future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return future;
     }
 
@@ -509,10 +562,18 @@ public abstract class OFSwitchBase implements IOFSwitch {
             .setCommand(OFFlowMod.OFPFC_DELETE)
             .setOutPort(OFPort.OFPP_NONE)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
+        fm.setXid(getNextTransactionId());
+        OFMessage barrierMsg = (OFBarrierRequest)
+                floodlightProvider.getOFMessageFactory().getMessage(
+                        OFType.BARRIER_REQUEST);
+        barrierMsg.setXid(getNextTransactionId());
         try {
             List<OFMessage> msglist = new ArrayList<OFMessage>(1);
             msglist.add(fm);
-            channel.write(msglist);
+            write(msglist);
+            msglist = new ArrayList<OFMessage>(1);
+            msglist.add(barrierMsg);
+            write(msglist);
         } catch (Exception e) {
             log.error("Failed to clear all flows on switch " + this, e);
         }
@@ -630,7 +691,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.featuresFutureMap.put(request.getXid(), future);
         List<OFMessage> msglist = new ArrayList<OFMessage>(1);
         msglist.add(request);
-        this.channel.write(msglist);
+        this.write(msglist);
         return future;
     }
 

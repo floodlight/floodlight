@@ -66,6 +66,11 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
+<<<<<<< HEAD
+=======
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.flowcache.IFlowCacheService;
+>>>>>>> bigswitch/master
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -171,6 +176,11 @@ public class Controller implements IFloodlightProviderService,
     // Module dependencies
     protected IRestApiService restApi;
     protected ICounterStoreService counterStore = null;
+<<<<<<< HEAD
+=======
+    protected IDebugCounterService debugCounter;
+    protected IFlowCacheService bigFlowCacheMgr;
+>>>>>>> bigswitch/master
     protected IStorageSourceService storageSource;
     protected IPktInProcessingTimeService pktinProcTime;
     protected IThreadPoolService threadPool;
@@ -189,7 +199,7 @@ public class Controller implements IFloodlightProviderService,
     // we have sent to the listeners. On a transition to slave we first set
     // this role and then notify, on a transition to master we first notify
     // and then set the role. We then use it to make sure we don't forward
-    // OF messages while the modules are in slave role. 
+    // OF messages while the modules are in slave role.
     // The pendingRole is a role change just received, but not sent out
     // notifications yet.
     protected Role pendingRole;
@@ -217,7 +227,7 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_INTERFACE_DISCOVERED_IP = "discovered_ip";
 
     // Perf. related configuration
-    protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected int sendBufferSize = 4 * 1024 * 1024;
     public static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
@@ -300,7 +310,7 @@ public class Controller implements IFloodlightProviderService,
                           newRole, oldRole);
             }
             // Set notified role to slave before notifying listeners. This
-            // stops OF messages from being sent to listeners 
+            // stops OF messages from being sent to listeners
             if (newRole == Role.SLAVE)
                 Controller.this.notifiedRole = newRole;
             if (haListeners != null) {
@@ -308,7 +318,7 @@ public class Controller implements IFloodlightProviderService,
                         listener.roleChanged(oldRole, newRole);
                 }
             }
-            // Set notified role to master/equal after notifying listeners. 
+            // Set notified role to master/equal after notifying listeners.
             // We now forward messages again
             if (newRole != Role.SLAVE)
                 Controller.this.notifiedRole = newRole;
@@ -361,6 +371,17 @@ public class Controller implements IFloodlightProviderService,
         this.counterStore = counterStore;
     }
 
+<<<<<<< HEAD
+=======
+    public void setDebugCounter(IDebugCounterService debugCounter) {
+        this.debugCounter = debugCounter;
+    }
+
+    public void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
+        this.bigFlowCacheMgr = flowCacheMgr;
+    }
+
+>>>>>>> bigswitch/master
     public void setPktInProcessingService(IPktInProcessingTimeService pits) {
         this.pktinProcTime = pits;
     }
@@ -663,6 +684,11 @@ public class Controller implements IFloodlightProviderService,
                 // Flush all flow-mods/packet-out/stats generated from this "train"
                 OFSwitchBase.flush_all();
                 counterStore.updateFlush();
+<<<<<<< HEAD
+=======
+                debugCounter.flushCounters();
+                bigFlowCacheMgr.updateFlush();
+>>>>>>> bigswitch/master
             }
         }
 
@@ -1054,7 +1080,7 @@ public class Controller implements IFloodlightProviderService,
 
                         if (sw.isConnected()) {
                             // Only dispatch message if the switch is in the
-                            // activeSwitch map and if the switches role is 
+                            // activeSwitch map and if the switches role is
                             // not slave and the modules are not in slave
                             // TODO: Should we dispatch messages that we expect to
                             // receive when we're in the slave role, e.g. port
@@ -1064,7 +1090,7 @@ public class Controller implements IFloodlightProviderService,
                             // to them. On the other hand there might be special
                             // modules that care about all of the connected switches
                             // and would like to receive port status notifications.
-                            if (sw.getHARole() == Role.SLAVE || 
+                            if (sw.getHARole() == Role.SLAVE ||
                                     notifiedRole == Role.SLAVE ||
                                     !activeSwitches.containsKey(sw.getId())) {
                                 // Don't log message if it's a port status message
@@ -1092,19 +1118,31 @@ public class Controller implements IFloodlightProviderService,
     // Message handlers
     // ****************
 
+    @LogMessageDocs({
+        @LogMessageDoc(message="Port modified on switch {switch}: {port} ",
+                explanation="Received notification from switch about port status change"),
+        @LogMessageDoc(message="Port added on switch {switch}: {port} ",
+                explanation="Received notification from switch about a new port addition"),
+        @LogMessageDoc(message="Port deleted on switch {switch}: port_no = {port} ",
+                explanation="Received notification from switch about a port removal"),
+        @LogMessageDoc(level="ERROR",
+                message="Failure adding update to queue",
+                explanation="Failed to add port status change to internal queue for processing",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    })
     protected void handlePortStatusMessage(IOFSwitch sw, OFPortStatus m) {
         short portNumber = m.getDesc().getPortNumber();
         OFPhysicalPort port = m.getDesc();
         if (m.getReason() == (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} modified for {}", portNumber, sw);
+            log.info("Port modified on switch {}: {}", sw, port);
         } else if (m.getReason() == (byte)OFPortReason.OFPPR_ADD.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} added for {}", portNumber, sw);
+            log.info("Port added on switch {}: {}", sw, port);
         } else if (m.getReason() ==
                    (byte)OFPortReason.OFPPR_DELETE.ordinal()) {
             sw.deletePort(portNumber);
-            log.debug("Port #{} deleted for {}", portNumber, sw);
+            log.info("Port deleted on switch {}: port_no = {}", sw, portNumber);
         }
         SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
         try {
@@ -1175,7 +1213,7 @@ public class Controller implements IFloodlightProviderService,
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
-        
+
         switch (m.getType()) {
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn)m;
@@ -1241,7 +1279,10 @@ public class Controller implements IFloodlightProviderService,
                     }
                     pktinProcTime.recordEndTimePktIn(sw, m, bc);
                 } else {
-                    log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    if (m.getType() != OFType.BARRIER_REPLY)
+                        log.warn("Unhandled OF Message: {} from {}", m, sw);
+                    else
+                        log.debug("Received a Barrier Reply, no listeners for it");
                 }
 
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
@@ -1692,7 +1733,7 @@ public class Controller implements IFloodlightProviderService,
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
             bootstrap.setOption("child.tcpNoDelay", true);
-            bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
+            bootstrap.setOption("child.sendBufferSize", sendBufferSize);
 
             ChannelPipelineFactory pfact =
                     new OpenflowPipelineFactory(this, null);
@@ -1748,7 +1789,11 @@ public class Controller implements IFloodlightProviderService,
             this.workerThreads = Integer.parseInt(threads);
         }
         log.debug("Number of worker threads set to {}", this.workerThreads);
-        
+        String sendBufferStr = configParams.get("sendBufferSize");
+        if (sendBufferStr != null) {
+            this.sendBufferSize = Integer.parseInt(sendBufferStr);
+        }
+        log.debug("Send buffer size set to {}", sendBufferSize);
     }
 
     private void initVendorMessages() {

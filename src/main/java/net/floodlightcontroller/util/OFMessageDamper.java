@@ -134,7 +134,7 @@ public class OFMessageDamper {
                         FloodlightContext cntx, boolean flush) 
             throws IOException {
         if (! msgTypesToCache.contains(msg.getType())) {
-            sw.write(msg, cntx);
+            sw.writeThrottled(msg, cntx);
             if (flush) {
                 sw.flush();
             }
@@ -146,7 +146,7 @@ public class OFMessageDamper {
             // entry exists in cache. Dampening.
             return false; 
         } else {
-            sw.write(msg, cntx);
+            sw.writeThrottled(msg, cntx);
             if (flush) {
                 sw.flush();
             }

@@ -36,7 +36,7 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-import net.floodlightcontroller.util.LRUHashMap;
+import com.google.common.cache.*;
 
 /**
  * A representation of a network topology.  Used internally by
@@ -76,7 +76,23 @@ public class TopologyInstance {
     protected Map<Long, BroadcastTree> destinationRootedTrees;
     protected Map<Long, Set<NodePortTuple>> clusterBroadcastNodePorts;
     protected Map<Long, BroadcastTree> clusterBroadcastTrees;
-    protected LRUHashMap<RouteId, Route> pathcache;
+
+    protected class PathCacheLoader extends CacheLoader<RouteId, Route> {
+        TopologyInstance ti;
+        PathCacheLoader(TopologyInstance ti) {
+            this.ti = ti;
+        }
+
+        @Override
+        public Route load(RouteId rid) {
+            return ti.buildroute(rid);
+        }
+    }
+
+    // Path cache loader is defined for loading a path when it not present
+    // in the cache.
+    private final PathCacheLoader pathCacheLoader = new PathCacheLoader(this);
+    protected LoadingCache<RouteId, Route> pathcache;
 
     public TopologyInstance() {
         this.switches = new HashSet<Long>();
@@ -132,7 +148,15 @@ public class TopologyInstance {
         destinationRootedTrees = new HashMap<Long, BroadcastTree>();
         clusterBroadcastTrees = new HashMap<Long, BroadcastTree>();
         clusterBroadcastNodePorts = new HashMap<Long, Set<NodePortTuple>>();
-        pathcache = new LRUHashMap<RouteId, Route>(PATH_CACHE_SIZE);
+
+        pathcache = CacheBuilder.newBuilder().concurrencyLevel(4)
+                    .maximumSize(1000L)
+                    .build(
+                            new CacheLoader<RouteId, Route>() {
+                                public Route load(RouteId rid) {
+                                    return pathCacheLoader.load(rid);
+                                }
+                            });
     }
 
     public void compute() {
@@ -511,7 +535,7 @@ public class TopologyInstance {
     }
 
     protected void calculateShortestPathTreeInClusters() {
-        pathcache.clear();
+        pathcache.invalidateAll();
         destinationRootedTrees.clear();
 
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
@@ -664,15 +688,23 @@ public class TopologyInstance {
         return r;
     }
 
+    // NOTE: Return a null route if srcId equals dstId.  The null route
+    // need not be stored in the cache.  Moreover, the LoadingCache will
+    // throw an exception if null route is returned.
     protected Route getRoute(long srcId, long dstId, long cookie) {
+        // Return null route if srcId equals dstId
+        if (srcId == dstId) return null;
+
+
         RouteId id = new RouteId(srcId, dstId);
         Route result = null;
-        if (pathcache.containsKey(id)) {
+
+        try {
             result = pathcache.get(id);
-        } else {
-            result = buildroute(id);
-            pathcache.put(id, result);
+        } catch (Exception e) {
+            log.error("{}", e);
         }
+
         if (log.isTraceEnabled()) {
             log.trace("getRoute: {} -> {}", id, result);
         }
