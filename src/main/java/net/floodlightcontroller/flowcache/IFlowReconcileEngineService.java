@@ -68,6 +68,8 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
         LINK_DOWN,
         /** second round query caused by rewrite flags set */
         REWRITE_QUERY,
+        /**query for drop flows */
+        DROP_FLOW_QUERY,
     }
     /**
      * A FloodlightContextStore object that can be used to interact with the
