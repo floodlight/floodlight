@@ -166,7 +166,7 @@ public class FCQueryObj {
         if (!matchPortList.equals(other.matchPortList)) return false;
         if (!vlans.equals(other.vlans)) return false;
         if (portDown != other.portDown) return false;
-        if (mac != other.mac) return false;
+        if (!mac.equals(other.mac)) return false;
         if (tag != other.tag) return false;
         if (srcIpsubnet == null) {
             if (other.srcIpsubnet != null) return false;
