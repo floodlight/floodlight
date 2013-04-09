@@ -25,6 +25,7 @@ import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openflow.util.HexString;
 
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkDirection;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.routing.Link;
 
@@ -42,14 +43,16 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
     public short dstPort;
     public int dstPortState;
     public LinkType type;
+    public LinkDirection direction;
 
     // Do NOT delete this, it's required for the serializer
     public LinkWithType() {}
-    
+
     public LinkWithType(Link link,
-                        int srcPortState,
-                        int dstPortState,
-                        LinkType type) {
+            int srcPortState,
+            int dstPortState,
+            LinkType type,
+            LinkDirection direction) {
         this.srcSwDpid = link.getSrc();
         this.srcPort = link.getSrcPort();
         this.srcPortState = srcPortState;
@@ -57,25 +60,27 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
         this.dstPort = link.getDstPort();
         this.dstPortState = dstPortState;
         this.type = type;
+        this.direction = direction;
     }
 
-	@Override
-	public void serialize(LinkWithType lwt, JsonGenerator jgen, SerializerProvider arg2) 
-			throws IOException, JsonProcessingException {
-		// You ****MUST*** use lwt for the fields as it's actually a different object.
-		jgen.writeStartObject();
-		jgen.writeStringField("src-switch", HexString.toHexString(lwt.srcSwDpid));
-		jgen.writeNumberField("src-port", lwt.srcPort);
-		jgen.writeNumberField("src-port-state", lwt.srcPortState);
-		jgen.writeStringField("dst-switch", HexString.toHexString(lwt.dstSwDpid));
-		jgen.writeNumberField("dst-port", lwt.dstPort);
-		jgen.writeNumberField("dst-port-state", lwt.dstPortState);
-		jgen.writeStringField("type", lwt.type.toString());
-		jgen.writeEndObject();
-	}
-	
-	@Override
-	public Class<LinkWithType> handledType() {
-		return LinkWithType.class;
-	}
+    @Override
+    public void serialize(LinkWithType lwt, JsonGenerator jgen, SerializerProvider arg2)
+            throws IOException, JsonProcessingException {
+        // You ****MUST*** use lwt for the fields as it's actually a different object.
+        jgen.writeStartObject();
+        jgen.writeStringField("src-switch", HexString.toHexString(lwt.srcSwDpid));
+        jgen.writeNumberField("src-port", lwt.srcPort);
+        jgen.writeNumberField("src-port-state", lwt.srcPortState);
+        jgen.writeStringField("dst-switch", HexString.toHexString(lwt.dstSwDpid));
+        jgen.writeNumberField("dst-port", lwt.dstPort);
+        jgen.writeNumberField("dst-port-state", lwt.dstPortState);
+        jgen.writeStringField("type", lwt.type.toString());
+        jgen.writeStringField("direction", lwt.direction.toString());
+        jgen.writeEndObject();
+    }
+
+    @Override
+    public Class<LinkWithType> handledType() {
+        return LinkWithType.class;
+    }
 }
