@@ -433,7 +433,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
      expect(sw1.getStringId()).andReturn("00:00:00:00:00:01").anyTimes();
      expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
      expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
-     sw1.write(capture(wc1), capture(bc1));
+     sw1.writeThrottled(capture(wc1), capture(bc1));
      expectLastCall().anyTimes(); 
      sw1.flush();
      expectLastCall().anyTimes();

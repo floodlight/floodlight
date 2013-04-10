@@ -221,7 +221,7 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_INTERFACE_DISCOVERED_IP = "discovered_ip";
 
     // Perf. related configuration
-    protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected int sendBufferSize = 4 * 1024 * 1024;
     public static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
@@ -1106,19 +1106,31 @@ public class Controller implements IFloodlightProviderService,
     // Message handlers
     // ****************
 
+    @LogMessageDocs({
+        @LogMessageDoc(message="Port modified on switch {switch}: {port} ",
+                explanation="Received notification from switch about port status change"),
+        @LogMessageDoc(message="Port added on switch {switch}: {port} ",
+                explanation="Received notification from switch about a new port addition"),
+        @LogMessageDoc(message="Port deleted on switch {switch}: port_no = {port} ",
+                explanation="Received notification from switch about a port removal"),
+        @LogMessageDoc(level="ERROR",
+                message="Failure adding update to queue",
+                explanation="Failed to add port status change to internal queue for processing",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    })
     protected void handlePortStatusMessage(IOFSwitch sw, OFPortStatus m) {
         short portNumber = m.getDesc().getPortNumber();
         OFPhysicalPort port = m.getDesc();
         if (m.getReason() == (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} modified for {}", portNumber, sw);
+            log.info("Port modified on switch {}: {}", sw, port);
         } else if (m.getReason() == (byte)OFPortReason.OFPPR_ADD.ordinal()) {
             sw.setPort(port);
-            log.debug("Port #{} added for {}", portNumber, sw);
+            log.info("Port added on switch {}: {}", sw, port);
         } else if (m.getReason() ==
                    (byte)OFPortReason.OFPPR_DELETE.ordinal()) {
             sw.deletePort(portNumber);
-            log.debug("Port #{} deleted for {}", portNumber, sw);
+            log.info("Port deleted on switch {}: port_no = {}", sw, portNumber);
         }
         SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
         try {
@@ -1709,7 +1721,7 @@ public class Controller implements IFloodlightProviderService,
             bootstrap.setOption("reuseAddr", true);
             bootstrap.setOption("child.keepAlive", true);
             bootstrap.setOption("child.tcpNoDelay", true);
-            bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
+            bootstrap.setOption("child.sendBufferSize", sendBufferSize);
 
             ChannelPipelineFactory pfact =
                     new OpenflowPipelineFactory(this, null);
@@ -1765,7 +1777,11 @@ public class Controller implements IFloodlightProviderService,
             this.workerThreads = Integer.parseInt(threads);
         }
         log.debug("Number of worker threads set to {}", this.workerThreads);
-
+        String sendBufferStr = configParams.get("sendBufferSize");
+        if (sendBufferStr != null) {
+            this.sendBufferSize = Integer.parseInt(sendBufferStr);
+        }
+        log.debug("Send buffer size set to {}", sendBufferSize);
     }
 
     private void initVendorMessages() {

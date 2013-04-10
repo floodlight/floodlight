@@ -26,14 +26,15 @@ import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.util.HexString;
 
 /**
  * Represents ofp_phy_port
  * @author David Erickson (daviderickson@cs.stanford.edu) - Mar 25, 2010
  */
 public class OFPhysicalPort {
-    public static int MINIMUM_LENGTH = 48;
-    public static int OFP_ETH_ALEN = 6;
+    public final static int MINIMUM_LENGTH = 48;
+    public final static int OFP_ETH_ALEN = 6;
 
     public enum OFPortConfig {
         OFPPC_PORT_DOWN    (1 << 0) {
@@ -466,5 +467,36 @@ public class OFPhysicalPort {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        String linkState, linkSpeed;
+        if ((state & OFPortState.OFPPS_LINK_DOWN.getValue()) != 0) {
+            linkState = "down";
+        } else {
+            linkState = "up";
+        }
+        if ((currentFeatures & OFPortFeatures.OFPPF_10GB_FD.getValue()) != 0) {
+            linkSpeed = "10G";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_1GB_FD.getValue()) != 0) {
+            linkSpeed = "1G";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_1GB_HD.getValue()) != 0) {
+            linkSpeed = "1G(half-duplex)";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_100MB_FD.getValue()) != 0) {
+            linkSpeed = "100M";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_100MB_HD.getValue()) != 0) {
+            linkSpeed = "100M(half-duplex)";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_10MB_FD.getValue()) != 0) {
+            linkSpeed = "10M";
+        } else if ((currentFeatures & OFPortFeatures.OFPPF_10MB_HD.getValue()) != 0) {
+            linkSpeed = "10M(half-duplex)";
+        } else {
+            linkSpeed = "unknown";
+        }
+        return "port " + name + " (" +  portNumber + ")" +
+               ", mac " + HexString.toHexString(hardwareAddress) +
+               ", state " + linkState +
+               ", speed " + linkSpeed;
     }
 }

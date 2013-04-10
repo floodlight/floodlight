@@ -177,4 +177,19 @@ public interface ILinkDiscovery {
         	}
         }
     };
+
+    public enum LinkDirection {
+        UNIDIRECTIONAL {
+            @Override
+            public String toString() {
+                return "unidirectional";
+            }
+        },
+        BIDIRECTIONAL {
+            @Override
+            public String toString() {
+                return "bidirectional";
+            }
+        }
+    }
 }

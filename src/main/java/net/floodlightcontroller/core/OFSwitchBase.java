@@ -36,6 +36,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
@@ -110,6 +111,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private final ReentrantReadWriteLock listenerLock;
     private final ConcurrentMap<Short, AtomicLong> portBroadcastCacheHitMap;
 
+    // Private members for throttling
+    private boolean writeThrottleEnabled = false;
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
@@ -182,7 +185,52 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public void setChannel(Channel channel) {
         this.channel = channel;
     }
-    
+
+    // For driver subclass to set throttling
+    protected void enableWriteThrottle(boolean enable) {
+        this.writeThrottleEnabled = enable;
+    }
+
+    @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="WARN",
+                message="Drop throttled OF message to switch {switch}",
+                explanation="The controller is sending more messages" +
+                "than the switch can handle. Some messages are dropped" +
+                "to prevent switch outage",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    })
+    public void writeThrottled(OFMessage m, FloodlightContext bc)
+            throws IOException {
+        /**
+         * By default, channel uses an unbounded send queue. Enable throttling
+         * prevents the queue from growing big.
+         *
+         * channel.isWritable() returns true when queue length is less than
+         * high water mark (64 kbytes). Once exceeded, isWritable() becomes
+         * false after queue length drops below low water mark (32 kbytes).
+         */
+        if (!writeThrottleEnabled || channel.isWritable()) {
+            write(m, bc);
+        } else {
+            // Let logback duplicate filtering take care of excessive logs
+            // TODO Convert to counter and events
+            log.warn("Drop throttled OF message to switch {}", this);
+        }
+    }
+
+    @Override
+    public void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException {
+        if (!writeThrottleEnabled || channel.isWritable()) {
+            write(msglist, bc);
+        } else {
+            // Let logback duplicate filtering take care of excessive logs
+            // TODO Convert to counter and events
+            log.warn("Drop throttled OF message to switch {}", this);
+        }
+    }
+
     @Override
     public void write(OFMessage m, FloodlightContext bc)
             throws IOException {
@@ -202,7 +250,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
             msg_buffer.clear();
         }
     }
-
     @Override
     @LogMessageDoc(level="WARN",
                    message="Sending OF message that modifies switch " +
@@ -236,7 +283,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @param msglist
      * @throws IOException
      */
-    public void write(List<OFMessage> msglist) throws IOException {
+    private void write(List<OFMessage> msglist) throws IOException {
         this.channel.write(msglist);
     }
     
