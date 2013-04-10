@@ -24,7 +24,7 @@ import java.util.Arrays;
 import net.floodlightcontroller.core.web.serializers.ByteArrayMACSerializer;
 import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**

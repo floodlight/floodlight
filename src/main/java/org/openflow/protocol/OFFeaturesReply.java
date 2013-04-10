@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.serializers.OFFeaturesReplyJSONSerializer;
 import org.openflow.util.U16;

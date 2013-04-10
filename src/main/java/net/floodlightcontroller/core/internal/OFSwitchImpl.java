@@ -19,7 +19,7 @@ package net.floodlightcontroller.core.internal;
 
 import java.util.List;
 
-import org.codehaus.jackson.annotate.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 
 import net.floodlightcontroller.core.OFSwitchBase;

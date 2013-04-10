@@ -18,8 +18,8 @@ package net.floodlightcontroller.linkdiscovery.internal;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /***
  * Topology link up/down event history related classes and members

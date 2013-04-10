@@ -22,7 +22,7 @@ import java.util.TimeZone;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 
 public class RoleInfo {

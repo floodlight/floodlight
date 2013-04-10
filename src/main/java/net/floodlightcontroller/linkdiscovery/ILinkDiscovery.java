@@ -16,8 +16,8 @@
 
 package net.floodlightcontroller.linkdiscovery;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.ser.ToStringSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.openflow.util.HexString;
 
 public interface ILinkDiscovery {
