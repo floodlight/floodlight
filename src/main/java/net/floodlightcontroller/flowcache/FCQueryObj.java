@@ -49,27 +49,17 @@ public class FCQueryObj {
     public short portDown;
     /*match ip subnet*/
     public String srcIpsubnet;
-    public String destIpsubnet;
-    public String srcBVS;
-    public String destBVS;
     /*BVS priority change*/
     public int lowP;
     public int highP;
-    /** The caller name */
-    public String callerName;
+    public DIRECTION direction;
+    public SwitchPort[] oldAp;
     /** Event type and priority that triggered this flow query submission */
     public FCQueryEvType evType;
     public EventPriority evPriority;
-    /** The caller opaque data. Returned unchanged in the query response
-     * via the callback. The type of this object could be different for
-     * different callers */
-    public Object callerOpaqueObj;
-    public DIRECTION direction;
-    public SwitchPort[] oldAp;
     public enum DIRECTION {
         INGRESS,
         EGRESS,
-        BOTH
     };
 
     /**
@@ -79,23 +69,19 @@ public class FCQueryObj {
         this.evType = evType;
         this.evPriority = mapEventToPriority(evType);
         this.applInstName     = null;
+        this.appInstInterfaceName = null;
         this.deviceMoved        = null;
-        this.callerName       = null;
-        this.callerOpaqueObj  = null;
         this.vlans=null;
         this.mac=null;
         this.tag=null;
-        this.appInstInterfaceName = null;
         this.srcSwId = 0L;
         this.portDown = OFPort.OFPP_NONE.getValue();
         this.srcIpsubnet = null;
-        this.destIpsubnet = null;
-        this.srcBVS = null;
-        this.destBVS = null;
         this.lowP = -1;
         this.highP = -1;
         this.oldAp =null;
-        this.direction=null;
+        this.direction=DIRECTION.INGRESS;
+        this.matchPortList=null;
     }
 
     public static EventPriority mapEventToPriority(FCQueryEvType type) {
@@ -119,7 +105,7 @@ public class FCQueryObj {
     @Override
     public String toString() {
         return "FCQueryObj [applInstName="
-                + applInstName + ", callerName=" + callerName + ", evType="
+                + applInstName + ", evType="
                 + evType + "]";
     }
 
@@ -130,14 +116,15 @@ public class FCQueryObj {
         result = prime * result
                  + ((applInstName == null) ? 0 : applInstName.hashCode());
         result = prime * result
-                 + ((callerName == null) ? 0 : callerName.hashCode());
-        result = prime
-                 * result
-                 + ((callerOpaqueObj == null) ? 0
-                                             : callerOpaqueObj.hashCode());
+                + ((appInstInterfaceName == null) ? 0 : appInstInterfaceName.hashCode());
         result = prime * result + ((evType == null) ? 0 : evType.hashCode());
         result = prime * result + ((mac == null) ? 0 : mac.hashCode());
+        result = prime * result + ((vlans == null) ? 0 : vlans.hashCode());
         result = prime * result + (int) srcSwId;
+        result = prime * result + ((matchPortList == null) ? 0 : matchPortList.hashCode());
+        result = prime * result + portDown;
+        result = prime * result + ((tag == null) ? 0 : tag.hashCode());
+        result = prime * result + ((srcIpsubnet == null) ? 0 : srcIpsubnet.hashCode());
         return result;
     }
 
@@ -147,33 +134,36 @@ public class FCQueryObj {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         FCQueryObj other = (FCQueryObj) obj;
+        if (evType != other.evType) return false;
         if (applInstName == null) {
             if (other.applInstName != null) return false;
         } else if (!applInstName.equals(other.applInstName)) return false;
-        if (callerName == null) {
-            if (other.callerName != null) return false;
-        } else if (!callerName.equals(other.callerName)) return false;
-        if (callerOpaqueObj == null) {
-            if (other.callerOpaqueObj != null) return false;
-        } else if (!callerOpaqueObj.equals(other.callerOpaqueObj))
-                                                                  return false;
-        if (evType != other.evType) return false;
-        if (!vlans.equals(other.vlans)) return false;
-
-        if (srcSwId == 0L) {
-            if (other.srcSwId != 0L) return false;
-        } else if (srcSwId != other.srcSwId) return false;
-        if (!matchPortList.equals(other.matchPortList)) return false;
-        if (!vlans.equals(other.vlans)) return false;
-        if (portDown != other.portDown) return false;
-        if (!mac.equals(other.mac)) return false;
-        if (tag != other.tag) return false;
-        if (srcIpsubnet == null) {
-            if (other.srcIpsubnet != null) return false;
-        } else if (!srcIpsubnet.equals(other.srcIpsubnet)) return false;
         if (appInstInterfaceName == null) {
             if (other.appInstInterfaceName != null) return false;
         } else if (!appInstInterfaceName.equals(other.appInstInterfaceName)) return false;
+        if (vlans==null) {
+            if (other.vlans!=null) return false;
+        } else if (!vlans.equals(other.vlans)) return false;
+        if (srcSwId != other.srcSwId) return false;
+        if (matchPortList==null) {
+            if (other.matchPortList!=null) return false;
+        } else if (!matchPortList.equals(other.matchPortList)) return false;
+        if (portDown != other.portDown) return false;
+        if (mac==null) {
+            if (other.mac!=null) return false;
+        } else if (!mac.equals(other.mac)) return false;
+        if (tag==null) {
+            if (other.tag!=null) return false;
+        } else if (tag != other.tag) return false;
+        if (srcIpsubnet == null) {
+            if (other.srcIpsubnet != null) return false;
+        } else if (!srcIpsubnet.equals(other.srcIpsubnet)) return false;
+        if (oldAp == null) {
+            if (other.oldAp != null) return false;
+        } else if (!oldAp.equals(other.oldAp)) return false;
+        if (lowP!=other.lowP) return false;
+        if (highP!=other.highP) return false;
+        if (!direction.equals(other.direction)) return false;
         return true;
     }
 }
