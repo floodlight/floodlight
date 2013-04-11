@@ -119,9 +119,9 @@
            srcdir="${source}:${thrift.out.dir}"
            destdir="${build}">
         </javac>
-    	<copy todir="${build}">
-    	    <fileset dir="${resources}" />
-    	</copy>
+        <copy todir="${build}">
+            <fileset dir="${resources}" />
+        </copy>
     </target>
 
     <target name="compile-tests" depends="compile-test"/>
