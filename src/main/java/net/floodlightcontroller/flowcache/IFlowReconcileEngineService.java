@@ -17,6 +17,8 @@
 package net.floodlightcontroller.flowcache;
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
@@ -68,8 +70,8 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
         LINK_DOWN,
         /** second round query caused by rewrite flags set */
         REWRITE_QUERY,
-        /**query for drop flows */
-        DROP_FLOW_QUERY,
+        /**query based on Destination device */
+        FLOW_QUERY_DEST_DEVICE,
     }
     /**
      * A FloodlightContextStore object that can be used to interact with the
@@ -99,4 +101,8 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
      */
     public void updateFlush();
     public void querySwitchFlowTable(long swDpid);
+
+    public void init(FloodlightModuleContext fmc) throws FloodlightModuleException;
+
+    public void startUp(FloodlightModuleContext fmc);
 }
