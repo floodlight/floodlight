@@ -187,8 +187,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     // For driver subclass to set throttling
+    @LogMessageDoc(level="INFO",
+            message="Enabled write throttling to {switch}",
+            explanation="OFMessage writes to switch is throttled " +
+                    "to prevent excessively long queues")
     protected void enableWriteThrottle(boolean enable) {
         this.writeThrottleEnabled = enable;
+        if (enable) {
+            log.info("Enabled write throttling to {}", this);
+        }
     }
 
     @Override
