@@ -2378,16 +2378,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     public void roleChanged(Role oldRole, Role newRole) {
         switch (newRole) {
             case MASTER:
-                if (oldRole == Role.SLAVE) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("Sending LLDPs "
-                                  + "to HA change from SLAVE->MASTER");
-                    }
-                    clearAllLinks();
-                    readTopologyConfigFromStorage();
-                    log.debug("Role Change to Master: Rescheduling discovery task.");
-                    discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
+                if (log.isTraceEnabled()) {
+                    log.trace("Sending LLDPs "
+                              + "to HA change from SLAVE->MASTER");
                 }
+                clearAllLinks();
+                readTopologyConfigFromStorage();
+                log.debug("Role Change to Master: Rescheduling discovery task.");
+                discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
                 break;
             case SLAVE:
                 if (log.isTraceEnabled()) {

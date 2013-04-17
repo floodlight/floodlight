@@ -33,6 +33,12 @@ public class RoleInfo {
     public RoleInfo() {
     }
 
+    public RoleInfo(RoleInfo o) {
+        role = o.role;
+        roleChangeDescription = o.roleChangeDescription;
+        roleChangeDateTime = (Date)o.roleChangeDateTime.clone();
+    }
+
     public RoleInfo(String role) {
         setRole(role);
     }

@@ -343,7 +343,7 @@ public interface IOFSwitch {
      * @param role
      * @param haRoleReplyReceived
      */
-    public void setHARole(Role role, boolean haRoleReplyReceived);
+    public void setHARole(Role role);
 
     /**
      * Deliver the statistics future reply

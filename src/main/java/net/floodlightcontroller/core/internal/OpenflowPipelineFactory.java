@@ -52,7 +52,7 @@ public class OpenflowPipelineFactory implements ChannelPipelineFactory {
  
     @Override
     public ChannelPipeline getPipeline() throws Exception {
-        OFChannelState state = new OFChannelState();
+        OFChannelHandler handler = new OFChannelHandler(controller);
         
         ChannelPipeline pipeline = Channels.pipeline();
         pipeline.addLast("ofmessagedecoder", new OFMessageDecoder());
@@ -60,11 +60,11 @@ public class OpenflowPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("idle", idleHandler);
         pipeline.addLast("timeout", readTimeoutHandler);
         pipeline.addLast("handshaketimeout",
-                         new HandshakeTimeoutHandler(state, timer, 15));
+                         new HandshakeTimeoutHandler(handler, timer, 15));
         if (pipelineExecutor != null)
             pipeline.addLast("pipelineExecutor",
                              new ExecutionHandler(pipelineExecutor));
-        pipeline.addLast("handler", controller.getChannelHandler(state));
+        pipeline.addLast("handler", handler);
         return pipeline;
     }
 

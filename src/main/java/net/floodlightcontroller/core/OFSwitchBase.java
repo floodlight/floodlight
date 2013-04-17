@@ -1,7 +1,7 @@
 /**
-*    Copyright 2012, Big Switch Networks, Inc. 
+*    Copyright 2012, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -48,7 +48,6 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.ser.ToStringSerializer;
 import org.jboss.netty.channel.Channel;
-import org.openflow.protocol.OFBarrierRequest;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
@@ -77,7 +76,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
     protected Date connectedSince;
-    
+
     /* Switch features from initial featuresReply */
     protected int capabilities;
     protected int buffers;
@@ -118,10 +117,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
             return new HashMap<IOFSwitch,List<OFMessage>>();
         }
     };
-    
+
     // for managing our map sizes
     protected static  int MAX_MACS_PER_SWITCH  = 1000;
-    
+
     public OFSwitchBase() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
@@ -144,8 +143,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
     }
-    
-    
+
+
     @Override
     public boolean attributeEquals(String name, Object other) {
         Object attr = this.attributes.get(name);
@@ -153,14 +152,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
             return false;
         return attr.equals(other);
     }
-    
+
 
     @Override
     public Object getAttribute(String name) {
         // returns null if key doesn't exist
         return this.attributes.get(name);
     }
-    
+
     @Override
     public void setAttribute(String name, Object value) {
         this.attributes.put(name, value);
@@ -171,21 +170,21 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public Object removeAttribute(String name) {
         return this.attributes.remove(name);
     }
-    
+
     @Override
     public boolean hasAttribute(String name) {
         return this.attributes.containsKey(name);
     }
-        
+
     @Override
     @JsonIgnore
     public void setChannel(Channel channel) {
         this.channel = channel;
     }
-    
+
     @Override
-    public void write(OFMessage m, FloodlightContext bc)
-            throws IOException {
+    public void write(OFMessage m, FloodlightContext bc) {
+            //throws IOException {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
         if (msg_buffer == null) {
@@ -210,8 +209,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                    explanation="An application has sent a message to a switch " +
                            "that is not valid when the switch is in a slave role",
                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public void write(List<OFMessage> msglist, 
-                      FloodlightContext bc) throws IOException {
+    public void write(List<OFMessage> msglist,
+                      FloodlightContext bc) {
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
                 switch (m.getType()) {
@@ -219,7 +218,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     case FLOW_MOD:
                     case PORT_MOD:
                         log.warn("Sending OF message that modifies switch " +
-                                 "state while in the slave role: {}", 
+                                 "state while in the slave role: {}",
                                  m.getType().name());
                         break;
                     default:
@@ -236,10 +235,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @param msglist
      * @throws IOException
      */
-    public void write(List<OFMessage> msglist) throws IOException {
+    protected void write(List<OFMessage> msglist) {
         this.channel.write(msglist);
     }
-    
+
     @Override
     public void disconnectOutputStream() {
         channel.close();
@@ -277,7 +276,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         }
         return result;
     }
-    
+
     @Override
     @JsonIgnore
     public Collection<Short> getEnabledPortNumbers() {
@@ -294,7 +293,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public OFPhysicalPort getPort(short portNumber) {
         return portsByNumber.get(portNumber);
     }
-    
+
     @Override
     public OFPhysicalPort getPort(String portName) {
         return portsByName.get(portName);
@@ -308,13 +307,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
             portsByName.put(port.getName(), port);
         }
     }
-    
+
     @Override
     @JsonProperty("ports")
     public Collection<OFPhysicalPort> getPorts() {
         return Collections.unmodifiableCollection(portsByNumber.values());
     }
-    
+
     @Override
     public void deletePort(short portNumber) {
         synchronized(portLock) {
@@ -322,7 +321,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             portsByNumber.remove(portNumber);
         }
     }
-    
+
     @Override
     public void deletePort(String portName) {
         synchronized(portLock) {
@@ -336,13 +335,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
         if (portsByNumber.get(portNumber) == null) return false;
         return portEnabled(portsByNumber.get(portNumber));
     }
-    
+
     @Override
     public boolean portEnabled(String portName) {
         if (portsByName.get(portName) == null) return false;
         return portEnabled(portsByName.get(portName));
     }
-    
+
     @Override
     public boolean portEnabled(OFPhysicalPort port) {
         if (port == null)
@@ -356,7 +355,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         //    return false;
         return true;
     }
-    
+
     @Override
     @JsonSerialize(using=DPIDSerializer.class)
     @JsonProperty("dpid")
@@ -452,8 +451,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         statsFutureMap.clear();
         iofMsgListenersMap.clear();
     }
- 
-    
+
+
     /**
      * @param floodlightProvider the floodlightProvider to set
      */
@@ -462,7 +461,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             IFloodlightProviderService floodlightProvider) {
         this.floodlightProvider = floodlightProvider;
     }
-    
+
     @Override
     @JsonIgnore
     public void setThreadPoolService(IThreadPoolService tp) {
@@ -482,7 +481,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         // No lock needed since we use volatile
         this.connected = connected;
     }
-    
+
     @Override
     public Role getHARole() {
         return role;
@@ -490,22 +489,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @JsonIgnore
     @Override
-    public void setHARole(Role role, boolean replyReceived) {        
-        if (this.role == null && getAttribute(SWITCH_SUPPORTS_NX_ROLE) == null)
-        {
-            // The first role reply we received. Set the attribute
-            // that the switch supports roles
-            setAttribute(SWITCH_SUPPORTS_NX_ROLE, replyReceived);
-        }
+    public void setHARole(Role role) {
         this.role = role;
     }
 
     @Override
-    @LogMessageDoc(level="ERROR",
-                   message="Failed to clear all flows on switch {switch}",
-                   explanation="An I/O error occured while trying to clear " +
-                               "flows on the switch.",
-                   recommendation=LogMessageDoc.CHECK_SWITCH)
     public void clearAllFlowMods() {
         // Delete all pre-existing flows
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
@@ -516,20 +504,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
             .setOutPort(OFPort.OFPP_NONE)
             .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
         fm.setXid(getNextTransactionId());
-        OFMessage barrierMsg = (OFBarrierRequest)
-                floodlightProvider.getOFMessageFactory().getMessage(
-                        OFType.BARRIER_REQUEST);
+        OFMessage barrierMsg = floodlightProvider.getOFMessageFactory().getMessage(
+                OFType.BARRIER_REQUEST);
         barrierMsg.setXid(getNextTransactionId());
-        try {
-            List<OFMessage> msglist = new ArrayList<OFMessage>(1);
-            msglist.add(fm);
-            write(msglist);
-            msglist = new ArrayList<OFMessage>(1);
-            msglist.add(barrierMsg);
-            write(msglist);
-        } catch (Exception e) {
-            log.error("Failed to clear all flows on switch " + this, e);
-        }
+        List<OFMessage> msglist = new ArrayList<OFMessage>(2);
+        msglist.add(fm);
+        msglist.add(barrierMsg);
+        channel.write(msglist);
     }
 
     @Override
@@ -581,11 +562,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
              * anything asynchronous, so we are safe. But we should probably change
              * that behavior.
              */
-            try {
-                this.write(msglist);
-            } catch (IOException e) {
-                log.error("Error flushing local message buffer: "+e.getMessage(), e);
-            }
+            this.write(msglist);
             msglist.clear();
         }
     }
@@ -601,7 +578,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * Return a read lock that must be held while calling the listeners for
      * messages from the switch. Holding the read lock prevents the active
      * switch list from being modified out from under the listeners.
-     * @return 
+     * @return
      */
     @Override
     @JsonIgnore
@@ -631,11 +608,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public SocketAddress getInetAddress() {
         return channel.getRemoteAddress();
     }
-    
+
     @Override
     public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {
-        OFMessage request = 
+        OFMessage request =
                 floodlightProvider.getOFMessageFactory().
                     getMessage(OFType.FEATURES_REQUEST);
         request.setXid(getNextTransactionId());

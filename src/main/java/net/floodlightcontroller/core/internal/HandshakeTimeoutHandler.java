@@ -19,8 +19,6 @@ package net.floodlightcontroller.core.internal;
 
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
-
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
@@ -39,15 +37,16 @@ public class HandshakeTimeoutHandler
     static final HandshakeTimeoutException EXCEPTION = 
             new HandshakeTimeoutException();
     
-    final OFChannelState state;
+    final OFChannelHandler channelHandler;
     final Timer timer;
     final long timeoutNanos;
     volatile Timeout timeout;
     
-    public HandshakeTimeoutHandler(OFChannelState state, Timer timer,
+    public HandshakeTimeoutHandler(OFChannelHandler channelHandler,
+                                   Timer timer,
                                    long timeoutSeconds) {
         super();
-        this.state = state;
+        this.channelHandler = channelHandler;
         this.timer = timer;
         this.timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
 
@@ -94,7 +93,7 @@ public class HandshakeTimeoutHandler
             if (!ctx.getChannel().isOpen()) {
                 return;
             }
-            if (!state.hsState.equals(HandshakeState.READY))
+            if (!channelHandler.isHandshakeComplete())
                 Channels.fireExceptionCaught(ctx, EXCEPTION);
         }
     }

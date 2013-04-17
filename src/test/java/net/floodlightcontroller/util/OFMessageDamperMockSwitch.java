@@ -391,7 +391,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void setHARole(Role role, boolean haRoleReplyReceived) {
+    public void setHARole(Role role) {
         // TODO Auto-generated method stub
         
     }

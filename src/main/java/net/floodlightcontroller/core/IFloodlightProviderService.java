@@ -1,7 +1,7 @@
 /**
- *    Copyright 2011, Big Switch Networks, Inc. 
+ *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
- * 
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.core;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
+import org.openflow.vendor.nicira.OFRoleVendorData;
 
 /**
  * The interface exposed by the core bundle that allows you to interact
@@ -34,26 +36,51 @@ import org.openflow.protocol.factory.BasicFactory;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public interface IFloodlightProviderService extends
-        IFloodlightService {
+        IFloodlightService, Runnable {
 
     /**
      * A value stored in the floodlight context containing a parsed packet
-     * representation of the payload of a packet-in message. 
+     * representation of the payload of a packet-in message.
      */
-    public static final String CONTEXT_PI_PAYLOAD = 
+    public static final String CONTEXT_PI_PAYLOAD =
             "net.floodlightcontroller.core.IFloodlightProvider.piPayload";
 
     /**
      * The role of the controller as used by the OF 1.2 and OVS failover and
      * load-balancing mechanism.
      */
-    public static enum Role { EQUAL, MASTER, SLAVE };
-    
+    public static enum Role {
+        EQUAL(OFRoleVendorData.NX_ROLE_OTHER),
+        MASTER(OFRoleVendorData.NX_ROLE_MASTER),
+        SLAVE(OFRoleVendorData.NX_ROLE_SLAVE);
+
+        private int nxRole;
+
+        private Role(int nxRole) {
+            this.nxRole = nxRole;
+        }
+
+        private static Map<Integer,Role> nxRoleToEnum
+                = new HashMap<Integer,Role>();
+        static {
+            for(Role r: Role.values())
+                nxRoleToEnum.put(r.toNxRole(), r);
+        }
+        public int toNxRole() {
+            return nxRole;
+        }
+        // Return the enum representing the given nxRole or null if no
+        // such role exists
+        public static Role fromNxRole(int nxRole) {
+            return nxRoleToEnum.get(nxRole);
+        }
+    };
+
     /**
-     * A FloodlightContextStore object that can be used to retrieve the 
+     * A FloodlightContextStore object that can be used to retrieve the
      * packet-in payload
      */
-    public static final FloodlightContextStore<Ethernet> bcStore = 
+    public static final FloodlightContextStore<Ethernet> bcStore =
             new FloodlightContextStore<Ethernet>();
 
     /**
@@ -69,7 +96,7 @@ public interface IFloodlightProviderService extends
      * @param listener The component that no longer wants to receive the message
      */
     public void removeOFMessageListener(OFType type, IOFMessageListener listener);
-    
+
     /**
      * Return a non-modifiable list of all current listeners
      * @return listeners
@@ -82,12 +109,12 @@ public interface IFloodlightProviderService extends
      * @return the set of actively connected switches
      */
     public Map<Long, IOFSwitch> getSwitches();
-    
+
     /**
      * Get the current role of the controller
      */
     public Role getRole();
-    
+
     /**
      * Get the current role of the controller
      */
@@ -95,19 +122,19 @@ public interface IFloodlightProviderService extends
 
     /**
      * Get the current mapping of controller IDs to their IP addresses
-     * Returns a copy of the current mapping. 
+     * Returns a copy of the current mapping.
      * @see IHAListener
      */
     public Map<String,String> getControllerNodeIPs();
-    
-    
+
+
     /**
      * Set the role of the controller
      * @param role The new role for the controller node
      * @param changeDescription The reason or other information for this role change
      */
     public void setRole(Role role, String changeDescription);
-    
+
     /**
      * Add a switch listener
      * @param listener The module that wants to listen for events
@@ -119,13 +146,13 @@ public interface IFloodlightProviderService extends
      * @param listener The The module that no longer wants to listen for events
      */
     public void removeOFSwitchListener(IOFSwitchListener listener);
-    
+
     /**
      * Adds a listener for HA role events
      * @param listener The module that wants to listen for events
      */
     public void addHAListener(IHAListener listener);
-    
+
     /**
      * Removes a listener for HA role events
      * @param listener The module that no longer wants to listen for events
@@ -152,16 +179,16 @@ public interface IFloodlightProviderService extends
      * @param bContext a floodlight context to use if required
      * @return True if successfully re-injected, false otherwise
      */
-    public boolean injectOfMessage(IOFSwitch sw, OFMessage msg, 
+    public boolean injectOfMessage(IOFSwitch sw, OFMessage msg,
             FloodlightContext bContext);
 
     /**
      * Process written messages through the message listeners for the controller
      * @param sw The switch being written to
-     * @param m the message 
+     * @param m the message
      * @param bc any accompanying context object
      */
-    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m, 
+    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
             FloodlightContext bc);
 
     /**
@@ -173,6 +200,7 @@ public interface IFloodlightProviderService extends
     /**
      * Run the main I/O loop of the Controller.
      */
+    @Override
     public void run();
 
     /**
@@ -188,21 +216,21 @@ public interface IFloodlightProviderService extends
     * @param provider
     */
    public void removeInfoProvider(String type, IInfoProvider provider);
-   
+
    /**
     * Return information of a particular type (for rest services)
     * @param type
     * @return
     */
    public Map<String, Object> getControllerInfo(String type);
-   
-   
+
+
    /**
     * Return the controller start time in  milliseconds
     * @return
     */
    public long getSystemStartTime();
-   
+
    /**
     * Configure controller to always clear the flow table on the switch,
     * when it connects to controller. This will be true for first time switch
@@ -210,7 +238,7 @@ public interface IFloodlightProviderService extends
     * switch over to ACTIVE role
     */
    public void setAlwaysClearFlowsOnSwAdd(boolean value);
-   
+
    /**
     * Get controller memory information
     */
@@ -221,11 +249,17 @@ public interface IFloodlightProviderService extends
     * @return
     */
    public Long getUptime();
-   
+
    /**
     * Adds an OFSwitch driver
-    * @param desc The starting portion of switch's manufacturer string
-    * @param driver The object implementing OFSwitchDriver interface
+    *  @param manufacturerDescriptionPrefix Register the given prefix
+    * with the driver.
+    * @param driver A IOFSwitchDriver instance to handle IOFSwitch instaniation
+    * for the given manufacturer description prefix
+    * @throws IllegalStateException If the the manufacturer description is
+    * already registered
+    * @throws NullPointerExeption if manufacturerDescriptionPrefix is null
+    * @throws NullPointerExeption if driver is null
     */
    public void addOFSwitchDriver(String desc, IOFSwitchDriver driver);
 
