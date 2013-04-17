@@ -19,8 +19,8 @@ package net.floodlightcontroller.linkdiscovery.internal;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /***
  * Topology Switch event history related classes and members

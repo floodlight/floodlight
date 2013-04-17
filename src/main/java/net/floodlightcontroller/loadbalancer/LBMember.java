@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.loadbalancer;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Data structure for Load Balancer based on

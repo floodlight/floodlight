@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -102,9 +101,22 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         writtenContext = bc;
         writtenMessage = m;
     }
+
+    @Override
+    public void writeThrottled(OFMessage msg, FloodlightContext cntx)
+            throws IOException {
+        write(msg, cntx);
+    }
     
     //-------------------------------------------------------
     // IOFSwitch: not-implemented methods
+
+    @Override
+    public void writeThrottled(List<OFMessage> msglist, FloodlightContext bc)
+            throws IOException {
+        assertTrue("Unexpected method call", false);
+    }
+
     @Override
     public void write(List<OFMessage> msglist, FloodlightContext bc) 
             throws IOException {
@@ -215,7 +227,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public Date getConnectedSince() {
+    public String getConnectedSince() {
         assertTrue("Unexpected method call", false);
         return null;
     }

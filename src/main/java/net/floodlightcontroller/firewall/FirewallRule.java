@@ -17,7 +17,7 @@
 
 package net.floodlightcontroller.firewall;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openflow.protocol.OFMatch;
 
 import net.floodlightcontroller.packet.Ethernet;

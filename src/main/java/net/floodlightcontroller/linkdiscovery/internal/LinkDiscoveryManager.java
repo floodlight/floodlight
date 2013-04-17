@@ -121,7 +121,7 @@ import org.slf4j.LoggerFactory;
 public class LinkDiscoveryManager implements IOFMessageListener,
     IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
     IFloodlightModule, IInfoProvider, IHAListener {
-    protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
+    protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
     private static final String TOPOLOGY_TABLE_NAME = "controller_topologyconfig";
@@ -1352,6 +1352,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                     long dst, short dstPort) {
         return true;
     }
+    @LogMessageDocs({
+        @LogMessageDoc(message="Inter-switch link detected:",
+                explanation="Detected a new link between two openflow switches," +
+                            "use show link to find current status"),
+        @LogMessageDoc(message="Inter-switch link updated:",
+                explanation="Detected a link change between two openflow switches, " +
+                            "use show link to find current status")
+    })
     protected boolean addOrUpdateLink(Link lt, LinkInfo newInfo) {
 
         NodePortTuple srcNpt, dstNpt;
@@ -1406,11 +1414,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 updateOperation = UpdateOperation.LINK_UPDATED;
                 linkChanged = true;
 
-                // Add to event history
+                // Log direct links only. Multi-hop links may be numerous
+                // Add all to event history
+                LinkType linkType = getLinkType(lt, newInfo);
+                if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
+                    log.info("Inter-switch link detected: {}", lt);
+                }
                 evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
                                lt.getDstPort(), newInfo.getSrcPortState(),
                                newInfo.getDstPortState(),
-                               getLinkType(lt, newInfo),
+                               linkType,
                                EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
                 // Since the link info is already there, we need to
@@ -1461,15 +1474,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 if (linkChanged) {
                     updateOperation = getUpdateOperation(newInfo.getSrcPortState(),
                                                          newInfo.getDstPortState());
-                    if (log.isTraceEnabled()) {
-                        log.trace("Updated link {}", lt);
+                    LinkType linkType = getLinkType(lt, newInfo);
+                    if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
+                        log.info("Inter-switch link updated: {}", lt);
                     }
                     // Add to event history
                     evHistTopoLink(lt.getSrc(), lt.getDst(),
                                    lt.getSrcPort(), lt.getDstPort(),
                                    newInfo.getSrcPortState(),
                                    newInfo.getDstPortState(),
-                                   getLinkType(lt, newInfo),
+                                   linkType,
                                    EvAction.LINK_PORT_STATE_UPDATED,
                                    "LLDP Recvd");
                 }
@@ -1505,6 +1519,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * @param links
      *            The List of @LinkTuple to delete.
      */
+    @LogMessageDoc(message="Inter-switch link removed:",
+            explanation="A previously detected link between two openflow switches no longer exists, " +
+                        "use show link to find current status")
     protected void deleteLinks(List<Link> links, String reason,
                                List<LDUpdate> updateList) {
 
@@ -1537,11 +1554,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 }
 
                 LinkInfo info = this.links.remove(lt);
+                LinkType linkType = getLinkType(lt, info);
                 linkUpdateList.add(new LDUpdate(lt.getSrc(),
                                                 lt.getSrcPort(),
                                                 lt.getDst(),
                                                 lt.getDstPort(),
-                                                getLinkType(lt, info),
+                                                linkType,
                                                 UpdateOperation.LINK_REMOVED));
 
                 // Update Event History
@@ -1557,7 +1575,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 // TODO Whenever link is removed, it has to checked if
                 // the switchports must be added to quarantine.
 
-                if (log.isTraceEnabled()) {
+                if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
+                    log.info("Inter-switch link removed: {}", lt);
+                } else if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
                 }
             }

@@ -19,7 +19,7 @@ package org.openflow.protocol.statistics;
 
 import java.util.List;
 
-import org.codehaus.jackson.annotate.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.action.OFAction;

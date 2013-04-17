@@ -30,7 +30,7 @@ import net.floodlightcontroller.routing.Link;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
-public class ExternalLinksResource extends ServerResource {
+public class DirectedLinksResource extends ServerResource {
 
     @Get("json")
     public Set<LinkWithType> retrieve() {
@@ -44,39 +44,13 @@ public class ExternalLinksResource extends ServerResource {
             for (Link link: links.keySet()) {
                 LinkInfo info = links.get(link);
                 LinkType type = ld.getLinkType(link, info);
-                if (type == LinkType.MULTIHOP_LINK) {
-                    LinkWithType lwt;
-
-                    long src = link.getSrc();
-                    long dst = link.getDst();
-                    short srcPort = link.getSrcPort();
-                    short dstPort = link.getDstPort();
-                    Link otherLink = new Link(dst, dstPort, src, srcPort);
-                    LinkInfo otherInfo = links.get(otherLink);
-                    LinkType otherType = null;
-                    if (otherInfo != null)
-                        otherType = ld.getLinkType(otherLink, otherInfo);
-                    if (otherType == LinkType.MULTIHOP_LINK) {
-                        // This is a bi-direcitonal link.
-                        // It is sufficient to add only one side of it.
-                        if ((src < dst) || (src == dst && srcPort < dstPort)) {
-                            lwt = new LinkWithType(link,
-                                    info.getSrcPortState(),
-                                    info.getDstPortState(),
-                                    type,
-                                    LinkDirection.BIDIRECTIONAL);
-                            returnLinkSet.add(lwt);
-                        }
-                    } else {
-                        // This is a unidirectional link.
-                        lwt = new LinkWithType(link,
-                                info.getSrcPortState(),
-                                info.getDstPortState(),
-                                type,
-                                LinkDirection.UNIDIRECTIONAL);
-                        returnLinkSet.add(lwt);
-
-                    }
+                if (type == LinkType.DIRECT_LINK || type == LinkType.TUNNEL) {
+                    LinkWithType lwt = new LinkWithType(link,
+                            info.getSrcPortState(),
+                            info.getDstPortState(),
+                            type,
+                            LinkDirection.UNIDIRECTIONAL);
+                    returnLinkSet.add(lwt);
                 }
             }
         }
