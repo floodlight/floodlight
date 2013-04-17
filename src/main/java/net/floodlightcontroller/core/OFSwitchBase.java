@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
 public abstract class OFSwitchBase implements IOFSwitch {
     // TODO: should we really do logging in the class or should we throw
     // exception that can then be handled by callers?
-    protected static Logger log = LoggerFactory.getLogger(OFSwitchBase.class);
+    protected static final Logger log = LoggerFactory.getLogger(OFSwitchBase.class);
 
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
@@ -144,8 +144,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
-        this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
-        this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
+        this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, Boolean.valueOf(true));
+        this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.valueOf(true));
     }
     
     
@@ -440,8 +440,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public Date getConnectedSince() {
-        return connectedSince;
+    public String getConnectedSince() {
+        return connectedSince.toString();
     }
 
     @JsonIgnore

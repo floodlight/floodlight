@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -228,7 +227,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
     
     @Override
-    public Date getConnectedSince() {
+    public String getConnectedSince() {
         assertTrue("Unexpected method call", false);
         return null;
     }
