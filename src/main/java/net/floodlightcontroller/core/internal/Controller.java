@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -62,6 +63,7 @@ import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
+import net.floodlightcontroller.core.internal.RoleChanger.PendingRoleRequestEntry;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
@@ -1017,7 +1019,9 @@ public class Controller implements IFloodlightProviderService,
                         // the master to someone else.
                         // Only send if there are no pending requests.
                         synchronized(roleChanger) {
-                            if (roleChanger.pendingRequestMap.get(sw) == null) {
+                            LinkedList<PendingRoleRequestEntry> list =
+                                    roleChanger.pendingRequestMap.get(sw);
+                            if (list == null || list.isEmpty()) {
                                 log.info("Tell switch {} who is the master", sw);
                                 roleChanger.submitRequest(Collections.singleton(sw), role);
                             }
