@@ -43,7 +43,6 @@
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
     <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
     <property name="thrift.out.dir" value="lib/gen-java"/>
-    <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
     <property name="findbugs.home" value="../build/findbugs-2.0.2"/>
