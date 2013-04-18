@@ -777,7 +777,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     // ***************
 
     @Override
-    public void roleChanged(Role oldRole, Role newRole) {
+    public void roleChanged(Role newRole) {
         switch(newRole) {
             case SLAVE:
                 logger.debug("Resetting device state because of role change");

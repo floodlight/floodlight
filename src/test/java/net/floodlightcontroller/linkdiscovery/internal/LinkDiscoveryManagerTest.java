@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -78,7 +78,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
     private TestLinkDiscoveryManager ldm;
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManagerTest.class);
-    
+
     public class TestLinkDiscoveryManager extends LinkDiscoveryManager {
         public boolean isSendLLDPsCalled = false;
         public boolean isClearLinksCalled = false;
@@ -100,7 +100,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
             super.clearAllLinks();
         }
     }
-    
+
     public LinkDiscoveryManager getLinkDiscoveryManager() {
         return ldm;
     }
@@ -289,7 +289,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         Link lt = new Link(1L, 1, 2L, 1);
         NodePortTuple srcNpt = new NodePortTuple(1L, 1);
         NodePortTuple dstNpt = new NodePortTuple(2L, 1);
-        
+
         LinkInfo info;
 
         info = new LinkInfo(System.currentTimeMillis() - 40000,
@@ -439,11 +439,11 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertNotNull(linkDiscovery.portLinks.get(dstNpt));
         assertTrue(linkDiscovery.portLinks.get(dstNpt).contains(lt));
         assertTrue(linkDiscovery.links.containsKey(lt));
-        
+
         // check that it clears from memory
-        getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
+        getMockFloodlightProvider().dispatchRoleChanged(Role.SLAVE);
         assertTrue(linkDiscovery.switchLinks.isEmpty());
-        getMockFloodlightProvider().dispatchRoleChanged(Role.SLAVE, Role.MASTER);
+        getMockFloodlightProvider().dispatchRoleChanged(Role.MASTER);
         // check that lldps were sent
         assertTrue(ldm.isSendLLDPsCalled);
         assertTrue(ldm.isClearLinksCalled);

@@ -530,7 +530,7 @@ public class Controller implements IFloodlightProviderService,
             }
             if (haListeners != null) {
                 for (IHAListener listener : haListeners) {
-                        listener.roleChanged(null, newRole);
+                        listener.roleChanged(newRole);
                 }
             }
             if (newRole != Role.SLAVE) {

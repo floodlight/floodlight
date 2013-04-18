@@ -664,15 +664,13 @@ public class TopologyManager implements
     // ***************
 
     @Override
-    public void roleChanged(Role oldRole, Role newRole) {
+    public void roleChanged(Role newRole) {
         switch(newRole) {
             case MASTER:
-                if (oldRole == Role.SLAVE) {
-                    log.debug("Re-computing topology due " +
-                            "to HA change from SLAVE->MASTER");
-                    newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-                                               TimeUnit.MILLISECONDS);
-                }
+                log.debug("Re-computing topology due " +
+                        "to HA change from SLAVE->MASTER");
+                newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                           TimeUnit.MILLISECONDS);
                 break;
             case SLAVE:
                 log.debug("Clearing topology due to " +

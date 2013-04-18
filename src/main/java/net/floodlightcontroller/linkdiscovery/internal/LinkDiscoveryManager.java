@@ -2395,7 +2395,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //***************
 
     @Override
-    public void roleChanged(Role oldRole, Role newRole) {
+    public void roleChanged(Role newRole) {
         switch (newRole) {
             case MASTER:
                 if (log.isTraceEnabled()) {
