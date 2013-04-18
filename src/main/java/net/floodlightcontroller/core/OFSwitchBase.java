@@ -20,6 +20,7 @@ package net.floodlightcontroller.core;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -41,7 +42,11 @@ import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
@@ -54,6 +59,7 @@ import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
@@ -113,6 +119,20 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     // Private members for throttling
     private boolean writeThrottleEnabled = false;
+    protected boolean packetInThrottleEnabled = false; // used by test
+    private int packetInRateThresholdHigh = Integer.MAX_VALUE;
+    private int packetInRateThresholdLow = 1;
+    private int packetInRatePerMacThreshold = Integer.MAX_VALUE;
+    private int packetInRatePerPortThreshold = Integer.MAX_VALUE;
+    private long messageCount = 0;
+    private long messageCountUniqueOFMatch = 0;
+    private long lastMessageTime;
+    private int currentRate = 0;
+    private TimedCache<OFMatch> ofMatchCache;
+    private TimedCache<Long> macCache;
+    private TimedCache<Long> macBlockedCache;
+    private TimedCache<Short> portCache;
+    private TimedCache<Short> portBlockedCache;
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
@@ -141,6 +161,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.listenerLock = new ReentrantReadWriteLock();
         this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, AtomicLong>();
+        this.lastMessageTime = System.currentTimeMillis();
 
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
@@ -747,5 +768,178 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public void setFloodlightProvider(Controller controller) {
         floodlightProvider = controller;
+    }
+
+
+    /**
+     * For switch drivers to set thresholds, all rates in per second
+     * @param pktInHigh - above this start throttling
+     * @param pktInLow  - below this stop throttling
+     * @param pktInPerMac  - block host if unique pktIn rate reaches this
+     * @param pktInPerPort - block port if unique pktIn rate reaches this
+     */
+    @JsonIgnore
+    protected void setInputThrottleThresholds(int pktInHigh, int pktInLow,
+            int pktInPerMac, int pktInPerPort) {
+        packetInRateThresholdHigh = pktInHigh;
+        packetInRateThresholdLow = pktInLow;
+        packetInRatePerMacThreshold = pktInPerMac;
+        packetInRatePerPortThreshold = pktInPerPort;
+    }
+
+    /**
+     * Determine if this message should be dropped.
+     *
+     * We compute the current rate by taking a timestamp every 100 messages.
+     * Could change to a more complex scheme if more accuracy is needed.
+     *
+     * Enable throttling if the rate goes above packetInRateThresholdHigh
+     * Disable throttling when the rate drops below packetInRateThresholdLow
+     *
+     * While throttling is enabled, we do the following:
+     *  - Remove duplicate packetIn's mapped to the same OFMatch
+     *  - After filtering, if packetIn rate per host (mac) is above
+     *    packetInRatePerMacThreshold, push a flow mod to block mac on port
+     *  - After filtering, if packetIn rate per port is above
+     *    packetInRatePerPortThreshold, push a flow mod to block port
+     *  - Allow blocking flow mods have a hard timeout and expires automatically
+     *
+     * TODO: keep a history of all events related in input throttling
+     *
+     * @param ofm
+     * @return
+     */
+    @Override
+    public boolean inputThrottled(OFMessage ofm) {
+        if (ofm.getType() != OFType.PACKET_IN) {
+            return false;
+        }
+        // Compute current packet in rate
+        messageCount++;
+        if (messageCount % 100 == 0) {
+            long now = System.currentTimeMillis();
+            if (now != lastMessageTime) {
+                currentRate = (int) (100000 / (now - lastMessageTime));
+                lastMessageTime = now;
+            } else {
+                currentRate = Integer.MAX_VALUE;
+            }
+        }
+        if (!packetInThrottleEnabled) {
+            if (currentRate <= packetInRateThresholdHigh) {
+                return false; // most common case
+            }
+            enablePacketInThrottle();
+        } else if (currentRate < packetInRateThresholdLow) {
+            disablePacketInThrottle();
+            return false;
+        }
+
+        // Now we are in the slow path where we need to do filtering
+        // First filter based on OFMatch
+        OFPacketIn pin = (OFPacketIn)ofm;
+        OFMatch match = new OFMatch();
+        match.loadFromPacket(pin.getPacketData(), pin.getInPort());
+        if (ofMatchCache.update(match)) {
+            // TODO keep stats for dropped packets
+            return true;
+        }
+
+        // We have packet in with a distinct flow, check per mac rate
+        messageCountUniqueOFMatch++;
+        if ((messageCountUniqueOFMatch % packetInRatePerMacThreshold) == 1) {
+            checkPerSourceMacRate(pin);
+        }
+
+        // Check per port rate
+        if ((messageCountUniqueOFMatch % packetInRatePerPortThreshold) == 1) {
+            checkPerPortRate(pin);
+        }
+        return false;
+    }
+
+    /**
+     * We rely on the fact that packet in processing is single threaded
+     * per switch, so no locking is necessary.
+     */
+    private void disablePacketInThrottle() {
+        ofMatchCache = null;
+        macCache = null;
+        macBlockedCache = null;
+        portCache = null;
+        portBlockedCache = null;
+        packetInThrottleEnabled = false;
+        log.info("Packet in rate is {}, disable throttling on {}",
+                currentRate, this);
+    }
+
+    private void enablePacketInThrottle() {
+        ofMatchCache = new TimedCache<OFMatch>(2048, 5000); // 5 second interval
+        macCache = new TimedCache<Long>(64, 1000 );  // remember last second
+        macBlockedCache = new TimedCache<Long>(256, 5000 );  // 5 second interval
+        portCache = new TimedCache<Short>(16, 1000 );  // rememeber last second
+        portBlockedCache = new TimedCache<Short>(64, 5000 );  // 5 second interval
+        packetInThrottleEnabled = true;
+        messageCountUniqueOFMatch = 0;
+        log.info("Packet in rate is {}, enable throttling on {}",
+                currentRate, this);
+    }
+
+    /**
+     * Check if we have sampled this mac in the last second.
+     * Since we check every packetInRatePerMacThreshold packets,
+     * the presence of the mac in the macCache means the rate is
+     * above the threshold in a statistical sense.
+     *
+     * Take care not to block topology probing packets. Also don't
+     * push blocking flow mod if we have already done so within the
+     * last 5 seconds.
+     *
+     * @param pin
+     * @return
+     */
+    private void checkPerSourceMacRate(OFPacketIn pin) {
+        byte[] data = pin.getPacketData();
+        byte[] mac = Arrays.copyOfRange(data, 6, 12);
+        MACAddress srcMac = MACAddress.valueOf(mac);
+        short ethType = (short) (((data[12] & 0xff) << 8) + (data[13] & 0xff));
+        if (ethType != Ethernet.TYPE_LLDP && ethType != Ethernet.TYPE_BSN &&
+                macCache.update(srcMac.toLong())) {
+            // Check if we already pushed a flow in the last 5 seconds
+            if (macBlockedCache.update(srcMac.toLong())) {
+                return;
+            }
+            // write out drop flow per srcMac
+            int port = pin.getInPort();
+            SwitchPort swPort = new SwitchPort(getId(), port);
+            ForwardingBase.blockHost(floodlightProvider,
+                    swPort, srcMac.toLong(), (short) 5, 0);
+            log.info("Excessive packet in from {} on {}, block host for 5 sec",
+                    srcMac.toString(), swPort);
+        }
+    }
+
+    /**
+     * Works in a similar way as checkPerSourceMacRate().
+     *
+     * TODO Don't block ports with links?
+     *
+     * @param pin
+     * @return
+     */
+    private void checkPerPortRate(OFPacketIn pin) {
+        Short port = pin.getInPort();
+        if (portCache.update(port)) {
+            // Check if we already pushed a flow in the last 5 seconds
+            if (portBlockedCache.update(port)) {
+                return;
+            }
+            // write out drop flow per port
+            SwitchPort swPort = new SwitchPort(getId(), port);
+            ForwardingBase.blockHost(floodlightProvider,
+                    swPort, -1L, (short) 5, 0);
+            log.info("Excessive packet in from {}, block port for 5 sec",
+                    swPort);
+        }
     }
 }
