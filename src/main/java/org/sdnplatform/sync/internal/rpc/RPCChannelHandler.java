@@ -11,6 +11,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.MessageEvent;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
@@ -70,6 +71,13 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // AbstractRPCChannelHandler message handlers
     // ******************************************
 
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx,
+                                MessageEvent e) throws Exception {
+        super.messageReceived(ctx, e);
+        rpcService.debugCounter.flushCounters();
+    }
+        
     @Override
     @LogMessageDoc(level="ERROR",
               message="[{id}->{id}] Attempted connection from unrecognized " +
@@ -259,6 +267,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             SyncMessage bsm = 
                     new SyncMessage(MessageType.SYNC_VALUE_RESPONSE);
             bsm.setSyncValueResponse(m);
+            
+            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES);
             channel.write(bsm);
         } catch (Exception e) {
 
@@ -339,9 +349,11 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 svm.addToValues(kv);
             }
             
-            if (svm.isSetValues())
+            if (svm.isSetValues()) {
+                updateCounter(SyncManager.COUNTER_SENT_VALUES);
                 rpcService.syncQueue.add(new NodeMessage(getRemoteNodeId(),
                                                          bsm));
+            }
         } catch (Exception e) {
             channel.write(getError(request.getHeader().getTransactionId(), e, 
                                    MessageType.SYNC_REQUEST));
@@ -461,6 +473,10 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // Utility functions
     // *****************
 
+    protected void updateCounter(String counter) {
+        rpcService.debugCounter.updateCounter(counter);
+    }
+    
     protected void startAntientropy() {
         // Run antientropy in a background task so we don't use up an I/O
         // thread.  Note that this task will result in lots of traffic

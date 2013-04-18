@@ -111,6 +111,7 @@ public class StoreRegistry {
             dstore = new InMemoryStorageEngine<ByteArray, byte[]>(storeName);
         }
         store = new SynchronizingStorageEngine(dstore, syncManager,
+                                               syncManager.debugCounter,
                                                scope);
         localStores.put(storeName, store);
         return store;

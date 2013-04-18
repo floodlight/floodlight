@@ -20,6 +20,8 @@ import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -54,6 +56,11 @@ public class RPCService {
      * Sync manager associated with this RPC service
      */
     protected SyncManager syncManager;
+
+    /**
+     * Debug counter service
+     */
+    protected IDebugCounterService debugCounter;
 
     /**
      * Channel group that will hold all our channels
@@ -156,9 +163,11 @@ public class RPCService {
      */
     protected static final int MAX_PENDING_MESSAGES = 500;
 
-    public RPCService(SyncManager syncManager) {
+    public RPCService(SyncManager syncManager, 
+                      IDebugCounterService debugCounter) {
         super();
         this.syncManager = syncManager;
+        this.debugCounter = debugCounter;
 
         messageWindows = new ConcurrentHashMap<Short, MessageWindow>();
     }

@@ -13,6 +13,8 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -58,6 +60,7 @@ public class SyncManagerTest {
                                     SyncManager syncManager, Node thisNode)
             throws FloodlightModuleException {
         fmc.addService(IThreadPoolService.class, tp);
+        fmc.addService(IDebugCounterService.class, new NullDebugCounter());
         fmc.addConfigParam(syncManager, "configProviders", 
                            PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);

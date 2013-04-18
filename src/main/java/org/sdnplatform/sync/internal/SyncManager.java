@@ -57,6 +57,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
@@ -72,7 +73,8 @@ public class SyncManager extends AbstractSyncManager {
     protected static final Logger logger =
             LoggerFactory.getLogger(SyncManager.class.getName());
 
-    private IThreadPoolService threadPool;
+    protected IThreadPoolService threadPool;
+    protected IDebugCounterService debugCounter;
     
     /**
      * The store registry holds the storage engines that provide 
@@ -137,6 +139,15 @@ public class SyncManager extends AbstractSyncManager {
     private Map<Integer, Cursor> cursorMap = 
             new ConcurrentHashMap<Integer, Cursor>(); 
     
+    private static final String PACKAGE = 
+            ISyncService.class.getPackage().getName();
+    public static final String COUNTER_HINTS = PACKAGE + "-hints";
+    public static final String COUNTER_SENT_VALUES = PACKAGE + "-sent-values";
+    public static final String COUNTER_RECEIVED_VALUES = PACKAGE + "-received-values";
+    public static final String COUNTER_PUTS = PACKAGE + "-puts";
+    public static final String COUNTER_GETS = PACKAGE + "-gets";
+    public static final String COUNTER_ITERATORS = PACKAGE + "-iterators";
+
     // ************
     // ISyncService
     // ************
@@ -478,6 +489,7 @@ public class SyncManager extends AbstractSyncManager {
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
+        debugCounter = context.getServiceImpl(IDebugCounterService.class);
         Map<String, String> config = context.getConfigParams(this);
 
         String[] configProviders =
@@ -524,7 +536,7 @@ public class SyncManager extends AbstractSyncManager {
     public void startUp(FloodlightModuleContext context) 
             throws FloodlightModuleException {
         updateConfiguration();
-        rpcService = new RPCService(this);
+        rpcService = new RPCService(this, debugCounter);
         rpcService.run();
 
         cleanupTask = new SingletonTask(threadPool.getScheduledExecutor(), 
@@ -566,6 +578,7 @@ public class SyncManager extends AbstractSyncManager {
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IThreadPoolService.class);
         l.add(IStorageSourceService.class);
+        l.add(IDebugCounterService.class);
         return l;
     }
 
@@ -694,6 +707,7 @@ public class SyncManager extends AbstractSyncManager {
                     // XXX - todo - handle hints targeted to specific nodes
                     storeRegistry.takeHints(tasks, 50);
                     for (Hint task : tasks) {
+                        debugCounter.updateCounter(COUNTER_HINTS);
                         SynchronizingStorageEngine store = 
                                 storeRegistry.get(task.getHintKey().
                                                   getStoreName());
@@ -722,10 +736,11 @@ public class SyncManager extends AbstractSyncManager {
                             svm.getHeader().
                             setTransactionId(rpcService.
                                              getTransactionId());
+                            debugCounter.updateCounter(COUNTER_SENT_VALUES);
                             rpcService.writeToNode(n.getNodeId(), bsm);
                         }
                     }
-
+                    debugCounter.flushCounters();
                     tasks.clear(); 
                     clearMessages();
 

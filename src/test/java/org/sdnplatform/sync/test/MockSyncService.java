@@ -42,7 +42,7 @@ public class MockSyncService extends AbstractSyncManager {
         if (store != null) return;
         IStorageEngine<ByteArray, byte[]> memstore =
                 new InMemoryStorageEngine<ByteArray, byte[]>(storeName);
-        store = new ListenerStorageEngine(memstore);
+        store = new ListenerStorageEngine(memstore, null);
         localStores.put(storeName, store);
     }
 

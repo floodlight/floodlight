@@ -11,4 +11,5 @@
   <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="net.floodlightcontroller.logging" level="WARN"/>
+  <logger name="org.sdnplatform" level="INFO"/>
 </configuration>

@@ -1,5 +1,7 @@
 package org.sdnplatform.sync.internal.store;
 
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
@@ -32,6 +34,7 @@ public class SynchronizingStorageEngine extends ListenerStorageEngine {
      * Allocate a synchronizing storage engine
      * @param localStorage the local storage
      * @param syncManager the sync manager
+     * @param debugCounter the debug counter service
      * @param scope the scope for this store
      * @param rpcService the RPC service
      * @param storeName the name of the store
@@ -39,8 +42,9 @@ public class SynchronizingStorageEngine extends ListenerStorageEngine {
     public SynchronizingStorageEngine(IStorageEngine<ByteArray,
                                                     byte[]> localStorage,
                                       SyncManager syncManager,
+                                      IDebugCounterService debugCounter, 
                                       Scope scope) {
-        super(localStorage);
+        super(localStorage, debugCounter);
         this.localStorage = localStorage;
         this.syncManager = syncManager;
         this.scope = scope;

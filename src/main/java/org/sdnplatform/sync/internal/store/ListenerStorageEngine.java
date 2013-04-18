@@ -6,10 +6,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.error.SyncException;
+import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.util.ByteArray;
 
 
@@ -32,10 +35,21 @@ public class ListenerStorageEngine
      */
     protected IStorageEngine<ByteArray, byte[]> localStorage;
 
+    /**
+     * Debug counter service
+     */
+    protected IDebugCounterService debugCounter;
     
+    /**
+     * Allocate new {@link ListenerStorageEngine}
+     * @param localStorage the delegate store
+     * @param debugCounter debug counter service
+     */
     public ListenerStorageEngine(IStorageEngine<ByteArray,
-                                                byte[]> localStorage) {
+                                                byte[]> localStorage,
+                                                IDebugCounterService debugCounter) {
         this.localStorage = localStorage;
+        this.debugCounter = debugCounter;
     }
 
     // *************************
@@ -44,17 +58,20 @@ public class ListenerStorageEngine
 
     @Override
     public List<Versioned<byte[]>> get(ByteArray key) throws SyncException {
+        updateCounter(SyncManager.COUNTER_GETS);
         return localStorage.get(key);
     }
 
     @Override
     public IClosableIterator<Entry<ByteArray,List<Versioned<byte[]>>>> entries() {
+        updateCounter(SyncManager.COUNTER_ITERATORS);
         return localStorage.entries();
     }
 
     @Override
     public void put(ByteArray key, Versioned<byte[]> value)
             throws SyncException {
+        updateCounter(SyncManager.COUNTER_PUTS);
         localStorage.put(key, value);
         notifyListeners(key);
     }
@@ -124,4 +141,10 @@ public class ListenerStorageEngine
             msl.notify(keys);
         }
     }
+
+    protected void updateCounter(String counterName) {
+        if (debugCounter != null) {
+            debugCounter.updateCounter(counterName);
+        }
+    }    
 }
