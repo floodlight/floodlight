@@ -18,6 +18,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugcounter.web.DebugCounterRoutable;
+import net.floodlightcontroller.restserver.IRestApiService;
 
 /**
  * This class implements a central store for all counters used for debugging the
@@ -59,7 +61,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
     /**
      * protected class to store counter information
      */
-    protected class CounterInfo {
+    public static class CounterInfo {
         String moduleCounterName;
         String counterDesc;
         CounterType ctype;
@@ -146,6 +148,11 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public void updateCounter(String moduleCounterName) {
+       updateCounter(moduleCounterName, 1);
+   }
+
+   @Override
+   public void updateCounter(String moduleCounterName, int incr) {
        Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
        MutableLong ml = thismap.get(moduleCounterName);
        if (ml == null) {
@@ -153,7 +160,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
            Set<String> thisset = this.threadlocalCurrentCounters.get();
            if (thisset.contains(moduleCounterName)) {
                ml = new MutableLong();
-               ml.increment();
+               ml.set(ml.get() + incr);
                thismap.put(moduleCounterName, ml);
            }
        } else {
@@ -364,7 +371,10 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-       return null;
+       ArrayList<Class<? extends IFloodlightService>> deps = 
+               new ArrayList<Class<? extends IFloodlightService>>();
+       deps.add(IRestApiService.class);
+       return deps;
    }
 
    @Override
@@ -374,7 +384,9 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public void startUp(FloodlightModuleContext context) {
-
+       IRestApiService restService = 
+               context.getServiceImpl(IRestApiService.class);
+       restService.addRestletRoutable(new DebugCounterRoutable());
    }
 
 }
