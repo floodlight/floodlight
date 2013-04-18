@@ -65,7 +65,7 @@ cat >"$d/SyncClient.launch" << EOF
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
 <listEntry value="1"/>
 </listAttribute>
-<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.bigswitch.bigsync.client.SyncClient"/>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.sdnplatform.sync.client.SyncClient"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--hostname localhost --port 6642"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="bigfloodlight"/>
 <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-ea"/>

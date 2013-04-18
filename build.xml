@@ -74,6 +74,7 @@
         <include name="guava-13.0.1.jar" />
         <include name="findbugs-annotations-2.0.1.jar" />
         <include name="findbugs-jsr305-2.0.1.jar" />
+        <include name="derby-10.9.1.0.jar"/>
     </patternset>
 
     <path id="classpath">
