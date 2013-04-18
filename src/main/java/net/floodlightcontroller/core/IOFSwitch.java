@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -45,7 +45,6 @@ import org.openflow.protocol.statistics.OFStatistics;
 public interface IOFSwitch {
     // Attribute keys
     public static final String SWITCH_DESCRIPTION_FUTURE = "DescriptionFuture";
-    public static final String SWITCH_DESCRIPTION_DATA = "DescriptionData";
     public static final String SWITCH_SUPPORTS_NX_ROLE = "supportsNxRole";
     public static final String SWITCH_IS_CORE_SWITCH = "isCoreSwitch";
     public static final String PROP_FASTWILDCARDS = "FastWildcards";
@@ -60,12 +59,12 @@ public interface IOFSwitch {
         UPLINK("uplink"),         // uplink port (on a virtual switch)
         MANAGEMENT("management"), // for in-band management
         TUNNEL_LOOPBACK("tunnel-loopback");
-        
+
         private String value;
         OFPortType(String v) {
             value = v;
         }
-        
+
         @Override
         public String toString() {
             return value;
@@ -84,7 +83,7 @@ public interface IOFSwitch {
     /**
      * Set IFloodlightProviderService for this switch instance
      * Called immediately after instantiation
-     * 
+     *
      * @param controller
      */
     public void setFloodlightProvider(Controller controller);
@@ -92,7 +91,7 @@ public interface IOFSwitch {
     /**
      * Set IThreadPoolService for this switch instance
      * Called immediately after instantiation
-     * 
+     *
      * @param threadPool
      */
     public void setThreadPoolService(IThreadPoolService threadPool);
@@ -100,7 +99,7 @@ public interface IOFSwitch {
     /**
      * Set the netty Channel this switch instance is associated with
      * Called immediately after instantiation
-     * 
+     *
      * @param channel
      */
     public void setChannel(Channel channel);
@@ -130,12 +129,12 @@ public interface IOFSwitch {
      * Writes to the OFMessage to the output stream, bypassing rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners
-     * @param m   
-     * @param bc  
-     * @throws IOException  
+     * @param m
+     * @param bc
+     * @throws IOException
      */
-    public void write(OFMessage m, FloodlightContext bc) throws IOException; 
-    
+    public void write(OFMessage m, FloodlightContext bc) throws IOException;
+
     /**
      * Writes the list of messages to the output stream, bypassing rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
@@ -145,9 +144,9 @@ public interface IOFSwitch {
      * @throws IOException
      */
     public void write(List<OFMessage> msglist, FloodlightContext bc) throws IOException;
-    
+
     /**
-     * 
+     *
      * @throws IOException
      */
     public void disconnectOutputStream();
@@ -157,12 +156,17 @@ public interface IOFSwitch {
      * @return
      */
     public int getBuffers();
-    
+
     public int getActions();
-    
+
     public int getCapabilities();
-    
+
     public byte getTables();
+
+    /**
+     * @return a copy of the description statistics for this switch
+     */
+    public OFDescriptionStatistics getDescriptionStatistics();
 
     /**
      * Set the OFFeaturesReply message returned by the switch during initial
@@ -170,7 +174,7 @@ public interface IOFSwitch {
      * @param featuresReply
      */
     public void setFeaturesReply(OFFeaturesReply featuresReply);
-    
+
     /**
      * Get list of all enabled ports. This will typically be different from
      * the list of ports in the OFFeaturesReply, since that one is a static
@@ -180,11 +184,11 @@ public interface IOFSwitch {
      * @return Unmodifiable list of ports not backed by the underlying collection
      */
     public Collection<OFPhysicalPort> getEnabledPorts();
-    
+
     /**
      * Get list of the port numbers of all enabled ports. This will typically
      * be different from the list of ports in the OFFeaturesReply, since that
-     * one is a static snapshot of the ports at the time the switch connected 
+     * one is a static snapshot of the ports at the time the switch connected
      * to the controller whereas this port list also reflects the port status
      * messages that have been received.
      * @return Unmodifiable list of ports not backed by the underlying collection
@@ -199,7 +203,7 @@ public interface IOFSwitch {
      * @return port object
      */
     public OFPhysicalPort getPort(short portNumber);
-    
+
     /**
      * Retrieve the port object by the port name. The port object
      * is the one that reflects the port status updates that have been
@@ -208,7 +212,7 @@ public interface IOFSwitch {
      * @return port object
      */
     public OFPhysicalPort getPort(String portName);
-    
+
     /**
      * Add or modify a switch port. This is called by the core controller
      * code in response to a OFPortStatus message. It should not typically be
@@ -224,7 +228,7 @@ public interface IOFSwitch {
      * @param portNumber
      */
     public void deletePort(short portNumber);
-    
+
     /**
      * Delete a port for the switch. This is called by the core controller
      * code in response to a OFPortStatus message. It should not typically be
@@ -232,14 +236,14 @@ public interface IOFSwitch {
      * @param portName
      */
     public void deletePort(String portName);
-    
+
     /**
      * Get list of all ports. This will typically be different from
      * the list of ports in the OFFeaturesReply, since that one is a static
      * snapshot of the ports at the time the switch connected to the controller
      * whereas this port list also reflects the port status messages that have
      * been received.
-     * @return Unmodifiable list of ports 
+     * @return Unmodifiable list of ports
      */
     public Collection<OFPhysicalPort> getPorts();
 
@@ -249,7 +253,7 @@ public interface IOFSwitch {
      * (not configured down nor link down nor in spanning tree blocking state)
      */
     public boolean portEnabled(short portName);
-    
+
     /**
      * @param portNumber
      * @return Whether a port is enabled per latest port status message
@@ -275,13 +279,13 @@ public interface IOFSwitch {
      * @return
      */
     public String getStringId();
-    
+
     /**
      * Get the IP Address for the switch
      * @return the inet address
      */
     public SocketAddress getInetAddress();
-    
+
     /**
      * Retrieves attributes of this switch
      * @return
@@ -306,18 +310,19 @@ public interface IOFSwitch {
      *
      * @param request statistics request
      * @return Future object wrapping OFStatisticsReply
-     * @throws IOException 
+     * @throws IOException
      */
-    public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request)
+    public Future<List<OFStatistics>> queryStatistics(OFStatisticsRequest request)
+
             throws IOException;
-    
+
     /**
      * Returns a Future object that can be used to retrieve the asynchronous
      * OFStatisticsReply when it is available.
      *
      * @param request statistics request
      * @return Future object wrapping OFStatisticsReply
-     * @throws IOException 
+     * @throws IOException
      */
     public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException;
@@ -340,26 +345,26 @@ public interface IOFSwitch {
      * @return whether the switch is still disconnected
      */
     public boolean isConnected();
-    
+
     /**
      * Set whether the switch is connected
      * Only call while holding modifySwitchLock
      * @param connected whether the switch is connected
      */
     public void setConnected(boolean connected);
-    
+
     /**
      * Get the current role of the controller for the switch
      * @return the role of the controller
      */
     public Role getHARole();
-    
+
     /**
      * Set switch's HA role to role. The haRoleReplyReceived indicates
      * if a reply was received from the switch (error replies excluded).
-     * 
+     *
      * If role is null, the switch should close the channel connection.
-     * 
+     *
      * @param role
      * @param haRoleReplyReceived
      */
@@ -370,13 +375,13 @@ public interface IOFSwitch {
      * @param reply the reply to deliver
      */
     public void deliverStatisticsReply(OFMessage reply);
-    
+
     /**
      * Cancel the statistics reply with the given transaction ID
      * @param transactionId the transaction ID
      */
     public void cancelStatisticsReply(int transactionId);
-    
+
     /**
      * Cancel all statistics replies
      */
@@ -395,7 +400,7 @@ public interface IOFSwitch {
      * @return value for name
      */
     Object getAttribute(String name);
-    
+
     /**
      * Check if the given attribute is present and if so whether it is equal
      * to "other"
@@ -432,7 +437,7 @@ public interface IOFSwitch {
      *         false if there is no cache hit.
      */
     public boolean updateBroadcastCache(Long entry, Short port);
-    
+
     /**
      * Get the portBroadcastCacheHits
      * @return
@@ -444,9 +449,9 @@ public interface IOFSwitch {
      * sending the stats. request to the switch.
      * @param request flow statistics request message
      * @param xid transaction id, must be obtained by using the getXid() API.
-     * @param caller the caller of the API. receive() callback of this 
+     * @param caller the caller of the API. receive() callback of this
      * caller would be called when the reply from the switch is received.
-     * @return the transaction id for the message sent to the switch. The 
+     * @return the transaction id for the message sent to the switch. The
      * transaction id can be used to match the response with the request. Note
      * that the transaction id is unique only within the scope of this switch.
      * @throws IOException
@@ -464,7 +469,7 @@ public interface IOFSwitch {
      * Return a read lock that must be held while calling the listeners for
      * messages from the switch. Holding the read lock prevents the active
      * switch list from being modified out from under the listeners.
-     * @return 
+     * @return
      */
     public Lock getListenerReadLock();
 
@@ -482,12 +487,12 @@ public interface IOFSwitch {
      * specific types of switches
      ***********************************************
      */
-    
+
     /**
      * Set the SwitchProperties based on it's description
      * @param description
      */
-    public void setSwitchProperties(OFDescriptionStatistics description);    
+    public void setSwitchProperties(OFDescriptionStatistics description);
 
     /**
      * Return the type of OFPort
@@ -495,7 +500,7 @@ public interface IOFSwitch {
      * @return
      */
     public OFPortType getPortType(short port_num);
-    
+
     /**
      * Can the port be turned on without forming a new loop?
      * @param port_num

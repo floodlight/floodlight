@@ -326,15 +326,25 @@ public class ControllerTest extends FloodlightTestCase {
 
     @Test
     public void testAddSwitchWithExistingSwitch() throws Exception {
-        controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
 
+        // Setup: add a switch to the controller
         IOFSwitch oldsw = createMock(IOFSwitch.class);
+        expect(oldsw.getId()).andReturn(0L).anyTimes();
+        replay(oldsw);
+        controller.addSwitch(oldsw);
+        verify(oldsw);
+        // drain the queue, we don't care what's in it
+        controller.processUpdateQueueForTesting();
+        assertEquals(oldsw, controller.getSwitch(0L));
+
+        // Now the actual test: add a new switch with the same dpid to
+        // the controller
+        reset(oldsw);
         expect(oldsw.getId()).andReturn(0L).anyTimes();
         oldsw.cancelAllStatisticsReplies();
         expectLastCall().once();
         oldsw.disconnectOutputStream();
         expectLastCall().once();
-        controller.activeSwitches.put(0L, oldsw);
 
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
@@ -356,7 +366,7 @@ public class ControllerTest extends FloodlightTestCase {
         controller.addSwitch(newsw);
         verify(newsw, oldsw);
 
-        assertEquals(newsw, controller.activeSwitches.get(0L));
+        assertEquals(newsw, controller.getSwitch(0L));
         controller.processUpdateQueueForTesting();
         verify(listener);
     }
@@ -364,8 +374,6 @@ public class ControllerTest extends FloodlightTestCase {
 
     @Test
     public void testSwitchActivatedNoClearFM() throws Exception {
-        controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
-
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(0L).anyTimes();
         expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
@@ -379,14 +387,13 @@ public class ControllerTest extends FloodlightTestCase {
         replay(sw);
         controller.switchActivated(sw);
         verify(sw);
-        assertEquals(sw, controller.activeSwitches.get(0L));
+        assertEquals(sw, controller.getSwitch(0L));
         controller.processUpdateQueueForTesting();
         verify(listener);
     }
 
     @Test
     public void testSwitchActivatedClearFM() throws Exception {
-        controller.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         controller.setAlwaysClearFlowsOnSwAdd(true);
 
         IOFSwitch sw = createMock(IOFSwitch.class);
@@ -404,7 +411,7 @@ public class ControllerTest extends FloodlightTestCase {
         replay(sw);
         controller.switchActivated(sw);
         verify(sw);
-        assertEquals(sw, controller.activeSwitches.get(0L));
+        assertEquals(sw, controller.getSwitch(0L));
         controller.processUpdateQueueForTesting();
         verify(listener);
     }
@@ -428,16 +435,12 @@ public class ControllerTest extends FloodlightTestCase {
    @Test
    public void testRemoveActiveSwitch() {
        IOFSwitch sw = createNiceMock(IOFSwitch.class);
-       boolean exceptionThrown = false;
        expect(sw.getId()).andReturn(1L).anyTimes();
        replay(sw);
-       getController().activeSwitches.put(sw.getId(), sw);
-       try {
-           getController().getSwitches().remove(1L);
-       } catch (UnsupportedOperationException e) {
-           exceptionThrown = true;
-       }
-       assertTrue(exceptionThrown);
+       getController().addSwitch(sw);
+       assertEquals(sw, getController().getSwitch(1L));
+       getController().getAllSwitchMap().remove(1L);
+       assertEquals(sw, getController().getSwitch(1L));
        verify(sw);
    }
 

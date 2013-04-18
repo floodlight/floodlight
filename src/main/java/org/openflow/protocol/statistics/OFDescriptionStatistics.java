@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -34,6 +34,24 @@ public class OFDescriptionStatistics implements OFStatistics {
     protected String softwareDescription;
     protected String serialNumber;
     protected String datapathDescription;
+
+
+    /**
+     *
+     */
+    public OFDescriptionStatistics() {
+    }
+
+    /**
+     * Copy constructor
+     */
+    public OFDescriptionStatistics(OFDescriptionStatistics other) {
+        manufacturerDescription = other.manufacturerDescription;
+        hardwareDescription = other.hardwareDescription;
+        softwareDescription = other.softwareDescription;
+        serialNumber = other.serialNumber;
+        datapathDescription = other.datapathDescription;
+    }
 
     /**
      * @return the manufacturerDescription

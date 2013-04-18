@@ -246,8 +246,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
                                      0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
 
-        IOFSwitch sw1 = getMockFloodlightProvider().getSwitches().get(1L);
-        IOFSwitch sw2 = getMockFloodlightProvider().getSwitches().get(2L);
+        IOFSwitch sw1 = getMockFloodlightProvider().getSwitch(1L);
+        IOFSwitch sw2 = getMockFloodlightProvider().getSwitch(2L);
         // Mock up our expected behavior
         linkDiscovery.removedSwitch(sw1);
         verify(sw1, sw2);

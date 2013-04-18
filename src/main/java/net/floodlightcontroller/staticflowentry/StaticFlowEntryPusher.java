@@ -465,7 +465,7 @@ public class StaticFlowEntryPusher
                     "static flow to a switch",
             recommendation=LogMessageDoc.CHECK_SWITCH)
     private void writeOFMessagesToSwitch(long dpid, List<OFMessage> messages) {
-        IOFSwitch ofswitch = floodlightProvider.getSwitches().get(dpid);
+        IOFSwitch ofswitch = floodlightProvider.getSwitch(dpid);
         if (ofswitch != null) {  // is the switch connected
             try {
                 if (log.isDebugEnabled()) {
@@ -490,7 +490,7 @@ public class StaticFlowEntryPusher
                     "static flow to a switch",
             recommendation=LogMessageDoc.CHECK_SWITCH)
     private void writeOFMessageToSwitch(long dpid, OFMessage message) {
-        IOFSwitch ofswitch = floodlightProvider.getSwitches().get(dpid);
+        IOFSwitch ofswitch = floodlightProvider.getSwitch(dpid);
         if (ofswitch != null) {  // is the switch connected
             try {
                 if (log.isDebugEnabled()) {
@@ -511,8 +511,7 @@ public class StaticFlowEntryPusher
      * @param flowMod The OFFlowMod to write
      */
     private void writeFlowModToSwitch(long dpid, OFFlowMod flowMod) {
-        Map<Long,IOFSwitch> switches = floodlightProvider.getSwitches();
-        IOFSwitch ofSwitch = switches.get(dpid);
+        IOFSwitch ofSwitch = floodlightProvider.getSwitch(dpid);
         if (ofSwitch == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Not deleting key {} :: switch {} not connected",
@@ -752,7 +751,7 @@ public class StaticFlowEntryPusher
         if (log.isDebugEnabled())
             log.debug("Deleting all static flows on switch {}", HexString.toHexString(dpid));
 
-        IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
+        IOFSwitch sw = floodlightProvider.getSwitch(dpid);
         if (sw == null) {
             log.warn("Tried to delete static flows for non-existant switch {}",
                     HexString.toHexString(dpid));

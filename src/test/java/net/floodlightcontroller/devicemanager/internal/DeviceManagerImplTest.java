@@ -974,7 +974,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                                 DefaultEntityClassifier.entityClass);
 
         // Get the listener and trigger the packet in
-        IOFSwitch switch1 = mockFloodlightProvider.getSwitches().get(1L);
+        IOFSwitch switch1 = mockFloodlightProvider.getSwitch(1L);
         mockFloodlightProvider.dispatchMessage(switch1, packetIn);
 
         // Verify the replay matched our expectations
@@ -1031,7 +1031,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Start recording the replay on the mocks
         replay(mockTopology);
         // Get the listener and trigger the packet in
-        IOFSwitch switch5 = mockFloodlightProvider.getSwitches().get(5L);
+        IOFSwitch switch5 = mockFloodlightProvider.getSwitch(5L);
         mockFloodlightProvider.
         dispatchMessage(switch5, this.packetIn_1.setInPort((short)2));
 

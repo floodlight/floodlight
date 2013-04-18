@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -121,8 +123,20 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     @Override
-    public Map<Long, IOFSwitch> getSwitches() {
-        return this.switches;
+    public Map<Long,IOFSwitch> getAllSwitchMap() {
+        return Collections.unmodifiableMap(this.switches);
+    }
+
+    @Override
+    public Set<Long> getAllSwitchDpids() {
+        // the contract for getAllSwitchDpids says the caller will own the
+        // returned set
+        return new HashSet<Long>(this.switches.keySet());
+    }
+
+    @Override
+    public IOFSwitch getSwitch(long dpid) {
+        return this.switches.get(dpid);
     }
 
     public void setSwitches(Map<Long, IOFSwitch> switches) {

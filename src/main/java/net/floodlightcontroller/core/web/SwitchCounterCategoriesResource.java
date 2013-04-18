@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -37,19 +37,17 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 public class SwitchCounterCategoriesResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
-        
+
         String switchID = (String) getRequestAttributes().get("switchId");
         String counterName = (String) getRequestAttributes().get("counterName");
         String layer = (String) getRequestAttributes().get("layer");
 
-        Long[] switchDpids;
         if (switchID.equalsIgnoreCase("all")) {
-            switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
-            for (Long dpid : switchDpids) {
+            for (Long dpid : floodlightProvider.getAllSwitchDpids()) {
                 switchID = HexString.toHexString(dpid);
 
                 getOneSwitchCounterCategoriesJson(model, switchID, counterName, layer);
@@ -57,17 +55,17 @@ public class SwitchCounterCategoriesResource extends CounterResourceBase {
         } else {
             getOneSwitchCounterCategoriesJson(model, switchID, counterName, layer);
         }
-        
+
         return model;
     }
-    
+
     protected void getOneSwitchCounterCategoriesJson(Map<String, Object> model,
                                                      String switchID,
-                                                     String counterName, 
+                                                     String counterName,
                                                      String layer) {
-        String fullCounterName = "";      
+        String fullCounterName = "";
         NetworkLayer nl = NetworkLayer.L3;
-        
+
         try {
             counterName = URLDecoder.decode(counterName, "UTF-8");
             layer = URLDecoder.decode(layer, "UTF-8");

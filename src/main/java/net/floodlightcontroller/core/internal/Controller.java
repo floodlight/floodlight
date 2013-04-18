@@ -100,6 +100,8 @@ public class Controller implements IFloodlightProviderService,
 
     static final String ERROR_DATABASE =
             "The controller could not communicate with the system database.";
+    private static final String SWITCH_SYNC_STORE_NAME =
+            "net.floodlightcontroller.core.SwitchSyncStore";
 
     protected BasicFactory factory;
     protected ConcurrentMap<OFType,
@@ -112,7 +114,11 @@ public class Controller implements IFloodlightProviderService,
     // The activeSwitches map contains only those switches that are actively
     // being controlled by us -- it doesn't contain switches that are
     // in the slave role
-    protected ConcurrentHashMap<Long, IOFSwitch> activeSwitches;
+    private ConcurrentHashMap<Long, IOFSwitch> activeSwitches;
+    // The bigSyncSwitches maps contains the switches we have read from
+    // the BigSync store
+    private ConcurrentHashMap<Long, IOFSwitch> bigSyncSwitches;
+
 
     // The controllerNodeIPsCache maps Controller IDs to their IP address.
     // It's only used by handleControllerNodeIPsChanged
@@ -927,10 +933,50 @@ public class Controller implements IFloodlightProviderService,
         messageListeners.remove(type);
     }
 
+    // FIXME: remove this method
     @Override
-    public Map<Long, IOFSwitch> getSwitches() {
-        if (activeSwitches == null) return null;
-        return Collections.unmodifiableMap(this.activeSwitches);
+    public Map<Long,IOFSwitch> getAllSwitchMap() {
+        if (bigSyncSwitches == null)
+            throw new AssertionError("bigSyncSwitches should never be null");
+        if (activeSwitches == null)
+            throw new AssertionError("activeSwitches should never be null");
+        // bigSyncSwitches will be empty after the master transition
+        Map<Long,IOFSwitch> switches =
+                new HashMap<Long, IOFSwitch>(bigSyncSwitches);
+        if (notifiedRole == Role.MASTER)
+            switches.putAll(activeSwitches);
+        return switches;
+    }
+
+    @Override
+    public Set<Long> getAllSwitchDpids() {
+        if (bigSyncSwitches == null)
+            throw new AssertionError("bigSyncSwitches should never be null");
+        if (activeSwitches == null)
+            throw new AssertionError("activeSwitches should never be null");
+        // bigSyncSwitches will be empty after the master transition
+        Set<Long> dpids = new HashSet<Long>(bigSyncSwitches.keySet());
+        if (notifiedRole == Role.MASTER)
+            dpids.addAll(activeSwitches.keySet());
+        return dpids;
+    }
+
+    @Override
+    public IOFSwitch getSwitch(long dpid) {
+        if (bigSyncSwitches == null)
+            throw new AssertionError("bigSyncSwitches should never be null");
+        if (activeSwitches == null)
+            throw new AssertionError("activeSwitches should never be null");
+
+        if (notifiedRole == Role.SLAVE)
+            return bigSyncSwitches.get(dpid);
+        // MASTER: if the switch is found in the active map return
+        // otherwise look up the switch in the bigSync map. The bigSync map
+        // wil be cleared after the transition is complete.
+        IOFSwitch sw = activeSwitches.get(dpid);
+        if (sw != null)
+            return sw;
+        return bigSyncSwitches.get(dpid);
     }
 
     @Override
@@ -1217,6 +1263,7 @@ public class Controller implements IFloodlightProviderService,
         this.haListeners = new CopyOnWriteArraySet<IHAListener>();
         this.driverRegistry = new NaiiveSwitchDriverRegistry();
         this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
+        this.bigSyncSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
         this.factory = BasicFactory.getInstance();

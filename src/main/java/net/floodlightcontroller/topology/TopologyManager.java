@@ -272,7 +272,7 @@ public class TopologyManager implements
         if ((port & 0xff00) == 0xff00 && port != (short)0xfffe) return false;
 
         // Make sure that the port is enabled.
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchid);
+        IOFSwitch sw = floodlightProvider.getSwitch(switchid);
         if (sw == null) return false;
         return (sw.portEnabled(port));
     }
@@ -919,7 +919,7 @@ public class TopologyManager implements
         }
 
         for(long sid: switches) {
-            IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
+            IOFSwitch sw = floodlightProvider.getSwitch(sid);
             if (sw == null) continue;
             Collection<Short> enabledPorts = sw.getEnabledPortNumbers();
             if (enabledPorts == null)
@@ -1377,7 +1377,7 @@ public class TopologyManager implements
     @Override
     public Set<Short> getPorts(long sw) {
         Set<Short> ports = new HashSet<Short>();
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return null;
 
         Collection<Short> ofpList = iofSwitch.getEnabledPortNumbers();

@@ -59,6 +59,7 @@ import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
@@ -113,6 +114,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     // Private members for throttling
     private boolean writeThrottleEnabled = false;
 
+    protected OFDescriptionStatistics description;
+
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
         @Override
@@ -140,6 +143,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
         this.listenerLock = new ReentrantReadWriteLock();
         this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, AtomicLong>();
+        this.description = new OFDescriptionStatistics();
 
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
@@ -322,7 +326,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public Collection<OFPhysicalPort> getEnabledPorts() {
-        List<OFPhysicalPort> result = new ArrayList<OFPhysicalPort>();
+        List<OFPhysicalPort> result =
+                new ArrayList<OFPhysicalPort>(portsByNumber.size());
         for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
                 result.add(port);
@@ -334,7 +339,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public Collection<Short> getEnabledPortNumbers() {
-        List<Short> result = new ArrayList<Short>();
+        List<Short> result =
+                new ArrayList<Short>(portsByNumber.size());
         for (OFPhysicalPort port : portsByNumber.values()) {
             if (portEnabled(port)) {
                 result.add(port.getPortNumber());
@@ -461,7 +467,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request) throws IOException {
+    public Future<List<OFStatistics>> queryStatistics(OFStatisticsRequest request) throws IOException {
         request.setXid(getNextTransactionId());
         OFStatisticsFuture future = new OFStatisticsFuture(threadPool, this, request.getXid());
         this.statsFutureMap.put(request.getXid(), future);
@@ -718,6 +724,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public byte getTables() {
         return tables;
+    }
+
+    @Override
+    public OFDescriptionStatistics getDescriptionStatistics() {
+        return new OFDescriptionStatistics(description);
     }
 
 

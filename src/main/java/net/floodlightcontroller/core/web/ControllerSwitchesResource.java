@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -35,18 +35,18 @@ import org.restlet.resource.ServerResource;
  * @author readams
  */
 public class ControllerSwitchesResource extends ServerResource {
-    public static final String DPID_ERROR = 
-            "Invalid Switch DPID: must be a 64-bit quantity, expressed in " + 
+    public static final String DPID_ERROR =
+            "Invalid Switch DPID: must be a 64-bit quantity, expressed in " +
             "hex as AA:BB:CC:DD:EE:FF:00:11";
-    
+
     @Get("json")
     public Iterator<IOFSwitch> retrieve() {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
 
         Long switchDPID = null;
-        
+
         Form form = getQuery();
         String dpid = form.getFirstValue("dpid", true);
         if (dpid != null) {
@@ -58,16 +58,16 @@ public class ControllerSwitchesResource extends ServerResource {
             }
         }
         if (switchDPID != null) {
-            IOFSwitch sw = 
-                    floodlightProvider.getSwitches().get(switchDPID);
+            IOFSwitch sw =
+                    floodlightProvider.getSwitch(switchDPID);
             if (sw != null)
                 return Collections.singleton(sw).iterator();
             return Collections.<IOFSwitch>emptySet().iterator();
         }
-        final String dpidStartsWith = 
+        final String dpidStartsWith =
                 form.getFirstValue("dpid__startswith", true);
-        Iterator<IOFSwitch> switer = 
-                floodlightProvider.getSwitches().values().iterator();
+        Iterator<IOFSwitch> switer =
+                floodlightProvider.getAllSwitchMap().values().iterator();
         if (dpidStartsWith != null) {
             return new FilterIterator<IOFSwitch>(switer) {
                 @Override
@@ -75,7 +75,7 @@ public class ControllerSwitchesResource extends ServerResource {
                     return value.getStringId().startsWith(dpidStartsWith);
                 }
             };
-        } 
+        }
         return switer;
     }
 }

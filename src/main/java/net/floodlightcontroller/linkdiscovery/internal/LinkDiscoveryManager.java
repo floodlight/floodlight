@@ -266,7 +266,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     public OFPacketOut generateLLDPMessage(long sw, short port,
                                        boolean isStandard, boolean isReverse) {
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
         if (log.isTraceEnabled()) {
@@ -595,7 +595,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private Command handleLldp(LLDP lldp, long sw, short inPort,
                                boolean isStandard, FloodlightContext cntx) {
         // If LLDP is suppressed on this port, ignore received packet as well
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
 
         if (!isIncomingDiscoveryAllowed(sw, inPort, isStandard))
             return Command.STOP;
@@ -624,8 +624,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 && lldptlv.getValue()[2] == (byte) 0xe1
                 && lldptlv.getValue()[3] == 0x0) {
                 ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
-                remoteSwitch = floodlightProvider.getSwitches()
-                                                 .get(dpidBB.getLong(4));
+                remoteSwitch = floodlightProvider.getSwitch(dpidBB.getLong(4));
             } else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
                 otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
                 if (myId == otherId) myLLDP = true;
@@ -790,7 +789,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected Command handlePortStatus(long sw, OFPortStatus ps) {
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return Command.CONTINUE;
 
         if (log.isTraceEnabled()) {
@@ -908,7 +907,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return;
         }
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return;
 
         if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
@@ -1100,7 +1099,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private void generateSwitchPortStatusUpdate(long sw, short port) {
         UpdateOperation operation;
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return;
 
         OFPhysicalPort ofp = iofSwitch.getPort(port);
@@ -1155,7 +1154,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return false;
         }
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) {
             return false;
         }
@@ -1191,7 +1190,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return false;
         }
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) {
             return false;
         }
@@ -1253,7 +1252,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (!isOutgoingDiscoveryAllowed(sw, port, isStandard, isReverse))
             return;
 
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         OFPhysicalPort ofpPort = iofSwitch.getPort(port);
 
         if (log.isTraceEnabled()) {
@@ -1293,10 +1292,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packets out of all the enabled ports on switch {}");
         }
-        Set<Long> switches = floodlightProvider.getSwitches().keySet();
         // Send standard LLDPs
-        for (long sw : switches) {
-            IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
+        for (long sw : floodlightProvider.getAllSwitchDpids()) {
+            IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
             if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
                 for (OFPhysicalPort ofp : iofSwitch.getEnabledPorts()) {
@@ -1866,12 +1864,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return;
         }
 
-        Map<Long, IOFSwitch> switches = floodlightProvider.getSwitches();
         ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
         for (Object key : rowKeys) {
             Long swId = new Long(HexString.toLong((String) key));
-            if (switches.containsKey(swId)) {
-                IOFSwitch sw = switches.get(swId);
+            IOFSwitch sw = floodlightProvider.getSwitch(swId);
+            if (sw != null) {
                 boolean curr_status = sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
                 boolean new_status = false;
                 IResultSet resultSet = null;

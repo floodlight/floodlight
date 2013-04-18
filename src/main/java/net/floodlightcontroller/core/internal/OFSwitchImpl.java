@@ -1,7 +1,7 @@
 /**
-*    Copyright 2012, Big Switch Networks, Inc. 
+*    Copyright 2012, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -28,11 +28,11 @@ import net.floodlightcontroller.core.OFSwitchBase;
  * This is the internal representation of an openflow switch.
  */
 public class OFSwitchImpl extends OFSwitchBase {
-    
+
     @Override
     @JsonIgnore
     public void setSwitchProperties(OFDescriptionStatistics description) {
-        // Nothing to do at the moment
+        this.description = new OFDescriptionStatistics(description);
     }
 
     @Override

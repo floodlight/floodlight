@@ -18,7 +18,9 @@
 package net.floodlightcontroller.core;
 
 import java.util.HashMap;
+
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -104,11 +106,40 @@ public interface IFloodlightProviderService extends
     public Map<OFType, List<IOFMessageListener>> getListeners();
 
     /**
-     * Returns an unmodifiable map of all actively connected OpenFlow switches. This doesn't
-     * contain switches that are connected but the controller's in the slave role.
-     * @return the set of actively connected switches
+     * If the switch with the given DPID is known to any controller in the
+     * cluster, this method returns the associated IOFSwitch instance. As such
+     * the returned switches not necessarily connected or in master role for
+     * the local controller.
+     *
+     * Multiple calls to this method with the same DPID may return different
+     * IOFSwitch references. A caller must not store or otherwise rely on
+     * IOFSwitch references to be constant over the lifecycle of a switch.
+     *
+     * @param dpid the dpid of the switch to query
+     * @return the IOFSwitch instance associated with the dpid, null if no
+     * switch with the dpid is known to the cluster
      */
-    public Map<Long, IOFSwitch> getSwitches();
+    public IOFSwitch getSwitch(long dpid);
+
+    /**
+     * Returns a snapshot of the set DPIDs for all known switches.
+     *
+     * The returned set is owned by the caller: the caller can modify it at
+     * will and changes to the known switches are not reflected in the returned
+     * set. The caller needs to call getAllSwitchDpids() if an updated
+     * version is needed.
+     *
+     * See {@link #getSwitch(long)} for what  "known" switch is.
+     * @return the set of DPIDs of all known switches
+     */
+    public Set<Long> getAllSwitchDpids();
+
+    /**
+     * Return a snapshot
+     * FIXME: asdf
+     * @return
+     */
+    public Map<Long,IOFSwitch> getAllSwitchMap();
 
     /**
      * Get the current role of the controller
