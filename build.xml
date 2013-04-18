@@ -137,20 +137,35 @@
            destdir="${build-test}"/>
     </target>
 
-    <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
-    <fileset id="thrift.files" dir="${thrift.dir}">
-        <include name="**/*.thrift"/>
-    </fileset>
-
     <target name="gen-thrift" depends="init">
-        <pathconvert property="thrift.file.list" refid="thrift.files"
-            pathsep=" " dirsep="/">
-        </pathconvert>
-        <echo message="Running thrift generator on ${thrift.file.list}"/>
-        <exec executable="thrift" dir="${basedir}" failonerror="true">
-            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${thrift.file.list}'"/>
+      <echo message="Running thrift on '${thrift.dir}'"/>
+      <apply executable="./thrift/compiler/cpp/thrift">
+	<fileset dir="${thrift.dir}" casesensitive="yes">
+	  <include name="**/*.thrift"/>
+	</fileset>
+	<arg value="--strict"/>
+	<arg value="-v"/>
+	<arg value="--gen"/>
+	<arg value="java"/>
+	<arg value="-o"/>
+	<arg value="${thrift.out.dir}/.."/>
+      </apply>
+      <echo message="Adding @SuppressWarning annotations"/>
+      <replaceregexp byline="true">
+	<regexp pattern="^public "/>
+	<substitution expression='@SuppressWarnings("all") public '/>
+	<fileset id="thrift.output.files" dir="${thrift.out.dir}/..">
+	  <include name="**/*.java"/>
+	</fileset>
+      </replaceregexp>
+    </target>
+
+    <target name="do-gen-thrift">
+        <exec executable="./thrift/compiler/cpp/thrift" dir="${basedir}" failonerror="true">
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${foreach.file}'"/>
         </exec>
         <!-- Get rid of annoying warnings in thrift java: at annotations -->
+
         <echo message="Adding @SuppressWarning annotations"/>
         <replaceregexp byline="true">
             <regexp pattern="^public "/>
