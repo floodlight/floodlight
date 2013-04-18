@@ -440,8 +440,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public String getConnectedSince() {
-        return connectedSince.toString();
+    public Date getConnectedSince() {
+        return connectedSince;
     }
 
     @JsonIgnore
