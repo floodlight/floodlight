@@ -37,10 +37,8 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
     }
 
     @Override
-    public
-            void
-            init(FloodlightModuleContext context)
-                                                 throws FloodlightModuleException {
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
 
     }
 
@@ -54,6 +52,11 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
     }
 
+    @Override
+    public void updateCounter(String moduleCounterName, int incr) {
+
+    }
+    
     @Override
     public void flushCounters() {
 
