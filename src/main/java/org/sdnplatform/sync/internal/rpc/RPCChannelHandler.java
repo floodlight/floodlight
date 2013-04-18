@@ -268,7 +268,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                     new SyncMessage(MessageType.SYNC_VALUE_RESPONSE);
             bsm.setSyncValueResponse(m);
             
-            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES);
+            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES, 
+                          request.getValuesSize());
             channel.write(bsm);
         } catch (Exception e) {
 
@@ -350,7 +351,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             }
             
             if (svm.isSetValues()) {
-                updateCounter(SyncManager.COUNTER_SENT_VALUES);
+                updateCounter(SyncManager.COUNTER_SENT_VALUES, 
+                              svm.getValuesSize());
                 rpcService.syncQueue.add(new NodeMessage(getRemoteNodeId(),
                                                          bsm));
             }
@@ -473,8 +475,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // Utility functions
     // *****************
 
-    protected void updateCounter(String counter) {
-        rpcService.debugCounter.updateCounter(counter);
+    protected void updateCounter(String counter, int incr) {
+        rpcService.debugCounter.updateCounter(counter, incr);
     }
     
     protected void startAntientropy() {

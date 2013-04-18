@@ -18,6 +18,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 /**
  * A floodlight module that will start up and start doing horrible,
@@ -29,6 +30,8 @@ public class SyncTorture implements IFloodlightModule {
             LoggerFactory.getLogger(SyncTorture.class);
     
     ISyncService syncService;
+    IDebugCounterService debugCounter;
+
     int numWorkers = 2;
     int keysPerWorker = 1024*1024;
     int iterations = 0;
@@ -52,6 +55,8 @@ public class SyncTorture implements IFloodlightModule {
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ISyncService.class);
+        l.add(IDebugCounterService.class);
+
         return l;
     }
 
@@ -59,6 +64,8 @@ public class SyncTorture implements IFloodlightModule {
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
         syncService = context.getServiceImpl(ISyncService.class);
+        debugCounter = context.getServiceImpl(IDebugCounterService.class);
+
         try {
             syncService.registerStore("torture", Scope.GLOBAL);
         } catch (SyncException e) {
@@ -174,6 +181,7 @@ public class SyncTorture implements IFloodlightModule {
                     logger.error("Error in worker: ", e);
                 }
                 long iterend = System.currentTimeMillis();
+                debugCounter.flushCounters();
                 logger.info("Completed iteration of {} values in {}ms" + 
                             " ({}/s)", 
                             new Object[]{values.size(), (iterend-start),

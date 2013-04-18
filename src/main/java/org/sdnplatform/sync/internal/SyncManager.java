@@ -58,6 +58,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
@@ -142,8 +143,9 @@ public class SyncManager extends AbstractSyncManager {
     private static final String PACKAGE = 
             ISyncService.class.getPackage().getName();
     public static final String COUNTER_HINTS = PACKAGE + "-hints";
-    public static final String COUNTER_SENT_VALUES = PACKAGE + "-sent-values";
-    public static final String COUNTER_RECEIVED_VALUES = PACKAGE + "-received-values";
+    public static final String COUNTER_SENT_VALUES = PACKAGE + "-sent_values";
+    public static final String COUNTER_RECEIVED_VALUES = 
+            PACKAGE + "-received_values";
     public static final String COUNTER_PUTS = PACKAGE + "-puts";
     public static final String COUNTER_GETS = PACKAGE + "-gets";
     public static final String COUNTER_ITERATORS = PACKAGE + "-iterators";
@@ -535,6 +537,25 @@ public class SyncManager extends AbstractSyncManager {
     @Override
     public void startUp(FloodlightModuleContext context) 
             throws FloodlightModuleException {
+        debugCounter.registerCounter(COUNTER_HINTS,
+                                     "Queued sync events processed",
+                                     CounterType.ALWAYS_COUNT);
+        debugCounter.registerCounter(COUNTER_SENT_VALUES,
+                                     "Values synced to remote node",
+                                     CounterType.ALWAYS_COUNT);
+        debugCounter.registerCounter(COUNTER_RECEIVED_VALUES,
+                                     "Values received from remote node",
+                                     CounterType.ALWAYS_COUNT);
+        debugCounter.registerCounter(COUNTER_PUTS,
+                                     "Local puts to store",
+                                     CounterType.ALWAYS_COUNT);        
+        debugCounter.registerCounter(COUNTER_GETS,
+                                     "Local gets from store",
+                                     CounterType.ALWAYS_COUNT);     
+        debugCounter.registerCounter(COUNTER_ITERATORS,
+                                     "Local iterators created over store",
+                                     CounterType.ALWAYS_COUNT);     
+        
         updateConfiguration();
         rpcService = new RPCService(this, debugCounter);
         rpcService.run();
@@ -722,7 +743,11 @@ public class SyncManager extends AbstractSyncManager {
                     Iterable<Node> nodes = getClusterConfig().getNodes();
                     short localDomainId = 
                             getClusterConfig().getNode().getDomainId();
+                    short localNodeId = 
+                            getClusterConfig().getNode().getNodeId();
                     for (Node n : nodes) {
+                        if (localNodeId == n.getNodeId())
+                            continue;
                         for (SyncMessage bsm : messages.values()) {
                             SyncValueMessage svm = bsm.getSyncValue();
                             if (svm.getStore().getScope().
@@ -736,7 +761,9 @@ public class SyncManager extends AbstractSyncManager {
                             svm.getHeader().
                             setTransactionId(rpcService.
                                              getTransactionId());
-                            debugCounter.updateCounter(COUNTER_SENT_VALUES);
+                            debugCounter.updateCounter(COUNTER_SENT_VALUES, 
+                                                       bsm.getSyncValue().
+                                                           getValuesSize());
                             rpcService.writeToNode(n.getNodeId(), bsm);
                         }
                     }
