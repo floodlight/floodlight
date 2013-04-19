@@ -28,6 +28,7 @@ import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IInconsistencyResolver;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
@@ -396,13 +397,53 @@ public class SyncManagerTest {
         }
     }
     
+    protected class Update {
+        String key;
+        UpdateType type;
+
+        public Update(String key, UpdateType type) {
+            super();
+            this.key = key;
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + getOuterType().hashCode();
+            result = prime * result + ((key == null) ? 0 : key.hashCode());
+            result = prime * result + ((type == null) ? 0 : type.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (getClass() != obj.getClass()) return false;
+            Update other = (Update) obj;
+            if (!getOuterType().equals(other.getOuterType())) return false;
+            if (key == null) {
+                if (other.key != null) return false;
+            } else if (!key.equals(other.key)) return false;
+            if (type != other.type) return false;
+            return true;
+        }
+
+        private SyncManagerTest getOuterType() {
+            return SyncManagerTest.this;
+        }
+    }
+    
     protected class TestListener implements IStoreListener<String> {
-        HashSet<String> notified = new HashSet<String>();
+        HashSet<Update> notified = new HashSet<Update>();
         
         @Override
-        public void keysModified(Iterator<String> keys) {
+        public void keysModified(Iterator<String> keys, 
+                                 UpdateType type) {
             while (keys.hasNext())
-                notified.add(keys.next());
+                notified.add(new Update(keys.next(), type));
         }
         
     }
@@ -438,14 +479,20 @@ public class SyncManagerTest {
         client0.put("test0", "value");
         client2.put("test2", "value");
 
-        HashSet<String> c = new HashSet<String>();
-        c.add("test0");
-        c.add("test2");
+        HashSet<Update> c0 = new HashSet<Update>();
+        c0.add(new Update("test0", UpdateType.LOCAL));
+        c0.add(new Update("test2", UpdateType.REMOTE));
+        HashSet<Update> c2 = new HashSet<Update>();
+        c2.add(new Update("test0", UpdateType.REMOTE));
+        c2.add(new Update("test2", UpdateType.LOCAL));
         
-        waitForNotify(t0, c, 2000);
-        waitForNotify(t2, c, 2000);
+        waitForNotify(t0, c0, 2000);
+        waitForNotify(t2, c2, 2000);
         assertEquals(2, t0.notified.size());
         assertEquals(2, t2.notified.size());
+        
+        t0.notified.clear();
+        t2.notified.clear();
         
         Versioned<String> v0 = client0.get("test0");
         v0.setValue("newvalue");
@@ -455,8 +502,8 @@ public class SyncManagerTest {
         v2.setValue("newvalue");
         client2.put("test2", v2);
 
-        waitForNotify(t0, c, 2000);
-        waitForNotify(t2, c, 2000);
+        waitForNotify(t0, c0, 2000);
+        waitForNotify(t2, c2, 2000);
         assertEquals(2, t0.notified.size());
         assertEquals(2, t2.notified.size());
 
@@ -466,8 +513,8 @@ public class SyncManagerTest {
         client0.delete("test0");
         client2.delete("test2");
 
-        waitForNotify(t0, c, 2000);
-        waitForNotify(t2, c, 2000);
+        waitForNotify(t0, c0, 2000);
+        waitForNotify(t2, c2, 2000);
         assertEquals(2, t0.notified.size());
         assertEquals(2, t2.notified.size());
     }

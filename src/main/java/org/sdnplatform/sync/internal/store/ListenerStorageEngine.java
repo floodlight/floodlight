@@ -11,6 +11,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.util.ByteArray;
@@ -73,7 +74,7 @@ public class ListenerStorageEngine
             throws SyncException {
         updateCounter(SyncManager.COUNTER_PUTS);
         localStorage.put(key, value);
-        notifyListeners(key);
+        notifyListeners(key, UpdateType.LOCAL);
     }
 
     @Override
@@ -105,7 +106,7 @@ public class ListenerStorageEngine
     public boolean writeSyncValue(ByteArray key,
                                   Iterable<Versioned<byte[]>> values) {
         boolean r = localStorage.writeSyncValue(key, values);
-        if (r) notifyListeners(key);
+        if (r) notifyListeners(key, UpdateType.REMOTE);
         return r;
     }
 
@@ -132,13 +133,13 @@ public class ListenerStorageEngine
         listeners.add(listener);
     }
 
-    protected void notifyListeners(ByteArray key) {
-        notifyListeners(Collections.singleton(key).iterator());
+    protected void notifyListeners(ByteArray key, UpdateType type) {
+        notifyListeners(Collections.singleton(key).iterator(), type);
     }
 
-    protected void notifyListeners(Iterator<ByteArray> keys) {
+    protected void notifyListeners(Iterator<ByteArray> keys, UpdateType type) {
         for (MappingStoreListener msl : listeners) {
-            msl.notify(keys);
+            msl.notify(keys, type);
         }
     }
 
