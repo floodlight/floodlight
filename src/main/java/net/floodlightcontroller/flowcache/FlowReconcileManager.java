@@ -200,7 +200,7 @@ public class FlowReconcileManager
             throws FloodlightModuleException {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         counterStore = context.getServiceImpl(ICounterStoreService.class);
-    
+
         flowQueue = new PriorityPendingQueue<OFMatchReconcile>();
         flowReconcileListeners = 
                 new ListenerDispatcher<OFType, IFlowReconcileListener>();
@@ -279,9 +279,8 @@ public class FlowReconcileManager
             reconcileCapacity--;
             if (ofmRc != null) {
                 ofmRcList.add(ofmRc);
-               // if (logger.isTraceEnabled())
-                {
-                    logger.info("Add flow {} to be the reconcileList", ofmRc.cookie);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Add flow {} to be the reconcileList", ofmRc.cookie);
                 }
             } else {
                 break;

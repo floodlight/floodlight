@@ -20,6 +20,8 @@
  */
 package net.floodlightcontroller.flowcache;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
@@ -82,4 +84,6 @@ public interface IFlowReconcileService extends IFloodlightService {
     public void updateFlowForSourceDevice(IDevice device,
     		FCQueryEvType fcEvType);
 
+    public void init(FloodlightModuleContext context)  throws FloodlightModuleException ;
+    public void startUp(FloodlightModuleContext context)  throws FloodlightModuleException ;
 }

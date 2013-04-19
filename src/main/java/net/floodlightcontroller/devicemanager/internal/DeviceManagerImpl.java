@@ -60,6 +60,7 @@ import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
@@ -107,6 +108,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
+    protected IFlowReconcileEngineService flowReconcileEngine;
     protected IDebugCounterService debugCounters;
 
     /**
@@ -720,6 +722,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
+        this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
     }

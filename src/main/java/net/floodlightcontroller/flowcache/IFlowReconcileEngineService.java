@@ -79,7 +79,7 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
      */
     public static final FloodlightContextStore<String> fcStore =
         new FloodlightContextStore<String>();
-
+    public static final String FLOWRECONCILE_APP_INSTANCE_NAME = "net.floodlightcontroller.flowcache.appInstanceName";
     /**
      * Submit a network flow query with query parameters specified in FCQueryObj
      * object. The query object can be created using one of the newFCQueryObj
@@ -105,4 +105,6 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
     public void init(FloodlightModuleContext fmc) throws FloodlightModuleException;
 
     public void startUp(FloodlightModuleContext fmc);
+
+    public void removedLink(long id, short s, long id2, short t);
 }
