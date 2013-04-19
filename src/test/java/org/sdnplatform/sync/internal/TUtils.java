@@ -66,7 +66,7 @@ public class TUtils {
      * @param nodes The sequence of nodes
      * @return A VectorClock initialized with the given sequence of events
      */
-    public static VectorClock getClock(long timestamp, int... nodes) {
+    public static VectorClock getClockT(long timestamp, int... nodes) {
         VectorClock clock = new VectorClock(timestamp);
         return increment(clock, nodes);
     }

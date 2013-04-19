@@ -17,11 +17,12 @@
 package org.sdnplatform.sync.internal.version;
 
 import static org.junit.Assert.*;
-import static org.sdnplatform.sync.internal.TUtils.getClock;
+import static org.sdnplatform.sync.internal.TUtils.getClockT;
 
 import org.junit.Test;
 import org.sdnplatform.sync.IVersion.Occurred;
-import org.sdnplatform.sync.internal.TUtils;
+import static org.sdnplatform.sync.internal.TUtils.*;
+
 import org.sdnplatform.sync.internal.version.ClockEntry;
 import org.sdnplatform.sync.internal.version.VectorClock;
 
@@ -37,8 +38,8 @@ public class VectorClockTest {
     @Test
     public void testEqualsAndHashcode() {
         long now = 5555555555L;
-        VectorClock one = getClock(now, 1, 2);
-        VectorClock other = getClock(now, 1, 2);
+        VectorClock one = getClockT(now, 1, 2);
+        VectorClock other = getClockT(now, 1, 2);
         assertEquals(one, other);
         assertEquals(one.hashCode(), other.hashCode());
     }
@@ -103,9 +104,9 @@ public class VectorClockTest {
         int numValues = 100;
         VectorClock[] clocks = new VectorClock[numNodes];
         for(int t = 0; t < numTests; t++) {
-            int[] test = TUtils.randomInts(numNodes, numValues);
+            int[] test = randomInts(numNodes, numValues);
             for(int n = 0; n < numNodes; n++)
-                clocks[n] = getClock(TUtils.shuffle(test));
+                clocks[n] = getClock(shuffle(test));
             // test all are equal
             for(int n = 0; n < numNodes - 1; n++)
                 assertEquals("Clock " + n + " and " + (n + 1) + " are not equal.",
