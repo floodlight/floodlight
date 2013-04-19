@@ -1,4 +1,4 @@
-package net.floodlightcontroller.debugcounter;
+package net.floodlightcontroller.debugcounter.web;
 
 import java.util.HashMap;
 import java.util.List;
@@ -7,6 +7,7 @@ import java.util.Map;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.DebugCounterInfo;
 
 import org.restlet.resource.Get;
+import org.restlet.resource.Post;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +24,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Saurav
  */
-public class DebugCounterGetResource extends DebugCounterResourceBase {
+public class DebugCounterResource extends DebugCounterResourceBase {
     protected static Logger logger =
-            LoggerFactory.getLogger(DebugCounterGetResource.class);
+            LoggerFactory.getLogger(DebugCounterResource.class);
 
     /**
      * The output JSON model that contains the counter information
@@ -53,7 +54,106 @@ public class DebugCounterGetResource extends DebugCounterResourceBase {
         ERROR_BAD_MODULE_COUNTER_NAME
     }
 
-    @Get("json")
+    public static class CounterPost {
+        public Boolean reset;
+        public Boolean enable;
+
+        public Boolean getReset() {
+            return reset;
+        }
+        public void setReset(Boolean reset) {
+            this.reset = reset;
+        }
+        public Boolean getEnable() {
+            return enable;
+        }
+        public void setEnable(Boolean enable) {
+            this.enable = enable;
+        }
+    }
+    
+    public static class ResetOutput {
+        String error = null;
+
+        public String getError() {
+            return error;
+        }
+        public void setError(String error) {
+            this.error = error;
+        }
+    }
+    
+    @Post
+    public ResetOutput postHandler(CounterPost postData) {
+        ResetOutput output = new ResetOutput();
+        
+        String param = (String)getRequestAttributes().get("param");
+        if (postData.getReset() != null && postData.getReset()) {
+            Option choice = Option.ERROR_BAD_PARAM;
+
+            if (param == null) {
+                param = "all";
+                choice = Option.ALL;
+            } else if (param.equals("all")) {
+                choice = Option.ALL;
+            } else if (param.contains("-")) {
+                // differentiate between disabled and non-existing counters
+                boolean isRegistered = debugCounter.containsMCName(param);
+                if (isRegistered) {
+                    choice = Option.ONE_MODULE_COUNTER;
+                } else {
+                    choice = Option.ERROR_BAD_MODULE_COUNTER_NAME;
+                }
+            } else {
+                boolean isRegistered = debugCounter.containsModName(param);
+                if (isRegistered) {
+                    choice = Option.ONE_MODULE;
+                } else {
+                    choice = Option.ERROR_BAD_MODULE_NAME;
+                }
+            }
+
+            switch (choice) {
+                case ALL:
+                    debugCounter.resetAllCounters();
+                    break;
+                case ONE_MODULE:
+                    debugCounter.resetAllModuleCounters(param);
+                    break;
+                case ONE_MODULE_COUNTER:
+                    debugCounter.resetCounter(param);
+                    break;
+                case ERROR_BAD_MODULE_NAME:
+                    output.error = "Module name has no corresponding registered counters";
+                    break;
+                case ERROR_BAD_MODULE_COUNTER_NAME:
+                    output.error = "Counter not registered";
+                    break;
+                case ERROR_BAD_PARAM:
+                    output.error = "Bad param";
+            }
+        }
+
+        if (output.getError() != null) return output;
+        
+        if (postData.getEnable() != null) {
+            if (!param.contains("-")) {
+                output.error = "Specified moduleCounterName is not of type " +
+                        "<moduleName>-<counterName>.";
+                return output;
+            }
+
+            if (postData.getEnable()) {
+                debugCounter.enableCtrOnDemand(param);
+            } else {
+                debugCounter.disableCtrOnDemand(param);
+            }
+        }
+
+        return output;
+    }
+
+    @Get
     public DebugCounterInfoOutput handleCounterInfoQuery() {
         DebugCounterInfoOutput output = new DebugCounterInfoOutput();
         Option choice = Option.ERROR_BAD_PARAM;
@@ -107,7 +207,8 @@ public class DebugCounterGetResource extends DebugCounterResourceBase {
     private void populateSingleCounter(DebugCounterInfo debugCounterInfo,
                                        DebugCounterInfoOutput output) {
         if (debugCounterInfo != null)
-            output.counterMap.put(debugCounterInfo.counterInfo.moduleCounterName,
+            output.counterMap.put(debugCounterInfo.getCounterInfo().
+                                  getModuleCounterName(),
                                   debugCounterInfo);
     }
 

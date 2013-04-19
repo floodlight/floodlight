@@ -57,6 +57,12 @@ public interface IDebugCounterService extends IFloodlightService {
      * @param moduleCounterName   the registered counter name.
      */
     public void updateCounter(String moduleCounterName);
+    
+    /**
+     * Increments the counter by the number specified
+     * @param moduleCounterName   the registered counter name.
+     */
+    public void updateCounter(String moduleCounterName, int incr);
 
     /**
      * Update the global counter map with values from the thread local maps. This

@@ -572,7 +572,6 @@ public abstract class ForwardingBase
         fm.setCookie(cookie)
           .setHardTimeout(hardTimeout)
           .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-          .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
           .setMatch(match)
           .setActions(actions)

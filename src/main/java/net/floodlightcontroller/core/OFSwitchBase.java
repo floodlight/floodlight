@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
 public abstract class OFSwitchBase implements IOFSwitch {
     // TODO: should we really do logging in the class or should we throw
     // exception that can then be handled by callers?
-    protected static Logger log = LoggerFactory.getLogger(OFSwitchBase.class);
+    protected static final Logger log = LoggerFactory.getLogger(OFSwitchBase.class);
 
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
@@ -144,8 +144,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
-        this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, new Boolean(true));
-        this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, new Boolean(true));
+        this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, Boolean.valueOf(true));
+        this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.valueOf(true));
     }
     
     
@@ -187,8 +187,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     // For driver subclass to set throttling
+    @LogMessageDoc(level="INFO",
+            message="Enabled write throttling to {switch}",
+            explanation="OFMessage writes to switch is throttled " +
+                    "to prevent excessively long queues")
     protected void enableWriteThrottle(boolean enable) {
         this.writeThrottleEnabled = enable;
+        if (enable) {
+            log.info("Enabled write throttling to {}", this);
+        }
     }
 
     @Override
