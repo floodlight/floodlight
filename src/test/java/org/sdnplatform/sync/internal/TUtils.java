@@ -1,5 +1,6 @@
 /*
  * Copyright 2008-2009 LinkedIn, Inc
+ * Copyright (c) 2013 Big Switch Networks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -47,13 +48,26 @@ public class TUtils {
     /**
      * Get a vector clock with events on the sequence of nodes given So
      * getClock(1,1,2,2,2) means a clock that has two writes on node 1 and 3
-     * writes on node 2.
+     * writes on node 2.  The timestamp will be the current time
      *
      * @param nodes The sequence of nodes
      * @return A VectorClock initialized with the given sequence of events
      */
     public static VectorClock getClock(int... nodes) {
         VectorClock clock = new VectorClock();
+        return increment(clock, nodes);
+    }
+    
+    /**
+     * Get a vector clock with a the given timestamp and events on the 
+     * sequence of nodes given So getClock(1,1,2,2,2) means a clock that has 
+     * two writes on node 1 and 3 writes on node 2.  
+     *
+     * @param nodes The sequence of nodes
+     * @return A VectorClock initialized with the given sequence of events
+     */
+    public static VectorClock getClock(long timestamp, int... nodes) {
+        VectorClock clock = new VectorClock(timestamp);
         return increment(clock, nodes);
     }
 

@@ -36,8 +36,9 @@ import com.google.common.collect.Lists;
 public class VectorClockTest {
     @Test
     public void testEqualsAndHashcode() {
-        VectorClock one = getClock(1, 2);
-        VectorClock other = getClock(1, 2);
+        long now = 5555555555L;
+        VectorClock one = getClock(now, 1, 2);
+        VectorClock other = getClock(now, 1, 2);
         assertEquals(one, other);
         assertEquals(one.hashCode(), other.hashCode());
     }
@@ -62,20 +63,21 @@ public class VectorClockTest {
     public void testMerge() {
         // merging two clocks should create a clock contain the element-wise
         // maximums
+        
         assertEquals("Two empty clocks merge to an empty clock.",
-                     getClock().merge(getClock()),
-                     getClock());
+                     getClock().merge(getClock()).getEntries(),
+                     getClock().getEntries());
         assertEquals("Merge of a clock with itself does nothing",
-                     getClock(1).merge(getClock(1)),
-                     getClock(1));
-        assertEquals(getClock(1).merge(getClock(2)), getClock(1, 2));
-        assertEquals(getClock(1).merge(getClock(1, 2)), getClock(1, 2));
-        assertEquals(getClock(1, 2).merge(getClock(1)), getClock(1, 2));
+                     getClock(1).merge(getClock(1)).getEntries(),
+                     getClock(1).getEntries());
+        assertEquals(getClock(1).merge(getClock(2)).getEntries(), getClock(1, 2).getEntries());
+        assertEquals(getClock(1).merge(getClock(1, 2)).getEntries(), getClock(1, 2).getEntries());
+        assertEquals(getClock(1, 2).merge(getClock(1)).getEntries(), getClock(1, 2).getEntries());
         assertEquals("Two-way merge fails.",
-                     getClock(1, 1, 1, 2, 3, 5).merge(getClock(1, 2, 2, 4)),
-                     getClock(1, 1, 1, 2, 2, 3, 4, 5));
-        assertEquals(getClock(2, 3, 5).merge(getClock(1, 2, 2, 4, 7)),
-                     getClock(1, 2, 2, 3, 4, 5, 7));
+                     getClock(1, 1, 1, 2, 3, 5).merge(getClock(1, 2, 2, 4)).getEntries(),
+                     getClock(1, 1, 1, 2, 2, 3, 4, 5).getEntries());
+        assertEquals(getClock(2, 3, 5).merge(getClock(1, 2, 2, 4, 7)).getEntries(),
+                     getClock(1, 2, 2, 3, 4, 5, 7).getEntries());
     }
 
     /**
