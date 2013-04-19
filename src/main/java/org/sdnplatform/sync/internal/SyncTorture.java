@@ -28,6 +28,9 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 public class SyncTorture implements IFloodlightModule {
     protected static final Logger logger =
             LoggerFactory.getLogger(SyncTorture.class);
+
+    private static final String SYNC_STORE_NAME =
+            SyncTorture.class.getCanonicalName() + ".torture";
     
     ISyncService syncService;
     IDebugCounterService debugCounter;
@@ -67,7 +70,7 @@ public class SyncTorture implements IFloodlightModule {
         debugCounter = context.getServiceImpl(IDebugCounterService.class);
 
         try {
-            syncService.registerStore("torture", Scope.GLOBAL);
+            syncService.registerStore(SYNC_STORE_NAME, Scope.GLOBAL);
         } catch (SyncException e) {
             throw new FloodlightModuleException(e);
         }
@@ -92,7 +95,7 @@ public class SyncTorture implements IFloodlightModule {
             throws FloodlightModuleException {
         try {
             final IStoreClient<String, TortureValue> storeClient = 
-                    syncService.getStoreClient("torture", 
+                    syncService.getStoreClient(SYNC_STORE_NAME, 
                                                String.class, 
                                                TortureValue.class);
             for (int i = 0; i < numWorkers; i++) {
