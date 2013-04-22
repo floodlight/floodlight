@@ -487,7 +487,11 @@ public class Controller implements IFloodlightProviderService,
         }
 
         @Override
-        public void keysModified(Iterator<Long> keys) {
+        public void keysModified(Iterator<Long> keys, UpdateType type) {
+            if (type == UpdateType.LOCAL) {
+                // We only care for remote updates
+                return;
+            }
             while(keys.hasNext()) {
                 Long key = keys.next();
                 Versioned<SwitchSyncRepresentation> versionedSwitch = null;
@@ -719,6 +723,8 @@ public class Controller implements IFloodlightProviderService,
                 return sw;
             return this.syncedSwitches.get(dpid);
         }
+
+
     }
 
 
