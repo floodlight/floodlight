@@ -21,6 +21,8 @@ package org.openflow.protocol.statistics;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.StringByteSerializer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * Represents an ofp_desc_stats structure
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -124,6 +126,7 @@ public class OFDescriptionStatistics implements OFStatistics {
     }
 
     @Override
+    @JsonIgnore
     public int getLength() {
         return 1056;
     }

@@ -18,12 +18,13 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.*;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.FloodlightProvider;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
@@ -31,6 +32,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -50,15 +52,21 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.junit.Test;
+import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.OFPacketOut;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.factory.BasicFactory;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.util.HexString;
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.test.MockSyncService;
 
 /**
  *
@@ -69,8 +77,8 @@ public class ControllerTest extends FloodlightTestCase {
 
     private Controller controller;
     private MockThreadPoolService tp;
-    private boolean test_bind_order = false;
-    private List<String> bind_order;
+    private MockSyncService syncService;
+    private IStoreClient<Long, SwitchSyncRepresentation> storeClient;
 
     @Override
     public void setUp() throws Exception {
@@ -96,30 +104,79 @@ public class ControllerTest extends FloodlightTestCase {
         tp = new MockThreadPoolService();
         fmc.addService(IThreadPoolService.class, tp);
 
+        syncService = new MockSyncService();
+        fmc.addService(ISyncService.class, syncService);
+
+
+
         ppt.init(fmc);
         restApi.init(fmc);
         memstorage.init(fmc);
-        cm.init(fmc);
         tp.init(fmc);
+        syncService.init(fmc);
+        cm.init(fmc);
+
         ppt.startUp(fmc);
         restApi.startUp(fmc);
         memstorage.startUp(fmc);
-        cm.startUp(fmc);
         tp.startUp(fmc);
+        syncService.startUp(fmc);
+        cm.startUp(fmc);
+
+        storeClient =
+                syncService.getStoreClient(Controller.SWITCH_SYNC_STORE_NAME,
+                                           Long.class,
+                                           SwitchSyncRepresentation.class);
+
     }
 
     public Controller getController() {
         return controller;
     }
 
+    private static OFDescriptionStatistics createOFDescriptionStatistics() {
+        OFDescriptionStatistics desc = new OFDescriptionStatistics();
+        desc.setDatapathDescription("");
+        desc.setHardwareDescription("");
+        desc.setManufacturerDescription("");
+        desc.setSerialNumber("");
+        desc.setSoftwareDescription("");
+        return desc;
+    }
+
+    private static OFFeaturesReply createOFFeaturesReply() {
+        OFFeaturesReply fr = new OFFeaturesReply();
+        fr.setPorts(Collections.<OFPhysicalPort>emptyList());
+        return fr;
+    }
 
 
     /* Set the mock expectations for sw when sw is passed to addSwitch */
-    protected void setupSwitchForAddSwitch(IOFSwitch sw, long dpid) {
+    protected void setupSwitchForAddSwitch(IOFSwitch sw, long dpid,
+                                           OFDescriptionStatistics desc,
+                                           OFFeaturesReply featuresReply) {
         String dpidString = HexString.toHexString(dpid);
+
+        if (desc == null) {
+            desc = createOFDescriptionStatistics();
+        }
+        if (featuresReply == null) {
+            featuresReply = createOFFeaturesReply();
+        }
 
         expect(sw.getId()).andReturn(dpid).anyTimes();
         expect(sw.getStringId()).andReturn(dpidString).anyTimes();
+        expect(sw.getDescriptionStatistics()) .andReturn(desc).atLeastOnce();
+        expect(sw.getBuffers())
+                .andReturn(featuresReply.getBuffers()).atLeastOnce();
+        expect(sw.getTables())
+                .andReturn(featuresReply.getTables()).atLeastOnce();
+        expect(sw.getCapabilities())
+                .andReturn(featuresReply.getCapabilities()).atLeastOnce();
+        expect(sw.getActions())
+                .andReturn(featuresReply.getActions()).atLeastOnce();
+        expect(sw.getPorts())
+                .andReturn(featuresReply.getPorts()).atLeastOnce();
     }
 
     /**
@@ -324,14 +381,83 @@ public class ControllerTest extends FloodlightTestCase {
         assertEquals(0, mfm.getNumberOfFilters());
     }
 
+
+
+/*
     @Test
-    public void testAddSwitchWithExistingSwitch() throws Exception {
+    public void testSwitchActivatedNoClearFM() throws Exception {
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        setupSwitchForAddSwitch(sw, 0L, null, null);
+
+        IOFSwitchListener listener = createMock(IOFSwitchListener.class);
+        listener.addedSwitch(sw);
+        expectLastCall().once();
+        replay(listener);
+        controller.addOFSwitchListener(listener);
+
+        replay(sw);
+        controller.switchActivated(sw);
+        verify(sw);
+        assertEquals(sw, controller.getSwitch(0L));
+        controller.processUpdateQueueForTesting();
+        verify(listener);
+    }
+*/
+
+
+    @Test
+    /*
+     * Test switchActivated for a new switch, i.e., a switch that was not
+     * previously known to the controller cluser. We expect that all
+     * flow mods are cleared and we expect a switchAdded
+     */
+    public void testNewSwitchActivated() throws Exception {
+        controller.setAlwaysClearFlowsOnSwAdd(true);
+
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        setupSwitchForAddSwitch(sw, 0L, null, null);
+        sw.clearAllFlowMods();
+        expectLastCall().once();
+
+        // strict mock. Order of events matters!
+        IOFSwitchListener listener = createStrictMock(IOFSwitchListener.class);
+        listener.switchAdded(0L);
+        expectLastCall().once();
+        listener.switchActivated(0L);
+        expectLastCall().once();
+        replay(listener);
+        controller.addOFSwitchListener(listener);
+
+        replay(sw);
+        controller.switchActivated(sw);
+        verify(sw);
+        assertEquals(sw, controller.getSwitch(0L));
+        controller.processUpdateQueueForTesting();
+        verify(listener);
+
+        SwitchSyncRepresentation storedSwitch = storeClient.getValue(0L);
+        assertEquals(createOFFeaturesReply(), storedSwitch.getFeaturesReply());
+        assertEquals(createOFDescriptionStatistics(),
+                     storedSwitch.getDescription());
+    }
+
+
+    @Test
+    public void testSwitchActivatedWithAlreadyActiveSwitch() throws Exception {
+        OFDescriptionStatistics oldDesc = createOFDescriptionStatistics();
+        oldDesc.setDatapathDescription("Ye Olde Switch");
+        OFDescriptionStatistics newDesc = createOFDescriptionStatistics();
+        newDesc.setDatapathDescription("The new Switch");
+        OFFeaturesReply featuresReply = createOFFeaturesReply();
+
 
         // Setup: add a switch to the controller
         IOFSwitch oldsw = createMock(IOFSwitch.class);
-        expect(oldsw.getId()).andReturn(0L).anyTimes();
+        setupSwitchForAddSwitch(oldsw, 0L, oldDesc, featuresReply);
+        oldsw.clearAllFlowMods();
+        expectLastCall().once();
         replay(oldsw);
-        controller.addSwitch(oldsw);
+        controller.switchActivated(oldsw);
         verify(oldsw);
         // drain the queue, we don't care what's in it
         controller.processUpdateQueueForTesting();
@@ -348,70 +474,25 @@ public class ControllerTest extends FloodlightTestCase {
 
 
         IOFSwitch newsw = createMock(IOFSwitch.class);
-        expect(newsw.getId()).andReturn(0L).anyTimes();
-        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        setupSwitchForAddSwitch(newsw, 0L, newDesc, featuresReply);
+        newsw.clearAllFlowMods();
+        expectLastCall().once();
 
         // Strict mock. We need to get the removed notification before the
         // add notification
         IOFSwitchListener listener = createStrictMock(IOFSwitchListener.class);
-        listener.removedSwitch(oldsw);
-        expectLastCall().once();
-        listener.addedSwitch(newsw);
-        expectLastCall().once();
+        listener.switchRemoved(0L);
+        listener.switchAdded(0L);
+        listener.switchActivated(0L);
         replay(listener);
         controller.addOFSwitchListener(listener);
 
 
         replay(newsw, oldsw);
-        controller.addSwitch(newsw);
+        controller.switchActivated(newsw);
         verify(newsw, oldsw);
 
         assertEquals(newsw, controller.getSwitch(0L));
-        controller.processUpdateQueueForTesting();
-        verify(listener);
-    }
-
-
-    @Test
-    public void testSwitchActivatedNoClearFM() throws Exception {
-        IOFSwitch sw = createMock(IOFSwitch.class);
-        expect(sw.getId()).andReturn(0L).anyTimes();
-        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-
-        IOFSwitchListener listener = createMock(IOFSwitchListener.class);
-        listener.addedSwitch(sw);
-        expectLastCall().once();
-        replay(listener);
-        controller.addOFSwitchListener(listener);
-
-        replay(sw);
-        controller.switchActivated(sw);
-        verify(sw);
-        assertEquals(sw, controller.getSwitch(0L));
-        controller.processUpdateQueueForTesting();
-        verify(listener);
-    }
-
-    @Test
-    public void testSwitchActivatedClearFM() throws Exception {
-        controller.setAlwaysClearFlowsOnSwAdd(true);
-
-        IOFSwitch sw = createMock(IOFSwitch.class);
-        expect(sw.getId()).andReturn(0L).anyTimes();
-        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-        sw.clearAllFlowMods();
-        expectLastCall().once();
-
-        IOFSwitchListener listener = createMock(IOFSwitchListener.class);
-        listener.addedSwitch(sw);
-        expectLastCall().once();
-        replay(listener);
-        controller.addOFSwitchListener(listener);
-
-        replay(sw);
-        controller.switchActivated(sw);
-        verify(sw);
-        assertEquals(sw, controller.getSwitch(0L));
         controller.processUpdateQueueForTesting();
         verify(listener);
     }
@@ -435,9 +516,9 @@ public class ControllerTest extends FloodlightTestCase {
    @Test
    public void testRemoveActiveSwitch() {
        IOFSwitch sw = createNiceMock(IOFSwitch.class);
-       expect(sw.getId()).andReturn(1L).anyTimes();
+       setupSwitchForAddSwitch(sw, 1L, null, null);
        replay(sw);
-       getController().addSwitch(sw);
+       getController().switchActivated(sw);
        assertEquals(sw, getController().getSwitch(1L));
        getController().getAllSwitchMap().remove(1L);
        assertEquals(sw, getController().getSwitch(1L));

@@ -321,7 +321,7 @@ public class OFChannelHandlerTest {
         verifyUniqueXids(msgs);
     }
 
-    /*
+    /* FIXME:
      * Verify that the given FlowMod indeed removes all flows from the
      * switch
      */
@@ -349,11 +349,8 @@ public class OFChannelHandlerTest {
         sendMessageToHandlerWithControllerReset(Collections.singletonList(hello));
 
         List<OFMessage> msgs = getMessagesFromCapture();
-        assertEquals(3, msgs.size());
+        assertEquals(1, msgs.size());
         assertEquals(OFType.FEATURES_REQUEST, msgs.get(0).getType());
-        assertEquals(OFType.FLOW_MOD, msgs.get(1).getType());
-        verifyFlowModIsRemoveAll(msgs.get(1));
-        assertEquals(OFType.BARRIER_REQUEST, msgs.get(2).getType());
         verifyUniqueXids(msgs);
 
         assertEquals(OFChannelHandler.ChannelState.WAIT_FEATURES_REPLY,
@@ -503,7 +500,7 @@ public class OFChannelHandlerTest {
         expectLastCall().once();
         sw.setFeaturesReply(featuresReply);
         expectLastCall().once();
-        sw.setSwitchProperties(desc);
+        sw.setConnected(true);
         expectLastCall().once();
         sw.getStringId();
         expectLastCall().andReturn(cfg.dpid).atLeastOnce();

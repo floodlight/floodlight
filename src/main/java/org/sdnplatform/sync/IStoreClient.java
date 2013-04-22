@@ -60,10 +60,10 @@ public interface IStoreClient<K, V> {
     public V getValue(K key, V defaultValue) throws SyncException;
 
     /**
-     * Get the versioned value associated with the given key.  Note that while 
-     * this function will never return null, the {@link Versioned} returned 
-     * can have a null value (i.e. {@link Versioned#getValue() can be null} 
-     * if the key is not present. 
+     * Get the versioned value associated with the given key.  Note that while
+     * this function will never return null, the {@link Versioned} returned
+     * can have a null value (i.e. {@link Versioned#getValue() can be null}
+     * if the key is not present.
      *
      * @param key The key for which to fetch the value.
      * @return The versioned value
@@ -85,10 +85,10 @@ public interface IStoreClient<K, V> {
 
     /**
      * Get an iterator that will get all the entries in the store.  Note
-     * that this has the potential to miss any values added while you're 
+     * that this has the potential to miss any values added while you're
      * iterating through the collection, and it's possible that items will
      * be deleted before you get to the end.
-     * 
+     *
      * Note that you *must* close the {@link IClosableIterator} when you are
      * finished with it or there may be resource leaks.  An example of how you
      * should use this iterator to ensure that it is closed even if there are
@@ -101,26 +101,28 @@ public interface IStoreClient<K, V> {
      *     iter.close();
      * }
      * </code>
-     * 
-     * Another important caveat is that because {@link IClosableIterator} 
+     *
+     * Another important caveat is that because {@link IClosableIterator}
      * extends {@link Iterator}, there is no checked exception declared in
-     * {@link Iterator#next()}.  Because of this, calling 
-     * {@link Iterator#next()} on the iterator returned here may throw a 
+     * {@link Iterator#next()}.  Because of this, calling
+     * {@link Iterator#next()} on the iterator returned here may throw a
      * SyncRuntimeException wrapping a SyncException such as might be
      * returned by {@link IStoreClient#get(Object)}
-     * @return 
+     * @return
      * @throws SyncException
      */
-    public IClosableIterator<Entry<K, Versioned<V>>> entries() 
+    public IClosableIterator<Entry<K, Versioned<V>>> entries()
             throws SyncException;
-    
+
     /**
      * Associated the given value to the key, clobbering any existing values
      * stored for the key.
+     * FIXME: add doc saying when its safe to use this method and when it isn't
      *
      * @param key The key
      * @param value The value
      * @return version The version of the object
+     * @throws ObsoleteVersionException
      * @throws SyncException
      */
     public IVersion put(K key, V value) throws SyncException;
@@ -147,7 +149,7 @@ public interface IStoreClient<K, V> {
      * @return true if the put succeeded
      * @throws SyncException
      */
-    public boolean putIfNotObsolete(K key, Versioned<V> versioned) 
+    public boolean putIfNotObsolete(K key, Versioned<V> versioned)
             throws SyncException;
 
     /**
@@ -167,12 +169,12 @@ public interface IStoreClient<K, V> {
      * @throws SyncException
      */
     public void delete(K key, IVersion version) throws SyncException;
-    
+
     /**
      * Add a listener that will be notified about changes to the given store.
-     * @param listener the {@link IStoreListener} that will receive the 
+     * @param listener the {@link IStoreListener} that will receive the
      * notifications
      */
-    public void addStoreListener(IStoreListener<K> listener); 
+    public void addStoreListener(IStoreListener<K> listener);
 
 }

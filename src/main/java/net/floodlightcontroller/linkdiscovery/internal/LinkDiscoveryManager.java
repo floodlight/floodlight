@@ -1768,7 +1768,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * @param sw
      *            The IOFSwitch that connected to the controller
      */
-    @Override
+    // FIXME: @Override
     public void addedSwitch(IOFSwitch sw) {
 
         if (sw.getEnabledPortNumbers() != null) {
@@ -1789,7 +1789,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * @param The
      *            id of the switch
      */
-    @Override
+    // FIXME: @Override
     public void removedSwitch(IOFSwitch iofSwitch) {
         // Update event history
         long sw = iofSwitch.getId();
@@ -1830,9 +1830,30 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * instead
      */
     @Override
-    public void switchPortChanged(Long switchId) {
+    public void switchPortChanged(long switchId) {
         // no-op
     }
+
+    @Override
+    public void switchAdded(long switchId) {
+        // no-op
+    }
+
+    @Override
+    public void switchRemoved(long switchId) {
+        // no-op
+    }
+
+    @Override
+    public void switchActivated(long switchId) {
+        // no-op
+    }
+
+    @Override
+    public void switchChanged(long switchId) {
+        // no-op
+    }
+
 
     //*********************
     //   Storage Listener

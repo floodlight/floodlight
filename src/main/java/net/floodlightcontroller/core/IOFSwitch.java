@@ -340,15 +340,21 @@ public interface IOFSwitch {
     public void cancelFeaturesReply(int transactionId);
 
     /**
-     * Check if the switch is still connected;
-     * Only call while holding processMessageLock
+     * Check if the switch is connected to this controller. Whether a switch
+     * is connected is independent of whether the switch is active
      * @return whether the switch is still disconnected
      */
     public boolean isConnected();
 
     /**
+     * Check if the switch is active. I.e., the switch is conencted to this
+     * controller and is in master role
+     * @return
+     */
+    public boolean isActive();
+
+    /**
      * Set whether the switch is connected
-     * Only call while holding modifySwitchLock
      * @param connected whether the switch is connected
      */
     public void setConnected(boolean connected);

@@ -438,4 +438,10 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return null;
     }
 
+    @Override
+    public boolean isActive() {
+        fail("Unexpected method call");
+        return false;
+    }
+
 }

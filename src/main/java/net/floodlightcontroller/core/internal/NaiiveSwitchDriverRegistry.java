@@ -56,6 +56,8 @@ class NaiiveSwitchDriverRegistry implements ISwitchDriverRegistry {
     }
 
     @Override
+    // TODO: instead of synchronized we could actually use a r/w lock
+    // but it's probably not worth it.
     public synchronized IOFSwitch
             getOFSwitchInstance(OFDescriptionStatistics description) {
         if (description == null)
@@ -88,12 +90,16 @@ class NaiiveSwitchDriverRegistry implements ISwitchDriverRegistry {
                     .startsWith(descPrefix)) {
                 IOFSwitchDriver driver = switchBindingMap.get(descPrefix);
                 IOFSwitch sw = driver.getOFSwitchImpl(description);
-                if (sw != null)
+                if (sw != null) {
+                    sw.setSwitchProperties(description);
                     return sw;
+                }
             }
         }
         // no switch found
-        return null;
+        IOFSwitch sw = new OFSwitchImpl();
+        sw.setSwitchProperties(description);
+        return sw;
     }
 
 }

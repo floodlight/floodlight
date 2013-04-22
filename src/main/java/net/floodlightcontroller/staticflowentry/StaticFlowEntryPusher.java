@@ -171,19 +171,22 @@ public class StaticFlowEntryPusher
      *
      * @param sw The switch to send entries to
      */
-    protected void sendEntriesToSwitch(IOFSwitch sw) {
-        String dpid = sw.getStringId();
+    protected void sendEntriesToSwitch(long switchId) {
+        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
+        if (sw == null)
+            return;
+        String stringId = sw.getStringId();
 
-        if ((entriesFromStorage != null) && (entriesFromStorage.containsKey(dpid))) {
-            Map<String, OFFlowMod> entries = entriesFromStorage.get(dpid);
+        if ((entriesFromStorage != null) && (entriesFromStorage.containsKey(stringId))) {
+            Map<String, OFFlowMod> entries = entriesFromStorage.get(stringId);
             List<String> sortedList = new ArrayList<String>(entries.keySet());
             // weird that Collections.sort() returns void
-            Collections.sort( sortedList, new FlowModSorter(dpid));
+            Collections.sort( sortedList, new FlowModSorter(stringId));
             for (String entryName : sortedList) {
                 OFFlowMod flowMod = entries.get(entryName);
                 if (flowMod != null) {
                     if (log.isDebugEnabled()) {
-                        log.debug("Pushing static entry {} for {}", dpid, entryName);
+                        log.debug("Pushing static entry {} for {}", stringId, entryName);
                     }
                     writeFlowModToSwitch(sw, flowMod);
                 }
@@ -329,21 +332,33 @@ public class StaticFlowEntryPusher
     }
 
     @Override
-    public void addedSwitch(IOFSwitch sw) {
-        log.debug("Switch {} connected; processing its static entries", HexString.toHexString(sw.getId()));
-        sendEntriesToSwitch(sw);
+    public void switchAdded(long switchId) {
+        log.debug("Switch {} connected; processing its static entries",
+                  HexString.toHexString(switchId));
+        sendEntriesToSwitch(switchId);
     }
 
     @Override
-    public void removedSwitch(IOFSwitch sw) {
+    public void switchRemoved(long switchId) {
         // do NOT delete from our internal state; we're tracking the rules,
         // not the switches
     }
 
     @Override
-    public void switchPortChanged(Long switchId) {
+    public void switchActivated(long switchId) {
         // no-op
     }
+
+    @Override
+    public void switchChanged(long switchId) {
+        // no-op
+    }
+
+    @Override
+    public void switchPortChanged(long switchId) {
+        // no-op
+    }
+
 
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {

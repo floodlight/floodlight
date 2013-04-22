@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +57,10 @@ import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFSwitchBase;
 import net.floodlightcontroller.core.RoleInfo;
+import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
@@ -81,11 +84,19 @@ import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorExtensions;
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.ObsoleteVersionException;
+import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +111,7 @@ public class Controller implements IFloodlightProviderService,
 
     static final String ERROR_DATABASE =
             "The controller could not communicate with the system database.";
-    private static final String SWITCH_SYNC_STORE_NAME =
+    static final String SWITCH_SYNC_STORE_NAME =
             "net.floodlightcontroller.core.SwitchSyncStore";
 
     protected BasicFactory factory;
@@ -110,15 +121,6 @@ public class Controller implements IFloodlightProviderService,
 
     // OFSwitch driver binding map and order
     private ISwitchDriverRegistry driverRegistry;
-
-    // The activeSwitches map contains only those switches that are actively
-    // being controlled by us -- it doesn't contain switches that are
-    // in the slave role
-    private ConcurrentHashMap<Long, IOFSwitch> activeSwitches;
-    // The bigSyncSwitches maps contains the switches we have read from
-    // the BigSync store
-    private ConcurrentHashMap<Long, IOFSwitch> bigSyncSwitches;
-
 
     // The controllerNodeIPsCache maps Controller IDs to their IP address.
     // It's only used by handleControllerNodeIPsChanged
@@ -130,15 +132,17 @@ public class Controller implements IFloodlightProviderService,
     protected BlockingQueue<IUpdate> updates;
 
     // Module dependencies
-    protected IRestApiService restApi;
-    protected ICounterStoreService counterStore = null;
-    protected IDebugCounterService debugCounter;
-    protected IFlowCacheService bigFlowCacheMgr;
-    protected IStorageSourceService storageSource;
-    protected IPktInProcessingTimeService pktinProcTime;
-    protected IThreadPoolService threadPool;
+    private IRestApiService restApi;
+    private ICounterStoreService counterStore = null;
+    private IDebugCounterService debugCounter;
+    private IFlowCacheService bigFlowCacheMgr;
+    private IStorageSourceService storageSource;
+    private IPktInProcessingTimeService pktinProcTime;
+    private IThreadPoolService threadPool;
     private ScheduledExecutorService ses;
-    private IDebugCounterService debugCounterService;
+    private IDebugCounterService debugCouAnterService;
+    private ISyncService syncService;
+    private IStoreClient<Long, SwitchSyncRepresentation> storeClient;
 
     // Configuration options
     protected int openFlowPort = 6633;
@@ -156,6 +160,7 @@ public class Controller implements IFloodlightProviderService,
     private static final String
             INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
     private RoleManager roleManager;
+    private SwitchManager switchManager;
 
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
@@ -187,6 +192,7 @@ public class Controller implements IFloodlightProviderService,
     protected final boolean overload_drop =
         Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
     protected final LoadMonitor loadmonitor = new LoadMonitor(log);
+
 
 
     /**
@@ -468,6 +474,254 @@ public class Controller implements IFloodlightProviderService,
         }
     }
 
+
+    private class SwitchManager implements IStoreListener<Long> {
+        private Role role;
+        private ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
+        private ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
+
+        public SwitchManager(Role role) {
+            this.role = role;
+            this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
+            this.syncedSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
+        }
+
+        @Override
+        public void keysModified(Iterator<Long> keys) {
+            while(keys.hasNext()) {
+                Long key = keys.next();
+                Versioned<SwitchSyncRepresentation> versionedSwitch = null;
+                try {
+                    versionedSwitch = storeClient.get(key);
+                } catch (SyncException e) {
+                    log.error("Exception while retrieving switch " +
+                              HexString.toHexString(key) +
+                              " from sync store. Skipping", e);
+                    continue;
+                }
+                // versionedSwtich won't be null. storeClient.get() always
+                // returns a non-null or throws an exception
+                if (versionedSwitch.getValue() == null) {
+                    // The switch doesn't exist in storage. Skip.
+                    continue;
+                }
+                SwitchSyncRepresentation storedSwitch =
+                        versionedSwitch.getValue();
+                IOFSwitch sw = getOFSwitchInstance(storedSwitch.getDescription());
+                sw.setFeaturesReply(storedSwitch.getFeaturesReply());
+                if (!key.equals(storedSwitch.getFeaturesReply().getDatapathId())) {
+                    log.error("Inconsistent DPIDs from switch sync store: " +
+                              "key is {} but sw.getId() says {}. Ignoring",
+                              HexString.toHexString(key), sw.getStringId());
+                }
+                addSwitchFromStore(sw);
+            }
+        }
+
+
+        public synchronized void setRole(Role role) {
+            this.role = role;
+        }
+
+        @LogMessageDoc(level="ERROR",
+                message="New switch added {switch} for already-added switch {switch}",
+                explanation="A switch with the same DPID as another switch " +
+                        "connected to the controller.  This can be caused by " +
+                        "multiple switches configured with the same DPID, or " +
+                        "by a switch reconnected very quickly after " +
+                        "disconnecting.",
+                recommendation="If this happens repeatedly, it is likely there " +
+                        "are switches with duplicate DPIDs on the network.  " +
+                        "Reconfigure the appropriate switches.  If it happens " +
+                        "very rarely, then it is likely this is a transient " +
+                        "network problem that can be ignored."
+                )
+        /**
+         * Called when a switch is activated, i.e., when it enters master
+         * role relative to this controller.
+         * @param sw
+         */
+        public synchronized void switchActivated(IOFSwitch sw) {
+            if (role == Role.SLAVE)
+                return; // only react to switch connections when master
+            Long dpid = sw.getId();
+
+            IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
+            addSwitchToStore(sw);
+
+            if (oldSw == sw)  {
+                // Note == for object equality, not .equals for value
+                // TODO: should we wipe the flow table if
+                // alwaysClearFlowsOnSwAdd is set? OTOH this case should
+                // really never happen.
+                log.info("New switchActivated for pre-existing switch {}", sw);
+                return;
+            }
+
+            if (oldSw != null) {
+                // This happens either when we have switches with duplicate
+                // DPIDs or when a switch reconnects before we saw the
+                // disconnect
+                log.error("New switch added {} for already-added switch {}",
+                          sw, oldSw);
+                // We need to disconnect and remove the old switch
+                // TODO: we notify switch listeners that the switch has been
+                // removed and then we notify them that the new one has been
+                // added. One could argue that a switchChanged notification
+                // might be more appropriate in this case....
+                oldSw.cancelAllStatisticsReplies();
+                addUpdateToQueue(new SwitchUpdate(oldSw, SwitchUpdateType.REMOVED));
+                oldSw.disconnectOutputStream();
+                // Add the new switch and clear FlowMods
+                // TODO: if this is the same switch re-connecting rather than
+                // a DPID collision it would make sense to not wipe the flow
+                // table.
+                sw.clearAllFlowMods();
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
+                return;
+            }
+
+            IOFSwitch storedSwitch = this.syncedSwitches.get(sw.getId());
+            if (storedSwitch == null) {
+                // The switch isn't known to the controller cluster. We
+                // need to send a switchAdded notification and clear all
+                // flows.
+                // TODO: if we switch was recently (seconds) connected we
+                // might decide to not wipe the flow table.
+                sw.clearAllFlowMods();
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
+                this.syncedSwitches.remove(sw.getId());
+            } else {
+                // FIXME: switch was in store. check if ports or anything else
+                // has changed and send update.
+                if (alwaysClearFlowsOnSwAdd)
+                    sw.clearAllFlowMods();
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
+                sendNotificationsIfSwitchDiffers(oldSw, sw);
+            }
+        }
+
+
+        public synchronized void addSwitchFromStore(IOFSwitch sw) {
+            if (role != Role.SLAVE)
+                return; // only read from store if slave
+            Long dpid = sw.getId();
+
+            IOFSwitch oldSw = syncedSwitches.put(dpid, sw);
+            if (oldSw == null)  {
+                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
+            } else {
+                // The switch already exists in storage, see if anything
+                // has changed
+                sendNotificationsIfSwitchDiffers(oldSw, sw);
+            }
+        }
+
+        public synchronized void switchDeactivated(IOFSwitch sw) {
+            // ignore. we don't handle MASTER -> SLAVE transitions. We
+            // expect a restart
+        }
+
+        public synchronized void switchDisconnected(IOFSwitch sw) {
+            if (role == Role.SLAVE)
+                return; // only react to switch connections when master
+            IOFSwitch oldSw = this.activeSwitches.get(sw.getId());
+            if (oldSw != sw) {
+                // This can happen if the disconnected switch was inactive
+                // (SLAVE) then oldSw==null. Or if we previously had the
+                // "added switch for already added switch case".
+                // Either way we shouldn't notify or do anything else
+                log.debug("removeSwitch called for switch {} but have {} in"
+                          + " activeSwitches map. Ignoring", sw, oldSw);
+                return;
+            }
+            log.debug("removeSwitch {}", sw);
+            this.activeSwitches.remove(sw.getId());
+            removeSwitchFromStore(sw);
+            // We cancel all outstanding statistics replies if the switch transition
+            // from active. In the future we might allow statistics requests
+            // from slave controllers. Then we need to move this cancelation
+            // to switch disconnect
+            sw.cancelAllStatisticsReplies();
+            addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.REMOVED));
+        }
+
+        private synchronized void addSwitchToStore(IOFSwitch sw) {
+            // Add to store
+            // FIXME: do we need to use a put that takes a versioned here?
+            // need to verify
+            try {
+                storeClient.put(sw.getId(), new SwitchSyncRepresentation(sw));
+            } catch (ObsoleteVersionException e) {
+                // FIXME: what's the right behavior here. Can the store client
+                // even throw this error?
+            } catch (SyncException e) {
+                log.error("Could not write switch " + sw.getStringId() +
+                          " to sync store:", e);
+            }
+        }
+
+        private synchronized void removeSwitchFromStore(IOFSwitch sw) {
+            try {
+                storeClient.delete(sw.getId());
+            } catch (SyncException e) {
+                log.error("Could not remove switch " + sw.getStringId() +
+                          " from sync store:", e);
+            }
+        }
+
+        private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch sw1,
+                                                      IOFSwitch sw2) {
+            // FIXME
+            Set<OFPhysicalPort> sw1Ports =
+                    new HashSet<OFPhysicalPort>(sw1.getPorts());
+            Set<OFPhysicalPort> sw2Ports =
+                    new HashSet<OFPhysicalPort>(sw1.getPorts());
+            if (! sw1Ports.equals(sw2Ports)) {
+                addUpdateToQueue(
+                        new SwitchUpdate(sw2, SwitchUpdateType.PORTCHANGED));
+            }
+            if (false) {
+                // FIXME: IF ANYTHING ELSE HAS CHANGED
+                addUpdateToQueue(
+                        new SwitchUpdate(sw2, SwitchUpdateType.OTHERCHANGE));
+            }
+        }
+
+        // FIXME: remove this method
+        public Map<Long,IOFSwitch> getAllSwitchMap() {
+            // this.syncedSwitches will be empty after the master transition
+            Map<Long,IOFSwitch> switches =
+                    new HashMap<Long, IOFSwitch>(this.syncedSwitches);
+            if (this.role != Role.SLAVE)
+                switches.putAll(this.activeSwitches);
+            return switches;
+        }
+
+        public Set<Long> getAllSwitchDpids() {
+            // this.syncedSwitches will be empty after the master transition
+            Set<Long> dpids = new HashSet<Long>(this.syncedSwitches.keySet());
+            if (this.role != Role.SLAVE)
+                dpids.addAll(this.activeSwitches.keySet());
+            return dpids;
+        }
+
+        public IOFSwitch getSwitch(long dpid) {
+            if (this.role == Role.SLAVE)
+                return this.syncedSwitches.get(dpid);
+            // MASTER: if the switch is found in the active map return
+            // otherwise look up the switch in the bigSync map. The bigSync map
+            // wil be cleared after the transition is complete.
+            IOFSwitch sw = this.activeSwitches.get(dpid);
+            if (sw != null)
+                return sw;
+            return this.syncedSwitches.get(dpid);
+        }
+    }
+
+
     /**
      *  Updates handled by the main loop
      */
@@ -480,7 +734,10 @@ public class Controller implements IFloodlightProviderService,
     enum SwitchUpdateType {
         ADDED,
         REMOVED,
-        PORTCHANGED
+        ACTIVATED,
+        DEACTIVATED,
+        PORTCHANGED,
+        OTHERCHANGE
     }
     /**
      * Update message indicating a switch was added or removed
@@ -502,13 +759,22 @@ public class Controller implements IFloodlightProviderService,
                 for (IOFSwitchListener listener : switchListeners) {
                     switch(switchUpdateType) {
                         case ADDED:
-                            listener.addedSwitch(sw);
+                            listener.switchAdded(sw.getId());
                             break;
                         case REMOVED:
-                            listener.removedSwitch(sw);
+                            listener.switchRemoved(sw.getId());
                             break;
                         case PORTCHANGED:
                             listener.switchPortChanged(sw.getId());
+                            break;
+                        case ACTIVATED:
+                            listener.switchActivated(sw.getId());
+                            break;
+                        case DEACTIVATED:
+                            // ignore
+                            break;
+                        case OTHERCHANGE:
+                            listener.switchChanged(sw.getId());
                             break;
                     }
                 }
@@ -584,7 +850,7 @@ public class Controller implements IFloodlightProviderService,
     // Getters/Setters
     // ***************
 
-    public void setStorageSourceService(IStorageSourceService storageSource) {
+    void setStorageSourceService(IStorageSourceService storageSource) {
         this.storageSource = storageSource;
     }
 
@@ -592,27 +858,31 @@ public class Controller implements IFloodlightProviderService,
         return this.storageSource;
     }
 
-    public void setCounterStore(ICounterStoreService counterStore) {
+    void setCounterStore(ICounterStoreService counterStore) {
         this.counterStore = counterStore;
     }
 
-    public void setDebugCounter(IDebugCounterService debugCounter) {
+    void setDebugCounter(IDebugCounterService debugCounter) {
         this.debugCounter = debugCounter;
     }
 
-    public void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
+    void setSyncService(ISyncService syncService) {
+        this.syncService = syncService;
+    }
+
+    void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
         this.bigFlowCacheMgr = flowCacheMgr;
     }
 
-    public void setPktInProcessingService(IPktInProcessingTimeService pits) {
+    void setPktInProcessingService(IPktInProcessingTimeService pits) {
         this.pktinProcTime = pits;
     }
 
-    public void setRestApiService(IRestApiService restApi) {
+    void setRestApiService(IRestApiService restApi) {
         this.restApi = restApi;
     }
 
-    public void setThreadPoolService(IThreadPoolService tp) {
+    void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
     }
 
@@ -819,71 +1089,73 @@ public class Controller implements IFloodlightProviderService,
 
 
 
-    @LogMessageDoc(level="ERROR",
-            message="New switch added {switch} for already-added switch {switch}",
-            explanation="A switch with the same DPID as another switch " +
-                    "connected to the controller.  This can be caused by " +
-                    "multiple switches configured with the same DPID, or " +
-                    "by a switch reconnected very quickly after " +
-                    "disconnecting.",
-            recommendation="If this happens repeatedly, it is likely there " +
-                    "are switches with duplicate DPIDs on the network.  " +
-                    "Reconfigure the appropriate switches.  If it happens " +
-                    "very rarely, then it is likely this is a transient " +
-                    "network problem that can be ignored."
-            )
-    protected void addSwitch(IOFSwitch sw) {
-        IOFSwitch oldSw = this.activeSwitches.put(sw.getId(), sw);
-        if (sw == oldSw) {
-            // Note == for object equality, not .equals for value
-            log.info("New add switch for pre-existing switch {}", sw);
-            return;
-        }
 
-        if (oldSw != null) {
-            log.error("New switch added {} for already-added switch {}",
-                      sw, oldSw);
-            // We need to disconnect and remove the old switch
-            oldSw.cancelAllStatisticsReplies();
-            addUpdateToQueue(new SwitchUpdate(oldSw, SwitchUpdateType.REMOVED));
-            oldSw.disconnectOutputStream();
-        }
-
-        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.ADDED);
-        addUpdateToQueue(update);
+    void switchActivated(IOFSwitch sw) {
+        this.switchManager.switchActivated(sw);
     }
 
-
-    void removeSwitch(IOFSwitch sw) {
-        IOFSwitch oldSw = this.activeSwitches.remove(sw.getId());
-        if (oldSw != sw) {
-            log.debug("removeSwitch called for switch {} but have {} in"
-                      + " activeSwitches map. Ignoring", sw, oldSw);
-            return;
-        }
-
-        log.debug("removeSwitch: {}", sw);
-        // We cancel all outstanding statistics replies if the switch transition
-        // from active. In the future we might allow statistics requests
-        // from slave controllers. Then we need to move this cancelation
-        // to switch disconnect
-        sw.cancelAllStatisticsReplies();
-        addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.REMOVED));
+    void switchDeactivated(IOFSwitch sw) {
+        this.switchManager.switchDeactivated(sw);
     }
 
-     void switchActivated(IOFSwitch sw) {
-         if (alwaysClearFlowsOnSwAdd)
-             sw.clearAllFlowMods();
-         addSwitch(sw);
-     }
-
-     void switchDeactivated(IOFSwitch sw) {
-         removeSwitch(sw);
-     }
+    void switchDisconnected(IOFSwitch sw) {
+        this.switchManager.switchDisconnected(sw);
+    }
 
     // ***************
     // IFloodlightProvider
     // ***************
+
+    /**
+     * Forward to RoleManager
+     * @param h
+     */
+    void addSwitchChannelAndSendInitialRole(OFChannelHandler h) {
+        roleManager.addOFChannelHandlerAndSendRole(h);
+    }
+
+    /**
+     * Forwards to RoleManager
+     * @param h
+     */
+    void removeSwitchChannel(OFChannelHandler h) {
+        roleManager.removeOFChannelHandler(h);
+    }
+
+    /**
+     * Forwards to RoleManager
+     * @param h
+     * @param role
+     */
+    void reassertRole(OFChannelHandler h, Role role) {
+        roleManager.reassertRole(h, role);
+    }
+
+    // FIXME: remove this method
+    @Override
+    public Map<Long,IOFSwitch> getAllSwitchMap() {
+        return this.switchManager.getAllSwitchMap();
+    }
+
+    @Override
+    public Set<Long> getAllSwitchDpids() {
+        return this.switchManager.getAllSwitchDpids();
+    }
+
+    @Override
+    public IOFSwitch getSwitch(long dpid) {
+        return this.switchManager.getSwitch(dpid);
+    }
+
+    @Override
+    public void addOFSwitchListener(IOFSwitchListener listener) {
+        this.switchListeners.add(listener);
+    }
+
+    @Override
+    public void removeOFSwitchListener(IOFSwitchListener listener) {
+        this.switchListeners.remove(listener);
+    }
 
     @Override
     public synchronized void addOFMessageListener(OFType type,
@@ -933,62 +1205,6 @@ public class Controller implements IFloodlightProviderService,
         messageListeners.remove(type);
     }
 
-    // FIXME: remove this method
-    @Override
-    public Map<Long,IOFSwitch> getAllSwitchMap() {
-        if (bigSyncSwitches == null)
-            throw new AssertionError("bigSyncSwitches should never be null");
-        if (activeSwitches == null)
-            throw new AssertionError("activeSwitches should never be null");
-        // bigSyncSwitches will be empty after the master transition
-        Map<Long,IOFSwitch> switches =
-                new HashMap<Long, IOFSwitch>(bigSyncSwitches);
-        if (notifiedRole == Role.MASTER)
-            switches.putAll(activeSwitches);
-        return switches;
-    }
-
-    @Override
-    public Set<Long> getAllSwitchDpids() {
-        if (bigSyncSwitches == null)
-            throw new AssertionError("bigSyncSwitches should never be null");
-        if (activeSwitches == null)
-            throw new AssertionError("activeSwitches should never be null");
-        // bigSyncSwitches will be empty after the master transition
-        Set<Long> dpids = new HashSet<Long>(bigSyncSwitches.keySet());
-        if (notifiedRole == Role.MASTER)
-            dpids.addAll(activeSwitches.keySet());
-        return dpids;
-    }
-
-    @Override
-    public IOFSwitch getSwitch(long dpid) {
-        if (bigSyncSwitches == null)
-            throw new AssertionError("bigSyncSwitches should never be null");
-        if (activeSwitches == null)
-            throw new AssertionError("activeSwitches should never be null");
-
-        if (notifiedRole == Role.SLAVE)
-            return bigSyncSwitches.get(dpid);
-        // MASTER: if the switch is found in the active map return
-        // otherwise look up the switch in the bigSync map. The bigSync map
-        // wil be cleared after the transition is complete.
-        IOFSwitch sw = activeSwitches.get(dpid);
-        if (sw != null)
-            return sw;
-        return bigSyncSwitches.get(dpid);
-    }
-
-    @Override
-    public void addOFSwitchListener(IOFSwitchListener listener) {
-        this.switchListeners.add(listener);
-    }
-
-    @Override
-    public void removeOFSwitchListener(IOFSwitchListener listener) {
-        this.switchListeners.remove(listener);
-    }
-
     @Override
     public Map<OFType, List<IOFMessageListener>> getListeners() {
         Map<OFType, List<IOFMessageListener>> lers =
@@ -1022,14 +1238,14 @@ public class Controller implements IFloodlightProviderService,
         // FIXME: Do we need to be able to inject messages to switches
         // where we're the slave controller (i.e. they're connected but
         // not active)?
-        if (!activeSwitches.containsKey(sw.getId())) return false;
+        if (sw.isActive()) return false;
 
         try {
             // Pass Floodlight context to the handleMessages()
             handleMessage(sw, msg, bc);
         } catch (IOException e) {
             log.error("Error reinjecting OFMessage on switch {}",
-                      HexString.toHexString(sw.getId()));
+                      sw.getStringId());
             return false;
         }
         return true;
@@ -1262,8 +1478,6 @@ public class Controller implements IFloodlightProviderService,
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
         this.haListeners = new CopyOnWriteArraySet<IHAListener>();
         this.driverRegistry = new NaiiveSwitchDriverRegistry();
-        this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
-        this.bigSyncSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
         this.factory = BasicFactory.getInstance();
@@ -1298,7 +1512,7 @@ public class Controller implements IFloodlightProviderService,
                 recommendation="If this message persists, this indicates " +
                         "that the system database has failed to start. " +
                         LogMessageDoc.CHECK_CONTROLLER)
-    public void startupComponents() {
+    public void startupComponents() throws FloodlightModuleException {
         // Create the table names we use
         storageSource.createTable(CONTROLLER_TABLE_NAME, null);
         storageSource.createTable(CONTROLLER_INTERFACE_TABLE_NAME, null);
@@ -1319,6 +1533,17 @@ public class Controller implements IFloodlightProviderService,
         this.ses = threadPool.getScheduledExecutor();
         this.roleManager = new RoleManager(this.notifiedRole,
                                            INITIAL_ROLE_CHANGE_DESCRIPTION);
+        this.switchManager = new SwitchManager(this.notifiedRole);
+        try {
+            this.syncService.registerStore(SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
+            this.storeClient = this.syncService
+                    .getStoreClient(SWITCH_SYNC_STORE_NAME,
+                                    Long.class,
+                                    SwitchSyncRepresentation.class);
+            this.storeClient.addStoreListener(this.switchManager);
+        } catch (SyncException e) {
+            throw new FloodlightModuleException("Error while setting up sync service", e);
+        }
     }
 
     @Override
@@ -1486,38 +1711,12 @@ public class Controller implements IFloodlightProviderService,
     }
 
     /**
-     * Forward to the registry to get an IOFSwitch instance
+     * Forward to the registry to get an IOFSwitch instance.
      * @param desc
      * @return
      */
     IOFSwitch getOFSwitchInstance(OFDescriptionStatistics desc) {
         return driverRegistry.getOFSwitchInstance(desc);
-    }
-
-
-    /**
-     * Forward to RoleManager
-     * @param h
-     */
-    void addSwitchChannelAndSendInitialRole(OFChannelHandler h) {
-        roleManager.addOFChannelHandlerAndSendRole(h);
-    }
-
-    /**
-     * Forwards to RoleManager
-     * @param h
-     */
-    void removeSwitchChannel(OFChannelHandler h) {
-        roleManager.removeOFChannelHandler(h);
-    }
-
-    /**
-     * Forwards to RoleManager
-     * @param h
-     * @param role
-     */
-    void reassertRole(OFChannelHandler h, Role role) {
-        roleManager.reassertRole(h, role);
     }
 
 
@@ -1529,6 +1728,10 @@ public class Controller implements IFloodlightProviderService,
         debugCounter.flushCounters();
     }
 
+    /**
+     * FOR TESTING ONLY.
+     * Dispatch all updates in the update queue until queue is empty
+     */
     void processUpdateQueueForTesting() {
         while(!updates.isEmpty()) {
             IUpdate update = updates.poll();

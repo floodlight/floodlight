@@ -224,7 +224,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         replay(mockSwitch);
 
         // hook the static pusher up to the fake switch
-        staticFlowEntryPusher.addedSwitch(mockSwitch);
+        staticFlowEntryPusher.switchAdded(dpid);
 
         verify(mockSwitch);
 

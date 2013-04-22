@@ -14,14 +14,16 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.core;
+package net.floodlightcontroller.core.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.core.internal.Controller;
+import org.sdnplatform.sync.ISyncService;
+
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -69,6 +71,7 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(IDebugCounterService.class);
         dependencies.add(IFlowCacheService.class);
         dependencies.add(IThreadPoolService.class);
+        dependencies.add(ISyncService.class);
         return dependencies;
     }
 
@@ -88,11 +91,14 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IRestApiService.class));
        controller.setThreadPoolService(
            context.getServiceImpl(IThreadPoolService.class));
+       controller.setSyncService(
+           context.getServiceImpl(ISyncService.class));
        controller.init(context.getConfigParams(this));
     }
 
     @Override
-    public void startUp(FloodlightModuleContext context) {
+    public void startUp(FloodlightModuleContext context)
+            throws FloodlightModuleException {
         controller.startupComponents();
     }
 }

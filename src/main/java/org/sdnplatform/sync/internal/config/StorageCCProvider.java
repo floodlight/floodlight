@@ -12,7 +12,7 @@ import org.sdnplatform.sync.internal.SyncManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.FloodlightProvider;
+import net.floodlightcontroller.core.internal.FloodlightProvider;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;

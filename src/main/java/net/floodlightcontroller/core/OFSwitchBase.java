@@ -85,7 +85,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected int actions;
     protected byte tables;
     protected long datapathId;
-    protected Role role;
     protected String stringId;
 
     /**
@@ -107,6 +106,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private final Map<Integer, IOFMessageListener> iofMsgListenersMap;
     private final Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
     private volatile boolean connected;
+    private volatile Role role;
     private final TimedCache<Long> timedCache;
     private final ReentrantReadWriteLock listenerLock;
     private final ConcurrentMap<Short, AtomicLong> portBroadcastCacheHitMap;
@@ -531,8 +531,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @JsonIgnore
     @Override
     public boolean isConnected() {
-        // No lock needed since we use volatile
+        // no lock needed since we use volatile
         return connected;
+    }
+
+    @JsonIgnore
+    @Override
+    public boolean isActive() {
+        // no lock needed since we use volatile
+        return isConnected() && this.role != Role.SLAVE;
     }
 
     @Override

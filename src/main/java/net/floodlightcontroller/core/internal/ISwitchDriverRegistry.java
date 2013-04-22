@@ -46,6 +46,9 @@ public interface ISwitchDriverRegistry {
      * a matching manufacturer description prefix. If no driver returns an
      * IOFSwitch instance the registry returns a default OFSwitchImpl instance.
      *
+     * The returned switch will have its description reply and
+     * switch properties set according to the DescriptionStats passed in
+     *
      * @param description The OFDescriptionStatistics for which to return an
      * IOFSwitch implementation
      * @return A IOFSwitch implementation matching the description or an

@@ -24,7 +24,6 @@ import java.util.Map;
 import org.openflow.protocol.OFMatchWithSwDpid;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -41,17 +40,17 @@ public class FlowCache implements IFloodlightModule, IFlowCacheService {
 
     @Override
     public void updateFlush() {}
-    
+
     @Override
-    public boolean addFlow(String appInstName, OFMatchWithSwDpid ofm, 
-                           Long cookie, long srcSwDpid, 
+    public boolean addFlow(String appInstName, OFMatchWithSwDpid ofm,
+                           Long cookie, long srcSwDpid,
                            short inPort, short priority, byte action) {
         return true;
     }
 
     @Override
-    public boolean addFlow(FloodlightContext cntx, OFMatchWithSwDpid ofm, 
-                           Long cookie, SwitchPort swPort, 
+    public boolean addFlow(FloodlightContext cntx, OFMatchWithSwDpid ofm,
+                           Long cookie, SwitchPort swPort,
                            short priority, byte action) {
         return true;
     }
@@ -62,26 +61,26 @@ public class FlowCache implements IFloodlightModule, IFlowCacheService {
     }
 
     @Override
-    public void deleteAllFlowsAtASourceSwitch(IOFSwitch sw) {}
-    
+    public void deleteAllFlowsAtASourceSwitch(long switchId) {}
+
     @Override
     public void querySwitchFlowTable(long swDpid) {}
-    
+
     // IFloodlightModule
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
        l.add(IFlowCacheService.class);
        return l;
     }
 
     @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService> 
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
                                                             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
+        IFloodlightService> m =
             new HashMap<Class<? extends IFloodlightService>,
                 IFloodlightService>();
         m.put(IFlowCacheService.class, this);
@@ -89,7 +88,7 @@ public class FlowCache implements IFloodlightModule, IFlowCacheService {
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> 
+    public Collection<Class<? extends IFloodlightService>>
                                                     getModuleDependencies() {
         return null;
     }

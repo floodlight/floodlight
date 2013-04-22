@@ -280,7 +280,7 @@ class OFChannelHandler
          * error messages for earlier role requests that we won't be able
          * to handle
          * @param xid
-         * @return true if the error was handled b use, false otherwise
+         * @return true if the error was handled by us, false otherwise
          * @throws SwitchStateException if the error was for the pending
          * role request but was unexpected
          */
@@ -328,10 +328,7 @@ class OFChannelHandler
         }
 
         /**
-         * Check if a pending role request has timed out. If so we disconnect
-         * the switch.
-         *
-         * TODO: should we throw SwitchStateException instead of logging?
+         * Check if a pending role request has timed out.
          */
         void checkTimeout() {
             if (!requestPending)
@@ -341,10 +338,10 @@ class OFChannelHandler
                     return;
                 long now = System.currentTimeMillis();
                 if (now - roleSubmitTime > roleTimeoutMs) {
+                    // timeout triggered.
                     setSwitchRole(pendingRole, RoleRecvStatus.NO_REPLY);
                 }
             }
-
         }
 
         /**
@@ -354,8 +351,9 @@ class OFChannelHandler
          * If the status indicates otherwise we disconnect the switch if
          * the role is SLAVE.
          *
-         * "Setting a role" means setting the appropriate ChannelState and
-         * notifying Controller.java
+         * "Setting a role" means setting the appropriate ChannelState,
+         * setting the flags on the switch and
+         * notifying Controller.java about new role of the switch
          *
          * @param role The role to set.
          * @param status How we derived at the decision to set this status.
@@ -425,7 +423,6 @@ class OFChannelHandler
             void processOFHello(OFChannelHandler h, OFHello m)
                     throws IOException {
                 h.sendHandShakeMessage(OFType.FEATURES_REQUEST);
-                h.sendRemoveAllFlowMods();
                 h.setState(WAIT_FEATURES_REPLY);
             }
             @Override
@@ -561,11 +558,11 @@ class OFChannelHandler
                     description.readFrom(data);
                     h.sw = h.controller.getOFSwitchInstance(description);
                     // set switch information
+                    h.sw.setConnected(true);
                     h.sw.setChannel(h.channel);
                     h.sw.setFloodlightProvider(h.controller);
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                     h.sw.setFeaturesReply(h.featuresReply);
-                    h.sw.setSwitchProperties(description);
                     h.readPropertyFromStorage();
                     log.info("Switch {} bound to class {}, description {}",
                              new Object[] { h.sw, h.sw.getClass(),
@@ -1199,7 +1196,7 @@ class OFChannelHandler
                    explanation="The specified switch has disconnected.")
     public void channelDisconnected(ChannelHandlerContext ctx,
                                     ChannelStateEvent e) throws Exception {
-        controller.switchDeactivated(this.sw);
+        controller.switchDisconnected(this.sw);
         controller.removeSwitchChannel(this);
         this.sw.setConnected(false);
 
@@ -1519,28 +1516,6 @@ class OFChannelHandler
         req.setXid(handshakeTransactionIds--);
 
         channel.write(Collections.singletonList(req));
-    }
-
-    /**
-     * Send command to switch to remove all flow mods
-     */
-    private void sendRemoveAllFlowMods() {
-        // Delete all pre-existing flows
-        OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
-        OFMessage fm = ((OFFlowMod) BasicFactory.getInstance()
-            .getMessage(OFType.FLOW_MOD))
-                .setMatch(match)
-            .setCommand(OFFlowMod.OFPFC_DELETE)
-            .setOutPort(OFPort.OFPP_NONE)
-            .setLength(U16.t(OFFlowMod.MINIMUM_LENGTH));
-        fm.setXid(handshakeTransactionIds--);
-        OFMessage barrierMsg = BasicFactory.getInstance().getMessage(
-                OFType.BARRIER_REQUEST);
-        barrierMsg.setXid(handshakeTransactionIds--);
-        List<OFMessage> msglist = new ArrayList<OFMessage>(2);
-        msglist.add(fm);
-        msglist.add(barrierMsg);
-        channel.write(msglist);
     }
 
 
