@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *  where {param} must be one of (no quotes):
  *       "all"                  returns value/info on all active counters.
  *       "{moduleName}"         returns value/info on all active counters for the specified module.
- *       "{moduleCounterName}"  returns value/info for specific counter if it is enabled.
+ *       "{moduleCounterName}"  returns value/info for specific counter if it is active.
  *
  * @author Saurav
  */

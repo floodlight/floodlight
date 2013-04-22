@@ -68,6 +68,7 @@ import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -142,6 +143,7 @@ public class Controller implements IFloodlightProviderService,
     private IRestApiService restApi;
     private ICounterStoreService counterStore = null;
     private IDebugCounterService debugCounters;
+    protected IDebugEventService debugEvents;
     private IStorageSourceService storageSource;
     private IPktInProcessingTimeService pktinProcTime;
     private IThreadPoolService threadPool;
@@ -821,9 +823,9 @@ public class Controller implements IFloodlightProviderService,
      */
     private class SwitchManager implements IStoreListener<Long> {
         private Role role;
-        private ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
-        private ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
-        private EventHistory<EventHistorySwitch> evHistSwitch;
+        private final ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
+        private final ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
+        private final EventHistory<EventHistorySwitch> evHistSwitch;
 
         public SwitchManager(Role role) {
             this.role = role;
@@ -1344,6 +1346,7 @@ public class Controller implements IFloodlightProviderService,
             }
             evSwitch.reason = reason;
             evSwitch = evHistSwitch.put(evSwitch, actn);
+            debugEvents.flushEvents();
         }
 
     }
@@ -1546,8 +1549,12 @@ public class Controller implements IFloodlightProviderService,
         this.counterStore = counterStore;
     }
 
-    void setDebugCounter(IDebugCounterService debugCounter) {
-        this.debugCounters = debugCounter;
+    void setDebugCounter(IDebugCounterService debugCounters) {
+        this.debugCounters = debugCounters;
+    }
+
+    public void setDebugEvent(IDebugEventService debugEvent) {
+        this.debugEvents = debugEvent;
     }
 
     IDebugCounterService getDebugCounter() {
@@ -2427,6 +2434,7 @@ public class Controller implements IFloodlightProviderService,
         OFSwitchBase.flush_all();
         counterStore.updateFlush();
         debugCounters.flushCounters();
+        debugEvents.flushEvents();
     }
 
     /**

@@ -157,6 +157,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        MutableLong ml = thismap.get(moduleCounterName);
        if (ml == null) {
            // check locally to see if this counter should be created or not
+           // FIXME: this is an O(n) operation per update - change to a boolean check
            Set<String> thisset = this.threadlocalCurrentCounters.get();
            if (thisset.contains(moduleCounterName)) {
                ml = new MutableLong();
