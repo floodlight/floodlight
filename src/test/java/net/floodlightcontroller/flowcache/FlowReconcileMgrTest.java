@@ -33,7 +33,7 @@ import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.junit.Before;
@@ -432,7 +432,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         int index = 0;
         for (index = 0; index < 10; index++) {
             ofmRcIn.cookie = index;
-            flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.EVENT_MEDIUM);
+            flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.EVENT_HIGH);
         }
         flowReconcileMgr.flowReconcileEnabled = true;
         flowReconcileMgr.doReconcile();
@@ -508,7 +508,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             OFMatchReconcile ofmRc = new OFMatchReconcile();
             // push large number of flows to be reconciled.
             for (int i = 0; i < NUM_FLOWS_PER_THREAD; i++) {
-                flowReconcileMgr.reconcileFlow(ofmRc, EventPriority.EVENT_LOW);
+                flowReconcileMgr.reconcileFlow(ofmRc,EventPriority.EVENT_HIGH);
             }
         }
     }
