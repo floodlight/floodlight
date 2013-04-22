@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -17,30 +17,20 @@
 
 package net.floodlightcontroller.linkdiscovery.internal;
 
-import static org.easymock.EasyMock.*;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.createNiceMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
 
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.easymock.Capture;
-import org.easymock.CaptureType;
-import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.factory.BasicFactory;
-import org.openflow.util.HexString;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -52,7 +42,6 @@ import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
-import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -70,6 +59,21 @@ import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyManager;
 
+import org.easymock.Capture;
+import org.easymock.CaptureType;
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFType;
+import org.openflow.protocol.factory.BasicFactory;
+import org.openflow.util.HexString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -78,7 +82,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
     private TestLinkDiscoveryManager ldm;
     protected static Logger log = LoggerFactory.getLogger(LinkDiscoveryManagerTest.class);
-    
+
     public class TestLinkDiscoveryManager extends LinkDiscoveryManager {
         public boolean isSendLLDPsCalled = false;
         public boolean isClearLinksCalled = false;
@@ -100,7 +104,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
             super.clearAllLinks();
         }
     }
-    
+
     public LinkDiscoveryManager getLinkDiscoveryManager() {
         return ldm;
     }
@@ -289,7 +293,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         Link lt = new Link(1L, 1, 2L, 1);
         NodePortTuple srcNpt = new NodePortTuple(1L, 1);
         NodePortTuple dstNpt = new NodePortTuple(2L, 1);
-        
+
         LinkInfo info;
 
         info = new LinkInfo(System.currentTimeMillis() - 40000,
@@ -439,7 +443,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertNotNull(linkDiscovery.portLinks.get(dstNpt));
         assertTrue(linkDiscovery.portLinks.get(dstNpt).contains(lt));
         assertTrue(linkDiscovery.links.containsKey(lt));
-        
+
         // check that it clears from memory
         getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
         assertTrue(linkDiscovery.switchLinks.isEmpty());
