@@ -33,9 +33,9 @@ import java.util.concurrent.TimeUnit;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -45,8 +45,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -63,9 +63,9 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +84,11 @@ public class TopologyManager implements
 
     public static final String CONTEXT_TUNNEL_ENABLED =
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
+
+    /**
+     * Role of the controller.
+     */
+    private Role role;
 
     /**
      * Set of ports for each switch
@@ -667,6 +672,7 @@ public class TopologyManager implements
     public void roleChanged(Role newRole) {
         switch(newRole) {
             case MASTER:
+                role = Role.MASTER;
                 log.debug("Re-computing topology due " +
                         "to HA change from SLAVE->MASTER");
                 newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
@@ -675,6 +681,7 @@ public class TopologyManager implements
             case SLAVE:
                 log.debug("Clearing topology due to " +
                         "HA change to SLAVE");
+                role = Role.SLAVE;
                 ldUpdates.clear();
                 clearCurrentTopology();
                 break;
@@ -753,10 +760,13 @@ public class TopologyManager implements
 
     @Override
     public void startUp(FloodlightModuleContext context) {
+        // Initialize role to floodlight provider role.
+        this.role = floodlightProvider.getRole();
+
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
-        if (floodlightProvider.getRole() != Role.SLAVE)
+        if (role != Role.SLAVE)
             newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
                                    TimeUnit.MILLISECONDS);
 
@@ -1155,6 +1165,10 @@ public class TopologyManager implements
 
 
     public void informListeners() {
+
+        if (role != null && role != Role.MASTER)
+            return;
+
         for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
             listener.topologyChanged();

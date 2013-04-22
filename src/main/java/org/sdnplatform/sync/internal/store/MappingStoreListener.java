@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.internal.util.ByteArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,8 @@ public class MappingStoreListener {
         this.listener = listener;
     }
 
-    public void notify(Iterator<ByteArray> keys) {
-        listener.keysModified(new MappingIterator(keys));
+    public void notify(Iterator<ByteArray> keys, UpdateType type) {
+        listener.keysModified(new MappingIterator(keys), type);
     }
     
     class MappingIterator implements Iterator {

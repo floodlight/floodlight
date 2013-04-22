@@ -20,6 +20,7 @@ package net.floodlightcontroller.core;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -296,7 +297,7 @@ public interface IOFSwitch {
      * Retrieves the date the switch connected to this controller
      * @return the date
      */
-    public String getConnectedSince();
+    public Date getConnectedSince();
 
     /**
      * Returns the next available transaction id

@@ -1,4 +1,6 @@
-package net.floodlightcontroller.debugcounter;
+package net.floodlightcontroller.debugcounter.web;
+
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;

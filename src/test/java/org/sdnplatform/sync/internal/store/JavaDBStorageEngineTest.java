@@ -17,7 +17,7 @@ import org.sdnplatform.sync.internal.util.ByteArray;
 import org.sdnplatform.sync.internal.version.VectorClock;
 
 import static org.junit.Assert.*;
-import static org.sdnplatform.sync.internal.TUtils.getClock;
+import static org.sdnplatform.sync.internal.TUtils.*;
 
 
 public class JavaDBStorageEngineTest extends AbstractStorageEngineT {
