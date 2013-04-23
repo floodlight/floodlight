@@ -124,7 +124,7 @@ public class OFSwitchBaseTest {
                 .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
         testPacketSerialized = testPacket.serialize();
 
-        pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+        pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                 .setBufferId(-1)
                 .setInPort((short) 1)
                 .setPacketData(testPacketSerialized)
@@ -136,7 +136,7 @@ public class OFSwitchBaseTest {
         switches.put(sw.getId(), sw);
         expect(floodlightProvider.getSwitches()).andReturn(switches).anyTimes();
         expect(floodlightProvider.getOFMessageFactory())
-                .andReturn(new BasicFactory()).anyTimes();
+                .andReturn(BasicFactory.getInstance()).anyTimes();
         replay(floodlightProvider);
     }
 
