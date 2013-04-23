@@ -1508,6 +1508,9 @@ public class Controller implements IFloodlightProviderService,
             this.setAlwaysClearFlowsOnSwAdd(false);
             log.info("Flush switches on reconnect -- Disabled");
         }
+        this.roleManager = new RoleManager(this.notifiedRole,
+                                           INITIAL_ROLE_CHANGE_DESCRIPTION);
+        this.switchManager = new SwitchManager(this.notifiedRole);
      }
 
     /**
@@ -1537,9 +1540,7 @@ public class Controller implements IFloodlightProviderService,
         restApi.addRestletRoutable(new CoreWebRoutable());
 
         this.ses = threadPool.getScheduledExecutor();
-        this.roleManager = new RoleManager(this.notifiedRole,
-                                           INITIAL_ROLE_CHANGE_DESCRIPTION);
-        this.switchManager = new SwitchManager(this.notifiedRole);
+
         try {
             this.syncService.registerStore(SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
             this.storeClient = this.syncService
