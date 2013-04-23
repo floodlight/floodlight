@@ -27,3 +27,5 @@ net.floodlightcontroller.core.test.MockFloodlightProvider
 net.floodlightcontroller.core.test.MockThreadPoolService
 net.floodlightcontroller.firewall.Firewall
 net.floodlightcontroller.loadbalancer.LoadBalancer
+org.sdnplatform.sync.internal.SyncManager
+org.sdnplatform.sync.internal.SyncTorture

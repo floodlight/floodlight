@@ -62,7 +62,7 @@ public class RoleChangerTest {
     public void setUp() throws Exception {
         controller = createMock(Controller.class);
         roleChanger = new RoleChanger(controller);
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         expect(controller.getOFMessageFactory()).andReturn(factory).anyTimes();
     }
     

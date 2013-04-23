@@ -141,7 +141,7 @@ public class Controller implements IFloodlightProviderService,
 
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
 
-    private static final String ERROR_DATABASE =
+    static final String ERROR_DATABASE =
             "The controller could not communicate with the system database.";
 
     protected BasicFactory factory;
@@ -1817,7 +1817,7 @@ public class Controller implements IFloodlightProviderService,
         this.connectedSwitches = new HashSet<IOFSwitch>();
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
-        this.factory = new BasicFactory();
+        this.factory = BasicFactory.getInstance();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
         this.role = getInitialRole(configParams);

@@ -28,7 +28,7 @@ public class OFTestCase extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        messageFactory = new BasicFactory();
+        messageFactory = BasicFactory.getInstance();
     }
 
     public void test() throws Exception {

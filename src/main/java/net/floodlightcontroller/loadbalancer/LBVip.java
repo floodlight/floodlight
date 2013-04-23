@@ -18,7 +18,7 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.util.ArrayList;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import net.floodlightcontroller.loadbalancer.LoadBalancer.IPClient;
 import net.floodlightcontroller.util.MACAddress;

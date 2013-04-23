@@ -19,8 +19,8 @@ package net.floodlightcontroller.devicemanager;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.ser.ToStringSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * A simple switch DPID/port pair

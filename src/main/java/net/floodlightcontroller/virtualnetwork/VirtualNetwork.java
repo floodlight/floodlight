@@ -19,7 +19,7 @@ package net.floodlightcontroller.virtualnetwork;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import net.floodlightcontroller.util.MACAddress;
 

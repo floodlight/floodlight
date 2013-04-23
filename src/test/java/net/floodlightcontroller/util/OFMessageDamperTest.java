@@ -50,7 +50,7 @@ public class OFMessageDamperTest {
     
     @Before
     public void setUp() throws IOException {
-        factory = new BasicFactory();
+        factory = BasicFactory.getInstance();
         cntx = new FloodlightContext();
         
         sw1 = new OFMessageDamperMockSwitch();

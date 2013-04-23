@@ -217,7 +217,7 @@ public class ControllerTest extends FloodlightTestCase
         byte[] testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        OFPacketIn pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+        OFPacketIn pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                 .setBufferId(-1)
                 .setInPort((short) 1)
                 .setPacketData(testPacketSerialized)
@@ -425,7 +425,7 @@ public class ControllerTest extends FloodlightTestCase
         byte[] testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        OFPacketIn pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+        OFPacketIn pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                 .setBufferId(-1)
                 .setInPort((short) 1)
                 .setPacketData(testPacketSerialized)
@@ -1467,7 +1467,7 @@ public class ControllerTest extends FloodlightTestCase
         byte[] testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        OFPacketIn pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+        OFPacketIn pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                 .setBufferId(-1)
                 .setInPort((short) 1)
                 .setPacketData(testPacketSerialized)
@@ -1662,7 +1662,7 @@ public class ControllerTest extends FloodlightTestCase
                 byte[] testPacketSerialized = testPacket.serialize();
 
                 // Build the PacketIn
-                pi = ((OFPacketIn) new BasicFactory().getMessage(OFType.PACKET_IN))
+                pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
                         .setBufferId(-1)
                         .setInPort((short) 1)
                         .setPacketData(testPacketSerialized)
