@@ -788,6 +788,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     /**
+     * Return if switch has exceeded the high threshold of packet in rate.
+     * @return
+     */
+    @Override
+    public boolean isOverloaded() {
+        return packetInThrottleEnabled;
+    }
+
+    /**
      * Determine if this message should be dropped.
      *
      * We compute the current rate by taking a timestamp every 100 messages.

@@ -439,4 +439,10 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return false;
     }
 
+    @Override
+    public boolean isOverloaded() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
 }

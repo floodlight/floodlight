@@ -115,6 +115,14 @@ public interface IOFSwitch {
     public boolean inputThrottled(OFMessage ofm);
 
     /**
+     * Return if the switch is currently overloaded. The definition of
+     * overload refers to excessive traffic in the control path, namely
+     * a high packet in rate.
+     * @return
+     */
+    boolean isOverloaded();
+
+    /**
      * Write OFMessage to the output stream, subject to switch rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners
