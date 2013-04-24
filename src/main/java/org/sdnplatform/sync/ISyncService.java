@@ -24,8 +24,21 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  */
 public interface ISyncService extends IFloodlightService {
     public enum Scope {
+        /**
+         * Stores with this scope will be replicated to all nodes in the 
+         * cluster
+         */
         GLOBAL,
-        LOCAL
+        /**
+         * Stores with this scope will be replicated only to other nodes
+         * within the writing node's local domain
+         */
+        LOCAL,
+        /**
+         * Stores with this scope will not be replicated and will be stored
+         * locally only.
+         */
+        UNSYNCHRONIZED
     }
 
     /**

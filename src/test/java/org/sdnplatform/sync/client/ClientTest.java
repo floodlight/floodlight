@@ -45,11 +45,14 @@ public class ClientTest {
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+1);
-        syncManager.registerStore("global", Scope.GLOBAL);
+        fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         tp.init(fmc);
         syncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
+
+        syncManager.registerStore("global", Scope.GLOBAL);
     }
 
     @After

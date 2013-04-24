@@ -12,7 +12,8 @@ import org.apache.thrift.TEnum;
 
 @SuppressWarnings("all") public enum Scope implements org.apache.thrift.TEnum {
   GLOBAL(0),
-  LOCAL(1);
+  LOCAL(1),
+  UNSYNCHRONIZED(2);
 
   private final int value;
 
@@ -37,6 +38,8 @@ import org.apache.thrift.TEnum;
         return GLOBAL;
       case 1:
         return LOCAL;
+      case 2:
+        return UNSYNCHRONIZED;
       default:
         return null;
     }

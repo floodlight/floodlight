@@ -1,6 +1,7 @@
 package org.sdnplatform.sync.internal.store;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -10,7 +11,6 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.smile.SmileFactory;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.sdnplatform.sync.IClosableIterator;
@@ -139,10 +139,16 @@ public class JacksonStore<K, V> implements IStore<K, V> {
             throw new IllegalArgumentException("Cannot get null key");
 
         try {
+            ByteArray k = null;
             if (keyAsTree)
-                return new ByteArray(mapper.writeValueAsBytes(key));
+                k = new ByteArray(mapper.writeValueAsBytes(key));
             else
-                return new ByteArray(keyWriter.writeValueAsBytes(key));
+                k = new ByteArray(keyWriter.writeValueAsBytes(key));
+            
+            if (logger.isTraceEnabled()) {
+                logger.trace("Converted key {} to {}", key, k);
+            }
+            return k;
         } catch (Exception e) {
             throw new SerializationException(e);
         }
@@ -150,10 +156,17 @@ public class JacksonStore<K, V> implements IStore<K, V> {
 
     private byte[] getValueBytes(V value) throws SyncException {
         try {
+            byte[] v = null;
             if (valueAsTree)
-                return mapper.writeValueAsBytes(value);
+                v = mapper.writeValueAsBytes(value);
             else
-                return valueWriter.writeValueAsBytes(value);
+                v = valueWriter.writeValueAsBytes(value);
+            
+            if (logger.isTraceEnabled()) {
+                logger.trace("Converted value {} to {}", 
+                             value, Arrays.toString(v));
+            }
+            return v;
         } catch (Exception e) {
             throw new SerializationException(e);
         }

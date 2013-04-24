@@ -16,6 +16,8 @@ import org.jboss.netty.handler.timeout.ReadTimeoutException;
 import org.sdnplatform.sync.error.HandshakeTimeoutException;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.thrift.AsyncMessageHeader;
+import org.sdnplatform.sync.thrift.ClusterJoinRequestMessage;
+import org.sdnplatform.sync.thrift.ClusterJoinResponseMessage;
 import org.sdnplatform.sync.thrift.SyncError;
 import org.sdnplatform.sync.thrift.SyncMessage;
 import org.sdnplatform.sync.thrift.CursorRequestMessage;
@@ -218,6 +220,12 @@ public abstract class AbstractRPCChannelHandler
             case REGISTER_RESPONSE:
                 handleRegisterResponse(bsm.getRegisterResponse(), channel);
                 break;
+            case CLUSTER_JOIN_REQUEST:
+                handleClusterJoinRequest(bsm.getClusterJoinRequest(), channel);
+                break;
+            case CLUSTER_JOIN_RESPONSE:
+                handleClusterJoinResponse(bsm.getClusterJoinResponse(), channel);
+                break;
             case ERROR:
                 handleError(bsm.getError(), channel);
                 break;
@@ -330,15 +338,27 @@ public abstract class AbstractRPCChannelHandler
     }
 
     protected void handleRegisterRequest(RegisterRequestMessage request,
-                                       Channel channel) {
+                                         Channel channel) {
         unexpectedMessage(request.getHeader().getTransactionId(),
                           MessageType.REGISTER_REQUEST, channel);
     }
 
     protected void handleRegisterResponse(RegisterResponseMessage response,
-                                        Channel channel) {
+                                          Channel channel) {
         unexpectedMessage(response.getHeader().getTransactionId(),
                           MessageType.REGISTER_RESPONSE, channel);
+    }
+
+    protected void handleClusterJoinRequest(ClusterJoinRequestMessage request,
+                                            Channel channel) {
+        unexpectedMessage(request.getHeader().getTransactionId(),
+                          MessageType.CLUSTER_JOIN_REQUEST, channel);
+    }
+
+    protected void handleClusterJoinResponse(ClusterJoinResponseMessage response,
+                                             Channel channel) {
+        unexpectedMessage(response.getHeader().getTransactionId(),
+                          MessageType.CLUSTER_JOIN_RESPONSE, channel);
     }
 
     protected void handleError(ErrorMessage error, Channel channel) {

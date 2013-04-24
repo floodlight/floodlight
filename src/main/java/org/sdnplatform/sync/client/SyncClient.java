@@ -13,17 +13,18 @@ import net.floodlightcontroller.threadpool.ThreadPool;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.core.JsonParser;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.remote.RemoteSyncManager;
-
 
 public class SyncClient {
     RemoteSyncManager syncManager;
@@ -59,6 +60,7 @@ public class SyncClient {
         commands.put("delete", new DeleteCommand());
         commands.put("get", new GetCommand());
         commands.put("getfull", new GetFullCommand());
+        commands.put("entries", new EntriesCommand());
         commands.put("store", new StoreCommand());
         commands.put("register", new RegisterCommand());
     }
@@ -204,7 +206,43 @@ public class SyncClient {
             return "getfull [key]";
         }
     }
-    
+
+    protected class EntriesCommand extends ShellCommand {
+        ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
+
+        @Override
+        public boolean execute(String[] tokens, String line) throws Exception {
+            if (!checkStoreSettings()) return false;
+
+            IClosableIterator<Entry<JsonNode, Versioned<JsonNode>>> iter = 
+                    storeClient.entries();
+            try {
+                while (iter.hasNext()) {
+                    Entry<JsonNode, Versioned<JsonNode>> e = iter.next();
+                    display(e.getKey(), e.getValue());
+                }
+            } finally {
+                iter.close();
+            }
+            return false;
+        }
+        
+
+        protected void display(JsonNode keyNode,
+                               Versioned<JsonNode> value) throws Exception {
+            if (value.getValue() == null) return;
+            ObjectNode n = mapper.createObjectNode();
+            n.put("key", keyNode);
+            n.put("value", value.getValue());
+            out.println(writer.writeValueAsString(n));
+        }
+        
+        @Override
+        public String syntaxString() {
+            return "entries";
+        }
+    }
+
     /**
      * Put command
      * @author readams

@@ -2,7 +2,6 @@ package org.sdnplatform.sync.internal.store;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.sdnplatform.sync.internal.store.IStore;
 import org.sdnplatform.sync.internal.store.InMemoryStorageEngine;
 import org.sdnplatform.sync.internal.store.JacksonStore;
@@ -41,6 +40,4 @@ public class JacksonStoreTest extends AbstractStoreT<Key, TBean> {
         }
         return k;
     }
-
-
 }

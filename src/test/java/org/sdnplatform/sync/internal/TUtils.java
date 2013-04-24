@@ -68,9 +68,22 @@ public class TUtils {
      */
     public static VectorClock getClockT(long timestamp, int... nodes) {
         VectorClock clock = new VectorClock(timestamp);
-        return increment(clock, nodes);
+        return incrementT(timestamp, clock, nodes);
     }
 
+    /**
+     * Record events for the given sequence of nodes
+     *
+     * @param clock The VectorClock to record the events on
+     * @param nodes The sequences of node events
+     */
+    public static VectorClock incrementT(long timestamp, 
+                                         VectorClock clock, int... nodes) {
+        for(int n: nodes)
+            clock = clock.incremented((short) n, timestamp);
+        return clock;
+    }
+    
     /**
      * Record events for the given sequence of nodes
      *

@@ -20,16 +20,19 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("all") public class SyncOffer implements org.apache.thrift.TBase<SyncOffer, SyncOffer._Fields>, java.io.Serializable, Cloneable {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("SyncOffer");
+@SuppressWarnings("all") public class ClusterJoinRequestMessage implements org.apache.thrift.TBase<ClusterJoinRequestMessage, ClusterJoinRequestMessage._Fields>, java.io.Serializable, Cloneable {
+  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ClusterJoinRequestMessage");
 
   private static final org.apache.thrift.protocol.TField HEADER_FIELD_DESC = new org.apache.thrift.protocol.TField("header", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+  private static final org.apache.thrift.protocol.TField NODE_FIELD_DESC = new org.apache.thrift.protocol.TField("node", org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
   public AsyncMessageHeader header; // required
+  public Node node; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-    HEADER((short)1, "header");
+    HEADER((short)1, "header"),
+    NODE((short)2, "node");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -46,6 +49,8 @@ import org.slf4j.LoggerFactory;
       switch(fieldId) {
         case 1: // HEADER
           return HEADER;
+        case 2: // NODE
+          return NODE;
         default:
           return null;
       }
@@ -92,43 +97,51 @@ import org.slf4j.LoggerFactory;
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.HEADER, new org.apache.thrift.meta_data.FieldMetaData("header", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, AsyncMessageHeader.class)));
+    tmpMap.put(_Fields.NODE, new org.apache.thrift.meta_data.FieldMetaData("node", org.apache.thrift.TFieldRequirementType.REQUIRED, 
+        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, Node.class)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
-    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(SyncOffer.class, metaDataMap);
+    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ClusterJoinRequestMessage.class, metaDataMap);
   }
 
-  public SyncOffer() {
+  public ClusterJoinRequestMessage() {
   }
 
-  public SyncOffer(
-    AsyncMessageHeader header)
+  public ClusterJoinRequestMessage(
+    AsyncMessageHeader header,
+    Node node)
   {
     this();
     this.header = header;
+    this.node = node;
   }
 
   /**
    * Performs a deep copy on <i>other</i>.
    */
-  public SyncOffer(SyncOffer other) {
+  public ClusterJoinRequestMessage(ClusterJoinRequestMessage other) {
     if (other.isSetHeader()) {
       this.header = new AsyncMessageHeader(other.header);
     }
+    if (other.isSetNode()) {
+      this.node = new Node(other.node);
+    }
   }
 
-  public SyncOffer deepCopy() {
-    return new SyncOffer(this);
+  public ClusterJoinRequestMessage deepCopy() {
+    return new ClusterJoinRequestMessage(this);
   }
 
   @Override
   public void clear() {
     this.header = null;
+    this.node = null;
   }
 
   public AsyncMessageHeader getHeader() {
     return this.header;
   }
 
-  public SyncOffer setHeader(AsyncMessageHeader header) {
+  public ClusterJoinRequestMessage setHeader(AsyncMessageHeader header) {
     this.header = header;
     return this;
   }
@@ -148,6 +161,30 @@ import org.slf4j.LoggerFactory;
     }
   }
 
+  public Node getNode() {
+    return this.node;
+  }
+
+  public ClusterJoinRequestMessage setNode(Node node) {
+    this.node = node;
+    return this;
+  }
+
+  public void unsetNode() {
+    this.node = null;
+  }
+
+  /** Returns true if field node is set (has been assigned a value) and false otherwise */
+  public boolean isSetNode() {
+    return this.node != null;
+  }
+
+  public void setNodeIsSet(boolean value) {
+    if (!value) {
+      this.node = null;
+    }
+  }
+
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
     case HEADER:
@@ -158,6 +195,14 @@ import org.slf4j.LoggerFactory;
       }
       break;
 
+    case NODE:
+      if (value == null) {
+        unsetNode();
+      } else {
+        setNode((Node)value);
+      }
+      break;
+
     }
   }
 
@@ -165,6 +210,9 @@ import org.slf4j.LoggerFactory;
     switch (field) {
     case HEADER:
       return getHeader();
+
+    case NODE:
+      return getNode();
 
     }
     throw new IllegalStateException();
@@ -179,6 +227,8 @@ import org.slf4j.LoggerFactory;
     switch (field) {
     case HEADER:
       return isSetHeader();
+    case NODE:
+      return isSetNode();
     }
     throw new IllegalStateException();
   }
@@ -187,12 +237,12 @@ import org.slf4j.LoggerFactory;
   public boolean equals(Object that) {
     if (that == null)
       return false;
-    if (that instanceof SyncOffer)
-      return this.equals((SyncOffer)that);
+    if (that instanceof ClusterJoinRequestMessage)
+      return this.equals((ClusterJoinRequestMessage)that);
     return false;
   }
 
-  public boolean equals(SyncOffer that) {
+  public boolean equals(ClusterJoinRequestMessage that) {
     if (that == null)
       return false;
 
@@ -205,6 +255,15 @@ import org.slf4j.LoggerFactory;
         return false;
     }
 
+    boolean this_present_node = true && this.isSetNode();
+    boolean that_present_node = true && that.isSetNode();
+    if (this_present_node || that_present_node) {
+      if (!(this_present_node && that_present_node))
+        return false;
+      if (!this.node.equals(that.node))
+        return false;
+    }
+
     return true;
   }
 
@@ -213,13 +272,13 @@ import org.slf4j.LoggerFactory;
     return 0;
   }
 
-  public int compareTo(SyncOffer other) {
+  public int compareTo(ClusterJoinRequestMessage other) {
     if (!getClass().equals(other.getClass())) {
       return getClass().getName().compareTo(other.getClass().getName());
     }
 
     int lastComparison = 0;
-    SyncOffer typedOther = (SyncOffer)other;
+    ClusterJoinRequestMessage typedOther = (ClusterJoinRequestMessage)other;
 
     lastComparison = Boolean.valueOf(isSetHeader()).compareTo(typedOther.isSetHeader());
     if (lastComparison != 0) {
@@ -227,6 +286,16 @@ import org.slf4j.LoggerFactory;
     }
     if (isSetHeader()) {
       lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.header, typedOther.header);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetNode()).compareTo(typedOther.isSetNode());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetNode()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.node, typedOther.node);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -256,6 +325,14 @@ import org.slf4j.LoggerFactory;
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
+        case 2: // NODE
+          if (field.type == org.apache.thrift.protocol.TType.STRUCT) {
+            this.node = new Node();
+            this.node.read(iprot);
+          } else { 
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+          }
+          break;
         default:
           org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
       }
@@ -276,13 +353,18 @@ import org.slf4j.LoggerFactory;
       this.header.write(oprot);
       oprot.writeFieldEnd();
     }
+    if (this.node != null) {
+      oprot.writeFieldBegin(NODE_FIELD_DESC);
+      this.node.write(oprot);
+      oprot.writeFieldEnd();
+    }
     oprot.writeFieldStop();
     oprot.writeStructEnd();
   }
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("SyncOffer(");
+    StringBuilder sb = new StringBuilder("ClusterJoinRequestMessage(");
     boolean first = true;
 
     sb.append("header:");
@@ -290,6 +372,14 @@ import org.slf4j.LoggerFactory;
       sb.append("null");
     } else {
       sb.append(this.header);
+    }
+    first = false;
+    if (!first) sb.append(", ");
+    sb.append("node:");
+    if (this.node == null) {
+      sb.append("null");
+    } else {
+      sb.append(this.node);
     }
     first = false;
     sb.append(")");
@@ -300,6 +390,9 @@ import org.slf4j.LoggerFactory;
     // check for required fields
     if (header == null) {
       throw new org.apache.thrift.protocol.TProtocolException("Required field 'header' was not present! Struct: " + toString());
+    }
+    if (node == null) {
+      throw new org.apache.thrift.protocol.TProtocolException("Required field 'node' was not present! Struct: " + toString());
     }
   }
 

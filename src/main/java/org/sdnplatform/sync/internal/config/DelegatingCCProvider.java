@@ -1,6 +1,7 @@
 package org.sdnplatform.sync.internal.config;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.sdnplatform.sync.error.SyncException;
@@ -29,8 +30,17 @@ public class DelegatingCCProvider implements IClusterConfigProvider {
     @Override
     public void init(SyncManager syncManager,
                      FloodlightModuleContext context) {
-        for (IClusterConfigProvider provider : providers)
-            provider.init(syncManager, context);
+        Iterator<IClusterConfigProvider> iter = providers.iterator();
+        while (iter.hasNext()) {
+            IClusterConfigProvider provider = iter.next();
+            try {
+                provider.init(syncManager, context);
+            } catch (Exception e) {
+                logger.error("Failed to initialize provider " + 
+                             provider.getClass().getName(), e);
+                iter.remove();
+            }
+        }
     }
 
     @Override

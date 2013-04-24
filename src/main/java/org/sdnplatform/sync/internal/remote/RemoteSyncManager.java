@@ -9,6 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -307,10 +308,11 @@ public class RemoteSyncManager extends AbstractSyncManager {
         Future<SyncReply> future =
                 sendRequest(header.getTransactionId(), bsm);
         try {
-            future.get(2, TimeUnit.SECONDS);
+            future.get(5, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            throw new RemoteStoreException("Timed out on operation", e);
         } catch (Exception e) {
             throw new RemoteStoreException("Error while waiting for reply", e);
         }        
     }
-
 }

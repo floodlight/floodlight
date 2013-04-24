@@ -34,6 +34,7 @@ import org.sdnplatform.sync.internal.config.IClusterConfigProvider;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.PropertyCCProvider;
 import org.sdnplatform.sync.internal.config.StorageCCProvider;
+import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
 import org.sdnplatform.sync.internal.rpc.RPCService;
 import org.sdnplatform.sync.internal.rpc.TProtocolUtil;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
@@ -81,7 +82,7 @@ public class SyncManager extends AbstractSyncManager {
      * The store registry holds the storage engines that provide 
      * access to the data
      */
-    private StoreRegistry storeRegistry = new StoreRegistry(this);
+    private StoreRegistry storeRegistry = null;
     
     private IClusterConfigProvider clusterConfigProvider;
     private ClusterConfig clusterConfig = new ClusterConfig();
@@ -140,6 +141,12 @@ public class SyncManager extends AbstractSyncManager {
     private Map<Integer, Cursor> cursorMap = 
             new ConcurrentHashMap<Integer, Cursor>(); 
     
+    /**
+     * Whether to allow persistent stores or to use in-memory even 
+     * when persistence is requested
+     */
+    private boolean persistenceEnabled = true;
+    
     private static final String PACKAGE = 
             ISyncService.class.getPackage().getName();
     public static final String COUNTER_HINTS = PACKAGE + "-hints";
@@ -167,7 +174,7 @@ public class SyncManager extends AbstractSyncManager {
     @Override
     public void registerPersistentStore(String storeName, Scope scope) 
             throws PersistException {
-        storeRegistry.register(storeName, scope, true);
+        storeRegistry.register(storeName, scope, persistenceEnabled);
     }
 
     // **************************
@@ -212,6 +219,8 @@ public class SyncManager extends AbstractSyncManager {
                 if (node.getDomainId() != 
                         getClusterConfig().getNode().getDomainId())
                     continue;
+            } else if (Scope.UNSYNCHRONIZED.equals(store.getScope())) {
+                continue;
             }
             
             IClosableIterator<Entry<ByteArray, 
@@ -365,56 +374,8 @@ public class SyncManager extends AbstractSyncManager {
      * Update the node configuration to add or remove nodes
      * @throws FloodlightModuleException 
      */
-    @LogMessageDocs({
-        @LogMessageDoc(level="INFO",
-                message="Updating sync configuration {config}",
-                explanation="The sync service cluster configuration has been updated"),
-        @LogMessageDoc(level="INFO",
-                message="Local node configuration changed; restarting sync" +
-                        "service",
-                explanation="The sync service must be restarted to update its configuration")
-    })
-    public void updateConfiguration()
-            throws FloodlightModuleException {
-        
-        try {
-            ClusterConfig oldConfig = clusterConfig;
-            clusterConfig = clusterConfigProvider.getConfig();
-            if (clusterConfig.equals(oldConfig)) return;
-
-            logger.info("Updating sync configuration {}", clusterConfig);
-            if (oldConfig.getNode() != null &&
-                !clusterConfig.getNode().equals(oldConfig.getNode())) {
-                logger.info("Local node configuration changed; restarting sync" +
-                        "service");
-                shutdown();
-                startUp(null);
-            }
-
-            for (Node n : clusterConfig.getNodes()) {
-                Node existing = oldConfig.getNode(n.getNodeId());
-                if (existing != null && !n.equals(existing)) {
-                    // we already had this node's configuration, but it's
-                    // changed.  Disconnect from the node and let it
-                    // reinitialize
-                    logger.debug("[{}->{}] Configuration for node has changed",
-                                 getLocalNodeId(), n.getNodeId());
-                    rpcService.disconnectNode(n.getNodeId());
-                }
-            }
-            for (Node n : oldConfig.getNodes()) {
-                Node nn = clusterConfig.getNode(n.getNodeId());
-                if (nn == null) {
-                    // n is a node that doesn't appear in the new config
-                    logger.debug("[{}->{}] Disconnecting deconfigured node",
-                                 getLocalNodeId(), n.getNodeId());
-                    rpcService.disconnectNode(n.getNodeId());
-                }
-            }
-        } catch (Exception e) {
-            throw new FloodlightModuleException("Could not update " +
-                                                "configuration", e);
-        }
+    public void updateConfiguration() {
+        updateConfigTask.reschedule(500, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -461,7 +422,9 @@ public class SyncManager extends AbstractSyncManager {
     
     @Override
     public short getLocalNodeId() {
-        return clusterConfig.getNode().getNodeId();
+        Node l = clusterConfig.getNode();
+        if (l == null) return Short.MAX_VALUE;
+        return l.getNodeId();
     }
 
     @Override
@@ -493,13 +456,18 @@ public class SyncManager extends AbstractSyncManager {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         debugCounter = context.getServiceImpl(IDebugCounterService.class);
         Map<String, String> config = context.getConfigParams(this);
-
+        storeRegistry = new StoreRegistry(this, config.get("dbPath"));
+        
         String[] configProviders =
-             {StorageCCProvider.class.getName(),
-              PropertyCCProvider.class.getName(),
+             {PropertyCCProvider.class.getName(),
+              SyncStoreCCProvider.class.getName(),
+              StorageCCProvider.class.getName(),
               FallbackCCProvider.class.getName()};
         try {
-
+            if (config.containsKey("persistenceEnabled")) {
+                persistenceEnabled =
+                        Boolean.parseBoolean(config.get("persistenceEnabled"));
+            }
             if (config.containsKey("configProviders")) {
                 configProviders = config.get("configProviders").split(",");
             }
@@ -537,29 +505,29 @@ public class SyncManager extends AbstractSyncManager {
     @Override
     public void startUp(FloodlightModuleContext context) 
             throws FloodlightModuleException {
-        debugCounter.registerCounter(COUNTER_HINTS,
-                                     "Queued sync events processed",
-                                     CounterType.ALWAYS_COUNT);
-        debugCounter.registerCounter(COUNTER_SENT_VALUES,
-                                     "Values synced to remote node",
-                                     CounterType.ALWAYS_COUNT);
-        debugCounter.registerCounter(COUNTER_RECEIVED_VALUES,
-                                     "Values received from remote node",
-                                     CounterType.ALWAYS_COUNT);
-        debugCounter.registerCounter(COUNTER_PUTS,
-                                     "Local puts to store",
-                                     CounterType.ALWAYS_COUNT);        
-        debugCounter.registerCounter(COUNTER_GETS,
-                                     "Local gets from store",
-                                     CounterType.ALWAYS_COUNT);     
-        debugCounter.registerCounter(COUNTER_ITERATORS,
-                                     "Local iterators created over store",
-                                     CounterType.ALWAYS_COUNT);     
-        
-        updateConfiguration();
-        rpcService = new RPCService(this, debugCounter);
-        rpcService.run();
+        if (context != null) {
+            debugCounter.registerCounter(COUNTER_HINTS,
+                                         "Queued sync events processed",
+                                         CounterType.ALWAYS_COUNT);
+            debugCounter.registerCounter(COUNTER_SENT_VALUES,
+                                         "Values synced to remote node",
+                                         CounterType.ALWAYS_COUNT);
+            debugCounter.registerCounter(COUNTER_RECEIVED_VALUES,
+                                         "Values received from remote node",
+                                         CounterType.ALWAYS_COUNT);
+            debugCounter.registerCounter(COUNTER_PUTS,
+                                         "Local puts to store",
+                                         CounterType.ALWAYS_COUNT);        
+            debugCounter.registerCounter(COUNTER_GETS,
+                                         "Local gets from store",
+                                         CounterType.ALWAYS_COUNT);     
+            debugCounter.registerCounter(COUNTER_ITERATORS,
+                                         "Local iterators created over store",
+                                         CounterType.ALWAYS_COUNT);
+        }
 
+        rpcService = new RPCService(this, debugCounter);
+        
         cleanupTask = new SingletonTask(threadPool.getScheduledExecutor(), 
                                         new CleanupTask());
         cleanupTask.reschedule(CLEANUP_INTERVAL + 
@@ -569,11 +537,6 @@ public class SyncManager extends AbstractSyncManager {
                                        new AntientropyTask());
         antientropyTask.reschedule(ANTIENTROPY_INTERVAL + 
                                    random.nextInt(30), TimeUnit.SECONDS);
-
-        updateConfigTask =
-                new SingletonTask(threadPool.getScheduledExecutor(),
-                                  new UpdateConfigTask());
-        updateConfigTask.reschedule(CONFIG_RESCAN_INTERVAL, TimeUnit.SECONDS);
 
         final ThreadGroup tg = new ThreadGroup("Hint Workers");
         tg.setMaxPriority(Thread.NORM_PRIORITY - 2);
@@ -590,6 +553,14 @@ public class SyncManager extends AbstractSyncManager {
         for (int i = 0; i < SYNC_WORKER_POOL; i++) {
             hintThreadPool.execute(new HintWorker());
         }
+
+        doUpdateConfiguration();
+        rpcService.run();
+
+        updateConfigTask =
+                new SingletonTask(threadPool.getScheduledExecutor(),
+                                  new UpdateConfigTask());
+        updateConfigTask.reschedule(CONFIG_RESCAN_INTERVAL, TimeUnit.SECONDS);
     }
 
     @Override
@@ -606,6 +577,58 @@ public class SyncManager extends AbstractSyncManager {
     // ***************
     // Local methods
     // ***************
+
+    @LogMessageDocs({
+        @LogMessageDoc(level="INFO",
+                message="Updating sync configuration {config}",
+                explanation="The sync service cluster configuration has been updated"),
+        @LogMessageDoc(level="INFO",
+                message="Local node configuration changed; restarting sync" +
+                        "service",
+                explanation="The sync service must be restarted to update its configuration")
+    })
+    protected void doUpdateConfiguration()
+            throws FloodlightModuleException {
+        
+        try {
+            ClusterConfig oldConfig = clusterConfig;
+            clusterConfig = clusterConfigProvider.getConfig();
+            if (clusterConfig.equals(oldConfig)) return;
+
+            logger.info("Updating sync configuration {}", clusterConfig);
+            if (oldConfig.getNode() != null &&
+                !clusterConfig.getNode().equals(oldConfig.getNode())) {
+                logger.info("Local node configuration changed; restarting sync" +
+                        "service");
+                shutdown();
+                startUp(null);
+            }
+
+            for (Node n : clusterConfig.getNodes()) {
+                Node existing = oldConfig.getNode(n.getNodeId());
+                if (existing != null && !n.equals(existing)) {
+                    // we already had this node's configuration, but it's
+                    // changed.  Disconnect from the node and let it
+                    // reinitialize
+                    logger.debug("[{}->{}] Configuration for node has changed",
+                                 getLocalNodeId(), n.getNodeId());
+                    rpcService.disconnectNode(n.getNodeId());
+                }
+            }
+            for (Node n : oldConfig.getNodes()) {
+                Node nn = clusterConfig.getNode(n.getNodeId());
+                if (nn == null) {
+                    // n is a node that doesn't appear in the new config
+                    logger.debug("[{}->{}] Disconnecting deconfigured node",
+                                 getLocalNodeId(), n.getNodeId());
+                    rpcService.disconnectNode(n.getNodeId());
+                }
+            }
+        } catch (Exception e) {
+            throw new FloodlightModuleException("Could not update " +
+                                                "configuration", e);
+        }
+    }
 
     protected SynchronizingStorageEngine getStoreInternal(String storeName) 
             throws UnknownStoreException {
@@ -695,7 +718,7 @@ public class SyncManager extends AbstractSyncManager {
         public void run() {
             try {
                 if (rpcService != null)
-                    updateConfiguration();
+                    doUpdateConfiguration();
             } catch (Exception e) {
                 logger.error("Failed to update configuration", e);
             }

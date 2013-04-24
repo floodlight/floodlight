@@ -27,7 +27,7 @@ public class JavaDBStorageEngineTest extends AbstractStorageEngineT {
     @Before
     public void setUp() throws Exception {
         ConnectionPoolDataSource dataSource = 
-                JavaDBStorageEngine.getDataSource(true);
+                JavaDBStorageEngine.getDataSource(null, true);
         this.store = new JavaDBStorageEngine("test", dataSource); 
     }
     

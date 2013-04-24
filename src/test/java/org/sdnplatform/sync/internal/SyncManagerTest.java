@@ -66,12 +66,15 @@ public class SyncManagerTest {
                            PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
-        syncManager.registerStore("global", Scope.GLOBAL);
-        syncManager.registerStore("local", Scope.LOCAL);
+        fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         tp.init(fmc);
         syncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
+
+        syncManager.registerStore("global", Scope.GLOBAL);
+        syncManager.registerStore("local", Scope.LOCAL);
     }
     
     @Before
@@ -171,7 +174,7 @@ public class SyncManagerTest {
         assertEquals(testMap.size(), size);
     }
 
-    private <K, V> Versioned<V> waitForValue(IStoreClient<K, V> client,
+    protected static <K, V> Versioned<V> waitForValue(IStoreClient<K, V> client,
                                              K key, V value,
                                              int maxTime,
                                              String clientName) 
@@ -201,6 +204,11 @@ public class SyncManagerTest {
     }
 
     private void waitForFullMesh(int maxTime) throws Exception {
+        waitForFullMesh(syncManagers, maxTime);
+    }
+
+    protected static void waitForFullMesh(SyncManager[] syncManagers,
+                                          int maxTime) throws Exception {
         long then = System.currentTimeMillis();
 
         while (true) {
@@ -214,7 +222,6 @@ public class SyncManagerTest {
             assertTrue(then + maxTime > System.currentTimeMillis());
         }
     }
-
     private void waitForConnection(SyncManager sm,
                                    short nodeId,
                                    boolean connected,
@@ -550,7 +557,7 @@ public class SyncManagerTest {
         for(int i = 0; i < 4; i++) {
             moduleContexts[i].addConfigParam(syncManagers[i],
                                              "nodes", nodeString);
-            syncManagers[i].updateConfiguration();
+            syncManagers[i].doUpdateConfiguration();
         }
         waitForFullMesh(2000);
 
@@ -589,7 +596,7 @@ public class SyncManagerTest {
             for(int i = 0; i < syncManagers.length; i++) {
                 moduleContexts[i].addConfigParam(syncManagers[i],
                                                  "nodes", nodeString);
-                syncManagers[i].updateConfiguration();
+                syncManagers[i].doUpdateConfiguration();
                 waitForConnection(syncManagers[i], (short)1, false, 2000);
             }
         } finally {
@@ -620,7 +627,7 @@ public class SyncManagerTest {
         for(int i = 0; i < syncManagers.length; i++) {
             moduleContexts[i].addConfigParam(syncManagers[i],
                                              "nodes", nodeString);
-            syncManagers[i].updateConfiguration();
+            syncManagers[i].doUpdateConfiguration();
         }
         waitForFullMesh(2000);
         
@@ -630,7 +637,7 @@ public class SyncManagerTest {
         client0.put("key", "newvalue");
         waitForValue(client2, "key", "newvalue", 2000, "client2");
     }
-
+    
     /**
      * Do a brain-dead performance test with one thread writing and waiting
      * for the values on the other node.  The result get printed to the log
