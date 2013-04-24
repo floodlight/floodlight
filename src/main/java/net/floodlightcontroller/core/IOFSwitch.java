@@ -107,6 +107,22 @@ public interface IOFSwitch {
     public void setChannel(Channel channel);
 
     /**
+     * Called when OFMessage enters pipeline. Returning true cause the message
+     * to be dropped.
+     * @param ofm
+     * @return
+     */
+    public boolean inputThrottled(OFMessage ofm);
+
+    /**
+     * Return if the switch is currently overloaded. The definition of
+     * overload refers to excessive traffic in the control path, namely
+     * a high packet in rate.
+     * @return
+     */
+    boolean isOverloaded();
+
+    /**
      * Write OFMessage to the output stream, subject to switch rate limiting.
      * The message will be handed to the floodlightProvider for possible filtering
      * and processing by message listeners
