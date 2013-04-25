@@ -24,6 +24,7 @@ import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.UnknownStoreException;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.remote.RemoteSyncManager;
 
 public class SyncClient {
@@ -75,6 +76,13 @@ public class SyncClient {
         fmc.addConfigParam(syncManager, "hostname", settings.hostname);
         fmc.addConfigParam(syncManager, "port", 
                            Integer.toString(settings.port));
+        if (settings.authScheme != null) {
+            fmc.addConfigParam(syncManager, "authScheme", 
+                               settings.authScheme.toString());
+            fmc.addConfigParam(syncManager, "keyStorePath", settings.keyStorePath);
+            fmc.addConfigParam(syncManager, "keyStorePassword", 
+                               settings.keyStorePassword);
+        }
         tp.init(fmc);
         syncManager.init(fmc);
         tp.startUp(fmc);
@@ -449,6 +457,18 @@ public class SyncClient {
         @Option(name="--debug", 
                 usage="Show full error information")
         protected boolean debug;
+
+        @Option(name="--authScheme", 
+                usage="Scheme to use for authenticating to server")
+        protected AuthScheme authScheme;
+
+        @Option(name="--keyStorePath", 
+                usage="Path to key store containing authentication credentials")
+        protected String keyStorePath;    
+
+        @Option(name="--keyStorePassword", 
+                usage="Password for key store")
+        protected String keyStorePassword;    
     }
 
     /**

@@ -14,6 +14,7 @@ import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.rpc.RPCService;
 import org.sdnplatform.sync.thrift.AsyncMessageHeader;
@@ -48,16 +49,23 @@ public class Bootstrap {
      * The {@link SyncManager} that we'll be bootstrapping
      */
     protected SyncManager syncManager;
-
+    protected final AuthScheme authScheme;
+    protected final String keyStorePath;
+    protected final String keyStorePassword;
+    
     ExecutorService bossExecutor = null;
     ExecutorService workerExecutor = null;
     ClientBootstrap bootstrap = null;
     
     protected volatile boolean succeeded = false;
-    
-    public Bootstrap(SyncManager syncManager) {
+
+    public Bootstrap(SyncManager syncManager, AuthScheme authScheme,
+                     String keyStorePath, String keyStorePassword) {
         super();
         this.syncManager = syncManager;
+        this.authScheme = authScheme;
+        this.keyStorePath = keyStorePath;
+        this.keyStorePassword = keyStorePassword;
     }
 
     public void init() throws SyncException {

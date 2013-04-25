@@ -5,12 +5,15 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.AuthException;
 import org.sdnplatform.sync.error.ObsoleteVersionException;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
 import org.sdnplatform.sync.internal.rpc.AbstractRPCChannelHandler;
 import org.sdnplatform.sync.internal.rpc.TVersionedValueIterable;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
 import org.sdnplatform.sync.internal.util.ByteArray;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.thrift.ClusterJoinResponseMessage;
 import org.sdnplatform.sync.thrift.ErrorMessage;
 import org.sdnplatform.sync.thrift.HelloMessage;
@@ -50,7 +53,6 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected void handleHello(HelloMessage hello, Channel channel) {
         remoteNodeId = hello.getNodeId();
-        
     }
 
     @Override
@@ -115,4 +117,19 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
         return remoteNodeId;
     }
 
-}
+    @Override
+    protected AuthScheme getAuthScheme() {
+        return bootstrap.authScheme;
+    }
+
+    @Override
+    protected byte[] getSharedSecret() throws AuthException {
+        try {
+            return CryptoUtil.getSharedSecret(bootstrap.keyStorePath, 
+                                              bootstrap.keyStorePassword);
+        } catch (Exception e) {
+            throw new AuthException("Could not read challenge/response  " + 
+                    "shared secret from key store " + 
+                    bootstrap.keyStorePath, e);
+        }
+    }}

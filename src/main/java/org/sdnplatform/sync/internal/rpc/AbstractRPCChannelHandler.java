@@ -2,7 +2,18 @@ package org.sdnplatform.sync.internal.rpc;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.List;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
+
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.annotations.LogMessageDocs;
 
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -13,9 +24,13 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.handler.timeout.IdleStateAwareChannelHandler;
 import org.jboss.netty.handler.timeout.IdleStateEvent;
 import org.jboss.netty.handler.timeout.ReadTimeoutException;
+import org.sdnplatform.sync.error.AuthException;
 import org.sdnplatform.sync.error.HandshakeTimeoutException;
 import org.sdnplatform.sync.error.SyncException;
+import org.sdnplatform.sync.internal.config.AuthScheme;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.thrift.AsyncMessageHeader;
+import org.sdnplatform.sync.thrift.AuthChallengeResponse;
 import org.sdnplatform.sync.thrift.ClusterJoinRequestMessage;
 import org.sdnplatform.sync.thrift.ClusterJoinResponseMessage;
 import org.sdnplatform.sync.thrift.SyncError;
@@ -50,11 +65,21 @@ import org.slf4j.LoggerFactory;
  * a {@link SyncMessage} which will provide specific type information. 
  * @author readams
  */
+@LogMessageCategory("State Synchronization")
 public abstract class AbstractRPCChannelHandler 
     extends IdleStateAwareChannelHandler {
     protected static final Logger logger =
             LoggerFactory.getLogger(AbstractRPCChannelHandler.class);
-
+    protected String currentChallenge;
+    
+    protected enum ChannelState {
+        OPEN,
+        CONNECTED,
+        AUTHENTICATED;
+    }
+    
+    protected ChannelState channelState = ChannelState.OPEN;
+    
     public AbstractRPCChannelHandler() {
         super();
     }
@@ -66,12 +91,28 @@ public abstract class AbstractRPCChannelHandler
     @Override
     public void channelConnected(ChannelHandlerContext ctx,
                                  ChannelStateEvent e) throws Exception {
+        channelState = ChannelState.CONNECTED;
+
         HelloMessage m = new HelloMessage();
         if (getLocalNodeId() != null)
             m.setNodeId(getLocalNodeId());
         AsyncMessageHeader header = new AsyncMessageHeader();
         header.setTransactionId(getTransactionId());
         m.setHeader(header);
+        switch (getAuthScheme()) {
+            case NO_AUTH:
+                channelState = ChannelState.AUTHENTICATED;
+                m.setAuthScheme(org.sdnplatform.sync.thrift.
+                                AuthScheme.NO_AUTH);
+                break;
+            case CHALLENGE_RESPONSE:
+                AuthChallengeResponse cr = new AuthChallengeResponse();
+                cr.setChallenge(generateChallenge());
+                m.setAuthScheme(org.sdnplatform.sync.thrift.
+                                AuthScheme.CHALLENGE_RESPONSE);
+                m.setAuthChallengeResponse(cr);
+                break;
+        }
         SyncMessage bsm = new SyncMessage(MessageType.HELLO);
         bsm.setHello(m);
         ctx.getChannel().write(bsm);
@@ -91,6 +132,32 @@ public abstract class AbstractRPCChannelHandler
     }
 
     @Override
+    @LogMessageDocs({
+        @LogMessageDoc(level="ERROR",
+                message="[{id}->{id}] Disconnecting client due to read timeout",
+                explanation="The connected client has failed to send any " +
+                            "messages or respond to echo requests",
+                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+        @LogMessageDoc(level="ERROR",
+                message="[{id}->{id}] Disconnecting RPC node due to " +
+                    "handshake timeout",
+                explanation="The remote node did not complete the handshake",
+                recommendation=LogMessageDoc.CHECK_CONTROLLER),
+                @LogMessageDoc(level="ERROR",
+                message="[{id}->{id}] IOException: {message}",
+                explanation="There was an error communicating with the " + 
+                            "remote client",
+                recommendation=LogMessageDoc.GENERIC_ACTION),
+                @LogMessageDoc(level="ERROR",
+                message="[{id}->{id}] ConnectException: {message} {error}",
+                explanation="There was an error connecting to the " + 
+                            "remote node",
+                recommendation=LogMessageDoc.GENERIC_ACTION),
+        @LogMessageDoc(level="ERROR",
+                message="[{}->{}] An error occurred on RPC channel",
+                explanation="An error occurred processing the message",
+                recommendation=LogMessageDoc.GENERIC_ACTION),
+    })
     public void exceptionCaught(ChannelHandlerContext ctx,
                                 ExceptionEvent e) throws Exception {
         if (e.getCause() instanceof ReadTimeoutException) {
@@ -133,7 +200,6 @@ public abstract class AbstractRPCChannelHandler
                         handleSyncMessage((SyncMessage)i,
                                              ctx.getChannel());
                     } catch (Exception ex) {
-                        logger.error("Error processing message", ex);
                         Channels.fireExceptionCaught(ctx, ex);
                     }
                 }
@@ -153,6 +219,10 @@ public abstract class AbstractRPCChannelHandler
      * @param ctx the context
      * @param message the message object
      */
+    @LogMessageDoc(level="WARN",
+                   message="[{id}->{id}] Unhandled message: {message type}",
+                   explanation="An unrecognized event occurred",
+                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void handleUnknownMessage(ChannelHandlerContext ctx, 
                                         Object message) {
         logger.warn("[{}->{}] Unhandled message: {}", 
@@ -168,6 +238,36 @@ public abstract class AbstractRPCChannelHandler
      * @param channel the channel on which the message arrived
      */
     protected void handleSyncMessage(SyncMessage bsm, Channel channel) {
+        switch (channelState) {
+            case OPEN:
+            case CONNECTED:
+                switch (bsm.getType()) {
+                    case HELLO:
+                        handshake(bsm.getHello(), channel);
+                        break;
+                    case ECHO_REQUEST:
+                        handleEchoRequest(bsm.getEchoRequest(), channel);
+                        break;
+                    case ERROR:
+                        handleError(bsm.getError(), channel);
+                        break;
+                    default:
+                        // ignore
+                }
+                break;
+            case AUTHENTICATED:
+                handleSMAuthenticated(bsm, channel);
+                break;
+        }
+    }
+    
+    /**
+     * Handle a generic {@link SyncMessage} and dispatch to an appropriate
+     * handler
+     * @param bsm the message
+     * @param channel the channel on which the message arrived
+     */
+    protected void handleSMAuthenticated(SyncMessage bsm, Channel channel) {
         switch (bsm.getType()) {
             case HELLO:
                 handleHello(bsm.getHello(), channel);
@@ -243,6 +343,72 @@ public abstract class AbstractRPCChannelHandler
         
     }
 
+    @LogMessageDoc(level="WARN",
+                   message="Failed to authenticate connection from {remote}: {message}",
+                   explanation="Challenge/Response authentication failed",
+                   recommendation="Check the included error message, and " + 
+                           "verify the shared secret is correctly-configured")
+    protected void handshake(HelloMessage request, Channel channel) {
+        try {
+            switch (getAuthScheme()) {
+                case CHALLENGE_RESPONSE:
+                    handshakeChallengeResponse(request, channel);
+                    break;
+                case NO_AUTH:
+                    // shouldn't get here
+                    break;
+            }
+        } catch (AuthException e) {
+            logger.warn("[{}->{}] Failed to authenticate connection: {}",
+                        new Object[]{getLocalNodeIdString(), 
+                                     getRemoteNodeIdString(), 
+                                     e.getMessage()});
+            channel.write(getError(request.getHeader().getTransactionId(), 
+                                   e, MessageType.HELLO));
+            channel.close();
+        }
+    }
+    
+    protected void handshakeChallengeResponse(HelloMessage request,
+                                              Channel channel) 
+                                                      throws AuthException {
+        AuthChallengeResponse cr = request.getAuthChallengeResponse();
+        if (cr == null) {
+            throw new AuthException("No authentication data in " + 
+                    "handshake message");
+        }
+        if (cr.isSetResponse()) {
+            authenticateResponse(currentChallenge, cr.getResponse());
+            currentChallenge = null;
+            channelState = ChannelState.AUTHENTICATED;
+            handleHello(request, channel);
+        } else if (cr.isSetChallenge()) {
+            HelloMessage m = new HelloMessage();
+            if (getLocalNodeId() != null)
+                m.setNodeId(getLocalNodeId());
+            AsyncMessageHeader header = new AsyncMessageHeader();
+            header.setTransactionId(getTransactionId());
+            m.setHeader(header);
+            SyncMessage bsm = new SyncMessage(MessageType.HELLO);
+            bsm.setHello(m);
+
+            AuthChallengeResponse reply = new AuthChallengeResponse();
+            reply.setResponse(generateResponse(cr.getChallenge()));
+            m.setAuthChallengeResponse(reply);
+            channel.write(bsm);
+        } else {
+            throw new AuthException("No authentication data in " + 
+                    "handshake message");
+        }
+    }
+                                                      
+
+    protected void error(ErrorMessage error, Channel channel) {
+        if (MessageType.HELLO.equals(error.getType())) {
+            
+        }
+    }
+
     protected void handleHello(HelloMessage request, Channel channel) {
         unexpectedMessage(request.getHeader().getTransactionId(),
                           MessageType.HELLO, channel);
@@ -272,7 +438,7 @@ public abstract class AbstractRPCChannelHandler
     }
 
     protected void handlePutRequest(PutRequestMessage request,
-                                  Channel channel) {
+                                    Channel channel) {
         unexpectedMessage(request.getHeader().getTransactionId(),
                           MessageType.PUT_REQUEST, channel);
     }
@@ -361,6 +527,10 @@ public abstract class AbstractRPCChannelHandler
                           MessageType.CLUSTER_JOIN_RESPONSE, channel);
     }
 
+    @LogMessageDoc(level="ERROR",
+                   message="[{id}->{id}] Error for message {}: {}",
+                   explanation="Remote client sent an error",
+                   recommendation=LogMessageDoc.GENERIC_ACTION)
     protected void handleError(ErrorMessage error, Channel channel) {
         logger.error("[{}->{}] Error for message {}: {}", 
                      new Object[]{getLocalNodeIdString(), 
@@ -385,7 +555,7 @@ public abstract class AbstractRPCChannelHandler
                                       MessageType type) {
         int ec = SyncException.ErrorType.GENERIC.getValue();
         if (error instanceof SyncException) {
-            ec = ((SyncException)error).getErrorCode().getValue();
+            ec = ((SyncException)error).getErrorType().getValue();
         }
         SyncError m = new SyncError();
         m.setErrorCode(ec);
@@ -409,6 +579,11 @@ public abstract class AbstractRPCChannelHandler
      * @param type The type of the message that generated the error
      * @param channel the channel to write the error
      */
+    @LogMessageDoc(level="WARN",
+                    message="[{id}->{id}] Received unexpected message: {type}",
+                    explanation="A inappriopriate message was sent by the remote" +
+                            "client",
+                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void unexpectedMessage(int transactionId,
                                      MessageType type,
                                      Channel channel) {
@@ -456,4 +631,63 @@ public abstract class AbstractRPCChannelHandler
         return ""+getLocalNodeId();
     }
 
+    /**
+     * Get the type of authentication to use for this connection
+     */
+    protected abstract AuthScheme getAuthScheme();
+
+    /**
+     * Get a shared secret to be used for authentication handshake.  
+     * Throwing an exception will cause authentication to fail
+     * @return the shared secret
+     */
+    protected abstract byte[] getSharedSecret() throws AuthException;
+
+    // *************
+    // Local methods
+    // *************
+
+    private String generateChallenge() {
+        byte[] challengeBytes = CryptoUtil.secureRandom(16);
+        currentChallenge = DatatypeConverter.printBase64Binary(challengeBytes);
+        return currentChallenge;
+    }
+
+    private void authenticateResponse(String challenge, 
+                                      String response) throws AuthException {
+        String expected = generateResponse(challenge);
+        if (expected == null) return;
+
+        byte[] expectedBytes = DatatypeConverter.parseBase64Binary(expected);
+        byte[] reponseBytes = DatatypeConverter.parseBase64Binary(response);
+        
+        if (!Arrays.equals(expectedBytes, reponseBytes)) {
+            throw new AuthException("Challenge response does not match " +
+                                    "expected response");
+        } 
+    }
+    
+    private String generateResponse(String challenge) throws AuthException {
+        byte[] secretBytes = getSharedSecret();
+        if (secretBytes == null) return null;
+
+        SecretKeySpec signingKey = 
+                new SecretKeySpec(secretBytes, "HmacSHA1");
+        Mac mac;
+        try {
+            mac = Mac.getInstance("HmacSHA1");
+        } catch (NoSuchAlgorithmException e) {
+            throw new AuthException("Could not initialize HmacSHA1 algorithm", 
+                                    e);
+        }
+        try {
+            mac.init(signingKey);
+            byte[] output = 
+                    mac.doFinal(DatatypeConverter.parseBase64Binary(challenge));
+            return DatatypeConverter.printBase64Binary(output);            
+        } catch (InvalidKeyException e) {
+            throw new AuthException("Invalid shared secret; could not " +
+                    "authenticate response", e);
+        }
+    }
 }

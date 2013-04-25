@@ -23,6 +23,7 @@ import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.SyncRuntimeException;
 import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.AbstractSyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.rpc.RPCService;
 import org.sdnplatform.sync.internal.rpc.TProtocolUtil;
 import org.sdnplatform.sync.internal.store.IStore;
@@ -61,6 +62,9 @@ public class RemoteSyncManager extends AbstractSyncManager {
      * Active connection to server
      */
     protected volatile Channel channel;
+    private volatile int connectionGeneration = 0;
+    protected Object readyNotify = new Object();
+    protected volatile boolean ready = false;
 
     /**
      * The remote node ID of the node we're connected to
@@ -86,6 +90,10 @@ public class RemoteSyncManager extends AbstractSyncManager {
      * Port to connect to
      */
     protected int port = 6642;
+    
+    protected AuthScheme authScheme;
+    protected String keyStorePath;
+    protected String keyStorePassword;
     
     private ConcurrentHashMap<Integer, RemoteSyncFuture> futureMap = 
             new ConcurrentHashMap<Integer, RemoteSyncFuture>();
@@ -160,6 +168,12 @@ public class RemoteSyncManager extends AbstractSyncManager {
             hostname = config.get("hostname");
         if (null != config.get("port"))
             port = Integer.parseInt(config.get("port"));
+        keyStorePath = config.get("keyStorePath");
+        keyStorePassword = config.get("keyStorePassword");
+        authScheme = AuthScheme.NO_AUTH;
+        try {
+            authScheme = AuthScheme.valueOf(config.get("authScheme"));
+        } catch (Exception e) {}
     }
 
     @Override
@@ -217,7 +231,8 @@ public class RemoteSyncManager extends AbstractSyncManager {
                                             SyncMessage request) 
                                          throws RemoteStoreException {
         ensureConnected();
-        RemoteSyncFuture future = new RemoteSyncFuture(xid);
+        RemoteSyncFuture future = new RemoteSyncFuture(xid, 
+                                                       connectionGeneration);
         futureMap.put(Integer.valueOf(xid), future);
 
         if (futureMap.size() > MAX_PENDING_REQUESTS) {
@@ -253,15 +268,27 @@ public class RemoteSyncManager extends AbstractSyncManager {
             futureNotify.notify();
         }
     }
-    
+
+    protected void channelDisconnected(SyncException why) {
+        ready = false;
+        connectionGeneration += 1;
+        if (why == null) why = new RemoteStoreException("Channel disconnected");
+        for (RemoteSyncFuture f : futureMap.values()) {
+            if (f.getConnectionGeneration() < connectionGeneration)
+                dispatchReply(f.getXid(), 
+                              new SyncReply(null, null, false, why, 0));
+        }
+    }
+
     // ***************
     // Local methods
     // ***************
 
     protected void ensureConnected() {
-        if (channel == null || !channel.isConnected()) {
+        if (!ready) {
             for (int i = 0; i < 25; i++) {
                 synchronized (this) {
+                    connectionGeneration += 1;
                     if (connect(hostname, port))
                         return;
                 }
@@ -275,16 +302,26 @@ public class RemoteSyncManager extends AbstractSyncManager {
     }
     
     protected boolean connect(String hostname, int port) {
-        SocketAddress sa =
-                new InetSocketAddress(hostname, port);
-        ChannelFuture future = clientBootstrap.connect(sa);
-        future.awaitUninterruptibly();
-        if (!future.isSuccess()) {
-            logger.error("Could not connect to " + hostname + 
-                         ":" + port, future.getCause());
-            return false;
+        ready = false;
+        if (channel == null || !channel.isConnected()) {
+            SocketAddress sa =
+                    new InetSocketAddress(hostname, port);
+            ChannelFuture future = clientBootstrap.connect(sa);
+            future.awaitUninterruptibly();
+            if (!future.isSuccess()) {
+                logger.error("Could not connect to " + hostname + 
+                             ":" + port, future.getCause());
+                return false;
+            }
+            channel = future.getChannel();
         }
-        channel = future.getChannel();
+        while (!ready && channel != null && channel.isConnected()) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) { }
+        }
+        if (!ready || channel == null || !channel.isConnected())
+            return false;
         logger.debug("Connected to " + hostname + ":" + port);
         return true;
     }

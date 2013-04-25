@@ -25,7 +25,7 @@ public class UnknownStoreException extends SyncException {
     }
     
     @Override
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.UNKNOWN_STORE;
     }
 }

@@ -1,5 +1,6 @@
 package org.sdnplatform.sync.internal.config;
 
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,44 +9,25 @@ import java.util.List;
 
 import org.sdnplatform.sync.error.SyncException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
-
 
 /**
  * Represent the configuration of a cluster in the sync manager
  * @author readams
  */
 public class ClusterConfig {
+
     private HashMap<Short, Node> allNodes =
             new HashMap<Short, Node>();
     private HashMap<Short, List<Node>> localDomains =
             new HashMap<Short, List<Node>>();
     private Node thisNode;
 
+    private AuthScheme authScheme;
+    private String keyStorePath;
+    private String keyStorePassword;
+    
     public ClusterConfig() {
         super();
-    }
-
-    /**
-     * Initialize a cluster config object using a JSON string containing
-     * the nodes
-     * @param nodeConfig the JSON-formatted cluster configurations
-     * @param thisNodeId the node ID for the current node
-     * @throws SyncException
-     */
-    public ClusterConfig(String nodeConfig,
-                         short thisNodeId) throws SyncException {
-        super();
-        ObjectMapper mapper = new ObjectMapper();
-        List<Node> nodes;
-        try {
-            nodes = mapper.readValue(nodeConfig,
-                                     new TypeReference<List<Node>>() { });
-        } catch (Exception e) {
-            throw new SyncException("Failed to initialize sync manager", e);
-        }
-        init(nodes, thisNodeId);
     }
 
     /**
@@ -57,8 +39,32 @@ public class ClusterConfig {
     public ClusterConfig(List<Node> nodes, short thisNodeId)
             throws SyncException {
         init(nodes, thisNodeId);
+        this.authScheme = AuthScheme.NO_AUTH;
     }
 
+    /**
+     * Initialize a cluster config using a list of nodes
+     * @param nodes the nodes to use
+     * @param thisNodeId the node ID for the current node
+     * @param authScheme the {@link AuthScheme}
+     * @param keyStorePath the path to a java key store containing
+     * credentials necessary for implementing the {@link AuthScheme}
+     * @param keyStorePassword the password fro the key store.
+     * @throws SyncException
+     */
+    public ClusterConfig(List<Node> nodes, short thisNodeId,
+                         AuthScheme authScheme,
+                         String keyStorePath, 
+                         String keyStorePassword)
+            throws SyncException {
+        init(nodes, thisNodeId);
+        this.authScheme = authScheme;
+        if (this.authScheme == null) 
+            this.authScheme = AuthScheme.NO_AUTH;
+        this.keyStorePath = keyStorePath;
+        this.keyStorePassword = keyStorePassword;
+    }
+    
     /**
      * Get a collection containing all configured nodes
      * @return the collection of nodes
@@ -102,6 +108,34 @@ public class ClusterConfig {
     }
 
     /**
+     * Get the authentication scheme to use for authenticating RPC connections
+     * @return the {@link AuthScheme} object
+     */
+    public AuthScheme getAuthScheme() {
+        return authScheme;
+    }
+
+    /**
+     * Get the key store path where credentials can be found
+     * @return the path to a java {@link KeyStore} containing necessary 
+     * credentials
+     * @see ClusterConfig#getKeyStorePassword()
+     */
+    public String getKeyStorePath() {
+        return keyStorePath;
+    }
+
+    /**
+     * Get the password for reading data from the {@link KeyStore} returned 
+     * by {@link ClusterConfig#getKeyStorePath()}
+     * @return the password
+     * @see ClusterConfig#getKeyStorePath()
+     */
+    public String getKeyStorePassword() {
+        return keyStorePassword;
+    }
+
+    /**
      * Add a new node to the cluster
      * @param node the {@link Node} to add
      * @throws SyncException if the node already exists
@@ -137,8 +171,9 @@ public class ClusterConfig {
 
     @Override
     public String toString() {
-        return "ClusterConfig [allNodes=" + allNodes + ", thisNode="
-               + thisNode.getNodeId() + "]";
+        return "ClusterConfig [allNodes=" + allNodes + ", authScheme="
+               + authScheme + ", keyStorePath=" + keyStorePath
+               + ", keyStorePassword=" + keyStorePassword + "]";
     }
 
     @Override

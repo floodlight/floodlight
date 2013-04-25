@@ -95,9 +95,21 @@ enum MessageType {
   CLUSTER_JOIN_RESPONSE = 21,
 }
 
+enum AuthScheme {
+  NO_AUTH = 0,
+  CHALLENGE_RESPONSE = 1
+}
+
+struct AuthChallengeResponse {
+  1: optional string challenge,
+  2: optional string response
+}
+
 struct HelloMessage {
   1: required AsyncMessageHeader header,
   2: optional i16 nodeId,
+  3: optional AuthScheme authScheme,
+  4: optional AuthChallengeResponse authChallengeResponse
 }
 
 struct ErrorMessage {

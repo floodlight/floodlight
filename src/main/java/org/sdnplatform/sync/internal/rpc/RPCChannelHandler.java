@@ -18,16 +18,19 @@ import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.error.AuthException;
 import org.sdnplatform.sync.error.ObsoleteVersionException;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.Cursor;
 import org.sdnplatform.sync.internal.SyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
 import org.sdnplatform.sync.internal.rpc.RPCService.NodeMessage;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
 import org.sdnplatform.sync.internal.util.ByteArray;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.internal.version.VectorClock;
 import org.sdnplatform.sync.thrift.*;
 import org.slf4j.Logger;
@@ -561,6 +564,23 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         return rpcService.getTransactionId();
     }
     
+    @Override
+    protected AuthScheme getAuthScheme() {
+        return syncManager.getClusterConfig().getAuthScheme();
+    }
+
+    @Override
+    protected byte[] getSharedSecret() throws AuthException {
+        String path = syncManager.getClusterConfig().getKeyStorePath();
+        String pass = syncManager.getClusterConfig().getKeyStorePassword();
+        try {
+            return CryptoUtil.getSharedSecret(path, pass);
+        } catch (Exception e) {
+            throw new AuthException("Could not read challenge/response  " + 
+                    "shared secret from key store " + path, e);
+        }
+    }
+
     // *****************
     // Utility functions
     // *****************

@@ -1,5 +1,6 @@
 package org.sdnplatform.sync.internal;
 
+import java.io.File;
 import java.util.ArrayList;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -23,21 +24,12 @@ import static org.junit.Assert.*;
 import static org.sdnplatform.sync.internal.SyncManagerTest.waitForValue;
 import static org.sdnplatform.sync.internal.SyncManagerTest.waitForFullMesh;
 
-public class SyncBootstrapTest {
+public class BootstrapTest {
     protected static Logger logger =
-            LoggerFactory.getLogger(SyncBootstrapTest.class);
+            LoggerFactory.getLogger(BootstrapTest.class);
     
     @Rule
-    public TemporaryFolder dbFolder1 = new TemporaryFolder();
-    @Rule
-    public TemporaryFolder dbFolder2 = new TemporaryFolder();
-    @Rule
-    public TemporaryFolder dbFolder3 = new TemporaryFolder();
-    @Rule
-    public TemporaryFolder dbFolder4 = new TemporaryFolder();
-
-    public TemporaryFolder[] dbFolders = 
-        {dbFolder1, dbFolder2, dbFolder3, dbFolder4};
+    public TemporaryFolder dbFolder = new TemporaryFolder();
     
     @Test
     public void testBootstrap() throws Exception {
@@ -61,8 +53,10 @@ public class SyncBootstrapTest {
 
             fmc.addService(IThreadPoolService.class, tp);
             fmc.addService(IDebugCounterService.class, new NullDebugCounter());
-            fmc.addConfigParam(syncManager, "dbPath", 
-                               dbFolders[i].getRoot().getAbsolutePath());
+            String dbPath = 
+                    new File(dbFolder.getRoot(), 
+                             "server" + i).getAbsolutePath();
+            fmc.addConfigParam(syncManager, "dbPath", dbPath);
 
             tp.init(fmc);
             syncManager.init(fmc);

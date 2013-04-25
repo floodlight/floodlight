@@ -50,6 +50,10 @@ public class SyncStoreCCProvider
     private IStoreClient<Short, Node> nodeStoreClient;
     private IStoreClient<String, String> unsyncStoreClient;
     
+    private volatile AuthScheme authScheme;
+    private volatile String keyStorePath;
+    private volatile String keyStorePassword;
+    
     private static final String PREFIX = 
             SyncManager.class.getCanonicalName();
     public static final String SYSTEM_NODE_STORE = 
@@ -63,6 +67,9 @@ public class SyncStoreCCProvider
     public static final String LOCAL_NODE_IFACE = "localNodeIface";
     public static final String LOCAL_NODE_HOSTNAME = "localNodeHostname";
     public static final String LOCAL_NODE_PORT = "localNodePort";
+    public static final String AUTH_SCHEME = "authScheme";
+    public static final String KEY_STORE_PATH = "keyStorePath";
+    public static final String KEY_STORE_PASSWORD = "keyStorePassword";
 
     // **********************
     // IClusterConfigProvider
@@ -92,6 +99,18 @@ public class SyncStoreCCProvider
             bootstrapTask = new SingletonTask(threadPool.getScheduledExecutor(), 
                                               new BootstrapTask());
 
+        
+        keyStorePath = unsyncStoreClient.getValue(KEY_STORE_PATH);
+        keyStorePassword = 
+                unsyncStoreClient.getValue(KEY_STORE_PASSWORD);
+        try {
+            authScheme = 
+                    AuthScheme.valueOf(unsyncStoreClient.
+                                       getValue(AUTH_SCHEME));
+        } catch (Exception e) {
+            authScheme = AuthScheme.NO_AUTH;
+        }
+        
         Short localNodeId = getLocalNodeId();
         if (localNodeId == null) {
             String seedStr = 
@@ -141,7 +160,10 @@ public class SyncStoreCCProvider
                 throw new SyncException("Local node configuration has changed");
             }
             
-            ClusterConfig config = new ClusterConfig(nodes, localNodeId);
+            ClusterConfig config = new ClusterConfig(nodes, localNodeId,
+                                                     authScheme,
+                                                     keyStorePath, 
+                                                     keyStorePassword);
             updateSeeds(syncManager.getClusterConfig());
             return config;
         } finally {
@@ -224,14 +246,18 @@ public class SyncStoreCCProvider
                         continue;
                 }
                 Enumeration<InetAddress> addrs = iface.getInetAddresses();
-                for (InetAddress addr : Collections.list(addrs)) {
-                    if (bestAddr == null ||
-                        (!addr.isLinkLocalAddress() && 
-                         bestAddr.isLinkLocalAddress()) ||
-                        (addr instanceof Inet6Address &&
-                         bestAddr instanceof Inet4Address)) {
-                        bestAddr = addr;
+                try {
+                    for (InetAddress addr : Collections.list(addrs)) {
+                        if (bestAddr == null ||
+                            (!addr.isLinkLocalAddress() && 
+                             bestAddr.isLinkLocalAddress()) ||
+                            (addr instanceof Inet6Address &&
+                             bestAddr instanceof Inet4Address)) {
+                            bestAddr = addr;
+                        }
                     }
+                } catch (Exception e) {
+                    logger.debug("Failed to examine address", e);
                 }
             }
             if (bestAddr != null)
@@ -300,7 +326,10 @@ public class SyncStoreCCProvider
                         hosts.add(HostAndPort.fromString(s).
                                       withDefaultPort(6642));
                     }
-                    Bootstrap bs = new Bootstrap(syncManager);
+                    Bootstrap bs = new Bootstrap(syncManager,
+                                                 authScheme,
+                                                 keyStorePath, 
+                                                 keyStorePassword);
                     bs.init();
                     try {
                         for (HostAndPort host : hosts) {

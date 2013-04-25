@@ -2,6 +2,7 @@ package org.sdnplatform.sync.internal;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IInconsistencyResolver;
 import org.sdnplatform.sync.IStoreClient;
@@ -40,6 +42,7 @@ import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.PropertyCCProvider;
 import org.sdnplatform.sync.internal.store.Key;
 import org.sdnplatform.sync.internal.store.TBean;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.internal.version.VectorClock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,9 +60,15 @@ public class SyncManagerTest {
 
     ThreadPool tp;
 
+    @Rule
+    public TemporaryFolder keyStoreFolder = new TemporaryFolder();
+
+    protected File keyStoreFile;
+    protected String keyStorePassword = "verysecurepassword";
+    
     protected void setupSyncManager(FloodlightModuleContext fmc,
                                     SyncManager syncManager, Node thisNode)
-            throws FloodlightModuleException {
+            throws Exception {        
         fmc.addService(IThreadPoolService.class, tp);
         fmc.addService(IDebugCounterService.class, new NullDebugCounter());
         fmc.addConfigParam(syncManager, "configProviders", 
@@ -67,6 +76,10 @@ public class SyncManagerTest {
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
+        fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
+        fmc.addConfigParam(syncManager, "keyStorePath", 
+                           keyStoreFile.getAbsolutePath());
+        fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
 
@@ -79,6 +92,12 @@ public class SyncManagerTest {
     
     @Before
     public void setUp() throws Exception {
+        keyStoreFile = new File(keyStoreFolder.getRoot(), 
+                "keystore.jceks");
+        CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
+                                     keyStorePassword, 
+                                     CryptoUtil.secureRandom(16));
+
         tp = new ThreadPool();
         
         syncManagers = new SyncManager[4];
@@ -637,7 +656,7 @@ public class SyncManagerTest {
         client0.put("key", "newvalue");
         waitForValue(client2, "key", "newvalue", 2000, "client2");
     }
-    
+
     /**
      * Do a brain-dead performance test with one thread writing and waiting
      * for the values on the other node.  The result get printed to the log

@@ -25,7 +25,7 @@ public class SerializationException extends SyncException {
     }
     
     @Override
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.SERIALIZATION;
     }
 }
