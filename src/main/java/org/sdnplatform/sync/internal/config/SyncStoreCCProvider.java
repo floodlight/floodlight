@@ -240,19 +240,19 @@ public class SyncStoreCCProvider
 
             InetAddress bestAddr = null;
             for (NetworkInterface iface : Collections.list(ifaces)) {
-                if (iface.isLoopback()) continue;
-                if (ifaceStr != null) {
-                    if (!ifaceStr.equals(iface.getName()))
-                        continue;
-                }
-                Enumeration<InetAddress> addrs = iface.getInetAddresses();
                 try {
+                    if (iface.isLoopback()) continue;
+                    if (ifaceStr != null) {
+                        if (!ifaceStr.equals(iface.getName()))
+                            continue;
+                    }
+                    Enumeration<InetAddress> addrs = iface.getInetAddresses();
                     for (InetAddress addr : Collections.list(addrs)) {
                         if (bestAddr == null ||
                             (!addr.isLinkLocalAddress() && 
                              bestAddr.isLinkLocalAddress()) ||
-                            (addr instanceof Inet6Address &&
-                             bestAddr instanceof Inet4Address)) {
+                             (addr instanceof Inet6Address &&
+                              bestAddr instanceof Inet4Address)) {
                             bestAddr = addr;
                         }
                     }
