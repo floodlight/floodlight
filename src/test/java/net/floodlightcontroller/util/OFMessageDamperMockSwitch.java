@@ -442,6 +442,18 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     @Override
     public boolean isActive() {
         fail("Unexpected method call");
+        return false; // never reached
+    }
+
+    @Override
+    public boolean inputThrottled(OFMessage ofm) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean isOverloaded() {
+        // TODO Auto-generated method stub
         return false;
     }
 

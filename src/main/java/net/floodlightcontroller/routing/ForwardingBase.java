@@ -554,7 +554,7 @@ public abstract class ForwardingBase
         if (sw == null) return false;
         int inputPort = sw_tup.getPort();
         log.debug("blockHost sw={} port={} mac={}",
-                  new Object[] { sw, sw_tup.getPort(), new Long(host_mac) });
+                  new Object[] { sw, sw_tup.getPort(), Long.valueOf(host_mac) });
 
         // Create flow-mod based on packet-in and src-switch
         OFFlowMod fm =
@@ -563,10 +563,14 @@ public abstract class ForwardingBase
         OFMatch match = new OFMatch();
         List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
                                                             // drop
-        match.setDataLayerSource(Ethernet.toByteArray(host_mac))
-             .setInputPort((short)inputPort)
-             .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
-                     & ~OFMatch.OFPFW_IN_PORT);
+        match.setInputPort((short)inputPort);
+        if (host_mac != -1L) {
+            match.setDataLayerSource(Ethernet.toByteArray(host_mac))
+                .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
+                               & ~OFMatch.OFPFW_IN_PORT);
+        } else {
+            match.setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_IN_PORT);
+        }
         fm.setCookie(cookie)
           .setHardTimeout(hardTimeout)
           .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)

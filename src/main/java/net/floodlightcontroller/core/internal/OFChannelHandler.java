@@ -1308,6 +1308,10 @@ class OFChannelHandler
             }
 
             for (OFMessage ofm : msglist) {
+                // Per-switch input throttling
+                if (sw != null && sw.inputThrottled(ofm)) {
+                    continue;
+                }
                 try {
                     if (this.controller.overload_drop &&
                         !loadlevel.equals(LoadMonitor.LoadLevel.OK)) {
