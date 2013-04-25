@@ -696,6 +696,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+               .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setHARole(Role.MASTER);
@@ -739,6 +741,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setHARole(Role.SLAVE);
@@ -783,6 +787,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setHARole(Role.MASTER);
@@ -844,6 +850,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setHARole(Role.MASTER);
@@ -893,6 +901,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setHARole(Role.SLAVE);
@@ -950,6 +960,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setHARole(Role.SLAVE);
@@ -1005,6 +1017,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setHARole(Role.MASTER);
@@ -1038,6 +1052,8 @@ public class OFChannelHandlerTest {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setHARole(Role.SLAVE);
@@ -1103,6 +1119,11 @@ public class OFChannelHandlerTest {
         OFMessage err = getErrorMessage(OFErrorType.OFPET_BAD_ACTION,
                                         0,
                                         xid);
+        verify(sw);
+        reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        replay(sw);
         sendMessageToHandlerWithControllerReset(Collections.singletonList(err));
 
         verifyExceptionCaptured(SwitchStateException.class);

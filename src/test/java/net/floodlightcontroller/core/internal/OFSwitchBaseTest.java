@@ -84,6 +84,7 @@ public class OFSwitchBaseTest {
             return null;
         }
 
+        @Override
         public void write(OFMessage msg, FloodlightContext cntx) {
             blockMessage = msg;
         }
@@ -134,7 +135,7 @@ public class OFSwitchBaseTest {
         sw = new OFSwitchTest(floodlightProvider);
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switches.put(sw.getId(), sw);
-        expect(floodlightProvider.getSwitches()).andReturn(switches).anyTimes();
+        expect(floodlightProvider.getSwitch(sw.getId())).andReturn(sw).anyTimes();
         expect(floodlightProvider.getOFMessageFactory())
                 .andReturn(BasicFactory.getInstance()).anyTimes();
         replay(floodlightProvider);
