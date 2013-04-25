@@ -755,11 +755,11 @@ public class TopologyManager implements
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new ArrayList<LDUpdate>();
-        clearCurrentTopology();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
+        clearCurrentTopology();
         // Initialize role to floodlight provider role.
         this.role = floodlightProvider.getRole();
 
