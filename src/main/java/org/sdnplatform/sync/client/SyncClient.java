@@ -436,7 +436,7 @@ public class SyncClient {
     
     protected static class SyncClientSettings {
         @Option(name="--help", 
-                usage="Server hostname")
+                usage="Show help")
         protected boolean help;
         
         @Option(name="--hostname", aliases="-h", 
