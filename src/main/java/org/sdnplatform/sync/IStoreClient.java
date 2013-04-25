@@ -19,6 +19,7 @@ package org.sdnplatform.sync;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.omg.CORBA.UserException;
 import org.sdnplatform.sync.error.ObsoleteVersionException;
 import org.sdnplatform.sync.error.SyncException;
 
@@ -117,7 +118,10 @@ public interface IStoreClient<K, V> {
     /**
      * Associated the given value to the key, clobbering any existing values
      * stored for the key.
-     * FIXME: add doc saying when its safe to use this method and when it isn't
+     * Only use this variant if the write cannot possibly depend on
+     * the current value in the store and if there cannot be a concurrent
+     * update from multiple threads. Otherwise {@link #put(Object, Versioned)}
+     * or {@link #putIfNotObsolete(Object, Versioned)}
      *
      * @param key The key
      * @param value The value
@@ -136,6 +140,8 @@ public interface IStoreClient<K, V> {
      * @param versioned The value and its versioned
      * @throws ObsoleteVersionException
      * @throws SyncException
+     * @throws ObsoleteVersionException if the entry assoicated with the key
+     * was locally modified by another thread after the get.
      */
     public IVersion put(K key, Versioned<V> versioned)
             throws SyncException;
@@ -153,7 +159,12 @@ public interface IStoreClient<K, V> {
             throws SyncException;
 
     /**
-     * Delete the key by writing a null tombstone to the store
+     * Delete the key by writing a null tombstone to the store obliterating
+     * any existing value stored for the key.
+     * Only use this variant if the delete cannot possibly depend on
+     * the current value in the store and if there cannot be a concurrent
+     * update from multiple threads. Otherwise {@link #delete(Object, IVersion)}
+     * should be used.
      *
      * @param key The key
      * @throws SyncException
@@ -167,6 +178,8 @@ public interface IStoreClient<K, V> {
      * @param key The key to delete
      * @param version The version of the key
      * @throws SyncException
+     * @throws ObsoleteVersionException if the entry assoicated with the key
+     * was locally modified by another thread after the get.
      */
     public void delete(K key, IVersion version) throws SyncException;
 

@@ -47,6 +47,8 @@ import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.test.MockSyncService;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -96,6 +98,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
     protected VipsResource vipsResource;
     protected PoolsResource poolsResource;
     protected MembersResource membersResource;
+    private MockSyncService mockSyncService;
 
     protected LBVip vip1, vip2;
     protected LBPool pool1, pool2, pool3;
@@ -119,6 +122,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
         restApi = new RestApiServer();
         sfp = new StaticFlowEntryPusher();
         storage = new MemoryStorageSource(); //dependency for sfp
+        mockSyncService = new MockSyncService();
 
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
@@ -132,12 +136,14 @@ public class LoadBalancerTest extends FloodlightTestCase {
         fmc.addService(IStaticFlowEntryPusherService.class, sfp);
         fmc.addService(ILoadBalancerService.class, lb);
         fmc.addService(IStorageSourceService.class, storage);
+        fmc.addService(ISyncService.class, mockSyncService);
 
         lb.init(fmc);
         getMockFloodlightProvider().init(fmc);
         entityClassifier.init(fmc);
         frm.init(fmc);
         tps.init(fmc);
+        mockSyncService.init(fmc);
         deviceManager.init(fmc);
         restApi.init(fmc);
         sfp.init(fmc);
@@ -152,6 +158,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
         entityClassifier.startUp(fmc);
         frm.startUp(fmc);
         tps.startUp(fmc);
+        mockSyncService.startUp(fmc);
         deviceManager.startUp(fmc);
         restApi.startUp(fmc);
         sfp.startUp(fmc);

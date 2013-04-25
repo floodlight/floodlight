@@ -112,7 +112,7 @@ public class Controller implements IFloodlightProviderService,
     static final String ERROR_DATABASE =
             "The controller could not communicate with the system database.";
     static final String SWITCH_SYNC_STORE_NAME =
-            "net.floodlightcontroller.core.SwitchSyncStore";
+            Controller.class.getCanonicalName() + ".stateStore";
 
     protected BasicFactory factory;
     protected ConcurrentMap<OFType,
@@ -140,7 +140,7 @@ public class Controller implements IFloodlightProviderService,
     private IPktInProcessingTimeService pktinProcTime;
     private IThreadPoolService threadPool;
     private ScheduledExecutorService ses;
-    private IDebugCounterService debugCouAnterService;
+    private IDebugCounterService debugCounterService;
     private ISyncService syncService;
     private IStoreClient<Long, SwitchSyncRepresentation> storeClient;
 
@@ -458,7 +458,8 @@ public class Controller implements IFloodlightProviderService,
             for (OFChannelHandler h: connectedChannelHandlers)
                 h.sendRoleRequest(this.role);
 
-            Controller.this.addUpdateToQueue(new HARoleUpdate(role));
+            Controller.this.switchManager.setRole(this.role);
+            Controller.this.addUpdateToQueue(new HARoleUpdate(this.role));
         }
 
         /**
@@ -507,6 +508,7 @@ public class Controller implements IFloodlightProviderService,
                 // returns a non-null or throws an exception
                 if (versionedSwitch.getValue() == null) {
                     // The switch doesn't exist in storage. Skip.
+                    // FIXME: remove froms storage
                     continue;
                 }
                 SwitchSyncRepresentation storedSwitch =

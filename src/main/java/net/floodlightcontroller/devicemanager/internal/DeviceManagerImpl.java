@@ -22,6 +22,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -44,7 +46,9 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
@@ -59,6 +63,7 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
@@ -85,6 +90,14 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
+import org.sdnplatform.sync.IClosableIterator;
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.ObsoleteVersionException;
+import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,6 +121,26 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
     protected IDebugCounterService debugCounters;
+    private ISyncService syncService;
+    private IStoreClient<String,DeviceSyncRepresentation> storeClient;
+    private DeviceSyncManager deviceSyncManager;
+
+    static final String DEVICE_SYNC_STORE_NAME =
+            DeviceManagerImpl.class.getCanonicalName() + ".stateStore";
+
+    /**
+     * Default time interval between writes of entries for the same device to
+     * the sync store.
+     */
+    static final long DEFAULT_SYNC_STORE_INTERVAL_NS =
+            5L*60L*1000L*1000L*1000L; // 5 min
+
+    /*
+     * Actual time interval between writes of device entries to the sync store.
+     * Tests can overwrite this value.
+     */
+    private long syncStoreIntervalNs;
+
 
     /**
      * Time in milliseconds before entities will expire
@@ -218,7 +251,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         /**
          * The affected device
          */
-        protected IDevice device;
+        protected Device device;
 
         /**
          * The change that was made
@@ -230,7 +263,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
          */
         protected EnumSet<DeviceField> fieldsChanged;
 
-        public DeviceUpdate(IDevice device, Change change,
+        public DeviceUpdate(Device device, Change change,
                             EnumSet<DeviceField> fieldsChanged) {
             super();
             this.device = device;
@@ -336,6 +369,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
+
 
     // *********************
     // IDeviceManagerService
@@ -697,6 +731,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         l.add(IThreadPoolService.class);
         l.add(IFlowReconcileService.class);
         l.add(IEntityClassifierService.class);
+        l.add(ISyncService.class);
         return l;
     }
 
@@ -721,10 +756,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
+        this.syncService = fmc.getServiceImpl(ISyncService.class);
+        this.deviceSyncManager = new DeviceSyncManager();
+        this.syncStoreIntervalNs = DEFAULT_SYNC_STORE_INTERVAL_NS;
     }
 
     @Override
-    public void startUp(FloodlightModuleContext fmc) {
+    public void startUp(FloodlightModuleContext fmc)
+            throws FloodlightModuleException {
         primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
         secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
@@ -760,6 +799,16 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
 
         registerDeviceManagerDebugCounters();
+
+        try {
+            this.syncService.registerStore(DEVICE_SYNC_STORE_NAME, Scope.LOCAL);
+            this.storeClient = this.syncService
+                    .getStoreClient(DEVICE_SYNC_STORE_NAME,
+                                    String.class,
+                                    DeviceSyncRepresentation.class);
+        } catch (SyncException e) {
+            throw new FloodlightModuleException("Error while setting up sync service", e);
+        }
     }
 
     private void registerDeviceManagerDebugCounters() {
@@ -781,7 +830,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         switch(newRole) {
             case SLAVE:
                 logger.debug("Resetting device state because of role change");
-                startUp(null);
+                // FIXME
+                //startUp(null);
                 break;
             default:
                 break;
@@ -1348,6 +1398,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
 
         processUpdates(deviceUpdates);
+        deviceSyncManager.storeDeviceThrottled(device);
 
         return device;
     }
@@ -1355,6 +1406,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected boolean isEntityAllowed(Entity entity, IEntityClass entityClass) {
         return true;
     }
+
+
+
+
 
     protected EnumSet<DeviceField> findChangedFields(Device device,
                                                      Entity newEntity) {
@@ -1405,6 +1460,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (logger.isTraceEnabled()) {
                 logger.trace("Dispatching device update: {}", update);
             }
+            if (update.change == DeviceUpdate.Change.DELETE)
+                deviceSyncManager.removeDevice(update.device);
+            else
+                deviceSyncManager.storeDevice(update.device);
             List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
             notifyListeners(listeners, update);
         }
@@ -1791,6 +1850,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
+        deviceSyncManager.storeDevice(d);
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
             for (IDeviceListener listener : listeners) {
@@ -1860,5 +1920,235 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             this.learnDeviceByEntity(entity);
         }
         return true;
+    }
+
+    /**
+     * For testing: sets the interval between writes of the same device
+     * to the device store.
+     * @param intervalNs
+     */
+    void setSyncStoreInterval(long intervalNs) {
+        this.syncStoreIntervalNs = intervalNs;
+    }
+
+    private class DeviceSyncManager  {
+        // maps (opaque) deviceKey to the time in System.nanoTime() when we
+        // last wrote the device to the sync store
+        private ConcurrentMap<Long, Long> lastWriteTimes =
+                new ConcurrentHashMap<Long, Long>();
+        private Role role = null;
+
+        /**
+         * Update the role
+         * @param role
+         */
+        public void setRole(Role role) {
+            if (role != Role.SLAVE && this.role == Role.SLAVE)
+                goToMaster();
+            this.role = role;
+        }
+
+        /**
+         * Write the given device to storage if we are MASTER.
+         * Use this method if the device has significantly changed (e.g.,
+         * new AP, new IP, entities removed).
+         * @param d the device to store
+         */
+        public void storeDevice(Device d) {
+            if (role == Role.SLAVE)
+                return;
+            if (d == null)
+                return;
+            long now = System.nanoTime();
+            writeUpdatedDeviceToStorage(d);
+            lastWriteTimes.put(d.getDeviceKey(), now);
+        }
+
+        /**
+         * Write the given device to storage if we are MASTER and if the
+         * last write for the device was more than this.syncStoreIntervalNs
+         * time ago.
+         * Use this method to updated last active times in the store.
+         * @param d the device to store
+         */
+        public void storeDeviceThrottled(Device d) {
+            if (role == Role.SLAVE)
+                return;
+            if (d == null)
+                return;
+            long now = System.nanoTime();
+            Long last = lastWriteTimes.get(d.getDeviceKey());
+            if (last == null ||
+                    now - last > DeviceManagerImpl.this.syncStoreIntervalNs) {
+                writeUpdatedDeviceToStorage(d);
+                lastWriteTimes.put(d.getDeviceKey(), now);
+            }
+        }
+
+        /**
+         * Remove the given device from the store. If only some entities have
+         * been removed the updated device should be written using
+         * {@link #storeDevice(Device)}
+         * @param d
+         */
+        public void removeDevice(Device d) {
+            if (role == Role.SLAVE)
+                return;
+            // FIXME: could we have a problem with concurrent put to the
+            // hashMap? I.e., we write a stale entry to the map after the
+            // delete and now are left with an entry we'll never clean up
+            lastWriteTimes.remove(d.getDeviceKey());
+            try {
+                // TODO: should probably do versioned delete. OTOH, even
+                // if we accidentally delete, we'll write it again after
+                // the next entity ....
+                storeClient.delete(DeviceSyncRepresentation.computeKey(d));
+            } catch(ObsoleteVersionException e) {
+                // FIXME
+            } catch (SyncException e) {
+                logger.error("Could not remove device " + d + " from store", e);
+            }
+        }
+
+        /**
+         * Remove the given Versioned device from the store. If the device
+         * was locally modified ignore the delete request.
+         * @param syncedDeviceKey
+         */
+        private void removeDevice(Versioned<DeviceSyncRepresentation> dev) {
+            try {
+                storeClient.delete(dev.getValue().getKey(),
+                                   dev.getVersion());
+            } catch(ObsoleteVersionException e) {
+                // Key was locally modified by another thread.
+                // Do not delete and ignore.
+            } catch(SyncException e) {
+                logger.error("Failed to remove device entry for " +
+                            dev.toString() + " from store.", e);
+            }
+        }
+
+        private void goToMaster() {
+            IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
+                    iter = null;
+            try {
+                iter = storeClient.entries();
+            } catch (SyncException e) {
+                logger.error("Failed to read devices from sync store", e);
+                return;
+            }
+            try {
+                while(iter.hasNext()) {
+                    Versioned<DeviceSyncRepresentation> versionedDevice =
+                            iter.next().getValue();
+                    DeviceSyncRepresentation storedDevice =
+                            versionedDevice.getValue();
+                    if (storedDevice == null)
+                        continue;
+                    for(SyncEntity se: storedDevice.getEntities()) {
+                        learnDeviceByEntity(se.asEntity());
+                    }
+                }
+            } finally {
+                if (iter != null)
+                    iter.close();
+            }
+        }
+
+        /**
+         * Actually perform the write of the device to the store
+         * FIXME: concurrent modification behavior
+         * @param device The device to write
+         */
+        private void writeUpdatedDeviceToStorage(Device device) {
+            try {
+                // FIXME: use a versioned put
+                DeviceSyncRepresentation storeDevice =
+                        new DeviceSyncRepresentation(device);
+                storeClient.put(storeDevice.getKey(), storeDevice);
+            } catch (ObsoleteVersionException e) {
+                // FIXME: what's the right behavior here. Can the store client
+                // even throw this error?
+            } catch (SyncException e) {
+                logger.error("Could not write device " + device +
+                          " to sync store:", e);
+            }
+        }
+
+        /**
+         * Iterate through all entries in the sync store. For each device
+         * in the store check if any stored entity matches a live device. If
+         * no entities match a live device we remove the entry from the store.
+         *
+         * Note: we do not check if all devices known to device manager are
+         * in the store. We rely on regular packetIns for that.
+         * Note: it's possible that multiple entries in the store map to the
+         * same device. We don't check or handle this case.
+         */
+        private void consolidateStore() {
+            if (role == Role.SLAVE)
+                return;
+            IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
+                    iter = null;
+            try {
+                iter = storeClient.entries();
+            } catch (SyncException e) {
+                logger.error("Failed to read devices from sync store", e);
+                return;
+            }
+            try {
+                while(iter.hasNext()) {
+                    boolean found = false;
+                    Versioned<DeviceSyncRepresentation> versionedDevice =
+                            iter.next().getValue();
+                    DeviceSyncRepresentation storedDevice =
+                            versionedDevice.getValue();
+                    if (storedDevice == null)
+                        continue;
+                    for(SyncEntity se: storedDevice.getEntities()) {
+                        try {
+                            // Do we have a device for this entity??
+                            IDevice d = findDevice(se.macAddress, se.vlan,
+                                                   se.ipv4Address,
+                                                   se.switchDPID,
+                                                   se.switchPort);
+                            if (d != null) {
+                                found = true;
+                                break;
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // not all key fields provided. Skip entity
+                        }
+                    }
+                    if (!found) {
+                        // We currently DO NOT have a live device that
+                        // matches the current device from the store.
+                        // Delete device from store.
+                        removeDevice(versionedDevice);
+                    }
+                }
+            } finally {
+                if (iter != null)
+                    iter.close();
+            }
+        }
+    }
+
+    void consoliateStore() {
+        deviceSyncManager.consolidateStore();
+    }
+
+    void goToMaster() {
+        deviceSyncManager.goToMaster();
+    }
+
+    /**
+     * For testing. Sets the syncService. Only call after init but before
+     * startUp. Used by MockDeviceManager
+     * @param syncService
+     */
+    protected void setSyncServiceIfNotSet(ISyncService syncService) {
+        if (this.syncService == null)
+            this.syncService = syncService;
     }
 }
