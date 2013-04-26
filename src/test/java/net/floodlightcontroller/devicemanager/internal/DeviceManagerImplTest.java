@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -151,6 +152,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Override
     @Before
     public void setUp() throws Exception {
+        doSetUp(Role.MASTER);
+    }
+
+    public void doSetUp(Role initialRole) throws Exception {
         super.setUp();
 
         this.syncService = new MockSyncService();
@@ -161,6 +166,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         ITopologyService topology = createMock(ITopologyService.class);
         fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
+        mockFloodlightProvider.setRole(initialRole, "");
+
         deviceManager = new DeviceManagerImpl();
         flowReconcileMgr = new FlowReconcileManager();
         DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
@@ -2318,11 +2325,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
      */
     @Test
     public void testWriteToSyncStore() throws Exception {
-        int syncStoreInternalMs = 50;
+        int syncStoreIntervalMs = 50;
         ITopologyService mockTopology = makeMockTopologyAllPortsAp();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
-        deviceManager.setSyncStoreInterval(syncStoreInternalMs*1000*1000);
+        deviceManager.setSyncStoreWriteInterval(syncStoreIntervalMs);
 
         Entity e1a = new Entity(1L, (short)2, 3, 4L, 5, new Date(1000));
         e1a.setActiveSince(new Date(0));
@@ -2348,7 +2355,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertEntityEquals(e1a, dsr1.getEntities().get(0)); //e1a not e1b !!!
 
         // Wait for the write interval to expire then write again.
-        Thread.sleep(syncStoreInternalMs+5);
+        Thread.sleep(syncStoreIntervalMs+5);
         Entity e1c = new Entity(1L, (short)2, 3, 4L, 5, new Date(3000));
         e1c.setActiveSince(new Date(0));
         deviceManager.learnDeviceByEntity(e1c);
@@ -2445,13 +2452,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
     @Test
     public void testToMaster() throws Exception {
-        int syncStoreInternalMs = 0;
+        int syncStoreWriteIntervalMs = 0;
+        int initialSyncStoreConsolidateIntervalMs = 50;
         ITopologyService mockTopology = makeMockTopologyAllPortsAp();
         replay(mockTopology);
         deviceManager.topology = mockTopology;
         // We want an EntityClassifier that has switch/port as key fields
         deviceManager.entityClassifier = new MockEntityClassifier();
-        deviceManager.setSyncStoreInterval(syncStoreInternalMs);
+        deviceManager.setSyncStoreWriteInterval(syncStoreWriteIntervalMs);
+        deviceManager.setInitialSyncStoreConsolidateMs(initialSyncStoreConsolidateIntervalMs);
 
         // Add Device1 with two entities with two different IPs
         Entity e1a = new Entity(1L, null, 3, 4L, 5, new Date(1000));
@@ -2491,7 +2500,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         // Query for the Device1. Make sure we have the two IPs we stored.
         IDevice d = getSingleDeviceFromDeviceManager(1L);
         assertDeviceIps(new Integer[] {3, 33}, d);
-        System.out.println(Arrays.toString(d.getVlanId()));
         assertArrayEquals(new Short[] { Ethernet.VLAN_UNTAGGED }, d.getVlanId());
         swp = new SwitchPort(4L, 5);
         assertArrayEquals(new SwitchPort[] { swp }, d.getAttachmentPoints());
@@ -2503,7 +2511,48 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertArrayEquals(new Short[] { Ethernet.VLAN_UNTAGGED }, d.getVlanId());
         swp = new SwitchPort(4L, 5);
         assertArrayEquals(new SwitchPort[] { swp }, d.getAttachmentPoints());
+
+        //----------------------------
+        // add another entry device to the store. since device manager is
+        // already master we won't read this device and it should be
+        // removed from the store by the consolidate task
+        Entity e3 = new Entity(3L, null, null, 1L, 1, null);
+        dsr = new DeviceSyncRepresentation();
+        dsr.setKey("Device3");
+        dsr.setEntities(Collections.singletonList(new SyncEntity(e3)));
+        storeClient.put(dsr.getKey(), dsr);
+
+        // make sure it's in the store
+        List<DeviceSyncRepresentation> entries = getEntriesFromStore();
+        boolean found = false;
+        for (DeviceSyncRepresentation entry: entries) {
+            if (entry!=null && entry.getKey().equals("Device3"))
+                found = true;
+        }
+        assertTrue("Device3 not in store. Entries in store: " + entries, found);
+        // make sure it's not in DevManager
+        Iterator<? extends IDevice> diter =
+                deviceManager.queryDevices(3L, null, null, null, null);
+        assertFalse("Device3 found in DeviceManager. Should be there",
+                    diter.hasNext());
+
+        // Wait for consolidate
+        Thread.sleep(initialSyncStoreConsolidateIntervalMs + 5);
+        // make sure it's in NOT the store
+        entries = getEntriesFromStore();
+        found = false;
+        for (DeviceSyncRepresentation entry: entries) {
+            if (entry!=null && entry.getKey().equals("Device3"))
+                found = true;
+        }
+        assertFalse("Device3 not is still in the store. Entries in store: "
+                    + entries, found);
+        // make sure it's not in DevManager
+        diter = deviceManager.queryDevices(3L, null, null, null, null);
+        assertFalse("Device3 found in DeviceManager. Should be there",
+                    diter.hasNext());
     }
+
 
     @Test
     public void testConsolitateStore() throws Exception {
@@ -2513,7 +2562,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         deviceManager.topology = mockTopology;
         // We want an EntityClassifier that has switch/port as key fields
         deviceManager.entityClassifier = new MockEntityClassifier();
-        deviceManager.setSyncStoreInterval(syncStoreInternalMs);
+        deviceManager.setSyncStoreWriteInterval(syncStoreInternalMs);
 
         // Add Device1 with two entities to store and let device manager
         // learn
@@ -2536,7 +2585,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         List<DeviceSyncRepresentation> entries = getEntriesFromStore();
         assertEquals(2, entries.size());
 
-        deviceManager.consoliateStore();
+        deviceManager.scheduleConsolidateStoreNow();
+        Thread.sleep(25); // give the scheduler time to run the task
 
         // We should still have two entries, however one of them will be a
         // tombstone
@@ -2558,7 +2608,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
         // Run consolitate again. This time we check that tombstones in
         // the store are handled correctly
-        deviceManager.consoliateStore();
+        deviceManager.scheduleConsolidateStoreNow();
+        Thread.sleep(25); // give the scheduler time to run the task
 
         // Now write a device to the store that doesn't have any switch-port
         // it should be removed
@@ -2567,7 +2618,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         dsr.setEntities(Collections.singletonList(new SyncEntity(e3)));
         storeClient.put(dsr.getKey(), dsr);
 
-        deviceManager.consoliateStore();
+        // Run consolitate again. This time we check that tombstones in
+        // the store are handled correctly
+        deviceManager.scheduleConsolidateStoreNow();
+        Thread.sleep(25); // give the scheduler time to run the task
         versioned = storeClient.get("Device3");
         assertNull(versioned.getValue());
 

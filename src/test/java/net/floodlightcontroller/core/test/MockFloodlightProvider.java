@@ -70,6 +70,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     protected ListenerDispatcher<HAListenerTypeMarker, IHAListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
     protected BasicFactory factory;
+    private Role role;
 
     /**
      *
@@ -82,6 +83,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         haListeners =
                 new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
         factory = BasicFactory.getInstance();
+        role = null;
     }
 
     @Override
@@ -307,12 +309,19 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public Role getRole() {
-        return null;
+        /* DISABLE THIS CHECK FOR NOW. OTHER UNIT TESTS NEED TO BE UPDATED
+         * FIRST
+        if (this.role == null)
+            throw new IllegalStateException("You need to call setRole on "
+                       + "MockFloodlightProvider before calling startUp on "
+                       + "other modules");
+        */
+        return this.role;
     }
 
     @Override
     public void setRole(Role role, String roleChangeDescription) {
-
+        this.role = role;
     }
 
     /**

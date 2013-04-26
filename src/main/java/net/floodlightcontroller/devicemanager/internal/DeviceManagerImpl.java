@@ -123,21 +123,35 @@ IFlowReconcileListener, IInfoProvider {
     private IStoreClient<String,DeviceSyncRepresentation> storeClient;
     private DeviceSyncManager deviceSyncManager;
 
+    private boolean isMaster = false;
+
     static final String DEVICE_SYNC_STORE_NAME =
             DeviceManagerImpl.class.getCanonicalName() + ".stateStore";
 
     /**
-     * Default time interval between writes of entries for the same device to
+     * Time interval between writes of entries for the same device to
      * the sync store.
      */
-    static final long DEFAULT_SYNC_STORE_INTERVAL_NS =
-            5L*60L*1000L*1000L*1000L; // 5 min
+    static final int DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS =
+            5*60*1000; // 5 min
+    private int syncStoreWriteIntervalMs = DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS;
 
-    /*
-     * Actual time interval between writes of device entries to the sync store.
-     * Tests can overwrite this value.
+    /**
+     * Time after SLAVE->MASTER until we run the consolidate store
+     * code.
      */
-    private long syncStoreIntervalNs;
+    static final int DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS =
+            15*1000; // 15 sec
+    private int initialSyncStoreConsolidateMs =
+            DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS;
+
+    /**
+     * Time interval between consolidate store runs.
+     */
+    static final int DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS =
+            75*60*1000; // 75 min
+    private final int syncStoreConsolidateIntervalMs =
+            DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS;
 
 
     /**
@@ -367,6 +381,13 @@ IFlowReconcileListener, IInfoProvider {
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
+
+
+    /**
+     * Periodic task to consolidate entries in the store. I.e., delete
+     * entries in the store that are not known to DeviceManager
+     */
+    private SingletonTask storeConsolidateTask;
 
     /**
      * Listens for HA notifications
@@ -761,13 +782,13 @@ IFlowReconcileListener, IInfoProvider {
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
         this.syncService = fmc.getServiceImpl(ISyncService.class);
         this.deviceSyncManager = new DeviceSyncManager();
-        this.syncStoreIntervalNs = DEFAULT_SYNC_STORE_INTERVAL_NS;
         this.haListenerDelegate = new HAListenerDelegate();
     }
 
     @Override
     public void startUp(FloodlightModuleContext fmc)
             throws FloodlightModuleException {
+        isMaster = (floodlightProvider.getRole() == Role.MASTER);
         primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
         secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
@@ -783,6 +804,7 @@ IFlowReconcileListener, IInfoProvider {
         flowReconcileMgr.addFlowReconcileListener(this);
         entityClassifier.addListener(this);
 
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
@@ -791,10 +813,23 @@ IFlowReconcileListener, IInfoProvider {
                                              TimeUnit.SECONDS);
             }
         };
-        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         entityCleanupTask = new SingletonTask(ses, ecr);
         entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                      TimeUnit.SECONDS);
+
+        Runnable consolidateStoreRunner = new Runnable() {
+            @Override
+            public void run() {
+                deviceSyncManager.consolidateStore();
+                storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+                                                TimeUnit.MILLISECONDS);
+            }
+        };
+        storeConsolidateTask = new SingletonTask(ses, consolidateStoreRunner);
+        if (isMaster)
+            storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+                                            TimeUnit.MILLISECONDS);
+
 
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
@@ -1943,10 +1978,26 @@ IFlowReconcileListener, IInfoProvider {
     /**
      * For testing: sets the interval between writes of the same device
      * to the device store.
-     * @param intervalNs
+     * @param intervalMs
      */
-    void setSyncStoreInterval(long intervalNs) {
-        this.syncStoreIntervalNs = intervalNs;
+    void setSyncStoreWriteInterval(int intervalMs) {
+        this.syncStoreWriteIntervalMs = intervalMs;
+    }
+
+    /**
+     * For testing: sets the time between transition to MASTER and
+     * consolidate store
+     * @param intervalMs
+     */
+    void setInitialSyncStoreConsolidateMs(int intervalMs) {
+        this.initialSyncStoreConsolidateMs = intervalMs;
+    }
+
+    /**
+     * For testing: consolidate the store NOW
+     */
+    void scheduleConsolidateStoreNow() {
+        this.storeConsolidateTask.reschedule(0, TimeUnit.MILLISECONDS);
     }
 
     private class DeviceSyncManager  {
@@ -1954,17 +2005,6 @@ IFlowReconcileListener, IInfoProvider {
         // last wrote the device to the sync store
         private ConcurrentMap<Long, Long> lastWriteTimes =
                 new ConcurrentHashMap<Long, Long>();
-        private Role role = null;
-
-        /**
-         * Update the role
-         * @param role
-         */
-        public void setRole(Role role) {
-            if (role != Role.SLAVE && this.role == Role.SLAVE)
-                goToMaster();
-            this.role = role;
-        }
 
         /**
          * Write the given device to storage if we are MASTER.
@@ -1973,7 +2013,7 @@ IFlowReconcileListener, IInfoProvider {
          * @param d the device to store
          */
         public void storeDevice(Device d) {
-            if (role == Role.SLAVE)
+            if (!isMaster)
                 return;
             if (d == null)
                 return;
@@ -1990,14 +2030,15 @@ IFlowReconcileListener, IInfoProvider {
          * @param d the device to store
          */
         public void storeDeviceThrottled(Device d) {
-            if (role == Role.SLAVE)
+            long intervalNs = syncStoreWriteIntervalMs*1000L*1000L;
+            if (!isMaster)
                 return;
             if (d == null)
                 return;
             long now = System.nanoTime();
             Long last = lastWriteTimes.get(d.getDeviceKey());
             if (last == null ||
-                    now - last > DeviceManagerImpl.this.syncStoreIntervalNs) {
+                    now - last > intervalNs) {
                 writeUpdatedDeviceToStorage(d);
                 lastWriteTimes.put(d.getDeviceKey(), now);
             }
@@ -2010,7 +2051,7 @@ IFlowReconcileListener, IInfoProvider {
          * @param d
          */
         public void removeDevice(Device d) {
-            if (role == Role.SLAVE)
+            if (!isMaster)
                 return;
             // FIXME: could we have a problem with concurrent put to the
             // hashMap? I.e., we write a stale entry to the map after the
@@ -2046,6 +2087,10 @@ IFlowReconcileListener, IInfoProvider {
             }
         }
 
+        /**
+         * Synchronously transition from SLAVE to MASTER. By iterating through
+         * the store and learning all devices from the store
+         */
         private void goToMaster() {
             IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
                     iter = null;
@@ -2071,6 +2116,8 @@ IFlowReconcileListener, IInfoProvider {
                 if (iter != null)
                     iter.close();
             }
+            storeConsolidateTask.reschedule(initialSyncStoreConsolidateMs,
+                                            TimeUnit.MILLISECONDS);
         }
 
         /**
@@ -2102,10 +2149,18 @@ IFlowReconcileListener, IInfoProvider {
          * in the store. We rely on regular packetIns for that.
          * Note: it's possible that multiple entries in the store map to the
          * same device. We don't check or handle this case.
+         *
+         * We need to perform this check after a SLAVE->MASTER transition to
+         * get rid of all entries the old master might have written to the
+         * store after we took over. We also run it regularly in MASTER
+         * state to ensure we don't have stale entries in the store
          */
         private void consolidateStore() {
-            if (role == Role.SLAVE)
+            if (!isMaster)
                 return;
+            if (logger.isDebugEnabled()) {
+                logger.debug("Running consolidateStore.");
+            }
             IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
                     iter = null;
             try {
@@ -2142,6 +2197,11 @@ IFlowReconcileListener, IInfoProvider {
                         // We currently DO NOT have a live device that
                         // matches the current device from the store.
                         // Delete device from store.
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Removing device {} from store. No "
+                                         + "corresponding live device",
+                                         storedDevice.getKey());
+                        }
                         removeDevice(versionedDevice);
                     }
                 }
@@ -2152,9 +2212,6 @@ IFlowReconcileListener, IInfoProvider {
         }
     }
 
-    void consoliateStore() {
-        deviceSyncManager.consolidateStore();
-    }
 
     /**
      * For testing. Sets the syncService. Only call after init but before
