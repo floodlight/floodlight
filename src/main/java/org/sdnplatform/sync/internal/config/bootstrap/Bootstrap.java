@@ -17,10 +17,6 @@ import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.rpc.RPCService;
-import org.sdnplatform.sync.thrift.AsyncMessageHeader;
-import org.sdnplatform.sync.thrift.ClusterJoinRequestMessage;
-import org.sdnplatform.sync.thrift.MessageType;
-import org.sdnplatform.sync.thrift.SyncMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
