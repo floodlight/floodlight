@@ -156,6 +156,9 @@ public class SyncManager extends AbstractSyncManager {
     public static final String COUNTER_PUTS = PACKAGE + "-puts";
     public static final String COUNTER_GETS = PACKAGE + "-gets";
     public static final String COUNTER_ITERATORS = PACKAGE + "-iterators";
+    public static final String COUNTER_ERROR_REMOTE = PACKAGE + "-error-remote";
+    public static final String COUNTER_ERROR_PROCESSING = 
+            PACKAGE + "-error-processing";
 
     // ************
     // ISyncService
@@ -523,6 +526,12 @@ public class SyncManager extends AbstractSyncManager {
                                          CounterType.ALWAYS_COUNT);     
             debugCounter.registerCounter(COUNTER_ITERATORS,
                                          "Local iterators created over store",
+                                         CounterType.ALWAYS_COUNT);
+            debugCounter.registerCounter(COUNTER_ERROR_REMOTE,
+                                         "Number of errors sent from remote clients",
+                                         CounterType.ALWAYS_COUNT);
+            debugCounter.registerCounter(COUNTER_ERROR_PROCESSING,
+                                         "Number of errors processing messages from remote clients",
                                          CounterType.ALWAYS_COUNT);
         }
 

@@ -530,6 +530,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected void handleError(ErrorMessage error, Channel channel) {
         rpcService.messageAcked(error.getType(), getRemoteNodeId());
+        updateCounter(SyncManager.COUNTER_ERROR_REMOTE, 1);
         super.handleError(error, channel);
     }
 
@@ -579,6 +580,12 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             throw new AuthException("Could not read challenge/response  " + 
                     "shared secret from key store " + path, e);
         }
+    }
+    
+    protected SyncMessage getError(int transactionId, Exception error, 
+                                   MessageType type) {
+        updateCounter(SyncManager.COUNTER_ERROR_PROCESSING, 1);
+        return super.getError(transactionId, error, type);
     }
 
     // *****************

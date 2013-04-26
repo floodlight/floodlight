@@ -528,15 +528,18 @@ public abstract class AbstractRPCChannelHandler
     }
 
     @LogMessageDoc(level="ERROR",
-                   message="[{id}->{id}] Error for message {}: {}",
+                   message="[{id}->{id}] Error for message {id} ({type}): " + 
+                           "{message} {error code}",
                    explanation="Remote client sent an error",
                    recommendation=LogMessageDoc.GENERIC_ACTION)
     protected void handleError(ErrorMessage error, Channel channel) {
-        logger.error("[{}->{}] Error for message {}: {}", 
+        logger.error("[{}->{}] Error for message {} ({}): {} ({})", 
                      new Object[]{getLocalNodeIdString(), 
                                   getRemoteNodeIdString(),
                                   error.getHeader().getTransactionId(),
-                                  error.getError().getMessage()});
+                                  error.getType(),
+                                  error.getError().getMessage(),
+                                  error.getError().getErrorCode()});
     }
 
     // *****************
@@ -551,11 +554,19 @@ public abstract class AbstractRPCChannelHandler
      * @param type the type of the message that generated the error
      * @return the {@link SyncError} message
      */
+    @LogMessageDoc(level="ERROR",
+                   message="Unexpected error processing message {} ({})",
+                   explanation="An error occurred while processing an " + 
+                               "RPC message",
+                   recommendation=LogMessageDoc.GENERIC_ACTION)
     protected SyncMessage getError(int transactionId, Exception error, 
-                                      MessageType type) {
+                                   MessageType type) {
         int ec = SyncException.ErrorType.GENERIC.getValue();
         if (error instanceof SyncException) {
             ec = ((SyncException)error).getErrorType().getValue();
+        } else {
+            logger.error("Unexpected error processing message " + transactionId
+                         + "(" + type + ")", error);
         }
         SyncError m = new SyncError();
         m.setErrorCode(ec);
