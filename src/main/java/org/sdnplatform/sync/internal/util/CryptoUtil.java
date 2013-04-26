@@ -79,6 +79,9 @@ public class CryptoUtil {
         // store away the keystore
         java.io.FileOutputStream fos = null;
         File keyStoreFile = new File(keyStorePath);
+        File parent = keyStoreFile.getParentFile();
+        if (parent != null)
+            parent.mkdirs();
         try {
             fos = new java.io.FileOutputStream(keyStoreFile);
             ks.store(fos, password);
