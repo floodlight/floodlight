@@ -13,8 +13,10 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,13 @@ public class BootstrapTest {
         ThreadPool tp = new ThreadPool();
 
         int curPort = 6699;
+        
+        String keyStorePath = new File(dbFolder.getRoot(), 
+                                       "keystore.jceks").getAbsolutePath();
+        String keyStorePassword = "bootstrapping is fun!";
+        CryptoUtil.writeSharedSecret(keyStorePath, 
+                                     keyStorePassword, 
+                                     CryptoUtil.secureRandom(16));
         
         // autobootstrap a cluster of 4 nodes
         for (int i = 0; i < 4; i++) {
@@ -80,6 +89,11 @@ public class BootstrapTest {
             // where it will listen on 6642 because it will use the fallback
             // config
             unsyncStore.put("localNodePort", String.valueOf(curPort));
+            unsyncStore.put(SyncStoreCCProvider.KEY_STORE_PATH, keyStorePath);
+            unsyncStore.put(SyncStoreCCProvider.KEY_STORE_PASSWORD, 
+                            keyStorePassword);
+            unsyncStore.put(SyncStoreCCProvider.AUTH_SCHEME, 
+                            AuthScheme.CHALLENGE_RESPONSE.toString());
 
             String curSeed = "";
             if (i > 0) {

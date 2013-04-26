@@ -206,7 +206,7 @@ public class SyncStoreCCProvider
                 Versioned<String> sv = unsyncStoreClient.get(SEEDS);
                 if (sv.getValue() == null || !sv.getValue().equals(seeds)) {
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Updating seeds to {} from {}", 
+                        logger.debug("Updating seeds to \"{}\" from \"{}\"", 
                                      seeds, sv.getValue());
                     }
                     unsyncStoreClient.put(SEEDS, seeds);

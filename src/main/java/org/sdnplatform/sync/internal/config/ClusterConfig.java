@@ -183,6 +183,14 @@ public class ClusterConfig {
         result = prime * result
                  + ((allNodes == null) ? 0 : allNodes.hashCode());
         result = prime * result
+                 + ((authScheme == null) ? 0 : authScheme.hashCode());
+        result = prime
+                 * result
+                 + ((keyStorePassword == null) ? 0
+                                              : keyStorePassword.hashCode());
+        result = prime * result
+                 + ((keyStorePath == null) ? 0 : keyStorePath.hashCode());
+        result = prime * result
                  + ((localDomains == null) ? 0 : localDomains.hashCode());
         result = prime * result
                  + ((thisNode == null) ? 0 : thisNode.hashCode());
@@ -198,9 +206,14 @@ public class ClusterConfig {
         if (allNodes == null) {
             if (other.allNodes != null) return false;
         } else if (!allNodes.equals(other.allNodes)) return false;
-        if (localDomains == null) {
-            if (other.localDomains != null) return false;
-        } else if (!localDomains.equals(other.localDomains)) return false;
+        if (authScheme != other.authScheme) return false;
+        if (keyStorePassword == null) {
+            if (other.keyStorePassword != null) return false;
+        } else if (!keyStorePassword.equals(other.keyStorePassword))
+                                                                    return false;
+        if (keyStorePath == null) {
+            if (other.keyStorePath != null) return false;
+        } else if (!keyStorePath.equals(other.keyStorePath)) return false;
         if (thisNode == null) {
             if (other.thisNode != null) return false;
         } else if (!thisNode.equals(other.thisNode)) return false;

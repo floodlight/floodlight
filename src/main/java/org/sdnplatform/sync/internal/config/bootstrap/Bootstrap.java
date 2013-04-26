@@ -57,6 +57,7 @@ public class Bootstrap {
     ExecutorService workerExecutor = null;
     ClientBootstrap bootstrap = null;
     
+    protected Node localNode;
     protected volatile boolean succeeded = false;
 
     public Bootstrap(SyncManager syncManager, AuthScheme authScheme,
@@ -104,6 +105,7 @@ public class Bootstrap {
     
     public boolean bootstrap(HostAndPort seed, 
                              Node localNode) throws SyncException {
+        this.localNode = localNode;
         succeeded = false;
         SocketAddress sa =
                 new InetSocketAddress(seed.getHostText(), seed.getPort());
@@ -116,24 +118,6 @@ public class Bootstrap {
         Channel channel = future.getChannel();
         logger.debug("Connected to " + seed);
         
-        org.sdnplatform.sync.thrift.Node n = 
-                new org.sdnplatform.sync.thrift.Node();
-        n.setHostname(localNode.getHostname());
-        n.setPort(localNode.getPort());
-        if (localNode.getNodeId() >= 0)
-            n.setNodeId(localNode.getNodeId());
-        if (localNode.getDomainId() >= 0)
-            n.setDomainId(localNode.getDomainId());
-
-        ClusterJoinRequestMessage cjrm = new ClusterJoinRequestMessage();
-        AsyncMessageHeader header = new AsyncMessageHeader();
-        header.setTransactionId(transactionId.getAndIncrement());
-        cjrm.setHeader(header);
-        cjrm.setNode(n);
-        SyncMessage bsm = 
-                new SyncMessage(MessageType.CLUSTER_JOIN_REQUEST);
-        bsm.setClusterJoinRequest(cjrm);
-        channel.write(bsm);
         try {
             channel.getCloseFuture().await();
         } catch (InterruptedException e) {
