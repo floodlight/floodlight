@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IHAListener;
@@ -120,7 +121,7 @@ import org.slf4j.LoggerFactory;
 @LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager implements IOFMessageListener,
     IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
-    IFloodlightModule, IInfoProvider, IHAListener {
+    IFloodlightModule, IInfoProvider {
     protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
     // Names of table/fields for links in the storage API
@@ -260,6 +261,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         int ignoreBits;
     }
     protected Set<MACRange> ignoreMACSet;
+
+    private IHAListener haListener;
 
     //*********************
     // ILinkDiscoveryService
@@ -2213,6 +2216,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
                                 new ConcurrentHashMap<MACRange,Boolean>());
+        this.haListener = new HAListenerDelegate();
     }
 
     @Override
@@ -2332,7 +2336,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         floodlightProvider.addOFMessageListener(OFType.PORT_STATUS, this);
         // Register for switch updates
         floodlightProvider.addOFSwitchListener(this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListener);
         floodlightProvider.addInfoProvider("summary", this);
         if (restApi != null)
                             restApi.addRestletRoutable(new LinkDiscoveryWebRoutable());
@@ -2453,42 +2457,45 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     // IHAListener
     //***************
 
-    @Override
-    public void roleChanged(Role newRole) {
-        switch (newRole) {
-            case MASTER:
-                if (log.isTraceEnabled()) {
-                    log.trace("Sending LLDPs "
-                              + "to HA change from SLAVE->MASTER");
-                }
-                this.role = Role.MASTER;
-                clearAllLinks();
-                readTopologyConfigFromStorage();
-                log.debug("Role Change to Master: Rescheduling discovery task.");
-                discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
-                break;
-            case SLAVE:
-                if (log.isTraceEnabled()) {
-                    log.trace("Clearing links due to "
-                              + "HA change to SLAVE");
-                }
-                this.role = Role.SLAVE;
-                switchLinks.clear();
-                links.clear();
-                portLinks.clear();
-                portBroadcastDomainLinks.clear();
-                discoverOnAllPorts();
-                break;
-            default:
-                break;
+    private class HAListenerDelegate implements IHAListener {
+        @Override
+        public void  transitionToMaster() {
+            if (log.isTraceEnabled()) {
+                log.trace("Sending LLDPs "
+                        + "to HA change from SLAVE->MASTER");
+            }
+            LinkDiscoveryManager.this.role = Role.MASTER;
+            clearAllLinks();
+            readTopologyConfigFromStorage();
+            log.debug("Role Change to Master: Rescheduling discovery task.");
+            discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
         }
-    }
 
-    @Override
-    public void controllerNodeIPsChanged(Map<String, String> curControllerNodeIPs,
-                                         Map<String, String> addedControllerNodeIPs,
-                                         Map<String, String> removedControllerNodeIPs) {
-        // ignore
+        @Override
+        public void controllerNodeIPsChanged(Map<String, String> curControllerNodeIPs,
+                                             Map<String, String> addedControllerNodeIPs,
+                                             Map<String, String> removedControllerNodeIPs) {
+            // ignore
+        }
+
+        @Override
+        public String getName() {
+            return getClass().getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
     }
 
 }

@@ -22,7 +22,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -40,13 +39,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -92,7 +91,6 @@ import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
-import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.Versioned;
@@ -110,7 +108,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
 IFloodlightModule, IEntityClassListener,
-IFlowReconcileListener, IInfoProvider, IHAListener {
+IFlowReconcileListener, IInfoProvider {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
 
@@ -369,6 +367,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
+
+    /**
+     * Listens for HA notifications
+     */
+    protected HAListenerDelegate haListenerDelegate;
 
 
     // *********************
@@ -759,6 +762,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.syncService = fmc.getServiceImpl(ISyncService.class);
         this.deviceSyncManager = new DeviceSyncManager();
         this.syncStoreIntervalNs = DEFAULT_SYNC_STORE_INTERVAL_NS;
+        this.haListenerDelegate = new HAListenerDelegate();
     }
 
     @Override
@@ -773,7 +777,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         apComparator = new AttachmentPointComparator();
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListenerDelegate);
         if (topology != null)
             topology.addListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
@@ -825,26 +829,40 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     // IHAListener
     // ***************
 
-    @Override
-    public void roleChanged(Role newRole) {
-        switch(newRole) {
-            case SLAVE:
-                logger.debug("Resetting device state because of role change");
-                // FIXME
-                //startUp(null);
-                break;
-            default:
-                break;
+    protected class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToMaster() {
+            DeviceManagerImpl.this.deviceSyncManager.goToMaster();
+        }
+
+        @Override
+        public void controllerNodeIPsChanged(
+                Map<String, String> curControllerNodeIPs,
+                Map<String, String> addedControllerNodeIPs,
+                Map<String, String> removedControllerNodeIPs) {
+            // no-op
+        }
+
+        @Override
+        public String getName() {
+            return this.getClass().getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
         }
     }
 
-    @Override
-    public void controllerNodeIPsChanged(
-                                         Map<String, String> curControllerNodeIPs,
-                                         Map<String, String> addedControllerNodeIPs,
-                                         Map<String, String> removedControllerNodeIPs) {
-        // no-op
-    }
 
     // ****************
     // Internal methods
@@ -2138,10 +2156,6 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         deviceSyncManager.consolidateStore();
     }
 
-    void goToMaster() {
-        deviceSyncManager.goToMaster();
-    }
-
     /**
      * For testing. Sets the syncService. Only call after init but before
      * startUp. Used by MockDeviceManager
@@ -2150,5 +2164,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected void setSyncServiceIfNotSet(ISyncService syncService) {
         if (this.syncService == null)
             this.syncService = syncService;
+    }
+
+    /**
+     * For testing.
+     * @return
+     */
+    IHAListener getHAListener() {
+        return this.haListenerDelegate;
     }
 }

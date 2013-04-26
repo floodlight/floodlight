@@ -30,8 +30,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StaticFlowEntryPusher
     implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService,
-        IStorageSourceListener, IOFMessageListener, IHAListener {
+        IStorageSourceListener, IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
     public static final String StaticFlowName = "staticflowentry";
 
@@ -109,6 +109,8 @@ public class StaticFlowEntryPusher
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IRestApiService restApi;
+
+    private IHAListener haListener;
 
     // Map<DPID, Map<Name, FlowMod>>; FlowMod can be null to indicate non-active
     protected Map<String, Map<String, OFFlowMod>> entriesFromStorage;
@@ -653,13 +655,14 @@ public class StaticFlowEntryPusher
             context.getServiceImpl(IStorageSourceService.class);
         restApi =
             context.getServiceImpl(IRestApiService.class);
+        haListener = new HAListenerDelegate();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         floodlightProvider.addOFSwitchListener(this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListener);
 
         // assumes no switches connected at startup()
         storageSource.createTable(TABLE_NAME, null);
@@ -804,31 +807,40 @@ public class StaticFlowEntryPusher
 
     // IHAListener
 
-    @Override
-    public void roleChanged(Role newRole) {
-        switch(newRole) {
-            case MASTER:
-                log.debug("Re-reading static flows from storage due " +
-                        "to HA change from SLAVE->MASTER");
-                entriesFromStorage = readEntriesFromStorage();
-                entry2dpid = computeEntry2DpidMap(entriesFromStorage);
-                break;
-            case SLAVE:
-                log.debug("Clearing in-memory flows due to " +
-                        "HA change to SLAVE");
-                entry2dpid.clear();
-                entriesFromStorage.clear();
-                break;
-            default:
-            	break;
+    private class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToMaster() {
+            log.debug("Re-reading static flows from storage due " +
+                    "to HA change from SLAVE->MASTER");
+            entriesFromStorage = readEntriesFromStorage();
+            entry2dpid = computeEntry2DpidMap(entriesFromStorage);
         }
-    }
 
-    @Override
-    public void controllerNodeIPsChanged(
-            Map<String, String> curControllerNodeIPs,
-            Map<String, String> addedControllerNodeIPs,
-            Map<String, String> removedControllerNodeIPs) {
-        // ignore
+        @Override
+        public void controllerNodeIPsChanged(
+                Map<String, String> curControllerNodeIPs,
+                Map<String, String> addedControllerNodeIPs,
+                Map<String, String> removedControllerNodeIPs) {
+            // ignore
+        }
+
+        @Override
+        public String getName() {
+            return getClass().getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
     }
 }

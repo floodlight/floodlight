@@ -19,7 +19,6 @@ package org.sdnplatform.sync;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.omg.CORBA.UserException;
 import org.sdnplatform.sync.error.ObsoleteVersionException;
 import org.sdnplatform.sync.error.SyncException;
 

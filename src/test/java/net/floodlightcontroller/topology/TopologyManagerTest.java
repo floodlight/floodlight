@@ -17,7 +17,6 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
@@ -123,13 +122,4 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getTunnelPorts().size()==0);
     }
 
-    @Test
-    public void testHARoleChange() throws Exception {
-        testBasic2();
-        getMockFloodlightProvider().dispatchRoleChanged(Role.SLAVE);
-        assertTrue(tm.switchPorts.isEmpty());
-        assertTrue(tm.switchPortLinks.isEmpty());
-        assertTrue(tm.portBroadcastDomainLinks.isEmpty());
-        assertTrue(tm.tunnelPorts.isEmpty());
-    }
 }

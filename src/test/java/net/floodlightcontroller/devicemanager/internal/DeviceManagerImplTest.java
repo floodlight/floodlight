@@ -2486,7 +2486,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 storeClient.get("FooBar");
         storeClient.put("FooBar", versionedDsr);
 
-        deviceManager.goToMaster();
+        deviceManager.getHAListener().transitionToMaster();
 
         // Query for the Device1. Make sure we have the two IPs we stored.
         IDevice d = getSingleDeviceFromDeviceManager(1L);

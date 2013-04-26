@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -66,7 +67,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     protected static Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
     protected List<IOFSwitchListener> switchListeners;
-    protected List<IHAListener> haListeners;
+    protected ListenerDispatcher<HAListenerTypeMarker, IHAListener> haListeners;
     protected Map<Long, IOFSwitch> switches;
     protected BasicFactory factory;
 
@@ -78,7 +79,8 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
                                    IOFMessageListener>>();
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switchListeners = new CopyOnWriteArrayList<IOFSwitchListener>();
-        haListeners = new CopyOnWriteArrayList<IHAListener>();
+        haListeners =
+                new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
         factory = BasicFactory.getInstance();
     }
 
@@ -295,12 +297,12 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void addHAListener(IHAListener listener) {
-        haListeners.add(listener);
+        haListeners.addListener(null,listener);
     }
 
     @Override
     public void removeHAListener(IHAListener listener) {
-        haListeners.remove(listener);
+        haListeners.removeListener(listener);
     }
 
     @Override
@@ -318,9 +320,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
      * @param oldRole
      * @param newRole
      */
-    public void dispatchRoleChanged(Role newRole) {
-        for (IHAListener rl : haListeners) {
-            rl.roleChanged(newRole);
+    public void transitionToMaster() {
+        for (IHAListener rl : haListeners.getOrderedListeners()) {
+            rl.transitionToMaster();
         }
     }
 

@@ -31,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IHAListener;
@@ -78,7 +79,7 @@ import org.slf4j.LoggerFactory;
 public class TopologyManager implements
         IFloodlightModule, ITopologyService,
         IRoutingService, ILinkDiscoveryListener,
-        IOFMessageListener, IHAListener {
+        IOFMessageListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -150,6 +151,8 @@ public class TopologyManager implements
     protected boolean tunnelPortsUpdated;
 
     protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+
+    private IHAListener haListener;
 
    //  Getter/Setter methods
     /**
@@ -668,34 +671,42 @@ public class TopologyManager implements
     // IHAListener
     // ***************
 
-    @Override
-    public void roleChanged(Role newRole) {
-        switch(newRole) {
-            case MASTER:
-                role = Role.MASTER;
-                log.debug("Re-computing topology due " +
-                        "to HA change from SLAVE->MASTER");
-                newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-                                           TimeUnit.MILLISECONDS);
-                break;
-            case SLAVE:
-                log.debug("Clearing topology due to " +
-                        "HA change to SLAVE");
-                role = Role.SLAVE;
-                ldUpdates.clear();
-                clearCurrentTopology();
-                break;
-            default:
-            	break;
+    private class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToMaster() {
+            role = Role.MASTER;
+            log.debug("Re-computing topology due " +
+                    "to HA change from SLAVE->MASTER");
+            newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                       TimeUnit.MILLISECONDS);
         }
-    }
 
-    @Override
-    public void controllerNodeIPsChanged(
-                          Map<String, String> curControllerNodeIPs,
-                          Map<String, String> addedControllerNodeIPs,
-                          Map<String, String> removedControllerNodeIPs) {
-        // no-op
+        @Override
+        public void controllerNodeIPsChanged(
+                                             Map<String, String> curControllerNodeIPs,
+                                             Map<String, String> addedControllerNodeIPs,
+                                             Map<String, String> removedControllerNodeIPs) {
+            // no-op
+        }
+
+        @Override
+        public String getName() {
+            return getClass().getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
     }
 
     // *****************
@@ -755,6 +766,7 @@ public class TopologyManager implements
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         appliedUpdates = new ArrayList<LDUpdate>();
+        haListener = new HAListenerDelegate();
     }
 
     @Override
@@ -772,7 +784,7 @@ public class TopologyManager implements
 
         linkDiscovery.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListener);
         addRestletRoutable();
         registerTopologyDebugCounters();
     }

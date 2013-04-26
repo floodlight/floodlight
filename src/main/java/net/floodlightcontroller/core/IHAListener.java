@@ -18,15 +18,15 @@ package net.floodlightcontroller.core;
 
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+public interface IHAListener extends IListener<HAListenerTypeMarker> {
 
-public interface IHAListener {
     /**
-     * Gets called when the controller changes role (i.e. Master -> Slave).
-     * Note that oldRole CAN be null.
-     * @param newRole The controller's new role
+     * This notification is fired if the controller's initial role was SLAVE
+     * and the controller is now transitioning to MASTER.
+     * Modules need to read their initial role in startUp from floodlight
+     * provider.
      */
-    public void roleChanged(Role newRole);
+    public void transitionToMaster();
 
     /**
      * Gets called when the IP addresses of the controller nodes in the

@@ -42,10 +42,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -62,7 +60,6 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
-import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -127,7 +124,7 @@ public class Controller implements IFloodlightProviderService,
     protected HashMap<String, String> controllerNodeIPsCache;
 
     protected Set<IOFSwitchListener> switchListeners;
-    protected Set<IHAListener> haListeners;
+    protected ListenerDispatcher<HAListenerTypeMarker,IHAListener> haListeners;
     protected Map<String, List<IInfoProvider>> providerMap;
     protected BlockingQueue<IUpdate> updates;
 
@@ -148,8 +145,6 @@ public class Controller implements IFloodlightProviderService,
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
 
-
-    private MessageDispatchGuard messageDispatchGuard;
 
     // This controller's current role that modules can use/query to decide
     // if they should operate in master or slave mode.
@@ -186,103 +181,12 @@ public class Controller implements IFloodlightProviderService,
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
 
-    private static long ROLE_FLAP_DAMPEN_TIME_MS = 2*1000; // 2 sec
-
     // Load monitor for overload protection
     protected final boolean overload_drop =
         Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
     protected final LoadMonitor loadmonitor = new LoadMonitor(log);
 
 
-
-    /**
-     * A utility class for guarding message dispatch to IOFMessage listeners
-     * especially during role transitions.
-     *
-     * The general goal we want to achieve is that IOFMessages are only
-     * dispatched to listeners if the listeners / modules have been notified
-     * to be in MASTER role. This guard helps ensure that no more messages
-     * are in the pipeline before notifying modules.
-     *
-     * The dispatch method must use acquireDispatchGuardAndCheck() and check
-     * its return value before calling the listeners. It also needs to
-     * releaseDispatchGuard() after the listeners have been called. Release
-     * should happen in a finally clause!
-     *
-     * @author gregor
-     *
-     */
-    private class MessageDispatchGuard {
-        /* We implement this using read/write lock. The dispatching method
-         * acquires the readlock, thus allowing multiple threads to
-         * dispatch at the same time. After acquiring the read-lock a user
-         * checks if dispatching is allowed. The lock is release after the
-         * dispatch is complete.
-         *
-         * When dispatching is enabled/disabled we acquire the write-lock, thus
-         * ensuring that no more messages are currently in the pipeline. Once
-         * we have the lock, the status can be changed.
-         */
-        private final ReentrantReadWriteLock lock;
-        private boolean dispatchEnabled;
-
-        /**
-         * @param dispatchAllowed if dispatching messages is allowed after
-         * instantiation
-         */
-        public MessageDispatchGuard(boolean dispatchAllowed) {
-            this.dispatchEnabled = dispatchAllowed;
-            lock = new ReentrantReadWriteLock();
-        }
-
-        /**
-         * message dispatching will be enabled. This method will block until
-         * nobody is holding the guard lock
-         */
-        public void enableDispatch() {
-            lock.writeLock().lock();
-            try {
-                this.dispatchEnabled = true;
-            } finally {
-                lock.writeLock().unlock();
-            }
-        }
-
-        /**
-         * message dispatch will be disabled. This method will block until
-         * nobody is holding the guard lock, i.e., until all messages are
-         * drained fromt the pipeline
-         */
-        public void disableDispatch() {
-            lock.writeLock().lock();
-            try {
-                this.dispatchEnabled = false;
-            } finally {
-                lock.writeLock().unlock();
-            }
-        }
-
-        /**
-         * Acquire the guard lock and return true if dispatching is enabled.
-         * Acquire the guard lock and return true if dispatching is enabled.
-         * Calls
-         * to this method should immediately be followed by a try-finally block
-         * and the finally block should call releaseDispatchGuard()
-         *
-         * @return true if dispatch is enabled
-         */
-        public boolean acquireDispatchGuardAndCheck() {
-            lock.readLock().lock();
-            return this.dispatchEnabled;
-        }
-
-        /**
-         * Release the guard lock.
-         */
-        public void releaseDispatchGuard() {
-            lock.readLock().unlock();
-        }
-    }
 
 
     /**
@@ -310,7 +214,6 @@ public class Controller implements IFloodlightProviderService,
      *
      */
     private class RoleManager {
-        private long lastRoleChangeTimeMillis;
         // This role represents the role that has been set by setRole. This
         // role might or might now have been notified to listeners just yet.
         // This is updated by setRole. doSetRole() will use this value as
@@ -325,32 +228,21 @@ public class Controller implements IFloodlightProviderService,
         private final Set<OFChannelHandler> connectedChannelHandlers;
 
         /**
-         * This SingletonTask performs actually sends the role request
-         * to the channels.
-         */
-        private final SingletonTask changerTask;
-
-
-        /**
          * @param role initial role
          * @param roleChangeDescription initial value of the change description
          * @throws NullPointerException if role or roleChangeDescription is null
+         * @throws IllegalArgumentException if role is EQUAL
          */
         public RoleManager(Role role, String roleChangeDescription) {
             if (role == null)
                 throw new NullPointerException("role must not be null");
+            if (role == Role.EQUAL)
+                throw new IllegalArgumentException("role must not be EQUAL");
             if (roleChangeDescription == null) {
                 throw new NullPointerException("roleChangeDescription must " +
                                                "not be null");
             }
 
-            this.changerTask =
-                    new SingletonTask(Controller.this.ses, new Runnable() {
-                        @Override
-                        public void run() {
-                            doSetRole();
-                        }
-                    });
             this.role = role;
             this.roleChangeDescription = roleChangeDescription;
             this.connectedChannelHandlers = new HashSet<OFChannelHandler>();
@@ -416,42 +308,30 @@ public class Controller implements IFloodlightProviderService,
                 throw new NullPointerException("roleChangeDescription must " +
                                                "not be null");
             }
-            long delay;
+            if (role == Role.EQUAL) {
+                log.debug("Received role request for EQUAL, setting to MASTER"
+                          + " instead");
+                role = Role.MASTER;
+            }
             if (role == this.role) {
                 log.debug("Received role request for {} but controller is "
                         + "already {}. Ingoring it.", role, this.role);
                 return;
             }
+            if (this.role == Role.MASTER && role == Role.SLAVE) {
+                log.info("Received role request to transition from MASTER "
+                          + " SLAVE (reason: {}). Terminating floodlight.",
+                          roleChangeDescription);
+                System.exit(0);
+            }
+            log.info("Received role request for {} (reason: {})."
+                     + " Initiating transition", role, roleChangeDescription);
+
             this.role = role;
             this.roleChangeDescription = roleChangeDescription;
 
-            long now = System.currentTimeMillis();
-            long timeSinceLastRoleChange = now - lastRoleChangeTimeMillis;
-            if (timeSinceLastRoleChange < ROLE_FLAP_DAMPEN_TIME_MS) {
-                // the last time the role was changed was less than
-                // ROLE_FLAP_DAMPEN_TIME_MS in the past. We delay the
-                // next notification to switches by ROLE_FLAP_DAMPEN_TIME_MS
-                delay = ROLE_FLAP_DAMPEN_TIME_MS;
-                if (log.isDebugEnabled()) {
-                    log.debug("Last role change was {} ms ago, delaying role" +
-                            " delaying role change to {}",
-                            lastRoleChangeTimeMillis, role);
-                }
-            } else {
-                // last role change was longer than ROLE_FLAP_DAMPEN_TIME_MS
-                // ago. Notify switches immediately.
-                delay = 0;
-            }
-            lastRoleChangeTimeMillis = now;
-            changerTask.reschedule(delay, TimeUnit.MILLISECONDS);
-        }
-
-        /**
-         * The internal method that actually sends the notification to
-         * the switches and that enqueues the role update to HAListeners.
-         * Also updates the RoleInfo we return to REST callers.
-         */
-        private synchronized void doSetRole() {
+            // TODO: we currently notify switches synchronously from the REST
+            // API handler. We could (should?) do this asynchronously.
             currentRoleInfo = new RoleInfo(this.role,
                                            this.roleChangeDescription,
                                            new Date());
@@ -791,11 +671,17 @@ public class Controller implements IFloodlightProviderService,
     }
 
     /**
-     * Update message indicating controller's role has changed
+     * Update message indicating controller's role has changed.
+     * RoleManager, which enqueues these updates gurantees that we will
+     * only have a single transition from SLAVE to MASTER.
      */
     private class HARoleUpdate implements IUpdate {
         private Role newRole;
         public HARoleUpdate(Role newRole) {
+            if (newRole != Role.MASTER)
+                throw new IllegalArgumentException("Only legal role change is"
+                                                   + "to MASTER. Got to "
+                                                   + newRole);
             this.newRole = newRole;
         }
         @Override
@@ -804,17 +690,18 @@ public class Controller implements IFloodlightProviderService,
                 log.debug("Dispatching HA Role update newRole = {}",
                           newRole);
             }
+            /*
             if (newRole == Role.SLAVE) {
                 messageDispatchGuard.disableDispatch();
                 Controller.this.notifiedRole = newRole;
             }
+            */
             if (haListeners != null) {
-                for (IHAListener listener : haListeners) {
-                        listener.roleChanged(newRole);
+                for (IHAListener listener : haListeners.getOrderedListeners()) {
+                    listener.transitionToMaster();
                 }
             }
             if (newRole != Role.SLAVE) {
-                messageDispatchGuard.enableDispatch();
                 Controller.this.notifiedRole = newRole;
             }
         }
@@ -846,7 +733,7 @@ public class Controller implements IFloodlightProviderService,
                         );
             }
             if (haListeners != null) {
-                for (IHAListener listener: haListeners) {
+                for (IHAListener listener: haListeners.getOrderedListeners()) {
                     listener.controllerNodeIPsChanged(curControllerNodeIPs,
                             addedControllerNodeIPs, removedControllerNodeIPs);
                 }
@@ -968,37 +855,16 @@ public class Controller implements IFloodlightProviderService,
 
 
     /**
+     *
      * Handle and dispatch a message to IOFMessageListeners.
      *
-     * Handle and dispatch a message to IOFMessageListeners. Dispatching
-     * of messages if protected by messageDispatchGuard. We only dispatch
-     * messages to listeners if the controller's role is MASTER.
+     * We only dispatch messages to listeners if the controller's role is MASTER.
      *
      * @param sw The switch sending the message
      * @param m The message the switch sent
      * @param flContext The floodlight context to use for this message. If
      * null, a new context will be allocated.
      * @throws IOException
-     */
-    protected void handleMessage(IOFSwitch sw, OFMessage m,
-                                 FloodlightContext flContext)
-            throws IOException {
-        boolean dispatchAllowed;
-
-        dispatchAllowed = messageDispatchGuard.acquireDispatchGuardAndCheck();
-        try {
-            if (dispatchAllowed)
-                handleMessageUnprotected(sw, m, flContext);
-        } finally {
-            messageDispatchGuard.releaseDispatchGuard();
-        }
-    }
-
-    /**
-     * Internal backend for message dispatch. Does the actual works.
-     * see handleMessage() for parameters
-     *
-     * Caller needs to hold messageDispatchGuard!
      *
      * FIXME: this method and the ChannelHandler disagree on which messages
      * should be dispatched and which shouldn't
@@ -1015,10 +881,16 @@ public class Controller implements IFloodlightProviderService,
                 explanation="The switch sent a message not handled by " +
                         "the controller")
     })
-    protected void handleMessageUnprotected(IOFSwitch sw, OFMessage m,
+    protected void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext)
             throws IOException {
         Ethernet eth = null;
+
+        if (this.notifiedRole == Role.SLAVE) {
+            // We are SLAVE. Do not dispatch messages to listeners.
+            return;
+        }
+
 
         switch (m.getType()) {
             case PACKET_IN:
@@ -1371,6 +1243,8 @@ public class Controller implements IFloodlightProviderService,
                 log.error("Invalid current role value: {}", roleString);
             }
         }
+        if (role == Role.EQUAL)
+            role = Role.MASTER;
 
         log.info("Controller role set to {}", role);
 
@@ -1484,7 +1358,8 @@ public class Controller implements IFloodlightProviderService,
                                       ListenerDispatcher<OFType,
                                                          IOFMessageListener>>();
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
-        this.haListeners = new CopyOnWriteArraySet<IHAListener>();
+        this.haListeners =
+                new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
         this.driverRegistry = new NaiiveSwitchDriverRegistry();
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
@@ -1492,12 +1367,6 @@ public class Controller implements IFloodlightProviderService,
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
         setConfigParams(configParams);
         Role initialRole = getInitialRole(configParams);
-        // FIXME: we should initialize RoleManager here but we need to wait
-        // until we have the scheduled executor service. GRR.
-        //this.roleManager = new RoleManager(initialRole,
-        //                                   INITIAL_ROLE_CHANGE_DESCRIPTION);
-        this.messageDispatchGuard =
-                new MessageDispatchGuard(initialRole != Role.SLAVE);
         this.notifiedRole = initialRole;
         initVendorMessages();
 
@@ -1587,12 +1456,12 @@ public class Controller implements IFloodlightProviderService,
 
     @Override
     public void addHAListener(IHAListener listener) {
-        this.haListeners.add(listener);
+        this.haListeners.addListener(null,listener);
     }
 
     @Override
     public void removeHAListener(IHAListener listener) {
-        this.haListeners.remove(listener);
+        this.haListeners.removeListener(listener);
     }
 
 
