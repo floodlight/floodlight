@@ -1,5 +1,6 @@
 package org.sdnplatform.sync.internal.util;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -77,9 +78,15 @@ public class CryptoUtil {
 
         // store away the keystore
         java.io.FileOutputStream fos = null;
+        File keyStoreFile = new File(keyStorePath);
         try {
-            fos = new java.io.FileOutputStream(keyStorePath);
+            fos = new java.io.FileOutputStream(keyStoreFile);
             ks.store(fos, password);
+            keyStoreFile.setReadable(false, false);
+            keyStoreFile.setReadable(true, true);
+            keyStoreFile.setWritable(false, false);
+            keyStoreFile.setWritable(true, true);
+            keyStoreFile.setExecutable(false, false);
         } finally {
             if (fos != null) {
                 fos.close();
