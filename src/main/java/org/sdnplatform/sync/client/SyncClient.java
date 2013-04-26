@@ -1,6 +1,7 @@
 package org.sdnplatform.sync.client;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
@@ -491,6 +492,12 @@ public class SyncClient {
         }
         
         SyncClient client = new SyncClient(settings);
+        if (settings.keyStorePath != null && 
+            settings.keyStorePassword == null) {
+            Console con = System.console();
+            char[] password = con.readPassword("Enter key store password: ");
+            settings.keyStorePassword = new String(password);
+        }
         try {
             if (false == client.connect()) {
                 return;
