@@ -58,7 +58,8 @@ public class SynchronizingStorageEngine extends ListenerStorageEngine {
     public void put(ByteArray key, Versioned<byte[]> value)
             throws SyncException {
         super.put(key, value);
-        syncManager.queueSyncTask(this, key, value);
+        if (!Scope.UNSYNCHRONIZED.equals(scope))
+            syncManager.queueSyncTask(this, key, value);
     }
     
     // **************

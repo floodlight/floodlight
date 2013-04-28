@@ -10,14 +10,13 @@ import java.util.Map;
 import java.util.HashMap;
 import org.apache.thrift.TEnum;
 
-@SuppressWarnings("all") public enum Scope implements org.apache.thrift.TEnum {
-  GLOBAL(0),
-  LOCAL(1),
-  UNSYNCHRONIZED(2);
+@SuppressWarnings("all") public enum AuthScheme implements org.apache.thrift.TEnum {
+  NO_AUTH(0),
+  CHALLENGE_RESPONSE(1);
 
   private final int value;
 
-  private Scope(int value) {
+  private AuthScheme(int value) {
     this.value = value;
   }
 
@@ -32,14 +31,12 @@ import org.apache.thrift.TEnum;
    * Find a the enum type by its integer value, as defined in the Thrift IDL.
    * @return null if the value is not found.
    */
-  public static Scope findByValue(int value) { 
+  public static AuthScheme findByValue(int value) { 
     switch (value) {
       case 0:
-        return GLOBAL;
+        return NO_AUTH;
       case 1:
-        return LOCAL;
-      case 2:
-        return UNSYNCHRONIZED;
+        return CHALLENGE_RESPONSE;
       default:
         return null;
     }

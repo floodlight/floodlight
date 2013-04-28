@@ -26,7 +26,7 @@ public class ObsoleteVersionException extends SyncException {
     }
     
     @Override
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.OBSOLETE_VERSION;
     }
 

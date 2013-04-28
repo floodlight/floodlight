@@ -20,33 +20,22 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("all") public class HelloMessage implements org.apache.thrift.TBase<HelloMessage, HelloMessage._Fields>, java.io.Serializable, Cloneable {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("HelloMessage");
+@SuppressWarnings("all") public class ClusterJoinResponseMessage implements org.apache.thrift.TBase<ClusterJoinResponseMessage, ClusterJoinResponseMessage._Fields>, java.io.Serializable, Cloneable {
+  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ClusterJoinResponseMessage");
 
   private static final org.apache.thrift.protocol.TField HEADER_FIELD_DESC = new org.apache.thrift.protocol.TField("header", org.apache.thrift.protocol.TType.STRUCT, (short)1);
-  private static final org.apache.thrift.protocol.TField NODE_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("nodeId", org.apache.thrift.protocol.TType.I16, (short)2);
-  private static final org.apache.thrift.protocol.TField AUTH_SCHEME_FIELD_DESC = new org.apache.thrift.protocol.TField("authScheme", org.apache.thrift.protocol.TType.I32, (short)3);
-  private static final org.apache.thrift.protocol.TField AUTH_CHALLENGE_RESPONSE_FIELD_DESC = new org.apache.thrift.protocol.TField("authChallengeResponse", org.apache.thrift.protocol.TType.STRUCT, (short)4);
+  private static final org.apache.thrift.protocol.TField NEW_NODE_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("newNodeId", org.apache.thrift.protocol.TType.I16, (short)2);
+  private static final org.apache.thrift.protocol.TField NODE_STORE_FIELD_DESC = new org.apache.thrift.protocol.TField("nodeStore", org.apache.thrift.protocol.TType.LIST, (short)3);
 
   public AsyncMessageHeader header; // required
-  public short nodeId; // required
-  /**
-   * 
-   * @see AuthScheme
-   */
-  public AuthScheme authScheme; // required
-  public AuthChallengeResponse authChallengeResponse; // required
+  public short newNodeId; // required
+  public List<KeyedValues> nodeStore; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
     HEADER((short)1, "header"),
-    NODE_ID((short)2, "nodeId"),
-    /**
-     * 
-     * @see AuthScheme
-     */
-    AUTH_SCHEME((short)3, "authScheme"),
-    AUTH_CHALLENGE_RESPONSE((short)4, "authChallengeResponse");
+    NEW_NODE_ID((short)2, "newNodeId"),
+    NODE_STORE((short)3, "nodeStore");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -63,12 +52,10 @@ import org.slf4j.LoggerFactory;
       switch(fieldId) {
         case 1: // HEADER
           return HEADER;
-        case 2: // NODE_ID
-          return NODE_ID;
-        case 3: // AUTH_SCHEME
-          return AUTH_SCHEME;
-        case 4: // AUTH_CHALLENGE_RESPONSE
-          return AUTH_CHALLENGE_RESPONSE;
+        case 2: // NEW_NODE_ID
+          return NEW_NODE_ID;
+        case 3: // NODE_STORE
+          return NODE_STORE;
         default:
           return null;
       }
@@ -109,7 +96,7 @@ import org.slf4j.LoggerFactory;
   }
 
   // isset id assignments
-  private static final int __NODEID_ISSET_ID = 0;
+  private static final int __NEWNODEID_ISSET_ID = 0;
   private BitSet __isset_bit_vector = new BitSet(1);
 
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
@@ -117,20 +104,19 @@ import org.slf4j.LoggerFactory;
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.HEADER, new org.apache.thrift.meta_data.FieldMetaData("header", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, AsyncMessageHeader.class)));
-    tmpMap.put(_Fields.NODE_ID, new org.apache.thrift.meta_data.FieldMetaData("nodeId", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+    tmpMap.put(_Fields.NEW_NODE_ID, new org.apache.thrift.meta_data.FieldMetaData("newNodeId", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I16)));
-    tmpMap.put(_Fields.AUTH_SCHEME, new org.apache.thrift.meta_data.FieldMetaData("authScheme", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
-        new org.apache.thrift.meta_data.EnumMetaData(org.apache.thrift.protocol.TType.ENUM, AuthScheme.class)));
-    tmpMap.put(_Fields.AUTH_CHALLENGE_RESPONSE, new org.apache.thrift.meta_data.FieldMetaData("authChallengeResponse", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
-        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, AuthChallengeResponse.class)));
+    tmpMap.put(_Fields.NODE_STORE, new org.apache.thrift.meta_data.FieldMetaData("nodeStore", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+        new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
+            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, KeyedValues.class))));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
-    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(HelloMessage.class, metaDataMap);
+    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ClusterJoinResponseMessage.class, metaDataMap);
   }
 
-  public HelloMessage() {
+  public ClusterJoinResponseMessage() {
   }
 
-  public HelloMessage(
+  public ClusterJoinResponseMessage(
     AsyncMessageHeader header)
   {
     this();
@@ -140,39 +126,39 @@ import org.slf4j.LoggerFactory;
   /**
    * Performs a deep copy on <i>other</i>.
    */
-  public HelloMessage(HelloMessage other) {
+  public ClusterJoinResponseMessage(ClusterJoinResponseMessage other) {
     __isset_bit_vector.clear();
     __isset_bit_vector.or(other.__isset_bit_vector);
     if (other.isSetHeader()) {
       this.header = new AsyncMessageHeader(other.header);
     }
-    this.nodeId = other.nodeId;
-    if (other.isSetAuthScheme()) {
-      this.authScheme = other.authScheme;
-    }
-    if (other.isSetAuthChallengeResponse()) {
-      this.authChallengeResponse = new AuthChallengeResponse(other.authChallengeResponse);
+    this.newNodeId = other.newNodeId;
+    if (other.isSetNodeStore()) {
+      List<KeyedValues> __this__nodeStore = new ArrayList<KeyedValues>();
+      for (KeyedValues other_element : other.nodeStore) {
+        __this__nodeStore.add(new KeyedValues(other_element));
+      }
+      this.nodeStore = __this__nodeStore;
     }
   }
 
-  public HelloMessage deepCopy() {
-    return new HelloMessage(this);
+  public ClusterJoinResponseMessage deepCopy() {
+    return new ClusterJoinResponseMessage(this);
   }
 
   @Override
   public void clear() {
     this.header = null;
-    setNodeIdIsSet(false);
-    this.nodeId = 0;
-    this.authScheme = null;
-    this.authChallengeResponse = null;
+    setNewNodeIdIsSet(false);
+    this.newNodeId = 0;
+    this.nodeStore = null;
   }
 
   public AsyncMessageHeader getHeader() {
     return this.header;
   }
 
-  public HelloMessage setHeader(AsyncMessageHeader header) {
+  public ClusterJoinResponseMessage setHeader(AsyncMessageHeader header) {
     this.header = header;
     return this;
   }
@@ -192,82 +178,65 @@ import org.slf4j.LoggerFactory;
     }
   }
 
-  public short getNodeId() {
-    return this.nodeId;
+  public short getNewNodeId() {
+    return this.newNodeId;
   }
 
-  public HelloMessage setNodeId(short nodeId) {
-    this.nodeId = nodeId;
-    setNodeIdIsSet(true);
+  public ClusterJoinResponseMessage setNewNodeId(short newNodeId) {
+    this.newNodeId = newNodeId;
+    setNewNodeIdIsSet(true);
     return this;
   }
 
-  public void unsetNodeId() {
-    __isset_bit_vector.clear(__NODEID_ISSET_ID);
+  public void unsetNewNodeId() {
+    __isset_bit_vector.clear(__NEWNODEID_ISSET_ID);
   }
 
-  /** Returns true if field nodeId is set (has been assigned a value) and false otherwise */
-  public boolean isSetNodeId() {
-    return __isset_bit_vector.get(__NODEID_ISSET_ID);
+  /** Returns true if field newNodeId is set (has been assigned a value) and false otherwise */
+  public boolean isSetNewNodeId() {
+    return __isset_bit_vector.get(__NEWNODEID_ISSET_ID);
   }
 
-  public void setNodeIdIsSet(boolean value) {
-    __isset_bit_vector.set(__NODEID_ISSET_ID, value);
+  public void setNewNodeIdIsSet(boolean value) {
+    __isset_bit_vector.set(__NEWNODEID_ISSET_ID, value);
   }
 
-  /**
-   * 
-   * @see AuthScheme
-   */
-  public AuthScheme getAuthScheme() {
-    return this.authScheme;
+  public int getNodeStoreSize() {
+    return (this.nodeStore == null) ? 0 : this.nodeStore.size();
   }
 
-  /**
-   * 
-   * @see AuthScheme
-   */
-  public HelloMessage setAuthScheme(AuthScheme authScheme) {
-    this.authScheme = authScheme;
-    return this;
+  public java.util.Iterator<KeyedValues> getNodeStoreIterator() {
+    return (this.nodeStore == null) ? null : this.nodeStore.iterator();
   }
 
-  public void unsetAuthScheme() {
-    this.authScheme = null;
-  }
-
-  /** Returns true if field authScheme is set (has been assigned a value) and false otherwise */
-  public boolean isSetAuthScheme() {
-    return this.authScheme != null;
-  }
-
-  public void setAuthSchemeIsSet(boolean value) {
-    if (!value) {
-      this.authScheme = null;
+  public void addToNodeStore(KeyedValues elem) {
+    if (this.nodeStore == null) {
+      this.nodeStore = new ArrayList<KeyedValues>();
     }
+    this.nodeStore.add(elem);
   }
 
-  public AuthChallengeResponse getAuthChallengeResponse() {
-    return this.authChallengeResponse;
+  public List<KeyedValues> getNodeStore() {
+    return this.nodeStore;
   }
 
-  public HelloMessage setAuthChallengeResponse(AuthChallengeResponse authChallengeResponse) {
-    this.authChallengeResponse = authChallengeResponse;
+  public ClusterJoinResponseMessage setNodeStore(List<KeyedValues> nodeStore) {
+    this.nodeStore = nodeStore;
     return this;
   }
 
-  public void unsetAuthChallengeResponse() {
-    this.authChallengeResponse = null;
+  public void unsetNodeStore() {
+    this.nodeStore = null;
   }
 
-  /** Returns true if field authChallengeResponse is set (has been assigned a value) and false otherwise */
-  public boolean isSetAuthChallengeResponse() {
-    return this.authChallengeResponse != null;
+  /** Returns true if field nodeStore is set (has been assigned a value) and false otherwise */
+  public boolean isSetNodeStore() {
+    return this.nodeStore != null;
   }
 
-  public void setAuthChallengeResponseIsSet(boolean value) {
+  public void setNodeStoreIsSet(boolean value) {
     if (!value) {
-      this.authChallengeResponse = null;
+      this.nodeStore = null;
     }
   }
 
@@ -281,27 +250,19 @@ import org.slf4j.LoggerFactory;
       }
       break;
 
-    case NODE_ID:
+    case NEW_NODE_ID:
       if (value == null) {
-        unsetNodeId();
+        unsetNewNodeId();
       } else {
-        setNodeId((Short)value);
+        setNewNodeId((Short)value);
       }
       break;
 
-    case AUTH_SCHEME:
+    case NODE_STORE:
       if (value == null) {
-        unsetAuthScheme();
+        unsetNodeStore();
       } else {
-        setAuthScheme((AuthScheme)value);
-      }
-      break;
-
-    case AUTH_CHALLENGE_RESPONSE:
-      if (value == null) {
-        unsetAuthChallengeResponse();
-      } else {
-        setAuthChallengeResponse((AuthChallengeResponse)value);
+        setNodeStore((List<KeyedValues>)value);
       }
       break;
 
@@ -313,14 +274,11 @@ import org.slf4j.LoggerFactory;
     case HEADER:
       return getHeader();
 
-    case NODE_ID:
-      return Short.valueOf(getNodeId());
+    case NEW_NODE_ID:
+      return Short.valueOf(getNewNodeId());
 
-    case AUTH_SCHEME:
-      return getAuthScheme();
-
-    case AUTH_CHALLENGE_RESPONSE:
-      return getAuthChallengeResponse();
+    case NODE_STORE:
+      return getNodeStore();
 
     }
     throw new IllegalStateException();
@@ -335,12 +293,10 @@ import org.slf4j.LoggerFactory;
     switch (field) {
     case HEADER:
       return isSetHeader();
-    case NODE_ID:
-      return isSetNodeId();
-    case AUTH_SCHEME:
-      return isSetAuthScheme();
-    case AUTH_CHALLENGE_RESPONSE:
-      return isSetAuthChallengeResponse();
+    case NEW_NODE_ID:
+      return isSetNewNodeId();
+    case NODE_STORE:
+      return isSetNodeStore();
     }
     throw new IllegalStateException();
   }
@@ -349,12 +305,12 @@ import org.slf4j.LoggerFactory;
   public boolean equals(Object that) {
     if (that == null)
       return false;
-    if (that instanceof HelloMessage)
-      return this.equals((HelloMessage)that);
+    if (that instanceof ClusterJoinResponseMessage)
+      return this.equals((ClusterJoinResponseMessage)that);
     return false;
   }
 
-  public boolean equals(HelloMessage that) {
+  public boolean equals(ClusterJoinResponseMessage that) {
     if (that == null)
       return false;
 
@@ -367,30 +323,21 @@ import org.slf4j.LoggerFactory;
         return false;
     }
 
-    boolean this_present_nodeId = true && this.isSetNodeId();
-    boolean that_present_nodeId = true && that.isSetNodeId();
-    if (this_present_nodeId || that_present_nodeId) {
-      if (!(this_present_nodeId && that_present_nodeId))
+    boolean this_present_newNodeId = true && this.isSetNewNodeId();
+    boolean that_present_newNodeId = true && that.isSetNewNodeId();
+    if (this_present_newNodeId || that_present_newNodeId) {
+      if (!(this_present_newNodeId && that_present_newNodeId))
         return false;
-      if (this.nodeId != that.nodeId)
-        return false;
-    }
-
-    boolean this_present_authScheme = true && this.isSetAuthScheme();
-    boolean that_present_authScheme = true && that.isSetAuthScheme();
-    if (this_present_authScheme || that_present_authScheme) {
-      if (!(this_present_authScheme && that_present_authScheme))
-        return false;
-      if (!this.authScheme.equals(that.authScheme))
+      if (this.newNodeId != that.newNodeId)
         return false;
     }
 
-    boolean this_present_authChallengeResponse = true && this.isSetAuthChallengeResponse();
-    boolean that_present_authChallengeResponse = true && that.isSetAuthChallengeResponse();
-    if (this_present_authChallengeResponse || that_present_authChallengeResponse) {
-      if (!(this_present_authChallengeResponse && that_present_authChallengeResponse))
+    boolean this_present_nodeStore = true && this.isSetNodeStore();
+    boolean that_present_nodeStore = true && that.isSetNodeStore();
+    if (this_present_nodeStore || that_present_nodeStore) {
+      if (!(this_present_nodeStore && that_present_nodeStore))
         return false;
-      if (!this.authChallengeResponse.equals(that.authChallengeResponse))
+      if (!this.nodeStore.equals(that.nodeStore))
         return false;
     }
 
@@ -402,13 +349,13 @@ import org.slf4j.LoggerFactory;
     return 0;
   }
 
-  public int compareTo(HelloMessage other) {
+  public int compareTo(ClusterJoinResponseMessage other) {
     if (!getClass().equals(other.getClass())) {
       return getClass().getName().compareTo(other.getClass().getName());
     }
 
     int lastComparison = 0;
-    HelloMessage typedOther = (HelloMessage)other;
+    ClusterJoinResponseMessage typedOther = (ClusterJoinResponseMessage)other;
 
     lastComparison = Boolean.valueOf(isSetHeader()).compareTo(typedOther.isSetHeader());
     if (lastComparison != 0) {
@@ -420,32 +367,22 @@ import org.slf4j.LoggerFactory;
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetNodeId()).compareTo(typedOther.isSetNodeId());
+    lastComparison = Boolean.valueOf(isSetNewNodeId()).compareTo(typedOther.isSetNewNodeId());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetNodeId()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.nodeId, typedOther.nodeId);
+    if (isSetNewNodeId()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.newNodeId, typedOther.newNodeId);
       if (lastComparison != 0) {
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetAuthScheme()).compareTo(typedOther.isSetAuthScheme());
+    lastComparison = Boolean.valueOf(isSetNodeStore()).compareTo(typedOther.isSetNodeStore());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetAuthScheme()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.authScheme, typedOther.authScheme);
-      if (lastComparison != 0) {
-        return lastComparison;
-      }
-    }
-    lastComparison = Boolean.valueOf(isSetAuthChallengeResponse()).compareTo(typedOther.isSetAuthChallengeResponse());
-    if (lastComparison != 0) {
-      return lastComparison;
-    }
-    if (isSetAuthChallengeResponse()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.authChallengeResponse, typedOther.authChallengeResponse);
+    if (isSetNodeStore()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.nodeStore, typedOther.nodeStore);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -475,25 +412,28 @@ import org.slf4j.LoggerFactory;
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 2: // NODE_ID
+        case 2: // NEW_NODE_ID
           if (field.type == org.apache.thrift.protocol.TType.I16) {
-            this.nodeId = iprot.readI16();
-            setNodeIdIsSet(true);
+            this.newNodeId = iprot.readI16();
+            setNewNodeIdIsSet(true);
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 3: // AUTH_SCHEME
-          if (field.type == org.apache.thrift.protocol.TType.I32) {
-            this.authScheme = AuthScheme.findByValue(iprot.readI32());
-          } else { 
-            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
-          }
-          break;
-        case 4: // AUTH_CHALLENGE_RESPONSE
-          if (field.type == org.apache.thrift.protocol.TType.STRUCT) {
-            this.authChallengeResponse = new AuthChallengeResponse();
-            this.authChallengeResponse.read(iprot);
+        case 3: // NODE_STORE
+          if (field.type == org.apache.thrift.protocol.TType.LIST) {
+            {
+              org.apache.thrift.protocol.TList _list32 = iprot.readListBegin();
+              this.nodeStore = new ArrayList<KeyedValues>(_list32.size);
+              for (int _i33 = 0; _i33 < _list32.size; ++_i33)
+              {
+                KeyedValues _elem34; // required
+                _elem34 = new KeyedValues();
+                _elem34.read(iprot);
+                this.nodeStore.add(_elem34);
+              }
+              iprot.readListEnd();
+            }
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
@@ -518,22 +458,22 @@ import org.slf4j.LoggerFactory;
       this.header.write(oprot);
       oprot.writeFieldEnd();
     }
-    if (isSetNodeId()) {
-      oprot.writeFieldBegin(NODE_ID_FIELD_DESC);
-      oprot.writeI16(this.nodeId);
+    if (isSetNewNodeId()) {
+      oprot.writeFieldBegin(NEW_NODE_ID_FIELD_DESC);
+      oprot.writeI16(this.newNodeId);
       oprot.writeFieldEnd();
     }
-    if (this.authScheme != null) {
-      if (isSetAuthScheme()) {
-        oprot.writeFieldBegin(AUTH_SCHEME_FIELD_DESC);
-        oprot.writeI32(this.authScheme.getValue());
-        oprot.writeFieldEnd();
-      }
-    }
-    if (this.authChallengeResponse != null) {
-      if (isSetAuthChallengeResponse()) {
-        oprot.writeFieldBegin(AUTH_CHALLENGE_RESPONSE_FIELD_DESC);
-        this.authChallengeResponse.write(oprot);
+    if (this.nodeStore != null) {
+      if (isSetNodeStore()) {
+        oprot.writeFieldBegin(NODE_STORE_FIELD_DESC);
+        {
+          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.nodeStore.size()));
+          for (KeyedValues _iter35 : this.nodeStore)
+          {
+            _iter35.write(oprot);
+          }
+          oprot.writeListEnd();
+        }
         oprot.writeFieldEnd();
       }
     }
@@ -543,7 +483,7 @@ import org.slf4j.LoggerFactory;
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("HelloMessage(");
+    StringBuilder sb = new StringBuilder("ClusterJoinResponseMessage(");
     boolean first = true;
 
     sb.append("header:");
@@ -553,29 +493,19 @@ import org.slf4j.LoggerFactory;
       sb.append(this.header);
     }
     first = false;
-    if (isSetNodeId()) {
+    if (isSetNewNodeId()) {
       if (!first) sb.append(", ");
-      sb.append("nodeId:");
-      sb.append(this.nodeId);
+      sb.append("newNodeId:");
+      sb.append(this.newNodeId);
       first = false;
     }
-    if (isSetAuthScheme()) {
+    if (isSetNodeStore()) {
       if (!first) sb.append(", ");
-      sb.append("authScheme:");
-      if (this.authScheme == null) {
+      sb.append("nodeStore:");
+      if (this.nodeStore == null) {
         sb.append("null");
       } else {
-        sb.append(this.authScheme);
-      }
-      first = false;
-    }
-    if (isSetAuthChallengeResponse()) {
-      if (!first) sb.append(", ");
-      sb.append("authChallengeResponse:");
-      if (this.authChallengeResponse == null) {
-        sb.append("null");
-      } else {
-        sb.append(this.authChallengeResponse);
+        sb.append(this.nodeStore);
       }
       first = false;
     }

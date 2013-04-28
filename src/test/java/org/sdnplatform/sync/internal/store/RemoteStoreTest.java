@@ -31,19 +31,22 @@ public class RemoteStoreTest extends AbstractStoreT<ByteArray,byte[]> {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         tp = new ThreadPool();
 
+        syncManager = new SyncManager();
+        remoteSyncManager = new RemoteSyncManager();
+
         fmc.addService(IThreadPoolService.class, tp);
         fmc.addService(IDebugCounterService.class, new NullDebugCounter());
-        syncManager = new SyncManager();
-        syncManager.registerStore("local", Scope.LOCAL);
-
-        remoteSyncManager = new RemoteSyncManager();
+        fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         
         tp.init(fmc);
         syncManager.init(fmc);
         remoteSyncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
         remoteSyncManager.startUp(fmc);
+
+        syncManager.registerStore("local", Scope.LOCAL);
     }
 
     @After

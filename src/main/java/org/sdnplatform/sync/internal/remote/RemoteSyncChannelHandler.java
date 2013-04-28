@@ -6,10 +6,13 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.AuthException;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.SyncException.ErrorType;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.rpc.AbstractRPCChannelHandler;
 import org.sdnplatform.sync.internal.rpc.TProtocolUtil;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.thrift.CursorResponseMessage;
 import org.sdnplatform.sync.thrift.DeleteResponseMessage;
 import org.sdnplatform.sync.thrift.ErrorMessage;
@@ -48,6 +51,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     public void channelDisconnected(ChannelHandlerContext ctx,
                                     ChannelStateEvent e) throws Exception {
         this.syncManager.channel = null;
+        syncManager.channelDisconnected(null);
     }
 
     // ******************************************
@@ -57,6 +61,10 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected void handleHello(HelloMessage hello, Channel channel) {
         syncManager.remoteNodeId = hello.getNodeId();
+        syncManager.ready = true;
+        synchronized (syncManager.readyNotify) {
+            syncManager.notifyAll();
+        }
     }
 
     @Override
@@ -106,7 +114,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     }
 
     @Override
-    protected void handleError(ErrorMessage error, Channel channel) {
+    protected void handleError(ErrorMessage error, Channel channel) {            
         ErrorType errType = ErrorType.GENERIC;
         for (ErrorType e : ErrorType.values()) {
             if (e.getValue() == error.getError().getErrorCode()) {
@@ -118,9 +126,16 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
                 SyncException.newInstance(errType, 
                                           error.getError().getMessage(), 
                                           null);
-        SyncReply reply = new SyncReply(null, null, false, ex, 0);
-        syncManager.dispatchReply(error.getHeader().getTransactionId(), 
-                                  reply);
+        if (ChannelState.CONNECTED.equals(channelState) ||
+            ChannelState.OPEN.equals(channelState) ||
+            ErrorType.AUTH.equals(errType)) {
+            syncManager.channelDisconnected(ex);
+            channel.close();
+        } else {
+            SyncReply reply = new SyncReply(null, null, false, ex, 0);
+            syncManager.dispatchReply(error.getHeader().getTransactionId(), 
+                                      reply);
+        }
     }
 
     // *************************
@@ -145,5 +160,22 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected int getTransactionId() {
         return syncManager.getTransactionId();
+    }
+
+    @Override
+    protected AuthScheme getAuthScheme() {
+        return syncManager.authScheme;
+    }
+
+    @Override
+    protected byte[] getSharedSecret() throws AuthException {
+        try {
+            return CryptoUtil.getSharedSecret(syncManager.keyStorePath, 
+                                              syncManager.keyStorePassword);
+        } catch (Exception e) {
+            throw new AuthException("Could not read challenge/response  " + 
+                    "shared secret from key store " + 
+                    syncManager.keyStorePath, e);
+        }
     }
 }

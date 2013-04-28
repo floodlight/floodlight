@@ -49,14 +49,22 @@ struct AsyncMessageHeader {
 }
 
 enum Scope {
-  GLOBAL = 0
+  GLOBAL = 0,
   LOCAL = 1,
+  UNSYNCHRONIZED = 2
 }
 
 struct Store {
   1: required string storeName,
   2: optional Scope scope,
   3: optional bool persist
+}
+
+struct Node {
+  1: optional i16 nodeId,
+  2: optional i16 domainId,
+  3: optional string hostname,
+  4: optional i32 port
 }
 
 #
@@ -83,11 +91,25 @@ enum MessageType {
   CURSOR_RESPONSE = 17,
   REGISTER_REQUEST = 18,
   REGISTER_RESPONSE = 19,
+  CLUSTER_JOIN_REQUEST = 20,
+  CLUSTER_JOIN_RESPONSE = 21,
+}
+
+enum AuthScheme {
+  NO_AUTH = 0,
+  CHALLENGE_RESPONSE = 1
+}
+
+struct AuthChallengeResponse {
+  1: optional string challenge,
+  2: optional string response
 }
 
 struct HelloMessage {
   1: required AsyncMessageHeader header,
   2: optional i16 nodeId,
+  3: optional AuthScheme authScheme,
+  4: optional AuthChallengeResponse authChallengeResponse
 }
 
 struct ErrorMessage {
@@ -190,6 +212,17 @@ struct RegisterResponseMessage {
   1: required AsyncMessageHeader header,
 }
 
+struct ClusterJoinRequestMessage {
+  1: required AsyncMessageHeader header,
+  2: required Node node
+}
+
+struct ClusterJoinResponseMessage {
+  1: required AsyncMessageHeader header,
+  2: optional i16 newNodeId,
+  3: optional list<KeyedValues> nodeStore
+}
+
 #
 # Message wrapper
 #
@@ -214,5 +247,7 @@ struct SyncMessage {
   17: optional CursorRequestMessage cursorRequest,
   18: optional CursorResponseMessage cursorResponse,
   19: optional RegisterRequestMessage registerRequest,
-  20: optional RegisterResponseMessage registerResponse
+  20: optional RegisterResponseMessage registerResponse,
+  21: optional ClusterJoinRequestMessage clusterJoinRequest,
+  22: optional ClusterJoinResponseMessage clusterJoinResponse,
 }

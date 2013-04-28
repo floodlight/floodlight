@@ -64,11 +64,11 @@ public abstract class AbstractSyncManager
 
     @Override
     public <K, V> IStoreClient<K, V>
-    getStoreClient(String storeName, 
-                   Class<K> keyClass, 
-                   Class<V> valueClass, 
-                   IInconsistencyResolver<Versioned<V>> resolver)
-                           throws UnknownStoreException {
+        getStoreClient(String storeName, 
+                       Class<K> keyClass, 
+                       Class<V> valueClass, 
+                       IInconsistencyResolver<Versioned<V>> resolver)
+                               throws UnknownStoreException {
         return getStoreClient(storeName, keyClass, null,
                               valueClass, null, resolver);
     }

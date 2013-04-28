@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IVersion;
@@ -125,6 +126,8 @@ public class RemoteStore implements IStore<ByteArray, byte[]> {
                     syncManager.sendRequest(xid, bsm);
             reply = future.get(5, TimeUnit.SECONDS);
             
+        } catch (TimeoutException e) {
+            throw new RemoteStoreException("Timed out on operation", e);
         } catch (Exception e) {
             throw new RemoteStoreException("Error while waiting for reply", e);
         }

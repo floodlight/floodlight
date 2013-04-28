@@ -17,7 +17,8 @@ public class SyncException extends Exception {
         SERIALIZATION(5),
         PERSIST(6),
         HANDSHAKE_TIMEOUT(7),
-        REMOTE_STORE(8);
+        REMOTE_STORE(8),
+        AUTH(9);
         
         private final int value;
         
@@ -46,7 +47,7 @@ public class SyncException extends Exception {
         super(cause);
     }
     
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.GENERIC;
     }
     
@@ -67,6 +68,8 @@ public class SyncException extends Exception {
                 return new HandshakeTimeoutException();
             case REMOTE_STORE:
                 return new RemoteStoreException(message, cause);
+            case AUTH:
+                return new AuthException(message, cause);
             case GENERIC:
             default:
                 return new SyncException(message, cause);

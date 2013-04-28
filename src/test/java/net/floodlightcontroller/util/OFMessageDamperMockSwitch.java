@@ -433,4 +433,16 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return false;
     }
 
+    @Override
+    public boolean inputThrottled(OFMessage ofm) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean isOverloaded() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
 }

@@ -164,6 +164,8 @@ public class TProtocolUtil {
         switch (tScope) {
             case LOCAL:
                 return Scope.LOCAL;
+            case UNSYNCHRONIZED:
+                return Scope.UNSYNCHRONIZED;                
             case GLOBAL:
             default:
                 return Scope.GLOBAL;
@@ -180,6 +182,8 @@ public class TProtocolUtil {
         switch (Scope) {
             case LOCAL:
                 return org.sdnplatform.sync.thrift.Scope.LOCAL;
+            case UNSYNCHRONIZED:
+                return org.sdnplatform.sync.thrift.Scope.UNSYNCHRONIZED;
             case GLOBAL:
             default:
                 return org.sdnplatform.sync.thrift.Scope.GLOBAL;

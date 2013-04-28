@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
   private static final org.apache.thrift.protocol.TField CURSOR_RESPONSE_FIELD_DESC = new org.apache.thrift.protocol.TField("cursorResponse", org.apache.thrift.protocol.TType.STRUCT, (short)18);
   private static final org.apache.thrift.protocol.TField REGISTER_REQUEST_FIELD_DESC = new org.apache.thrift.protocol.TField("registerRequest", org.apache.thrift.protocol.TType.STRUCT, (short)19);
   private static final org.apache.thrift.protocol.TField REGISTER_RESPONSE_FIELD_DESC = new org.apache.thrift.protocol.TField("registerResponse", org.apache.thrift.protocol.TType.STRUCT, (short)20);
+  private static final org.apache.thrift.protocol.TField CLUSTER_JOIN_REQUEST_FIELD_DESC = new org.apache.thrift.protocol.TField("clusterJoinRequest", org.apache.thrift.protocol.TType.STRUCT, (short)21);
+  private static final org.apache.thrift.protocol.TField CLUSTER_JOIN_RESPONSE_FIELD_DESC = new org.apache.thrift.protocol.TField("clusterJoinResponse", org.apache.thrift.protocol.TType.STRUCT, (short)22);
 
   /**
    * 
@@ -68,6 +70,8 @@ import org.slf4j.LoggerFactory;
   public CursorResponseMessage cursorResponse; // required
   public RegisterRequestMessage registerRequest; // required
   public RegisterResponseMessage registerResponse; // required
+  public ClusterJoinRequestMessage clusterJoinRequest; // required
+  public ClusterJoinResponseMessage clusterJoinResponse; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -94,7 +98,9 @@ import org.slf4j.LoggerFactory;
     CURSOR_REQUEST((short)17, "cursorRequest"),
     CURSOR_RESPONSE((short)18, "cursorResponse"),
     REGISTER_REQUEST((short)19, "registerRequest"),
-    REGISTER_RESPONSE((short)20, "registerResponse");
+    REGISTER_RESPONSE((short)20, "registerResponse"),
+    CLUSTER_JOIN_REQUEST((short)21, "clusterJoinRequest"),
+    CLUSTER_JOIN_RESPONSE((short)22, "clusterJoinResponse");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -149,6 +155,10 @@ import org.slf4j.LoggerFactory;
           return REGISTER_REQUEST;
         case 20: // REGISTER_RESPONSE
           return REGISTER_RESPONSE;
+        case 21: // CLUSTER_JOIN_REQUEST
+          return CLUSTER_JOIN_REQUEST;
+        case 22: // CLUSTER_JOIN_RESPONSE
+          return CLUSTER_JOIN_RESPONSE;
         default:
           return null;
       }
@@ -233,6 +243,10 @@ import org.slf4j.LoggerFactory;
         new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RegisterRequestMessage.class)));
     tmpMap.put(_Fields.REGISTER_RESPONSE, new org.apache.thrift.meta_data.FieldMetaData("registerResponse", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RegisterResponseMessage.class)));
+    tmpMap.put(_Fields.CLUSTER_JOIN_REQUEST, new org.apache.thrift.meta_data.FieldMetaData("clusterJoinRequest", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, ClusterJoinRequestMessage.class)));
+    tmpMap.put(_Fields.CLUSTER_JOIN_RESPONSE, new org.apache.thrift.meta_data.FieldMetaData("clusterJoinResponse", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, ClusterJoinResponseMessage.class)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
     org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(SyncMessage.class, metaDataMap);
   }
@@ -311,6 +325,12 @@ import org.slf4j.LoggerFactory;
     if (other.isSetRegisterResponse()) {
       this.registerResponse = new RegisterResponseMessage(other.registerResponse);
     }
+    if (other.isSetClusterJoinRequest()) {
+      this.clusterJoinRequest = new ClusterJoinRequestMessage(other.clusterJoinRequest);
+    }
+    if (other.isSetClusterJoinResponse()) {
+      this.clusterJoinResponse = new ClusterJoinResponseMessage(other.clusterJoinResponse);
+    }
   }
 
   public SyncMessage deepCopy() {
@@ -339,6 +359,8 @@ import org.slf4j.LoggerFactory;
     this.cursorResponse = null;
     this.registerRequest = null;
     this.registerResponse = null;
+    this.clusterJoinRequest = null;
+    this.clusterJoinResponse = null;
   }
 
   /**
@@ -829,6 +851,54 @@ import org.slf4j.LoggerFactory;
     }
   }
 
+  public ClusterJoinRequestMessage getClusterJoinRequest() {
+    return this.clusterJoinRequest;
+  }
+
+  public SyncMessage setClusterJoinRequest(ClusterJoinRequestMessage clusterJoinRequest) {
+    this.clusterJoinRequest = clusterJoinRequest;
+    return this;
+  }
+
+  public void unsetClusterJoinRequest() {
+    this.clusterJoinRequest = null;
+  }
+
+  /** Returns true if field clusterJoinRequest is set (has been assigned a value) and false otherwise */
+  public boolean isSetClusterJoinRequest() {
+    return this.clusterJoinRequest != null;
+  }
+
+  public void setClusterJoinRequestIsSet(boolean value) {
+    if (!value) {
+      this.clusterJoinRequest = null;
+    }
+  }
+
+  public ClusterJoinResponseMessage getClusterJoinResponse() {
+    return this.clusterJoinResponse;
+  }
+
+  public SyncMessage setClusterJoinResponse(ClusterJoinResponseMessage clusterJoinResponse) {
+    this.clusterJoinResponse = clusterJoinResponse;
+    return this;
+  }
+
+  public void unsetClusterJoinResponse() {
+    this.clusterJoinResponse = null;
+  }
+
+  /** Returns true if field clusterJoinResponse is set (has been assigned a value) and false otherwise */
+  public boolean isSetClusterJoinResponse() {
+    return this.clusterJoinResponse != null;
+  }
+
+  public void setClusterJoinResponseIsSet(boolean value) {
+    if (!value) {
+      this.clusterJoinResponse = null;
+    }
+  }
+
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
     case TYPE:
@@ -991,6 +1061,22 @@ import org.slf4j.LoggerFactory;
       }
       break;
 
+    case CLUSTER_JOIN_REQUEST:
+      if (value == null) {
+        unsetClusterJoinRequest();
+      } else {
+        setClusterJoinRequest((ClusterJoinRequestMessage)value);
+      }
+      break;
+
+    case CLUSTER_JOIN_RESPONSE:
+      if (value == null) {
+        unsetClusterJoinResponse();
+      } else {
+        setClusterJoinResponse((ClusterJoinResponseMessage)value);
+      }
+      break;
+
     }
   }
 
@@ -1056,6 +1142,12 @@ import org.slf4j.LoggerFactory;
     case REGISTER_RESPONSE:
       return getRegisterResponse();
 
+    case CLUSTER_JOIN_REQUEST:
+      return getClusterJoinRequest();
+
+    case CLUSTER_JOIN_RESPONSE:
+      return getClusterJoinResponse();
+
     }
     throw new IllegalStateException();
   }
@@ -1107,6 +1199,10 @@ import org.slf4j.LoggerFactory;
       return isSetRegisterRequest();
     case REGISTER_RESPONSE:
       return isSetRegisterResponse();
+    case CLUSTER_JOIN_REQUEST:
+      return isSetClusterJoinRequest();
+    case CLUSTER_JOIN_RESPONSE:
+      return isSetClusterJoinResponse();
     }
     throw new IllegalStateException();
   }
@@ -1301,6 +1397,24 @@ import org.slf4j.LoggerFactory;
       if (!(this_present_registerResponse && that_present_registerResponse))
         return false;
       if (!this.registerResponse.equals(that.registerResponse))
+        return false;
+    }
+
+    boolean this_present_clusterJoinRequest = true && this.isSetClusterJoinRequest();
+    boolean that_present_clusterJoinRequest = true && that.isSetClusterJoinRequest();
+    if (this_present_clusterJoinRequest || that_present_clusterJoinRequest) {
+      if (!(this_present_clusterJoinRequest && that_present_clusterJoinRequest))
+        return false;
+      if (!this.clusterJoinRequest.equals(that.clusterJoinRequest))
+        return false;
+    }
+
+    boolean this_present_clusterJoinResponse = true && this.isSetClusterJoinResponse();
+    boolean that_present_clusterJoinResponse = true && that.isSetClusterJoinResponse();
+    if (this_present_clusterJoinResponse || that_present_clusterJoinResponse) {
+      if (!(this_present_clusterJoinResponse && that_present_clusterJoinResponse))
+        return false;
+      if (!this.clusterJoinResponse.equals(that.clusterJoinResponse))
         return false;
     }
 
@@ -1520,6 +1634,26 @@ import org.slf4j.LoggerFactory;
         return lastComparison;
       }
     }
+    lastComparison = Boolean.valueOf(isSetClusterJoinRequest()).compareTo(typedOther.isSetClusterJoinRequest());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetClusterJoinRequest()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.clusterJoinRequest, typedOther.clusterJoinRequest);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetClusterJoinResponse()).compareTo(typedOther.isSetClusterJoinResponse());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetClusterJoinResponse()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.clusterJoinResponse, typedOther.clusterJoinResponse);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
     return 0;
   }
 
@@ -1696,6 +1830,22 @@ import org.slf4j.LoggerFactory;
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
+        case 21: // CLUSTER_JOIN_REQUEST
+          if (field.type == org.apache.thrift.protocol.TType.STRUCT) {
+            this.clusterJoinRequest = new ClusterJoinRequestMessage();
+            this.clusterJoinRequest.read(iprot);
+          } else { 
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+          }
+          break;
+        case 22: // CLUSTER_JOIN_RESPONSE
+          if (field.type == org.apache.thrift.protocol.TType.STRUCT) {
+            this.clusterJoinResponse = new ClusterJoinResponseMessage();
+            this.clusterJoinResponse.read(iprot);
+          } else { 
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+          }
+          break;
         default:
           org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
       }
@@ -1846,6 +1996,20 @@ import org.slf4j.LoggerFactory;
       if (isSetRegisterResponse()) {
         oprot.writeFieldBegin(REGISTER_RESPONSE_FIELD_DESC);
         this.registerResponse.write(oprot);
+        oprot.writeFieldEnd();
+      }
+    }
+    if (this.clusterJoinRequest != null) {
+      if (isSetClusterJoinRequest()) {
+        oprot.writeFieldBegin(CLUSTER_JOIN_REQUEST_FIELD_DESC);
+        this.clusterJoinRequest.write(oprot);
+        oprot.writeFieldEnd();
+      }
+    }
+    if (this.clusterJoinResponse != null) {
+      if (isSetClusterJoinResponse()) {
+        oprot.writeFieldBegin(CLUSTER_JOIN_RESPONSE_FIELD_DESC);
+        this.clusterJoinResponse.write(oprot);
         oprot.writeFieldEnd();
       }
     }
@@ -2052,6 +2216,26 @@ import org.slf4j.LoggerFactory;
         sb.append("null");
       } else {
         sb.append(this.registerResponse);
+      }
+      first = false;
+    }
+    if (isSetClusterJoinRequest()) {
+      if (!first) sb.append(", ");
+      sb.append("clusterJoinRequest:");
+      if (this.clusterJoinRequest == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.clusterJoinRequest);
+      }
+      first = false;
+    }
+    if (isSetClusterJoinResponse()) {
+      if (!first) sb.append(", ");
+      sb.append("clusterJoinResponse:");
+      if (this.clusterJoinResponse == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.clusterJoinResponse);
       }
       first = false;
     }
