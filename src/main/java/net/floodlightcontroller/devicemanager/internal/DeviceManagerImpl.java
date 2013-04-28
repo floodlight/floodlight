@@ -867,6 +867,9 @@ IFlowReconcileListener, IInfoProvider {
     protected class HAListenerDelegate implements IHAListener {
         @Override
         public void transitionToMaster() {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Transitioning to MASTER role");
+            }
             DeviceManagerImpl.this.deviceSyncManager.goToMaster();
         }
 

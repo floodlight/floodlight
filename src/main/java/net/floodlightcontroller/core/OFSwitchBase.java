@@ -211,15 +211,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     // For driver subclass to set throttling
-    @LogMessageDoc(level="INFO",
-            message="Enabled write throttling to {switch}",
-            explanation="OFMessage writes to switch is throttled " +
-                    "to prevent excessively long queues")
     protected void enableWriteThrottle(boolean enable) {
         this.writeThrottleEnabled = enable;
-        if (enable) {
-            log.info("Enabled write throttling to {}", this);
-        }
+    }
+
+    @Override
+    public boolean isWriteThrottleEnabled() {
+        return this.writeThrottleEnabled;
     }
 
     @Override
@@ -457,7 +455,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
      */
     @Override
     public String toString() {
-        return "OFSwitchBase [" + channel.getRemoteAddress() + " DPID[" + ((stringId != null) ? stringId : "?") + "]]";
+        String channelString =
+                (channel != null) ? channel.getRemoteAddress().toString() :
+                                    "?";
+        return "OFSwitchBase [" + channelString + " DPID[" + ((stringId != null) ? stringId : "?") + "]]";
     }
 
     @Override

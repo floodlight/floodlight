@@ -536,4 +536,9 @@ public interface IOFSwitch {
      * @return
      */
     public List<Short> getUplinkPorts();
+
+    /**
+     * Return whether write throtteling is enabled on the switch
+     */
+    public boolean isWriteThrottleEnabled();
 }

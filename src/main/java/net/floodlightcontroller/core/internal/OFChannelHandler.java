@@ -483,13 +483,13 @@ class OFChannelHandler
             void processOFGetConfigReply(OFChannelHandler h, OFGetConfigReply m)
                     throws IOException {
                 if (m.getMissSendLength() == (short)0xffff) {
-                    Controller.log.trace("Config Reply from switch {} confirms "
+                    log.trace("Config Reply from switch {} confirms "
                             + "miss length set to 0xffff",
                             h.getSwitchInfoString());
                 } else {
                     // FIXME: we can't really deal with switches that don't send
                     // full packets. Shouldn't we drop the connection here?
-                    Controller.log.warn("Config Reply from switch {} has"
+                    log.warn("Config Reply from switch {} has"
                             + "miss length set to {}",
                             h.getSwitchInfoString(),
                             m.getMissSendLength());
@@ -560,8 +560,10 @@ class OFChannelHandler
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                     h.sw.setFeaturesReply(h.featuresReply);
                     h.readPropertyFromStorage();
-                    log.info("Switch {} bound to class {}, description {}",
+                    log.info("Switch {} bound to class {}, writeThrottle={}," +
+                            " description {}",
                              new Object[] { h.sw, h.sw.getClass(),
+                                            h.sw.isWriteThrottleEnabled(),
                                             description });
                 }
                 catch (Exception ex) {
@@ -1181,7 +1183,7 @@ class OFChannelHandler
     public void channelConnected(ChannelHandlerContext ctx,
                                  ChannelStateEvent e) throws Exception {
         channel = e.getChannel();
-        Controller.log.info("New switch connection from {}",
+        log.info("New switch connection from {}",
                  channel.getRemoteAddress());
         sendHandShakeMessage(OFType.HELLO);
         setState(ChannelState.WAIT_HELLO);
@@ -1196,7 +1198,7 @@ class OFChannelHandler
         controller.removeSwitchChannel(this);
         this.sw.setConnected(false);
 
-        Controller.log.info("Disconnected switch {}", getSwitchInfoString());
+        log.info("Disconnected switch {}", getSwitchInfoString());
     }
 
     @Override
@@ -1245,37 +1247,37 @@ class OFChannelHandler
             throws Exception {
         if (e.getCause() instanceof ReadTimeoutException) {
             // switch timeout
-            Controller.log.error("Disconnecting switch {} due to read timeout",
+            log.error("Disconnecting switch {} due to read timeout",
                                  getSwitchInfoString());
             ctx.getChannel().close();
         } else if (e.getCause() instanceof HandshakeTimeoutException) {
-            Controller.log.error("Disconnecting switch {}: failed to complete handshake",
+            log.error("Disconnecting switch {}: failed to complete handshake",
                       getSwitchInfoString());
             ctx.getChannel().close();
         } else if (e.getCause() instanceof ClosedChannelException) {
             log.debug("Channel for sw {} already closed", getSwitchInfoString());
         } else if (e.getCause() instanceof IOException) {
-            Controller.log.error("Disconnecting switch {} due to IO Error: {}",
+            log.error("Disconnecting switch {} due to IO Error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
             ctx.getChannel().close();
         } else if (e.getCause() instanceof SwitchStateException) {
-            Controller.log.error("Disconnecting switch {} due to switch state error: {}",
+            log.error("Disconnecting switch {} due to switch state error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
             ctx.getChannel().close();
         } else if (e.getCause() instanceof MessageParseException) {
-            Controller.log.error("Disconnecting switch "
+            log.error("Disconnecting switch "
                                  + getSwitchInfoString() +
                                  " due to message parse failure",
                                  e.getCause());
             ctx.getChannel().close();
         } else if (e.getCause() instanceof StorageException) {
-            Controller.log.error("Terminating controller due to storage exception",
+            log.error("Terminating controller due to storage exception",
                       e.getCause());
             this.controller.terminate();
         } else if (e.getCause() instanceof RejectedExecutionException) {
-            Controller.log.warn("Could not process message: queue full");
+            log.warn("Could not process message: queue full");
         } else {
-            Controller.log.error("Error while processing message from switch "
+            log.error("Error while processing message from switch "
                                  + getSwitchInfoString(), e.getCause());
             ctx.getChannel().close();
         }
@@ -1363,11 +1365,11 @@ class OFChannelHandler
             }
 
             if (loadlevel != LoadMonitor.LoadLevel.OK) {
-                if (Controller.log.isDebugEnabled()) {
-                    Controller.log.debug(
+                if (log.isDebugEnabled()) {
+                    log.debug(
                         "Overload: Detected {}, packets dropped={}",
                         loadlevel.toString(), packets_dropped);
-                    Controller.log.debug(
+                    log.debug(
                         "Overload: Packets allowed={} (LLDP/BDDPs allowed={})",
                         packets_allowed, lldps_allowed);
                 }
@@ -1534,8 +1536,8 @@ class OFChannelHandler
                     resultSet.iterator(); it.hasNext();) {
                 is_core_switch = it.next()
                         .getBoolean(Controller.SWITCH_CONFIG_CORE_SWITCH);
-                if (Controller.log.isDebugEnabled()) {
-                    Controller.log.debug("Reading SWITCH_IS_CORE_SWITCH " +
+                if (log.isDebugEnabled()) {
+                    log.debug("Reading SWITCH_IS_CORE_SWITCH " +
                             "config for switch={}, is-core={}",
                             sw, is_core_switch);
                 }

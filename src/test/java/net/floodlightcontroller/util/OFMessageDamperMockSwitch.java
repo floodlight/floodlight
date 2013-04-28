@@ -457,4 +457,10 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         return false;
     }
 
+    @Override
+    public boolean isWriteThrottleEnabled() {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
 }
