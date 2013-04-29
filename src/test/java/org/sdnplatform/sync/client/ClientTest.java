@@ -105,7 +105,7 @@ public class ClientTest {
         client.connect();
         client.executeCommandLine("get \"key\"");
         assertEquals("", err.toString());
-        assertEquals("Connected to localhost:40101\n" +
+        assertEquals("Using remote sync service at localhost:40101\n" +
                 "Getting Key:\n" +
                 "\"key\"\n\n" +
                 "Not found\n",

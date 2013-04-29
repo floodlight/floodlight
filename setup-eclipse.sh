@@ -66,7 +66,7 @@ cat >"$d/SyncClient.launch" << EOF
 <listEntry value="1"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.sdnplatform.sync.client.SyncClient"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--hostname localhost --port 6642"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--hostname localhost --port 6642 --authScheme CHALLENGE_RESPONSE --keyStorePath /opt/bigswitch/floodlight/configuration/auth_credentials.jceks --keyStorePassword dcbc178a0a3a8674f048ac86372ac456"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="bigfloodlight"/>
 <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-ea"/>
 </launchConfiguration>

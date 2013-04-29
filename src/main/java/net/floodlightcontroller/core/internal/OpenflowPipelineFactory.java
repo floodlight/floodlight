@@ -25,6 +25,7 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
+import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 
@@ -32,7 +33,8 @@ import org.jboss.netty.util.Timer;
  * Creates a ChannelPipeline for a server-side openflow channel
  * @author readams
  */
-public class OpenflowPipelineFactory implements ChannelPipelineFactory {
+public class OpenflowPipelineFactory 
+    implements ChannelPipelineFactory, ExternalResourceReleasable {
 
     protected Controller controller;
     protected ThreadPoolExecutor pipelineExecutor;
@@ -68,4 +70,8 @@ public class OpenflowPipelineFactory implements ChannelPipelineFactory {
         return pipeline;
     }
 
+    @Override
+    public void releaseExternalResources() {
+        timer.stop();        
+    }
 }

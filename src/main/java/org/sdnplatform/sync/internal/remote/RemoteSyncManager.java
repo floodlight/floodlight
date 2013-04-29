@@ -5,7 +5,7 @@ import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +57,9 @@ public class RemoteSyncManager extends AbstractSyncManager {
      * Channel group that will hold all our channels
      */
     final ChannelGroup cg = new DefaultChannelGroup("Internal RPC");
+    RemoteSyncPipelineFactory pipelineFactory;
+    ExecutorService bossExecutor;
+    ExecutorService workerExecutor;
 
     /**
      * Active connection to server
@@ -65,6 +68,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
     private volatile int connectionGeneration = 0;
     protected Object readyNotify = new Object();
     protected volatile boolean ready = false;
+    protected volatile boolean shutdown = false;
 
     /**
      * The remote node ID of the node we're connected to
@@ -145,12 +149,26 @@ public class RemoteSyncManager extends AbstractSyncManager {
     
     @Override
     public void shutdown() {
+        shutdown = true;
         logger.debug("Shutting down Remote Sync Manager");
         try {
             if (!cg.close().await(5, TimeUnit.SECONDS)) {
                 logger.debug("Failed to cleanly shut down remote sync");
+                return;
             }
-            clientBootstrap.releaseExternalResources();
+            if (clientBootstrap != null) {
+                clientBootstrap.releaseExternalResources();
+            }
+            clientBootstrap = null;
+            if (pipelineFactory != null)
+                pipelineFactory.releaseExternalResources();
+            pipelineFactory = null;
+            if (workerExecutor != null)
+                workerExecutor.shutdown();
+            workerExecutor = null;
+            if (bossExecutor != null)
+                bossExecutor.shutdown();
+            bossExecutor = null;
         } catch (InterruptedException e) {
             logger.debug("Interrupted while shutting down remote sync");
         }
@@ -179,8 +197,9 @@ public class RemoteSyncManager extends AbstractSyncManager {
     @Override
     public void startUp(FloodlightModuleContext context) 
             throws FloodlightModuleException {
-        Executor bossExecutor = Executors.newCachedThreadPool();
-        Executor workerExecutor = Executors.newCachedThreadPool();
+        shutdown = false;
+        bossExecutor = Executors.newCachedThreadPool();
+        workerExecutor = Executors.newCachedThreadPool();
         
         final ClientBootstrap bootstrap =
                 new ClientBootstrap(
@@ -195,7 +214,8 @@ public class RemoteSyncManager extends AbstractSyncManager {
                             RPCService.SEND_BUFFER_SIZE);
         bootstrap.setOption("child.connectTimeoutMillis", 
                             RPCService.CONNECT_TIMEOUT);
-        bootstrap.setPipelineFactory(new RemoteSyncPipelineFactory(this));
+        pipelineFactory = new RemoteSyncPipelineFactory(this);
+        bootstrap.setPipelineFactory(pipelineFactory);
         clientBootstrap = bootstrap;
     }
 
@@ -286,7 +306,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
 
     protected void ensureConnected() {
         if (!ready) {
-            for (int i = 0; i < 25; i++) {
+            for (int i = 0; i < 2; i++) {
                 synchronized (this) {
                     connectionGeneration += 1;
                     if (connect(hostname, port))
@@ -300,7 +320,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
                 throw new SyncRuntimeException(new SyncException("Failed to establish connection"));
         }
     }
-    
+
     protected boolean connect(String hostname, int port) {
         ready = false;
         if (channel == null || !channel.isConnected()) {
@@ -320,9 +340,11 @@ public class RemoteSyncManager extends AbstractSyncManager {
                 Thread.sleep(10);
             } catch (InterruptedException e) { }
         }
-        if (!ready || channel == null || !channel.isConnected())
+        if (!ready || channel == null || !channel.isConnected()) {
+            logger.warn("Timed out connecting to {}:{}", hostname, port);
             return false;
-        logger.debug("Connected to " + hostname + ":" + port);
+        }
+        logger.debug("Connected to {}:{}", hostname, port);
         return true;
     }
 

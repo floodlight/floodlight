@@ -378,7 +378,8 @@ public class SyncManager extends AbstractSyncManager {
      * @throws FloodlightModuleException 
      */
     public void updateConfiguration() {
-        updateConfigTask.reschedule(500, TimeUnit.MILLISECONDS);
+        if (updateConfigTask != null)
+            updateConfigTask.reschedule(500, TimeUnit.MILLISECONDS);
     }
 
     /**

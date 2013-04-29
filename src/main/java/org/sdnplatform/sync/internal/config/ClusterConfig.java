@@ -173,7 +173,8 @@ public class ClusterConfig {
     public String toString() {
         return "ClusterConfig [allNodes=" + allNodes + ", authScheme="
                + authScheme + ", keyStorePath=" + keyStorePath
-               + ", keyStorePassword=" + keyStorePassword + "]";
+               + ", keyStorePassword is " + 
+               (keyStorePassword == null ? "unset" : "set") + "]";
     }
 
     @Override

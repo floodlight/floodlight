@@ -25,6 +25,9 @@ public class StorageCCProvider
     private IStorageSourceService storageSource;
 
     String thisControllerID;
+    AuthScheme authScheme;
+    String keyStorePath;
+    String keyStorePassword;
 
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
@@ -55,6 +58,14 @@ public class StorageCCProvider
         Map<String, String> config =
                 context.getConfigParams(FloodlightProvider.class);
         thisControllerID = config.get("controllerid");
+
+        config = context.getConfigParams(SyncManager.class);
+        keyStorePath = config.get("keyStorePath");
+        keyStorePassword = config.get("keyStorePassword");
+        authScheme = AuthScheme.NO_AUTH;
+        try {
+            authScheme = AuthScheme.valueOf(config.get("authScheme"));
+        } catch (Exception e) {}
     }
 
     @Override
@@ -125,7 +136,8 @@ public class StorageCCProvider
         if (thisNodeId < 0)
             throw new SyncException("Could not find a node for the local node");
 
-        return new ClusterConfig(nodes, thisNodeId);
+        return new ClusterConfig(nodes, thisNodeId, authScheme, 
+                                 keyStorePath, keyStorePassword);
     }
 
     // *************

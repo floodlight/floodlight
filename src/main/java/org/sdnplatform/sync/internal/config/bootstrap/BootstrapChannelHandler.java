@@ -150,7 +150,7 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
             return CryptoUtil.getSharedSecret(bootstrap.keyStorePath, 
                                               bootstrap.keyStorePassword);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response  " + 
+            throw new AuthException("Could not read challenge/response " + 
                     "shared secret from key store " + 
                     bootstrap.keyStorePath, e);
         }

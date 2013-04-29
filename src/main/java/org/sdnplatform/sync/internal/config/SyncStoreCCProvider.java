@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
@@ -61,8 +62,7 @@ public class SyncStoreCCProvider
     public static final String SYSTEM_UNSYNC_STORE = 
             PREFIX + ".systemUnsyncStore";
 
-    protected static final String SEEDS = "seeds";
-
+    public static final String SEEDS = "seeds";
     public static final String LOCAL_NODE_ID = "localNodeId";
     public static final String LOCAL_NODE_IFACE = "localNodeIface";
     public static final String LOCAL_NODE_HOSTNAME = "localNodeHostname";
@@ -71,6 +71,8 @@ public class SyncStoreCCProvider
     public static final String KEY_STORE_PATH = "keyStorePath";
     public static final String KEY_STORE_PASSWORD = "keyStorePassword";
 
+    Map<String, String> config;
+    
     // **********************
     // IClusterConfigProvider
     // **********************
@@ -91,6 +93,8 @@ public class SyncStoreCCProvider
                 syncManager.getStoreClient(SYSTEM_UNSYNC_STORE, 
                                            String.class, String.class);
         this.unsyncStoreClient.addStoreListener(new StringListener());
+        
+        config = context.getConfigParams(syncManager);
     }
 
     @Override
@@ -99,18 +103,29 @@ public class SyncStoreCCProvider
             bootstrapTask = new SingletonTask(threadPool.getScheduledExecutor(), 
                                               new BootstrapTask());
 
-        
-        keyStorePath = unsyncStoreClient.getValue(KEY_STORE_PATH);
-        keyStorePassword = 
-                unsyncStoreClient.getValue(KEY_STORE_PASSWORD);
+        keyStorePath = config.get("keyStorePath");
+        keyStorePassword = config.get("keyStorePassword");
         try {
-            authScheme = 
-                    AuthScheme.valueOf(unsyncStoreClient.
-                                       getValue(AUTH_SCHEME));
+            authScheme = AuthScheme.valueOf(config.get("authScheme"));
         } catch (Exception e) {
-            authScheme = AuthScheme.NO_AUTH;
+            authScheme = null;
         }
-        
+
+        if (keyStorePath == null)
+            keyStorePath = unsyncStoreClient.getValue(KEY_STORE_PATH);
+        if (keyStorePassword == null)
+            keyStorePassword = 
+                unsyncStoreClient.getValue(KEY_STORE_PASSWORD);
+        if (authScheme == null) {
+            try {
+                authScheme = 
+                        AuthScheme.valueOf(unsyncStoreClient.
+                                           getValue(AUTH_SCHEME));
+            } catch (Exception e) {
+                authScheme = AuthScheme.NO_AUTH;
+            }
+        }
+
         Short localNodeId = getLocalNodeId();
         if (localNodeId == null) {
             String seedStr = 

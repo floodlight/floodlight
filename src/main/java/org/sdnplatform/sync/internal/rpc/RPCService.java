@@ -5,7 +5,6 @@ import java.net.SocketAddress;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -68,14 +67,14 @@ public class RPCService {
     final ChannelGroup cg = new DefaultChannelGroup("Internal RPC");
     
     /**
-     * {@link Executor} used for netty boss threads
+     * {@link ExecutorService} used for netty boss threads
      */
-    protected Executor bossExecutor;
+    protected ExecutorService bossExecutor;
     
     /**
-     * {@link Executor} used for netty worker threads
+     * {@link ExecutorService} used for netty worker threads
      */
-    protected Executor workerExecutor;
+    protected ExecutorService workerExecutor;
 
     /**
      * Netty {@link ClientBootstrap} used for creating client connections 
@@ -86,6 +85,11 @@ public class RPCService {
      * Netty {@link ServerBootstrap} used for creating server connections 
      */
     protected ServerBootstrap serverBootstrap;
+
+    /**
+     * {@link ChannelPipelineFactory} for creating connections 
+     */
+    protected RPCPipelineFactory pipelineFactory;
 
     /**
      * Node connections
@@ -210,8 +214,7 @@ public class RPCService {
         bossExecutor = Executors.newCachedThreadPool(f2);
         workerExecutor = Executors.newCachedThreadPool(f2);
 
-        ChannelPipelineFactory pipelineFactory = 
-                new RPCPipelineFactory(syncManager, this);
+        pipelineFactory = new RPCPipelineFactory(syncManager, this);
 
         startServer(pipelineFactory);
         startClients(pipelineFactory);
@@ -233,6 +236,7 @@ public class RPCService {
         try {
             if (!cg.close().await(5, TimeUnit.SECONDS)) {
                 logger.warn("Failed to cleanly shut down RPC server");
+                return;
             }
             if (clientBootstrap != null)
                 clientBootstrap.releaseExternalResources();
@@ -240,6 +244,15 @@ public class RPCService {
             if (serverBootstrap != null)
                 serverBootstrap.releaseExternalResources();
             serverBootstrap = null;
+            if (pipelineFactory != null)
+                pipelineFactory.releaseExternalResources();
+            pipelineFactory = null;
+            if (bossExecutor != null)
+                bossExecutor.shutdown();
+            bossExecutor = null;
+            if (workerExecutor != null)
+                workerExecutor.shutdown();
+            workerExecutor = null;
         } catch (InterruptedException e) {
             logger.warn("Interrupted while shutting down RPC server");
         }

@@ -1,7 +1,6 @@
 package org.sdnplatform.sync.client;
 
 import java.io.Console;
-
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -20,8 +19,7 @@ public class AuthTool {
         
         @Option(name="--keyStorePath", 
                 usage="Path to JCEKS key store where credentials should " + 
-                       "be stored",
-                required=true)
+                       "be stored")
         protected String keyStorePath;
         
         @Option(name="--keyStorePassword",
@@ -29,30 +27,42 @@ public class AuthTool {
         protected String keyStorePassword;    
 
         @Option(name="--authScheme",
-                usage="Auth scheme for which we should set up credentials",
-                required=true)
-        protected AuthScheme authScheme;
+                usage="Auth scheme for which we should set up credentials")
+        protected AuthScheme authScheme = AuthScheme.NO_AUTH;
+
+        CmdLineParser parser = new CmdLineParser(this);
+
+        protected void init(String[] args) {
+            try {
+                parser.parseArgument(args);
+            } catch (CmdLineException e) {
+                System.err.println(e.getMessage());
+                parser.printUsage(System.err);
+                System.exit(1);
+            }
+            if (help) {
+                parser.printUsage(System.err);
+                System.exit(1);
+            }
+            if (!AuthScheme.NO_AUTH.equals(authScheme)) {
+                if (keyStorePath == null) {
+                    System.err.println("keyStorePath is required when " + 
+                                       "authScheme is " + authScheme);
+                    parser.printUsage(System.err);
+                    System.exit(1);
+                }
+                if (keyStorePassword == null) {
+                    Console con = System.console();
+                    char[] password = con.readPassword("Enter key store password: ");
+                    keyStorePassword = new String(password);
+                }
+            }
+        }
     }
     
     public static void main(String[] args) throws Exception {
         AuthToolSettings settings = new AuthToolSettings();
-        CmdLineParser parser = new CmdLineParser(settings);
-        try {
-            parser.parseArgument(args);
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            parser.printUsage(System.err);
-            System.exit(1);
-        }
-        if (settings.help) {
-            parser.printUsage(System.err);
-            System.exit(1);
-        }
-        if (settings.keyStorePassword == null) {
-            Console con = System.console();
-            char[] password = con.readPassword("Enter key store password: ");
-            settings.keyStorePassword = new String(password);
-        }
+        settings.init(args);        
         
         switch (settings.authScheme) {
             case NO_AUTH:

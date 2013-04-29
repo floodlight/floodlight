@@ -14,7 +14,7 @@
 *    under the License.
 **/
 
-package org.sdnplatform.sync.internal.config.bootstrap;
+package org.sdnplatform.sync.internal.remote;
 
 import java.util.concurrent.TimeUnit;
 
@@ -28,19 +28,21 @@ import org.jboss.netty.util.TimerTask;
 /**
  * Trigger a timeout if the bootstrap process stalls
  */
-public class BootstrapTimeoutHandler 
+public class RSHandshakeTimeoutHandler 
     extends SimpleChannelUpstreamHandler {
     
     final Timer timer;
     final long timeoutNanos;
     volatile Timeout timeout;
+    final RemoteSyncChannelHandler channelHandler;
     
-    public BootstrapTimeoutHandler(Timer timer,
-                                   long timeoutSeconds) {
+    public RSHandshakeTimeoutHandler(RemoteSyncChannelHandler channelHandler,
+                                     Timer timer,
+                                     long timeoutSeconds) {
         super();
+        this.channelHandler = channelHandler;
         this.timer = timer;
         this.timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
-
     }
     
     @Override
@@ -79,7 +81,8 @@ public class BootstrapTimeoutHandler
             if (!ctx.getChannel().isOpen()) {
                 return;
             }
-            ctx.getChannel().disconnect();
+            if (channelHandler.syncManager.ready == false)
+                ctx.getChannel().disconnect();
         }
     }
 }

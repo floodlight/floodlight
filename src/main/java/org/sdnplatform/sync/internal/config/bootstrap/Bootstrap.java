@@ -52,6 +52,7 @@ public class Bootstrap {
     ExecutorService bossExecutor = null;
     ExecutorService workerExecutor = null;
     ClientBootstrap bootstrap = null;
+    BootstrapPipelineFactory pipelineFactory;
     
     protected Node localNode;
     protected volatile boolean succeeded = false;
@@ -83,7 +84,8 @@ public class Bootstrap {
                             RPCService.SEND_BUFFER_SIZE);
         bootstrap.setOption("child.connectTimeoutMillis", 
                             RPCService.CONNECT_TIMEOUT);
-        bootstrap.setPipelineFactory(new BootstrapPipelineFactory(this));
+        pipelineFactory = new BootstrapPipelineFactory(this);
+        bootstrap.setPipelineFactory(pipelineFactory);
     }
     
     public void shutdown() {
@@ -93,10 +95,16 @@ public class Bootstrap {
         }
         if (bootstrap != null)
             bootstrap.releaseExternalResources();
+        bootstrap = null;
+        if (pipelineFactory != null)
+            pipelineFactory.releaseExternalResources();
+        pipelineFactory = null;
         if (workerExecutor != null)
             workerExecutor.shutdown();
+        workerExecutor = null;
         if (bossExecutor != null)
             bossExecutor.shutdown();
+        bossExecutor = null;
     }
     
     public boolean bootstrap(HostAndPort seed, 
