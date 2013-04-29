@@ -38,7 +38,7 @@ public class InconsistentDataException extends SyncException {
     }
     
     @Override
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.INCONSISTENT_DATA;
     }
 

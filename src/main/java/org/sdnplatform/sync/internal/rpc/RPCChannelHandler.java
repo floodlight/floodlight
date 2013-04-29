@@ -3,6 +3,7 @@ package org.sdnplatform.sync.internal.rpc;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
@@ -12,16 +13,24 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.MessageEvent;
+import org.sdnplatform.sync.IClosableIterator;
+import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.error.AuthException;
+import org.sdnplatform.sync.error.ObsoleteVersionException;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.Cursor;
 import org.sdnplatform.sync.internal.SyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
+import org.sdnplatform.sync.internal.config.ClusterConfig;
 import org.sdnplatform.sync.internal.config.Node;
+import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
 import org.sdnplatform.sync.internal.rpc.RPCService.NodeMessage;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
 import org.sdnplatform.sync.internal.util.ByteArray;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.internal.version.VectorClock;
 import org.sdnplatform.sync.thrift.*;
 import org.slf4j.Logger;
@@ -272,7 +281,6 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                           request.getValuesSize());
             channel.write(bsm);
         } catch (Exception e) {
-
             channel.write(getError(request.getHeader().getTransactionId(), e, 
                                    MessageType.SYNC_VALUE));
         }
@@ -435,8 +443,94 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     }
 
     @Override
+    protected void handleClusterJoinRequest(ClusterJoinRequestMessage request,
+                                            Channel channel) {
+        try {
+            // We can get this message in two circumstances.  Either this is 
+            // a totally new node, or this is an existing node that is changing
+            // its port or IP address.  We can tell the difference because the
+            // node ID and domain ID will already be set for an existing node
+            
+            ClusterJoinResponseMessage cjrm = new ClusterJoinResponseMessage();
+            AsyncMessageHeader header = new AsyncMessageHeader();
+            header.setTransactionId(request.getHeader().getTransactionId());
+            cjrm.setHeader(header);
+            
+            org.sdnplatform.sync.thrift.Node tnode = request.getNode();
+            if (!tnode.isSetNodeId()) {
+                // allocate a random node ID that's not currently in use
+                // Note that there is an obvious possible race here if multiple
+                // nodes join quickly or using different seeds.  In this case,
+                // if you get unlucky you could have the same random node ID
+                // and then bad things would start to happen.  We're essentially
+                // assuming that node joins are happening one at a time by a
+                // human; the randomness is a lame attempt to mitigate this race
+                Random random = new Random();
+                short newNodeId;
+                ClusterConfig cc = syncManager.getClusterConfig();
+
+                while (true) {
+                    newNodeId = (short)random.nextInt(Short.MAX_VALUE);
+                    if (cc.getNode(newNodeId) == null) break;
+                }
+
+                tnode.setNodeId(newNodeId);
+                cjrm.setNewNodeId(newNodeId);
+            }
+            if (!tnode.isSetDomainId()) {
+                // for now put the node into its own domain.  Once it joins
+                // the cluster, it can easily change its domain by writing a
+                // new domain ID into the system node store
+                tnode.setDomainId(tnode.getNodeId());
+            }
+            IStoreClient<Short, Node> nodeStoreClient = 
+                    syncManager.getStoreClient(SyncStoreCCProvider.
+                                               SYSTEM_NODE_STORE,
+                                               Short.class, Node.class);
+            while (true) {
+                try {
+                    Versioned<Node> node = 
+                            nodeStoreClient.get(tnode.getNodeId());
+                    node.setValue(new Node(tnode.getHostname(),
+                                           tnode.getPort(),
+                                           tnode.getNodeId(),
+                                           tnode.getDomainId()));
+                    nodeStoreClient.put(tnode.getNodeId(), node);
+                    break;
+                } catch (ObsoleteVersionException e) { }
+            }
+            
+            IStorageEngine<ByteArray, byte[]> store = 
+                    syncManager.getRawStore(SyncStoreCCProvider.
+                                            SYSTEM_NODE_STORE);
+            IClosableIterator<Entry<ByteArray, 
+                List<Versioned<byte[]>>>> entries = store.entries();
+            try {
+                while (entries.hasNext()) {
+                    Entry<ByteArray, List<Versioned<byte[]>>> entry = 
+                            entries.next();
+                    KeyedValues kv = 
+                            TProtocolUtil.getTKeyedValues(entry.getKey(), 
+                                                          entry.getValue());
+                    cjrm.addToNodeStore(kv);
+                }
+            } finally {
+                entries.close();
+            }
+            SyncMessage bsm = 
+                    new SyncMessage(MessageType.CLUSTER_JOIN_RESPONSE);
+            bsm.setClusterJoinResponse(cjrm);
+            channel.write(bsm);
+        } catch (Exception e) {
+            channel.write(getError(request.getHeader().getTransactionId(), e, 
+                                   MessageType.CLUSTER_JOIN_REQUEST));
+        }
+    }
+
+    @Override
     protected void handleError(ErrorMessage error, Channel channel) {
         rpcService.messageAcked(error.getType(), getRemoteNodeId());
+        updateCounter(SyncManager.COUNTER_ERROR_REMOTE, 1);
         super.handleError(error, channel);
     }
 
@@ -471,6 +565,29 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         return rpcService.getTransactionId();
     }
     
+    @Override
+    protected AuthScheme getAuthScheme() {
+        return syncManager.getClusterConfig().getAuthScheme();
+    }
+
+    @Override
+    protected byte[] getSharedSecret() throws AuthException {
+        String path = syncManager.getClusterConfig().getKeyStorePath();
+        String pass = syncManager.getClusterConfig().getKeyStorePassword();
+        try {
+            return CryptoUtil.getSharedSecret(path, pass);
+        } catch (Exception e) {
+            throw new AuthException("Could not read challenge/response  " + 
+                    "shared secret from key store " + path, e);
+        }
+    }
+    
+    protected SyncMessage getError(int transactionId, Exception error, 
+                                   MessageType type) {
+        updateCounter(SyncManager.COUNTER_ERROR_PROCESSING, 1);
+        return super.getError(transactionId, error, type);
+    }
+
     // *****************
     // Utility functions
     // *****************
@@ -494,37 +611,6 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     }
 
 
-    protected static class TVersionedValueIterable
-        implements Iterable<Versioned<byte[]>> {
-        final Iterable<VersionedValue> tvvi;
-        
-        public TVersionedValueIterable(Iterable<VersionedValue> tvvi) {
-            this.tvvi = tvvi;
-        }
-
-        @Override
-        public Iterator<Versioned<byte[]>> iterator() {
-            final Iterator<VersionedValue> vs = tvvi.iterator();
-            return new Iterator<Versioned<byte[]>>() {
-
-                @Override
-                public boolean hasNext() {
-                    return vs.hasNext();
-                }
-
-                @Override
-                public Versioned<byte[]> next() {
-                    return TProtocolUtil.getVersionedValued(vs.next());
-                }
-
-                @Override
-                public void remove() {
-                    vs.remove();
-                }
-            };
-        }
-    }
-    
     protected static class TVersionIterable
         implements Iterable<VectorClock> {
         final Iterable<org.sdnplatform.sync.thrift.VectorClock> tcvi;

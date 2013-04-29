@@ -29,7 +29,9 @@ import org.apache.thrift.TEnum;
   CURSOR_REQUEST(16),
   CURSOR_RESPONSE(17),
   REGISTER_REQUEST(18),
-  REGISTER_RESPONSE(19);
+  REGISTER_RESPONSE(19),
+  CLUSTER_JOIN_REQUEST(20),
+  CLUSTER_JOIN_RESPONSE(21);
 
   private final int value;
 
@@ -88,6 +90,10 @@ import org.apache.thrift.TEnum;
         return REGISTER_REQUEST;
       case 19:
         return REGISTER_RESPONSE;
+      case 20:
+        return CLUSTER_JOIN_REQUEST;
+      case 21:
+        return CLUSTER_JOIN_RESPONSE;
       default:
         return null;
     }

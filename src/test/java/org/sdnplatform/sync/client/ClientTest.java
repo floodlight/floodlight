@@ -3,6 +3,7 @@ package org.sdnplatform.sync.client;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
@@ -15,12 +16,16 @@ import net.floodlightcontroller.threadpool.ThreadPool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.client.SyncClient;
 import org.sdnplatform.sync.client.SyncClient.SyncClientSettings;
 import org.sdnplatform.sync.internal.SyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.Node;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 
 
 public class ClientTest {
@@ -30,8 +35,20 @@ public class ClientTest {
     ArrayList<Node> nodes;
     ThreadPool tp;
 
+    @Rule
+    public TemporaryFolder keyStoreFolder = new TemporaryFolder();
+
+    protected File keyStoreFile;
+    protected String keyStorePassword = "verysecurepassword";
+    
     @Before
     public void setUp() throws Exception {
+        keyStoreFile = new File(keyStoreFolder.getRoot(), 
+                "keystore.jceks");
+        CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
+                                     keyStorePassword, 
+                                     CryptoUtil.secureRandom(16));
+        
         nodes = new ArrayList<Node>();
         nodes.add(new Node("localhost", 40101, (short)1, (short)1));
         nodeString = mapper.writeValueAsString(nodes);
@@ -45,11 +62,18 @@ public class ClientTest {
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+1);
-        syncManager.registerStore("global", Scope.GLOBAL);
+        fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
+        fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
+        fmc.addConfigParam(syncManager, "keyStorePath", 
+                           keyStoreFile.getAbsolutePath());
+        fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
+
+        syncManager.registerStore("global", Scope.GLOBAL);
     }
 
     @After
@@ -70,6 +94,9 @@ public class ClientTest {
         scs.port = 40101;
         scs.storeName = "global";
         scs.debug = true;
+        scs.authScheme = AuthScheme.CHALLENGE_RESPONSE;
+        scs.keyStorePath = keyStoreFile.getAbsolutePath();
+        scs.keyStorePassword = keyStorePassword;
         SyncClient client = new SyncClient(scs);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         client.out = new PrintStream(out);

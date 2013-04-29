@@ -234,8 +234,12 @@ public class RPCService {
             if (!cg.close().await(5, TimeUnit.SECONDS)) {
                 logger.warn("Failed to cleanly shut down RPC server");
             }
-            clientBootstrap.releaseExternalResources();
-            serverBootstrap.releaseExternalResources();
+            if (clientBootstrap != null)
+                clientBootstrap.releaseExternalResources();
+            clientBootstrap = null;
+            if (serverBootstrap != null)
+                serverBootstrap.releaseExternalResources();
+            serverBootstrap = null;
         } catch (InterruptedException e) {
             logger.warn("Interrupted while shutting down RPC server");
         }

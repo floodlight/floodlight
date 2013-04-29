@@ -8,17 +8,19 @@ import java.util.concurrent.TimeoutException;
 public class RemoteSyncFuture implements Future<SyncReply> {
 
     private final int xid;
+    private final int connectionGeneration;
     private volatile SyncReply reply = null;
     private Object notify = new Object();
     
-    public RemoteSyncFuture(int xid) {
+    public RemoteSyncFuture(int xid, int connectionGeneration) {
         super();
         this.xid = xid;
+        this.connectionGeneration = connectionGeneration;
     }
 
-    // **********************
+    // *****************
     // Future<SyncReply>
-    // **********************
+    // *****************
     
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
@@ -67,15 +69,23 @@ public class RemoteSyncFuture implements Future<SyncReply> {
      * Get the xid for this message
      * @return
      */
-    public int getXid() {
+    protected int getXid() {
         return xid;
     }
     
     /**
+     * Get the connection generation for this future
+     * @return
+     */
+    protected int getConnectionGeneration() {
+        return connectionGeneration;
+    }
+
+    /**
      * Set the reply message
      * @param reply
      */
-    public void setReply(SyncReply reply) {
+    protected void setReply(SyncReply reply) {
         synchronized (notify) {
             this.reply = reply;
             notify.notifyAll();

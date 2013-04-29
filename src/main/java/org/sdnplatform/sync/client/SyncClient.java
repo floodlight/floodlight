@@ -1,6 +1,7 @@
 package org.sdnplatform.sync.client;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
@@ -13,17 +14,19 @@ import net.floodlightcontroller.threadpool.ThreadPool;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.core.JsonParser;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.UnknownStoreException;
+import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.remote.RemoteSyncManager;
-
 
 public class SyncClient {
     RemoteSyncManager syncManager;
@@ -59,6 +62,7 @@ public class SyncClient {
         commands.put("delete", new DeleteCommand());
         commands.put("get", new GetCommand());
         commands.put("getfull", new GetFullCommand());
+        commands.put("entries", new EntriesCommand());
         commands.put("store", new StoreCommand());
         commands.put("register", new RegisterCommand());
     }
@@ -73,6 +77,13 @@ public class SyncClient {
         fmc.addConfigParam(syncManager, "hostname", settings.hostname);
         fmc.addConfigParam(syncManager, "port", 
                            Integer.toString(settings.port));
+        if (settings.authScheme != null) {
+            fmc.addConfigParam(syncManager, "authScheme", 
+                               settings.authScheme.toString());
+            fmc.addConfigParam(syncManager, "keyStorePath", settings.keyStorePath);
+            fmc.addConfigParam(syncManager, "keyStorePassword", 
+                               settings.keyStorePassword);
+        }
         tp.init(fmc);
         syncManager.init(fmc);
         tp.startUp(fmc);
@@ -204,7 +215,43 @@ public class SyncClient {
             return "getfull [key]";
         }
     }
-    
+
+    protected class EntriesCommand extends ShellCommand {
+        ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
+
+        @Override
+        public boolean execute(String[] tokens, String line) throws Exception {
+            if (!checkStoreSettings()) return false;
+
+            IClosableIterator<Entry<JsonNode, Versioned<JsonNode>>> iter = 
+                    storeClient.entries();
+            try {
+                while (iter.hasNext()) {
+                    Entry<JsonNode, Versioned<JsonNode>> e = iter.next();
+                    display(e.getKey(), e.getValue());
+                }
+            } finally {
+                iter.close();
+            }
+            return false;
+        }
+        
+
+        protected void display(JsonNode keyNode,
+                               Versioned<JsonNode> value) throws Exception {
+            if (value.getValue() == null) return;
+            ObjectNode n = mapper.createObjectNode();
+            n.put("key", keyNode);
+            n.put("value", value.getValue());
+            out.println(writer.writeValueAsString(n));
+        }
+        
+        @Override
+        public String syntaxString() {
+            return "entries";
+        }
+    }
+
     /**
      * Put command
      * @author readams
@@ -390,7 +437,7 @@ public class SyncClient {
     
     protected static class SyncClientSettings {
         @Option(name="--help", 
-                usage="Server hostname")
+                usage="Show help")
         protected boolean help;
         
         @Option(name="--hostname", aliases="-h", 
@@ -411,6 +458,18 @@ public class SyncClient {
         @Option(name="--debug", 
                 usage="Show full error information")
         protected boolean debug;
+
+        @Option(name="--authScheme", 
+                usage="Scheme to use for authenticating to server")
+        protected AuthScheme authScheme;
+
+        @Option(name="--keyStorePath", 
+                usage="Path to key store containing authentication credentials")
+        protected String keyStorePath;    
+
+        @Option(name="--keyStorePassword", 
+                usage="Password for key store")
+        protected String keyStorePassword;    
     }
 
     /**
@@ -433,6 +492,12 @@ public class SyncClient {
         }
         
         SyncClient client = new SyncClient(settings);
+        if (settings.keyStorePath != null && 
+            settings.keyStorePassword == null) {
+            Console con = System.console();
+            char[] password = con.readPassword("Enter key store password: ");
+            settings.keyStorePassword = new String(password);
+        }
         try {
             if (false == client.connect()) {
                 return;

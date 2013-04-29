@@ -473,7 +473,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         // Create the set of ports
         List<Short> ports = new ArrayList<Short>();
-        for(short p=1; p<=10; ++p) {
+        for(short p=1; p<=20; ++p) {
             ports.add(p);
         }
 

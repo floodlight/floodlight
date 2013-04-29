@@ -39,10 +39,14 @@ public class StoreRegistry {
     private final SyncManager syncManager;
 
     /**
+     * Directory where the persistent store will be located
+     */
+    private final String dbPath;
+    
+    /**
      * A data source suitable for use in persistent stores
      */
-    private ConnectionPoolDataSource persistentDataSource = 
-            JavaDBStorageEngine.getDataSource(false); 
+    private ConnectionPoolDataSource persistentDataSource; 
 
     /**
      * The storage engines that contain the locally-stored data
@@ -66,9 +70,10 @@ public class StoreRegistry {
      * Construct a new {@link StoreRegistry}
      * @param syncManager The associated syncManager
      */
-    public StoreRegistry(SyncManager syncManager) {
+    public StoreRegistry(SyncManager syncManager, String dbPath) {
         super();
         this.syncManager = syncManager;
+        this.dbPath = dbPath;
         hints = new InMemoryStorageEngine<HintKey, byte[]>("system-hints");
     }
     
@@ -106,6 +111,8 @@ public class StoreRegistry {
                 
         IStorageEngine<ByteArray, byte[]> dstore;
         if (persistent) {
+            if (persistentDataSource == null)
+                persistentDataSource = JavaDBStorageEngine.getDataSource(dbPath, false);
             dstore = new JavaDBStorageEngine(storeName, persistentDataSource);
         } else {
             dstore = new InMemoryStorageEngine<ByteArray, byte[]>(storeName);

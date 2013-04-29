@@ -2,6 +2,7 @@ package org.sdnplatform.sync.internal;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IInconsistencyResolver;
 import org.sdnplatform.sync.IStoreClient;
@@ -40,6 +42,7 @@ import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.PropertyCCProvider;
 import org.sdnplatform.sync.internal.store.Key;
 import org.sdnplatform.sync.internal.store.TBean;
+import org.sdnplatform.sync.internal.util.CryptoUtil;
 import org.sdnplatform.sync.internal.version.VectorClock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,25 +60,44 @@ public class SyncManagerTest {
 
     ThreadPool tp;
 
+    @Rule
+    public TemporaryFolder keyStoreFolder = new TemporaryFolder();
+
+    protected File keyStoreFile;
+    protected String keyStorePassword = "verysecurepassword";
+    
     protected void setupSyncManager(FloodlightModuleContext fmc,
                                     SyncManager syncManager, Node thisNode)
-            throws FloodlightModuleException {
+            throws Exception {        
         fmc.addService(IThreadPoolService.class, tp);
         fmc.addService(IDebugCounterService.class, new NullDebugCounter());
         fmc.addConfigParam(syncManager, "configProviders", 
                            PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
-        syncManager.registerStore("global", Scope.GLOBAL);
-        syncManager.registerStore("local", Scope.LOCAL);
+        fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
+        fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
+        fmc.addConfigParam(syncManager, "keyStorePath", 
+                           keyStoreFile.getAbsolutePath());
+        fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
+
+        syncManager.registerStore("global", Scope.GLOBAL);
+        syncManager.registerStore("local", Scope.LOCAL);
     }
     
     @Before
     public void setUp() throws Exception {
+        keyStoreFile = new File(keyStoreFolder.getRoot(), 
+                "keystore.jceks");
+        CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
+                                     keyStorePassword, 
+                                     CryptoUtil.secureRandom(16));
+
         tp = new ThreadPool();
         
         syncManagers = new SyncManager[4];
@@ -171,7 +193,7 @@ public class SyncManagerTest {
         assertEquals(testMap.size(), size);
     }
 
-    private <K, V> Versioned<V> waitForValue(IStoreClient<K, V> client,
+    protected static <K, V> Versioned<V> waitForValue(IStoreClient<K, V> client,
                                              K key, V value,
                                              int maxTime,
                                              String clientName) 
@@ -201,6 +223,11 @@ public class SyncManagerTest {
     }
 
     private void waitForFullMesh(int maxTime) throws Exception {
+        waitForFullMesh(syncManagers, maxTime);
+    }
+
+    protected static void waitForFullMesh(SyncManager[] syncManagers,
+                                          int maxTime) throws Exception {
         long then = System.currentTimeMillis();
 
         while (true) {
@@ -214,7 +241,6 @@ public class SyncManagerTest {
             assertTrue(then + maxTime > System.currentTimeMillis());
         }
     }
-
     private void waitForConnection(SyncManager sm,
                                    short nodeId,
                                    boolean connected,
@@ -550,7 +576,7 @@ public class SyncManagerTest {
         for(int i = 0; i < 4; i++) {
             moduleContexts[i].addConfigParam(syncManagers[i],
                                              "nodes", nodeString);
-            syncManagers[i].updateConfiguration();
+            syncManagers[i].doUpdateConfiguration();
         }
         waitForFullMesh(2000);
 
@@ -589,7 +615,7 @@ public class SyncManagerTest {
             for(int i = 0; i < syncManagers.length; i++) {
                 moduleContexts[i].addConfigParam(syncManagers[i],
                                                  "nodes", nodeString);
-                syncManagers[i].updateConfiguration();
+                syncManagers[i].doUpdateConfiguration();
                 waitForConnection(syncManagers[i], (short)1, false, 2000);
             }
         } finally {
@@ -620,7 +646,7 @@ public class SyncManagerTest {
         for(int i = 0; i < syncManagers.length; i++) {
             moduleContexts[i].addConfigParam(syncManagers[i],
                                              "nodes", nodeString);
-            syncManagers[i].updateConfiguration();
+            syncManagers[i].doUpdateConfiguration();
         }
         waitForFullMesh(2000);
         

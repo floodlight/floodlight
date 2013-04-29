@@ -248,7 +248,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected SingletonTask bddpTask;
     protected final int BDDP_TASK_INTERVAL = 100; // 100 ms.
-    protected final int BDDP_TASK_SIZE = 5; // # of ports per iteration
+    protected final int BDDP_TASK_SIZE = 10; // # of ports per iteration
 
     /**
      * Map of broadcast domain ports and the last time a BDDP was either sent or
@@ -564,6 +564,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } else if (eth.getEtherType() < 1500) {
             long destMac = eth.getDestinationMAC().toLong();
             if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
+                debugCounters.updateCounter("linkdiscovery-linklocaldrops");
                 if (log.isTraceEnabled()) {
                     log.trace("Ignoring packet addressed to 802.1D/Q "
                               + "reserved address.");
@@ -573,12 +574,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         if (ignorePacketInFromSource(eth.getSourceMAC().toLong())) {
+            debugCounters.updateCounter("linkdiscovery-ignoresrcmacdrops");
             return Command.STOP;
         }
 
         // If packet-in is from a quarantine port, stop processing.
         NodePortTuple npt = new NodePortTuple(sw, pi.getInPort());
-        if (quarantineQueue.contains(npt)) return Command.STOP;
+        if (quarantineQueue.contains(npt)) {
+            debugCounters.updateCounter("linkdiscovery-quarantinedrops");
+            return Command.STOP;
+        }
 
         return Command.CONTINUE;
     }
@@ -2353,6 +2358,15 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
         debugCounters.registerCounter(getName() + "-" + "lldpeol",
             "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
+        debugCounters.registerCounter(getName() + "-" + "linklocaldrops",
+            "All link local packets dropped by this module",
+                                      CounterType.COUNT_ON_DEMAND);
+        debugCounters.registerCounter(getName() + "-" + "ignoresrcmacdrops",
+            "All packets whose srcmac is configured to be dropped by this module",
+                                      CounterType.COUNT_ON_DEMAND);
+        debugCounters.registerCounter(getName() + "-" + "quarantinedrops",
+            "All packets arriving on qurantined ports dropped by this module",
+                                      CounterType.COUNT_ON_DEMAND);
     }
 
     // ****************************************************
@@ -2449,7 +2463,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         for (Set<Link> links : switchLinks.values())
             num_links += links.size();
         info.put("# inter-switch links", num_links / 2);
-
+        info.put("# quarantine ports", quarantineQueue.size());
         return info;
     }
 

@@ -14,9 +14,10 @@ public interface IClusterConfigProvider {
      * Initialize the provider with the configuration parameters from the
      * Floodlight module context.
      * @param config
+     * @throws SyncException 
      */
     public void init(SyncManager syncManager,
-                     FloodlightModuleContext context);
+                     FloodlightModuleContext context) throws SyncException;
 
     /**
      * Get the {@link ClusterConfig} that represents the current cluster

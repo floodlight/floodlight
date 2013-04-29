@@ -25,7 +25,7 @@ public class PersistException extends SyncException {
     }
     
     @Override
-    public ErrorType getErrorCode() {
+    public ErrorType getErrorType() {
         return ErrorType.PERSIST;
     }
 }

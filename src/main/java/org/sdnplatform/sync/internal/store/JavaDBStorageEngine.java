@@ -1,6 +1,7 @@
 package org.sdnplatform.sync.internal.store;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -15,6 +16,8 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 
 import javax.sql.ConnectionPoolDataSource;
+import javax.xml.bind.DatatypeConverter;
+
 import org.apache.derby.jdbc.EmbeddedConnectionPoolDataSource40;
 
 import org.sdnplatform.sync.IClosableIterator;
@@ -62,6 +65,7 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
             "delete from <tbl>";
     
     private String name;
+    private String dbTableName;
     
     private ConnectionPoolDataSource dataSource;
 
@@ -90,6 +94,7 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
         super();
         
         this.name = name;
+        this.dbTableName = name.replace('.', '_');
         this.dataSource = dataSource;
 
         try {
@@ -298,17 +303,26 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
 
     /**
      * Get a connection pool data source for use by Java DB storage engines
+     * @param dbPath The path where the db will be located
      * @param memory whether to actually use a memory database
      * @return the {@link ConnectionPoolDataSource}
      */
-    public static ConnectionPoolDataSource getDataSource(boolean memory) {
+    public static ConnectionPoolDataSource getDataSource(String dbPath, 
+                                                         boolean memory) {
 
         EmbeddedConnectionPoolDataSource40 ds = 
                 new EmbeddedConnectionPoolDataSource40();
         if (memory) {
             ds.setDatabaseName("memory:SyncDB");                
         } else {
-            ds.setDatabaseName("SyncDB");
+            String path = "SyncDB";
+            if (dbPath != null) {
+                File f = new File(dbPath);
+                f = new File(dbPath,"SyncDB");
+                path = f.getAbsolutePath();
+            }            
+
+            ds.setDatabaseName(path);
         }
         ds.setCreateDatabase("create");
         ds.setUser("floodlight");
@@ -359,7 +373,7 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
         Statement statement = null;
         statement = dbConnection.createStatement();
         try {
-            statement.execute("CREATE TABLE " + getName() +
+            statement.execute("CREATE TABLE " + dbTableName +
                               CREATE_DATA_TABLE);
         } catch (SQLException e) {
             // eat table already exists exception
@@ -373,16 +387,16 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
     
     private String getKeyAsString(ByteArray key) 
             throws UnsupportedEncodingException {
-        return new String(key.get(), "UTF8");
+        return DatatypeConverter.printBase64Binary(key.get());
     }
 
     private static ByteArray getStringAsKey(String keyStr) 
             throws UnsupportedEncodingException {
-        return new ByteArray(keyStr.getBytes("UTF8"));
+        return new ByteArray(DatatypeConverter.parseBase64Binary(keyStr));
     }
     
     private String getSql(String sql) {
-        return sql.replace("<tbl>", getName());
+        return sql.replace("<tbl>", dbTableName);
     }
     
     private static List<Versioned<byte[]>> getVersionedList(ResultSet rs) 
