@@ -504,6 +504,8 @@ public class OFChannelHandlerTest {
         expectLastCall().once();
         sw.getStringId();
         expectLastCall().andReturn(cfg.dpid).atLeastOnce();
+        sw.isWriteThrottleEnabled();  // used for log message only
+        expectLastCall().andReturn(false).anyTimes();
         if (cfg.isPresent)
             sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, cfg.isCoreSwitch);
         replay(sw);
