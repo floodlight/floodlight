@@ -47,6 +47,7 @@ public class FallbackCCProvider implements IClusterConfigProvider {
                                                         Short.MAX_VALUE,
                                                         Short.MAX_VALUE)),
                                                         Short.MAX_VALUE,
+                                                        "localhost",
                                                         authScheme,
                                                         keyStorePath,
                                                         keyStorePassword);

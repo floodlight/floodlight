@@ -454,7 +454,14 @@ public class RPCService {
         serverBootstrap = bootstrap;
 
         int port = syncManager.getClusterConfig().getNode().getPort();
-        InetSocketAddress sa = new InetSocketAddress(port);
+        InetSocketAddress sa;
+        String listenAddress = 
+                syncManager.getClusterConfig().getListenAddress();
+        if (listenAddress != null)
+            sa = new InetSocketAddress(listenAddress, port);
+        else
+            sa = new InetSocketAddress(port);
+
         cg.add(bootstrap.bind(sa));
 
         logger.info("Listening for internal floodlight RPC on {}", sa);
