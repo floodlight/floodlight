@@ -202,11 +202,6 @@ public class Controller implements IFloodlightProviderService,
      * changing role need to use mutexes to ensure this. This has the ugly
      * side-effect of requiring calls between controller and OFChannelHandler
      *
-     * This class will also dampen multiple role request if they happen too
-     * fast. The first request will be send immediately. But if more requests
-     * are received within ROLE_FLAP_DAMPEN_TIME_MS the requests will be
-     * delayed by a SingletonTask
-     *
      * This class is fully thread safe. Its method can safely be called from
      * any thread.
      *

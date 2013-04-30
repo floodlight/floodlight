@@ -10,7 +10,7 @@ import org.openflow.protocol.statistics.OFDescriptionStatistics;
  * registry and a user can get IOFSwitch instances based on the switch's
  * OFDescriptionStatistics.
  *
- * A drive registers itself by specifying a <i>prefix string</i> of the
+ * A driver registers itself by specifying a <i>prefix string</i> of the
  * switch's <i>manufacturer</i> description. When a user request an
  * IOFSwitch instance the registry matches the manufacturer description
  * of the switch against the prefixes in the registry.
