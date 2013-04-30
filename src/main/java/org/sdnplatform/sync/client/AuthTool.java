@@ -13,21 +13,22 @@ import org.sdnplatform.sync.internal.util.CryptoUtil;
  */
 public class AuthTool {
     protected static class AuthToolSettings {
-        @Option(name="--help", 
+        @Option(name="--help", aliases="-h",
                 usage="Show help")
         protected boolean help;
         
-        @Option(name="--keyStorePath", 
+        @Option(name="--keyStorePath", aliases="-ks",
                 usage="Path to JCEKS key store where credentials should " + 
                        "be stored")
         protected String keyStorePath;
         
-        @Option(name="--keyStorePassword",
+        @Option(name="--keyStorePassword", aliases="-kp",
                 usage="Password for key store")
         protected String keyStorePassword;    
 
-        @Option(name="--authScheme",
-                usage="Auth scheme for which we should set up credentials")
+        @Option(name="--authScheme", aliases="-a",
+                usage="Auth scheme for which we should set up credentials " +
+                      "(default NO_AUTH)")
         protected AuthScheme authScheme = AuthScheme.NO_AUTH;
 
         CmdLineParser parser = new CmdLineParser(this);

@@ -48,6 +48,9 @@ public class DelegatingCCProvider implements IClusterConfigProvider {
         for (IClusterConfigProvider provider : providers) {
             try {
                 return provider.getConfig();
+            } catch (RuntimeException e) {
+                logger.debug("RuntimeException in ClusterConfig provider {}",
+                             provider.getClass().getSimpleName(), e);
             } catch (Exception e) {
                 logger.debug("ClusterConfig provider {} failed: {}",
                              provider.getClass().getSimpleName(),

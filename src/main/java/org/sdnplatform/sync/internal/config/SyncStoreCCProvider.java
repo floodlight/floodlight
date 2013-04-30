@@ -165,14 +165,16 @@ public class SyncStoreCCProvider
                     break;
                 } catch (ObsoleteVersionException e) { }
             }
+            if (newLocalNode == null) {
+                newLocalNode = getLocalNode(localNodeId, localNodeId);
+            }
             nodes.add(newLocalNode);
             
             if (oldLocalNode == null || !oldLocalNode.equals(newLocalNode)) {
                 // If we have no local node or our hostname or port changes, 
                 // we should trigger a new cluster join to ensure that the 
                 // new value can propagate everywhere
-                bootstrapTask.reschedule(0, TimeUnit.SECONDS);
-                throw new SyncException("Local node configuration has changed");
+                bootstrapTask.reschedule(0, TimeUnit.SECONDS);    
             }
             
             ClusterConfig config = new ClusterConfig(nodes, localNodeId,
@@ -221,8 +223,9 @@ public class SyncStoreCCProvider
                 Versioned<String> sv = unsyncStoreClient.get(SEEDS);
                 if (sv.getValue() == null || !sv.getValue().equals(seeds)) {
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Updating seeds to \"{}\" from \"{}\"", 
-                                     seeds, sv.getValue());
+                        logger.debug("[{}] Updating seeds to \"{}\" from \"{}\"", 
+                                     new Object[]{config.getNode().getNodeId(),
+                                                  seeds, sv.getValue()});
                     }
                     unsyncStoreClient.put(SEEDS, seeds);
                 }
@@ -286,10 +289,11 @@ public class SyncStoreCCProvider
     protected class BootstrapTask implements Runnable {
         @Override
         public void run() {
+            Short localNodeId = null;
             try {
                 Node localNode = null;
 
-                Short localNodeId = getLocalNodeId();
+                localNodeId = getLocalNodeId();
                 if (localNodeId != null)
                     localNode = nodeStoreClient.getValue(localNodeId);
 
@@ -301,7 +305,7 @@ public class SyncStoreCCProvider
                              localNodeId);
 
                 if (seedStr.equals("")) {
-                    localNode = setupLocalNode(localNode, true);
+                    localNode = setupLocalNode(localNode, localNodeId, true);
                     if (logger.isDebugEnabled()) {
                         logger.debug("[{}] First node configuration: {}",
                                      localNode.getNodeId(), localNode);
@@ -328,7 +332,7 @@ public class SyncStoreCCProvider
                                      localNode.getNodeId());
                     }
                 } else {
-                    localNode = setupLocalNode(localNode, false);
+                    localNode = setupLocalNode(localNode, localNodeId, false);
                     if (logger.isDebugEnabled()) {
                         logger.debug("[{}] Adding new node from seeds {}: {}", 
                                      new Object[]{localNodeId, seedStr, 
@@ -361,17 +365,21 @@ public class SyncStoreCCProvider
                 }
                 syncManager.updateConfiguration();
             } catch (Exception e) {
-                logger.error("Failed to bootstrap cluster", e);
+                logger.error("[" + localNodeId + 
+                             "] Failed to bootstrap cluster", e);
             }
         }
 
-        private Node setupLocalNode(Node localNode, boolean firstNode) 
+        private Node setupLocalNode(Node localNode, Short localNodeId,
+                                    boolean firstNode) 
                 throws SyncException {
             short nodeId = -1;
             short domainId = -1;
             if (localNode != null) {
                 nodeId = localNode.getNodeId();
                 domainId = localNode.getDomainId();
+            } else if (localNodeId != null) {
+                domainId = nodeId = localNodeId;
             } else if (firstNode) {
                 domainId = nodeId = 
                         (short)(new Random().nextInt(Short.MAX_VALUE));

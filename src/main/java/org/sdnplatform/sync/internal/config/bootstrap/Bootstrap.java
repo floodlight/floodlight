@@ -120,7 +120,9 @@ public class Bootstrap {
             return false;
         }
         Channel channel = future.getChannel();
-        logger.debug("Connected to " + seed);
+        logger.debug("[{}] Connected to {}", 
+                     localNode != null ? localNode.getNodeId() : null,
+                     seed);
         
         try {
             channel.getCloseFuture().await();

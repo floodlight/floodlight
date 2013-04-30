@@ -44,11 +44,12 @@ public abstract class SyncClientBase {
      */
     protected static class SyncClientBaseSettings 
         extends AuthTool.AuthToolSettings {
-        @Option(name="--hostname", aliases="-h", 
-                usage="Server hostname")
+        @Option(name="--hostname", aliases="-n", 
+                usage="Server hostname (default \"localhost\")")
         protected String hostname = "localhost";
     
-        @Option(name="--port", aliases="-p", usage="Server port")
+        @Option(name="--port", aliases="-p", 
+                usage="Server port (default 6642)")
         protected int port = 6642;
         
         @Override

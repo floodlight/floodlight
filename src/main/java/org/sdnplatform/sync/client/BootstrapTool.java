@@ -48,6 +48,14 @@ public class BootstrapTool extends SyncClientBase {
                 usage="Set the hostname for the local node (overrides " + 
                       "localNodeIface)")
         protected String localNodeHost;
+        
+        @Option(name="--reseed", aliases="-r",
+                usage="If you simultaneously change the IP of every node " + 
+                      "in the cluster, the cluster may not automatically " +
+                      "reform.  Run this command to cause it to rerun the " +
+                      "bootstrap process while retaining existing node IDs. " + 
+                      "The node will be put into its own local domain.")
+        protected boolean reseed;
     }
 
     public BootstrapTool(BootstrapToolSettings bootstrapSettings) {
@@ -64,6 +72,22 @@ public class BootstrapTool extends SyncClientBase {
                 syncManager.getStoreClient(SyncStoreCCProvider.
                                            SYSTEM_NODE_STORE, 
                                            Short.class, Node.class);
+        Short localNodeId = null;
+        if (bSettings.reseed || bSettings.domainId != 0) {
+            String localNodeIdStr = 
+                    waitForValue(uStoreClient, 
+                                 SyncStoreCCProvider.LOCAL_NODE_ID, 
+                                 5000000);
+            if (localNodeIdStr == null) {
+                err.println("Error: Local node ID is not set; you must " + 
+                            "first seed the cluster by using the --seeds " + 
+                            "option");
+                System.exit(3);
+            }
+            localNodeId = Short.valueOf(localNodeIdStr);
+        }
+        
+        
         if (bSettings.localNodeIface != null) {
             while (true) {
                 try {
@@ -89,6 +113,14 @@ public class BootstrapTool extends SyncClientBase {
                                      bSettings.localNodeHost);
                     break;
                 } catch (ObsoleteVersionException e) {}
+            }
+        }
+        if (bSettings.reseed) {
+            while (true) {
+                try {
+                    nodeStoreClient.delete(localNodeId);
+                    break;
+                } catch (ObsoleteVersionException e) { };
             }
         }
         if (bSettings.seeds != null) {
@@ -122,17 +154,6 @@ public class BootstrapTool extends SyncClientBase {
             }
         }
         if (bSettings.domainId != 0) {
-            String localNodeIdStr = 
-                    waitForValue(uStoreClient, 
-                                 SyncStoreCCProvider.LOCAL_NODE_ID, 
-                                 5000000);
-            if (localNodeIdStr == null) {
-                err.println("Could not set domain ID for local node because " +
-                            "local node ID is not set");
-                System.exit(3);
-            }
-            Short localNodeId = Short.valueOf(localNodeIdStr);
-
             while (true) {
                 try {
                     Versioned<Node> localNode = 
