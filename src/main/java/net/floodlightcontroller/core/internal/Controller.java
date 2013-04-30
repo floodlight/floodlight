@@ -42,6 +42,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -63,6 +65,7 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation;
 import net.floodlightcontroller.flowcache.IFlowCacheService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -87,6 +90,7 @@ import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.util.HexString;
 import org.openflow.vendor.nicira.OFNiciraVendorExtensions;
+import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
@@ -156,6 +160,11 @@ public class Controller implements IFloodlightProviderService,
             INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
     private RoleManager roleManager;
     private SwitchManager switchManager;
+
+    private static final int DEFAULT_CONSOLIDATE_STORE_TIME_DELAY_MS =
+            15*1000; // 15s
+    private int consolidateStoreTimeDelayMs =
+            DEFAULT_CONSOLIDATE_STORE_TIME_DELAY_MS;
 
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
@@ -319,6 +328,9 @@ public class Controller implements IFloodlightProviderService,
                           roleChangeDescription);
                 System.exit(0);
             }
+
+            // At this point we are guaranteed that we will execute the code
+            // below exactly once during the lifetime of this process!
             log.info("Received role request for {} (reason: {})."
                      + " Initiating transition", role, roleChangeDescription);
 
@@ -402,6 +414,15 @@ public class Controller implements IFloodlightProviderService,
 
         public synchronized void setRole(Role role) {
             this.role = role;
+            Runnable consolidateStoreTask = new Runnable() {
+                @Override
+                public void run() {
+                    consolidateStore();
+                }
+            };
+            Controller.this.ses.schedule(consolidateStoreTask,
+                                         consolidateStoreTimeDelayMs,
+                                         TimeUnit.MILLISECONDS);
         }
 
         @LogMessageDoc(level="ERROR",
@@ -451,15 +472,18 @@ public class Controller implements IFloodlightProviderService,
                 // added. One could argue that a switchChanged notification
                 // might be more appropriate in this case....
                 oldSw.cancelAllStatisticsReplies();
-                addUpdateToQueue(new SwitchUpdate(oldSw, SwitchUpdateType.REMOVED));
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.REMOVED));
                 oldSw.disconnectOutputStream();
                 // Add the new switch and clear FlowMods
                 // TODO: if this is the same switch re-connecting rather than
                 // a DPID collision it would make sense to not wipe the flow
                 // table.
                 sw.clearAllFlowMods();
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.ADDED));
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.ACTIVATED));
                 return;
             }
 
@@ -471,15 +495,18 @@ public class Controller implements IFloodlightProviderService,
                 // TODO: if we switch was recently (seconds) connected we
                 // might decide to not wipe the flow table.
                 sw.clearAllFlowMods();
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
-                this.syncedSwitches.remove(sw.getId());
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.ADDED));
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.ACTIVATED));
+                this.syncedSwitches.remove(dpid);
             } else {
                 // FIXME: switch was in store. check if ports or anything else
                 // has changed and send update.
                 if (alwaysClearFlowsOnSwAdd)
                     sw.clearAllFlowMods();
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ACTIVATED));
+                addUpdateToQueue(new SwitchUpdate(dpid,
+                                                  SwitchUpdateType.ACTIVATED));
                 sendNotificationsIfSwitchDiffers(oldSw, sw);
             }
         }
@@ -492,7 +519,7 @@ public class Controller implements IFloodlightProviderService,
 
             IOFSwitch oldSw = syncedSwitches.put(dpid, sw);
             if (oldSw == null)  {
-                addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.ADDED));
+                addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.ADDED));
             } else {
                 // The switch already exists in storage, see if anything
                 // has changed
@@ -520,13 +547,14 @@ public class Controller implements IFloodlightProviderService,
             }
             log.debug("removeSwitch {}", sw);
             this.activeSwitches.remove(sw.getId());
-            removeSwitchFromStore(sw);
+            removeSwitchFromStore(sw.getId());
             // We cancel all outstanding statistics replies if the switch transition
             // from active. In the future we might allow statistics requests
             // from slave controllers. Then we need to move this cancelation
             // to switch disconnect
             sw.cancelAllStatisticsReplies();
-            addUpdateToQueue(new SwitchUpdate(sw, SwitchUpdateType.REMOVED));
+            addUpdateToQueue(new SwitchUpdate(sw.getId(),
+                                              SwitchUpdateType.REMOVED));
         }
 
         private synchronized void addSwitchToStore(IOFSwitch sw) {
@@ -544,11 +572,14 @@ public class Controller implements IFloodlightProviderService,
             }
         }
 
-        private synchronized void removeSwitchFromStore(IOFSwitch sw) {
+        private synchronized void removeSwitchFromStore(long dpid) {
             try {
-                storeClient.delete(sw.getId());
+                storeClient.delete(dpid);
             } catch (SyncException e) {
-                log.error("Could not remove switch " + sw.getStringId() +
+                // ObsoleteVerisonException can't happend because all
+                // store modifications are synchronized
+                log.error("Could not remove switch " +
+                          HexString.toHexString(dpid) +
                           " from sync store:", e);
             }
         }
@@ -562,12 +593,46 @@ public class Controller implements IFloodlightProviderService,
                     new HashSet<OFPhysicalPort>(sw1.getPorts());
             if (! sw1Ports.equals(sw2Ports)) {
                 addUpdateToQueue(
-                        new SwitchUpdate(sw2, SwitchUpdateType.PORTCHANGED));
+                        new SwitchUpdate(sw2.getId(),
+                                         SwitchUpdateType.PORTCHANGED));
             }
             if (false) {
                 // FIXME: IF ANYTHING ELSE HAS CHANGED
                 addUpdateToQueue(
-                        new SwitchUpdate(sw2, SwitchUpdateType.OTHERCHANGE));
+                        new SwitchUpdate(sw2.getId(),
+                                         SwitchUpdateType.OTHERCHANGE));
+            }
+        }
+
+        /**
+         * Remove all entries from the store that don't correspond to an
+         * active switch.
+         * TODO: is it a problem that this is fully synchronized
+         */
+        private synchronized void consolidateStore() {
+            if (role == Role.SLAVE)
+                return;
+            this.syncedSwitches.clear();
+            IClosableIterator<Map.Entry<Long,Versioned<SwitchSyncRepresentation>>>
+                    iter = null;
+            try {
+                iter = storeClient.entries();
+            } catch (SyncException e) {
+                log.error("Failed to read switches from sync store", e);
+                return;
+            }
+            try {
+                while(iter.hasNext()) {
+                    Entry<Long, Versioned<SwitchSyncRepresentation>> entry =
+                            iter.next();
+                    if (!this.activeSwitches.contains(entry.getKey())) {
+                        removeSwitchFromStore(entry.getKey());
+                        //addUpdateToQueue(new SwitchUpdate(sw, switchUpdateType))
+                    }
+                }
+            } finally {
+                if (iter != null)
+                    iter.close();
             }
         }
 
@@ -600,8 +665,6 @@ public class Controller implements IFloodlightProviderService,
                 return sw;
             return this.syncedSwitches.get(dpid);
         }
-
-
     }
 
 
@@ -626,38 +689,38 @@ public class Controller implements IFloodlightProviderService,
      * Update message indicating a switch was added or removed
      */
     class SwitchUpdate implements IUpdate {
-        public IOFSwitch sw;
+        public long swId;
         public SwitchUpdateType switchUpdateType;
-        public SwitchUpdate(IOFSwitch sw, SwitchUpdateType switchUpdateType) {
-            this.sw = sw;
+        public SwitchUpdate(long swId, SwitchUpdateType switchUpdateType) {
+            this.swId = swId;
             this.switchUpdateType = switchUpdateType;
         }
         @Override
         public void dispatch() {
             if (log.isTraceEnabled()) {
                 log.trace("Dispatching switch update {} {}",
-                        sw, switchUpdateType);
+                        HexString.toHexString(swId), switchUpdateType);
             }
             if (switchListeners != null) {
                 for (IOFSwitchListener listener : switchListeners) {
                     switch(switchUpdateType) {
                         case ADDED:
-                            listener.switchAdded(sw.getId());
+                            listener.switchAdded(swId);
                             break;
                         case REMOVED:
-                            listener.switchRemoved(sw.getId());
+                            listener.switchRemoved(swId);
                             break;
                         case PORTCHANGED:
-                            listener.switchPortChanged(sw.getId());
+                            listener.switchPortChanged(swId);
                             break;
                         case ACTIVATED:
-                            listener.switchActivated(sw.getId());
+                            listener.switchActivated(swId);
                             break;
                         case DEACTIVATED:
                             // ignore
                             break;
                         case OTHERCHANGE:
-                            listener.switchChanged(sw.getId());
+                            listener.switchChanged(swId);
                             break;
                     }
                 }
@@ -807,7 +870,8 @@ public class Controller implements IFloodlightProviderService,
      * @param sw
      */
     protected void notifyPortChanged(IOFSwitch sw) {
-        SwitchUpdate update = new SwitchUpdate(sw, SwitchUpdateType.PORTCHANGED);
+        SwitchUpdate update = new SwitchUpdate(sw.getId(),
+                                               SwitchUpdateType.PORTCHANGED);
         addUpdateToQueue(update);
     }
 
@@ -1611,6 +1675,14 @@ public class Controller implements IFloodlightProviderService,
             if (update != null)
                 update.dispatch();
         }
+    }
+
+    /**
+     * FOR TESTING ONLY
+     * @param update
+     */
+    void setConsolidateStoreTaskDelay(int consolidateStoreTaskDelayMs) {
+        this.consolidateStoreTimeDelayMs = consolidateStoreTaskDelayMs;
     }
 
     @LogMessageDoc(level="WARN",
