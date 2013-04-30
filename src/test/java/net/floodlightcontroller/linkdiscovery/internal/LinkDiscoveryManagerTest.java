@@ -305,10 +305,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertNotNull(linkDiscovery.portLinks.get(dstNpt));
         assertTrue(linkDiscovery.portLinks.get(dstNpt).contains(lt));
         assertTrue(linkDiscovery.links.containsKey(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt) == false);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt) == false);
 
         linkDiscovery.timeoutLinks();
 
@@ -319,8 +315,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         linkDiscovery.addOrUpdateLink(lt, info);
         assertTrue(linkDiscovery.links.get(lt).getUnicastValidTime() == null);
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
 
 
         // Add a link info based on info that woudld be obtained from unicast LLDP
@@ -331,18 +325,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         info = new LinkInfo(System.currentTimeMillis() - 40000,
                             System.currentTimeMillis() - 40000, null, 0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt) == false);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt) == false);
 
         // Expect to timeout the unicast Valid Time, but not the multicast Valid time
         // So the link type should go back to non-openflow link.
         linkDiscovery.timeoutLinks();
         assertTrue(linkDiscovery.links.get(lt).getUnicastValidTime() == null);
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
 
         // Set the multicastValidTime to be old and see if that also times out.
         info = new LinkInfo(System.currentTimeMillis() - 40000,
@@ -350,11 +338,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.timeoutLinks();
         assertTrue(linkDiscovery.links.get(lt) == null);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt) == false);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt) == false);
-
 
         // Test again only with multicast LLDP
         info = new LinkInfo(System.currentTimeMillis() - 40000,
@@ -362,16 +345,10 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         linkDiscovery.addOrUpdateLink(lt, info);
         assertTrue(linkDiscovery.links.get(lt).getUnicastValidTime() == null);
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
 
         // Call timeout and check if link is no longer present.
         linkDiscovery.timeoutLinks();
         assertTrue(linkDiscovery.links.get(lt) == null);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt) == false);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt) == null ||
-                linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt) == false);
 
         // Start clean and see if loops are also added.
         lt = new Link(1L, 1, 1L, 2);
@@ -380,8 +357,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         info = new LinkInfo(System.currentTimeMillis() - 40000,
                             null, System.currentTimeMillis() - 40000, 0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
 
 
         // Start clean and see if loops are also added.
@@ -391,9 +366,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         info = new LinkInfo(System.currentTimeMillis() - 40000,
                             null, System.currentTimeMillis() - 40000, 0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
-
 
         // Start clean and see if loops are also added.
         lt = new Link(1L, 4, 1L, 5);
@@ -402,9 +374,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         info = new LinkInfo(System.currentTimeMillis() - 40000,
                             null, System.currentTimeMillis() - 40000, 0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
-
 
         // Start clean and see if loops are also added.
         lt = new Link(1L, 3, 1L, 5);
@@ -413,8 +382,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         info = new LinkInfo(System.currentTimeMillis() - 40000,
                             null, System.currentTimeMillis() - 40000, 0, 0);
         linkDiscovery.addOrUpdateLink(lt, info);
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(srcNpt).contains(lt));
-        assertTrue(linkDiscovery.portBroadcastDomainLinks.get(dstNpt).contains(lt));
     }
 
     @Test
