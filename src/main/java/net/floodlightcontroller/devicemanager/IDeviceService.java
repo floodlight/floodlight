@@ -20,6 +20,7 @@ package net.floodlightcontroller.devicemanager;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -209,5 +210,7 @@ public interface IDeviceService extends IFloodlightService {
     public void addSuppressAPs(long swId, short port);
 
     public void removeSuppressAPs(long swId, short port);
+
+    public Set<SwitchPort> getSuppressAPs();
 
 }
