@@ -4,15 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-
 /**
  * ServiceChaining module encapsulates properties of service chains and their member nodes
  *
  * @author kjiang
  *
  */
-@JsonSerialize(using=ServiceChainSerializer.class)
 public class ServiceChain {
     // Tenant
     private String tenant;
