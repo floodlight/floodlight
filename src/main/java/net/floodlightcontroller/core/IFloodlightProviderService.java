@@ -82,7 +82,9 @@ public interface IFloodlightProviderService extends
      * @return the set of actively connected switches
      */
     public Map<Long, IOFSwitch> getSwitches();
-    
+
+    public IOFSwitch getSwitchByDpid(String dpid);
+
     /**
      * Get the current role of the controller
      */

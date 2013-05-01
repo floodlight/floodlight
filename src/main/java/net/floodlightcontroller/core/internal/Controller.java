@@ -1501,6 +1501,24 @@ public class Controller implements IFloodlightProviderService,
     }
 
     @Override
+    public IOFSwitch getSwitchByDpid(String dpid) {
+        Map<Long, IOFSwitch> switches = getSwitches();
+        if (switches == null) return null;
+        Long switchid = HexString.toLong(dpid);
+
+        if (switchid != null && switches.containsKey(switchid)) {
+            return switches.get(switchid);
+        }
+
+        // TODO: This is a hack for the demo, which only has one switch
+        for (IOFSwitch sw : switches.values()) {
+            return sw;
+        }
+
+        return null;
+    }
+
+    @Override
     public void addOFSwitchListener(IOFSwitchListener listener) {
         this.switchListeners.add(listener);
     }
