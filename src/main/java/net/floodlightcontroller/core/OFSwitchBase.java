@@ -155,7 +155,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.portLock = new Object();
         this.portsByNumber = new ConcurrentHashMap<Short, OFPhysicalPort>();
         this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
-        this.connected = true;
+        this.connected = false;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.featuresFutureMap = new ConcurrentHashMap<Integer,OFFeaturesReplyFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
@@ -231,6 +231,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     })
     public void writeThrottled(OFMessage m, FloodlightContext bc)
             throws IOException {
+        if (channel == null || !isConnected())
+            return;
         /**
          * By default, channel uses an unbounded send queue. Enable throttling
          * prevents the queue from growing big.
@@ -262,6 +264,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     public void write(OFMessage m, FloodlightContext bc) {
+        if (channel == null || !isConnected())
+            return;
             //throws IOException {
         Map<IOFSwitch,List<OFMessage>> msg_buffer_map = local_msg_buffer.get();
         List<OFMessage> msg_buffer = msg_buffer_map.get(this);
@@ -288,6 +292,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void write(List<OFMessage> msglist,
                       FloodlightContext bc) {
+        if (channel == null || !isConnected())
+            return;
         for (OFMessage m : msglist) {
             if (role == Role.SLAVE) {
                 switch (m.getType()) {
@@ -313,11 +319,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * @throws IOException
      */
     protected void write(List<OFMessage> msglist) {
+        if (channel == null || !isConnected())
+            return;
         this.channel.write(msglist);
     }
 
     @Override
     public void disconnectOutputStream() {
+        if (channel == null)
+            return;
         channel.close();
     }
 
@@ -561,7 +571,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public boolean isActive() {
         // no lock needed since we use volatile
-        return isConnected() && this.role != Role.SLAVE;
+        return isConnected() && this.role == Role.MASTER;
     }
 
     @Override
@@ -584,6 +594,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     public void clearAllFlowMods() {
+        if (channel == null || !isConnected())
+            return;
         // Delete all pre-existing flows
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()

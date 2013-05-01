@@ -34,8 +34,11 @@ import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFGetConfigReply;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFSetConfig;
 import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFStatisticsRequest;
@@ -158,7 +161,7 @@ public class OFChannelHandlerTest {
         verify(sw);
     }
 
-    /* Reset the channel mock and set basic method call expectations */
+    /** Reset the channel mock and set basic method call expectations */
     void resetChannel() {
         reset(channel);
         expect(channel.getPipeline()).andReturn(pipeline).anyTimes();
@@ -166,7 +169,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* reset, setup, and replay the messageEvent mock for the given
+    /** reset, setup, and replay the messageEvent mock for the given
      * messages
      */
     void setupMessageEvent(List<OFMessage> messages) {
@@ -176,7 +179,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* reset, setup, and replay the messageEvent mock for the given
+    /** reset, setup, and replay the messageEvent mock for the given
      * messages, mock controller  send message to channel handler
      *
      * This method will reset, start replay on controller, and then verify
@@ -196,7 +199,7 @@ public class OFChannelHandlerTest {
         verify(controller);
     }
 
-    /* reset, setup, and replay the messageEvent mock for the given
+    /** reset, setup, and replay the messageEvent mock for the given
      * messages, mock controller  send message to channel handler
      *
      * This method will start replay on controller, and then verify
@@ -213,7 +216,7 @@ public class OFChannelHandlerTest {
         verify(controller);
     }
 
-    /*
+    /**
      * Extract the list of OFMessages that was captured by the Channel.write()
      * capture. Will check that something was actually captured first. We'll
      * collapse the messages from multiple writes into a single list of
@@ -234,7 +237,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /*
+    /**
      * Verify that the given exception event capture (as returned by
      * getAndInitExceptionCapture) has thrown an exception of the given
      * expectedExceptionClass.
@@ -249,7 +252,7 @@ public class OFChannelHandlerTest {
         exceptionEventCapture.reset();
     }
 
-    /* make sure that the transaction ids in the given messages are
+    /** make sure that the transaction ids in the given messages are
      * not 0 and differ between each other.
      * While it's not a defect per se if the xids are we want to ensure
      * we use different ones for each message we send.
@@ -321,7 +324,7 @@ public class OFChannelHandlerTest {
         verifyUniqueXids(msgs);
     }
 
-    /* FIXME:
+    /** FIXME:
      * Verify that the given FlowMod indeed removes all flows from the
      * switch
      */
@@ -333,7 +336,7 @@ public class OFChannelHandlerTest {
         assertEquals(OFPort.OFPP_NONE.getValue(), fm.getOutPort());
     }
 
-    /* Move the channel from scratch to WAIT_FEATURES_REPLY state
+    /** Move the channel from scratch to WAIT_FEATURES_REPLY state
      * Builds on moveToWaitHello()
      * adds testing for WAIT_HELLO state
      */
@@ -358,7 +361,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* Move the channel from scratch to WAIT_CONFIG_REPLY state
+    /** Move the channel from scratch to WAIT_CONFIG_REPLY state
      * Builds on moveToWaitFeaturesReply
      * adds testing for WAIT_FEATURES_REPLY state
      */
@@ -384,7 +387,7 @@ public class OFChannelHandlerTest {
                      handler.getStateForTesting());
     }
 
-    /* Move the channel from scratch to WAIT_DESCRIPTION_STAT_REPLY state
+    /** Move the channel from scratch to WAIT_DESCRIPTION_STAT_REPLY state
      * Builds on moveToWaitConfigReply()
      * adds testing for WAIT_CONFIG_REPLY state
      */
@@ -416,7 +419,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* A helper bean that represents the config for a particular switch in
+    /** A helper bean that represents the config for a particular switch in
      * the storage source.
      */
     private class MockStorageSourceConfig {
@@ -428,7 +431,7 @@ public class OFChannelHandlerTest {
         // the value of isCoreSwitch
         public boolean isCoreSwitch;
     }
-    /* setup and replay a mock storage source and result set that
+    /** setup and replay a mock storage source and result set that
      * contains the IsCoreSwitch setting
      */
     private void setupMockStorageSource(MockStorageSourceConfig cfg) {
@@ -459,7 +462,7 @@ public class OFChannelHandlerTest {
         verify(storageResultSet);
     }
 
-    /* Move the channel from scratch to WAIT_INITIAL_ROLE state
+    /** Move the channel from scratch to WAIT_INITIAL_ROLE state
      * Builds on moveToWaitDescriptionStatReply()
      * adds testing for WAIT_DESCRIPTION_STAT_REPLY state
      * @param storageSourceConfig paramterizes the contents of the storage
@@ -533,7 +536,7 @@ public class OFChannelHandlerTest {
     }
 
     @Test
-    /* Test WaitDescriptionReplyState. No config for switch in storage */
+    /** Test WaitDescriptionReplyState. No config for switch in storage */
     public void testWaitDescriptionReplyState1() throws Exception {
         MockStorageSourceConfig cfg = new MockStorageSourceConfig();
         cfg.dpid = HexString.toHexString(featuresReply.getDatapathId());
@@ -542,7 +545,7 @@ public class OFChannelHandlerTest {
     }
 
     @Test
-    /* Test WaitDescriptionReplyState. switch is core switch */
+    /** Test WaitDescriptionReplyState. switch is core switch */
     public void testWaitDescriptionReplyState2() throws Exception {
         MockStorageSourceConfig cfg = new MockStorageSourceConfig();
         cfg.dpid = HexString.toHexString(featuresReply.getDatapathId());
@@ -552,7 +555,7 @@ public class OFChannelHandlerTest {
     }
 
     @Test
-    /* Test WaitDescriptionReplyState. switch is NOT core switch */
+    /** Test WaitDescriptionReplyState. switch is NOT core switch */
     public void testWaitDescriptionReplyState3() throws Exception {
         MockStorageSourceConfig cfg = new MockStorageSourceConfig();
         cfg.dpid = HexString.toHexString(featuresReply.getDatapathId());
@@ -561,7 +564,7 @@ public class OFChannelHandlerTest {
         doMoveToWaitInitialRole(cfg);
     }
 
-    /*
+    /**
      * Helper
      * Verify that the given OFMessage is a correct Nicira RoleRequest message
      * for the given role using the given xid.
@@ -581,7 +584,7 @@ public class OFChannelHandlerTest {
         assertEquals(expectedRole.toNxRole(), requestData.getRole());
     }
 
-    /*
+    /**
      * Setup the mock switch and write capture for a role request, set the
      * role and verify mocks.
      * @param supportsNxRole whether the switch supports role request messages
@@ -613,7 +616,7 @@ public class OFChannelHandlerTest {
         verify(sw);
     }
 
-    /*
+    /**
      * Setup the mock switch for a role change request where the switch
      * does not support roles.
      *
@@ -648,7 +651,7 @@ public class OFChannelHandlerTest {
         verify(sw);
     }
 
-    /* Return a Nicira RoleReply message for the given role */
+    /** Return a Nicira RoleReply message for the given role */
     private OFMessage getRoleReply(int xid, Role role) {
         OFVendor vm = (OFVendor)BasicFactory.getInstance()
                 .getMessage(OFType.VENDOR);
@@ -660,7 +663,7 @@ public class OFChannelHandlerTest {
         return vm;
     }
 
-    /* Return an OFError of the given type with the given xid */
+    /** Return an OFError of the given type with the given xid */
     private OFMessage getErrorMessage(OFErrorType type,
                                       int i,
                                       int xid) {
@@ -673,7 +676,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* Move the channel from scratch to MASTER state
+    /** Move the channel from scratch to MASTER state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -718,7 +721,7 @@ public class OFChannelHandlerTest {
                      handler.getStateForTesting());
     }
 
-    /* Move the channel from scratch to SLAVE state
+    /** Move the channel from scratch to SLAVE state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -763,7 +766,7 @@ public class OFChannelHandlerTest {
                      handler.getStateForTesting());
     }
 
-    /* Move the channel from scratch to MASTER state
+    /** Move the channel from scratch to MASTER state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -824,7 +827,7 @@ public class OFChannelHandlerTest {
 
     }
 
-    /* Move the channel from scratch to MASTER state
+    /** Move the channel from scratch to MASTER state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -876,7 +879,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* Move the channel from scratch to SLAVE state
+    /** Move the channel from scratch to SLAVE state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -934,7 +937,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* Move the channel from scratch to SLAVE state
+    /** Move the channel from scratch to SLAVE state
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
      *
@@ -980,7 +983,7 @@ public class OFChannelHandlerTest {
     }
 
 
-    /* Move channel from scratch to WAIT_INITIAL_STATE, then MASTER,
+    /** Move channel from scratch to WAIT_INITIAL_STATE, then MASTER,
      * then SLAVE for cases where the switch does not support roles.
      * I.e., the final SLAVE transition should disconnect the switch.
      */
@@ -1004,7 +1007,7 @@ public class OFChannelHandlerTest {
 
     }
 
-    /* Move the channel to MASTER state
+    /** Move the channel to MASTER state
      * Expects that the channel is in MASTER or SLAVE state.
      *
      */
@@ -1039,7 +1042,7 @@ public class OFChannelHandlerTest {
                      handler.getStateForTesting());
     }
 
-    /* Move the channel to SLAVE state
+    /** Move the channel to SLAVE state
      * Expects that the channel is in MASTER or SLAVE state.
      *
      */
@@ -1094,7 +1097,7 @@ public class OFChannelHandlerTest {
         changeRoleToSlaveWithRequest();
     }
 
-    /* Start from scratch and reply with an unexpected error to the role
+    /** Start from scratch and reply with an unexpected error to the role
      * change request
      * Builds on doMoveToWaitInitialRole()
      * adds testing for WAIT_INITAL_ROLE state
@@ -1131,5 +1134,97 @@ public class OFChannelHandlerTest {
         verifyExceptionCaptured(SwitchStateException.class);
     }
 
+    /**
+     * Test dispatch of messages while in MASTER role
+     */
+    @Test
+    public void testMessageDispatchMaster() throws Exception {
+        testInitialMoveToMasterWithRole();
+
+        // Send packet in. expect dispatch
+        OFPacketIn pi = (OFPacketIn)
+                BasicFactory.getInstance().getMessage(OFType.PACKET_IN);
+        reset(controller);
+        controller.handleMessage(sw, pi, null);
+        expectLastCall().once();
+        sendMessageToHandlerNoControllerReset(
+               Collections.<OFMessage>singletonList(pi));
+        verify(controller);
+        // TODO: many more to go
+    }
+
+    /**
+     * Test port status message handling while MASTER
+     *
+     */
+    @Test
+    public void testPortStatusMessageMaster() throws Exception {
+        long dpid = featuresReply.getDatapathId();
+        testInitialMoveToMasterWithRole();
+
+        OFPhysicalPort p = new OFPhysicalPort();
+        p.setName("Port1");
+        p.setPortNumber((short)1);
+        OFPortStatus ps = (OFPortStatus)
+                BasicFactory.getInstance().getMessage(OFType.PORT_STATUS);
+        ps.setDesc(p);
+
+
+        // Add port
+        ps.setReason(OFPortReason.OFPPR_ADD.getReasonCode());
+        reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        expect(sw.getId()).andReturn(dpid).anyTimes();
+        sw.setPort(p);
+        expectLastCall().once();
+        replay(sw);
+
+        reset(controller);
+        controller.notifyPortChanged(dpid);
+        expectLastCall().once();
+        sendMessageToHandlerNoControllerReset(
+               Collections.<OFMessage>singletonList(ps));
+        verify(sw);
+        verify(controller);
+
+        // modify port
+        ps.setReason(OFPortReason.OFPPR_MODIFY.getReasonCode());
+        reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        expect(sw.getId()).andReturn(dpid).anyTimes();
+        sw.setPort(p);
+        expectLastCall().once();
+        replay(sw);
+
+        reset(controller);
+        controller.notifyPortChanged(dpid);
+        expectLastCall().once();
+        sendMessageToHandlerNoControllerReset(
+               Collections.<OFMessage>singletonList(ps));
+        verify(sw);
+        verify(controller);
+
+        // delete port
+        ps.setReason(OFPortReason.OFPPR_DELETE.getReasonCode());
+        reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        expect(sw.getId()).andReturn(dpid).anyTimes();
+        sw.deletePort(p.getPortNumber());
+        expectLastCall().once();
+        replay(sw);
+
+        reset(controller);
+        controller.notifyPortChanged(dpid);
+        expectLastCall().once();
+        sendMessageToHandlerNoControllerReset(
+               Collections.<OFMessage>singletonList(ps));
+        verify(sw);
+        verify(controller);
+
+
+    }
 
 }

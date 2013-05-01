@@ -323,7 +323,7 @@ public class Controller implements IFloodlightProviderService,
                 return;
             }
             if (this.role == Role.MASTER && role == Role.SLAVE) {
-                log.info("Received role request to transition from MASTER "
+                log.info("Received role request to transition from MASTER to "
                           + " SLAVE (reason: {}). Terminating floodlight.",
                           roleChangeDescription);
                 System.exit(0);
@@ -507,7 +507,7 @@ public class Controller implements IFloodlightProviderService,
                     sw.clearAllFlowMods();
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
-                sendNotificationsIfSwitchDiffers(oldSw, sw);
+                sendNotificationsIfSwitchDiffers(storedSwitch, sw);
             }
         }
 
@@ -590,7 +590,7 @@ public class Controller implements IFloodlightProviderService,
             Set<OFPhysicalPort> sw1Ports =
                     new HashSet<OFPhysicalPort>(sw1.getPorts());
             Set<OFPhysicalPort> sw2Ports =
-                    new HashSet<OFPhysicalPort>(sw1.getPorts());
+                    new HashSet<OFPhysicalPort>(sw2.getPorts());
             if (! sw1Ports.equals(sw2Ports)) {
                 addUpdateToQueue(
                         new SwitchUpdate(sw2.getId(),
@@ -612,6 +612,7 @@ public class Controller implements IFloodlightProviderService,
         private synchronized void consolidateStore() {
             if (role == Role.SLAVE)
                 return;
+            log.info("Consolidating synced switches after MASTER transition");
             this.syncedSwitches.clear();
             IClosableIterator<Map.Entry<Long,Versioned<SwitchSyncRepresentation>>>
                     iter = null;
@@ -625,9 +626,10 @@ public class Controller implements IFloodlightProviderService,
                 while(iter.hasNext()) {
                     Entry<Long, Versioned<SwitchSyncRepresentation>> entry =
                             iter.next();
-                    if (!this.activeSwitches.contains(entry.getKey())) {
+                    if (!this.activeSwitches.containsKey(entry.getKey())) {
                         removeSwitchFromStore(entry.getKey());
-                        //addUpdateToQueue(new SwitchUpdate(sw, switchUpdateType))
+                        addUpdateToQueue(new SwitchUpdate(entry.getKey(),
+                                                     SwitchUpdateType.REMOVED));
                     }
                 }
             } finally {
@@ -748,16 +750,8 @@ public class Controller implements IFloodlightProviderService,
                 log.debug("Dispatching HA Role update newRole = {}",
                           newRole);
             }
-            /*
-            if (newRole == Role.SLAVE) {
-                messageDispatchGuard.disableDispatch();
-                Controller.this.notifiedRole = newRole;
-            }
-            */
-            if (haListeners != null) {
-                for (IHAListener listener : haListeners.getOrderedListeners()) {
-                    listener.transitionToMaster();
-                }
+            for (IHAListener listener : haListeners.getOrderedListeners()) {
+                listener.transitionToMaster();
             }
             if (newRole != Role.SLAVE) {
                 Controller.this.notifiedRole = newRole;
@@ -869,8 +863,8 @@ public class Controller implements IFloodlightProviderService,
      * switch update.
      * @param sw
      */
-    protected void notifyPortChanged(IOFSwitch sw) {
-        SwitchUpdate update = new SwitchUpdate(sw.getId(),
+     void notifyPortChanged(long dpid) {
+        SwitchUpdate update = new SwitchUpdate(dpid,
                                                SwitchUpdateType.PORTCHANGED);
         addUpdateToQueue(update);
     }
@@ -1128,7 +1122,7 @@ public class Controller implements IFloodlightProviderService,
             ListenerDispatcher<OFType, IOFMessageListener> ldd =
                     entry.getValue();
 
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append("OFListeners for ");
             sb.append(type);
             sb.append(": ");
@@ -1138,6 +1132,14 @@ public class Controller implements IFloodlightProviderService,
             }
             log.debug(sb.toString());
         }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("HAListeners: ");
+        for (IHAListener l: haListeners.getOrderedListeners()) {
+            sb.append(l.getName());
+            sb.append(", ");
+        }
+        log.debug(sb.toString());
     }
 
     public void removeOFMessageListeners(OFType type) {
@@ -1620,9 +1622,6 @@ public class Controller implements IFloodlightProviderService,
         this.alwaysClearFlowsOnSwAdd = value;
     }
 
-    public boolean getAlwaysClearFlowsOnSwAdd() {
-        return this.alwaysClearFlowsOnSwAdd;
-    }
 
     @Override
     public Map<String, Long> getMemory() {
@@ -1657,6 +1656,20 @@ public class Controller implements IFloodlightProviderService,
     }
 
 
+    @LogMessageDoc(level="WARN",
+            message="Failure adding update {} to queue",
+            explanation="The controller tried to add an internal notification" +
+                        " to its message queue but the add failed.",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    private void addUpdateToQueue(IUpdate update) {
+        try {
+            this.updates.put(update);
+        } catch (InterruptedException e) {
+            // This should never happen
+            log.error("Failure adding update {} to queue.", update);
+        }
+    }
+
     void flushAll() {
         // Flush all flow-mods/packet-out/stats generated from this "train"
         OFSwitchBase.flush_all();
@@ -1685,18 +1698,13 @@ public class Controller implements IFloodlightProviderService,
         this.consolidateStoreTimeDelayMs = consolidateStoreTaskDelayMs;
     }
 
-    @LogMessageDoc(level="WARN",
-            message="Failure adding update {} to queue",
-            explanation="The controller tried to add an internal notification" +
-                        " to its message queue but the add failed.",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    private void addUpdateToQueue(IUpdate update) {
-        try {
-            this.updates.put(update);
-        } catch (InterruptedException e) {
-            // This should never happen
-            log.error("Failure adding update {} to queue.", update);
-        }
+    /**
+     * FOR TESTING ONLY
+     * returns the store listener so we can send events to the listener
+     */
+    IStoreListener<Long> getStoreListener() {
+        return this.switchManager;
     }
+
 
 }

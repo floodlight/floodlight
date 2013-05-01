@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -29,9 +29,27 @@ public class OFPortStatus extends OFMessage {
     public static int MINIMUM_LENGTH = 64;
 
     public enum OFPortReason {
-        OFPPR_ADD,
-        OFPPR_DELETE,
-        OFPPR_MODIFY
+        OFPPR_ADD((byte)0),
+        OFPPR_DELETE((byte)1),
+        OFPPR_MODIFY((byte)2);
+
+        private byte reason;
+
+        private OFPortReason(byte reason) {
+            this.reason = reason;
+        }
+
+        public byte getReasonCode() {
+            return this.reason;
+        }
+
+        public static OFPortReason fromReasonCode(byte reason) {
+            for (OFPortReason r: OFPortReason.values()) {
+                if (r.getReasonCode() == reason)
+                    return r;
+            }
+            return null;
+        }
     }
 
     protected byte reason;

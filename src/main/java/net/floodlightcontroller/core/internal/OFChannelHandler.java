@@ -713,13 +713,18 @@ class OFChannelHandler
             @Override
             void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
                     throws IOException {
-                // TODO
                 handlePortStatusMessage(h, m);
-                h.dispatchMessage(m);
+                // FIXME: ---> h.dispatchMessage(m);
             }
 
             @Override
             void processOFPacketIn(OFChannelHandler h, OFPacketIn m) throws IOException {
+                h.dispatchMessage(m);
+            }
+
+            @Override
+            void processOFFlowRemoved(OFChannelHandler h,
+                                      OFFlowRemoved m) throws IOException {
                 h.dispatchMessage(m);
             }
         },
@@ -743,9 +748,12 @@ class OFChannelHandler
                 }
             }
 
+
+
             @Override
             void processOFStatisticsReply(OFChannelHandler h,
                                           OFStatisticsReply m) {
+                // FIXME.
                 h.sw.deliverStatisticsReply(m);
             }
 
@@ -764,15 +772,13 @@ class OFChannelHandler
             @Override
             void processOFFeaturesReply(OFChannelHandler h, OFFeaturesReply  m)
                     throws IOException {
-                h.sw.setFeaturesReply(m);
-                h.sw.deliverOFFeaturesReply(m);
+                // do nothing
             }
 
             @Override
             void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
                     throws IOException {
-                // TODO
-                handlePortStatusMessage(h, m);
+                // do nothing
             }
 
             @Override
@@ -790,7 +796,6 @@ class OFChannelHandler
                 log.warn("Received PacketIn from switch {} while" +
                          "being slave. Reasserting slave role.", h.sw);
                 h.controller.reassertRole(h, Role.SLAVE);
-
             }
         };
 
@@ -944,18 +949,23 @@ class OFChannelHandler
                                                OFPortStatus m) {
             short portNumber = m.getDesc().getPortNumber();
             OFPhysicalPort port = m.getDesc();
-            if (m.getReason() == (byte)OFPortReason.OFPPR_MODIFY.ordinal()) {
-                h.sw.setPort(port);
-                log.debug("Port #{} modified for {}", portNumber, h.sw);
-            } else if (m.getReason() == (byte)OFPortReason.OFPPR_ADD.ordinal()) {
-                h.sw.setPort(port);
-                log.debug("Port #{} added for {}", portNumber, h.sw);
-            } else if (m.getReason() ==
-                       (byte)OFPortReason.OFPPR_DELETE.ordinal()) {
-                h.sw.deletePort(portNumber);
-                log.debug("Port #{} deleted for {}", portNumber, h.sw);
+            OFPortReason reason = OFPortReason.fromReasonCode(m.getReason());
+
+            switch(reason) {
+                case OFPPR_MODIFY:
+                    h.sw.setPort(port);
+                    log.debug("Port #{} modified for {}", portNumber, h.sw);
+                    break;
+                case OFPPR_ADD:
+                    h.sw.setPort(port);
+                    log.debug("Port #{} added for {}", portNumber, h.sw);
+                    break;
+                case OFPPR_DELETE:
+                    h.sw.deletePort(portNumber);
+                    log.debug("Port #{} deleted for {}", portNumber, h.sw);
+                    break;
             }
-            h.controller.notifyPortChanged(h.sw);
+            h.controller.notifyPortChanged(h.sw.getId());
         }
 
         /**
