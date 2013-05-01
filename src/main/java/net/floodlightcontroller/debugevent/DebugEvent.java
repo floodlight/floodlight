@@ -17,6 +17,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugevent.web.DebugEventRoutable;
+import net.floodlightcontroller.restserver.IRestApiService;
 
 import com.google.common.collect.Sets;
 /**
@@ -51,7 +53,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     /**
      * Event Information
      */
-    protected class EventInfo {
+    public class EventInfo {
         int eventId;
         boolean enabled;
         int bufferCapacity;
@@ -404,7 +406,10 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return null;
+        ArrayList<Class<? extends IFloodlightService>> deps =
+                new ArrayList<Class<? extends IFloodlightService>>();
+        deps.add(IRestApiService.class);
+        return deps;
     }
 
     @Override
@@ -415,6 +420,9 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     @Override
     public void startUp(FloodlightModuleContext context)
             throws FloodlightModuleException {
+        IRestApiService restService =
+                context.getServiceImpl(IRestApiService.class);
+        restService.addRestletRoutable(new DebugEventRoutable());
     }
 
 }

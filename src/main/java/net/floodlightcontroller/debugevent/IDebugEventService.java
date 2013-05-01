@@ -32,6 +32,7 @@ public interface IDebugEventService extends IFloodlightService {
         public EventInfo getEventInfo() {
             return eventInfo;
         }
+
         public ArrayList<String> getEvents() {
             return events;
         }

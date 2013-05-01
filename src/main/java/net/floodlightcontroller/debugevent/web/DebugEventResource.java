@@ -1,9 +1,10 @@
-package net.floodlightcontroller.debugevent;
+package net.floodlightcontroller.debugevent.web;
 
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 import net.floodlightcontroller.debugevent.IDebugEventService.DebugEventInfo;
 
@@ -16,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * Return the debug event data for the get rest-api call
  *
  * URI must be in one of the following forms:
- * "http://{controller-hostname}:8080/wm/core/debugevent/{param}/json
+ * "http://{controller-hostname}:8080/wm/debugevent/{param}/json
  *
  *  where {param} must be one of (no quotes):
  *       "all"                  returns value/info on all active events.
@@ -25,9 +26,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Saurav
  */
-public class DebugEventGetResource extends DebugEventResourceBase {
+public class DebugEventResource extends DebugEventResourceBase {
     protected static Logger logger =
-            LoggerFactory.getLogger(DebugEventGetResource.class);
+            LoggerFactory.getLogger(DebugEventResource.class);
 
     /**
      * The output JSON model that contains the counter information
@@ -109,7 +110,7 @@ public class DebugEventGetResource extends DebugEventResourceBase {
     private void populateSingleEvent(DebugEventInfo singleEventHistory,
                                      DebugEventInfoOutput output) {
         if (singleEventHistory != null) {
-            output.eventMap.put(singleEventHistory.eventInfo.moduleEventName,
+            output.eventMap.put(singleEventHistory.getEventInfo().getModuleEventName(),
                                 singleEventHistory);
         }
     }

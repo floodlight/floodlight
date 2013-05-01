@@ -1,5 +1,7 @@
-package net.floodlightcontroller.debugevent;
+package net.floodlightcontroller.debugevent.web;
 
+
+import net.floodlightcontroller.debugevent.IDebugEventService;
 
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
