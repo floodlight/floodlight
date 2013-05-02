@@ -13,6 +13,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.internal.Controller.Counters;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.util.LoadMonitor;
@@ -84,6 +85,7 @@ class OFChannelHandler
      *
      */
     private final Controller controller;
+    private final Counters counters;
     private IOFSwitch sw;
     private Channel channel;
     // State needs to be volatile because the HandshakeTimeoutHandler
@@ -97,6 +99,7 @@ class OFChannelHandler
      * We will count down
      */
     private int handshakeTransactionIds = -1;
+
 
 
     /**
@@ -191,6 +194,8 @@ class OFChannelHandler
                 throws IOException {
             if (!requestPending)
                 sendRoleRequest(role);
+            else
+                counters.roleNotResentBecauseRolePending.increment();
         }
 
         /**
@@ -257,7 +262,8 @@ class OFChannelHandler
             if (pendingXid == xid && pendingRole == role) {
                 log.debug("Received role reply message from {}, setting role to {}",
                           getSwitchInfoString(), role);
-               setSwitchRole(role, RoleRecvStatus.RECEIVED_REPLY);
+                counters.roleReplyReceived.increment();
+                setSwitchRole(role, RoleRecvStatus.RECEIVED_REPLY);
             } else {
                 log.debug("Received stale or unexpected role reply from " +
                           "switch {} ({}, xid={}). Ignoring. " +
@@ -289,6 +295,7 @@ class OFChannelHandler
                         (error.getErrorType() == OFError.OFErrorType.
                         OFPET_BAD_REQUEST.getValue());
                 if (isBadRequestError) {
+                    counters.roleReplyErrorUnsupported.increment();
                     setSwitchRole(pendingRole, RoleRecvStatus.UNSUPPORTED);
                 } else {
                     // TODO: Is this the right thing to do if we receive
@@ -335,6 +342,7 @@ class OFChannelHandler
                 long now = System.currentTimeMillis();
                 if (now - roleSubmitTime > roleTimeoutMs) {
                     // timeout triggered.
+                    counters.roleReplyTimeout.increment();
                     setSwitchRole(pendingRole, RoleRecvStatus.NO_REPLY);
                 }
             }
@@ -489,6 +497,7 @@ class OFChannelHandler
                 } else {
                     // FIXME: we can't really deal with switches that don't send
                     // full packets. Shouldn't we drop the connection here?
+                    // FIXME: count??
                     log.warn("Config Reply from switch {} has"
                             + "miss length set to {}",
                             h.getSwitchInfoString(),
@@ -673,6 +682,7 @@ class OFChannelHandler
                     // if two controllers are master (even if its only for
                     // a brief period). We might need to see if these errors
                     // persist before we reassert
+                    h.counters.epermErrorWhileSwitchIsMaster.increment();
                     log.warn("Received permission error from switch {} while" +
                              "being master. Reasserting master role.",
                              h.getSwitchInfoString());
@@ -793,6 +803,7 @@ class OFChannelHandler
                          LogMessageDoc.CHECK_CONTROLLER )
             void processOFPacketIn(OFChannelHandler h, OFPacketIn m) throws IOException {
                 // we don't expect packetIn while slave, reassert we are slave
+                h.counters.packetInWhileSwitchIsSlave.increment();
                 log.warn("Received PacketIn from switch {} while" +
                          "being slave. Reasserting slave role.", h.sw);
                 h.controller.reassertRole(h, Role.SLAVE);
@@ -859,9 +870,12 @@ class OFChannelHandler
          */
         protected void unhandledMessageReceived(OFChannelHandler h,
                                                 OFMessage m) {
-            String msg = getSwitchStateMessage(h, m,
-                    "Ignoring unexpected message");
-            log.debug(msg);
+            h.counters.unhandledMessage.increment();
+            if (log.isDebugEnabled()) {
+                String msg = getSwitchStateMessage(h, m,
+                        "Ignoring unexpected message");
+                log.debug(msg);
+            }
         }
 
         /**
@@ -1145,6 +1159,7 @@ class OFChannelHandler
      */
     OFChannelHandler(Controller controller) {
         this.controller = controller;
+        this.counters = controller.getCounters();
         this.roleChanger = new RoleChanger(DEFAULT_ROLE_TIMEOUT_MS);
         this.state = ChannelState.INIT;
     }
@@ -1192,11 +1207,13 @@ class OFChannelHandler
                             "specified IP address")
     public void channelConnected(ChannelHandlerContext ctx,
                                  ChannelStateEvent e) throws Exception {
+        counters.switchConnected.increment();
         channel = e.getChannel();
         log.info("New switch connection from {}",
                  channel.getRemoteAddress());
         sendHandShakeMessage(OFType.HELLO);
         setState(ChannelState.WAIT_HELLO);
+        // FIXME: flush counters
     }
 
     @Override
@@ -1259,26 +1276,31 @@ class OFChannelHandler
             // switch timeout
             log.error("Disconnecting switch {} due to read timeout",
                                  getSwitchInfoString());
+            counters.switchDisconnectReadTimeout.increment();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof HandshakeTimeoutException) {
             log.error("Disconnecting switch {}: failed to complete handshake",
                       getSwitchInfoString());
+            counters.switchDisconnectHandshakeTimeout.increment();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof ClosedChannelException) {
             log.debug("Channel for sw {} already closed", getSwitchInfoString());
         } else if (e.getCause() instanceof IOException) {
             log.error("Disconnecting switch {} due to IO Error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
+            counters.switchDisconnectIOError.increment();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof SwitchStateException) {
             log.error("Disconnecting switch {} due to switch state error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
+            counters.switchDisconnectSwitchStateException.increment();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof MessageParseException) {
             log.error("Disconnecting switch "
                                  + getSwitchInfoString() +
                                  " due to message parse failure",
                                  e.getCause());
+            counters.switchDisconnectParseError.increment();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof StorageException) {
             log.error("Terminating controller due to storage exception",
@@ -1286,9 +1308,11 @@ class OFChannelHandler
             this.controller.terminate();
         } else if (e.getCause() instanceof RejectedExecutionException) {
             log.warn("Could not process message: queue full");
+            counters.rejectedExecutionException.increment();
         } else {
             log.error("Error while processing message from switch "
                                  + getSwitchInfoString(), e.getCause());
+            counters.switchDisconnectOtherException.increment();
             ctx.getChannel().close();
         }
     }
@@ -1320,8 +1344,10 @@ class OFChannelHandler
             }
 
             for (OFMessage ofm : msglist) {
+                counters.messageReceived.increment();
                 // Per-switch input throttling
                 if (sw != null && sw.inputThrottled(ofm)) {
+                    counters.messageInputThrottled.increment();
                     continue;
                 }
                 try {
@@ -1440,6 +1466,7 @@ class OFChannelHandler
     }
 
     private void dispatchMessage(OFMessage m) throws IOException {
+        // handleMessage will count
         this.controller.handleMessage(this.sw, m, null);
     }
 

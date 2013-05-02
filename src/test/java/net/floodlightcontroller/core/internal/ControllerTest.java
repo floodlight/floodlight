@@ -49,6 +49,8 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.DebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -119,6 +121,11 @@ public class ControllerTest extends FloodlightTestCase {
         PktInProcessingTime ppt = new PktInProcessingTime();
         fmc.addService(IPktInProcessingTimeService.class, ppt);
 
+        // TODO: should mock IDebugCounterService and make sure
+        // the expected counters are updated.
+        DebugCounter debugCounterService = new DebugCounter();
+        fmc.addService(IDebugCounterService.class, debugCounterService);
+
         tp = new MockThreadPoolService();
         fmc.addService(IThreadPoolService.class, tp);
 
@@ -131,6 +138,7 @@ public class ControllerTest extends FloodlightTestCase {
         restApi.init(fmc);
         memstorage.init(fmc);
         tp.init(fmc);
+        debugCounterService.init(fmc);
         syncService.init(fmc);
         cm.init(fmc);
 
@@ -138,6 +146,7 @@ public class ControllerTest extends FloodlightTestCase {
         restApi.startUp(fmc);
         memstorage.startUp(fmc);
         tp.startUp(fmc);
+        debugCounterService.startUp(fmc);
         syncService.startUp(fmc);
         cm.startUp(fmc);
 

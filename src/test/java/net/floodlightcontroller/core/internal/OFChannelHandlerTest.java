@@ -11,6 +11,8 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.debugcounter.DebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -109,10 +111,21 @@ public class OFChannelHandlerTest {
         messageEvent = createMock(MessageEvent.class);
         exceptionEventCapture = new Capture<ExceptionEvent>(CaptureType.ALL);
         pipeline = createMock(ChannelPipeline.class);
-        handler = new OFChannelHandler(controller);
         writeCapture = new Capture<List<OFMessage>>(CaptureType.ALL);
         sw = createMock(IOFSwitch.class);
         seenXids = null;
+
+        // TODO: should mock IDebugCounterService and make sure
+        // the expected counters are updated.
+        IDebugCounterService debugCounterService = new DebugCounter();
+        Controller.Counters counters =
+                new Controller.Counters();
+        counters.createCounters(debugCounterService);
+        expect(controller.getCounters()).andReturn(counters).anyTimes();
+        replay(controller);
+        handler = new OFChannelHandler(controller);
+        verify(controller);
+        reset(controller);
 
         resetChannel();
 

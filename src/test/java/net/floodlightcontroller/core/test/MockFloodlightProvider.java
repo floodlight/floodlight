@@ -41,7 +41,6 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchDriver;
-import net.floodlightcontroller.core.IOFSwitchFilter;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.RoleInfo;
@@ -189,11 +188,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
         if (msgListeners != null) {
             for (IOFMessageListener listener : msgListeners) {
-                if (listener instanceof IOFSwitchFilter) {
-                    if (!((IOFSwitchFilter)listener).isInterested(sw)) {
-                        continue;
-                    }
-                }
                 if (Command.STOP.equals(listener.receive(sw, m, bc))) {
                     break;
                 }
