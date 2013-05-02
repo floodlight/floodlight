@@ -17,6 +17,9 @@
 
 package net.floodlightcontroller.core.util;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /***
  * FIXME Need a system for registering/binding applications to a unique ID
  * 
@@ -31,6 +34,8 @@ public class AppCookie {
     static final int USER_BITS = 32;
     static final int USER_SHIFT = 0;
 
+    private static Map<Integer, String> appIdMap =
+            new HashMap<Integer, String>();
 
     /**
      * Encapsulate an application ID and a user block of stuff into a cookie
@@ -50,5 +55,23 @@ public class AppCookie {
     
     static public int extractUser(long cookie) {
         return (int)((cookie>> USER_SHIFT) & ((1L << USER_BITS) - 1));
+    }
+
+    /**
+     * A lame attempt to prevent duplicate application ID.
+     * TODO: Once bigdb is merged, we should expose appID->appName map
+     *       via REST API so CLI doesn't need a separate copy of the map.
+     *
+     * @param application
+     * @param appName
+     * @throws AppIDInUseException
+     */
+    static public void registerApp(int application, String appName)
+        throws AppIDInUseException
+    {
+        if (appIdMap.get(application) != null) {
+            throw new AppIDInUseException(application, appIdMap.get(application));
+        }
+        appIdMap.put(application, appName);
     }
 }

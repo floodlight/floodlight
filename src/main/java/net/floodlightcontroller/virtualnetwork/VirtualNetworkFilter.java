@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
@@ -311,6 +312,12 @@ public class VirtualNetworkFilter
         portToMac = new ConcurrentHashMap<String, MACAddress>();
         macToGateway = new ConcurrentHashMap<MACAddress, Integer>();
         deviceListener = new DeviceListenerImpl();
+        try {
+            AppCookie.registerApp(APP_ID, "VirtualNetworkFilter");
+        } catch (AppIDInUseException e) {
+            // This is not fatal, CLI will be confused
+            log.error("Failed register application ID", e);
+        }
     }
 
     @Override
