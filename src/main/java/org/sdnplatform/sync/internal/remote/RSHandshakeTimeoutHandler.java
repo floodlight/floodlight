@@ -1,6 +1,5 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
+*    Copyright 2011,2013 Big Switch Networks, Inc. 
 * 
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
@@ -15,39 +14,35 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.core.internal;
+package org.sdnplatform.sync.internal.remote;
 
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
 
 /**
- * Trigger a timeout if a switch fails to complete handshake soon enough
+ * Trigger a timeout if the bootstrap process stalls
  */
-public class HandshakeTimeoutHandler 
+public class RSHandshakeTimeoutHandler 
     extends SimpleChannelUpstreamHandler {
-    static final HandshakeTimeoutException EXCEPTION = 
-            new HandshakeTimeoutException();
     
-    final OFChannelHandler channelHandler;
     final Timer timer;
     final long timeoutNanos;
     volatile Timeout timeout;
+    final RemoteSyncChannelHandler channelHandler;
     
-    public HandshakeTimeoutHandler(OFChannelHandler channelHandler,
-                                   Timer timer,
-                                   long timeoutSeconds) {
+    public RSHandshakeTimeoutHandler(RemoteSyncChannelHandler channelHandler,
+                                     Timer timer,
+                                     long timeoutSeconds) {
         super();
         this.channelHandler = channelHandler;
         this.timer = timer;
         this.timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
-
     }
     
     @Override
@@ -86,8 +81,8 @@ public class HandshakeTimeoutHandler
             if (!ctx.getChannel().isOpen()) {
                 return;
             }
-            if (!channelHandler.isHandshakeComplete())
-                Channels.fireExceptionCaught(ctx, EXCEPTION);
+            if (channelHandler.syncManager.ready == false)
+                ctx.getChannel().disconnect();
         }
     }
 }

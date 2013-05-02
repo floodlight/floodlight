@@ -1,37 +1,29 @@
 package org.sdnplatform.sync.client;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.threadpool.ThreadPool;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.core.JsonParser;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
+
 import org.kohsuke.args4j.Option;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
-import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.UnknownStoreException;
-import org.sdnplatform.sync.internal.config.AuthScheme;
-import org.sdnplatform.sync.internal.remote.RemoteSyncManager;
 
-public class SyncClient {
-    RemoteSyncManager syncManager;
-    IStoreClient<JsonNode, JsonNode> storeClient;
-
+/**
+ * A command-line tool for interacting with a remote sync service 
+ * @author readams
+ */
+public class SyncClient extends SyncClientBase {
     /**
      * Shell commands
      */
@@ -40,20 +32,32 @@ public class SyncClient {
     /**
      * Command-line settings
      */
-    protected SyncClientSettings settings;
-
-    /**
-     * Stream to use for output
-     */
-    protected PrintStream out = System.out;
-
-    /**
-     * Stream to use for errors
-     */
-    protected PrintStream err = System.err;
+    protected SyncClientSettings syncClientSettings;
     
-    public SyncClient(SyncClientSettings settings) {
-        this.settings = settings;
+    /**
+     * Store client for currently-active store
+     */
+    protected IStoreClient<JsonNode, JsonNode> storeClient;
+
+    protected static class SyncClientSettings 
+        extends SyncClientBaseSettings {
+    
+        @Option(name="--store", aliases="-s", 
+                usage="Store name to access")
+        protected String storeName;
+
+        @Option(name="--command", aliases="-c", 
+                usage="If set, execute a command")
+        protected String command;
+
+        @Option(name="--debug", 
+                usage="Show full error information")
+        protected boolean debug;
+    }
+
+    public SyncClient(SyncClientSettings syncClientSettings) {
+        super(syncClientSettings);
+        this.syncClientSettings = syncClientSettings;
         
         commands = new HashMap<String, ShellCommand>();
         commands.put("quit", new QuitCommand());
@@ -66,51 +70,22 @@ public class SyncClient {
         commands.put("store", new StoreCommand());
         commands.put("register", new RegisterCommand());
     }
-    
-    protected boolean connect() 
-            throws Exception {
-        FloodlightModuleContext fmc = new FloodlightModuleContext();
-        ThreadPool tp = new ThreadPool();
-        syncManager = new RemoteSyncManager();
-        fmc.addService(IThreadPoolService.class, tp);
-        fmc.addService(ISyncService.class, syncManager);
-        fmc.addConfigParam(syncManager, "hostname", settings.hostname);
-        fmc.addConfigParam(syncManager, "port", 
-                           Integer.toString(settings.port));
-        if (settings.authScheme != null) {
-            fmc.addConfigParam(syncManager, "authScheme", 
-                               settings.authScheme.toString());
-            fmc.addConfigParam(syncManager, "keyStorePath", settings.keyStorePath);
-            fmc.addConfigParam(syncManager, "keyStorePassword", 
-                               settings.keyStorePassword);
-        }
-        tp.init(fmc);
-        syncManager.init(fmc);
-        tp.startUp(fmc);
-        syncManager.startUp(fmc);
-        
-        if (settings.storeName != null)
+
+    // **************
+    // SyncClientBase
+    // **************
+
+    @Override
+    protected void connect() throws Exception {
+        super.connect();
+
+        if (syncClientSettings.storeName != null)
             getStoreClient();
-        
-        out.println("Connected to " + 
-                settings.hostname + ":" + settings.port);
-        return true;
     }
-    
-    protected void getStoreClient() 
-            throws UnknownStoreException {
-        storeClient = syncManager.getStoreClient(settings.storeName, 
-                                                 JsonNode.class, 
-                                                 JsonNode.class);
-    }
-    
-    protected boolean checkStoreSettings() {
-        if (settings.storeName == null) {
-            err.println("No store selected.  Select using \"store\" command.");
-            return false;
-        }
-        return true;
-    }
+
+    // **************
+    // Shell commands
+    // **************
     
     /**
      * Quit command
@@ -347,7 +322,7 @@ public class SyncClient {
                 return false;
             }
             
-            settings.storeName = tokens[1];
+            syncClientSettings.storeName = tokens[1];
             getStoreClient();
             return false;
         }
@@ -376,8 +351,8 @@ public class SyncClient {
             if ("global".equals(tokens[2]))
                 scope = Scope.GLOBAL;
 
-            settings.storeName = tokens[1];
-            syncManager.registerStore(settings.storeName, scope);
+            syncClientSettings.storeName = tokens[1];
+            syncManager.registerStore(syncClientSettings.storeName, scope);
             getStoreClient();
             return false;
         }
@@ -389,10 +364,24 @@ public class SyncClient {
         
     }
 
-    protected void cleanup() throws InterruptedException {
-        syncManager.shutdown();
+    // *************
+    // Local methods 
+    // *************
+
+    protected boolean checkStoreSettings() {
+        if (syncClientSettings.storeName == null) {
+            err.println("No store selected.  Select using \"store\" command.");
+            return false;
+        }
+        return true;
     }
-    
+
+    protected void getStoreClient() throws UnknownStoreException {
+        storeClient = syncManager.getStoreClient(syncClientSettings.storeName, 
+                                                 JsonNode.class, 
+                                                 JsonNode.class);
+    }
+
     protected boolean executeCommandLine(String line) {
         String[] tokens = line.split("\\s+");
         if (tokens.length > 0) {
@@ -404,7 +393,7 @@ public class SyncClient {
                 } catch (Exception e) {
                     err.println("Failed to execute command: " + 
                                        line);
-                    if (settings.debug)
+                    if (syncClientSettings.debug)
                         e.printStackTrace(err);
                     else
                         err.println(e.getClass().getSimpleName() + 
@@ -417,8 +406,8 @@ public class SyncClient {
         }
         return false;
     }
-    
-    protected void startShell(SyncClientSettings settings) 
+
+    protected void startShell(SyncClientBaseSettings settings) 
             throws InterruptedException {
         BufferedReader br = 
                 new BufferedReader(new InputStreamReader(System.in));
@@ -435,73 +424,17 @@ public class SyncClient {
         }
     }
     
-    protected static class SyncClientSettings {
-        @Option(name="--help", 
-                usage="Show help")
-        protected boolean help;
-        
-        @Option(name="--hostname", aliases="-h", 
-                usage="Server hostname", required=true)
-        protected String hostname;
+    // ****
+    // Main 
+    // ****
 
-        @Option(name="--port", aliases="-p", usage="Server port", required=true)
-        protected int port;
-        
-        @Option(name="--store", aliases="-s", 
-                usage="Store name to access")
-        protected String storeName;
-        
-        @Option(name="--command", aliases="-c", 
-                usage="If set, execute a command")
-        protected String command;
-        
-        @Option(name="--debug", 
-                usage="Show full error information")
-        protected boolean debug;
-
-        @Option(name="--authScheme", 
-                usage="Scheme to use for authenticating to server")
-        protected AuthScheme authScheme;
-
-        @Option(name="--keyStorePath", 
-                usage="Path to key store containing authentication credentials")
-        protected String keyStorePath;    
-
-        @Option(name="--keyStorePassword", 
-                usage="Password for key store")
-        protected String keyStorePassword;    
-    }
-
-    /**
-     * @param args
-     * @throws InterruptedException 
-     */
     public static void main(String[] args) throws Exception {
         SyncClientSettings settings = new SyncClientSettings();
-        CmdLineParser parser = new CmdLineParser(settings);
-        try {
-            parser.parseArgument(args);
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            parser.printUsage(System.err);
-            System.exit(1);
-        }
-        if (settings.help) {
-            parser.printUsage(System.err);
-            System.exit(1);
-        }
+        settings.init(args);
         
         SyncClient client = new SyncClient(settings);
-        if (settings.keyStorePath != null && 
-            settings.keyStorePassword == null) {
-            Console con = System.console();
-            char[] password = con.readPassword("Enter key store password: ");
-            settings.keyStorePassword = new String(password);
-        }
         try {
-            if (false == client.connect()) {
-                return;
-            }
+            client.connect();
             if (settings.command == null) {
                 client.startShell(settings);
             } else {

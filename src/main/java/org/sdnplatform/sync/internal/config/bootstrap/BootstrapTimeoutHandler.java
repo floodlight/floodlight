@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
-import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
@@ -30,8 +29,7 @@ import org.jboss.netty.util.TimerTask;
  * Trigger a timeout if the bootstrap process stalls
  */
 public class BootstrapTimeoutHandler 
-    extends SimpleChannelUpstreamHandler
-    implements ExternalResourceReleasable {
+    extends SimpleChannelUpstreamHandler {
     
     final Timer timer;
     final long timeoutNanos;
@@ -62,11 +60,6 @@ public class BootstrapTimeoutHandler
             timeout.cancel();
             timeout = null;
         }
-    }
-
-    @Override
-    public void releaseExternalResources() {
-        timer.stop();
     }
     
     private final class HandshakeTimeoutTask implements TimerTask {

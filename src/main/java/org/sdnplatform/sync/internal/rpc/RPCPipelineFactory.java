@@ -5,6 +5,7 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
+import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.sdnplatform.sync.internal.SyncManager;
@@ -15,7 +16,8 @@ import org.sdnplatform.sync.internal.SyncManager;
  * @see SyncManager
  * @author readams
  */
-public class RPCPipelineFactory implements ChannelPipelineFactory {
+public class RPCPipelineFactory 
+    implements ChannelPipelineFactory, ExternalResourceReleasable {
 
     protected SyncManager syncManager;
     protected RPCService rpcService;
@@ -57,4 +59,8 @@ public class RPCPipelineFactory implements ChannelPipelineFactory {
         return pipeline;
     }
 
+    @Override
+    public void releaseExternalResources() {
+        timer.stop();        
+    }
 }

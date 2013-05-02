@@ -215,12 +215,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected Map<NodePortTuple, Set<Link>> portLinks;
 
-    /**
-     * Set of link tuples over which multicast LLDPs are received and unicast
-     * LLDPs are not received.
-     */
-    protected Map<NodePortTuple, Set<Link>> portBroadcastDomainLinks;
-
     protected volatile boolean shuttingDown = false;
 
     /*
@@ -249,12 +243,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     protected SingletonTask bddpTask;
     protected final int BDDP_TASK_INTERVAL = 100; // 100 ms.
     protected final int BDDP_TASK_SIZE = 10; // # of ports per iteration
-
-    /**
-     * Map of broadcast domain ports and the last time a BDDP was either sent or
-     * received on that port.
-     */
-    protected Map<NodePortTuple, Long> broadcastDomainPortTimeMap;
 
     private class MACRange {
         long baseMAC;
@@ -499,11 +487,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             lock.readLock().unlock();
         }
         return result;
-    }
-
-    // currently not called
-    public Map<NodePortTuple, Set<Link>> getPortBroadcastDomainLinks() {
-        return portBroadcastDomainLinks;
     }
 
     @Override
@@ -1132,20 +1115,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         updates.add(new LDUpdate(sw, port, operation));
     }
 
-    /**
-     * Send LLDP on known ports
-     */
-    protected void discoverOnKnownLinkPorts() {
-        // Copy the port set.
-        Set<NodePortTuple> nptSet = new HashSet<NodePortTuple>();
-        nptSet.addAll(portLinks.keySet());
-
-        // Send LLDP from each of them.
-        for (NodePortTuple npt : nptSet) {
-            discover(npt);
-        }
-    }
-
     protected void discover(NodePortTuple npt) {
         discover(npt.getNodeId(), npt.getPortId());
     }
@@ -1395,10 +1364,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                           new HashSet<Link>());
         portLinks.get(dstNpt).add(lt);
 
-        // Add to portNOFLinks if the unicast valid time is null
-        if (newInfo.getUnicastValidTime() == null)
-            addLinkToBroadcastDomain(lt);
-
         return true;
     }
 
@@ -1426,14 +1391,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         // non-openflow
         // if the unicastValidTimes are null or not null
         if (oldTime != null & newTime == null) {
-            // openflow -> non-openflow transition
-            // we need to add the link tuple to the portNOFLinks
-            addLinkToBroadcastDomain(lt);
             linkChanged = true;
         } else if (oldTime == null & newTime != null) {
-            // non-openflow -> openflow transition
-            // we need to remove the link from the portNOFLinks
-            removeLinkFromBroadcastDomain(lt);
             linkChanged = true;
         }
 
@@ -1495,7 +1454,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                EvAction.LINK_ADDED, "LLDP Recvd");
             } else {
                 linkChanged = updateLink(lt, oldInfo, newInfo);
-
                 if (linkChanged) {
                     updateOperation = getUpdateOperation(newInfo.getSrcPortState(),
                                                          newInfo.getDstPortState());
@@ -1680,22 +1638,12 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     && (info.getUnicastValidTime()
                         + (this.LINK_TIMEOUT * 1000) < curTime)) {
                     info.setUnicastValidTime(null);
-
-                    if (info.getMulticastValidTime() != null)
-                                                             addLinkToBroadcastDomain(lt);
-                    // Note that even if mTime becomes null later on,
-                    // the link would be deleted, which would trigger
-                    // updateClusters().
                     linkChanged = true;
                 }
                 if ((info.getMulticastValidTime() != null)
                     && (info.getMulticastValidTime()
                         + (this.LINK_TIMEOUT * 1000) < curTime)) {
                     info.setMulticastValidTime(null);
-                    // if uTime is not null, then link will remain as openflow
-                    // link. If uTime is null, it will be deleted. So, we
-                    // don't care about linkChanged flag here.
-                    removeLinkFromBroadcastDomain(lt);
                     linkChanged = true;
                 }
                 // Add to the erase list only if the unicast
@@ -1720,42 +1668,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             }
         } finally {
             lock.writeLock().unlock();
-        }
-    }
-
-    protected void addLinkToBroadcastDomain(Link lt) {
-
-        NodePortTuple srcNpt, dstNpt;
-        srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
-        dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
-
-        if (!portBroadcastDomainLinks.containsKey(srcNpt))
-            portBroadcastDomainLinks.put(srcNpt,
-                                         new HashSet<Link>());
-        portBroadcastDomainLinks.get(srcNpt).add(lt);
-
-        if (!portBroadcastDomainLinks.containsKey(dstNpt))
-            portBroadcastDomainLinks.put(dstNpt,
-                                         new HashSet<Link>());
-        portBroadcastDomainLinks.get(dstNpt).add(lt);
-    }
-
-    protected void removeLinkFromBroadcastDomain(Link lt) {
-
-        NodePortTuple srcNpt, dstNpt;
-        srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
-        dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
-
-        if (portBroadcastDomainLinks.containsKey(srcNpt)) {
-            portBroadcastDomainLinks.get(srcNpt).remove(lt);
-            if (portBroadcastDomainLinks.get(srcNpt).isEmpty())
-                                                               portBroadcastDomainLinks.remove(srcNpt);
-        }
-
-        if (portBroadcastDomainLinks.containsKey(dstNpt)) {
-            portBroadcastDomainLinks.get(dstNpt).remove(lt);
-            if (portBroadcastDomainLinks.get(dstNpt).isEmpty())
-                                                               portBroadcastDomainLinks.remove(dstNpt);
         }
     }
 
@@ -2211,7 +2123,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.links = new HashMap<Link, LinkInfo>();
         this.portLinks = new HashMap<NodePortTuple, Set<Link>>();
         this.suppressLinkDiscovery = Collections.synchronizedSet(new HashSet<NodePortTuple>());
-        this.portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
         this.switchLinks = new HashMap<Long, Set<Link>>();
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
