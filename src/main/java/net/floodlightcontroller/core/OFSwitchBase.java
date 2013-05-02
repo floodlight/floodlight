@@ -41,6 +41,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
@@ -144,9 +145,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         }
     };
 
-    // for managing our map sizes
-    protected static  int MAX_MACS_PER_SWITCH  = 1000;
-
+    public static final int OFSWITCH_APP_ID = 5;
+    
     public OFSwitchBase() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
@@ -930,7 +930,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
             int port = pin.getInPort();
             SwitchPort swPort = new SwitchPort(getId(), port);
             ForwardingBase.blockHost(floodlightProvider,
-                    swPort, srcMac.toLong(), (short) 5, 0);
+                    swPort, srcMac.toLong(), (short) 5,
+                    AppCookie.makeCookie(OFSWITCH_APP_ID, 0));
             log.info("Excessive packet in from {} on {}, block host for 5 sec",
                     srcMac.toString(), swPort);
         }
@@ -954,7 +955,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
             // write out drop flow per port
             SwitchPort swPort = new SwitchPort(getId(), port);
             ForwardingBase.blockHost(floodlightProvider,
-                    swPort, -1L, (short) 5, 0);
+                    swPort, -1L, (short) 5,
+                    AppCookie.makeCookie(OFSWITCH_APP_ID, 1));
             log.info("Excessive packet in from {}, block port for 5 sec",
                     swPort);
         }
