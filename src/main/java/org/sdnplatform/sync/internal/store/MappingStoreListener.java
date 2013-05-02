@@ -6,9 +6,6 @@ import java.util.NoSuchElementException;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.internal.util.ByteArray;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
@@ -18,9 +15,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class MappingStoreListener {
-    protected static Logger logger =
-            LoggerFactory.getLogger(MappingStoreListener.class);
-
     TypeReference typeRef;
     Class keyClass;    
     IStoreListener listener;

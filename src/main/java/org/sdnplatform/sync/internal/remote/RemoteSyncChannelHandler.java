@@ -51,6 +51,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     public void channelDisconnected(ChannelHandlerContext ctx,
                                     ChannelStateEvent e) throws Exception {
         this.syncManager.channel = null;
+        syncManager.ready = false;
         syncManager.channelDisconnected(null);
     }
 
@@ -90,7 +91,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     protected void handleDeleteResponse(DeleteResponseMessage response,
                                         Channel channel) {
         SyncReply reply = new SyncReply(null, null, 
-                                              response.isDeleted(), null, 0);
+                                        response.isDeleted(), null, 0);
         syncManager.dispatchReply(response.getHeader().getTransactionId(), 
                                   reply);
     }
@@ -99,7 +100,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     protected void handleCursorResponse(CursorResponseMessage response,
                                         Channel channel) {
         SyncReply reply = new SyncReply(null, response.getValues(), true, 
-                                              null, response.getCursorId());
+                                        null, response.getCursorId());
         syncManager.dispatchReply(response.getHeader().getTransactionId(), 
                                   reply);
     }
@@ -108,7 +109,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
     protected void handleRegisterResponse(RegisterResponseMessage response,
                                           Channel channel) {
         SyncReply reply = new SyncReply(null, null, 
-                                              true, null, 0);
+                                        true, null, 0);
         syncManager.dispatchReply(response.getHeader().getTransactionId(), 
                                   reply);
     }
@@ -173,7 +174,7 @@ public class RemoteSyncChannelHandler extends AbstractRPCChannelHandler {
             return CryptoUtil.getSharedSecret(syncManager.keyStorePath, 
                                               syncManager.keyStorePassword);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response  " + 
+            throw new AuthException("Could not read challenge/response " + 
                     "shared secret from key store " + 
                     syncManager.keyStorePath, e);
         }

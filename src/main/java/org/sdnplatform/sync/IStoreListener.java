@@ -24,7 +24,7 @@ public interface IStoreListener<K> {
          */
         REMOTE
     };
-    
+
     /**
      * Called when keys in the store are modified or deleted.
      * @param type the type of the update

@@ -31,7 +31,6 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
             LoggerFactory.getLogger(BootstrapChannelHandler.class);
 
     private Bootstrap bootstrap;
-    private Short localNodeId;
     private Short remoteNodeId;
     
     public BootstrapChannelHandler(Bootstrap bootstrap) {
@@ -65,7 +64,7 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
             n.setNodeId(bootstrap.localNode.getNodeId());
         if (bootstrap.localNode.getDomainId() >= 0)
             n.setDomainId(bootstrap.localNode.getDomainId());
-
+        
         ClusterJoinRequestMessage cjrm = new ClusterJoinRequestMessage();
         AsyncMessageHeader header = new AsyncMessageHeader();
         header.setTransactionId(bootstrap.transactionId.getAndIncrement());
@@ -131,12 +130,12 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
 
     @Override
     protected Short getRemoteNodeId() {
-        return localNodeId;
+        return remoteNodeId;
     }
 
     @Override
     protected Short getLocalNodeId() {
-        return remoteNodeId;
+        return null;
     }
 
     @Override
@@ -150,7 +149,7 @@ public class BootstrapChannelHandler extends AbstractRPCChannelHandler {
             return CryptoUtil.getSharedSecret(bootstrap.keyStorePath, 
                                               bootstrap.keyStorePassword);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response  " + 
+            throw new AuthException("Could not read challenge/response " + 
                     "shared secret from key store " + 
                     bootstrap.keyStorePath, e);
         }

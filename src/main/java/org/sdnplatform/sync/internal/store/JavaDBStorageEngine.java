@@ -18,6 +18,8 @@ import java.util.NoSuchElementException;
 import javax.sql.ConnectionPoolDataSource;
 import javax.xml.bind.DatatypeConverter;
 
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+
 import org.apache.derby.jdbc.EmbeddedConnectionPoolDataSource40;
 
 import org.sdnplatform.sync.IClosableIterator;
@@ -44,6 +46,7 @@ import com.fasterxml.jackson.dataformat.smile.SmileFactory;
  * Persistent storage engine that keeps its data in a JDB database
  * @author readams
  */
+@LogMessageCategory("State Synchronization")
 public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
     protected static final Logger logger =
             LoggerFactory.getLogger(JavaDBStorageEngine.class.getName());

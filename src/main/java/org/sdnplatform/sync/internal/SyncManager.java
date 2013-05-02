@@ -378,7 +378,8 @@ public class SyncManager extends AbstractSyncManager {
      * @throws FloodlightModuleException 
      */
     public void updateConfiguration() {
-        updateConfigTask.reschedule(500, TimeUnit.MILLISECONDS);
+        if (updateConfigTask != null)
+            updateConfigTask.reschedule(500, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -589,10 +590,10 @@ public class SyncManager extends AbstractSyncManager {
 
     @LogMessageDocs({
         @LogMessageDoc(level="INFO",
-                message="Updating sync configuration {config}",
+                message="[{id}] Updating sync configuration {config}",
                 explanation="The sync service cluster configuration has been updated"),
         @LogMessageDoc(level="INFO",
-                message="Local node configuration changed; restarting sync" +
+                message="[{id}] Local node configuration changed; restarting sync" +
                         "service",
                 explanation="The sync service must be restarted to update its configuration")
     })
@@ -604,11 +605,13 @@ public class SyncManager extends AbstractSyncManager {
             clusterConfig = clusterConfigProvider.getConfig();
             if (clusterConfig.equals(oldConfig)) return;
 
-            logger.info("Updating sync configuration {}", clusterConfig);
+            logger.info("[{}] Updating sync configuration {}", 
+                        clusterConfig.getNode().getNodeId(),
+                        clusterConfig);
             if (oldConfig.getNode() != null &&
                 !clusterConfig.getNode().equals(oldConfig.getNode())) {
-                logger.info("Local node configuration changed; restarting sync" +
-                        "service");
+                logger.info("[{}] Local node configuration changed; restarting sync" +
+                        "service", oldConfig.getNode().getNodeId());
                 shutdown();
                 startUp(null);
             }

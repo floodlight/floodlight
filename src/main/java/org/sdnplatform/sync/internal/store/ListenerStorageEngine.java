@@ -6,6 +6,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 
+import net.floodlightcontroller.core.annotations.LogMessageCategory;
+import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.sdnplatform.sync.IClosableIterator;
@@ -15,15 +17,19 @@ import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.util.ByteArray;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A storage engine that proxies to another storage engine and notifies
  * registered listeners of changes
  * @author readams
  */
+@LogMessageCategory("State Synchronization")
 public class ListenerStorageEngine 
     implements IStorageEngine<ByteArray, byte[]> {
+    protected static Logger logger =
+            LoggerFactory.getLogger(ListenerStorageEngine.class);
 
     /**
      * Listeners for this store
@@ -137,9 +143,17 @@ public class ListenerStorageEngine
         notifyListeners(Collections.singleton(key).iterator(), type);
     }
 
+    @LogMessageDoc(level="ERROR",
+                   message="An error occurred in a sync listener",
+                   explanation="An unexpected error occured in a handler for " + 
+                               "an update to shared state.")
     protected void notifyListeners(Iterator<ByteArray> keys, UpdateType type) {
         for (MappingStoreListener msl : listeners) {
-            msl.notify(keys, type);
+            try {
+                msl.notify(keys, type);
+            } catch (Exception e) {
+                logger.error("An error occurred in a sync listener", e);
+            }
         }
     }
 

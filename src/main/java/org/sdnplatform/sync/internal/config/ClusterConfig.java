@@ -25,6 +25,7 @@ public class ClusterConfig {
     private AuthScheme authScheme;
     private String keyStorePath;
     private String keyStorePassword;
+    private String listenAddress;
     
     public ClusterConfig() {
         super();
@@ -38,8 +39,7 @@ public class ClusterConfig {
      */
     public ClusterConfig(List<Node> nodes, short thisNodeId)
             throws SyncException {
-        init(nodes, thisNodeId);
-        this.authScheme = AuthScheme.NO_AUTH;
+        init(nodes, thisNodeId, AuthScheme.NO_AUTH, null, null);
     }
 
     /**
@@ -49,7 +49,7 @@ public class ClusterConfig {
      * @param authScheme the {@link AuthScheme}
      * @param keyStorePath the path to a java key store containing
      * credentials necessary for implementing the {@link AuthScheme}
-     * @param keyStorePassword the password fro the key store.
+     * @param keyStorePassword the password for the key store.
      * @throws SyncException
      */
     public ClusterConfig(List<Node> nodes, short thisNodeId,
@@ -57,12 +57,28 @@ public class ClusterConfig {
                          String keyStorePath, 
                          String keyStorePassword)
             throws SyncException {
-        init(nodes, thisNodeId);
-        this.authScheme = authScheme;
-        if (this.authScheme == null) 
-            this.authScheme = AuthScheme.NO_AUTH;
-        this.keyStorePath = keyStorePath;
-        this.keyStorePassword = keyStorePassword;
+        init(nodes, thisNodeId, authScheme, keyStorePath, keyStorePassword);
+    }
+
+    /**
+     * Initialize a cluster config using a list of nodes
+     * @param nodes the nodes to use
+     * @param thisNodeId the node ID for the current node
+     * @param listenAddress String representing the address to listen on
+     * @param authScheme the {@link AuthScheme}
+     * @param keyStorePath the path to a java key store containing
+     * credentials necessary for implementing the {@link AuthScheme}
+     * @param keyStorePassword the password for the key store.
+     * @throws SyncException
+     */
+    public ClusterConfig(List<Node> nodes, short thisNodeId,
+                         String listenAddress,
+                         AuthScheme authScheme,
+                         String keyStorePath, 
+                         String keyStorePassword)
+            throws SyncException {
+        init(nodes, thisNodeId, authScheme, keyStorePath, keyStorePassword);
+        this.listenAddress = listenAddress;
     }
     
     /**
@@ -105,6 +121,15 @@ public class ClusterConfig {
      */
     public Node getNode(short nodeId) {
         return allNodes.get(nodeId);
+    }
+
+    /**
+     * Get a string representing the host/address on which the local 
+     * node should listen
+     * @return the listen address
+     */
+    public String getListenAddress() {
+        return listenAddress;
     }
 
     /**
@@ -157,7 +182,10 @@ public class ClusterConfig {
         localDomain.add(node);
     }
 
-    private void init(List<Node> nodes, short thisNodeId)
+    private void init(List<Node> nodes, short thisNodeId,
+                      AuthScheme authScheme,
+                      String keyStorePath, 
+                      String keyStorePassword)
             throws SyncException {
         for (Node n : nodes) {
             addNode(n);
@@ -167,13 +195,19 @@ public class ClusterConfig {
             throw new SyncException("Cannot set thisNode " +
                     "node: No node with ID " + thisNodeId);
         }
+        this.authScheme = authScheme;
+        if (this.authScheme == null) 
+            this.authScheme = AuthScheme.NO_AUTH;
+        this.keyStorePath = keyStorePath;
+        this.keyStorePassword = keyStorePassword;
     }
 
     @Override
     public String toString() {
         return "ClusterConfig [allNodes=" + allNodes + ", authScheme="
                + authScheme + ", keyStorePath=" + keyStorePath
-               + ", keyStorePassword=" + keyStorePassword + "]";
+               + ", keyStorePassword is " + 
+               (keyStorePassword == null ? "unset" : "set") + "]";
     }
 
     @Override

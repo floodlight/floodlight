@@ -577,7 +577,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         try {
             return CryptoUtil.getSharedSecret(path, pass);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response  " + 
+            throw new AuthException("Could not read challenge/response " + 
                     "shared secret from key store " + path, e);
         }
     }
