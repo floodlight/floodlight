@@ -965,13 +965,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                             linkDiscoveryAware });
                 }
                 try {
-                    // Send link discovery updates to listener only if the role
-                    // is null or master.
-                    if (role == null || role == Role.MASTER) {
-                        for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order
-                            // maintained
-                            lda.linkDiscoveryUpdate(updateList);
-                        }
+                    for (ILinkDiscoveryListener lda : linkDiscoveryAware) { // order
+                        // maintained
+                        lda.linkDiscoveryUpdate(updateList);
                     }
                 } catch (Exception e) {
                     log.error("Error in link discovery updates loop", e);

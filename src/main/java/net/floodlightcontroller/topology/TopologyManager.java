@@ -1027,21 +1027,40 @@ public class TopologyManager implements
             if (log.isTraceEnabled()) {
                 log.trace("Applying update: {}", update);
             }
-            if (update.getOperation() == UpdateOperation.LINK_UPDATED) {
+
+            switch (update.getOperation()) {
+            case LINK_UPDATED:
                 addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-                                update.getDst(), update.getDstPort(),
-                                update.getType());
-            } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
+                        update.getDst(), update.getDstPort(),
+                        update.getType());
+                break;
+            case LINK_REMOVED:
                 removeLink(update.getSrc(), update.getSrcPort(),
-                           update.getDst(), update.getDstPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_ADDED) {
+                        update.getDst(), update.getDstPort());
+                break;
+            case SWITCH_UPDATED:
+                addOrUpdateSwitch(update.getSrc());
+                break;
+            case SWITCH_REMOVED:
+                removeSwitch(update.getSrc());
+                break;
+            case TUNNEL_PORT_ADDED:
                 addTunnelPort(update.getSrc(), update.getSrcPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
+                break;
+            case TUNNEL_PORT_REMOVED:
                 removeTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case PORT_UP: case PORT_DOWN:
+                break;
             }
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
+    }
+
+    protected void addOrUpdateSwitch(long sw) {
+        // nothing to do here for the time being.
+        return;
     }
 
     public void addTunnelPort(long sw, short port) {
@@ -1198,23 +1217,17 @@ public class TopologyManager implements
         switchPorts.get(s).add(p);
     }
 
-    public boolean removeSwitchPort(long sw, short port) {
-
-        Set<Link> linksToRemove = new HashSet<Link>();
-        NodePortTuple npt = new NodePortTuple(sw, port);
-        if (switchPortLinks.containsKey(npt) == false) return false;
-
-        linksToRemove.addAll(switchPortLinks.get(npt));
-        for(Link link: linksToRemove) {
-            removeLink(link);
-        }
-        return true;
-    }
-
-    public boolean removeSwitch(long sid) {
+    public void removeSwitch(long sid) {
         // Delete all the links in the switch, switch and all
         // associated data should be deleted.
-        if (switchPorts.containsKey(sid) == false) return false;
+        if (switchPorts.containsKey(sid) == false) return;
+
+        // Check if any tunnel ports need to be removed.
+        for(NodePortTuple npt: tunnelPorts) {
+            if (npt.getNodeId() == sid) {
+                removeTunnelPort(npt.getNodeId(), npt.getPortId());
+            }
+        }
 
         Set<Link> linksToRemove = new HashSet<Link>();
         for(Short p: switchPorts.get(sid)) {
@@ -1222,12 +1235,11 @@ public class TopologyManager implements
             linksToRemove.addAll(switchPortLinks.get(n1));
         }
 
-        if (linksToRemove.isEmpty()) return false;
+        if (linksToRemove.isEmpty()) return;
 
         for(Link link: linksToRemove) {
             removeLink(link);
         }
-        return true;
     }
 
     /**
