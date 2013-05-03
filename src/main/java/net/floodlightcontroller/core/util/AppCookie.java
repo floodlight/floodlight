@@ -17,8 +17,7 @@
 
 package net.floodlightcontroller.core.util;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /***
  * FIXME Need a system for registering/binding applications to a unique ID
@@ -34,8 +33,8 @@ public class AppCookie {
     static final int USER_BITS = 32;
     static final int USER_SHIFT = 0;
 
-    private static Map<Integer, String> appIdMap =
-            new HashMap<Integer, String>();
+    private static ConcurrentHashMap<Integer, String> appIdMap =
+            new ConcurrentHashMap<Integer, String>();
 
     /**
      * Encapsulate an application ID and a user block of stuff into a cookie
@@ -69,9 +68,9 @@ public class AppCookie {
     static public void registerApp(int application, String appName)
         throws AppIDInUseException
     {
-        if (appIdMap.get(application) != null) {
-            throw new AppIDInUseException(application, appIdMap.get(application));
+        String oldApp = appIdMap.putIfAbsent(application, appName);
+        if (oldApp != null) {
+            throw new AppIDInUseException(application, oldApp);
         }
-        appIdMap.put(application, appName);
     }
 }
