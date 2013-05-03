@@ -2137,6 +2137,14 @@ public class Controller implements IFloodlightProviderService,
 
     /**
      * FOR TESTING ONLY
+     * check if update queue is empty
+     */
+    boolean isUpdateQueueEmptyForTesting() {
+        return this.updates.isEmpty();
+    }
+
+    /**
+     * FOR TESTING ONLY
      * @param update
      */
     void setConsolidateStoreTaskDelay(int consolidateStoreTaskDelayMs) {

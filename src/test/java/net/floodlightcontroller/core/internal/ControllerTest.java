@@ -40,6 +40,7 @@ import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.RoleInfo;
@@ -186,7 +187,8 @@ public class ControllerTest extends FloodlightTestCase {
     public void tearDown() {
         tp.getScheduledExecutor().shutdownNow();
         // Make sure thare are not left over updates in the queue
-        controller.processUpdateQueueForTesting();
+        assertTrue("Updates left in controller update queue",
+                   controller.isUpdateQueueEmptyForTesting());
     }
 
     public Controller getController() {
@@ -1243,9 +1245,26 @@ public class ControllerTest extends FloodlightTestCase {
        getController().getAllSwitchMap().remove(1L);
        assertEquals(sw, getController().getSwitch(1L));
        verify(sw);
+       // we don't care for updates. drain queue.
+       controller.processUpdateQueueForTesting();
    }
 
 
+   /**
+    * Test that notifyPortChanged() results in an IOFSwitchListener
+    * update.
+    */
+   @Test
+   public void testNotifySwitchPortChanged() {
+       IOFSwitchListener listener = createMock(IOFSwitchListener.class);
+       controller.addOFSwitchListener(listener);
+       listener.switchPortChanged(1L);
+       expectLastCall().once();
+       replay(listener);
+       controller.notifyPortChanged(1L);
+       controller.processUpdateQueueForTesting();
+       verify(listener);
+   }
 
     private Map<String,Object> getFakeControllerIPRow(String id, String controllerId,
             String type, int number, String discoveredIP ) {
@@ -1418,261 +1437,223 @@ public class ControllerTest extends FloodlightTestCase {
         expectedCurMap.put("c2", "2.2.2.2");
         assertEquals("expectedControllerNodeIPs is not as expected",
                 expectedCurMap, controller.getControllerNodeIPs());
+        // we don't care for updates. drain update queue
+        controller.processUpdateQueueForTesting();
     }
 
 
+    /**
+     * Test the driver registry: test the bind order
+     */
+    @Test
+    public void testSwitchDriverRegistryBindOrder() {
+        IOFSwitchDriver driver1 = createMock(IOFSwitchDriver.class);
+        IOFSwitchDriver driver2 = createMock(IOFSwitchDriver.class);
+        IOFSwitchDriver driver3 = createMock(IOFSwitchDriver.class);
+        IOFSwitch returnedSwitch = null;
+        IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        controller.addOFSwitchDriver("", driver3);
+        controller.addOFSwitchDriver("test switch", driver1);
+        controller.addOFSwitchDriver("test", driver2);
 
-//
-//    public class TestSwitchClass extends OFSwitchImpl {
-//    }
-//
-//    public class Test11SwitchClass extends OFSwitchImpl {
-//    }
-//
-//    @Test
-//    public void testBindSwitchToDriver() {
-//        controller.addOFSwitchDriver("test", this);
-//
-//        OFChannelState state = new OFChannelState();
-//        OFChannelHandler chdlr =
-//                new OFChannelHandler(controller, state);
-//
-//        // Swith should be bound of OFSwitchImpl (default)
-//        state.hsState = OFChannelState.HandshakeState.HELLO;
-//        state.hasDescription = true;
-//        state.hasGetConfigReply = true;
-//        state.switchBindingDone = false;
-//        OFDescriptionStatistics desc = new OFDescriptionStatistics();
-//        desc.setManufacturerDescription("test switch");
-//        desc.setHardwareDescription("version 0.9");
-//        state.description = desc;
-//        OFFeaturesReply featuresReply = new OFFeaturesReply();
-//        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
-//        state.featuresReply = featuresReply;
-//
-//        chdlr.bindSwitchToDriver();
-//        assertTrue(chdlr.sw instanceof OFSwitchImpl);
-//        assertTrue(!(chdlr.sw instanceof TestSwitchClass));
-//
-//        // Switch should be bound to TestSwitchImpl
-//        state.switchBindingDone = false;
-//        desc.setManufacturerDescription("test1 switch");
-//        desc.setHardwareDescription("version 1.0");
-//        state.description = desc;
-//        state.featuresReply = featuresReply;
-//
-//        chdlr.bindSwitchToDriver();
-//        assertTrue(chdlr.sw instanceof TestSwitchClass);
-//
-//        // Switch should be bound to Test11SwitchImpl
-//        state.switchBindingDone = false;
-//        desc.setManufacturerDescription("test11 switch");
-//        desc.setHardwareDescription("version 1.1");
-//        state.description = desc;
-//        state.featuresReply = featuresReply;
-//
-//        chdlr.bindSwitchToDriver();
-//        assertTrue(chdlr.sw instanceof Test11SwitchClass);
-//    }
-//
-//    @Test
-//    public void testBindSwitchOrder() {
-//        List<String> order = new ArrayList<String>(3);
-//        controller.addOFSwitchDriver("", this);
-//        controller.addOFSwitchDriver("test switch", this);
-//        controller.addOFSwitchDriver("test", this);
-//        order.add("test switch");
-//        order.add("test");
-//        order.add("");
-//        test_bind_order = true;
-//
-//        OFChannelState state = new OFChannelState();
-//        OFChannelHandler chdlr =
-//                new OFChannelHandler(controller, state);
-//        chdlr.sw = null;
-//
-//        // Swith should be bound of OFSwitchImpl (default)
-//        state.hsState = OFChannelState.HandshakeState.HELLO;
-//        state.hasDescription = true;
-//        state.hasGetConfigReply = true;
-//        state.switchBindingDone = false;
-//        OFDescriptionStatistics desc = new OFDescriptionStatistics();
-//        desc.setManufacturerDescription("test switch");
-//        desc.setHardwareDescription("version 0.9");
-//        state.description = desc;
-//        OFFeaturesReply featuresReply = new OFFeaturesReply();
-//        featuresReply.setPorts(new ArrayList<OFPhysicalPort>());
-//        state.featuresReply = featuresReply;
-//
-//        chdlr.bindSwitchToDriver();
-//        assertTrue(chdlr.sw instanceof OFSwitchImpl);
-//        assertTrue(!(chdlr.sw instanceof TestSwitchClass));
-//        // Verify bind_order is called as expected
-//        assertTrue(order.equals(bind_order));
-//        test_bind_order = false;
-//        bind_order = null;
-//   }
-//
-//    @Test
-//    public void testChannelDisconnected() throws Exception {
-//        OFChannelState state = new OFChannelState();
-//        state.hsState = OFChannelState.HandshakeState.READY;
-//        OFChannelHandler chdlr = new OFChannelHandler(controller, state);
-//        chdlr.sw = createMock(IOFSwitch.class);
-//
-//        // Switch is active
-//        expect(chdlr.sw.getId()).andReturn(0L).anyTimes();
-//        expect(chdlr.sw.getStringId()).andReturn("00:00:00:00:00:00:00:00")
-//                    .anyTimes();
-//        chdlr.sw.cancelAllStatisticsReplies();
-//        chdlr.sw.setConnected(false);
-//        expect(chdlr.sw.isConnected()).andReturn(true);
-//
-//        controller.connectedSwitches.add(chdlr.sw);
-//        controller.activeSwitches.put(0L, chdlr.sw);
-//
-//        replay(chdlr.sw);
-//        chdlr.channelDisconnected(null, null);
-//        verify(chdlr.sw);
-//
-//        // Switch is connected but not active
-//        reset(chdlr.sw);
-//        expect(chdlr.sw.getId()).andReturn(0L).anyTimes();
-//        chdlr.sw.setConnected(false);
-//        replay(chdlr.sw);
-//        chdlr.channelDisconnected(null, null);
-//        verify(chdlr.sw);
-//
-//        // Not in ready state
-//        state.hsState = HandshakeState.START;
-//        reset(chdlr.sw);
-//        replay(chdlr.sw);
-//        chdlr.channelDisconnected(null, null);
-//        verify(chdlr.sw);
-//
-//        // Switch is null
-//        state.hsState = HandshakeState.READY;
-//        chdlr.sw = null;
-//        chdlr.channelDisconnected(null, null);
-//    }
-//
-//    /*
-//    @Test
-//    public void testRoleChangeForSerialFailoverSwitch() throws Exception {
-//        OFSwitchImpl newsw = createMock(OFSwitchImpl.class);
-//        expect(newsw.getId()).andReturn(0L).anyTimes();
-//        expect(newsw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
-//        Channel channel2 = createMock(Channel.class);
-//        expect(newsw.getChannel()).andReturn(channel2);
-//
-//        // newsw.role is null because the switch does not support
-//        // role request messages
-//        expect(newsw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE))
-//                        .andReturn(false);
-//        // switch is connected
-//        controller.connectedSwitches.add(newsw);
-//
-//        // the switch should get disconnected when role is changed to SLAVE
-//        expect(channel2.close()).andReturn(null);
-//
-//        replay(newsw, channel2);
-//        controller.setRole(Role.SLAVE);
-//        verify(newsw,  channel2);
-//    }
-//    */
-//
-//    @Test
-//    public void testRoleNotSupportedError() throws Exception {
-//        int xid = 424242;
-//        OFChannelState state = new OFChannelState();
-//        state.hsState = HandshakeState.READY;
-//        OFChannelHandler chdlr = new OFChannelHandler(controller, state);
-//        chdlr.sw = createMock(IOFSwitch.class);
-//        Channel ch = createMock(Channel.class);
-//
-//        // the error returned when role request message is not supported by sw
-//        OFError msg = new OFError();
-//        msg.setType(OFType.ERROR);
-//        msg.setXid(xid);
-//        msg.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
-//
-//        // the switch connection should get disconnected when the controller is
-//        // in SLAVE mode and the switch does not support role-request messages
-//        controller.role = Role.SLAVE;
-//        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);
-//        expect(chdlr.sw.getHARole()).andReturn(null);
-//        chdlr.sw.setHARole(Role.SLAVE, false);
-//        expect(chdlr.sw.getHARole()).andReturn(Role.SLAVE);
-//        chdlr.sw.disconnectOutputStream();
-//
-//        replay(ch, chdlr.sw);
-//        chdlr.processOFMessage(msg);
-//        verify(ch, chdlr.sw);
-//        assertTrue("activeSwitches must be empty",
-//                   controller.activeSwitches.isEmpty());
-//        reset(ch, chdlr.sw);
-//
-//        // We are MASTER, the switch should be added to the list of active
-//        // switches.
-//        controller.role = Role.MASTER;
-//        setupPendingRoleRequest(chdlr.sw, xid, controller.role, 123456);
-//        expect(chdlr.sw.getHARole()).andReturn(null);
-//        chdlr.sw.setHARole(controller.role, false);
-//        setupSwitchForAddSwitch(chdlr.sw, 0L);
-//        chdlr.sw.clearAllFlowMods();
-//        expect(chdlr.sw.getHARole()).andReturn(null).anyTimes();
-//        replay(ch, chdlr.sw);
-//
-//        chdlr.processOFMessage(msg);
-//        verify(ch, chdlr.sw);
-//        assertSame("activeSwitches must contain this switch",
-//                   chdlr.sw, controller.activeSwitches.get(0L));
-//        reset(ch, chdlr.sw);
-//
-//    }
-//
-//
-//    @Test
-//    public void testVendorMessageUnknown() throws Exception {
-//        // Check behavior with an unknown vendor id
-//        // Ensure that vendor message listeners get called, even for Vendors
-//        // unknown to floodlight. It is the responsibility of the listener to
-//        // discard unknown vendors.
-//        OFChannelState state = new OFChannelState();
-//        state.hsState = HandshakeState.READY;
-//        OFChannelHandler chdlr = new OFChannelHandler(controller, state);
-//        OFVendor msg = new OFVendor();
-//        msg.setVendor(0);
-//        IOFSwitch sw = createMock(IOFSwitch.class);
-//        chdlr.sw = sw;
-//        controller.activeSwitches.put(1L, sw);
-//
-//        // prepare the Vendor Message Listener expectations
-//        ListenerDispatcher<OFType, IOFMessageListener> ld =
-//                new ListenerDispatcher<OFType, IOFMessageListener>();
-//        IOFMessageListener ml = createMock(IOFMessageListener.class);
-//        expect(ml.getName()).andReturn("Dummy").anyTimes();
-//        expect(ml.isCallbackOrderingPrereq((OFType)anyObject(),
-//                (String)anyObject())).andReturn(false).anyTimes();
-//        expect(ml.isCallbackOrderingPostreq((OFType)anyObject(),
-//                (String)anyObject())).andReturn(false).anyTimes();
-//        expect(ml.receive(eq(sw), eq(msg), isA(FloodlightContext.class))).
-//                andReturn(Command.CONTINUE).once();
-//        controller.messageListeners.put(OFType.VENDOR, ld);
-//
-//        // prepare the switch and lock expectations
-//        Lock lock = createNiceMock(Lock.class);
-//        expect(sw.getListenerReadLock()).andReturn(lock).anyTimes();
-//        expect(sw.isConnected()).andReturn(true).anyTimes();
-//        expect(sw.getHARole()).andReturn(Role.MASTER).anyTimes();
-//        expect(sw.getId()).andReturn(1L).anyTimes();
-//
-//        // test
-//        replay(chdlr.sw, lock, ml);
-//        ld.addListener(OFType.VENDOR, ml);
-//        chdlr.processOFMessage(msg);
-//    }
-//
+        replay(driver1);
+        replay(driver2);
+        replay(driver3);
+        replay(mockSwitch);
+
+        OFDescriptionStatistics desc = createOFDescriptionStatistics();
+        desc.setManufacturerDescription("test switch");
+        desc.setHardwareDescription("version 0.9");
+        reset(driver1);
+        reset(driver2);
+        reset(driver3);
+        reset(mockSwitch);
+        mockSwitch.setSwitchProperties(desc);
+        expectLastCall().once();
+        expect(driver1.getOFSwitchImpl(desc)).andReturn(mockSwitch).once();
+        replay(driver1);
+        replay(driver2);
+        replay(driver3);
+        replay(mockSwitch);
+        returnedSwitch = controller.getOFSwitchInstance(desc);
+        assertSame(mockSwitch, returnedSwitch);
+        verify(driver1);
+        verify(driver2);
+        verify(driver3);
+        verify(mockSwitch);
+
+        desc = createOFDescriptionStatistics();
+        desc.setManufacturerDescription("testFooBar");
+        desc.setHardwareDescription("version 0.9");
+        reset(driver1);
+        reset(driver2);
+        reset(driver3);
+        reset(mockSwitch);
+        mockSwitch.setSwitchProperties(desc);
+        expectLastCall().once();
+        expect(driver2.getOFSwitchImpl(desc)).andReturn(mockSwitch).once();
+        replay(driver1);
+        replay(driver2);
+        replay(driver3);
+        replay(mockSwitch);
+        returnedSwitch = controller.getOFSwitchInstance(desc);
+        assertSame(mockSwitch, returnedSwitch);
+        verify(driver1);
+        verify(driver2);
+        verify(driver3);
+        verify(mockSwitch);
+
+        desc = createOFDescriptionStatistics();
+        desc.setManufacturerDescription("FooBar");
+        desc.setHardwareDescription("version 0.9");
+        reset(driver1);
+        reset(driver2);
+        reset(driver3);
+        reset(mockSwitch);
+        mockSwitch.setSwitchProperties(desc);
+        expectLastCall().once();
+        expect(driver3.getOFSwitchImpl(desc)).andReturn(mockSwitch).once();
+        replay(driver1);
+        replay(driver2);
+        replay(driver3);
+        replay(mockSwitch);
+        returnedSwitch = controller.getOFSwitchInstance(desc);
+        assertSame(mockSwitch, returnedSwitch);
+        verify(driver1);
+        verify(driver2);
+        verify(driver3);
+        verify(mockSwitch);
+    }
+
+    /**
+     * Test SwitchDriverRegistry
+     * Test fallback to default if no switch driver is registered for a
+     * particular prefix
+     */
+    @Test
+    public void testSwitchDriverRegistryNoDriver() {
+        IOFSwitchDriver driver = createMock(IOFSwitchDriver.class);
+        IOFSwitch returnedSwitch = null;
+        IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        controller.addOFSwitchDriver("test switch", driver);
+
+        replay(driver);
+        replay(mockSwitch);
+
+        OFDescriptionStatistics desc = createOFDescriptionStatistics();
+        desc.setManufacturerDescription("test switch");
+        desc.setHardwareDescription("version 0.9");
+        reset(driver);
+        reset(mockSwitch);
+        mockSwitch.setSwitchProperties(desc);
+        expectLastCall().once();
+        expect(driver.getOFSwitchImpl(desc)).andReturn(mockSwitch).once();
+        replay(driver);
+        replay(mockSwitch);
+        returnedSwitch = controller.getOFSwitchInstance(desc);
+        assertSame(mockSwitch, returnedSwitch);
+        verify(driver);
+        verify(mockSwitch);
+
+
+        desc = createOFDescriptionStatistics();
+        desc.setManufacturerDescription("Foo Bar test switch");
+        desc.setHardwareDescription("version 0.9");
+        reset(driver);
+        reset(mockSwitch);
+        replay(driver);
+        replay(mockSwitch);
+        returnedSwitch = controller.getOFSwitchInstance(desc);
+        assertNotNull(returnedSwitch);
+        assertTrue("Returned switch should be OFSwitchImpl",
+                   returnedSwitch instanceof OFSwitchImpl);
+        assertEquals(desc, returnedSwitch.getDescriptionStatistics());
+        verify(driver);
+        verify(mockSwitch);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testDriverRegistryExceptions() {
+        IOFSwitchDriver driver = createMock(IOFSwitchDriver.class);
+        IOFSwitchDriver driver2 = createMock(IOFSwitchDriver.class);
+        replay(driver, driver2); // no calls expected on driver
+
+        //---------------
+        // Test exception handling when registering driver
+        try {
+            controller.addOFSwitchDriver("foobar", null);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+
+        try {
+            controller.addOFSwitchDriver(null, driver);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+
+        // test that we can register each prefix only once!
+        controller.addOFSwitchDriver("foobar",  driver);
+        try {
+            controller.addOFSwitchDriver("foobar",  driver);
+            fail("Expected IllegalStateException not thrown");
+        } catch (IllegalStateException e) {
+            //expected
+        }
+
+        try {
+            controller.addOFSwitchDriver("foobar",  driver2);
+            fail("Expected IllegalStateException not thrown");
+        } catch (IllegalStateException e) {
+            //expected
+        }
+
+        OFDescriptionStatistics desc = createOFDescriptionStatistics();
+
+        desc.setDatapathDescription(null);
+        try {
+            controller.getOFSwitchInstance(desc);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+        desc.setHardwareDescription(null);
+        try {
+            controller.getOFSwitchInstance(desc);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+        desc.setManufacturerDescription(null);
+        try {
+            controller.getOFSwitchInstance(desc);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+        desc.setSerialNumber(null);
+        try {
+            controller.getOFSwitchInstance(desc);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+        desc.setSoftwareDescription(null);
+        try {
+            controller.getOFSwitchInstance(desc);
+            fail("Expected NullPointerException not thrown");
+        } catch (NullPointerException e) {
+            //expected
+        }
+        verify(driver, driver2);
+    }
+
+
 //    @Test
 //    public void testErrorEPERM() throws Exception {
 //        // Check behavior with a BAD_REQUEST/EPERM error
