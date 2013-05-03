@@ -1027,21 +1027,31 @@ public class TopologyManager implements
             if (log.isTraceEnabled()) {
                 log.trace("Applying update: {}", update);
             }
-            if (update.getOperation() == UpdateOperation.LINK_UPDATED) {
+
+            switch (update.getOperation()) {
+            case LINK_UPDATED:
                 addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-                                update.getDst(), update.getDstPort(),
-                                update.getType());
-            } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
+                        update.getDst(), update.getDstPort(),
+                        update.getType());
+                break;
+            case LINK_REMOVED:
                 removeLink(update.getSrc(), update.getSrcPort(),
-                           update.getDst(), update.getDstPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_ADDED) {
-                addTunnelPort(update.getSrc(), update.getSrcPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
-                removeTunnelPort(update.getSrc(), update.getSrcPort());
-            } else if (update.getOperation() == UpdateOperation.SWITCH_UPDATED) {
+                        update.getDst(), update.getDstPort());
+                break;
+            case SWITCH_UPDATED:
                 addOrUpdateSwitch(update.getSrc());
-            } else if (update.getOperation() == UpdateOperation.SWITCH_REMOVED) {
+                break;
+            case SWITCH_REMOVED:
                 removeSwitch(update.getSrc());
+                break;
+            case TUNNEL_PORT_ADDED:
+                addTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case TUNNEL_PORT_REMOVED:
+                removeTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case PORT_UP: case PORT_DOWN:
+                break;
             }
             // Add to the list of applied updates.
             appliedUpdates.add(update);
