@@ -236,6 +236,7 @@ public class Controller implements IFloodlightProviderService,
         public Counter syncedSwitchRemoved;
         public Counter unknownSwitchRemovedFromStore;
         public Counter consolidateStoreRunCount;
+        public Counter storeSyncException;
         public Counter switchesNotReconnectingToNewMaster;
         public Counter switchPortChanged;
         public Counter switchOtherChange;
@@ -377,6 +378,12 @@ public class Controller implements IFloodlightProviderService,
                             "reconciled switch entries in the sync store " +
                             "with live state",
                             CounterType.ALWAYS_COUNT);
+            storeSyncException =
+                new Counter(debugCounters,
+                            prefix + "storeSyncException",
+                            "Number of times a sync store operation failed " +
+                            "due to a store sync exception.",
+                            CounterType.ERROR);
 
             switchesNotReconnectingToNewMaster =
                 new Counter(debugCounters,
@@ -759,6 +766,7 @@ public class Controller implements IFloodlightProviderService,
                 try {
                     versionedSwitch = storeClient.get(key);
                 } catch (SyncException e) {
+                    counters.storeSyncException.increment();
                     log.error("Exception while retrieving switch " +
                               HexString.toHexString(key) +
                               " from sync store. Skipping", e);
@@ -986,6 +994,7 @@ public class Controller implements IFloodlightProviderService,
                 // FIXME: what's the right behavior here. Can the store client
                 // even throw this error?
             } catch (SyncException e) {
+                counters.storeSyncException.increment();
                 log.error("Could not write switch " + sw.getStringId() +
                           " to sync store:", e);
             }
@@ -999,6 +1008,7 @@ public class Controller implements IFloodlightProviderService,
             try {
                 storeClient.delete(dpid);
             } catch (SyncException e) {
+                counters.storeSyncException.increment();
                 // ObsoleteVerisonException can't happend because all
                 // store modifications are synchronized
                 log.error("Could not remove switch " +
@@ -1049,6 +1059,7 @@ public class Controller implements IFloodlightProviderService,
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
+                counters.storeSyncException.increment();
                 log.error("Failed to read switches from sync store", e);
                 return;
             }
