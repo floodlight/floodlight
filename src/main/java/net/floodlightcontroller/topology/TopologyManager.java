@@ -697,8 +697,8 @@ public class TopologyManager implements
         @Override
         public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
                                                 String name) {
-            // TODO Auto-generated method stub
-            return false;
+            return "linkdiscovery".equals(name) ||
+                    "tunnelmanager".equals(name);
         }
 
         @Override

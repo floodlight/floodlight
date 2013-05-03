@@ -889,8 +889,8 @@ IFlowReconcileListener, IInfoProvider {
         @Override
         public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
                                                 String name) {
-            // TODO Auto-generated method stub
-            return false;
+            return ("topology".equals(name) ||
+                    "bvsmanager".equals(name));
         }
 
         @Override
