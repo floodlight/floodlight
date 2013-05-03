@@ -364,7 +364,7 @@ public interface IOFSwitch {
     public boolean isConnected();
 
     /**
-     * Check if the switch is active. I.e., the switch is conencted to this
+     * Check if the switch is active. I.e., the switch is connected to this
      * controller and is in master role
      * @return
      */
