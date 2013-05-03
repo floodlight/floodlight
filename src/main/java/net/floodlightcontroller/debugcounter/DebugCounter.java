@@ -139,7 +139,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
        // create counter in global map
        // and add to counter name cache if it is meant to be always counted
-       if (counterType == CounterType.ALWAYS_COUNT) {
+       if (counterType != CounterType.COUNT_ON_DEMAND) {
            currentCounters.add(moduleCounterName);
            debugCounters.put(moduleCounterName, new AtomicLong());
        }
@@ -371,7 +371,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-       ArrayList<Class<? extends IFloodlightService>> deps = 
+       ArrayList<Class<? extends IFloodlightService>> deps =
                new ArrayList<Class<? extends IFloodlightService>>();
        deps.add(IRestApiService.class);
        return deps;
@@ -384,7 +384,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public void startUp(FloodlightModuleContext context) {
-       IRestApiService restService = 
+       IRestApiService restService =
                context.getServiceImpl(IRestApiService.class);
        restService.addRestletRoutable(new DebugCounterRoutable());
    }

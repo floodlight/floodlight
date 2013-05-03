@@ -273,7 +273,7 @@ public class Controller implements IFloodlightProviderService,
                             prefix + "setSameRole",
                             "Controller received a role request for the same " +
                             "role the controller already had",
-                            CounterType.COUNT_ON_DEMAND);
+                            CounterType.WARN);
 
             setRoleMaster =
                 new Counter(debugCounters,
@@ -302,7 +302,7 @@ public class Controller implements IFloodlightProviderService,
                             "A switch that was already in active state " +
                             "was activated again. This indicates a " +
                             "controller defect",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
             switchWithSameDpidActivated = // warn
                 new Counter(debugCounters,
                             prefix + "switchWithSameDpidActivated",
@@ -311,7 +311,7 @@ public class Controller implements IFloodlightProviderService,
                             "caused by multiple switches configured with " +
                             "the same DPID or by a switch reconnecting very " +
                             "quickly.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN);
 
             newSwitchActivated =   // new switch
                 new Counter(debugCounters,
@@ -367,7 +367,7 @@ public class Controller implements IFloodlightProviderService,
                             "store notification that a switch has " +
                             "disconnected but this controller instance " +
                             "did not have the any information about the switch",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN);  // might be less than warning
             consolidateStoreRunCount =
                 new Counter(debugCounters,
                             prefix + "consolidateStoreRunCount",
@@ -385,7 +385,7 @@ public class Controller implements IFloodlightProviderService,
                             "controller instance in the cluster but that " +
                             "did not reconnect to this controller after it " +
                             "transitioned to MASTER",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN); // might be less than warning
             switchPortChanged =
                 new Counter(debugCounters,
                             prefix + "switchPortChanged",
@@ -432,7 +432,7 @@ public class Controller implements IFloodlightProviderService,
                             prefix + "messageInputThrottled",
                             "Number of OpenFlow messages that were " +
                             "throttled due to high load from the sender",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN);
         // TODO: more counters in messageReceived ??
 
             switchDisconnectReadTimeout =
@@ -441,27 +441,27 @@ public class Controller implements IFloodlightProviderService,
                             "Number of times a switch was disconnected due " +
                             "due the switch failing to send OpenFlow " +
                             "messages or responding to OpenFlow ECHOs",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
             switchDisconnectHandshakeTimeout =
                 new Counter(debugCounters,
                             prefix + "switchDisconnectHandshakeTimeout",
                             "Number of times a switch was disconnected " +
                             "because it failed to complete the handshake " +
                             "in time.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
             switchDisconnectIOError =
                 new Counter(debugCounters,
                             prefix + "switchDisconnectIOError",
                             "Number of times a switch was disconnected " +
                             "due to IO errors on the switch connection.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
             switchDisconnectParseError =
                 new Counter(debugCounters,
                            prefix + "switchDisconnectParseError",
                            "Number of times a switch was disconnected " +
                            "because it sent an invalid packet that could " +
                            "not be parsed",
-                           CounterType.ALWAYS_COUNT);
+                           CounterType.ERROR);
 
             switchDisconnectSwitchStateException =
                 new Counter(debugCounters,
@@ -469,12 +469,12 @@ public class Controller implements IFloodlightProviderService,
                             "Number of times a switch was disconnected " +
                             "because it sent messages that were invalid " +
                             "given the switch connection's state.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
             rejectedExecutionException =
                 new Counter(debugCounters,
                             prefix + "rejectedExecutionException",
                             "TODO",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
 
             switchDisconnectOtherException =
                 new Counter(debugCounters,
@@ -482,7 +482,7 @@ public class Controller implements IFloodlightProviderService,
                             "Number of times a switch was disconnected " +
                             "due to an exceptional situation not covered " +
                             "by other counters",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.ERROR);
 
             switchConnected =
                 new Counter(debugCounters,
@@ -498,7 +498,7 @@ public class Controller implements IFloodlightProviderService,
                             "received that the controller ignored because " +
                             "it was inapproriate given the switch " +
                             "connection's state.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN); // might be less than warning
 
             packetInWhileSwitchIsSlave =
                 new Counter(debugCounters,
@@ -513,7 +513,7 @@ public class Controller implements IFloodlightProviderService,
                             "Number of times a permission error was " +
                             "received while the switch was in MASTER role. " +
                             "Possibly inidicates inconsistent roles.",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN);
 
             roleNotResentBecauseRolePending =
                 new Counter(debugCounters,
@@ -533,7 +533,7 @@ public class Controller implements IFloodlightProviderService,
                             prefix + "roleReplyTimeout",
                             "Number of times a role request message did not " +
                             "receive the expected reply from a switch",
-                            CounterType.ALWAYS_COUNT);
+                            CounterType.WARN);
             roleReplyReceived = // expected RoleReply received
                 new Counter(debugCounters,
                             prefix + "roleReplyReceived",
