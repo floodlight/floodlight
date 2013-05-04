@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -443,6 +444,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                   FLOWMOD_DEFAULT_IDLE_TIMEOUT);
         log.debug("FlowMod hard timeout set to {} seconds", 
                   FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        try {
+            AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
+        } catch (AppIDInUseException e) {
+            // This is not fatal, CLI will be confused
+            log.error("Failed register application ID", e);
+        }
+
     }
 
     @Override
