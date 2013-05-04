@@ -664,6 +664,11 @@ IFlowReconcileListener, IInfoProvider {
         suppressAPs.remove(new SwitchPort(swId, port));
     }
 
+    @Override
+    public Set<SwitchPort> getSuppressAPs() {
+        return Collections.unmodifiableSet(suppressAPs);
+    }
+
     private void logListeners() {
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
