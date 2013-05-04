@@ -2407,15 +2407,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         @Override
         public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
                                                 String name) {
-            // TODO Auto-generated method stub
-            return false;
+            return ("topology".equals(name));
         }
 
         @Override
         public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
                                                  String name) {
-            // TODO Auto-generated method stub
-            return false;
+            return "tunnelmanager".equals(name);
         }
     }
 
