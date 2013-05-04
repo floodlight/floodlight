@@ -141,8 +141,6 @@ public interface IFloodlightProviderService extends
      */
     public Map<Long,IOFSwitch> getAllSwitchMap();
 
-    public IOFSwitch getSwitchByDpid(String dpid);
-
     /**
      * Get the current role of the controller
      */

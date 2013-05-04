@@ -55,7 +55,6 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
-import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,19 +140,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public IOFSwitch getSwitch(long dpid) {
         return this.switches.get(dpid);
-    }
-
-    @Override
-    public IOFSwitch getSwitchByDpid(String dpid) {
-        Map<Long, IOFSwitch> switches = getSwitches();
-        if (switches == null) return null;
-        Long switchid = HexString.toLong(dpid);
-
-        if (switchid != null && switches.containsKey(switchid)) {
-            return switches.get(switchid);
-        }
-
-        return null;
     }
 
     public void setSwitches(Map<Long, IOFSwitch> switches) {
