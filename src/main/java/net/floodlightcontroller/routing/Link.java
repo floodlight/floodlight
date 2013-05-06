@@ -20,8 +20,8 @@ package net.floodlightcontroller.routing;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openflow.util.HexString;
 
 public class Link implements Comparable<Link> {

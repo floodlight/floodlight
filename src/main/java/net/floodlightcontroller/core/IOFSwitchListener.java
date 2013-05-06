@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -24,28 +24,15 @@ package net.floodlightcontroller.core;
  */
 public interface IOFSwitchListener {
 
-    /**
-     * Fired when a switch is connected to the controller, and has sent
-     * a features reply.
-     * @param sw
-     */
-    public void addedSwitch(IOFSwitch sw);
+    public void switchAdded(long switchId);
+    public void switchRemoved(long switchId);
+    public void switchActivated(long switchId);
 
-    /**
-     * Fired when a switch is disconnected from the controller.
-     * @param sw
-     */
-    public void removedSwitch(IOFSwitch sw);
-    
     /**
      * Fired when ports on a switch change (any change to the collection
      * of OFPhysicalPorts and/or to a particular port)
      */
-    public void switchPortChanged(Long switchId);
-    
-    /**
-     * The name assigned to this listener
-     * @return
-     */
-    public String getName();
+    public void switchPortChanged(long switchId);
+
+    public void switchChanged(long switchId);
 }

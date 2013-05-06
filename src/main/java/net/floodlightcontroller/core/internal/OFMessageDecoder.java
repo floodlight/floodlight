@@ -34,7 +34,7 @@ import org.openflow.protocol.factory.OFMessageFactory;
  */
 public class OFMessageDecoder extends FrameDecoder {
 
-    OFMessageFactory factory = new BasicFactory();
+    OFMessageFactory factory = BasicFactory.getInstance();
     
     @Override
     protected Object decode(ChannelHandlerContext ctx, Channel channel,

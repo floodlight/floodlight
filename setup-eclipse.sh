@@ -56,6 +56,22 @@ cat > "$d/Floodlight-Quantum-Conf.launch" << EOF
 </launchConfiguration>
 EOF
 
+cat >"$d/SyncClient.launch" << EOF
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/floodlight/src/main/java/org/sdnplatform/sync/client/SyncClient.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.sdnplatform.sync.client.SyncClient"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--hostname localhost --port 6642 --authScheme CHALLENGE_RESPONSE --keyStorePath /opt/bigswitch/floodlight/configuration/auth_credentials.jceks --keyStorePassword dcbc178a0a3a8674f048ac86372ac456"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="bigfloodlight"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-ea"/>
+</launchConfiguration>
+EOF
+
 cat >"$d/.classpath" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>

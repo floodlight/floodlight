@@ -23,7 +23,7 @@ import java.util.Arrays;
 
 import net.floodlightcontroller.packet.Ethernet;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.serializers.OFMatchJSONSerializer;
 import org.openflow.util.HexString;

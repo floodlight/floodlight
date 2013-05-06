@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -25,7 +25,6 @@ import static org.easymock.EasyMock.verify;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightTestModuleLoader;
@@ -65,19 +64,21 @@ public class LearningSwitchTest extends FloodlightTestCase {
     protected IPacket testPacketReply;
     protected byte[] testPacketReplySerialized;
     private LearningSwitch learningSwitch;
-    
+
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
         FloodlightTestModuleLoader fml = new FloodlightTestModuleLoader();
-        Collection<Class<? extends IFloodlightModule>> mods 
+        Collection<Class<? extends IFloodlightModule>> mods
         	= new ArrayList<Class<? extends IFloodlightModule>>();
         mods.add(LearningSwitch.class);
+
         fml.setupModules(mods, null);
         learningSwitch = (LearningSwitch) fml.getModuleByName(LearningSwitch.class);
-        mockFloodlightProvider = 
+        mockFloodlightProvider =
                 (MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
-       
+
         // Build our test packet
         this.testPacket = new Ethernet()
             .setDestinationMACAddress("00:11:22:33:44:55")
@@ -161,14 +162,14 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Make sure it's the right listener
         listener.receive(mockSwitch, this.packetIn, parseAndAnnotate(this.packetIn));
 
-        // Verify the replay matched our expectations      
+        // Verify the replay matched our expectations
         short result = learningSwitch.getFromPortMap(mockSwitch, Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42).shortValue();
         verify(mockSwitch);
 
         // Verify the MAC table inside the switch
         assertEquals(1, result);
     }
-    
+
     @Test
     public void testFlowMod() throws Exception {
         // tweak the test packet in since we need a bufferId
@@ -211,7 +212,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         ofAcOut.setPort((short)2);
         ofAcOut.setLength((short) 8);
         ofAcOut.setType(OFActionType.OUTPUT);
-        
+
         OFPacketOut packetOut = new OFPacketOut();
         packetOut.setActions(Arrays.asList(new OFAction[] {ofAcOut}))
         .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
@@ -220,11 +221,11 @@ public class LearningSwitchTest extends FloodlightTestCase {
         .setPacketData(null)
         .setLength((short) (OFPacketOut.MINIMUM_LENGTH + OFActionOutput.MINIMUM_LENGTH));
         packetOut.setActionFactory(mockFloodlightProvider.getOFMessageFactory());
-        
+
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(1L).anyTimes();
-        expect(mockSwitch.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer) (OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO
+        expect(mockSwitch.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((OFMatch.OFPFW_IN_PORT | OFMatch.OFPFW_NW_PROTO
                 | OFMatch.OFPFW_TP_SRC | OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_NW_SRC_ALL
                 | OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_TOS));
         expect(mockSwitch.getBuffers()).andReturn(100).anyTimes();
@@ -238,12 +239,12 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Populate the MAC table
         learningSwitch.addToPortMap(mockSwitch,
                 Ethernet.toLong(Ethernet.toMACAddress("00:11:22:33:44:55")), (short) 42, (short) 2);
-        
+
         // Get the listener and trigger the packet in
         IOFMessageListener listener = mockFloodlightProvider.getListeners().get(
                 OFType.PACKET_IN).get(0);
         listener.receive(mockSwitch, this.packetIn, parseAndAnnotate(this.packetIn));
-        
+
         // Verify the replay matched our expectations
         short result = learningSwitch.getFromPortMap(mockSwitch, Ethernet.toLong(Ethernet.toMACAddress("00:44:33:22:11:00")), (short) 42).shortValue();
         verify(mockSwitch);

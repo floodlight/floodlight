@@ -40,7 +40,7 @@ public class OFStatisticsRequestTest extends OFTestCase {
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 (byte) 0xff, 0x00, (byte) 0xff, (byte) 0xff };
 
-        OFMessageFactory factory = new BasicFactory();
+        OFMessageFactory factory = BasicFactory.getInstance();
         ChannelBuffer packetBuf = ChannelBuffers.wrappedBuffer(packet);
         List<OFMessage> msg = factory.parseMessage(packetBuf);
         TestCase.assertNotNull(msg);
@@ -64,7 +64,7 @@ public class OFStatisticsRequestTest extends OFTestCase {
                 0x00, 0x00, 0x00, 0x00, (byte) 0xff, 0x00, 0x00, 0x00,
                 (byte) 0xff, (byte) 0xff, 0x4e, 0x20 };
 
-        OFMessageFactory factory = new BasicFactory();
+        OFMessageFactory factory = BasicFactory.getInstance();
         ChannelBuffer packetBuf = ChannelBuffers.wrappedBuffer(packet);
         List<OFMessage> msg = factory.parseMessage(packetBuf);
         TestCase.assertNotNull(msg);

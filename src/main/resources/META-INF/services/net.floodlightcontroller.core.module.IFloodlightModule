@@ -1,4 +1,4 @@
-net.floodlightcontroller.core.FloodlightProvider
+net.floodlightcontroller.core.internal.FloodlightProvider
 net.floodlightcontroller.storage.memory.MemoryStorageSource
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
@@ -27,3 +27,6 @@ net.floodlightcontroller.core.test.MockFloodlightProvider
 net.floodlightcontroller.core.test.MockThreadPoolService
 net.floodlightcontroller.firewall.Firewall
 net.floodlightcontroller.loadbalancer.LoadBalancer
+org.sdnplatform.sync.internal.SyncManager
+org.sdnplatform.sync.internal.SyncTorture
+org.sdnplatform.sync.test.MockSyncService

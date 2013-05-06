@@ -12,7 +12,9 @@ public interface IDebugCounterService extends IFloodlightService {
      */
     public enum CounterType {
         ALWAYS_COUNT,
-        COUNT_ON_DEMAND
+        COUNT_ON_DEMAND,
+        WARN,
+        ERROR
     }
 
     public class DebugCounterInfo {
@@ -57,7 +59,7 @@ public interface IDebugCounterService extends IFloodlightService {
      * @param moduleCounterName   the registered counter name.
      */
     public void updateCounter(String moduleCounterName);
-    
+
     /**
      * Increments the counter by the number specified
      * @param moduleCounterName   the registered counter name.

@@ -40,7 +40,8 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-
+import net.floodlightcontroller.servicechaining.ServiceChain;
+import com.google.common.cache.*;
 
 /**
  * A representation of a network topology.  Used internally by
@@ -663,7 +664,7 @@ public class TopologyInstance {
         return true;
     }
 
-    protected Route getRoute(long srcId, short srcPort,
+    protected Route getRoute(ServiceChain sc, long srcId, short srcPort,
                              long dstId, short dstPort, long cookie) {
 
 

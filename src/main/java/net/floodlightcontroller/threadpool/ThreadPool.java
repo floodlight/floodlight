@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -70,7 +72,17 @@ public class ThreadPool implements IThreadPoolService, IFloodlightModule {
     @Override
     public void init(FloodlightModuleContext context)
                                  throws FloodlightModuleException {
-        executor = Executors.newScheduledThreadPool(15);
+        final ThreadGroup tg = new ThreadGroup("Scheduled Task Threads");
+        ThreadFactory f = new ThreadFactory() {
+            AtomicInteger id = new AtomicInteger();
+            
+            @Override
+            public Thread newThread(Runnable runnable) {
+                return new Thread(tg, runnable, 
+                                  "Scheduled-" + id.getAndIncrement());
+            }
+        };
+        executor = Executors.newScheduledThreadPool(5, f);
     }
 
     @Override

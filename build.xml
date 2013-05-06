@@ -43,7 +43,6 @@
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
     <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
     <property name="thrift.out.dir" value="lib/gen-java"/>
-    <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
     <property name="ant.build.javac.source" value="1.6"/>
     <property name="ant.build.javac.target" value="1.6"/>
     <property name="findbugs.home" value="../build/findbugs-2.0.2"/>
@@ -53,14 +52,19 @@
     <patternset id="lib">
         <include name="logback-classic-1.0.0.jar"/>
         <include name="logback-core-1.0.0.jar"/>
-        <include name="jackson-core-asl-1.8.6.jar"/>
-        <include name="jackson-mapper-asl-1.8.6.jar"/>
+        <include name="jackson-core-2.1.4.jar"/>
+        <include name="jackson-annotations-2.1.4.jar"/>
+        <include name="jackson-databind-2.1.4.jar"/>
+        <include name="jackson-dataformat-smile-2.1.4.jar"/>
+        <include name="jackson-dataformat-xml-2.1.4.jar"/>
+        <include name="jackson-dataformat-yaml-2.1.4.jar"/>
+        <include name="jackson-dataformat-csv-2.1.4.jar"/>
         <include name="slf4j-api-1.6.4.jar"/>
-        <include name="org.restlet-2.1-RC1.jar"/>
-        <include name="org.restlet.ext.jackson-2.1-RC1.jar"/>
-        <include name="org.restlet.ext.simple-2.1-RC1.jar"/>
-        <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
-        <include name="simple-4.1.21.jar"/>
+        <include name="org.restlet-2.2M3.jar"/>
+        <include name="org.restlet.ext.jackson-2.2M3.jar"/>
+        <include name="org.restlet.ext.simple-2.2M3.jar"/>
+        <include name="org.restlet.ext.slf4j-2.2M3.jar"/>
+        <include name="simple-5.1.1.jar"/>
         <include name="netty-3.2.6.Final.jar"/>
         <include name="args4j-2.0.16.jar"/>
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
@@ -69,6 +73,7 @@
         <include name="guava-13.0.1.jar" />
         <include name="findbugs-annotations-2.0.1.jar" />
         <include name="findbugs-jsr305-2.0.1.jar" />
+        <include name="derby-10.9.1.0.jar"/>
     </patternset>
 
     <path id="classpath">
@@ -131,20 +136,35 @@
            destdir="${build-test}"/>
     </target>
 
-    <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
-    <fileset id="thrift.files" dir="${thrift.dir}">
-        <include name="**/*.thrift"/>
-    </fileset>
-
     <target name="gen-thrift" depends="init">
-        <pathconvert property="thrift.file.list" refid="thrift.files"
-            pathsep=" " dirsep="/">
-        </pathconvert>
-        <echo message="Running thrift generator on ${thrift.file.list}"/>
-        <exec executable="thrift" dir="${basedir}" failonerror="true">
-            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${thrift.file.list}'"/>
+      <echo message="Running thrift on '${thrift.dir}'"/>
+      <apply executable="./thrift/compiler/cpp/thrift">
+	<fileset dir="${thrift.dir}" casesensitive="yes">
+	  <include name="**/*.thrift"/>
+	</fileset>
+	<arg value="--strict"/>
+	<arg value="-v"/>
+	<arg value="--gen"/>
+	<arg value="java"/>
+	<arg value="-o"/>
+	<arg value="${thrift.out.dir}/.."/>
+      </apply>
+      <echo message="Adding @SuppressWarning annotations"/>
+      <replaceregexp byline="true">
+	<regexp pattern="^public "/>
+	<substitution expression='@SuppressWarnings("all") public '/>
+	<fileset id="thrift.output.files" dir="${thrift.out.dir}/..">
+	  <include name="**/*.java"/>
+	</fileset>
+      </replaceregexp>
+    </target>
+
+    <target name="do-gen-thrift">
+        <exec executable="./thrift/compiler/cpp/thrift" dir="${basedir}" failonerror="true">
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${foreach.file}'"/>
         </exec>
         <!-- Get rid of annoying warnings in thrift java: at annotations -->
+
         <echo message="Adding @SuppressWarning annotations"/>
         <replaceregexp byline="true">
             <regexp pattern="^public "/>

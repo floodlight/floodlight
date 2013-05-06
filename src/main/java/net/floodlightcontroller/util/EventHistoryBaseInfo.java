@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.util;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 @JsonSerialize(using=EventHistoryBaseInfoJSONSerializer.class)
 public class EventHistoryBaseInfo {
