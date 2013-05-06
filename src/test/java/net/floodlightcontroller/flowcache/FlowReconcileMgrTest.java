@@ -496,7 +496,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             Date currTime = new Date();
             assertTrue((currTime.getTime() - startTime.getTime()) < 1000);
         }
-    
+
         // Make sure all flows are in the queue.
         assertEquals(totalFlows, flowReconcileMgr.flowQueue.size());
     }
@@ -507,7 +507,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             OFMatchReconcile ofmRc = new OFMatchReconcile();
             // push large number of flows to be reconciled.
             for (int i = 0; i < NUM_FLOWS_PER_THREAD; i++) {
-                flowReconcileMgr.reconcileFlow(ofmRc,EventPriority.HIGH);
+                flowReconcileMgr.reconcileFlow(ofmRc,EventPriority.LOW);
             }
         }
     }
