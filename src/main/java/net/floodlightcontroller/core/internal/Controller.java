@@ -166,7 +166,7 @@ public class Controller implements IFloodlightProviderService,
 
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
-    private boolean alwaysClearFlowsOnSwAdd = false;
+    private boolean alwaysClearFlowsOnSwActivate = false;
 
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
@@ -236,7 +236,7 @@ public class Controller implements IFloodlightProviderService,
         public Counter syncedSwitchRemoved;
         public Counter unknownSwitchRemovedFromStore;
         public Counter consolidateStoreRunCount;
-        public Counter storeSyncException;
+        public Counter storeSyncError;
         public Counter switchesNotReconnectingToNewMaster;
         public Counter switchPortChanged;
         public Counter switchOtherChange;
@@ -378,11 +378,12 @@ public class Controller implements IFloodlightProviderService,
                             "reconciled switch entries in the sync store " +
                             "with live state",
                             CounterType.ALWAYS_COUNT);
-            storeSyncException =
+            storeSyncError =
                 new Counter(debugCounters,
-                            prefix + "storeSyncException",
+                            prefix + "storeSyncError",
                             "Number of times a sync store operation failed " +
-                            "due to a store sync exception.",
+                            "due to a store sync exception or an entry in " +
+                            "in the store had invalid data.",
                             CounterType.ERROR);
 
             switchesNotReconnectingToNewMaster =
@@ -766,7 +767,7 @@ public class Controller implements IFloodlightProviderService,
                 try {
                     versionedSwitch = storeClient.get(key);
                 } catch (SyncException e) {
-                    counters.storeSyncException.increment();
+                    counters.storeSyncError.increment();
                     log.error("Exception while retrieving switch " +
                               HexString.toHexString(key) +
                               " from sync store. Skipping", e);
@@ -776,15 +777,18 @@ public class Controller implements IFloodlightProviderService,
                 // returns a non-null or throws an exception
                 if (versionedSwitch.getValue() == null) {
                     switchRemovedFromStore(key);
+                    continue;
                 }
                 SwitchSyncRepresentation storedSwitch =
                         versionedSwitch.getValue();
                 IOFSwitch sw = getOFSwitchInstance(storedSwitch.getDescription());
                 sw.setFeaturesReply(storedSwitch.getFeaturesReply());
                 if (!key.equals(storedSwitch.getFeaturesReply().getDatapathId())) {
+                    counters.storeSyncError.increment();
                     log.error("Inconsistent DPIDs from switch sync store: " +
                               "key is {} but sw.getId() says {}. Ignoring",
                               HexString.toHexString(key), sw.getStringId());
+                    continue;
                 }
                 switchAddedToStore(sw);
             }
@@ -892,7 +896,7 @@ public class Controller implements IFloodlightProviderService,
             } else {
                 // FIXME: switch was in store. check if ports or anything else
                 // has changed and send update.
-                if (alwaysClearFlowsOnSwAdd)
+                if (alwaysClearFlowsOnSwActivate)
                     sw.clearAllFlowMods();
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
@@ -994,7 +998,7 @@ public class Controller implements IFloodlightProviderService,
                 // FIXME: what's the right behavior here. Can the store client
                 // even throw this error?
             } catch (SyncException e) {
-                counters.storeSyncException.increment();
+                counters.storeSyncError.increment();
                 log.error("Could not write switch " + sw.getStringId() +
                           " to sync store:", e);
             }
@@ -1008,7 +1012,7 @@ public class Controller implements IFloodlightProviderService,
             try {
                 storeClient.delete(dpid);
             } catch (SyncException e) {
-                counters.storeSyncException.increment();
+                counters.storeSyncError.increment();
                 // ObsoleteVerisonException can't happend because all
                 // store modifications are synchronized
                 log.error("Could not remove switch " +
@@ -1059,7 +1063,7 @@ public class Controller implements IFloodlightProviderService,
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
-                counters.storeSyncException.increment();
+                counters.storeSyncError.increment();
                 log.error("Failed to read switches from sync store", e);
                 return;
             }
@@ -1604,10 +1608,6 @@ public class Controller implements IFloodlightProviderService,
 
     @Override
     @LogMessageDocs({
-        @LogMessageDoc(message="Failed to inject OFMessage {message} onto " +
-                "a null switch",
-                explanation="Failed to process a message because the switch " +
-                " is no longer connected."),
         @LogMessageDoc(level="ERROR",
                 message="Error reinjecting OFMessage on switch {switch}",
                 explanation="An I/O error occured while attempting to " +
@@ -1616,12 +1616,12 @@ public class Controller implements IFloodlightProviderService,
     })
     public boolean injectOfMessage(IOFSwitch sw, OFMessage msg,
                                    FloodlightContext bc) {
-        if (sw == null) {
-            log.info("Failed to inject OFMessage {} onto a null switch", msg);
-            return false;
-        }
+        if (sw == null)
+            throw new NullPointerException("Switch must not be null");
+        if (msg == null)
+            throw new NullPointerException("OFMessage must not be null");
 
-        // FIXME: Do we need to be able to inject messages to switches
+        // FIXME: Do we need to be able to inject messages from switches
         // where we're the slave controller (i.e. they're connected but
         // not active)?
         if (!sw.isActive()) return false;
@@ -1654,6 +1654,12 @@ public class Controller implements IFloodlightProviderService,
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
                                       FloodlightContext bc) {
+        if (sw == null)
+            throw new NullPointerException("Switch must not be null");
+        if (m == null)
+            throw new NullPointerException("OFMessage must not be null");
+        if (bc == null)
+            throw new NullPointerException("FloodlightContext must not be null");
         if (log.isTraceEnabled()) {
             String str = OFMessage.getDataAsString(sw, m, bc);
             log.trace("{}", str);
@@ -1876,10 +1882,10 @@ public class Controller implements IFloodlightProviderService,
         String option = configParams.get("flushSwitchesOnReconnect");
 
         if (option != null && option.equalsIgnoreCase("true")) {
-            this.setAlwaysClearFlowsOnSwAdd(true);
+            this.setAlwaysClearFlowsOnSwActivate(true);
             log.info("Flush switches on reconnect -- Enabled.");
         } else {
-            this.setAlwaysClearFlowsOnSwAdd(false);
+            this.setAlwaysClearFlowsOnSwActivate(false);
             log.info("Flush switches on reconnect -- Disabled");
         }
         this.roleManager = new RoleManager(this.notifiedRole,
@@ -2063,8 +2069,8 @@ public class Controller implements IFloodlightProviderService,
     }
 
     @Override
-    public void setAlwaysClearFlowsOnSwAdd(boolean value) {
-        this.alwaysClearFlowsOnSwAdd = value;
+    public void setAlwaysClearFlowsOnSwActivate(boolean value) {
+        this.alwaysClearFlowsOnSwActivate = value;
     }
 
 
