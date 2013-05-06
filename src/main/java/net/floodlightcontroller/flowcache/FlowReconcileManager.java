@@ -36,8 +36,6 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.SimpleCounter;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
@@ -150,18 +148,6 @@ public class FlowReconcileManager
             logger.trace("Reconciling flow: {}, total: {}",
                 myOfmRc.toString(), flowQueue.size());
         }
-    }
-    
-    @Override
-    public void updateFlowForDestinationDevice(IDevice device,
-                                            FCQueryEvType fcEvType) {
-        // NO-OP
-    }
-
-    @Override
-    public void updateFlowForSourceDevice(IDevice device,
-                                          FCQueryEvType fcEvType) {
-        // NO-OP
     }
     
     // IFloodlightModule

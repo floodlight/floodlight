@@ -118,7 +118,7 @@ public class PortDownReconciliation implements IFloodlightModule,
                 ofmr.outPort = ldu.getSrcPort();
 
                 // Tell the reconcile manager to reconcile matching flows
-                frm.reconcileFlow(ofmr, EventPriority.EVENT_HIGH);
+                frm.reconcileFlow(ofmr, EventPriority.HIGH);
             }
         }
     }

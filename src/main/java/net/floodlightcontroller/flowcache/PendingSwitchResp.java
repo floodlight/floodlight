@@ -16,26 +16,30 @@
 
 package net.floodlightcontroller.flowcache;
 
-import net.floodlightcontroller.flowcache.IFlowReconcileEngineService.FCQueryEvType;
-
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
 /**
  * The Class PendingSwitchResp. This object is used to track the pending
  * responses to switch flow table queries.
  */
 public class PendingSwitchResp {
-    protected FCQueryEvType evType;
+    protected boolean requeryType;
+    protected EventPriority priority;
 
     public PendingSwitchResp(
-            FCQueryEvType evType) {
-        this.evType      = evType;
+            boolean requeryType, EventPriority priority) {
+        this.requeryType = requeryType;
+        this.priority = priority;
     }
     
-    public FCQueryEvType getEvType() {
-        return evType;
+    public boolean getRequeryType() {
+        return requeryType;
     }
 
-    public void setEvType(FCQueryEvType evType) {
-        this.evType = evType;
+    public void setRequeryType(boolean requeryType) {
+        this.requeryType = requeryType;
+    }
+    public EventPriority getEventPriority() {
+        return priority;
     }
 }

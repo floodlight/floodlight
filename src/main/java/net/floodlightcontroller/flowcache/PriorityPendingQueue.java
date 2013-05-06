@@ -1,8 +1,6 @@
 package net.floodlightcontroller.flowcache;
 
-import java.util.AbstractQueue;
-import java.util.Iterator;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -26,25 +24,25 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author meiyang
  *
  */
-public class PriorityPendingQueue<E> extends AbstractQueue<E> {
-    private LinkedBlockingQueue<E> highPriorityQueue;
-    private LinkedBlockingQueue<E> mediumPriorityQueue;
-    private LinkedBlockingQueue<E> lowPriorityQueue;
+public class PriorityPendingQueue<E> {
+    private ArrayBlockingQueue<E> highPriorityQueue;
+    private ArrayBlockingQueue<E> mediumPriorityQueue;
+    private ArrayBlockingQueue<E> lowPriorityQueue;
     private final AtomicInteger count = new AtomicInteger(0);
     private final ReentrantLock takeLock = new ReentrantLock();
     private final Condition notEmpty = takeLock.newCondition();
     private final ReentrantLock putLock = new ReentrantLock();
     private final Condition notFull = putLock.newCondition();
-    private int capacity;
+    private final int capacity;
     public enum EventPriority {
-        EVENT_HIGH,
-        EVENT_MEDIUM,
-        EVENT_LOW,
+        HIGH,
+        MEDIUM,
+        LOW,
     }
     public PriorityPendingQueue() {
-        highPriorityQueue=   new LinkedBlockingQueue<E>();
-        mediumPriorityQueue= new LinkedBlockingQueue<E>();
-        lowPriorityQueue=    new LinkedBlockingQueue<E>();
+        highPriorityQueue=   new ArrayBlockingQueue<E>(100);
+        mediumPriorityQueue= new ArrayBlockingQueue<E>(1000);
+        lowPriorityQueue=    new ArrayBlockingQueue<E>(5000);
         capacity= Integer.MAX_VALUE;
     }
 
@@ -139,11 +137,11 @@ public class PriorityPendingQueue<E> extends AbstractQueue<E> {
     }
 
     private void insert(E e, EventPriority p) {
-        if (p==EventPriority.EVENT_HIGH)
+        if (p==EventPriority.HIGH)
             highPriorityQueue.offer(e);
-        if (p==EventPriority.EVENT_MEDIUM)
+        if (p==EventPriority.MEDIUM)
             mediumPriorityQueue.offer(e);
-        if (p==EventPriority.EVENT_LOW)
+        if (p==EventPriority.LOW)
             lowPriorityQueue.offer(e);
     }
 
@@ -166,25 +164,28 @@ public class PriorityPendingQueue<E> extends AbstractQueue<E> {
              takeLock.unlock();
          }
      }
-
-    @Override
-    public Iterator<E> iterator() {
-        // TODO Auto-generated method stub
-        return null;
+    private void fullyLock() {
+        putLock.lock();
+        takeLock.lock();
     }
-
-    @Override
+    private void fullyUnlock() {
+        takeLock.unlock();
+        putLock.unlock();
+    }
     public int size() {
         return count.get();
     }
-    @Override
     public void clear() {
-        highPriorityQueue.clear();
-        mediumPriorityQueue.clear();
-        lowPriorityQueue.clear();
-        count.set(0);
+        fullyLock();
+        try {
+            highPriorityQueue.clear();
+            mediumPriorityQueue.clear();
+            lowPriorityQueue.clear();
+            count.set(0);
+        } finally {
+            fullyUnlock();
+        }
     }
-    @Override
     public boolean isEmpty() {
         return count.get() == 0;
     }

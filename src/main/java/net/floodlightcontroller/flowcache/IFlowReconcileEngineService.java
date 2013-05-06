@@ -16,7 +16,6 @@
 
 package net.floodlightcontroller.flowcache;
 import net.floodlightcontroller.core.FloodlightContextStore;
-import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -32,47 +31,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * @author MeiYang
  */
 public interface IFlowReconcileEngineService extends IFloodlightService {
-
-/*    public static final String FLOWCACHE_APP_NAME =
-        "net.floodlightcontroller.flowcache.appName";
-    public static final String FLOWCACHE_APP_INSTANCE_NAME =
-        "net.floodlightcontroller.flowcache.appInstanceName";
-*/
-    /**
-     * The flow reconcile engine trigger event type indicating the event that triggered the
-     * query. The callerOpaqueObj can be keyed based on this event type
-     */
-    public static enum FCQueryEvType {
-        /** The GET query. Flows need not be reconciled for this query type */
-        GET,
-        /** A new App was added. */
-        BVS_ADDED,
-        /** An App was deleted. */
-        BVS_DELETED,
-        /** Interface rule of an app was modified */
-        BVS_INTERFACE_RULE_CHANGED,
-        BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT,
-        BVS_INTERFACE_RULE_CHANGED_MATCH_MAC,
-        BVS_INTERFACE_RULE_CHANGED_MATCH_VLAN,
-        BVS_INTERFACE_RULE_CHANGED_MATCH_IPSUBNET,
-        BVS_INTERFACE_RULE_CHANGED_MATCH_TAG,
-        /** Some App configuration was changed */
-        BVS_PRIORITY_CHANGED,
-        /** ACL configuration was changed */
-        ACL_CONFIG_CHANGED,
-        /** VRS routing rule was changed */
-        VRS_ROUTING_RULE_CHANGED,
-        /** device had moved to a different port in the network */
-        DEVICE_MOVED,
-        /** device's property had changed, such as tag assignment */
-        DEVICE_PROPERTY_CHANGED,
-        /** Link down */
-        LINK_DOWN,
-        /** second round query caused by rewrite flags set */
-        REWRITE_QUERY,
-        /**query based on Destination device */
-        FLOW_QUERY_DEST_DEVICE,
-    }
     /**
      * A FloodlightContextStore object that can be used to interact with the
      * FloodlightContext information about flowCache.
@@ -81,30 +39,21 @@ public interface IFlowReconcileEngineService extends IFloodlightService {
         new FloodlightContextStore<String>();
     public static final String FLOWRECONCILE_APP_INSTANCE_NAME = "net.floodlightcontroller.flowcache.appInstanceName";
     /**
-     * Submit a network flow query with query parameters specified in FCQueryObj
-     * object. The query object can be created using one of the newFCQueryObj
+     * Submit a network flow query with query parameters specified in ReconcileQueryObj
+     * object. The query object can be created using one of the new ReconcileQueryObj
      * helper functions in IFlowCache interface.
      *
-     * The queried flows are returned via the flowQueryRespHandler() callback
-     * that the caller must implement. The caller can match the query with
-     * the response using unique callerOpaqueData which remains unchanged
-     * in the request and response callback.
-     *
-     * @see  com.bigswitch.floodlight.flowcache#flowQueryRespHandler
      * @param query the flow cache query object as input
      */
-    public void submitFlowQueryEvent(FCQueryObj query, EventPriority priority);
+    public void submitFlowQueryEvent(FlowReconcileQuery query);
 
     /**
      * Flush Local Counter Updates
      *
      */
     public void updateFlush();
-    public void querySwitchFlowTable(long swDpid);
 
     public void init(FloodlightModuleContext fmc) throws FloodlightModuleException;
 
     public void startUp(FloodlightModuleContext fmc);
-
-    public void removedLink(long id, short s, long id2, short t);
 }
