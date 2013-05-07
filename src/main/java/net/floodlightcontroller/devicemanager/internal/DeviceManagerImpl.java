@@ -478,12 +478,10 @@ IFlowReconcileListener, IInfoProvider {
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address, switchDPID,
                               switchPort, null);
-        /**
         if (!allKeyFieldsPresent(e, entityClassifier.getKeyFields())) {
             throw new IllegalArgumentException("Not all key fields specified."
                       + " Required fields: " + entityClassifier.getKeyFields());
         }
-        */
         return findDeviceByEntity(e);
     }
 
