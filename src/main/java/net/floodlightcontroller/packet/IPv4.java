@@ -378,8 +378,9 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        isFragment = ((this.flags & IPV4_FLAGS_MOREFRAG) != 0) ||
-                (this.fragmentOffset != 0);
+        isFragment = ((this.flags & IPV4_FLAGS_DONTFRAG) == 0) &&
+                ((this.flags & IPV4_FLAGS_MOREFRAG) != 0 ||
+                this.fragmentOffset != 0);
         if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
