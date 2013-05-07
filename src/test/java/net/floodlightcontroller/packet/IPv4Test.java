@@ -143,4 +143,22 @@ public class IPv4Test {
         assertTrue(packet2.isFragment());
         assertTrue(Arrays.equals(pktSerializedLastFrag, pktSerialized2));
     }
+
+    @Test
+    public void testDeserializeDontFragment() {
+        // IP packet with more frag bit set
+        byte[] pktSerializedDontFrag = new byte[] { 0x45, 0x00,
+                0x00, 0x2e, 0x41, (byte) 0xbe, 0x60, 0x00, 0x40, 0x06,
+                (byte) 0xd4, (byte) 0xf0, (byte) 0xc0, (byte) 0xa8, 0x02, (byte) 0xdb, (byte) 0xd0, 0x55,
+                (byte) 0x90, 0x42, (byte) 0xd5, 0x48, 0x01, (byte) 0xbb, (byte) 0xe3, 0x50,
+                (byte) 0xb2, 0x2f, (byte) 0xfc, (byte) 0xf8, (byte) 0xa8, 0x2c, 0x50, 0x18,
+                (byte) 0xff, (byte) 0xff, 0x24, 0x3c, 0x00, 0x00, 0x14, 0x03,
+                0x01, 0x00, 0x01, 0x01,
+        };
+        IPv4 packet1 = new IPv4();
+        packet1.deserialize(pktSerializedDontFrag, 0, pktSerializedDontFrag.length);
+        byte[] pktSerialized1 = packet1.serialize();
+        assertTrue(!packet1.isFragment());
+        assertTrue(Arrays.equals(pktSerializedDontFrag, pktSerialized1));
+    }
 }
