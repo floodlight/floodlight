@@ -40,7 +40,7 @@ public class PriorityPendingQueue<E> {
         LOW,
     }
     public PriorityPendingQueue() {
-        highPriorityQueue=   new ArrayBlockingQueue<E>(100);
+        highPriorityQueue=   new ArrayBlockingQueue<E>(1000);
         mediumPriorityQueue= new ArrayBlockingQueue<E>(1000);
         lowPriorityQueue=    new ArrayBlockingQueue<E>(5000);
         capacity= Integer.MAX_VALUE;

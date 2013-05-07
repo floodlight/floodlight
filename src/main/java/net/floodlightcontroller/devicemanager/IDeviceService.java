@@ -211,6 +211,9 @@ public interface IDeviceService extends IFloodlightService {
 
     public void removeSuppressAPs(long swId, short port);
 
+    public IDevice findDeviceByMac(long macAddress)
+            throws IllegalArgumentException;
+
     public Set<SwitchPort> getSuppressAPs();
 
 }
