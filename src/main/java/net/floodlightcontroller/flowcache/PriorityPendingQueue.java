@@ -136,13 +136,20 @@ public class PriorityPendingQueue<E> {
         return first;
     }
 
-    private void insert(E e, EventPriority p) {
-        if (p==EventPriority.HIGH)
-            highPriorityQueue.offer(e);
-        if (p==EventPriority.MEDIUM)
-            mediumPriorityQueue.offer(e);
-        if (p==EventPriority.LOW)
-            lowPriorityQueue.offer(e);
+    private boolean insert(E e, EventPriority p) {
+        boolean result = false;
+        switch (p) {
+            case HIGH:
+                result = highPriorityQueue.offer(e);
+                break;
+            case MEDIUM:
+                result = mediumPriorityQueue.offer(e);
+                break;
+            case LOW:
+                result = lowPriorityQueue.offer(e);
+                break;
+        }
+        return result;
     }
 
     private void signalNotFull() {

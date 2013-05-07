@@ -74,13 +74,13 @@ public class FlowReconcileManager
     String controllerPktInCounterName;
     protected SimpleCounter lastPacketInCounter;
     
-    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
+    protected final static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
     /** a minimum flow reconcile rate so that it won't stave */
-    protected static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
+    protected final static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
     
     /** start flow reconcile in 10ms after a new reconcile request is received.
      *  The max delay is 1 second. */
-    protected static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
+    protected final static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
     protected Date lastReconcileTime;
     
     /** Config to enable or disable flowReconcile */
