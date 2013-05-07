@@ -580,8 +580,12 @@ class OFChannelHandler
                             "Exception while reading description during handshake");
                     throw new SwitchStateException(msg, ex);
                 }
-                h.controller.addSwitchChannelAndSendInitialRole(h);
+                // We need to set the new state /before/ we call addSwitchChannel
+                // because addSwitchChannel will eventually call setRole
+                // which can in turn decide that the switch doesn't support
+                // roles and transition the state straight to MASTER.
                 h.setState(WAIT_INITIAL_ROLE);
+                h.controller.addSwitchChannelAndSendInitialRole(h);
             }
 
             @Override
