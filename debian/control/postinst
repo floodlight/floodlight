@@ -1,0 +1,33 @@
+#!/bin/sh -e
+
+NAME=floodlight
+
+case "$1" in
+    configure)
+        if ! id $NAME > /dev/null 2>&1 ; then
+            adduser --quiet --group --system --disabled-password \
+                --no-create-home --home /dev/null $NAME
+        fi
+	mkdir -p /var/log/floodlight
+	mkdir -p /var/lib/floodlight
+        chown -R $NAME:$NAME /var/log/floodlight
+        chown -R $NAME:$NAME /var/lib/floodlight
+        if [ ! -f /etc/floodlight/auth_credentials.jceks ]; then
+            authtool -a CHALLENGE_RESPONSE \
+                -ks /etc/floodlight/auth_credentials.jceks \
+                -kp dcbc178a0a3a8674f048ac86372ac456
+        fi
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

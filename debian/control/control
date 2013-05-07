@@ -1,0 +1,14 @@
+Package: [[name]]
+Version: [[version]]
+Section: net
+Priority: low
+Maintainer: rob.adams@bigswitch.com
+Architecture: all
+Depends: adduser,
+ default-jre-headless | java6-runtime-headless
+Description: Floodlight is a high performance Java based OpenFlow controller originally
+ written by David Erickson at Stanford University.
+ .
+ Floodlight supports a broad range of virtual and physical OpenFlow switches
+ and has rich support for mixed OpenFlow and non-OpenFlow networks supporting
+ management of multiple islands of OpenFlow switches.
