@@ -43,6 +43,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
+import net.floodlightcontroller.core.IReadyForReconcileListener;
 import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -395,5 +396,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public Long getUptime() {
         RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
         return rb.getUptime();
+    }
+
+    @Override
+    public void addReadyForReconcileListener(IReadyForReconcileListener l) {
+        // do nothing.
     }
 }

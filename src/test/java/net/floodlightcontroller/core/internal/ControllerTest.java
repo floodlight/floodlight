@@ -42,6 +42,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.IReadyForReconcileListener;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.SwitchSyncRepresentation;
@@ -1237,7 +1238,7 @@ public class ControllerTest extends FloodlightTestCase {
      * inactive to active
      */
     @Test
-    public void testSwitchAddWithRoleChange() throws Exception {
+    public void testSwitchAddWithRoleChangeSomeReconnect() throws Exception {
         int consolidateStoreDelayMs = 50;
         doSetUp(Role.SLAVE);
 
@@ -1254,11 +1255,18 @@ public class ControllerTest extends FloodlightTestCase {
         IOFSwitchListener switchListener = createMock(IOFSwitchListener.class);
         controller.addOFSwitchListener(switchListener);
 
+        // Add readyForReconcile listener
+        IReadyForReconcileListener readyForReconcileListener =
+                createMock(IReadyForReconcileListener.class);
+        controller.addReadyForReconcileListener(readyForReconcileListener);
+
         //---------------------------------------
         // Initialization
         //---------------------------------------
 
         // Switch 1
+        // no actual IOFSwitch here because we simply add features reply
+        // and desc stats to store
         OFFeaturesReply fr1a = createOFFeaturesReply();
         fr1a.setDatapathId(1L);
         OFPhysicalPort p = createOFPhysicalPort("P1", 1);
@@ -1276,6 +1284,8 @@ public class ControllerTest extends FloodlightTestCase {
         fr1b.setPorts(ports1b);
 
         // Switch 2
+        // no actual IOFSwitch here because we simply add features reply
+        // and desc stats to store
         OFFeaturesReply fr2a = createOFFeaturesReply();
         fr2a.setDatapathId(2L);
         List<OFPhysicalPort> ports2a = new ArrayList<OFPhysicalPort>(ports1a);
@@ -1288,11 +1298,16 @@ public class ControllerTest extends FloodlightTestCase {
         List<OFPhysicalPort> ports2b = Collections.singletonList(p);
         fr2b.setPorts(ports2b);
 
+        // Switches 3 and 4 are create with default features reply and desc
+        // so nothing to do here
+
         //---------------------------------------
         // Adding switches to store
         //---------------------------------------
 
         replay(haListener); // nothing should happen to haListener
+        replay(readyForReconcileListener); // nothing should happen to
+                                           // readyForReconcileListener
 
         // add switch1 with fr1a to store
         reset(switchListener);
@@ -1343,6 +1358,21 @@ public class ControllerTest extends FloodlightTestCase {
         assertEquals(3L, sw.getId());
         assertFalse("Switch should be inactive", sw.isActive());
 
+        // add switch 4 to store
+        reset(switchListener);
+        switchListener.switchAdded(4L);
+        expectLastCall().once();
+        replay(switchListener);
+        doAddSwitchToStore(4L, null, null);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        reset(switchListener);
+
+        sw = controller.getSwitch(4L);
+        assertNotNull("Switch should be present", sw);
+        assertEquals(4L, sw.getId());
+        assertFalse("Switch should be inactive", sw.isActive());
+
         // update switch 1 with fr1b
         reset(switchListener);
         switchListener.switchPortChanged(1L);
@@ -1365,11 +1395,13 @@ public class ControllerTest extends FloodlightTestCase {
         expectedDpids.add(1L);
         expectedDpids.add(2L);
         expectedDpids.add(3L);
+        expectedDpids.add(4L);
         assertEquals(expectedDpids, controller.getAllSwitchDpids());
         Map<Long, IOFSwitch> expectedSwitchMap = new HashMap<Long, IOFSwitch>();
         expectedSwitchMap.put(1L, controller.getSwitch(1L));
         expectedSwitchMap.put(2L, controller.getSwitch(2L));
         expectedSwitchMap.put(3L, controller.getSwitch(3L));
+        expectedSwitchMap.put(4L, controller.getSwitch(4L));
         assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
 
         verify(haListener);
@@ -1440,27 +1472,58 @@ public class ControllerTest extends FloodlightTestCase {
         assertEquals(3L, sw.getId());
         assertFalse("Switch should be inactive", sw.isActive());
 
+        // Do not activate switch 4, but it should still be present
+        sw = controller.getSwitch(4L);
+        IOFSwitch sw4 = sw;
+        assertNotNull("Switch should be present", sw);
+        assertEquals(4L, sw.getId());
+        assertFalse("Switch should be inactive", sw.isActive());
+
         // Check getAllSwitchDpids() and getAllSwitchMap()
         expectedDpids = new HashSet<Long>();
         expectedDpids.add(1L);
         expectedDpids.add(2L);
         expectedDpids.add(3L);
+        expectedDpids.add(4L);
         assertEquals(expectedDpids, controller.getAllSwitchDpids());
         expectedSwitchMap = new HashMap<Long, IOFSwitch>();
         expectedSwitchMap.put(1L, sw1);
         expectedSwitchMap.put(2L, sw2);
         expectedSwitchMap.put(3L, sw3);
+        expectedSwitchMap.put(4L, sw4);
         assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
+
+        // silently remove switch 4 from the store and notify the
+        // store listener. Since the controller is MASTER it will ignore
+        // this notification.
+        reset(switchListener);
+        replay(switchListener);
+        doRemoveSwitchFromStore(4L);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        // Switch should still be queryable
+        sw = controller.getSwitch(4L);
+        assertNotNull("Switch should be present", sw);
+        assertEquals(4L, sw.getId());
+        assertFalse("Switch should be inactive", sw.isActive());
 
         //--------------------------------
         // Wait for consolidateStore
         //--------------------------------
+        verify(readyForReconcileListener);
+        reset(readyForReconcileListener);
+        readyForReconcileListener.readyForReconcile();
+        replay(readyForReconcileListener);
         reset(switchListener);
         switchListener.switchRemoved(3L);
+        switchListener.switchRemoved(4L);
         replay(switchListener);
         Thread.sleep(consolidateStoreDelayMs + 5);
         controller.processUpdateQueueForTesting();
         verify(switchListener);
+        verify(readyForReconcileListener);
+        reset(readyForReconcileListener);
+        replay(readyForReconcileListener);
 
         // Verify the expected switches are all there. no more no less
         sw = controller.getSwitch(1L);
@@ -1486,9 +1549,198 @@ public class ControllerTest extends FloodlightTestCase {
         assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
 
         verify(haListener);
+        verify(readyForReconcileListener);
     }
 
+    /**
+     * This test goes through the SLAVE->MASTER program flow. We'll start as
+     * SLAVE. Add switches to the store while slave, update these switches
+     * then transition to master, make all "connect"
+     *
+     * Supplements testSwitchAddWithRoleChangeSomeReconnect() and thus does
+     * less extensive testing. We are really only interested in verifying
+     * that we get the readyForReconciliation event before
+     * consolidateStore runs.
+     */
+    @Test
+    public void testSwitchAddWithRoleChangeAllReconnect() throws Exception {
+        int consolidateStoreDelayMs = 50;
+        doSetUp(Role.SLAVE);
 
+        // Add HA Listener
+        IHAListener haListener = createMock(IHAListener.class);
+        expect(haListener.getName()).andReturn("foo").anyTimes();
+        setupListenerOrdering(haListener);
+        replay(haListener);
+        controller.addHAListener(haListener);
+        verify(haListener);
+        reset(haListener);
+
+        // Add switch listener
+        IOFSwitchListener switchListener = createMock(IOFSwitchListener.class);
+        controller.addOFSwitchListener(switchListener);
+
+        // Add readyForReconcile listener
+        IReadyForReconcileListener readyForReconcileListener =
+                createMock(IReadyForReconcileListener.class);
+        controller.addReadyForReconcileListener(readyForReconcileListener);
+
+        //---------------------------------------
+        // Adding switches to store
+        //---------------------------------------
+
+        replay(haListener); // nothing should happen to haListener
+        replay(readyForReconcileListener); // nothing should happen to
+                                           // readyForReconcileListener
+
+        // add switch 1 to store
+        reset(switchListener);
+        switchListener.switchAdded(1L);
+        expectLastCall().once();
+        replay(switchListener);
+        doAddSwitchToStore(1L, null, null);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        reset(switchListener);
+
+        IOFSwitch sw = controller.getSwitch(1L);
+        assertNotNull("Switch should be present", sw);
+        assertEquals(1L, sw.getId());
+        assertFalse("Switch should be inactive", sw.isActive());
+
+        // add switch 2 to store
+        reset(switchListener);
+        switchListener.switchAdded(2L);
+        expectLastCall().once();
+        replay(switchListener);
+        doAddSwitchToStore(2L, null, null);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        reset(switchListener);
+
+        sw = controller.getSwitch(2L);
+        assertNotNull("Switch should be present", sw);
+        assertEquals(2L, sw.getId());
+        assertFalse("Switch should be inactive", sw.isActive());
+
+        // Check getAllSwitchDpids() and getAllSwitchMap()
+        Set<Long> expectedDpids = new HashSet<Long>();
+        expectedDpids.add(1L);
+        expectedDpids.add(2L);
+        assertEquals(expectedDpids, controller.getAllSwitchDpids());
+        Map<Long, IOFSwitch> expectedSwitchMap = new HashMap<Long, IOFSwitch>();
+        expectedSwitchMap.put(1L, controller.getSwitch(1L));
+        expectedSwitchMap.put(2L, controller.getSwitch(2L));
+        assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
+
+        verify(haListener);
+        //--------------------------------------
+        // Transition to master
+        //--------------------------------------
+        reset(haListener);
+        haListener.transitionToMaster();
+        expectLastCall().once();
+        replay(haListener);
+        controller.setConsolidateStoreTaskDelay(consolidateStoreDelayMs);
+        controller.setRole(Role.MASTER, "FooBar");
+        controller.processUpdateQueueForTesting();
+        verify(haListener);
+        reset(haListener);
+        replay(haListener);
+
+        //--------------------------------------
+        // Activate switches
+        //--------------------------------------
+
+        // Activate switch 1
+        IOFSwitch sw1 = createMock(IOFSwitch.class);
+        setupSwitchForAddSwitch(sw1, 1L, null, null);
+        reset(switchListener);
+        switchListener.switchActivated(1L);
+        expectLastCall().once();
+        replay(sw1);
+        replay(switchListener);
+        controller.switchActivated(sw1);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        verify(sw1);
+
+        sw = controller.getSwitch(1L);
+        assertNotNull("Switch should be present", sw);
+        assertSame(sw1, sw);   // the mock switch should be returned
+
+        // Activate switch 2
+        // Since this is the last inactive switch to activate we should
+        // get the readyForReconcile notifiction
+        verify(readyForReconcileListener);
+        reset(readyForReconcileListener);
+        readyForReconcileListener.readyForReconcile();
+        replay(readyForReconcileListener);
+        controller.setAlwaysClearFlowsOnSwActivate(true);
+        IOFSwitch sw2 = createMock(IOFSwitch.class);
+        setupSwitchForAddSwitch(sw2, 2L, null, null);
+        sw2.clearAllFlowMods();
+        expectLastCall().once();
+        reset(switchListener);
+        switchListener.switchActivated(2L);
+        expectLastCall().once();
+        replay(sw2);
+        replay(switchListener);
+        controller.switchActivated(sw2);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        verify(sw2);
+        verify(readyForReconcileListener);
+
+
+        sw = controller.getSwitch(2L);
+        assertNotNull("Switch should be present", sw);
+        assertSame(sw2, sw); // the mock switch should be returned
+
+
+        // Check getAllSwitchDpids() and getAllSwitchMap()
+        expectedDpids = new HashSet<Long>();
+        expectedDpids.add(1L);
+        expectedDpids.add(2L);
+        assertEquals(expectedDpids, controller.getAllSwitchDpids());
+        expectedSwitchMap = new HashMap<Long, IOFSwitch>();
+        expectedSwitchMap.put(1L, sw1);
+        expectedSwitchMap.put(2L, sw2);
+        assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
+
+        //--------------------------------
+        // Wait for consolidateStore: a no-op
+        //--------------------------------
+        reset(switchListener);
+        replay(switchListener);
+        reset(readyForReconcileListener);
+        replay(readyForReconcileListener);
+        Thread.sleep(consolidateStoreDelayMs + 5);
+        controller.processUpdateQueueForTesting();
+        verify(switchListener);
+        verify(readyForReconcileListener);
+
+        // Verify the expected switches are all there. no more no less
+        sw = controller.getSwitch(1L);
+        assertNotNull("Switch should be present", sw);
+        assertSame(sw1, sw);   // the mock switch should be returned
+
+        sw = controller.getSwitch(2L);
+        assertNotNull("Switch should be present", sw);
+        assertSame(sw2, sw); // the mock switch should be returned
+
+        // Check getAllSwitchDpids() and getAllSwitchMap()
+        expectedDpids = new HashSet<Long>();
+        expectedDpids.add(1L);
+        expectedDpids.add(2L);
+        assertEquals(expectedDpids, controller.getAllSwitchDpids());
+        expectedSwitchMap = new HashMap<Long, IOFSwitch>();
+        expectedSwitchMap.put(1L, sw1);
+        expectedSwitchMap.put(2L, sw2);
+        assertEquals(expectedSwitchMap, controller.getAllSwitchMap());
+
+        verify(haListener);
+    }
 
     /**
      * Disconnect a switch. normal program flow
