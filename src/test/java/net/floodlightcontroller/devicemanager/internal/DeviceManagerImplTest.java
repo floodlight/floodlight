@@ -41,10 +41,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -1568,17 +1570,20 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity4 = new Entity(4L, (short)4, 3, 5L, 2, new Date());
         Entity entity5 = new Entity(1L, (short)4, 3, 5L, 2, new Date());
 
-        deviceManager.learnDeviceByEntity(entity1);
+        Device d1 = deviceManager.learnDeviceByEntity(entity1);
         deviceManager.learnDeviceByEntity(entity2);
-        deviceManager.learnDeviceByEntity(entity3);
-        deviceManager.learnDeviceByEntity(entity4);
+        Device d3 = deviceManager.learnDeviceByEntity(entity3);
+        Device d4 = deviceManager.learnDeviceByEntity(entity4);
+
+        IDevice d;
 
         Iterator<? extends IDevice> iter =
                 deviceManager.queryDevices(null, (short)1, 1, null, null);
         int count = 0;
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            assertEquals(d1.getDeviceKey(), d.getDeviceKey());
         }
         assertEquals(1, count);
 
@@ -1586,7 +1591,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         count = 0;
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            assertEquals(d3.getDeviceKey(), d.getDeviceKey());
         }
         assertEquals(1, count);
 
@@ -1598,13 +1604,34 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
         assertEquals(0, count);
 
-        deviceManager.learnDeviceByEntity(entity5);
+        Device d5 = deviceManager.learnDeviceByEntity(entity5);
         iter = deviceManager.queryDevices(null, (short)4, 3, null, null);
         count = 0;
+        Set<Long> deviceKeysFromIterator = new HashSet<Long>();
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            deviceKeysFromIterator.add(d.getDeviceKey());
         }
+        Set<Long> expectedDeviceKeys = new HashSet<Long>();
+        expectedDeviceKeys.add(d4.getDeviceKey());
+        expectedDeviceKeys.add(d5.getDeviceKey());
+        assertEquals(expectedDeviceKeys, deviceKeysFromIterator);
+        assertEquals(2, count);
+
+
+        iter = deviceManager.queryDevices(1L, null, null, null, null);
+        count = 0;
+        deviceKeysFromIterator = new HashSet<Long>();
+        while (iter.hasNext()) {
+            count += 1;
+            d = iter.next();
+            deviceKeysFromIterator.add(d.getDeviceKey());
+        }
+        expectedDeviceKeys = new HashSet<Long>();
+        expectedDeviceKeys.add(d1.getDeviceKey());
+        expectedDeviceKeys.add(d5.getDeviceKey());
+        assertEquals(expectedDeviceKeys, deviceKeysFromIterator);
         assertEquals(2, count);
     }
 
@@ -1614,6 +1641,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                 EnumSet.noneOf(IDeviceService.DeviceField.class);
         indexFields.add(IDeviceService.DeviceField.IPV4);
         indexFields.add(IDeviceService.DeviceField.VLAN);
+        deviceManager.addIndex(false, indexFields);
+
+        indexFields = EnumSet.noneOf(IDeviceService.DeviceField.class);
         deviceManager.addIndex(false, indexFields);
 
         ITopologyService mockTopology = createMock(ITopologyService.class);
@@ -1646,31 +1676,39 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Entity entity4 = new Entity(4L, (short)4, 3, 5L, 2, new Date());
         Entity entity5 = new Entity(1L, (short)4, 3, 5L, 2, new Date());
 
-        IDevice d = deviceManager.learnDeviceByEntity(entity1);
-        deviceManager.learnDeviceByEntity(entity2);
-        deviceManager.learnDeviceByEntity(entity3);
-        deviceManager.learnDeviceByEntity(entity4);
+        IDevice d1 = deviceManager.learnDeviceByEntity(entity1);
+        IDevice d2 = deviceManager.learnDeviceByEntity(entity2);
+        IDevice d3 = deviceManager.learnDeviceByEntity(entity3);
+        IDevice d4 = deviceManager.learnDeviceByEntity(entity4);
+        assertEquals(d1.getEntityClass(), d2.getEntityClass());
+        assertEquals(d1.getEntityClass(), d3.getEntityClass());
+        assertEquals(d1.getEntityClass(), d4.getEntityClass());
+
+        IDevice d;
 
         Iterator<? extends IDevice> iter =
-                deviceManager.queryClassDevices(d.getEntityClass(), null,
+                deviceManager.queryClassDevices(d1.getEntityClass(), null,
                                                 (short)1, 1, null, null);
         int count = 0;
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            assertEquals(d1.getDeviceKey(), d.getDeviceKey());
         }
         assertEquals(1, count);
 
-        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
+        iter = deviceManager.queryClassDevices(d1.getEntityClass(), null,
                                                (short)3, 3, null, null);
         count = 0;
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            assertEquals(d3.getDeviceKey(), d.getDeviceKey());
+
         }
         assertEquals(1, count);
 
-        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
+        iter = deviceManager.queryClassDevices(d1.getEntityClass(), null,
                                                (short)1, 3, null, null);
         count = 0;
         while (iter.hasNext()) {
@@ -1679,14 +1717,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         }
         assertEquals(0, count);
 
-        deviceManager.learnDeviceByEntity(entity5);
-        iter = deviceManager.queryClassDevices(d.getEntityClass(), null,
+        IDevice d5 = deviceManager.learnDeviceByEntity(entity5);
+        assertEquals(d1.getEntityClass(), d5.getEntityClass());
+        iter = deviceManager.queryClassDevices(d1.getEntityClass(), null,
                                                (short)4, 3, null, null);
         count = 0;
+        Set<Long> deviceKeysFromIterator = new HashSet<Long>();
         while (iter.hasNext()) {
             count += 1;
-            iter.next();
+            d = iter.next();
+            deviceKeysFromIterator.add(d.getDeviceKey());
         }
+        Set<Long> expectedDeviceKeys = new HashSet<Long>();
+        expectedDeviceKeys.add(d4.getDeviceKey());
+        expectedDeviceKeys.add(d5.getDeviceKey());
+        assertEquals(expectedDeviceKeys, deviceKeysFromIterator);
         assertEquals(2, count);
     }
 

@@ -191,6 +191,12 @@ public interface IFloodlightProviderService extends
     public void removeHAListener(IHAListener listener);
 
     /**
+     * Add a listener for ready-for-flow-reconcile events
+     * @param l
+     */
+    public void addReadyForReconcileListener(IReadyForReconcileListener l);
+
+    /**
      * Terminate the process
      */
     public void terminate();
