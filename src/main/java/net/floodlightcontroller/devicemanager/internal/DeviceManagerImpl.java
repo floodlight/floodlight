@@ -486,26 +486,6 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public IDevice findDeviceByMac(long macAddress)
-                              throws IllegalArgumentException {
-        Entity entity = new Entity(macAddress, null, null, null,
-                              null, null);
-        Long deviceKey = null;
-        IEntityClass entityClass = null;
-        entityClass = entityClassifier.classifyEntity(entity);
-        if (entityClass == null) {
-            return null;
-        }
-        ClassState classState = getClassState(entityClass);
-        if (classState.classIndex != null) {
-            deviceKey =
-                    classState.classIndex.findByEntity(entity);
-        }
-        if (deviceKey == null) return null;
-        return deviceMap.get(deviceKey);
-    }
-
-    @Override
     public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
                                   Short vlan, Integer ipv4Address)
                                   throws IllegalArgumentException {
