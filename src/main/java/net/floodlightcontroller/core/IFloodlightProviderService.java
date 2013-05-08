@@ -200,6 +200,7 @@ public interface IFloodlightProviderService extends
      * @param sw The switch to use for the message
      * @param msg the message to inject
      * @return True if successfully re-injected, false otherwise
+     * @throws NullPointerException if switch or msg is null
      */
     public boolean injectOfMessage(IOFSwitch sw, OFMessage msg);
 
@@ -207,8 +208,9 @@ public interface IFloodlightProviderService extends
      * Re-injects an OFMessage back into the packet processing chain
      * @param sw The switch to use for the message
      * @param msg the message to inject
-     * @param bContext a floodlight context to use if required
+     * @param bContext a floodlight context to use if required. Can be null
      * @return True if successfully re-injected, false otherwise
+     * @throws NullPointerException if switch or msg is null
      */
     public boolean injectOfMessage(IOFSwitch sw, OFMessage msg,
             FloodlightContext bContext);
@@ -217,7 +219,9 @@ public interface IFloodlightProviderService extends
      * Process written messages through the message listeners for the controller
      * @param sw The switch being written to
      * @param m the message
-     * @param bc any accompanying context object
+     * @param bc any accompanying context object. Can be null in which case a
+     * new context will be allocated and passed to listeners
+     * @throws NullPointerException if switch or msg is null
      */
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
             FloodlightContext bc);
@@ -268,7 +272,7 @@ public interface IFloodlightProviderService extends
     * reconnect, as well as a switch re-attaching to Controller after HA
     * switch over to ACTIVE role
     */
-   public void setAlwaysClearFlowsOnSwAdd(boolean value);
+   public void setAlwaysClearFlowsOnSwActivate(boolean value);
 
    /**
     * Get controller memory information

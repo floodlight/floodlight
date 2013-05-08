@@ -365,7 +365,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     @Override
-    public void setAlwaysClearFlowsOnSwAdd(boolean value) {
+    public void setAlwaysClearFlowsOnSwActivate(boolean value) {
         // TODO Auto-generated method stub
 
     }
