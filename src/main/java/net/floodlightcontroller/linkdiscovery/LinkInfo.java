@@ -36,6 +36,10 @@ public class LinkInfo {
         this.lastBddpReceivedTime = lastBddpReceivedTime;
     }
 
+    /*
+     * Do not use this constructor. Used primarily for JSON
+     * Serialization/Deserialization
+     */
     public LinkInfo() {
         this.srcPortState = null;
         this.dstPortState = null;
