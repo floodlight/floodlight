@@ -643,6 +643,26 @@ public class ControllerTest extends FloodlightTestCase {
         verify(test2);
         verify(test3);
 
+        // Test inject with null switch and no message. Should not work.
+        reset(test1, test2, test3);
+        replay(test1, test2, test3, sw);
+        try {
+            controller.handleOutgoingMessage(null, pi, cntx);
+            fail("handleOutgoindMessage should have thrown a NPE");
+        } catch (NullPointerException e) {
+            // expected
+        }
+        try {
+            controller.handleOutgoingMessage(sw, null, cntx);
+            fail("handleOutgoingMessage should have thrown a NPE");
+        } catch (NullPointerException e) {
+            // expected
+        }
+        verify(test1);
+        verify(test2);
+        verify(test3);
+        verify(sw);
+
         // Test the handleOutgoingMessage
         reset(test1, test2, test3, sw);
         expect(sw.getId()).andReturn(0L).anyTimes();
@@ -654,6 +674,22 @@ public class ControllerTest extends FloodlightTestCase {
         // test1 will not receive any message!
         replay(test1, test2, test3, sw);
         controller.handleOutgoingMessage(sw, m, cntx);
+        verify(test1);
+        verify(test2);
+        verify(test3);
+        verify(sw);
+
+        // Test the handleOutgoingMessage with null context
+        reset(test1, test2, test3, sw);
+        expect(sw.getId()).andReturn(0L).anyTimes();
+        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        expect(test2.receive(same(sw), same(m) , isA(FloodlightContext.class)))
+                .andReturn(Command.STOP);
+        expect(test3.receive(same(sw), same(m) , isA(FloodlightContext.class)))
+                .andReturn(Command.CONTINUE);
+        // test1 will not receive any message!
+        replay(test1, test2, test3, sw);
+        controller.handleOutgoingMessage(sw, m, null);
         verify(test1);
         verify(test2);
         verify(test3);

@@ -1791,7 +1791,7 @@ public class Controller implements IFloodlightProviderService,
         if (m == null)
             throw new NullPointerException("OFMessage must not be null");
         if (bc == null)
-            throw new NullPointerException("FloodlightContext must not be null");
+            bc = new FloodlightContext();
         if (log.isTraceEnabled()) {
             String str = OFMessage.getDataAsString(sw, m, bc);
             log.trace("{}", str);
