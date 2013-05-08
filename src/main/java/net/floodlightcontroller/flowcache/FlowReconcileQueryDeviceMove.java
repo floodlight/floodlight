@@ -16,6 +16,8 @@
 
 package net.floodlightcontroller.flowcache;
 
+import java.util.Arrays;
+
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 
@@ -34,7 +36,7 @@ public class FlowReconcileQueryDeviceMove extends FlowReconcileQuery {
     public FlowReconcileQueryDeviceMove(IDevice deviceMoved, SwitchPort[] oldAp) {
         this();
         this.deviceMoved = deviceMoved;
-        this.oldAp = oldAp;
+        this.oldAp = oldAp.clone();
     }
 
     @Override
@@ -59,7 +61,7 @@ public class FlowReconcileQueryDeviceMove extends FlowReconcileQuery {
         FlowReconcileQueryDeviceMove other = (FlowReconcileQueryDeviceMove) obj;
         if (oldAp == null) {
             if (other.oldAp != null) return false;
-        } else if (!oldAp.equals(other.oldAp)) return false;
+        } else if (!Arrays.equals(oldAp, other.oldAp)) return false;
         if (deviceMoved == null) {
             if (other.deviceMoved != null) return false;
         } else if (!deviceMoved.equals(other.deviceMoved)) return false;
