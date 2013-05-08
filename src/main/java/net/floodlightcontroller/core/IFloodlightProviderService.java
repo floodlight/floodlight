@@ -219,8 +219,9 @@ public interface IFloodlightProviderService extends
      * Process written messages through the message listeners for the controller
      * @param sw The switch being written to
      * @param m the message
-     * @param bc any accompanying context object. Must not be null.
-     * @throws NullPointerException if switch or msg or bc is null
+     * @param bc any accompanying context object. Can be null in which case a
+     * new context will be allocated and passed to listeners
+     * @throws NullPointerException if switch or msg is null
      */
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m,
             FloodlightContext bc);
