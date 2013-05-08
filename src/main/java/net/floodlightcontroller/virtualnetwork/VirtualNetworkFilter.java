@@ -483,7 +483,7 @@ public class VirtualNetworkFilter
         .setMatch(match)
         .setActions(actions)
         .setLengthU(OFFlowMod.MINIMUM_LENGTH);
-        fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+//        fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
         try {
             if (log.isTraceEnabled()) {
                 log.trace("write drop flow-mod srcSwitch={} match={} " + 

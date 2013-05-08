@@ -29,10 +29,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AppCookie {
     static final int APP_ID_BITS = 12;
     static final int APP_ID_SHIFT = (64 - APP_ID_BITS);
-    // we have bits 13-31 unused here ... that's ok!
+    /**the following bit will be set accordingly if the field is rewritten by application. e.g. VRS or floating IP */
+    static final int SRC_MAC_REWRITE_BIT=13;
+    static final int DEST_MAC_REWRITE_BIT=14;
+    static final int SRC_IP_REWRITE_BIT=15;
+    static final int DEST_IP_REWRITE_BIT=16;
+
+ // we have bits 17-31 unused here ... that's ok!
     static final int USER_BITS = 32;
     static final int USER_SHIFT = 0;
 
+    static final long REWRITE_MASK= 0x000f000000000000L;
     private static ConcurrentHashMap<Integer, String> appIdMap =
             new ConcurrentHashMap<Integer, String>();
 
@@ -56,6 +63,43 @@ public class AppCookie {
         return (int)((cookie>> USER_SHIFT) & ((1L << USER_BITS) - 1));
     }
 
+    static public boolean isRewriteFlagSet(long cookie) {
+        if ((cookie & REWRITE_MASK) !=0L)
+            return true;
+        return false;
+    }
+    static public boolean isSrcMacRewriteFlagSet(long cookie) {
+        if ((cookie & (1L << (64-SRC_MAC_REWRITE_BIT))) !=0L)
+            return true;
+        return false;
+    }
+    static public boolean isDestMacRewriteFlagSet(long cookie) {
+        if ((cookie & (1L << (64-DEST_MAC_REWRITE_BIT))) !=0L)
+            return true;
+        return false;
+    }
+    static public boolean isSrcIpRewriteFlagSet(long cookie) {
+        if ((cookie & (1L << (64-SRC_IP_REWRITE_BIT))) !=0L)
+            return true;
+        return false;
+    }
+    static public boolean isDestIpRewriteFlagSet(long cookie) {
+        if ((cookie & (1L << (64-DEST_IP_REWRITE_BIT))) !=0L)
+            return true;
+        return false;
+    }
+    static public long setSrcMacRewriteFlag(long cookie) {
+        return cookie | (1L << (64-SRC_MAC_REWRITE_BIT));
+    }
+    static public long setDestMacRewriteFlag(long cookie) {
+        return cookie | (1L << (64-DEST_MAC_REWRITE_BIT));
+    }
+    static public long setSrcIpRewriteFlag(long cookie) {
+        return cookie | (1L << (64-SRC_IP_REWRITE_BIT));
+    }
+    static public long setDestIpRewriteFlag(long cookie) {
+        return cookie | (1L << (64-DEST_IP_REWRITE_BIT));
+    }
     /**
      * A lame attempt to prevent duplicate application ID.
      * TODO: Once bigdb is merged, we should expose appID->appName map

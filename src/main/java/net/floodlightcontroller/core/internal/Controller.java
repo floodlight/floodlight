@@ -66,7 +66,6 @@ import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
-import net.floodlightcontroller.flowcache.IFlowCacheService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -137,7 +136,6 @@ public class Controller implements IFloodlightProviderService,
     private IRestApiService restApi;
     private ICounterStoreService counterStore = null;
     private IDebugCounterService debugCounters;
-    private IFlowCacheService bigFlowCacheMgr;
     private IStorageSourceService storageSource;
     private IPktInProcessingTimeService pktinProcTime;
     private IThreadPoolService threadPool;
@@ -1402,11 +1400,6 @@ public class Controller implements IFloodlightProviderService,
     void setSyncService(ISyncService syncService) {
         this.syncService = syncService;
     }
-
-    void setFlowCacheMgr(IFlowCacheService flowCacheMgr) {
-        this.bigFlowCacheMgr = flowCacheMgr;
-    }
-
     void setPktInProcessingService(IPktInProcessingTimeService pits) {
         this.pktinProcTime = pits;
     }
@@ -1438,7 +1431,6 @@ public class Controller implements IFloodlightProviderService,
     public void setRole(Role role, String roleChangeDescription) {
         roleManager.setRole(role, roleChangeDescription);
     }
-
 
     // ****************
     // Message handlers
@@ -2264,7 +2256,6 @@ public class Controller implements IFloodlightProviderService,
         // Flush all flow-mods/packet-out/stats generated from this "train"
         OFSwitchBase.flush_all();
         counterStore.updateFlush();
-        bigFlowCacheMgr.updateFlush();
         debugCounters.flushCounters();
     }
 

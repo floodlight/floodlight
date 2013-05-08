@@ -64,6 +64,7 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
@@ -120,6 +121,7 @@ IFlowReconcileListener, IInfoProvider {
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
+    protected IFlowReconcileEngineService flowReconcileEngine;
     protected IDebugCounterService debugCounters;
     private ISyncService syncService;
     private IStoreClient<String,DeviceSyncRepresentation> storeClient;
@@ -484,6 +486,26 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
+    public IDevice findDeviceByMac(long macAddress)
+                              throws IllegalArgumentException {
+        Entity entity = new Entity(macAddress, null, null, null,
+                              null, null);
+        Long deviceKey = null;
+        IEntityClass entityClass = null;
+        entityClass = entityClassifier.classifyEntity(entity);
+        if (entityClass == null) {
+            return null;
+        }
+        ClassState classState = getClassState(entityClass);
+        if (classState.classIndex != null) {
+            deviceKey =
+                    classState.classIndex.findByEntity(entity);
+        }
+        if (deviceKey == null) return null;
+        return deviceMap.get(deviceKey);
+    }
+
+    @Override
     public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
                                   Short vlan, Integer ipv4Address)
                                   throws IllegalArgumentException {
@@ -768,7 +790,6 @@ IFlowReconcileListener, IInfoProvider {
             debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE);
             return Command.STOP;
         }
-
         // Store the source device in the context
         fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -853,6 +874,7 @@ IFlowReconcileListener, IInfoProvider {
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
+        this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
         this.syncService = fmc.getServiceImpl(ISyncService.class);
@@ -1325,8 +1347,10 @@ IFlowReconcileListener, IInfoProvider {
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
         }
 
-        boolean learnap = true;
-        if (swDpid == null ||
+        /**for the new flow cache design, the flow mods retrived are not always from the source, learn AP should be disabled --meiyang*/
+        boolean learnap = false;
+        /**
+         * if (swDpid == null ||
             inPort == null ||
             !isValidAttachmentPoint(swDpid, inPort)) {
             // If this is an internal port or we otherwise don't want
@@ -1337,6 +1361,7 @@ IFlowReconcileListener, IInfoProvider {
             // as a key field.
             learnap = false;
         }
+        */
 
         short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
         return new Entity(dlAddr,
