@@ -19,6 +19,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class LinkInfo {
 
     public LinkInfo(Long firstSeenTime,
@@ -32,6 +34,14 @@ public class LinkInfo {
         this.firstSeenTime = firstSeenTime;
         this.lastLldpReceivedTime = lastLldpReceivedTime;
         this.lastBddpReceivedTime = lastBddpReceivedTime;
+    }
+
+    public LinkInfo() {
+        this.srcPortState = null;
+        this.dstPortState = null;
+        this.firstSeenTime = null;
+        this.lastLldpReceivedTime = null;
+        this.lastBddpReceivedTime = null;
     }
 
     protected Integer srcPortState;
@@ -97,6 +107,7 @@ public class LinkInfo {
         this.dstPortState = dstPortState;
     }
 
+    @JsonIgnore
     public LinkType getLinkType() {
         if (lastLldpReceivedTime != null) {
             return LinkType.DIRECT_LINK;
