@@ -52,6 +52,7 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IReadyForReconcileListener;
@@ -99,6 +100,7 @@ import org.sdnplatform.sync.error.ObsoleteVersionException;
 import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 
 /**
@@ -941,11 +943,34 @@ public class Controller implements IFloodlightProviderService,
         }
 
         /**
+         * Called when ports on the given switch have changed. Writes the
+         * updated switch to the sync store and queues a switch notification
+         * to listeners
+         * @param sw
+         */
+        public synchronized void switchPortsChanged(IOFSwitch sw,
+                                                    OFPhysicalPort port,
+                                                    PortChangeType type) {
+            if (role != Role.MASTER)
+                return;
+            if (!this.activeSwitches.containsKey(sw.getId()))
+                return;
+            // update switch in store
+            addSwitchToStore(sw);
+            // no need to count here. SwitchUpdate.dispatch will count
+            // the portchanged
+            SwitchUpdate update = new SwitchUpdate(sw.getId(),
+                                                   SwitchUpdateType.PORTCHANGED,
+                                                   port, type);
+            addUpdateToQueue(update);
+        }
+
+        /**
          * Called when we receive a store notification about a new or updated
          * switch.
          * @param sw
          */
-        public synchronized void switchAddedToStore(IOFSwitch sw) {
+        private synchronized void switchAddedToStore(IOFSwitch sw) {
             if (role != Role.SLAVE)
                 return; // only read from store if slave
             Long dpid = sw.getId();
@@ -967,7 +992,7 @@ public class Controller implements IFloodlightProviderService,
          * has been removed from the sync store
          * @param dpid
          */
-        public synchronized void switchRemovedFromStore(long dpid) {
+        private synchronized void switchRemovedFromStore(long dpid) {
             if (role != Role.SLAVE)
                 return; // only read from store if slave
             IOFSwitch oldSw = syncedSwitches.remove(dpid);
@@ -1101,9 +1126,13 @@ public class Controller implements IFloodlightProviderService,
             Set<OFPhysicalPort> sw2Ports =
                     new HashSet<OFPhysicalPort>(sw2.getPorts());
             if (! sw1Ports.equals(sw2Ports)) {
+                /* FIXME FIXME FIXME
                 addUpdateToQueue(
                         new SwitchUpdate(sw2.getId(),
-                                         SwitchUpdateType.PORTCHANGED));
+                                         SwitchUpdateType.PORTCHANGED,
+                                         null, null));
+                                         */
+
             }
             if (false) {
                 // FIXME: IF ANYTHING ELSE HAS CHANGED
@@ -1242,7 +1271,7 @@ public class Controller implements IFloodlightProviderService,
      * Update message that indicates that the controller can now start
      * flow reconciliation after a SLAVE->MASTER transition
      */
-    class ReadyForReconcileUpdate implements IUpdate {
+    private class ReadyForReconcileUpdate implements IUpdate {
         @Override
         public void dispatch() {
             counters.readyForReconcile.increment();
@@ -1266,12 +1295,40 @@ public class Controller implements IFloodlightProviderService,
     /**
      * Update message indicating a switch was added or removed
      */
-    class SwitchUpdate implements IUpdate {
-        public long swId;
-        public SwitchUpdateType switchUpdateType;
+    private class SwitchUpdate implements IUpdate {
+        private final long swId;
+        private final SwitchUpdateType switchUpdateType;
+        private final OFPhysicalPort port;
+        private final PortChangeType changeType;
+
+
         public SwitchUpdate(long swId, SwitchUpdateType switchUpdateType) {
+            this(swId, switchUpdateType, null, null);
+        }
+        public SwitchUpdate(long swId,
+                            SwitchUpdateType switchUpdateType,
+                            OFPhysicalPort port,
+                            PortChangeType changeType) {
+            if (switchUpdateType == SwitchUpdateType.PORTCHANGED) {
+                if (port == null) {
+                    throw new NullPointerException("Port must not be null " +
+                            "for PORTCHANGED updates");
+                }
+                if (changeType == null) {
+                    throw new NullPointerException("ChangeType must not be " +
+                            "null for PORTCHANGED updates");
+                }
+            } else {
+                if (port != null || changeType != null) {
+                    throw new IllegalArgumentException("port and changeType " +
+                            "must be null for " + switchUpdateType +
+                            " updates");
+                }
+            }
             this.swId = swId;
             this.switchUpdateType = switchUpdateType;
+            this.port = port;
+            this.changeType = changeType;
         }
         @Override
         public void dispatch() {
@@ -1294,7 +1351,7 @@ public class Controller implements IFloodlightProviderService,
                             break;
                         case PORTCHANGED:
                             counters.switchPortChanged.increment();
-                            listener.switchPortChanged(swId);
+                            listener.switchPortChanged(swId, port, changeType);
                             break;
                         case ACTIVATED:
                             // don't count here. We have more specific
@@ -1320,7 +1377,7 @@ public class Controller implements IFloodlightProviderService,
      * only have a single transition from SLAVE to MASTER.
      */
     private class HARoleUpdate implements IUpdate {
-        private Role newRole;
+        private final Role newRole;
         public HARoleUpdate(Role newRole) {
             if (newRole != Role.MASTER)
                 throw new IllegalArgumentException("Only legal role change is"
@@ -1348,9 +1405,9 @@ public class Controller implements IFloodlightProviderService,
      * IPs of controllers in controller cluster have changed.
      */
     private class HAControllerNodeIPUpdate implements IUpdate {
-        public Map<String,String> curControllerNodeIPs;
-        public Map<String,String> addedControllerNodeIPs;
-        public Map<String,String> removedControllerNodeIPs;
+        public final Map<String,String> curControllerNodeIPs;
+        public final Map<String,String> addedControllerNodeIPs;
+        public final Map<String,String> removedControllerNodeIPs;
         public HAControllerNodeIPUpdate(
                 HashMap<String,String> curControllerNodeIPs,
                 HashMap<String,String> addedControllerNodeIPs,
@@ -1441,11 +1498,11 @@ public class Controller implements IFloodlightProviderService,
      * switch update.
      * @param sw
      */
-     void notifyPortChanged(long dpid) {
-        SwitchUpdate update = new SwitchUpdate(dpid,
-                                               SwitchUpdateType.PORTCHANGED);
-        addUpdateToQueue(update);
-    }
+     void notifyPortChanged(IOFSwitch sw,
+                            OFPhysicalPort port,
+                            PortChangeType changeType) {
+         this.switchManager.switchPortsChanged(sw, port, changeType);
+     }
 
     /**
      * flcontext_cache - Keep a thread local stack of contexts

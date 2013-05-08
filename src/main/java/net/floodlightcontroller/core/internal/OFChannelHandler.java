@@ -11,6 +11,7 @@ import java.util.concurrent.RejectedExecutionException;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.Counters;
@@ -969,21 +970,25 @@ class OFChannelHandler
             OFPhysicalPort port = m.getDesc();
             OFPortReason reason = OFPortReason.fromReasonCode(m.getReason());
 
+            PortChangeType changeType = null;
             switch(reason) {
                 case OFPPR_MODIFY:
                     h.sw.setPort(port);
+                    changeType = PortChangeType.UPDATE;
                     log.debug("Port #{} modified for {}", portNumber, h.sw);
                     break;
                 case OFPPR_ADD:
                     h.sw.setPort(port);
+                    changeType = PortChangeType.ADD;
                     log.debug("Port #{} added for {}", portNumber, h.sw);
                     break;
                 case OFPPR_DELETE:
                     h.sw.deletePort(portNumber);
+                    changeType = PortChangeType.DELETE;
                     log.debug("Port #{} deleted for {}", portNumber, h.sw);
                     break;
             }
-            h.controller.notifyPortChanged(h.sw.getId());
+            h.controller.notifyPortChanged(h.sw, port, changeType);
         }
 
         /**

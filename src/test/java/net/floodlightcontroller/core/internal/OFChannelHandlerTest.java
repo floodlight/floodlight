@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.debugcounter.DebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -1196,7 +1196,7 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.ADD);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
@@ -1214,7 +1214,7 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.UPDATE);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
@@ -1232,7 +1232,7 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.DELETE);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));

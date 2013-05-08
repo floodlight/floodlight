@@ -1785,7 +1785,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      * instead
      */
     @Override
-    public void switchPortChanged(long switchId) {
+    public void switchPortChanged(long switchId,
+                                  OFPhysicalPort port,
+                                  IOFSwitch.PortChangeType type) {
         // no-op
     }
 

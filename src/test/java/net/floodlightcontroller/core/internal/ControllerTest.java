@@ -40,6 +40,7 @@ import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IReadyForReconcileListener;
@@ -87,6 +88,7 @@ import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.IStoreListener.UpdateType;
 import org.sdnplatform.sync.test.MockSyncService;
+
 
 public class ControllerTest extends FloodlightTestCase {
 
@@ -215,7 +217,9 @@ public class ControllerTest extends FloodlightTestCase {
     }
 
 
-    /** Set the mock expectations for sw when sw is passed to addSwitch */
+    /** Set the mock expectations for sw when sw is passed to addSwitch
+     * The same expectations can be used when a new SwitchSyncRepresentation
+     * is created from the given mocked switch */
     protected void setupSwitchForAddSwitch(IOFSwitch sw, long dpid,
                                            OFDescriptionStatistics desc,
                                            OFFeaturesReply featuresReply) {
@@ -1135,7 +1139,7 @@ public class ControllerTest extends FloodlightTestCase {
     }
 
 
-    /** add switch to store and then remove while master. no-op */
+    /** (remotely) add switch to store and then remove while master. no-op */
     @Test
     public void testAddSwitchToStoreMaster() throws Exception {
         IOFSwitchListener listener = createMock(IOFSwitchListener.class);
@@ -1411,8 +1415,10 @@ public class ControllerTest extends FloodlightTestCase {
 
         // update switch 1 with fr1b
         reset(switchListener);
+        /* FIXME FIXME FIXME
         switchListener.switchPortChanged(1L);
         expectLastCall().once();
+        */
         replay(switchListener);
         doAddSwitchToStore(1L, null, fr1b);
         controller.processUpdateQueueForTesting();
@@ -1487,8 +1493,10 @@ public class ControllerTest extends FloodlightTestCase {
         reset(switchListener);
         switchListener.switchActivated(2L);
         expectLastCall().once();
+        /* FIXME FIXME FIXME
         switchListener.switchPortChanged(2L);
         expectLastCall().once();
+        */
         replay(sw2);
         replay(switchListener);
         controller.switchActivated(sw2);
@@ -1929,18 +1937,55 @@ public class ControllerTest extends FloodlightTestCase {
 
    /**
     * Test that notifyPortChanged() results in an IOFSwitchListener
-    * update.
+    * update and that its arguments are passed through to
+    * the listener call
     */
    @Test
-   public void testNotifySwitchPortChanged() {
+   public void testNotifySwitchPoArtChanged() throws Exception {
+       long dpid = 42L;
+
+       OFFeaturesReply fr1 = createOFFeaturesReply();
+       fr1.setDatapathId(dpid);
+       OFPhysicalPort p1 = createOFPhysicalPort("Port1", 1);
+       fr1.setPorts(Collections.singletonList(p1));
+
+       OFFeaturesReply fr2 = createOFFeaturesReply();
+       fr1.setDatapathId(dpid);
+       OFPhysicalPort p2 = createOFPhysicalPort("Port1", 1);
+       p2.setAdvertisedFeatures(0xFFFFFFFF); // just some bogus values
+       fr2.setPorts(Collections.singletonList(p2));
+
+       OFDescriptionStatistics desc = createOFDescriptionStatistics();
+
+       // activate switch
+       IOFSwitch sw = doActivateNewSwitch(dpid, desc, fr1);
+
+       // check the store
+       SwitchSyncRepresentation ssr = storeClient.getValue(dpid);
+       assertNotNull(ssr);
+       assertEquals(dpid, ssr.getDpid());
+       assertEquals(1, ssr.getPorts().size());
+       assertEquals(p1, ssr.getPorts().get(0).toOFPhysicalPort());
+
        IOFSwitchListener listener = createMock(IOFSwitchListener.class);
        controller.addOFSwitchListener(listener);
-       listener.switchPortChanged(1L);
+       // setup switch with the new, second features reply (and thus ports)
+       setupSwitchForAddSwitch(sw, dpid, desc, fr2);
+       listener.switchPortChanged(dpid, p2, PortChangeType.UPDATE);
        expectLastCall().once();
        replay(listener);
-       controller.notifyPortChanged(1L);
+       replay(sw);
+       controller.notifyPortChanged(sw, p2, PortChangeType.UPDATE);
        controller.processUpdateQueueForTesting();
        verify(listener);
+       verify(sw);
+
+       // check the store
+       ssr = storeClient.getValue(dpid);
+       assertNotNull(ssr);
+       assertEquals(dpid, ssr.getDpid());
+       assertEquals(1, ssr.getPorts().size());
+       assertEquals(p2, ssr.getPorts().get(0).toOFPhysicalPort());
    }
 
     private Map<String,Object> getFakeControllerIPRow(String id, String controllerId,
