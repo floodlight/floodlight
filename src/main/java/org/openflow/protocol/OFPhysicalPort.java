@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -23,6 +23,7 @@ import java.util.Arrays;
 
 import net.floodlightcontroller.core.web.serializers.ByteArrayMACSerializer;
 import net.floodlightcontroller.core.web.serializers.UShortSerializer;
+import net.floodlightcontroller.util.EnumBitmaps;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -36,42 +37,56 @@ public class OFPhysicalPort {
     public final static int MINIMUM_LENGTH = 48;
     public final static int OFP_ETH_ALEN = 6;
 
-    public enum OFPortConfig {
+    public enum OFPortConfig implements EnumBitmaps.BitmapableEnum {
         OFPPC_PORT_DOWN    (1 << 0) {
+            @Override
             public String toString() {
                 return "port-down (0x1)";
             }
         },
         OFPPC_NO_STP       (1 << 1) {
+            @Override
             public String toString() {
                 return "no-stp (0x2)";
             }
         },
         OFPPC_NO_RECV      (1 << 2) {
+            @Override
             public String toString() {
                 return "no-recv (0x4)";
             }
         },
         OFPPC_NO_RECV_STP  (1 << 3) {
+            @Override
             public String toString() {
                 return "no-recv-stp (0x8)";
             }
         },
         OFPPC_NO_FLOOD     (1 << 4) {
+            @Override
             public String toString() {
                 return "no-flood (0x10)";
             }
         },
         OFPPC_NO_FWD       (1 << 5) {
+            @Override
             public String toString() {
                 return "no-fwd (0x20)";
             }
         },
         OFPPC_NO_PACKET_IN (1 << 6) {
+            @Override
             public String toString() {
                 return "no-pkt-in (0x40)";
             }
+        },
+        OFPPC_BSN_MIRROR_DEST (1 << 31) {
+            @Override
+            public String toString() {
+                return "bsn-mirror-dest (0x80000000)";
+            }
         };
+
 
         protected int value;
 
@@ -82,6 +97,7 @@ public class OFPhysicalPort {
         /**
          * @return the value
          */
+        @Override
         public int getValue() {
             return value;
         }
@@ -89,31 +105,37 @@ public class OFPhysicalPort {
 
     public enum OFPortState {
         OFPPS_LINK_DOWN   (1 << 0) {
+            @Override
             public String toString() {
                 return "link-down (0x1)";
             }
         },
         OFPPS_STP_LISTEN  (0 << 8) {
+            @Override
             public String toString() {
                 return "listen (0x0)";
             }
         },
         OFPPS_STP_LEARN   (1 << 8) {
+            @Override
             public String toString() {
                 return "learn-no-relay (0x100)";
             }
         },
         OFPPS_STP_FORWARD (2 << 8) {
+            @Override
             public String toString() {
                 return "forward (0x200)";
             }
         },
         OFPPS_STP_BLOCK   (3 << 8) {
+            @Override
             public String toString() {
                 return "block-broadcast (0x300)";
             }
         },
         OFPPS_STP_MASK    (3 << 8) {
+            @Override
             public String toString() {
                 return "block-broadcast (0x300)";
             }
@@ -133,63 +155,75 @@ public class OFPhysicalPort {
         }
     }
 
-    public enum OFPortFeatures {
+    public enum OFPortFeatures implements EnumBitmaps.BitmapableEnum {
         OFPPF_10MB_HD    (1 << 0) {
+            @Override
             public String toString() {
                 return "10mb-hd (0x1)";
             }
         },
         OFPPF_10MB_FD    (1 << 1) {
+            @Override
             public String toString() {
                 return "10mb-fd (0x2)";
             }
         },
         OFPPF_100MB_HD   (1 << 2) {
+            @Override
             public String toString() {
                 return "100mb-hd (0x4)";
             }
         },
         OFPPF_100MB_FD   (1 << 3) {
+            @Override
             public String toString() {
                 return "100mb-fd (0x8)";
             }
         },
         OFPPF_1GB_HD     (1 << 4) {
+            @Override
             public String toString() {
                 return "1gb-hd (0x10)";
             }
         },
         OFPPF_1GB_FD     (1 << 5) {
+            @Override
             public String toString() {
                 return "1gb-fd (0x20)";
             }
         },
         OFPPF_10GB_FD    (1 << 6) {
+            @Override
             public String toString() {
                 return "10gb-fd (0x40)";
             }
         },
         OFPPF_COPPER     (1 << 7) {
+            @Override
             public String toString() {
                 return "copper (0x80)";
             }
         },
         OFPPF_FIBER      (1 << 8) {
+            @Override
             public String toString() {
                 return "fiber (0x100)";
             }
         },
         OFPPF_AUTONEG    (1 << 9) {
+            @Override
             public String toString() {
                 return "autoneg (0x200)";
             }
         },
         OFPPF_PAUSE      (1 << 10) {
+            @Override
             public String toString() {
                 return "pause (0x400)";
             }
         },
         OFPPF_PAUSE_ASYM (1 << 11) {
+            @Override
             public String toString() {
                 return "pause-asym (0x800)";
             }
@@ -204,6 +238,7 @@ public class OFPhysicalPort {
         /**
          * @return the value
          */
+        @Override
         public int getValue() {
             return value;
         }
