@@ -503,8 +503,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 debugCounters.updateCounter("linkdiscovery-incoming");
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg,
                                            cntx);
-//            case PORT_STATUS:
-//                return this.handlePortStatus(sw.getId(), (OFPortStatus) msg);
             default:
                 break;
         }
@@ -1602,13 +1600,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             IOFSwitch.PortChangeType type) {
 
         switch (type) {
-        case ADD:
+        case UP:
             processNewPort(switchId, port.getPortNumber());
             break;
-        case DELETE:
+        case DELETE: case DOWN:
             handlePortDown(switchId, port.getPortNumber());
             break;
-        case UPDATE:
+        case OTHER_UPDATE: case ADD:
             // This is something other than port add or delete.
             // Topology does not worry about this.
             // If for some reason the port features change, which

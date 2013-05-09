@@ -969,17 +969,31 @@ class OFChannelHandler
             short portNumber = m.getDesc().getPortNumber();
             OFPhysicalPort port = m.getDesc();
             OFPortReason reason = OFPortReason.fromReasonCode(m.getReason());
-
             PortChangeType changeType = null;
+
             switch(reason) {
                 case OFPPR_MODIFY:
+                    boolean oldEnabled =
+                        h.sw.portEnabled(port.getPortNumber());
+
                     h.sw.setPort(port);
-                    changeType = PortChangeType.UPDATE;
+                    boolean newEnabled =
+                            h.sw.portEnabled(port.getPortNumber());
+
+                    if (!oldEnabled && newEnabled)
+                        changeType = PortChangeType.UP;
+                    else if (oldEnabled && !newEnabled)
+                        changeType = PortChangeType.DOWN;
+                    else changeType = PortChangeType.OTHER_UPDATE;
+
                     log.debug("Port #{} modified for {}", portNumber, h.sw);
                     break;
                 case OFPPR_ADD:
                     h.sw.setPort(port);
-                    changeType = PortChangeType.ADD;
+                    if (h.sw.portEnabled(port.getPortNumber()))
+                        changeType = PortChangeType.UP;
+                    else
+                        changeType = PortChangeType.ADD;
                     log.debug("Port #{} added for {}", portNumber, h.sw);
                     break;
                 case OFPPR_DELETE:
