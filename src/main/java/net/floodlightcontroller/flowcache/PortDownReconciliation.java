@@ -50,6 +50,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
@@ -84,8 +85,8 @@ public class PortDownReconciliation implements IFloodlightModule,
 
     // ITopologyListener
     @Override
-    public void topologyChanged() {
-        for (LDUpdate ldu : topology.getLastLinkUpdates()) {
+    public void topologyChanged(List<LDUpdate> appliedUpdates) {
+        for (LDUpdate ldu : appliedUpdates) {
             if (ldu.getOperation()
                    .equals(ILinkDiscovery.UpdateOperation.PORT_DOWN)) {
 
@@ -116,7 +117,7 @@ public class PortDownReconciliation implements IFloodlightModule,
                 ofmr.outPort = ldu.getSrcPort();
 
                 // Tell the reconcile manager to reconcile matching flows
-                frm.reconcileFlow(ofmr);
+                frm.reconcileFlow(ofmr, EventPriority.HIGH);
             }
         }
     }

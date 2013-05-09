@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  */
 public class SwitchSyncRepresentation {
-    private static class SyncedPort {
+    public static class SyncedPort {
         @JsonProperty
         public short portNumber;
         @JsonProperty

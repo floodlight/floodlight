@@ -55,6 +55,7 @@ import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFFlowRemoved;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
@@ -358,7 +359,9 @@ public class StaticFlowEntryPusher
     }
 
     @Override
-    public void switchPortChanged(long switchId) {
+    public void switchPortChanged(long switchId,
+                                  OFPhysicalPort port,
+                                  IOFSwitch.PortChangeType type) {
         // no-op
     }
 

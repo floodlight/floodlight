@@ -146,7 +146,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     };
 
     public static final int OFSWITCH_APP_ID = 5;
-    
+
     public OFSwitchBase() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
@@ -707,6 +707,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonSerialize(using=ToStringSerializer.class)
     public SocketAddress getInetAddress() {
+        if (channel == null)
+            return null;
         return channel.getRemoteAddress();
     }
 

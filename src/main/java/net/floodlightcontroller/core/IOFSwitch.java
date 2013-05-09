@@ -81,6 +81,10 @@ public interface IOFSwitch {
         }
     }
 
+    public enum PortChangeType {
+        ADD, UPDATE, DELETE
+    }
+
     /**
      * Set IFloodlightProviderService for this switch instance
      * Called immediately after instantiation

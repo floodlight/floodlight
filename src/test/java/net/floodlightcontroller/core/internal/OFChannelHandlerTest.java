@@ -11,6 +11,7 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.debugcounter.DebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -30,6 +31,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openflow.protocol.OFError;
+import org.openflow.protocol.OFError.OFBadRequestCode;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -1194,7 +1196,7 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.ADD);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
@@ -1212,7 +1214,7 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.UPDATE);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
@@ -1230,14 +1232,40 @@ public class OFChannelHandlerTest {
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(dpid);
+        controller.notifyPortChanged(sw, p, PortChangeType.DELETE);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
         verify(sw);
         verify(controller);
-
-
     }
+
+    /**
+     * Test re-assert MASTER
+     *
+     */
+    @Test
+    public void testReassertMaster() throws Exception {
+        testInitialMoveToMasterWithRole();
+
+        OFError err = (OFError)
+                BasicFactory.getInstance().getMessage(OFType.ERROR);
+        err.setXid(42);
+        err.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
+        err.setErrorCode(OFBadRequestCode.OFPBRC_EPERM);
+
+        reset(controller);
+        controller.reassertRole(handler, Role.MASTER);
+        expectLastCall().once();
+        controller.handleMessage(sw, err, null);
+        expectLastCall().once();
+
+        sendMessageToHandlerNoControllerReset(
+                Collections.<OFMessage>singletonList(err));
+
+        verify(sw);
+        verify(controller);
+    }
+
 
 }

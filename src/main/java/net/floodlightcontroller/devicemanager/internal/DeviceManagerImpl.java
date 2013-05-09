@@ -64,6 +64,7 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
@@ -120,6 +121,7 @@ IFlowReconcileListener, IInfoProvider {
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
+    protected IFlowReconcileEngineService flowReconcileEngine;
     protected IDebugCounterService debugCounters;
     private ISyncService syncService;
     private IStoreClient<String,DeviceSyncRepresentation> storeClient;
@@ -768,7 +770,6 @@ IFlowReconcileListener, IInfoProvider {
             debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE);
             return Command.STOP;
         }
-
         // Store the source device in the context
         fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -853,6 +854,7 @@ IFlowReconcileListener, IInfoProvider {
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
+        this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
         this.syncService = fmc.getServiceImpl(ISyncService.class);
@@ -1325,8 +1327,10 @@ IFlowReconcileListener, IInfoProvider {
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
         }
 
-        boolean learnap = true;
-        if (swDpid == null ||
+        /**for the new flow cache design, the flow mods retrived are not always from the source, learn AP should be disabled --meiyang*/
+        boolean learnap = false;
+        /**
+         * if (swDpid == null ||
             inPort == null ||
             !isValidAttachmentPoint(swDpid, inPort)) {
             // If this is an internal port or we otherwise don't want
@@ -1337,6 +1341,7 @@ IFlowReconcileListener, IInfoProvider {
             // as a key field.
             learnap = false;
         }
+        */
 
         short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
         return new Entity(dlAddr,
@@ -2097,9 +2102,8 @@ IFlowReconcileListener, IInfoProvider {
      * Topology listener method.
      */
     @Override
-    public void topologyChanged() {
+    public void topologyChanged(List<LDUpdate> updateList) {
         Iterator<Device> diter = deviceMap.values().iterator();
-        List<LDUpdate> updateList = topology.getLastLinkUpdates();
         if (updateList != null) {
             if (logger.isTraceEnabled()) {
                 for(LDUpdate update: updateList) {
