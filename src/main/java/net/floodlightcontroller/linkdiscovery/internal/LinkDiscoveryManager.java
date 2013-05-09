@@ -91,11 +91,8 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFPortStatus;
-import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -506,8 +503,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 debugCounters.updateCounter("linkdiscovery-incoming");
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg,
                                            cntx);
-            case PORT_STATUS:
-                return this.handlePortStatus(sw.getId(), (OFPortStatus) msg);
             default:
                 break;
         }
@@ -770,122 +765,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //***********************************
     //  Internal Methods - Port Status/ New Port Processing Related
     //***********************************
-
-    /**
-     * Handles an OFPortStatus message from a switch. We will add or delete
-     * LinkTupes as well re-compute the topology if needed.
-     *
-     * @param sw
-     *            The IOFSwitch that sent the port status message
-     * @param ps
-     *            The OFPortStatus message
-     * @return The Command to continue or stop after we process this message
-     */
-    protected Command handlePortStatus(long sw, OFPortStatus ps) {
-
-        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
-        if (iofSwitch == null) return Command.CONTINUE;
-
-        if (log.isTraceEnabled()) {
-            log.trace("handlePortStatus: Switch {} port #{} reason {}; "
-                              + "config is {} state is {}",
-                      new Object[] { iofSwitch.getStringId(),
-                                    ps.getDesc().getPortNumber(),
-                                    ps.getReason(),
-                                    ps.getDesc().getConfig(),
-                                    ps.getDesc().getState() });
-        }
-
-        short port = ps.getDesc().getPortNumber();
-        NodePortTuple npt = new NodePortTuple(sw, port);
-        boolean linkDeleted = false;
-        boolean linkInfoChanged = false;
-
-        lock.writeLock().lock();
-        try {
-            // if ps is a delete, or a modify where the port is down or
-            // configured down
-            if ((byte) OFPortReason.OFPPR_DELETE.ordinal() == ps.getReason()
-                || ((byte) OFPortReason.OFPPR_MODIFY.ordinal() == ps.getReason() && !portEnabled(ps.getDesc()))) {
-                deleteLinksOnPort(npt, "Port Status Changed");
-                LDUpdate update = new LDUpdate(sw, port,
-                                               UpdateOperation.PORT_DOWN);
-                updates.add(update);
-                linkDeleted = true;
-            } else if (ps.getReason() == (byte) OFPortReason.OFPPR_MODIFY.ordinal()) {
-                // If ps is a port modification and the port state has changed
-                // that affects links in the topology
-
-                if (this.portLinks.containsKey(npt)) {
-                    for (Link lt : this.portLinks.get(npt)) {
-                        LinkInfo linkInfo = links.get(lt);
-                        assert (linkInfo != null);
-                        Integer updatedSrcPortState = null;
-                        Integer updatedDstPortState = null;
-                        if (lt.getSrc() == npt.getNodeId()
-                            && lt.getSrcPort() == npt.getPortId()
-                            && (linkInfo.getSrcPortState() != ps.getDesc()
-                                                                .getState())) {
-                            updatedSrcPortState = ps.getDesc().getState();
-                            linkInfo.setSrcPortState(updatedSrcPortState);
-                        }
-                        if (lt.getDst() == npt.getNodeId()
-                            && lt.getDstPort() == npt.getPortId()
-                            && (linkInfo.getDstPortState() != ps.getDesc()
-                                                                .getState())) {
-                            updatedDstPortState = ps.getDesc().getState();
-                            linkInfo.setDstPortState(updatedDstPortState);
-                        }
-                        if ((updatedSrcPortState != null)
-                            || (updatedDstPortState != null)) {
-                            // The link is already known to link discovery
-                            // manager and the status has changed, therefore
-                            // send an LDUpdate.
-                            UpdateOperation operation = getUpdateOperation(linkInfo.getSrcPortState(),
-                                                                           linkInfo.getDstPortState());
-                            updates.add(new LDUpdate(lt.getSrc(),
-                                                     lt.getSrcPort(),
-                                                     lt.getDst(),
-                                                     lt.getDstPort(),
-                                                     getLinkType(lt,
-                                                                 linkInfo),
-                                                     operation));
-                            writeLinkToStorage(lt, linkInfo);
-                            linkInfoChanged = true;
-                        }
-                    }
-                }
-
-                UpdateOperation operation = getUpdateOperation(ps.getDesc()
-                                                                 .getState());
-                updates.add(new LDUpdate(sw, port, operation));
-            }
-
-            if (!linkDeleted && !linkInfoChanged) {
-                if (log.isTraceEnabled()) {
-                    log.trace("handlePortStatus: Switch {} port #{} reason {};"
-                                      + " no links to update/remove",
-                              new Object[] { HexString.toHexString(sw),
-                                            ps.getDesc().getPortNumber(),
-                                            ps.getReason() });
-                }
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
-
-        if (!linkDeleted) {
-            // Send LLDP right away when port state is changed for faster
-            // cluster-merge. If it is a link delete then there is not need
-            // to send the LLDPs right away and instead we wait for the LLDPs
-            // to be sent on the timer as it is normally done
-            // do it outside the write-lock
-            // sendLLDPTask.reschedule(1000, TimeUnit.MILLISECONDS);
-            processNewPort(npt.getNodeId(), npt.getPortId());
-        }
-        return Command.CONTINUE;
-    }
-
     /**
      * Process a new port. If link discovery is disabled on the port, then do
      * nothing. If autoportfast feature is enabled and the port is a fast port,
@@ -918,19 +797,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             // are sent out.
             addToMaintenanceQueue(npt);
         }
-    }
-
-    private boolean portEnabled(OFPhysicalPort port) {
-        if (port == null) return false;
-        if ((OFPortConfig.OFPPC_PORT_DOWN.getValue() & port.getConfig()) > 0)
-            return false;
-        if ((OFPortState.OFPPS_LINK_DOWN.getValue() & port.getState()) > 0)
-            return false;
-        // Port STP state doesn't work with multiple VLANs, so ignore it for now
-        // if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) ==
-        // OFPortState.OFPPS_STP_BLOCK.getValue())
-        // return false;
-        return true;
     }
 
     //***********************************
@@ -1716,39 +1582,50 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //******************
     // IOFSwitchListener
     //******************
-
+    private void handlePortDown(long switchId, short portNumber) {
+            NodePortTuple npt = new NodePortTuple(switchId, portNumber);
+            deleteLinksOnPort(npt, "Port Status Changed");
+            LDUpdate update = new LDUpdate(switchId, portNumber,
+                    UpdateOperation.PORT_DOWN);
+            updates.add(update);
+    }
     /**
-     * We send out LLDP messages when a switch is added to discover the topology
-     *
-     * @param sw
-     *            The IOFSwitch that connected to the controller
+     * We don't react the port changed notifications here. we listen for
+     * OFPortStatus messages directly. Might consider using this notifier
+     * instead
      */
-    // FIXME: @Override
-    public void addedSwitch(IOFSwitch sw) {
+    @Override
+    public void switchPortChanged(long switchId,
+            OFPhysicalPort port,
+            IOFSwitch.PortChangeType type) {
 
-        if (sw.getEnabledPortNumbers() != null) {
-            for (Short p : sw.getEnabledPortNumbers()) {
-                processNewPort(sw.getId(), p);
-            }
+        switch (type) {
+        case UP:
+            processNewPort(switchId, port.getPortNumber());
+            break;
+        case DELETE: case DOWN:
+            handlePortDown(switchId, port.getPortNumber());
+            break;
+        case OTHER_UPDATE: case ADD:
+            // This is something other than port add or delete.
+            // Topology does not worry about this.
+            // If for some reason the port features change, which
+            // we may have to react.
+            break;
         }
-        // Update event history
-        evHistTopoSwitch(sw, EvAction.SWITCH_CONNECTED, "None");
-        LDUpdate update = new LDUpdate(sw.getId(), null,
-                                       UpdateOperation.SWITCH_UPDATED);
-        updates.add(update);
     }
 
-    /**
-     * When a switch disconnects we remove any links from our map and notify.
-     *
-     * @param The
-     *            id of the switch
-     */
-    // FIXME: @Override
-    public void removedSwitch(IOFSwitch iofSwitch) {
+    @Override
+    public void switchAdded(long switchId) {
+        // no-op
+        // We don't do anything at switch added, but we do only when the
+        // switch is activated.
+    }
+
+    @Override
+    public void switchRemoved(long sw) {
         // Update event history
-        long sw = iofSwitch.getId();
-        evHistTopoSwitch(iofSwitch, EvAction.SWITCH_DISCONNECTED, "None");
+        evHistTopoSwitch(sw, EvAction.SWITCH_DISCONNECTED, "None");
         List<Link> eraseList = new ArrayList<Link>();
         lock.writeLock().lock();
         try {
@@ -1777,33 +1654,22 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } finally {
             lock.writeLock().unlock();
         }
-    }
 
-    /**
-     * We don't react the port changed notifications here. we listen for
-     * OFPortStatus messages directly. Might consider using this notifier
-     * instead
-     */
-    @Override
-    public void switchPortChanged(long switchId,
-                                  OFPhysicalPort port,
-                                  IOFSwitch.PortChangeType type) {
-        // no-op
-    }
-
-    @Override
-    public void switchAdded(long switchId) {
-        // no-op
-    }
-
-    @Override
-    public void switchRemoved(long switchId) {
-        // no-op
     }
 
     @Override
     public void switchActivated(long switchId) {
-        // no-op
+        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
+        if (sw.getEnabledPortNumbers() != null) {
+            for (Short p : sw.getEnabledPortNumbers()) {
+                processNewPort(sw.getId(), p);
+            }
+        }
+        // Update event history
+        evHistTopoSwitch(switchId, EvAction.SWITCH_CONNECTED, "None");
+        LDUpdate update = new LDUpdate(sw.getId(), null,
+                                       UpdateOperation.SWITCH_UPDATED);
+        updates.add(update);
     }
 
     @Override
@@ -2295,12 +2161,19 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      *  Switch Added/Deleted Events
      */
-    private void evHistTopoSwitch(IOFSwitch sw, EvAction actn, String reason) {
+    private void evHistTopoSwitch(long switchDPID, EvAction actn, String reason) {
         if (evTopoSwitch == null) {
             evTopoSwitch = new EventHistoryTopologySwitch();
         }
-        evTopoSwitch.dpid = sw.getId();
-        if ((SocketAddress.class.isInstance(sw.getInetAddress()))) {
+        evTopoSwitch.dpid = switchDPID;
+
+        // NOTE: when this method is called due to switch removed event,
+        // floodlightProvier may not have the switch object, thus may be
+        // null.
+        IOFSwitch sw = floodlightProvider.getSwitch(switchDPID);
+
+        if ( sw != null &&
+                (SocketAddress.class.isInstance(sw.getInetAddress()))) {
             evTopoSwitch.ipv4Addr = IPv4.toIPv4Address(((InetSocketAddress) (sw.getInetAddress())).getAddress()
                                                                                                   .getAddress());
             evTopoSwitch.l4Port = ((InetSocketAddress) (sw.getInetAddress())).getPort();
