@@ -2102,9 +2102,8 @@ IFlowReconcileListener, IInfoProvider {
      * Topology listener method.
      */
     @Override
-    public void topologyChanged() {
+    public void topologyChanged(List<LDUpdate> updateList) {
         Iterator<Device> diter = deviceMap.values().iterator();
-        List<LDUpdate> updateList = topology.getLastLinkUpdates();
         if (updateList != null) {
             if (logger.isTraceEnabled()) {
                 for(LDUpdate update: updateList) {
