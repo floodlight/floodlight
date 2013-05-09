@@ -21,12 +21,16 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.internal.TUtils;
+import org.sdnplatform.sync.internal.version.VectorClock;
 
 
 public class VersionedTest {
+    long now = System.currentTimeMillis();
 
-    private Versioned<Integer> getVersioned(Integer value, int... versionIncrements) {
-        return new Versioned<Integer>(value, TUtils.getClock(versionIncrements));
+    private Versioned<Integer> getVersioned(Integer value, 
+                                            int... versionIncrements) {
+        return new Versioned<Integer>(value, 
+                                      TUtils.getClockT(now, versionIncrements));
     }
 
     public void mustHaveVersion() {
@@ -53,8 +57,10 @@ public class VersionedTest {
 
         // Should work for array types too!
         assertEquals("Equal arrays are not equal!",
-                     new Versioned<byte[]>(new byte[] { 1 }),
-                     new Versioned<byte[]>(new byte[] { 1 }));
+                     new Versioned<byte[]>(new byte[] { 1 }, 
+                                           new VectorClock(now)),
+                     new Versioned<byte[]>(new byte[] { 1 }, 
+                                           new VectorClock(now)));
     }
 
     @Test
