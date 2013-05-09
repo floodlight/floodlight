@@ -252,7 +252,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         IOFSwitch sw1 = getMockFloodlightProvider().getSwitch(1L);
         IOFSwitch sw2 = getMockFloodlightProvider().getSwitch(2L);
         // Mock up our expected behavior
-        linkDiscovery.removedSwitch(sw1);
+        linkDiscovery.switchRemoved(sw1.getId());
         verify(sw1, sw2);
 
         // check invariants hold
@@ -275,7 +275,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // Mock up our expected behavior
-        linkDiscovery.removedSwitch(sw1);
+        linkDiscovery.switchRemoved(sw1.getId());
 
         verify(sw1);
         // check invariants hold
@@ -455,7 +455,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         expectLastCall().anyTimes();
         replay(sw1);
 
-        linkDiscovery.addedSwitch(sw1);
+        linkDiscovery.switchActivated(sw1.getId());
         verify(sw1);
 
         qPorts = linkDiscovery.getQuarantinedPorts(sw1.getId());

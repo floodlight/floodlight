@@ -440,7 +440,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         if ((port.getState() & OFPortState.OFPPS_LINK_DOWN.getValue()) > 0)
             return false;
         // Port STP state doesn't work with multiple VLANs, so ignore it for now
-        //if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue())
+        // if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue())
         //    return false;
         return true;
     }
