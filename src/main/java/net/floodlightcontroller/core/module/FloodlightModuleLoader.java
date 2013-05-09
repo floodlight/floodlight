@@ -18,7 +18,6 @@ package net.floodlightcontroller.core.module;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * @author alexreimers
  *
  */
-public class FloodlightModuleLoader {
+public class FloodlightModuleLoader implements IModuleService {
     protected static Logger logger = 
             LoggerFactory.getLogger(FloodlightModuleLoader.class);
 
@@ -58,6 +57,9 @@ public class FloodlightModuleLoader {
                                    IFloodlightService>>> moduleServiceMap;
     protected static Map<String, IFloodlightModule> moduleNameMap;
     protected static Object lock = new Object();
+
+    protected static Set<String> initedSet = new HashSet<String>();
+    protected static Set<String> startedSet = new HashSet<String>();;
     
     protected FloodlightModuleContext floodlightModuleContext;
     
@@ -65,9 +67,12 @@ public class FloodlightModuleLoader {
             "floodlightdefault.properties";
     public static final String FLOODLIGHT_MODULES_KEY =
             "floodlight.modules";
-    
+    public static final String FLOODLIGHT_CONFD =
+            "floodlight.confd";
+
     public FloodlightModuleLoader() {
         floodlightModuleContext = new FloodlightModuleContext();
+        floodlightModuleContext.addService(IModuleService.class, this);
     }
     
     /**
@@ -180,33 +185,62 @@ public class FloodlightModuleLoader {
     public IFloodlightModuleContext loadModulesFromConfig(String fName) 
             throws FloodlightModuleException {
         Properties prop = new Properties();
+        Collection<String> configMods;
         
         File f = new File(fName);
         if (f.isFile()) {
-            logger.info("Loading modules from file {}", fName);
-            try {
-                prop.load(new FileInputStream(fName));
-            } catch (Exception e) {
-                logger.error("Could not load module configuration file", e);
-                System.exit(1);
-            }
+            logger.info("Loading modules from file {}", f.getPath());
+            configMods = loadProperties(null, f, prop);
         } else {
             logger.info("Loading default modules");
             InputStream is = this.getClass().getClassLoader().
                                     getResourceAsStream(COMPILED_CONF_FILE);
-            try {
-                prop.load(is);
-            } catch (IOException e) {
-                logger.error("Could not load default modules", e);
-                System.exit(1);
+            configMods = loadProperties(is, null, prop);
+        }
+
+        return loadModulesFromList(configMods, prop);
+    }
+    
+    private Collection<String> loadProperties(InputStream is, 
+                                              File confFile, 
+                                              Properties prop) {
+        try {
+            Properties fprop = new Properties();
+            if (is != null) {
+                fprop.load(is);
+            } else {
+                fprop.load(new FileInputStream(confFile));
             }
+            prop.putAll(fprop);
+        } catch (Exception e) {
+            logger.error("Could not load module configuration file", e);
+            System.exit(1);
         }
         
-        String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY)
-                                .replaceAll("\\s", "");
         Collection<String> configMods = new ArrayList<String>();
-        configMods.addAll(Arrays.asList(moduleList.split(",")));
-        return loadModulesFromList(configMods, prop);
+        String moduleList = prop.getProperty(FLOODLIGHT_MODULES_KEY);
+        if (moduleList != null) {
+            moduleList = moduleList.replaceAll("\\s", "");
+            configMods.addAll(Arrays.asList(moduleList.split(",")));
+            prop.remove(FLOODLIGHT_MODULES_KEY);
+        }
+
+        String confdStr = prop.getProperty(FLOODLIGHT_CONFD);
+        prop.remove(FLOODLIGHT_CONFD);
+        if (confdStr != null) {
+            File confd = new File(confdStr);
+            if (confd.exists() && confd.isDirectory()) {
+                File[] files = confd.listFiles();
+                Arrays.sort(files);
+                for (File f : files) {
+                    if (f.isFile() && 
+                        f.getName().matches(".*\\.properties$"))
+                        configMods.addAll(loadProperties(null, f, prop));
+                }
+            }
+        }
+
+        return configMods;
     }
     
     /**
@@ -245,7 +279,7 @@ public class FloodlightModuleLoader {
                 throw new FloodlightModuleException("Module " + 
                         moduleName + " not found");
             }
-            // If the module provies a service that is in the
+            // If the module provides a service that is in the
             // services ignorelist don't load it.
             if ((ignoreList != null) && (module.getModuleServices() != null)) {
                 for (IFloodlightService ifs : ignoreList) {
@@ -315,7 +349,7 @@ public class FloodlightModuleLoader {
             }
         }
         
-        floodlightModuleContext.setModuleSet(moduleSet);
+        floodlightModuleContext.addModules(moduleSet);
         parseConfigParameters(prop);
         initModules(moduleSet);
         startupModules(moduleSet);
@@ -323,13 +357,7 @@ public class FloodlightModuleLoader {
         return floodlightModuleContext;
     }
     
-    /**
-     * Loads modules (and their dependencies) specified in the list.
-     * @param configMods The collection of fully qualified module names to load.
-     * @param prop The list of properties that are configuration options.
-     * @return The ModuleContext containing all the loaded modules.
-     * @throws FloodlightModuleException
-     */
+    @Override
     public IFloodlightModuleContext loadModulesFromList(Collection<String> configMods, Properties prop) 
             throws FloodlightModuleException {
         return loadModulesFromList(configMods, prop, null);
@@ -363,7 +391,10 @@ public class FloodlightModuleLoader {
      */
     protected void initModules(Collection<IFloodlightModule> moduleSet) 
                                            throws FloodlightModuleException {
-        for (IFloodlightModule module : moduleSet) {            
+        for (IFloodlightModule module : moduleSet) {
+            if (initedSet.contains(module.getClass().getCanonicalName()))
+                continue;
+            
             // Get the module's service instance(s)
             Map<Class<? extends IFloodlightService>, 
                 IFloodlightService> simpls = module.getServiceImpls();
@@ -394,6 +425,10 @@ public class FloodlightModuleLoader {
         }
         
         for (IFloodlightModule module : moduleSet) {
+            if (initedSet.contains(module.getClass().getCanonicalName()))
+                continue;
+            initedSet.add(module.getClass().getCanonicalName());
+            
             // init the module
             if (logger.isDebugEnabled()) {
                 logger.debug("Initializing " + 
@@ -411,6 +446,10 @@ public class FloodlightModuleLoader {
     protected void startupModules(Collection<IFloodlightModule> moduleSet) 
             throws FloodlightModuleException {
         for (IFloodlightModule m : moduleSet) {
+            if (startedSet.contains(m.getClass().getCanonicalName()))
+                continue;
+            startedSet.add(m.getClass().getCanonicalName());
+
             if (logger.isDebugEnabled()) {
                 logger.debug("Starting " + m.getClass().getCanonicalName());
             }

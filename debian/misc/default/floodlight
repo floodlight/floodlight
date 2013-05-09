@@ -1,5 +1,5 @@
 # Options to pass to Floodlight.
-DAEMON_OPTS="-cf /etc/floodlight/floodlightdefault.properties"
+DAEMON_OPTS="-cf /etc/floodlight/floodlight.properties"
 # Additional options to pass to the JVM
 JVM_OPTS=""
 # Sample performance options taken from upstream

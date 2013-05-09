@@ -1,6 +1,7 @@
 #!/bin/sh -e
 
 NAME=floodlight
+KEYSTORE=/etc/floodlight/auth_credentials.jceks
 
 case "$1" in
     configure)
@@ -10,13 +11,23 @@ case "$1" in
         fi
 	mkdir -p /var/log/floodlight
 	mkdir -p /var/lib/floodlight
-        chown -R $NAME:$NAME /var/log/floodlight
+	mkdir -p /etc/floodlight/conf.d
+	
+        chown -R syslog:adm /var/log/floodlight
         chown -R $NAME:$NAME /var/lib/floodlight
+
         if [ ! -f /etc/floodlight/auth_credentials.jceks ]; then
+	    KSPASS=`dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev`
+	    echo "org.sdnplatform.sync.internal.SyncManager.keyStorePassword=$KSPASS" > \
+		/etc/floodlight/conf.d/01-keystorepass.properties
             authtool -a CHALLENGE_RESPONSE \
-                -ks /etc/floodlight/auth_credentials.jceks \
-                -kp dcbc178a0a3a8674f048ac86372ac456
+                -ks $KEYSTORE \
+                -kp $KSPASS
+	    chown $NAME:$NAME $KEYSTORE 
         fi
+
+	service rsyslog reload
+	service floodlight restart
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

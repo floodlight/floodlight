@@ -277,7 +277,7 @@
         </jar>
     </target>
 
-    <target name="package"> <!-- depends="dist" //-->
+    <target name="deb" depends="dist">
       <taskdef name="deb" 
 	       classname="org.vafer.jdeb.ant.DebAntTask" 
 	       classpathref="package-classpath"/>
@@ -311,11 +311,13 @@
 	<data src="debian/misc/default/floodlight" type="file">
 	  <mapper type="perm" prefix="/etc/default"/>
 	</data>
-	<data src="src/main/resources/floodlightdefault.properties" type="file">
+	<data src="debian/misc/floodlight.properties" type="file">
 	  <mapper type="perm" prefix="/etc/floodlight"/>
 	</data>
+	<tarfileset dir="src/main/resources/apps" prefix="/etc/floodlight/apps.d"/>
       </deb>
     </target>
+    <target name="package" depends="deb"/>
 
     <target name="javadoc">
         <javadoc access="protected"
