@@ -19,6 +19,7 @@ package net.floodlightcontroller.topology;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -126,7 +127,6 @@ public class TopologyManager implements
     protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
-    protected List<LDUpdate> appliedUpdates;
 
     // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
@@ -210,10 +210,10 @@ public class TopologyManager implements
         linksUpdated = false;
         dtLinksUpdated = false;
         tunnelPortsUpdated = false;
-        applyUpdates();
+        List<LDUpdate> appliedUpdates = applyUpdates();
         newInstanceFlag = createNewInstance();
         lastUpdateTime = new Date();
-        informListeners();
+        informListeners(appliedUpdates);
         return newInstanceFlag;
     }
 
@@ -576,11 +576,6 @@ public class TopologyManager implements
 
         return blockedPorts;
     }
-
-    @Override
-    public List<LDUpdate> getLastLinkUpdates() {
-    	return appliedUpdates;
-    }
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
@@ -765,7 +760,6 @@ public class TopologyManager implements
         tunnelPorts = new HashSet<NodePortTuple>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-        appliedUpdates = new ArrayList<LDUpdate>();
         haListener = new HAListenerDelegate();
     }
 
@@ -1015,8 +1009,8 @@ public class TopologyManager implements
             message="Error reading link discovery update.",
             explanation="Unable to process link discovery update",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public void applyUpdates() {
-        appliedUpdates.clear();
+    public List<LDUpdate> applyUpdates() {
+        List<LDUpdate> appliedUpdates = new ArrayList<LDUpdate>();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
             try {
@@ -1056,6 +1050,7 @@ public class TopologyManager implements
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
+        return (Collections.unmodifiableList(appliedUpdates));
     }
 
     protected void addOrUpdateSwitch(long sw) {
@@ -1195,14 +1190,14 @@ public class TopologyManager implements
 
 
 
-    public void informListeners() {
+    public void informListeners(List<LDUpdate> linkUpdates) {
 
         if (role != null && role != Role.MASTER)
             return;
 
         for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
-            listener.topologyChanged();
+            listener.topologyChanged(linkUpdates);
         }
     }
 
@@ -1368,7 +1363,6 @@ public class TopologyManager implements
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
         directLinks.clear();
-        appliedUpdates.clear();
     }
 
     /**
@@ -1428,6 +1422,4 @@ public class TopologyManager implements
         ports.addAll(ofpList);
         return ports;
     }
-
-
 }

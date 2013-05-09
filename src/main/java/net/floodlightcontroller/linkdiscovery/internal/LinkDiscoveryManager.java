@@ -923,9 +923,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private boolean portEnabled(OFPhysicalPort port) {
         if (port == null) return false;
         if ((OFPortConfig.OFPPC_PORT_DOWN.getValue() & port.getConfig()) > 0)
-                                                                             return false;
+            return false;
         if ((OFPortState.OFPPS_LINK_DOWN.getValue() & port.getState()) > 0)
-                                                                           return false;
+            return false;
         // Port STP state doesn't work with multiple VLANs, so ignore it for now
         // if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) ==
         // OFPortState.OFPPS_STP_BLOCK.getValue())
@@ -1816,7 +1816,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //   Storage Listener
     //*********************
     /**
-     * Sets the IStorageSource to use for ITology
+     * Sets the IStorageSource to use for Topology
      *
      * @param storageSource
      *            the storage source to use

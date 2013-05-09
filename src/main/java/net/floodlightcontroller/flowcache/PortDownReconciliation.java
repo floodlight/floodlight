@@ -85,8 +85,8 @@ public class PortDownReconciliation implements IFloodlightModule,
 
     // ITopologyListener
     @Override
-    public void topologyChanged() {
-        for (LDUpdate ldu : topology.getLastLinkUpdates()) {
+    public void topologyChanged(List<LDUpdate> appliedUpdates) {
+        for (LDUpdate ldu : appliedUpdates) {
             if (ldu.getOperation()
                    .equals(ILinkDiscovery.UpdateOperation.PORT_DOWN)) {
 
