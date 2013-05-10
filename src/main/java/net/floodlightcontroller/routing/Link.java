@@ -46,27 +46,48 @@ public class Link implements Comparable<Link> {
         this.dstPort = (short) dstPort;
     }
 
+    public Link() {
+        super();
+    }
+
     @JsonProperty("src-switch")
-    @JsonSerialize(using=DPIDSerializer.class)
+    // @JsonSerialize(using=DPIDSerializer.class)
     public long getSrc() {
         return src;
     }
 
     @JsonProperty("src-port")
-    @JsonSerialize(using=UShortSerializer.class)
+    // @JsonSerialize(using=UShortSerializer.class)
     public short getSrcPort() {
         return srcPort;
     }
 
     @JsonProperty("dst-switch")
-    @JsonSerialize(using=DPIDSerializer.class)
+    // @JsonSerialize(using=DPIDSerializer.class)
     public long getDst() {
         return dst;
     }
+
     @JsonProperty("dst-port")
-    @JsonSerialize(using=UShortSerializer.class)
+    // @JsonSerialize(using=UShortSerializer.class)
     public short getDstPort() {
         return dstPort;
+    }
+
+    public void setSrc(long src) {
+        this.src = src;
+    }
+
+    public void setSrcPort(short srcPort) {
+        this.srcPort = srcPort;
+    }
+
+    public void setDst(long dst) {
+        this.dst = dst;
+    }
+
+    public void setDstPort(short dstPort) {
+        this.dstPort = dstPort;
     }
 
     @Override
