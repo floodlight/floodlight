@@ -1454,6 +1454,10 @@ public class Controller implements IFloodlightProviderService,
         this.debugCounters = debugCounter;
     }
 
+    IDebugCounterService getDebugCounter() {
+        return this.debugCounters;
+    }
+
     void setSyncService(ISyncService syncService) {
         this.syncService = syncService;
     }

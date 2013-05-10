@@ -43,6 +43,9 @@ import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -84,6 +87,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected ConcurrentMap<Object, Object> attributes;
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
+    protected IDebugCounterService debugCounters;
     protected Date connectedSince;
 
     /* Switch features from initial featuresReply */
@@ -136,6 +140,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private TimedCache<Short> portBlockedCache;
 
     protected OFDescriptionStatistics description;
+
+    private boolean debugCountersRegistered;
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
@@ -245,7 +251,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             write(m, bc);
         } else {
             // Let logback duplicate filtering take care of excessive logs
-            // TODO Convert to counter and events
+            debugCounters.updateCounter(stringId + "-writeDrops");
             log.warn("Drop throttled OF message to switch {}", this);
         }
     }
@@ -257,8 +263,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
             write(msglist, bc);
         } else {
             // Let logback duplicate filtering take care of excessive logs
-            // TODO Convert to counter and events
-            log.warn("Drop throttled OF message to switch {}", this);
+            debugCounters.updateCounter(stringId + "-writeDrops",
+                    msglist.size());
+            log.warn("Drop throttled OF messages to switch {}", this);
         }
     }
 
@@ -558,6 +565,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @JsonIgnore
     public void setThreadPoolService(IThreadPoolService tp) {
         this.threadPool = tp;
+    }
+
+    @Override
+    @JsonIgnore
+    public void setDebugCounterService(IDebugCounterService debugCounters) {
+        this.debugCounters = debugCounters;
     }
 
     @JsonIgnore
@@ -860,7 +873,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         OFMatch match = new OFMatch();
         match.loadFromPacket(pin.getPacketData(), pin.getInPort());
         if (ofMatchCache.update(match)) {
-            // TODO keep stats for dropped packets
+            debugCounters.updateCounter(stringId + "-pktinDrops");
             return true;
         }
 
@@ -902,6 +915,23 @@ public abstract class OFSwitchBase implements IOFSwitch {
         messageCountUniqueOFMatch = 0;
         log.info("Packet in rate is {}, enable throttling on {}",
                 currentRate, this);
+        registerOverloadCounters();
+    }
+
+    private void registerOverloadCounters() {
+        if (debugCountersRegistered) {
+            return;
+        }
+        if (debugCounters == null) {
+            log.error("Debug Counter Service not found");
+            debugCounters = new NullDebugCounter();
+            debugCountersRegistered = true;
+            return;
+        }
+        debugCounters.registerCounter(stringId + "-pktinDrops",
+                "Packet in throttle drop count", CounterType.ALWAYS_COUNT);
+        debugCounters.registerCounter(stringId + "-writeDrops",
+                "Switch write throttle drop count", CounterType.ALWAYS_COUNT);
     }
 
     /**

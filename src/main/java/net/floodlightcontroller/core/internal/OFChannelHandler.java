@@ -568,6 +568,7 @@ class OFChannelHandler
                     h.sw.setChannel(h.channel);
                     h.sw.setFloodlightProvider(h.controller);
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
+                    h.sw.setDebugCounterService(h.controller.getDebugCounter());
                     h.sw.setFeaturesReply(h.featuresReply);
                     h.readPropertyFromStorage();
                     log.info("Switch {} bound to class {}, writeThrottle={}," +

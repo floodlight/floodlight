@@ -64,6 +64,7 @@ import static org.junit.Assert.*;
 public class OFChannelHandlerTest {
     private Controller controller;
     private IThreadPoolService threadPool;
+    private IDebugCounterService debugCounterService;
     private OFChannelHandler handler;
     private Channel channel;
     private ChannelHandlerContext ctx;
@@ -119,7 +120,7 @@ public class OFChannelHandlerTest {
 
         // TODO: should mock IDebugCounterService and make sure
         // the expected counters are updated.
-        IDebugCounterService debugCounterService = new DebugCounter();
+        debugCounterService = new DebugCounter();
         Controller.Counters counters =
                 new Controller.Counters();
         counters.createCounters(debugCounterService);
@@ -516,6 +517,8 @@ public class OFChannelHandlerTest {
         expectLastCall().once();
         sw.setThreadPoolService(threadPool);
         expectLastCall().once();
+        sw.setDebugCounterService(debugCounterService);
+        expectLastCall().once();
         sw.setFeaturesReply(featuresReply);
         expectLastCall().once();
         sw.setConnected(true);
@@ -530,6 +533,8 @@ public class OFChannelHandlerTest {
 
         // mock controller
         reset(controller);
+        expect(controller.getDebugCounter()).andReturn(debugCounterService)
+                .once();
         controller.flushAll();
         expectLastCall().once();
         expect(controller.getThreadPoolService())

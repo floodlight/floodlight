@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
@@ -461,6 +462,11 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public boolean isWriteThrottleEnabled() {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    @Override
+    public void setDebugCounterService(IDebugCounterService debugCounters) {
+        // TODO Auto-generated method stub
     }
 
 }
