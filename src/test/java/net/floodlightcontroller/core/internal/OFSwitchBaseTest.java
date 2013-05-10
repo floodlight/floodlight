@@ -28,6 +28,8 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFSwitchBase;
+import net.floodlightcontroller.debugcounter.DebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -133,6 +135,8 @@ public class OFSwitchBaseTest {
                 .setTotalLength((short) testPacketSerialized.length);
         floodlightProvider = createMock(IFloodlightProviderService.class);
         sw = new OFSwitchTest(floodlightProvider);
+        IDebugCounterService debugCounter = new DebugCounter();
+        sw.setDebugCounterService(debugCounter);
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switches.put(sw.getId(), sw);
         expect(floodlightProvider.getSwitch(sw.getId())).andReturn(sw).anyTimes();

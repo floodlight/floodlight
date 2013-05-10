@@ -571,6 +571,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @JsonIgnore
     public void setDebugCounterService(IDebugCounterService debugCounters) {
         this.debugCounters = debugCounters;
+        registerOverloadCounters();
     }
 
     @JsonIgnore
@@ -915,7 +916,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
         messageCountUniqueOFMatch = 0;
         log.info("Packet in rate is {}, enable throttling on {}",
                 currentRate, this);
-        registerOverloadCounters();
     }
 
     private void registerOverloadCounters() {
