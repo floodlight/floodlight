@@ -3,7 +3,7 @@ package org.sdnplatform.sync.internal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -752,8 +752,8 @@ public class SyncManager extends AbstractSyncManager {
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class HintWorker implements Runnable {
         ArrayList<Hint> tasks = new ArrayList<Hint>(50);
-        protected HashMap<String, SyncMessage> messages = 
-                new HashMap<String, SyncMessage>();
+        protected Map<String, SyncMessage> messages = 
+                new LinkedHashMap<String, SyncMessage>();
 
         @Override
         public void run() {
@@ -774,7 +774,7 @@ public class SyncManager extends AbstractSyncManager {
                                                 task.getValues());
                         bsm.getSyncValue().addToValues(kv);
                     }
-
+                    
                     Iterable<Node> nodes = getClusterConfig().getNodes();
                     short localDomainId = 
                             getClusterConfig().getNode().getDomainId();
@@ -816,9 +816,7 @@ public class SyncManager extends AbstractSyncManager {
          * Clear the current list of pending messages
          */
         private void clearMessages() {
-            for (SyncMessage bsm : messages.values()) {
-                bsm.getSyncValue().unsetValues();
-            }
+            messages.clear();
         }
         
         /**

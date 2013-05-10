@@ -1971,11 +1971,11 @@ public class ControllerTest extends FloodlightTestCase {
        controller.addOFSwitchListener(listener);
        // setup switch with the new, second features reply (and thus ports)
        setupSwitchForAddSwitch(sw, dpid, desc, fr2);
-       listener.switchPortChanged(dpid, p2, PortChangeType.UPDATE);
+       listener.switchPortChanged(dpid, p2, PortChangeType.OTHER_UPDATE);
        expectLastCall().once();
        replay(listener);
        replay(sw);
-       controller.notifyPortChanged(sw, p2, PortChangeType.UPDATE);
+       controller.notifyPortChanged(sw, p2, PortChangeType.OTHER_UPDATE);
        controller.processUpdateQueueForTesting();
        verify(listener);
        verify(sw);

@@ -82,7 +82,7 @@ public interface IOFSwitch {
     }
 
     public enum PortChangeType {
-        ADD, UPDATE, DELETE
+        ADD, OTHER_UPDATE, DELETE, UP, DOWN,
     }
 
     /**
@@ -269,11 +269,11 @@ public interface IOFSwitch {
     public Collection<OFPhysicalPort> getPorts();
 
     /**
-     * @param portName
+     * @param portNumber
      * @return Whether a port is enabled per latest port status message
      * (not configured down nor link down nor in spanning tree blocking state)
      */
-    public boolean portEnabled(short portName);
+    public boolean portEnabled(short portNumber);
 
     /**
      * @param portNumber

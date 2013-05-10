@@ -1,0 +1,18 @@
+# Options to pass to Floodlight.
+DAEMON_OPTS="-cf /etc/floodlight/floodlight.properties"
+# Additional options to pass to the JVM
+JVM_OPTS=""
+# Sample performance options taken from upstream
+JVM_OPTS="-server"
+JVM_OPTS="$JVM_OPTS -ea"
+JVM_OPTS="$JVM_OPTS -XX:MaxDirectMemorySize=128M"
+JVM_OPTS="$JVM_OPTS -XX:+UseParNewGC"
+JVM_OPTS="$JVM_OPTS -XX:+UseConcMarkSweepGC"
+JVM_OPTS="$JVM_OPTS -XX:+CMSParallelRemarkEnabled"
+JVM_OPTS="$JVM_OPTS -XX:OnError='kill -9 %p'"
+JVM_OPTS="$JVM_OPTS -XX:OnOutOfMemoryError='kill -9 %p'"
+JVM_OPTS="$JVM_OPTS -Dpython.security.respectJavaAccessibility=false"
+JVM_OPTS="$JVM_OPTS -Dnet.floodlightcontroller.packetstreamer.port=9090"
+JVM_OPTS="$JVM_OPTS -Dlogback.configurationFile=/etc/floodlight/logback.xml"
+JVM_OPTS="$JVM_OPTS -Dnet.floodlightcontroller.core.PTWarningThresholdInMilli=0"
+JVM_OPTS="$JVM_OPTS -Dcom.bigswitch.floodlight.addressspace.EnableNetworkService=0"

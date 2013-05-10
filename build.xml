@@ -26,7 +26,7 @@
     generated code.
 -->
 
-<project default="dist" name="Floodlight">
+<project default="dist" name="floodlight">
     <property name="target" location="target"/>
     <property name="build" location="${target}/bin"/>
     <property name="build-test" location="${target}/bin-test"/>
@@ -79,6 +79,15 @@
     <path id="classpath">
         <fileset dir="${lib}">
             <patternset refid="lib"/>
+        </fileset>
+    </path>
+
+    <patternset id="lib-package">
+        <include name="jdeb-1.0.1.jar"/>
+    </patternset>
+    <path id="package-classpath">
+        <fileset dir="${lib}">
+            <patternset refid="lib-package"/>
         </fileset>
     </path>
 
@@ -267,6 +276,48 @@
             </zipgroupfileset>
         </jar>
     </target>
+
+    <target name="deb" depends="dist">
+      <taskdef name="deb" 
+	       classname="org.vafer.jdeb.ant.DebAntTask" 
+	       classpathref="package-classpath"/>
+
+      <copy todir="${target}/debian">
+	<fileset dir="debian"/>
+	<filterset begintoken="[[" endtoken="]]">
+	  <filter token="version" value="1.9.0"/>
+	  <filter token="name" value="${ant.project.name}"/>
+	</filterset>
+      </copy>
+
+      <deb destfile="${target}/floodlight-1.9.0.deb" 
+	   control="${target}/debian/control">
+	<data src="${floodlight-jar}" type="file">
+	  <mapper type="perm" prefix="/usr/share/floodlight/java"/>
+	</data>
+	<tarfileset dir="debian/misc/bin" prefix="/usr/bin" filemode="755"/>
+	<data src="debian/misc/logrotate/floodlight" type="file">
+	  <mapper type="perm" prefix="/etc/logrotate.d"/>
+	</data>
+	<data src="debian/misc/init/floodlight.conf" type="file">
+	  <mapper type="perm" prefix="/etc/init"/>
+	</data>
+	<data src="debian/misc/logback.xml" type="file">
+	  <mapper type="perm" prefix="/etc/floodlight"/>
+	</data>
+	<data src="debian/misc/rsyslog/10-floodlight.conf" type="file">
+	  <mapper type="perm" prefix="/etc/rsyslog.d"/>
+	</data>
+	<data src="debian/misc/default/floodlight" type="file">
+	  <mapper type="perm" prefix="/etc/default"/>
+	</data>
+	<data src="debian/misc/floodlight.properties" type="file">
+	  <mapper type="perm" prefix="/etc/floodlight"/>
+	</data>
+	<tarfileset dir="src/main/resources/apps" prefix="/etc/floodlight/apps.d"/>
+      </deb>
+    </target>
+    <target name="package" depends="deb"/>
 
     <target name="javadoc">
         <javadoc access="protected"

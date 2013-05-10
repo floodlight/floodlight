@@ -1193,10 +1193,11 @@ public class OFChannelHandlerTest {
         expect(sw.getId()).andReturn(dpid).anyTimes();
         sw.setPort(p);
         expectLastCall().once();
+        expect(sw.portEnabled((short)1)).andReturn(true).anyTimes();
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(sw, p, PortChangeType.ADD);
+        controller.notifyPortChanged(sw, p, PortChangeType.UP);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
@@ -1211,10 +1212,11 @@ public class OFChannelHandlerTest {
         expect(sw.getId()).andReturn(dpid).anyTimes();
         sw.setPort(p);
         expectLastCall().once();
+        expect(sw.portEnabled((short)1)).andReturn(true).anyTimes();
         replay(sw);
 
         reset(controller);
-        controller.notifyPortChanged(sw, p, PortChangeType.UPDATE);
+        controller.notifyPortChanged(sw, p, PortChangeType.OTHER_UPDATE);
         expectLastCall().once();
         sendMessageToHandlerNoControllerReset(
                Collections.<OFMessage>singletonList(ps));
