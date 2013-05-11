@@ -53,6 +53,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -1991,7 +1992,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
+        this.evHistTopologySwitch = new EventHistory<EventHistorySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
@@ -2151,10 +2152,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      *  Topology Manager event history
      */
-    public EventHistory<EventHistoryTopologySwitch> evHistTopologySwitch;
+    public EventHistory<EventHistorySwitch> evHistTopologySwitch;
     public EventHistory<EventHistoryTopologyLink> evHistTopologyLink;
     public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
-    public EventHistoryTopologySwitch evTopoSwitch;
+    public EventHistorySwitch evTopoSwitch;
     public EventHistoryTopologyLink evTopoLink;
     public EventHistoryTopologyCluster evTopoCluster;
 
@@ -2163,7 +2164,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     private void evHistTopoSwitch(long switchDPID, EvAction actn, String reason) {
         if (evTopoSwitch == null) {
-            evTopoSwitch = new EventHistoryTopologySwitch();
+            evTopoSwitch = new EventHistorySwitch();
         }
         evTopoSwitch.dpid = switchDPID;
 

@@ -16,8 +16,8 @@
 
 package net.floodlightcontroller.core.web;
 
+import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.internal.EventHistoryTopologySwitch;
 import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.util.EventHistory;
 
@@ -31,7 +31,7 @@ import org.restlet.resource.ServerResource;
 public class EventHistoryTopologySwitchResource extends ServerResource {
 
     @Get("json")
-    public EventHistory<EventHistoryTopologySwitch> handleEvHistReq() {
+    public EventHistory<EventHistorySwitch> handleEvHistReq() {
 
         // Get the event history count. Last <count> events would be returned
         String evHistCount = (String)getRequestAttributes().get("count");
@@ -47,7 +47,7 @@ public class EventHistoryTopologySwitchResource extends ServerResource {
            (LinkDiscoveryManager)getContext().getAttributes().
                get(ILinkDiscoveryService.class.getCanonicalName());
 
-        return new EventHistory<EventHistoryTopologySwitch>(
+        return new EventHistory<EventHistorySwitch>(
                                 topoManager.evHistTopologySwitch, count);
     }
 }
