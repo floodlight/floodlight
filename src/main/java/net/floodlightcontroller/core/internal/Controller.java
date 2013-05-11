@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -68,6 +69,7 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -75,7 +77,9 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.LoadMonitor;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -777,12 +781,15 @@ public class Controller implements IFloodlightProviderService,
         private Role role;
         private ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
         private ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
+        private EventHistory<EventHistorySwitch> evHistSwitch;
 
         public SwitchManager(Role role) {
             this.role = role;
             this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
             this.syncedSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
-        }
+            this.evHistSwitch = new EventHistory<EventHistorySwitch>(
+                    EventHistory.EV_HISTORY_DEFAULT_SIZE);
+       }
 
         @Override
         public void keysModified(Iterator<Long> keys, UpdateType type) {
@@ -1254,6 +1261,31 @@ public class Controller implements IFloodlightProviderService,
                 return sw;
             return this.syncedSwitches.get(dpid);
         }
+
+        public void addSwitchEvent(long dpid, EvAction actn, String reason) {
+            EventHistorySwitch evSwitch = new EventHistorySwitch();
+            evSwitch.dpid = dpid;
+
+            // NOTE: when this method is called due to switch removed event,
+            // floodlightProvier may not have the switch object, thus may be
+            // null.
+            IOFSwitch sw = getSwitch(dpid);
+
+            if ( sw != null &&
+                    (SocketAddress.class.isInstance(sw.getInetAddress()))) {
+                evSwitch.ipv4Addr = IPv4.toIPv4Address(((InetSocketAddress)
+                        (sw.getInetAddress())).getAddress()
+                        .getAddress());
+                evSwitch.l4Port = ((InetSocketAddress)
+                        (sw.getInetAddress())).getPort();
+            } else {
+                evSwitch.ipv4Addr = 0;
+                evSwitch.l4Port = 0;
+            }
+            evSwitch.reason = reason;
+            evSwitch = evHistSwitch.put(evSwitch, actn);
+        }
+
     }
 
 
@@ -2298,6 +2330,18 @@ public class Controller implements IFloodlightProviderService,
         return driverRegistry.getOFSwitchInstance(desc);
     }
 
+    /**
+     *  Switch Added/Deleted Events
+     */
+    @Override
+    public void addSwitchEvent(long switchDPID, EvAction actn, String reason) {
+        switchManager.addSwitchEvent(switchDPID, actn, reason);
+    }
+
+    @Override
+    public EventHistory<EventHistorySwitch> getSwitchEventHistory() {
+        return switchManager.evHistSwitch;
+    }
 
     @LogMessageDoc(level="WARN",
             message="Failure adding update {} to queue",
@@ -2355,6 +2399,5 @@ public class Controller implements IFloodlightProviderService,
     IStoreListener<Long> getStoreListener() {
         return this.switchManager;
     }
-
 
 }

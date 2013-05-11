@@ -1626,7 +1626,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     @Override
     public void switchRemoved(long sw) {
         // Update event history
-        evHistTopoSwitch(sw, EvAction.SWITCH_DISCONNECTED, "None");
+        floodlightProvider.addSwitchEvent(sw, EvAction.SWITCH_DISCONNECTED,
+                "None");
         List<Link> eraseList = new ArrayList<Link>();
         lock.writeLock().lock();
         try {
@@ -1667,7 +1668,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             }
         }
         // Update event history
-        evHistTopoSwitch(switchId, EvAction.SWITCH_CONNECTED, "None");
+        floodlightProvider.addSwitchEvent(switchId, EvAction.SWITCH_CONNECTED,
+                "None");
         LDUpdate update = new LDUpdate(sw.getId(), null,
                                        UpdateOperation.SWITCH_UPDATED);
         updates.add(update);
@@ -1992,7 +1994,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologySwitch = new EventHistory<EventHistorySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
@@ -2152,39 +2153,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      *  Topology Manager event history
      */
-    public EventHistory<EventHistorySwitch> evHistTopologySwitch;
     public EventHistory<EventHistoryTopologyLink> evHistTopologyLink;
     public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
-    public EventHistorySwitch evTopoSwitch;
     public EventHistoryTopologyLink evTopoLink;
     public EventHistoryTopologyCluster evTopoCluster;
-
-    /**
-     *  Switch Added/Deleted Events
-     */
-    private void evHistTopoSwitch(long switchDPID, EvAction actn, String reason) {
-        if (evTopoSwitch == null) {
-            evTopoSwitch = new EventHistorySwitch();
-        }
-        evTopoSwitch.dpid = switchDPID;
-
-        // NOTE: when this method is called due to switch removed event,
-        // floodlightProvier may not have the switch object, thus may be
-        // null.
-        IOFSwitch sw = floodlightProvider.getSwitch(switchDPID);
-
-        if ( sw != null &&
-                (SocketAddress.class.isInstance(sw.getInetAddress()))) {
-            evTopoSwitch.ipv4Addr = IPv4.toIPv4Address(((InetSocketAddress) (sw.getInetAddress())).getAddress()
-                                                                                                  .getAddress());
-            evTopoSwitch.l4Port = ((InetSocketAddress) (sw.getInetAddress())).getPort();
-        } else {
-            evTopoSwitch.ipv4Addr = 0;
-            evTopoSwitch.l4Port = 0;
-        }
-        evTopoSwitch.reason = reason;
-        evTopoSwitch = evHistTopologySwitch.put(evTopoSwitch, actn);
-    }
 
     private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
                                 short dstPort, int srcPortState,
