@@ -50,6 +50,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.TimedCache;
 
@@ -902,6 +903,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
         portCache = null;
         portBlockedCache = null;
         packetInThrottleEnabled = false;
+        floodlightProvider.addSwitchEvent(this.datapathId,
+                EvAction.SWITCH_OVERLOAD_THROTTLE_DISABLED,
+                "Pktin rate " + currentRate + "/s");
         log.info("Packet in rate is {}, disable throttling on {}",
                 currentRate, this);
     }
@@ -914,6 +918,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
         portBlockedCache = new TimedCache<Short>(64, 5000 );  // 5 second interval
         packetInThrottleEnabled = true;
         messageCountUniqueOFMatch = 0;
+        floodlightProvider.addSwitchEvent(this.datapathId,
+                EvAction.SWITCH_OVERLOAD_THROTTLE_ENABLED,
+                "Pktin rate " + currentRate + "/s");
         log.info("Packet in rate is {}, enable throttling on {}",
                 currentRate, this);
     }
@@ -964,6 +971,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
             ForwardingBase.blockHost(floodlightProvider,
                     swPort, srcMac.toLong(), (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 0));
+            floodlightProvider.addSwitchEvent(this.datapathId,
+                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
+                    "OFPort " + port + " mac " + srcMac);
             log.info("Excessive packet in from {} on {}, block host for 5 sec",
                     srcMac.toString(), swPort);
         }
@@ -989,6 +999,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
             ForwardingBase.blockHost(floodlightProvider,
                     swPort, -1L, (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 1));
+            floodlightProvider.addSwitchEvent(this.datapathId,
+                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
+                    "OFPort " + port);
             log.info("Excessive packet in from {}, block port for 5 sec",
                     swPort);
         }
