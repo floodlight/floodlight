@@ -33,6 +33,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -128,12 +129,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     /**
      * Counter used to generate device keys
      */
-    protected long deviceKeyCounter = 0;
-
-    /**
-     * Lock for incrementing the device key counter
-     */
-    protected Object deviceKeyLock = new Object();
+    protected AtomicLong deviceKeyCounter = new AtomicLong(0);
 
     /**
      * This is the primary entity index that contains all entities
@@ -1222,9 +1218,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     device = null;
                     break;
                 }
-                synchronized (deviceKeyLock) {
-                    deviceKey = Long.valueOf(deviceKeyCounter++);
-                }
+                deviceKey = deviceKeyCounter.getAndIncrement();
                 device = allocateDevice(deviceKey, entity, entityClass);
                 if (logger.isDebugEnabled()) {
                     logger.debug("New device created: {} deviceKey={}, entity={}",
