@@ -1398,14 +1398,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
                 dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
 
-                switchLinks.get(lt.getSrc()).remove(lt);
-                switchLinks.get(lt.getDst()).remove(lt);
-                if (switchLinks.containsKey(lt.getSrc())
-                    && switchLinks.get(lt.getSrc()).isEmpty())
-                                                              this.switchLinks.remove(lt.getSrc());
-                if (this.switchLinks.containsKey(lt.getDst())
-                    && this.switchLinks.get(lt.getDst()).isEmpty())
-                                                                   this.switchLinks.remove(lt.getDst());
+                if (switchLinks.containsKey(lt.getSrc())) {
+                    switchLinks.get(lt.getSrc()).remove(lt);
+                    if (switchLinks.get(lt.getSrc()).isEmpty())
+                        this.switchLinks.remove(lt.getSrc());
+                }
+                if (this.switchLinks.containsKey(lt.getDst())) {
+                    switchLinks.get(lt.getDst()).remove(lt);
+                    if (this.switchLinks.get(lt.getDst()).isEmpty())
+                        this.switchLinks.remove(lt.getDst());
+                }
 
                 if (this.portLinks.get(srcNpt) != null) {
                     this.portLinks.get(srcNpt).remove(lt);
