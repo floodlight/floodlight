@@ -1203,12 +1203,6 @@ public class Controller implements IFloodlightProviderService,
                                          */
 
             }
-            if (false) {
-                // FIXME: IF ANYTHING ELSE HAS CHANGED
-                addUpdateToQueue(
-                        new SwitchUpdate(sw2.getId(),
-                                         SwitchUpdateType.OTHERCHANGE));
-            }
         }
 
         /**
