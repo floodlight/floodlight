@@ -45,12 +45,15 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IReadyForReconcileListener;
 import net.floodlightcontroller.core.RoleInfo;
+import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.util.EventHistory;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -401,5 +404,16 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public void addReadyForReconcileListener(IReadyForReconcileListener l) {
         // do nothing.
+    }
+
+    @Override
+    public void addSwitchEvent(long switchDPID, EvAction actn, String reason) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public EventHistory<EventHistorySwitch> getSwitchEventHistory() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }
