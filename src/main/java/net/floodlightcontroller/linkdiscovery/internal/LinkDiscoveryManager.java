@@ -121,6 +121,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     IFloodlightModule, IInfoProvider {
     protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
 
+    public static final String MODULE_NAME = "linkdiscovery";
+
     // Names of table/fields for links in the storage API
     private static final String TOPOLOGY_TABLE_NAME = "controller_topologyconfig";
     private static final String TOPOLOGY_ID = "id";
@@ -488,7 +490,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     @Override
     public String getName() {
-        return "linkdiscovery";
+        return MODULE_NAME;
     }
 
     //*********************
@@ -2276,7 +2278,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         @Override
         public String getName() {
-            return getClass().getName();
+            return LinkDiscoveryManager.this.getName();
         }
 
         @Override

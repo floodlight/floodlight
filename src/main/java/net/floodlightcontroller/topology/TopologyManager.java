@@ -84,6 +84,8 @@ public class TopologyManager implements
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
+    public static final String MODULE_NAME = "topology";
+
     public static final String CONTEXT_TUNNEL_ENABLED =
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
 
@@ -634,7 +636,7 @@ public class TopologyManager implements
 
     @Override
     public String getName() {
-        return "topology";
+        return MODULE_NAME;
     }
 
     @Override
@@ -686,7 +688,7 @@ public class TopologyManager implements
 
         @Override
         public String getName() {
-            return getClass().getName();
+            return TopologyManager.this.getName();
         }
 
         @Override
