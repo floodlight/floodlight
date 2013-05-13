@@ -53,26 +53,26 @@ public class Device implements IDevice {
     protected static Logger log =
             LoggerFactory.getLogger(Device.class);
 
-    protected Long deviceKey;
-    protected DeviceManagerImpl deviceManager;
+    private final Long deviceKey;
+    protected final DeviceManagerImpl deviceManager;
 
-    protected Entity[] entities;
-    protected IEntityClass entityClass;
+    protected final Entity[] entities;
+    private final IEntityClass entityClass;
 
-    protected String macAddressString;
+    protected final String macAddressString;
     // the vlan Ids from the entities of this device
-    protected Short[] vlanIds;
-    protected String dhcpClientName;
+    protected final Short[] vlanIds;
+    protected volatile String dhcpClientName;
 
     /**
      * These are the old attachment points for the device that were
      * valid no more than INACTIVITY_TIME ago.
      */
-    protected List<AttachmentPoint> oldAPs;
+    protected volatile List<AttachmentPoint> oldAPs;
     /**
      * The current attachment points for the device.
      */
-    protected List<AttachmentPoint> attachmentPoints;
+    protected volatile List<AttachmentPoint> attachmentPoints;
 
     // ************
     // Constructors
@@ -115,7 +115,7 @@ public class Device implements IDevice {
                 this.attachmentPoints.add(ap);
             }
         }
-        computeVlandIds();
+        vlanIds = computeVlandIds();
     }
 
     /**
@@ -150,7 +150,7 @@ public class Device implements IDevice {
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
         this.entityClass = entityClass;
         Arrays.sort(this.entities);
-        computeVlandIds();
+        vlanIds = computeVlandIds();
     }
 
     /**
@@ -213,17 +213,16 @@ public class Device implements IDevice {
                 HexString.toHexString(this.entities[0].getMacAddress(), 6);
 
         this.entityClass = device.entityClass;
-        computeVlandIds();
+        vlanIds = computeVlandIds();
     }
 
-    private void computeVlandIds() {
+    private Short[]  computeVlandIds() {
         if (entities.length == 1) {
             if (entities[0].getVlan() != null) {
-                vlanIds = new Short[]{ entities[0].getVlan() };
+                return new Short[]{ entities[0].getVlan() };
             } else {
-                vlanIds = new Short[] { Short.valueOf((short)-1) };
+                return new Short[] { Short.valueOf((short)-1) };
             }
-            return;
         }
 
         TreeSet<Short> vals = new TreeSet<Short>();
@@ -233,7 +232,7 @@ public class Device implements IDevice {
             else
                 vals.add(e.getVlan());
         }
-        vlanIds = vals.toArray(new Short[vals.size()]);
+        return vals.toArray(new Short[vals.size()]);
     }
 
     /**
