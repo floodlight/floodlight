@@ -659,8 +659,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         if (!remoteSwitch.portEnabled(remotePort)) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled source port: switch {} port {}",
-                          remoteSwitch.getStringId(), remotePort);
+                log.trace("Ignoring link with disabled source port: switch {} port {} {}",
+                          new Object[] { remoteSwitch.getStringId(),
+                                         remotePort,
+                                         remoteSwitch.getPort(remotePort)});
             }
             return Command.STOP;
         }
@@ -668,15 +670,19 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                                              remoteSwitch.getId(),
                                                              remotePort))) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with suppressed src port: switch {} port {}",
-                          remoteSwitch.getStringId(), remotePort);
+                log.trace("Ignoring link with suppressed src port: switch {} port {} {}",
+                          new Object[] { remoteSwitch.getStringId(),
+                                         remotePort,
+                                         remoteSwitch.getPort(remotePort)});
             }
             return Command.STOP;
         }
         if (!iofSwitch.portEnabled(inPort)) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled dest port: switch {} port {}",
-                          HexString.toHexString(sw), inPort);
+                log.trace("Ignoring link with disabled dest port: switch {} port {} {}",
+                          new Object[] { HexString.toHexString(sw),
+                                         inPort,
+                                         iofSwitch.getPort(inPort)});
             }
             return Command.STOP;
         }
@@ -1136,7 +1142,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected void discoverOnAllPorts() {
         if (log.isTraceEnabled()) {
-            log.trace("Sending LLDP packets out of all the enabled ports on switch {}");
+            log.trace("Sending LLDP packets out of all the enabled ports");
         }
         // Send standard LLDPs
         for (long sw : floodlightProvider.getAllSwitchDpids()) {

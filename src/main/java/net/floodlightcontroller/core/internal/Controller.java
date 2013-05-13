@@ -927,7 +927,6 @@ public class Controller implements IFloodlightProviderService,
             Long dpid = sw.getId();
             counters.switchActivated.increment();
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
-            addSwitchToStore(sw);
 
             if (oldSw == sw)  {
                 // Note == for object equality, not .equals for value
@@ -936,6 +935,7 @@ public class Controller implements IFloodlightProviderService,
                 // really never happen.
                 counters.errorSameSwitchReactivated.increment();
                 log.error("Switch {} activated but was already active", sw);
+                addSwitchToStore(sw);
                 return;
             }
 
@@ -964,6 +964,7 @@ public class Controller implements IFloodlightProviderService,
                                                   SwitchUpdateType.ADDED));
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
+                addSwitchToStore(sw);
                 return;
             }
 
@@ -985,6 +986,17 @@ public class Controller implements IFloodlightProviderService,
                 // has changed and send update.
                 if (alwaysClearFlowsOnSwActivate)
                     sw.clearAllFlowMods();
+                if (sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true)) {
+                    // We have a stored switch and the newly activated switch
+                    // supports roles. This indicates that the switch was
+                    // previously connected as slave. Since we don't update
+                    // ports while slave, we need to set the ports on the
+                    // new switch from the ports on the stored switch
+                    // FIXME: we need to correctly send port changed notifications
+                    for (OFPhysicalPort p: storedSwitch.getPorts()) {
+                        sw.setPort(p);
+                    }
+                }
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
                 sendNotificationsIfSwitchDiffers(storedSwitch, sw);
@@ -997,6 +1009,7 @@ public class Controller implements IFloodlightProviderService,
                     addUpdateToQueue(new ReadyForReconcileUpdate());
                 }
             }
+            addSwitchToStore(sw);
         }
 
         /**
