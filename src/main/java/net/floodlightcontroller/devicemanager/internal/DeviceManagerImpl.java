@@ -1920,7 +1920,7 @@ IFlowReconcileListener, IInfoProvider {
 
                 debugCounters.updateCounter(CNT_ENTITY_REMOVED_TIMEOUT);
                 for (Entity e : toRemove) {
-                    removeEntity(e, d.getEntityClass(), d.deviceKey, toKeep);
+                    removeEntity(e, d.getEntityClass(), d.getDeviceKey(), toKeep);
                 }
 
                 if (toKeep.size() > 0) {
@@ -1929,7 +1929,7 @@ IFlowReconcileListener, IInfoProvider {
                                                       d.oldAPs,
                                                       d.attachmentPoints,
                                                       toKeep,
-                                                      d.entityClass);
+                                                      d.getEntityClass());
 
                     EnumSet<DeviceField> changedFields =
                             EnumSet.noneOf(DeviceField.class);
