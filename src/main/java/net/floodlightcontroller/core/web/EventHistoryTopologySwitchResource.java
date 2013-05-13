@@ -18,9 +18,6 @@ package net.floodlightcontroller.core.web;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.EventHistorySwitch;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.util.EventHistory;
 
 import org.restlet.resource.Get;
