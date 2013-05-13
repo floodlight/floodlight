@@ -28,10 +28,15 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.OFSwitchBase;
+import net.floodlightcontroller.debugcounter.DebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.util.EventHistory.EvAction;
+
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.openflow.protocol.OFFlowMod;
@@ -133,12 +138,13 @@ public class OFSwitchBaseTest {
                 .setTotalLength((short) testPacketSerialized.length);
         floodlightProvider = createMock(IFloodlightProviderService.class);
         sw = new OFSwitchTest(floodlightProvider);
+        IDebugCounterService debugCounter = new DebugCounter();
+        sw.setDebugCounterService(debugCounter);
         switches = new ConcurrentHashMap<Long, IOFSwitch>();
         switches.put(sw.getId(), sw);
         expect(floodlightProvider.getSwitch(sw.getId())).andReturn(sw).anyTimes();
         expect(floodlightProvider.getOFMessageFactory())
                 .andReturn(BasicFactory.getInstance()).anyTimes();
-        replay(floodlightProvider);
     }
 
     /**
@@ -146,6 +152,7 @@ public class OFSwitchBaseTest {
      */
     @Test
     public void testNoPacketInThrottle() {
+        replay(floodlightProvider);
         for (int i = 0; i < 200; i++) {
             assertFalse(sw.inputThrottled(pi));
         }
@@ -160,6 +167,11 @@ public class OFSwitchBaseTest {
      */
     @Test
     public void testPacketInStartThrottle() {
+        floodlightProvider.addSwitchEvent(anyLong(),
+                (EvAction) anyObject(),
+                (String)anyObject());
+        replay(floodlightProvider);
+
         int high = 500;
         sw.setThresholds(high, 10, 50, 200);
         // We measure time lapse every 100 packets
@@ -180,6 +192,12 @@ public class OFSwitchBaseTest {
      */
     @Test
     public void testPacketInStopThrottle() throws InterruptedException {
+        floodlightProvider.addSwitchEvent(anyLong(),
+                (EvAction) anyObject(),
+                (String)anyObject());
+        expectLastCall().times(2);
+        replay(floodlightProvider);
+
         sw.setThresholds(100, 10, 50, 200);
         // First, enable throttling
         for (int i = 0; i < 100; i++) {
@@ -205,6 +223,12 @@ public class OFSwitchBaseTest {
      */
     @Test
     public void testPacketInBlockHost() {
+        floodlightProvider.addSwitchEvent(anyLong(),
+                (EvAction) anyObject(),
+                (String)anyObject());
+        expectLastCall().times(2);
+        replay(floodlightProvider);
+
         int high = 500;
         int perMac = 50;
         sw.setThresholds(high, 10, perMac, 200);
@@ -247,6 +271,12 @@ public class OFSwitchBaseTest {
      */
     @Test
     public void testPacketInBlockPort() {
+        floodlightProvider.addSwitchEvent(anyLong(),
+                (EvAction) anyObject(),
+                (String)anyObject());
+        expectLastCall().times(2);
+        replay(floodlightProvider);
+
         int high = 500;
         int perPort = 200;
         sw.setThresholds(high, 10, 50, perPort);

@@ -53,6 +53,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -120,6 +121,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
     IFloodlightModule, IInfoProvider {
     protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
+
+    public static final String MODULE_NAME = "linkdiscovery";
 
     // Names of table/fields for links in the storage API
     private static final String TOPOLOGY_TABLE_NAME = "controller_topologyconfig";
@@ -488,7 +491,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     @Override
     public String getName() {
-        return "linkdiscovery";
+        return MODULE_NAME;
     }
 
     //*********************
@@ -1398,14 +1401,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 srcNpt = new NodePortTuple(lt.getSrc(), lt.getSrcPort());
                 dstNpt = new NodePortTuple(lt.getDst(), lt.getDstPort());
 
-                switchLinks.get(lt.getSrc()).remove(lt);
-                switchLinks.get(lt.getDst()).remove(lt);
-                if (switchLinks.containsKey(lt.getSrc())
-                    && switchLinks.get(lt.getSrc()).isEmpty())
-                                                              this.switchLinks.remove(lt.getSrc());
-                if (this.switchLinks.containsKey(lt.getDst())
-                    && this.switchLinks.get(lt.getDst()).isEmpty())
-                                                                   this.switchLinks.remove(lt.getDst());
+                if (switchLinks.containsKey(lt.getSrc())) {
+                    switchLinks.get(lt.getSrc()).remove(lt);
+                    if (switchLinks.get(lt.getSrc()).isEmpty())
+                        this.switchLinks.remove(lt.getSrc());
+                }
+                if (this.switchLinks.containsKey(lt.getDst())) {
+                    switchLinks.get(lt.getDst()).remove(lt);
+                    if (this.switchLinks.get(lt.getDst()).isEmpty())
+                        this.switchLinks.remove(lt.getDst());
+                }
 
                 if (this.portLinks.get(srcNpt) != null) {
                     this.portLinks.get(srcNpt).remove(lt);
@@ -1625,7 +1630,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     @Override
     public void switchRemoved(long sw) {
         // Update event history
-        evHistTopoSwitch(sw, EvAction.SWITCH_DISCONNECTED, "None");
+        floodlightProvider.addSwitchEvent(sw, EvAction.SWITCH_DISCONNECTED,
+                "None");
         List<Link> eraseList = new ArrayList<Link>();
         lock.writeLock().lock();
         try {
@@ -1666,7 +1672,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             }
         }
         // Update event history
-        evHistTopoSwitch(switchId, EvAction.SWITCH_CONNECTED, "None");
+        floodlightProvider.addSwitchEvent(switchId, EvAction.SWITCH_CONNECTED,
+                "None");
         LDUpdate update = new LDUpdate(sw.getId(), null,
                                        UpdateOperation.SWITCH_UPDATED);
         updates.add(update);
@@ -1991,7 +1998,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologySwitch = new EventHistory<EventHistoryTopologySwitch>(EVENT_HISTORY_SIZE);
         this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
         this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
@@ -2151,39 +2157,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     /**
      *  Topology Manager event history
      */
-    public EventHistory<EventHistoryTopologySwitch> evHistTopologySwitch;
     public EventHistory<EventHistoryTopologyLink> evHistTopologyLink;
     public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
-    public EventHistoryTopologySwitch evTopoSwitch;
     public EventHistoryTopologyLink evTopoLink;
     public EventHistoryTopologyCluster evTopoCluster;
-
-    /**
-     *  Switch Added/Deleted Events
-     */
-    private void evHistTopoSwitch(long switchDPID, EvAction actn, String reason) {
-        if (evTopoSwitch == null) {
-            evTopoSwitch = new EventHistoryTopologySwitch();
-        }
-        evTopoSwitch.dpid = switchDPID;
-
-        // NOTE: when this method is called due to switch removed event,
-        // floodlightProvier may not have the switch object, thus may be
-        // null.
-        IOFSwitch sw = floodlightProvider.getSwitch(switchDPID);
-
-        if ( sw != null &&
-                (SocketAddress.class.isInstance(sw.getInetAddress()))) {
-            evTopoSwitch.ipv4Addr = IPv4.toIPv4Address(((InetSocketAddress) (sw.getInetAddress())).getAddress()
-                                                                                                  .getAddress());
-            evTopoSwitch.l4Port = ((InetSocketAddress) (sw.getInetAddress())).getPort();
-        } else {
-            evTopoSwitch.ipv4Addr = 0;
-            evTopoSwitch.l4Port = 0;
-        }
-        evTopoSwitch.reason = reason;
-        evTopoSwitch = evHistTopologySwitch.put(evTopoSwitch, actn);
-    }
 
     private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
                                 short dstPort, int srcPortState,
@@ -2276,7 +2253,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         @Override
         public String getName() {
-            return getClass().getName();
+            return LinkDiscoveryManager.this.getName();
         }
 
         @Override

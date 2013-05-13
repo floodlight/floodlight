@@ -28,6 +28,7 @@ import java.util.concurrent.locks.Lock;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
@@ -100,6 +101,13 @@ public interface IOFSwitch {
      * @param threadPool
      */
     public void setThreadPoolService(IThreadPoolService threadPool);
+
+    /**
+     * Set debug counter service for per-switch counters
+     * Called immediately after instantiation
+     * @param debugCounters
+     */
+    public void setDebugCounterService(IDebugCounterService debugCounters);
 
     /**
      * Set the netty Channel this switch instance is associated with

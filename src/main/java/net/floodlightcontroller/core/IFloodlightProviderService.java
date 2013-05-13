@@ -23,8 +23,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 
+import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.util.EventHistory;
+import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
@@ -303,5 +306,19 @@ public interface IFloodlightProviderService extends
     * @throws NullPointerExeption if driver is null
     */
    public void addOFSwitchDriver(String desc, IOFSwitchDriver driver);
+
+   /**
+    * Record a switch event in in-memory event history
+    * @param switchDPID
+    * @param actn   Action associated with this event
+    * @param reason Reason for this event
+    */
+   public void addSwitchEvent(long switchDPID, EvAction actn, String reason);
+
+   /**
+    * Retrieve switch event history
+    * @return The EventHistory object for switch events
+    */
+   public EventHistory<EventHistorySwitch> getSwitchEventHistory();
 
 }

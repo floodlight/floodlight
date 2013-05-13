@@ -71,6 +71,7 @@ import org.openflow.vendor.nicira.OFRoleRequestVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
  * Channel handler deals with the switch connection and dispatches
  * switch messages to the appropriate locations.
@@ -375,17 +376,27 @@ class OFChannelHandler
                 OFChannelHandler.this.setState(ChannelState.MASTER);
                 // TODO: should we really activate the switch again if it's
                 // already master??
+                if (log.isDebugEnabled()) {
+                    log.debug("Switch {} activated. Role is now MASTER",
+                              getSwitchInfoString());
+                }
                 controller.switchActivated(OFChannelHandler.this.sw);
             } else {
                 OFChannelHandler.this.setState(ChannelState.SLAVE);
                 if (status != RoleRecvStatus.RECEIVED_REPLY) {
-                    log.debug("Disconnecting switch {}. Doesn't support role"
+                    if (log.isDebugEnabled()) {
+                        log.debug("Disconnecting switch {}. Doesn't support role"
                               + "({}) request and controller is now SLAVE",
                               getSwitchInfoString(), status);
+                    }
                     // the disconnect will trigger a switch removed to
                     // controller so no need to signal anything else
                     sw.disconnectOutputStream();
                 } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Switch {} is now SLAVE",
+                                  getSwitchInfoString());
+                    }
                     controller.switchDeactivated(OFChannelHandler.this.sw);
                 }
             }
@@ -564,11 +575,14 @@ class OFChannelHandler
                     description.readFrom(data);
                     h.sw = h.controller.getOFSwitchInstance(description);
                     // set switch information
+                    // set features reply and channel first so we a DPID and
+                    // channel info.
+                    h.sw.setFeaturesReply(h.featuresReply);
                     h.sw.setConnected(true);
                     h.sw.setChannel(h.channel);
                     h.sw.setFloodlightProvider(h.controller);
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
-                    h.sw.setFeaturesReply(h.featuresReply);
+                    h.sw.setDebugCounterService(h.controller.getDebugCounter());
                     h.readPropertyFromStorage();
                     log.info("Switch {} bound to class {}, writeThrottle={}," +
                             " description {}",
@@ -1103,7 +1117,7 @@ class OFChannelHandler
 
         void processOFBarrierReply(OFChannelHandler h, OFBarrierReply m)
                 throws IOException {
-            unhandledMessageReceived(h, m);
+            // Silently ignore.
         }
 
         void processOFEchoRequest(OFChannelHandler h, OFEchoRequest m)
@@ -1236,7 +1250,7 @@ class OFChannelHandler
                  channel.getRemoteAddress());
         sendHandShakeMessage(OFType.HELLO);
         setState(ChannelState.WAIT_HELLO);
-        // FIXME: flush counters
+        counters.flushCounters();
     }
 
     @Override
@@ -1249,6 +1263,7 @@ class OFChannelHandler
         this.sw.setConnected(false);
 
         log.info("Disconnected switch {}", getSwitchInfoString());
+        counters.flushCounters();
     }
 
     @Override
@@ -1338,6 +1353,7 @@ class OFChannelHandler
             counters.switchDisconnectOtherException.increment();
             ctx.getChannel().close();
         }
+        counters.flushCounters();
     }
 
     @Override

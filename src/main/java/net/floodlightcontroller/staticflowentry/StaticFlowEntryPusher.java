@@ -836,7 +836,7 @@ public class StaticFlowEntryPusher
 
         @Override
         public String getName() {
-            return getClass().getName();
+            return StaticFlowEntryPusher.this.getName();
         }
 
         @Override

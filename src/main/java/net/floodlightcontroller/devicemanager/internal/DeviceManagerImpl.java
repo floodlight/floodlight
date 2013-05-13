@@ -178,6 +178,8 @@ IFlowReconcileListener, IInfoProvider {
             "-consolidateStoreRuns";
     public static final String CNT_CONSOLIDATE_STORE_DEVICES_REMOVED = MODULE_NAME +
             "-consolidateStoreDevicesRemoved";
+    public static final String CNT_TRANSITION_TO_MASTER = MODULE_NAME +
+            "-transitionToMaster";
 
 
 
@@ -214,7 +216,7 @@ IFlowReconcileListener, IInfoProvider {
     static final int DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS =
             75*60*1000; // 75 min
     private final int syncStoreConsolidateIntervalMs =
-            DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS;
+            DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS;
 
 
     /**
@@ -888,6 +890,7 @@ IFlowReconcileListener, IInfoProvider {
                 cleanupEntities();
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
+                debugCounters.flushCounters();
             }
         };
         entityCleanupTask = new SingletonTask(ses, ecr);
@@ -900,6 +903,7 @@ IFlowReconcileListener, IInfoProvider {
                 deviceSyncManager.consolidateStore();
                 storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
                                                 TimeUnit.MILLISECONDS);
+                debugCounters.flushCounters();
             }
         };
         storeConsolidateTask = new SingletonTask(ses, consolidateStoreRunner);
@@ -1037,6 +1041,10 @@ IFlowReconcileListener, IInfoProvider {
              "entries despite the local controller being MASTER or an " +
              "incosistent store update from the local controller.",
              CounterType.WARN);
+        debugCounters.registerCounter(CNT_TRANSITION_TO_MASTER,
+             "Number of times this controller has transitioned from SLAVE " +
+             "to MASTER role. Will be 0 or 1.",
+             CounterType.ALWAYS_COUNT);
     }
 
     // ***************
@@ -1046,9 +1054,7 @@ IFlowReconcileListener, IInfoProvider {
     protected class HAListenerDelegate implements IHAListener {
         @Override
         public void transitionToMaster() {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Transitioning to MASTER role");
-            }
+            DeviceManagerImpl.this.isMaster = true;
             DeviceManagerImpl.this.deviceSyncManager.goToMaster();
         }
 
@@ -1062,7 +1068,7 @@ IFlowReconcileListener, IInfoProvider {
 
         @Override
         public String getName() {
-            return this.getClass().getName();
+            return DeviceManagerImpl.this.getName();
         }
 
         @Override
@@ -2325,6 +2331,10 @@ IFlowReconcileListener, IInfoProvider {
          * the store and learning all devices from the store
          */
         private void goToMaster() {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Transitioning to MASTER role");
+            }
+            debugCounters.updateCounter(CNT_TRANSITION_TO_MASTER);
             IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
                     iter = null;
             try {
