@@ -34,13 +34,10 @@ import org.openflow.protocol.OFError;
 import org.openflow.protocol.OFError.OFBadRequestCode;
 import org.openflow.protocol.OFError.OFErrorType;
 import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFGetConfigReply;
-import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFSetConfig;
@@ -338,18 +335,6 @@ public class OFChannelHandlerTest {
         assertEquals(OFChannelHandler.ChannelState.WAIT_HELLO,
                      handler.getStateForTesting());
         verifyUniqueXids(msgs);
-    }
-
-    /** FIXME:
-     * Verify that the given FlowMod indeed removes all flows from the
-     * switch
-     */
-    private void verifyFlowModIsRemoveAll(OFMessage m) {
-        assertEquals(OFType.FLOW_MOD, m.getType());
-        OFFlowMod fm = (OFFlowMod)m;
-        assertEquals(OFMatch.OFPFW_ALL, fm.getMatch().getWildcards());
-        assertEquals(OFFlowMod.OFPFC_DELETE, fm.getCommand());
-        assertEquals(OFPort.OFPP_NONE.getValue(), fm.getOutPort());
     }
 
     /** Move the channel from scratch to WAIT_FEATURES_REPLY state

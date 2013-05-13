@@ -17,11 +17,9 @@
 package net.floodlightcontroller.topology;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 
 public interface ITopologyService extends IFloodlightService  {
 
