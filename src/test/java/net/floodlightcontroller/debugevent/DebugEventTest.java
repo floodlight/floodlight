@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.debugevent.IDebugEventService.DebugEventInfo;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugEventTest extends FloodlightTestCase {
@@ -24,9 +25,14 @@ public class DebugEventTest extends FloodlightTestCase {
     @Test
     public void testRegisterAndUpdateEvent() {
         assertEquals(0, debugEvent.currentEvents.size());
-        int eventId = debugEvent.registerEvent("dbgevtest", "switchevent", true,
+        int eventId = -1;
+        try {
+            eventId = debugEvent.registerEvent("dbgevtest", "switchevent", true,
                                                "switchtest", EventType.ALWAYS_LOG,
                                                100, "Sw=%dpid, reason=%s", null);
+        } catch (MaxEventsRegistered e) {
+            e.printStackTrace();
+        }
 
         assertEquals(1, debugEvent.currentEvents.size());
         assertEquals(eventId, debugEvent.moduleEvents.get("dbgevtest").

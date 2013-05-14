@@ -39,6 +39,13 @@ public interface IDebugEventService extends IFloodlightService {
     }
 
     /**
+    * exception thrown when MAX_EVENTS have been registered
+    */
+    public class MaxEventsRegistered extends Exception {
+        private static final long serialVersionUID = 2609587082227510262L;
+    }
+
+    /**
      * Register an event for debugging.
      *
      * @param moduleName       module registering event eg. linkdiscovery, virtualrouting.
@@ -64,10 +71,12 @@ public interface IDebugEventService extends IFloodlightService {
      *                         event. This can just be null for now.
      * @return                 an eventId for this event. All updates to this
      *                         event must use the returned eventId.
+     * @throws MaxEventsRegistered
      */
     public int registerEvent(String moduleName, String eventName, boolean flushNow,
                              String eventDescription, EventType et,
-                             int bufferCapacity, String formatStr, Object[] params);
+                             int bufferCapacity, String formatStr, Object[] params)
+                                     throws MaxEventsRegistered;
 
     /**
      * updateEvent is used to log events for pre-registered events.  This method

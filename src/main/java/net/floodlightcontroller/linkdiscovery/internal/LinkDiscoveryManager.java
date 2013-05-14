@@ -60,6 +60,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
@@ -2073,7 +2074,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         registerLinkDiscoveryDebugCounters();
-        registerLinkDiscovertDebugEvents();
+        registerLinkDiscoveryDebugEvents();
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
@@ -2167,23 +2168,27 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                       CounterType.COUNT_ON_DEMAND);
     }
 
-    private void registerLinkDiscovertDebugEvents() {
+    private void registerLinkDiscoveryDebugEvents() {
         if (debugEvents == null) {
             log.error("Debug Event Service not found.");
             debugEvents = new NullDebugEvent();
             return;
         }
-        SWITCH_EVENT = debugEvents.registerEvent(
-                           getName(), "switchevent", true,
-                           "Switch connected, disconnected or port changed",
-                           EventType.ALWAYS_LOG, 100,
-                           "Sw=%dpid, reason=%s", null);
+        try {
+            SWITCH_EVENT = debugEvents.registerEvent(
+                               getName(), "switchevent", true,
+                               "Switch connected, disconnected or port changed",
+                               EventType.ALWAYS_LOG, 100,
+                               "Sw=%dpid, reason=%s", null);
 
-        LINK_EVENT = debugEvents.registerEvent(
-                         getName(), "linkevent", false,
-                         "Direct OpenFlow links discovered or timed-out",
-                         EventType.ALWAYS_LOG, 100,
-                         "srcSw=%dpid, srcPort=%d, dstSw=%dpid, dstPort=%d, reason=%s", null);
+            LINK_EVENT = debugEvents.registerEvent(
+                               getName(), "linkevent", false,
+                               "Direct OpenFlow links discovered or timed-out",
+                               EventType.ALWAYS_LOG, 100,
+                               "srcSw=%dpid, srcPort=%d, dstSw=%dpid, dstPort=%d, reason=%s", null);
+        } catch (MaxEventsRegistered e) {
+            e.printStackTrace();
+        }
     }
 
     // ****************************************************

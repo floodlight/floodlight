@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  *  where {param} must be one of (no quotes):
  *       "all"                  returns value/info on all active events.
  *       "{moduleName}"         returns value/info on all active events for the specified module.
- *       "{moduleCounterName}"  returns value/info for specific event if it is active.
+ *       "{moduleEventName}"  returns value/info for specific event if it is active.
  *
  * @author Saurav
  */

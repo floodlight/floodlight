@@ -171,8 +171,6 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         }
     };
 
-
-
     /**
      * Thread local cache for event-ids that are currently active.
      */
@@ -192,14 +190,13 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     public int registerEvent(String moduleName, String eventName,
                              boolean flushImmediately, String eventDescription,
                              EventType et, int bufferCapacity, String formatStr,
-                             Object[] params) {
+                             Object[] params) throws MaxEventsRegistered {
         int eventId = -1;
         synchronized (eventIdLock) {
              eventId = Integer.valueOf(eventIdCounter++);
         }
-        if (eventId > MAX_EVENTS-2) {
-            log.error("Cannot register any more events - max threshold reached");
-            eventId = MAX_EVENTS-1; // last element of array
+        if (eventId > MAX_EVENTS-1) {
+            throw new MaxEventsRegistered();
         }
 
         // register event id for moduleName
@@ -219,7 +216,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                                      et, formatStr, eventDescription, eventName,
                                      moduleName, flushImmediately);
         allEvents[eventId] = new DebugEventHistory(ei, bufferCapacity);
-        if (enabled && eventId < MAX_EVENTS-1) {
+        if (enabled && eventId < MAX_EVENTS) {
             currentEvents.add(eventId);
         }
 
@@ -228,7 +225,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
 
     @Override
     public void updateEvent(int eventId, Object[] params) {
-        if (eventId < 0 || eventId > MAX_EVENTS-2) return;
+        if (eventId < 0 || eventId > MAX_EVENTS-1) return;
 
         LocalEventHistory[] thishist = this.threadlocalEvents.get();
         if (thishist[eventId] == null) {
