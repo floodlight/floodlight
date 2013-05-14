@@ -1,8 +1,8 @@
 {
     "name": "simpleforwarding",
     "modules": [
-	"net.floodlightcontroller.counter.CounterStore",
-	"net.floodlightcontroller.storage.memory.MemoryStorageSource",
+        "net.floodlightcontroller.counter.CounterStore",
+        "net.floodlightcontroller.storage.memory.MemoryStorageSource",
         "net.floodlightcontroller.core.internal.FloodlightProvider",
         "net.floodlightcontroller.threadpool.ThreadPool",
         "net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl",
