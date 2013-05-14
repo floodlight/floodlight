@@ -1,7 +1,6 @@
 package org.sdnplatform.sync.client;
 
 import java.util.ArrayList;
-
 import org.kohsuke.args4j.Option;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.Versioned;
@@ -56,6 +55,13 @@ public class BootstrapTool extends SyncClientBase {
                       "bootstrap process while retaining existing node IDs. " + 
                       "The node will be put into its own local domain.")
         protected boolean reseed;
+        
+        @Option(name="--delete", 
+                usage="Remove the specified node from the cluster.  Note " +
+                      "that if the node is still active it will rejoin " + 
+                      "automatically, so only run this once the node has " + 
+                      "been disabled.")
+        protected short deleteNode;
     }
 
     public BootstrapTool(BootstrapToolSettings bootstrapSettings) {
@@ -72,21 +78,6 @@ public class BootstrapTool extends SyncClientBase {
                 syncManager.getStoreClient(SyncStoreCCProvider.
                                            SYSTEM_NODE_STORE, 
                                            Short.class, Node.class);
-        Short localNodeId = null;
-        if (bSettings.reseed || bSettings.domainId != 0) {
-            String localNodeIdStr = 
-                    waitForValue(uStoreClient, 
-                                 SyncStoreCCProvider.LOCAL_NODE_ID, 
-                                 5000000);
-            if (localNodeIdStr == null) {
-                err.println("Error: Local node ID is not set; you must " + 
-                            "first seed the cluster by using the --seeds " + 
-                            "option");
-                System.exit(3);
-            }
-            localNodeId = Short.valueOf(localNodeIdStr);
-        }
-        
         
         if (bSettings.localNodeIface != null) {
             while (true) {
@@ -113,14 +104,6 @@ public class BootstrapTool extends SyncClientBase {
                                      bSettings.localNodeHost);
                     break;
                 } catch (ObsoleteVersionException e) {}
-            }
-        }
-        if (bSettings.reseed) {
-            while (true) {
-                try {
-                    nodeStoreClient.delete(localNodeId);
-                    break;
-                } catch (ObsoleteVersionException e) { };
             }
         }
         if (bSettings.seeds != null) {
@@ -153,6 +136,28 @@ public class BootstrapTool extends SyncClientBase {
                 } catch (ObsoleteVersionException e) {}
             }
         }
+        Short localNodeId = null;
+        if (bSettings.reseed || bSettings.domainId != 0) {
+            String localNodeIdStr = 
+                    waitForValue(uStoreClient,
+                                 SyncStoreCCProvider.LOCAL_NODE_ID, 
+                                 10000000000L);
+            if (localNodeIdStr == null) {
+                err.println("Error: Local node ID is not set; you must " + 
+                            "first seed the cluster by using the --seeds " + 
+                            "option");
+                System.exit(3);
+            }
+            localNodeId = Short.valueOf(localNodeIdStr);
+        }
+        if (bSettings.reseed) {
+            while (true) {
+                try {
+                    nodeStoreClient.delete(localNodeId);
+                    break;
+                } catch (ObsoleteVersionException e) { };
+            }
+        }
         if (bSettings.domainId != 0) {
             while (true) {
                 try {
@@ -175,6 +180,14 @@ public class BootstrapTool extends SyncClientBase {
                 } catch (ObsoleteVersionException e) { };
             }
 
+        }
+        if (bSettings.deleteNode != 0) {
+            while (true) {
+                try {
+                    nodeStoreClient.delete(bSettings.deleteNode);
+                    break;
+                } catch (ObsoleteVersionException e) {}
+            }
         }
     }
 
