@@ -69,6 +69,9 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -155,6 +158,8 @@ public class Controller implements IFloodlightProviderService,
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
 
+    // Event IDs for debug events
+    private int SWITCH_EVENT = -1;
 
     // This controller's current role that modules can use/query to decide
     // if they should operate in master or slave mode.
@@ -931,6 +936,7 @@ public class Controller implements IFloodlightProviderService,
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
             // Update event history
             addSwitchEvent(dpid, EvAction.SWITCH_CONNECTED, "None");
+            debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw.getId(), "connected"});
 
             if (oldSw == sw)  {
                 // Note == for object equality, not .equals for value
@@ -1110,6 +1116,7 @@ public class Controller implements IFloodlightProviderService,
             //       in switchActivated(). Should we have events on the
             //       slave as well?
             addSwitchEvent(dpid, EvAction.SWITCH_DISCONNECTED, "None");
+            debugEvents.updateEvent(SWITCH_EVENT, new Object[] {dpid, "disconnected"});
             counters.switchDisconnected.increment();
             IOFSwitch oldSw = this.activeSwitches.get(dpid);
             if (oldSw != sw) {
@@ -1361,7 +1368,6 @@ public class Controller implements IFloodlightProviderService,
             }
             evSwitch.reason = reason;
             evSwitch = evHistSwitch.put(evSwitch, actn);
-            debugEvents.flushEvents();
         }
 
     }
@@ -1772,9 +1778,6 @@ public class Controller implements IFloodlightProviderService,
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
         }
     }
-
-
-
 
     void switchActivated(IOFSwitch sw) {
         this.switchManager.switchActivated(sw);
@@ -2239,6 +2242,23 @@ public class Controller implements IFloodlightProviderService,
             throw new FloodlightModuleException("Error while setting up sync service", e);
         }
         this.counters.createCounters(debugCounters);
+        registerControllerDebugEvents();
+    }
+
+    private void registerControllerDebugEvents() {
+        if (debugEvents == null) {
+            debugEvents = new NullDebugEvent();
+            return;
+        }
+        try {
+            SWITCH_EVENT = debugEvents.registerEvent(
+                               "controller", "switchevent", true,
+                               "Switch connected, disconnected or port changed",
+                               EventType.ALWAYS_LOG, 100,
+                               "Sw=%dpid, reason=%s", null);
+        } catch (MaxEventsRegistered e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

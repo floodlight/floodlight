@@ -145,7 +145,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     // Event Ids for debug events
     private int LINK_EVENT = -1;
-    private int SWITCH_EVENT = -1;
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
@@ -1648,9 +1647,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     @Override
     public void switchRemoved(long sw) {
-        // Update event history - TODO move to controller.java
-        debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw, "disconnected"});
-
         List<Link> eraseList = new ArrayList<Link>();
         lock.writeLock().lock();
         try {
@@ -1690,8 +1686,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 processNewPort(sw.getId(), p);
             }
         }
-        // Update event history - TODO move to controller.java
-        debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw.getId(), "connected"});
         LDUpdate update = new LDUpdate(sw.getId(), null,
                                        UpdateOperation.SWITCH_UPDATED);
         updates.add(update);
@@ -2177,12 +2171,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return;
         }
         try {
-            SWITCH_EVENT = debugEvents.registerEvent(
-                               getName(), "switchevent", true,
-                               "Switch connected, disconnected or port changed",
-                               EventType.ALWAYS_LOG, 100,
-                               "Sw=%dpid, reason=%s", null);
-
             LINK_EVENT = debugEvents.registerEvent(
                                getName(), "linkevent", false,
                                "Direct OpenFlow links discovered or timed-out",
