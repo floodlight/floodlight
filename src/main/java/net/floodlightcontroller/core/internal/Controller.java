@@ -927,6 +927,8 @@ public class Controller implements IFloodlightProviderService,
             Long dpid = sw.getId();
             counters.switchActivated.increment();
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
+            // Update event history
+            addSwitchEvent(dpid, EvAction.SWITCH_CONNECTED, "None");
 
             if (oldSw == sw)  {
                 // Note == for object equality, not .equals for value
@@ -1100,8 +1102,14 @@ public class Controller implements IFloodlightProviderService,
                 counters.switchDisconnectedWhileSlave.increment();
                 return; // only react to switch connections when master
             }
+            long dpid = sw.getId();
+            // Update event history
+            // TODO: this is asymmetric with respect to connect event
+            //       in switchActivated(). Should we have events on the
+            //       slave as well?
+            addSwitchEvent(dpid, EvAction.SWITCH_DISCONNECTED, "None");
             counters.switchDisconnected.increment();
-            IOFSwitch oldSw = this.activeSwitches.get(sw.getId());
+            IOFSwitch oldSw = this.activeSwitches.get(dpid);
             if (oldSw != sw) {
                 // This can happen if the disconnected switch was inactive
                 // (SLAVE) then oldSw==null. Or if we previously had the
