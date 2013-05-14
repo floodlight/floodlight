@@ -1,6 +1,8 @@
 package net.floodlightcontroller.debugcounter;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,13 +23,21 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
     @Override
     public Collection<Class<? extends IFloodlightService>>
             getModuleServices() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> services =
+                new ArrayList<Class<? extends IFloodlightService>>(1);
+        services.add(IDebugCounterService.class);
+        return services;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        return null;
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m =
+                new HashMap<Class<? extends IFloodlightService>,
+                    IFloodlightService>();
+        m.put(IDebugCounterService.class, this);
+        return m;
     }
 
     @Override

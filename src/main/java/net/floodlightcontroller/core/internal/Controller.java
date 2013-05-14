@@ -68,6 +68,7 @@ import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -142,6 +143,7 @@ public class Controller implements IFloodlightProviderService,
     private IRestApiService restApi;
     private ICounterStoreService counterStore = null;
     private IDebugCounterService debugCounters;
+    protected IDebugEventService debugEvents;
     private IStorageSourceService storageSource;
     private IPktInProcessingTimeService pktinProcTime;
     private IThreadPoolService threadPool;
@@ -821,9 +823,9 @@ public class Controller implements IFloodlightProviderService,
      */
     private class SwitchManager implements IStoreListener<Long> {
         private Role role;
-        private ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
-        private ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
-        private EventHistory<EventHistorySwitch> evHistSwitch;
+        private final ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
+        private final ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
+        private final EventHistory<EventHistorySwitch> evHistSwitch;
 
         public SwitchManager(Role role) {
             this.role = role;
@@ -927,7 +929,8 @@ public class Controller implements IFloodlightProviderService,
             Long dpid = sw.getId();
             counters.switchActivated.increment();
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
-            addSwitchToStore(sw);
+            // Update event history
+            addSwitchEvent(dpid, EvAction.SWITCH_CONNECTED, "None");
 
             if (oldSw == sw)  {
                 // Note == for object equality, not .equals for value
@@ -936,6 +939,7 @@ public class Controller implements IFloodlightProviderService,
                 // really never happen.
                 counters.errorSameSwitchReactivated.increment();
                 log.error("Switch {} activated but was already active", sw);
+                addSwitchToStore(sw);
                 return;
             }
 
@@ -964,6 +968,7 @@ public class Controller implements IFloodlightProviderService,
                                                   SwitchUpdateType.ADDED));
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
+                addSwitchToStore(sw);
                 return;
             }
 
@@ -985,6 +990,17 @@ public class Controller implements IFloodlightProviderService,
                 // has changed and send update.
                 if (alwaysClearFlowsOnSwActivate)
                     sw.clearAllFlowMods();
+                if (sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true)) {
+                    // We have a stored switch and the newly activated switch
+                    // supports roles. This indicates that the switch was
+                    // previously connected as slave. Since we don't update
+                    // ports while slave, we need to set the ports on the
+                    // new switch from the ports on the stored switch
+                    // FIXME: we need to correctly send port changed notifications
+                    for (OFPhysicalPort p: storedSwitch.getPorts()) {
+                        sw.setPort(p);
+                    }
+                }
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ACTIVATED));
                 sendNotificationsIfSwitchDiffers(storedSwitch, sw);
@@ -997,6 +1013,7 @@ public class Controller implements IFloodlightProviderService,
                     addUpdateToQueue(new ReadyForReconcileUpdate());
                 }
             }
+            addSwitchToStore(sw);
         }
 
         /**
@@ -1087,8 +1104,14 @@ public class Controller implements IFloodlightProviderService,
                 counters.switchDisconnectedWhileSlave.increment();
                 return; // only react to switch connections when master
             }
+            long dpid = sw.getId();
+            // Update event history
+            // TODO: this is asymmetric with respect to connect event
+            //       in switchActivated(). Should we have events on the
+            //       slave as well?
+            addSwitchEvent(dpid, EvAction.SWITCH_DISCONNECTED, "None");
             counters.switchDisconnected.increment();
-            IOFSwitch oldSw = this.activeSwitches.get(sw.getId());
+            IOFSwitch oldSw = this.activeSwitches.get(dpid);
             if (oldSw != sw) {
                 // This can happen if the disconnected switch was inactive
                 // (SLAVE) then oldSw==null. Or if we previously had the
@@ -1338,6 +1361,7 @@ public class Controller implements IFloodlightProviderService,
             }
             evSwitch.reason = reason;
             evSwitch = evHistSwitch.put(evSwitch, actn);
+            debugEvents.flushEvents();
         }
 
     }
@@ -1540,8 +1564,12 @@ public class Controller implements IFloodlightProviderService,
         this.counterStore = counterStore;
     }
 
-    void setDebugCounter(IDebugCounterService debugCounter) {
-        this.debugCounters = debugCounter;
+    void setDebugCounter(IDebugCounterService debugCounters) {
+        this.debugCounters = debugCounters;
+    }
+
+    public void setDebugEvent(IDebugEventService debugEvent) {
+        this.debugEvents = debugEvent;
     }
 
     IDebugCounterService getDebugCounter() {
@@ -2421,6 +2449,7 @@ public class Controller implements IFloodlightProviderService,
         OFSwitchBase.flush_all();
         counterStore.updateFlush();
         debugCounters.flushCounters();
+        debugEvents.flushEvents();
     }
 
     /**
