@@ -269,7 +269,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             }
             le.nextIndex++;
 
-            if (le.nextIndex >= le.maxCapacity) {
+            if (le.nextIndex >= le.maxCapacity || le.flushNow) {
                 // flush this buffer now
                 DebugEventHistory de = allEvents[eventId];
                 if (de.einfo.enabled) {
