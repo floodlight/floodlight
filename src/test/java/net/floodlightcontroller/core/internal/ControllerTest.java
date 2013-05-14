@@ -246,6 +246,8 @@ public class ControllerTest extends FloodlightTestCase {
                 .andReturn(featuresReply.getActions()).atLeastOnce();
         expect(sw.getPorts())
                 .andReturn(featuresReply.getPorts()).atLeastOnce();
+        expect(sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true))
+                .andReturn(false).anyTimes();
     }
 
     @SuppressWarnings("unchecked")

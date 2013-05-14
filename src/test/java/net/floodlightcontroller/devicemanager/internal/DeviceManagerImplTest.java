@@ -352,7 +352,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertSame(d1, deviceManager.learnDeviceByEntity(entity1));
         assertSame(d1, deviceManager.findDeviceByEntity(entity1));
         assertEquals(DefaultEntityClassifier.entityClass ,
-                          d1.entityClass);
+                          d1.getEntityClass());
         assertArrayEquals(new Short[] { -1 }, d1.getVlanId());
         assertArrayEquals(new Integer[] { }, d1.getIPv4Addresses());
 
@@ -367,7 +367,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         assertFalse(d1.equals(d2));
         assertNotSame(d1, d2);
         assertNotSame(d1.getDeviceKey(), d2.getDeviceKey());
-        assertEquals(MockEntityClassifier.testEC, d2.entityClass);
+        assertEquals(MockEntityClassifier.testEC, d2.getEntityClass());
         assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
         assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
 
@@ -381,7 +381,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d3 = deviceManager.learnDeviceByEntity(entity3);
         assertNotSame(d2, d3);
         assertEquals(d2.getDeviceKey(), d3.getDeviceKey());
-        assertEquals(MockEntityClassifier.testEC, d3.entityClass);
+        assertEquals(MockEntityClassifier.testEC, d3.getEntityClass());
         assertArrayEquals(new Integer[] { 1 },
                           d3.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(10L, 1) },
@@ -401,7 +401,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Device d4 = deviceManager.learnDeviceByEntity(entity4);
         assertNotSame(d1, d4);
         assertEquals(d1.getDeviceKey(), d4.getDeviceKey());
-        assertEquals(DefaultEntityClassifier.entityClass, d4.entityClass);
+        assertEquals(DefaultEntityClassifier.entityClass, d4.getEntityClass());
         assertArrayEquals(new Integer[] { 1 },
                           d4.getIPv4Addresses());
         assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) },
@@ -1306,24 +1306,21 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
                     // is different enough to compare differently in equals
                     // but otherwise looks the same.
                     // It's ugly but it works.
-                    Entity[] curEntities = new Entity[d.getEntities().length];
-                    int i = 0;
                     // clone entities
+                    Device newDevice = d;
                     for (Entity e: d.getEntities()) {
-                        curEntities[i] = new Entity (e.macAddress,
-                                                     e.vlan,
-                                                     e.ipv4Address,
-                                                     e.switchDPID,
-                                                     e.switchPort,
-                                                     e.lastSeenTimestamp);
+                        Entity newEntity = new Entity (e.macAddress,
+                                                       e.vlan,
+                                                       e.ipv4Address,
+                                                       e.switchDPID,
+                                                       e.switchPort,
+                                                       e.lastSeenTimestamp);
                         if (e.vlan == null)
-                            curEntities[i].vlan = (short)1;
+                            newEntity.vlan = (short)1;
                         else
-                            curEntities[i].vlan = (short)((e.vlan + 1 % 4095)+1);
-                        i++;
+                             newEntity.vlan = (short)((e.vlan + 1 % 4095)+1);
+                        newDevice = new Device(newDevice, newEntity, -1);
                     }
-                    Device newDevice = new Device(d, curEntities[0], -1);
-                    newDevice.entities = curEntities;
                     assertEquals(false, newDevice.equals(d));
                     super.put(newDevice.getDeviceKey(), newDevice);
                 }
