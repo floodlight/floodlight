@@ -1648,9 +1648,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     @Override
     public void switchRemoved(long sw) {
-        // Update event history
-        floodlightProvider.addSwitchEvent(sw, EvAction.SWITCH_DISCONNECTED,
-                "None");
+        // Update event history - TODO move to controller.java
         debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw, "disconnected"});
 
         List<Link> eraseList = new ArrayList<Link>();
@@ -1692,9 +1690,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 processNewPort(sw.getId(), p);
             }
         }
-        // Update event history
-        floodlightProvider.addSwitchEvent(switchId, EvAction.SWITCH_CONNECTED,
-                "None");
+        // Update event history - TODO move to controller.java
         debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw.getId(), "connected"});
         LDUpdate update = new LDUpdate(sw.getId(), null,
                                        UpdateOperation.SWITCH_UPDATED);
