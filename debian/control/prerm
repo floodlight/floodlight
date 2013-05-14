@@ -3,17 +3,11 @@
 NAME=floodlight
 
 case "$1" in
-    purge)
-	rm -f /etc/floodlight/auth_credentials.jceks
-	rm -f /etc/floodlight/conf.d/01-keystorepass.properties
-	rm -rf /var/lib/floodlight/SyncDB
-    ;;
-
     remove)
-	service floodlight stop
+	service floodlight stop || true
     ;;
     
-    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    purge|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
 
     *)
