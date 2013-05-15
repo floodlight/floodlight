@@ -255,6 +255,7 @@ public interface IOFSwitch {
      * Retrieve the port object by the port name. The port object
      * is the one that reflects the port status updates that have been
      * received, not the one from the features reply.
+     * Port names are case insentive
      * @param portName
      * @return port object
      */

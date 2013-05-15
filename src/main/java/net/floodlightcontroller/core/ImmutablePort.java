@@ -21,6 +21,9 @@ import org.openflow.protocol.OFPhysicalPort.PortSpeed;
  * instead of integer bitmaps to represent
  * OFPortConfig, OFPortState, and OFPortFeature bitmaps.
  *
+ * Port names are stored with the original case but equals() and XXXX use
+ * case-insentivie comparisions for port names!!
+ *
  * TODO: create a Builder so we can easily construct OFPhysicalPorts
  * TODO: should we verify / ensure that the features make sense, i.e., that
  *     currentFeatures IsSubsetOf advertisedFeatures IsSubsetOf
@@ -281,7 +284,7 @@ public class ImmutablePort {
         if (portNumber != other.portNumber) return false;
         if (name == null) {
             if (other.name != null) return false;
-        } else if (!name.equals(other.name)) return false;
+        } else if (!name.equalsIgnoreCase(other.name)) return false;
         if (advertisedFeatures == null) {
             if (other.advertisedFeatures != null) return false;
         } else if (!advertisedFeatures.equals(other.advertisedFeatures))

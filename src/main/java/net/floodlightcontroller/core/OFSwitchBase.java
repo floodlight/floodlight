@@ -176,6 +176,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
      * with the previous mapping(s) the class will delete all previous ports
      * with name or number of the new port and then add the new port.
      *
+     * Port names are stored as-is but they are compared case-insensitive
+     *
      * The methods that change the stored ports return a list of
      * PortChangeEvents that represent the changes that have been applied
      * to the port list so that IOFSwitchListeners can be notified about the
@@ -232,7 +234,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
             for(ImmutablePort p: newPortsByNumber.values()) {
                 newPortList.add(p);
-                newPortsByName.put(p.getName(), p);
+                newPortsByName.put(p.getName().toLowerCase(), p);
                 if (p.isEnabled()) {
                     newEnabledPortList.add(p);
                     newEnabledPortNumbers.add(p.getPortNumber());
@@ -288,7 +290,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     events.add(new PortChangeEvent(prevPort,
                                                    PortChangeType.DELETE));
                     // is there another port that has delPort's name?
-                    prevPort = portsByName.get(delPort.getName());
+                    prevPort = portsByName.get(delPort.getName().toLowerCase());
                     if (prevPort != null) {
                         newPortByNumber.remove(prevPort.getPortNumber());
                         events.add(new PortChangeEvent(prevPort,
@@ -421,7 +423,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
                 // We now need to check if there exists a previous port sharing
                 // the same name as the new/updated port.
-                prevPort = portsByName.get(newPort.getName());
+                prevPort = portsByName.get(newPort.getName().toLowerCase());
                 if (prevPort != null) {
                     // There exists a previous port with the same port
                     // name but the port number is different (otherwise we
@@ -526,7 +528,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                                 duplicatePort.toBriefString());
                         throw new IllegalArgumentException(msg);
                     }
-                    duplicatePort = newPortsByName.put(p.getName(), p);
+                    duplicatePort =
+                            newPortsByName.put(p.getName().toLowerCase(), p);
                     if (duplicatePort != null) {
                         String msg = String.format("Cannot have two ports " +
                                 "with the same name: %s <-> %s",
@@ -560,9 +563,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
         }
 
         public ImmutablePort getPort(String name) {
+            if (name == null) {
+                throw new NullPointerException("Port name must not be null");
+            }
             lock.readLock().lock();
             try {
-                return portsByName.get(name);
+                return portsByName.get(name.toLowerCase());
             } finally {
                 lock.readLock().unlock();
             }
