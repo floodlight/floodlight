@@ -1305,6 +1305,7 @@ public class ControllerTest extends FloodlightTestCase {
         OFFeaturesReply fr1a = createOFFeaturesReply();
         fr1a.setDatapathId(1L);
         OFPhysicalPort p = createOFPhysicalPort("P1", 1);
+        ImmutablePort sw1p1 = ImmutablePort.fromOFPhysicalPort(p);
         List<OFPhysicalPort> ports1a = Collections.singletonList(p);
         fr1a.setPorts(ports1a);
         List<ImmutablePort> ports1aImmutable =
@@ -1317,6 +1318,7 @@ public class ControllerTest extends FloodlightTestCase {
         List<OFPhysicalPort> ports1b = new ArrayList<OFPhysicalPort>();
         ports1b.add(p);
         p = createOFPhysicalPort("P2", 42000);
+        ImmutablePort sw1p2 = ImmutablePort.fromOFPhysicalPort(p);
         ports1b.add(p);
         fr1b.setPorts(ports1b);
         List<ImmutablePort> ports1bImmutable =
@@ -1327,6 +1329,7 @@ public class ControllerTest extends FloodlightTestCase {
         // and desc stats to store
         OFFeaturesReply fr2a = createOFFeaturesReply();
         fr2a.setDatapathId(2L);
+        ImmutablePort sw2p1 = sw1p1;
         List<OFPhysicalPort> ports2a = new ArrayList<OFPhysicalPort>(ports1a);
         fr2a.setPorts(ports2a);
         List<ImmutablePort> ports2aImmutable =
@@ -1336,6 +1339,7 @@ public class ControllerTest extends FloodlightTestCase {
         fr2b.setDatapathId(2L);
         p = new OFPhysicalPort();
         p = createOFPhysicalPort("P1", 2); // port number changed
+        ImmutablePort sw2p1Changed = ImmutablePort.fromOFPhysicalPort(p);
         List<OFPhysicalPort> ports2b = Collections.singletonList(p);
         fr2b.setPorts(ports2b);
 
@@ -1416,10 +1420,8 @@ public class ControllerTest extends FloodlightTestCase {
 
         // update switch 1 with fr1b
         reset(switchListener);
-        /* FIXME FIXME FIXME
-        switchListener.switchPortChanged(1L);
+        switchListener.switchPortChanged(1L, sw1p2, PortChangeType.ADD);
         expectLastCall().once();
-        */
         replay(switchListener);
         doAddSwitchToStore(1L, null, fr1b);
         controller.processUpdateQueueForTesting();
@@ -1494,10 +1496,9 @@ public class ControllerTest extends FloodlightTestCase {
         reset(switchListener);
         switchListener.switchActivated(2L);
         expectLastCall().once();
-        /* FIXME FIXME FIXME
-        switchListener.switchPortChanged(2L);
+        switchListener.switchPortChanged(2L, sw2p1, PortChangeType.DELETE);
+        switchListener.switchPortChanged(2L, sw2p1Changed, PortChangeType.ADD);
         expectLastCall().once();
-        */
         replay(sw2);
         replay(switchListener);
         controller.switchActivated(sw2);

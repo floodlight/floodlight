@@ -45,6 +45,9 @@ public class ImmutablePort {
         if (p == null) {
             throw new NullPointerException("OFPhysicalPort must not be null");
         }
+        if (p.getHardwareAddress() == null)  {
+            throw new NullPointerException("Hardware address must not be null");
+        }
 
         return new ImmutablePort(
 
@@ -83,7 +86,7 @@ public class ImmutablePort {
      *
      * Verifies pre-conditions of arguments
      * Does NOT make defensive copies. Calling factory methods are required
-     * to copy defensively.
+     * to copy defensively if required.
      *
      * @param portNumber
      * @param hardwareAddress
@@ -228,7 +231,11 @@ public class ImmutablePort {
      */
     public String toBriefString() {
         return String.format("%d (%s)", portNumber, name);
+    }
 
+    @Override
+    public String toString() {
+        return toBriefString();
     }
 
     /* (non-Javadoc)

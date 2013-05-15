@@ -70,6 +70,7 @@ import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
+import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -467,7 +468,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          */
         public List<PortChangeEvent>
                 updatePorts(Collection<ImmutablePort> newPorts) {
-            return compareAndUpdatePorts(newPorts, false);
+            return compareAndUpdatePorts(newPorts, true);
         }
 
         /**
@@ -776,6 +777,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             portManager.updatePorts(immutablePorts);
         }
         this.datapathId = featuresReply.getDatapathId();
+        this.stringId = HexString.toHexString(featuresReply.getDatapathId());
         this.capabilities = featuresReply.getCapabilities();
         this.buffers = featuresReply.getBuffers();
         this.actions = featuresReply.getActions();
