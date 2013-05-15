@@ -11,7 +11,9 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.debugcounter.DebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -1174,62 +1176,49 @@ public class OFChannelHandlerTest {
                 BasicFactory.getInstance().getMessage(OFType.PORT_STATUS);
         ps.setDesc(p);
 
+        // The events we expect sw.handlePortStatus to return
+        // We'll just use the same list for all valid OFPortReasons and add
+        // arbitrary events for arbitrary ports that are not necessarily
+        // related to the port status message. Our goal
+        // here is not to return the correct set of events but the make sure
+        // that a) sw.handlePortStatus is called
+        //      b) the list of events sw.handlePortStatus returns is sent
+        //         as IOFSwitchListener notifications.
+        List<PortChangeEvent> events =  new ArrayList<PortChangeEvent>();
+        ImmutablePort p1 = ImmutablePort.create("eth1", (short)1);
+        ImmutablePort p2 = ImmutablePort.create("eth2", (short)2);
+        ImmutablePort p3 = ImmutablePort.create("eth3", (short)3);
+        ImmutablePort p4 = ImmutablePort.create("eth4", (short)4);
+        ImmutablePort p5 = ImmutablePort.create("eth5", (short)5);
+        events.add(new PortChangeEvent(p1, PortChangeType.ADD));
+        events.add(new PortChangeEvent(p2, PortChangeType.DELETE));
+        events.add(new PortChangeEvent(p3, PortChangeType.UP));
+        events.add(new PortChangeEvent(p4, PortChangeType.DOWN));
+        events.add(new PortChangeEvent(p5, PortChangeType.OTHER_UPDATE));
 
-        // Add port
-        ps.setReason(OFPortReason.OFPPR_ADD.getReasonCode());
-        reset(sw);
-        expect(sw.inputThrottled(anyObject(OFMessage.class)))
-                .andReturn(false).anyTimes();
-        expect(sw.getId()).andReturn(dpid).anyTimes();
-        sw.setPort(p);
-        expectLastCall().once();
-        expect(sw.portEnabled((short)1)).andReturn(true).anyTimes();
-        replay(sw);
 
-        reset(controller);
-        controller.notifyPortChanged(sw, p, PortChangeType.UP);
-        expectLastCall().once();
-        sendMessageToHandlerNoControllerReset(
-               Collections.<OFMessage>singletonList(ps));
-        verify(sw);
-        verify(controller);
+        for (OFPortReason reason: OFPortReason.values()) {
+            ps.setReason(reason.getReasonCode());
 
-        // modify port
-        ps.setReason(OFPortReason.OFPPR_MODIFY.getReasonCode());
-        reset(sw);
-        expect(sw.inputThrottled(anyObject(OFMessage.class)))
-                .andReturn(false).anyTimes();
-        expect(sw.getId()).andReturn(dpid).anyTimes();
-        sw.setPort(p);
-        expectLastCall().once();
-        expect(sw.portEnabled((short)1)).andReturn(true).anyTimes();
-        replay(sw);
+            reset(sw);
+            expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                    .andReturn(false).anyTimes();
+            expect(sw.getId()).andReturn(dpid).anyTimes();
 
-        reset(controller);
-        controller.notifyPortChanged(sw, p, PortChangeType.OTHER_UPDATE);
-        expectLastCall().once();
-        sendMessageToHandlerNoControllerReset(
-               Collections.<OFMessage>singletonList(ps));
-        verify(sw);
-        verify(controller);
+            expect(sw.processOFPortStatus(ps)).andReturn(events).once();
+            replay(sw);
 
-        // delete port
-        ps.setReason(OFPortReason.OFPPR_DELETE.getReasonCode());
-        reset(sw);
-        expect(sw.inputThrottled(anyObject(OFMessage.class)))
-                .andReturn(false).anyTimes();
-        expect(sw.getId()).andReturn(dpid).anyTimes();
-        sw.deletePort(p.getPortNumber());
-        expectLastCall().once();
-        replay(sw);
-
-        reset(controller);
-        controller.notifyPortChanged(sw, p, PortChangeType.DELETE);
-        expectLastCall().once();
-        sendMessageToHandlerNoControllerReset(
-               Collections.<OFMessage>singletonList(ps));
-        verify(sw);
-        verify(controller);
+            reset(controller);
+            controller.notifyPortChanged(sw, p1, PortChangeType.ADD);
+            controller.notifyPortChanged(sw, p2, PortChangeType.DELETE);
+            controller.notifyPortChanged(sw, p3, PortChangeType.UP);
+            controller.notifyPortChanged(sw, p4, PortChangeType.DOWN);
+            controller.notifyPortChanged(sw, p5, PortChangeType.OTHER_UPDATE);
+            sendMessageToHandlerNoControllerReset(
+                   Collections.<OFMessage>singletonList(ps));
+            verify(sw);
+            verify(controller);
+        }
     }
 
     /**

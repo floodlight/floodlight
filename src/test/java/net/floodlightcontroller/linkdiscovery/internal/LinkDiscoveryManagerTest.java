@@ -36,6 +36,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
@@ -428,9 +429,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         Capture<OFMessage> wc;
         Capture<FloodlightContext> fc;
         Set<Short> qPorts;
-        OFPhysicalPort p1 = new OFPhysicalPort();
-        p1.setHardwareAddress(HexString.fromHexString("5c:16:c7:00:00:01"));
-        p1.setCurrentFeatures(0);
+        OFPhysicalPort ofpp = new OFPhysicalPort();
+        ofpp.setName("eth4242");
+        ofpp.setPortNumber((short)4242);
+        ofpp.setHardwareAddress(HexString.fromHexString("5c:16:c7:00:00:01"));
+        ofpp.setCurrentFeatures(0);
+        ImmutablePort p1 = ImmutablePort.fromOFPhysicalPort(ofpp);
         IOFSwitch sw1 = createMockSwitch(1L);
 
         // Set switch map in floodlightProvider.

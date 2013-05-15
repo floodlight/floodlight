@@ -53,10 +53,12 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IReadyForReconcileListener;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.OFSwitchBase;
 import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.SwitchSyncRepresentation;
@@ -88,7 +90,6 @@ import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
@@ -1006,7 +1007,7 @@ public class Controller implements IFloodlightProviderService,
          * @param sw
          */
         public synchronized void switchPortsChanged(IOFSwitch sw,
-                                                    OFPhysicalPort port,
+                                                    ImmutablePort port,
                                                     PortChangeType type) {
             if (role != Role.MASTER) {
                 counters.invalidPortsChanged.increment();
@@ -1182,24 +1183,20 @@ public class Controller implements IFloodlightProviderService,
         /**
          * Check if the two switches differ in their ports or in other
          * fields and if they differ enqueue a switch update
-         * @param sw1
-         * @param sw2
+         * @param oldSw
+         * @param newSw
          */
-        private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch sw1,
-                                                      IOFSwitch sw2) {
-            // FIXME
-            Set<OFPhysicalPort> sw1Ports =
-                    new HashSet<OFPhysicalPort>(sw1.getPorts());
-            Set<OFPhysicalPort> sw2Ports =
-                    new HashSet<OFPhysicalPort>(sw2.getPorts());
-            if (! sw1Ports.equals(sw2Ports)) {
-                /* FIXME FIXME FIXME
-                addUpdateToQueue(
-                        new SwitchUpdate(sw2.getId(),
+        private synchronized void
+                sendNotificationsIfSwitchDiffers(IOFSwitch oldSw,
+                                                 IOFSwitch newSw) {
+            List<PortChangeEvent> portDiffs =
+                    oldSw.comparePorts(newSw.getPorts());
+            for (PortChangeEvent ev: portDiffs) {
+                SwitchUpdate update =
+                        new SwitchUpdate(newSw.getId(),
                                          SwitchUpdateType.PORTCHANGED,
-                                         null, null));
-                                         */
-
+                                         ev.port, ev.type);
+                addUpdateToQueue(update);
             }
         }
 
@@ -1384,7 +1381,7 @@ public class Controller implements IFloodlightProviderService,
     private class SwitchUpdate implements IUpdate {
         private final long swId;
         private final SwitchUpdateType switchUpdateType;
-        private final OFPhysicalPort port;
+        private final ImmutablePort port;
         private final PortChangeType changeType;
 
 
@@ -1393,7 +1390,7 @@ public class Controller implements IFloodlightProviderService,
         }
         public SwitchUpdate(long swId,
                             SwitchUpdateType switchUpdateType,
-                            OFPhysicalPort port,
+                            ImmutablePort port,
                             PortChangeType changeType) {
             if (switchUpdateType == SwitchUpdateType.PORTCHANGED) {
                 if (port == null) {
@@ -1594,8 +1591,24 @@ public class Controller implements IFloodlightProviderService,
      * @param sw
      */
      void notifyPortChanged(IOFSwitch sw,
-                            OFPhysicalPort port,
+                            ImmutablePort port,
                             PortChangeType changeType) {
+         if (sw == null) {
+             String msg = String.format("Switch must not be null. " +
+                     "port=%s, changeType=%s", port, changeType);
+             throw new NullPointerException(msg);
+         }
+         if (port == null) {
+             String msg = String.format("Port must not be null. " +
+                     "switch=%s, changeType=%s", sw, changeType);
+             throw new NullPointerException(msg);
+         }
+         if (changeType == null) {
+             String msg = String.format("ChangeType must not be null. " +
+                     "switch=%s, port=%s", sw, port);
+             throw new NullPointerException(msg);
+         }
+
          this.switchManager.switchPortsChanged(sw, port, changeType);
      }
 

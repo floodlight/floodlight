@@ -17,8 +17,6 @@
 
 package net.floodlightcontroller.core;
 
-import org.openflow.protocol.OFPhysicalPort;
-
 /**
  * Switch lifecycle notifications.
  *
@@ -77,7 +75,7 @@ public interface IOFSwitchListener {
      * @param type
      */
     public void switchPortChanged(long switchId,
-                                  OFPhysicalPort port,
+                                  ImmutablePort port,
                                   IOFSwitch.PortChangeType type);
 
     /**

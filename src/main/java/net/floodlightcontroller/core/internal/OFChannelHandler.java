@@ -11,7 +11,7 @@ import java.util.concurrent.RejectedExecutionException;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
+import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.Counters;
@@ -42,7 +42,6 @@ import org.openflow.protocol.OFGetConfigRequest;
 import org.openflow.protocol.OFHello;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFQueueGetConfigReply;
 import org.openflow.protocol.OFSetConfig;
@@ -58,7 +57,6 @@ import org.openflow.protocol.OFError.OFFlowModFailedCode;
 import org.openflow.protocol.OFError.OFHelloFailedCode;
 import org.openflow.protocol.OFError.OFPortModFailedCode;
 import org.openflow.protocol.OFError.OFQueueOpFailedCode;
-import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.factory.BasicFactory;
 import org.openflow.protocol.factory.MessageParseException;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
@@ -980,43 +978,16 @@ class OFChannelHandler
          */
         protected void handlePortStatusMessage(OFChannelHandler h,
                                                OFPortStatus m) {
-            short portNumber = m.getDesc().getPortNumber();
-            OFPhysicalPort port = m.getDesc();
-            OFPortReason reason = OFPortReason.fromReasonCode(m.getReason());
-            PortChangeType changeType = null;
-
-            switch(reason) {
-                case OFPPR_MODIFY:
-                    boolean oldEnabled =
-                        h.sw.portEnabled(port.getPortNumber());
-
-                    h.sw.setPort(port);
-                    boolean newEnabled =
-                            h.sw.portEnabled(port.getPortNumber());
-
-                    if (!oldEnabled && newEnabled)
-                        changeType = PortChangeType.UP;
-                    else if (oldEnabled && !newEnabled)
-                        changeType = PortChangeType.DOWN;
-                    else changeType = PortChangeType.OTHER_UPDATE;
-
-                    log.debug("Port #{} modified for {}", portNumber, h.sw);
-                    break;
-                case OFPPR_ADD:
-                    h.sw.setPort(port);
-                    if (h.sw.portEnabled(port.getPortNumber()))
-                        changeType = PortChangeType.UP;
-                    else
-                        changeType = PortChangeType.ADD;
-                    log.debug("Port #{} added for {}", portNumber, h.sw);
-                    break;
-                case OFPPR_DELETE:
-                    h.sw.deletePort(portNumber);
-                    changeType = PortChangeType.DELETE;
-                    log.debug("Port #{} deleted for {}", portNumber, h.sw);
-                    break;
+            if (h.sw == null) {
+                String msg = getSwitchStateMessage(h, m,
+                        "State machine error: switch is null. Should never " +
+                        "happen");
+                throw new SwitchStateException(msg);
             }
-            h.controller.notifyPortChanged(h.sw, port, changeType);
+            List<PortChangeEvent> changes = h.sw.processOFPortStatus(m);
+            for (PortChangeEvent ev: changes) {
+                h.controller.notifyPortChanged(h.sw, ev.port, ev.type);
+            }
         }
 
         /**

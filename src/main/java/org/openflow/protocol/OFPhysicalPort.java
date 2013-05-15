@@ -104,37 +104,37 @@ public class OFPhysicalPort {
     }
 
     public enum OFPortState {
-        OFPPS_LINK_DOWN   (1 << 0) {
+        OFPPS_LINK_DOWN   (1 << 0, false) {
             @Override
             public String toString() {
                 return "link-down (0x1)";
             }
         },
-        OFPPS_STP_LISTEN  (0 << 8) {
+        OFPPS_STP_LISTEN  (0 << 8, true) {
             @Override
             public String toString() {
                 return "listen (0x0)";
             }
         },
-        OFPPS_STP_LEARN   (1 << 8) {
+        OFPPS_STP_LEARN   (1 << 8, true) {
             @Override
             public String toString() {
                 return "learn-no-relay (0x100)";
             }
         },
-        OFPPS_STP_FORWARD (2 << 8) {
+        OFPPS_STP_FORWARD (2 << 8, true) {
             @Override
             public String toString() {
                 return "forward (0x200)";
             }
         },
-        OFPPS_STP_BLOCK   (3 << 8) {
+        OFPPS_STP_BLOCK   (3 << 8, true) {
             @Override
             public String toString() {
                 return "block-broadcast (0x300)";
             }
         },
-        OFPPS_STP_MASK    (3 << 8) {
+        OFPPS_STP_MASK    (3 << 8, false) { // used for STP but not an STP state
             @Override
             public String toString() {
                 return "block-broadcast (0x300)";
@@ -142,9 +142,45 @@ public class OFPhysicalPort {
         };
 
         protected int value;
+        protected boolean isStpState;
 
-        private OFPortState(int value) {
+        private OFPortState(int value, boolean isStpState) {
             this.value = value;
+            this.isStpState = isStpState;
+        }
+
+        /**
+         * Returns true if this constants represents one of the four STP
+         * states
+         * @return
+         */
+        public boolean isStpState() {
+            return isStpState;
+        }
+
+        /**
+         * return the STP state represented by the given integer.
+         * the returned value will have isStpState() == true
+         * @param state
+         * @return
+         */
+        public static OFPortState getStpState(int state) {
+            // this ain't pretty
+            state = state & OFPortState.OFPPS_STP_MASK.getValue();
+            for (OFPortState s: OFPortState.values()) {
+                if (!s.isStpState())
+                    continue;
+                if (state == s.getValue())
+                    return s;
+            }
+            return null; // will never happen
+        }
+
+        public static boolean isPortDown(int state) {
+            if ((state & OFPPS_LINK_DOWN.getValue()) != 0)
+                return true;
+            else
+                return false;
         }
 
         /**
@@ -155,74 +191,103 @@ public class OFPhysicalPort {
         }
     }
 
+    /**
+     * Represents the speed of a port
+     */
+    public enum PortSpeed {
+        /** no speed set */
+        SPEED_NONE(0),
+        SPEED_10MB(10),
+        SPEED_100MB(100),
+        SPEED_1GB(1000),
+        SPEED_10GB(10000);
+
+        private long speedInBps;
+        private PortSpeed(int speedInMbps) {
+            this.speedInBps = speedInMbps * 1000*1000;
+        }
+
+        public long getSpeedBps() {
+            return this.speedInBps;
+        }
+
+        public static PortSpeed max(PortSpeed s1, PortSpeed s2) {
+            return (s1.getSpeedBps() > s2.getSpeedBps()) ? s1 : s2;
+        }
+
+        public static PortSpeed min(PortSpeed s1, PortSpeed s2) {
+            return (s1.getSpeedBps() < s2.getSpeedBps()) ? s1 : s2;
+        }
+    }
+
     public enum OFPortFeatures implements EnumBitmaps.BitmapableEnum {
-        OFPPF_10MB_HD    (1 << 0) {
+        OFPPF_10MB_HD    (1 << 0, PortSpeed.SPEED_10MB) {
             @Override
             public String toString() {
                 return "10mb-hd (0x1)";
             }
         },
-        OFPPF_10MB_FD    (1 << 1) {
+        OFPPF_10MB_FD    (1 << 1, PortSpeed.SPEED_10MB) {
             @Override
             public String toString() {
                 return "10mb-fd (0x2)";
             }
         },
-        OFPPF_100MB_HD   (1 << 2) {
+        OFPPF_100MB_HD   (1 << 2, PortSpeed.SPEED_100MB) {
             @Override
             public String toString() {
                 return "100mb-hd (0x4)";
             }
         },
-        OFPPF_100MB_FD   (1 << 3) {
+        OFPPF_100MB_FD   (1 << 3, PortSpeed.SPEED_100MB) {
             @Override
             public String toString() {
                 return "100mb-fd (0x8)";
             }
         },
-        OFPPF_1GB_HD     (1 << 4) {
+        OFPPF_1GB_HD     (1 << 4, PortSpeed.SPEED_1GB) {
             @Override
             public String toString() {
                 return "1gb-hd (0x10)";
             }
         },
-        OFPPF_1GB_FD     (1 << 5) {
+        OFPPF_1GB_FD     (1 << 5, PortSpeed.SPEED_1GB) {
             @Override
             public String toString() {
                 return "1gb-fd (0x20)";
             }
         },
-        OFPPF_10GB_FD    (1 << 6) {
+        OFPPF_10GB_FD    (1 << 6, PortSpeed.SPEED_10GB) {
             @Override
             public String toString() {
                 return "10gb-fd (0x40)";
             }
         },
-        OFPPF_COPPER     (1 << 7) {
+        OFPPF_COPPER     (1 << 7, PortSpeed.SPEED_NONE) {
             @Override
             public String toString() {
                 return "copper (0x80)";
             }
         },
-        OFPPF_FIBER      (1 << 8) {
+        OFPPF_FIBER      (1 << 8, PortSpeed.SPEED_NONE) {
             @Override
             public String toString() {
                 return "fiber (0x100)";
             }
         },
-        OFPPF_AUTONEG    (1 << 9) {
+        OFPPF_AUTONEG    (1 << 9, PortSpeed.SPEED_NONE) {
             @Override
             public String toString() {
                 return "autoneg (0x200)";
             }
         },
-        OFPPF_PAUSE      (1 << 10) {
+        OFPPF_PAUSE      (1 << 10, PortSpeed.SPEED_NONE) {
             @Override
             public String toString() {
                 return "pause (0x400)";
             }
         },
-        OFPPF_PAUSE_ASYM (1 << 11) {
+        OFPPF_PAUSE_ASYM (1 << 11, PortSpeed.SPEED_NONE) {
             @Override
             public String toString() {
                 return "pause-asym (0x800)";
@@ -230,17 +295,29 @@ public class OFPhysicalPort {
         };
 
         protected int value;
+        protected PortSpeed speed;
 
-        private OFPortFeatures(int value) {
+        private OFPortFeatures(int value, PortSpeed speed) {
             this.value = value;
+            if (speed == null)
+                throw new NullPointerException();
+            this.speed = speed;
         }
 
         /**
-         * @return the value
+         * @return the bitmap value for this constant
          */
         @Override
         public int getValue() {
             return value;
+        }
+
+        /**
+         * @return the port speed associated with this constant. If the
+         * constant doesn't represent a port speed it returns SPEED_NONE
+         */
+        public PortSpeed getSpeed() {
+            return speed;
         }
     }
 

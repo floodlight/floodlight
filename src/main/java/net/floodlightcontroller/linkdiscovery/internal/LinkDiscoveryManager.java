@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
@@ -258,7 +259,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                        boolean isStandard, boolean isReverse) {
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
-        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        ImmutablePort ofpPort = iofSwitch.getPort(port);
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -681,10 +682,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return Command.STOP;
         }
 
-        OFPhysicalPort physicalPort = remoteSwitch.getPort(remotePort);
+        OFPhysicalPort physicalPort =
+                remoteSwitch.getPort(remotePort).toOFPhysicalPort();
         int srcPortState = (physicalPort != null) ? physicalPort.getState()
                                                  : 0;
-        physicalPort = iofSwitch.getPort(inPort);
+        physicalPort = iofSwitch.getPort(inPort).toOFPhysicalPort();
         int dstPortState = (physicalPort != null) ? physicalPort.getState()
                                                  : 0;
 
@@ -962,7 +964,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return;
 
-        OFPhysicalPort ofp = iofSwitch.getPort(port);
+        OFPhysicalPort ofp = iofSwitch.getPort(port).toOFPhysicalPort();
         if (ofp == null) return;
 
         int srcPortState = ofp.getState();
@@ -1007,7 +1009,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         if (port == OFPort.OFPP_LOCAL.getValue()) return false;
 
-        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        ImmutablePort ofpPort = iofSwitch.getPort(port);
         if (ofpPort == null) {
             if (log.isTraceEnabled()) {
                 log.trace("Null physical port. sw={}, port={}",
@@ -1043,7 +1045,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         if (port == OFPort.OFPP_LOCAL.getValue()) return false;
 
-        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        ImmutablePort ofpPort = iofSwitch.getPort(port);
         if (ofpPort == null) {
             if (log.isTraceEnabled()) {
                 log.trace("Null physical port. sw={}, port={}",
@@ -1099,7 +1101,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return;
 
         IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
-        OFPhysicalPort ofpPort = iofSwitch.getPort(port);
+        OFPhysicalPort ofpPort = iofSwitch.getPort(port).toOFPhysicalPort();
 
         if (log.isTraceEnabled()) {
             log.trace("Sending LLDP packet out of swich: {}, port: {}",
@@ -1143,7 +1145,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
             if (iofSwitch == null) continue;
             if (iofSwitch.getEnabledPorts() != null) {
-                for (OFPhysicalPort ofp : iofSwitch.getEnabledPorts()) {
+                for (ImmutablePort ofp : iofSwitch.getEnabledPorts()) {
                     if (isLinkDiscoverySuppressed(sw, ofp.getPortNumber()))
                                                                            continue;
                     if (autoPortFastFeature
@@ -1598,7 +1600,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     @Override
     public void switchPortChanged(long switchId,
-            OFPhysicalPort port,
+            ImmutablePort port,
             IOFSwitch.PortChangeType type) {
 
         switch (type) {

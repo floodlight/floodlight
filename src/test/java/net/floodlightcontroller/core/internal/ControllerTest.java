@@ -44,6 +44,7 @@ import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IReadyForReconcileListener;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.OFMessageFilterManager;
 import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.SwitchSyncRepresentation;
@@ -232,6 +233,8 @@ public class ControllerTest extends FloodlightTestCase {
             featuresReply = createOFFeaturesReply();
             featuresReply.setDatapathId(dpid);
         }
+        List<ImmutablePort> ports =
+                ImmutablePort.immutablePortListOf(featuresReply.getPorts());
 
         expect(sw.getId()).andReturn(dpid).anyTimes();
         expect(sw.getStringId()).andReturn(dpidString).anyTimes();
@@ -245,7 +248,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(sw.getActions())
                 .andReturn(featuresReply.getActions()).atLeastOnce();
         expect(sw.getPorts())
-                .andReturn(featuresReply.getPorts()).atLeastOnce();
+                .andReturn(ports).atLeastOnce();
     }
 
     @SuppressWarnings("unchecked")
@@ -1258,14 +1261,6 @@ public class ControllerTest extends FloodlightTestCase {
     }
 
 
-    private static OFPhysicalPort createOFPhysicalPort(String name, int number) {
-        OFPhysicalPort p = new OFPhysicalPort();
-        p.setHardwareAddress(new byte [] { 0, 0, 0, 0, 0, 0 });
-        p.setPortNumber((short)number);
-        p.setName(name);
-        return p;
-    }
-
     /**
      * This test goes through the SLAVE->MASTER program flow. We'll start as
      * SLAVE. Add switches to the store while slave, update these switches
@@ -1312,6 +1307,8 @@ public class ControllerTest extends FloodlightTestCase {
         OFPhysicalPort p = createOFPhysicalPort("P1", 1);
         List<OFPhysicalPort> ports1a = Collections.singletonList(p);
         fr1a.setPorts(ports1a);
+        List<ImmutablePort> ports1aImmutable =
+                ImmutablePort.immutablePortListOf(ports1a);
         // an alternative featuers reply
         OFFeaturesReply fr1b = createOFFeaturesReply();
         fr1b.setDatapathId(1L);
@@ -1322,6 +1319,8 @@ public class ControllerTest extends FloodlightTestCase {
         p = createOFPhysicalPort("P2", 42000);
         ports1b.add(p);
         fr1b.setPorts(ports1b);
+        List<ImmutablePort> ports1bImmutable =
+                ImmutablePort.immutablePortListOf(ports1b);
 
         // Switch 2
         // no actual IOFSwitch here because we simply add features reply
@@ -1330,6 +1329,8 @@ public class ControllerTest extends FloodlightTestCase {
         fr2a.setDatapathId(2L);
         List<OFPhysicalPort> ports2a = new ArrayList<OFPhysicalPort>(ports1a);
         fr2a.setPorts(ports2a);
+        List<ImmutablePort> ports2aImmutable =
+                ImmutablePort.immutablePortListOf(ports2a);
         // an alternative features reply
         OFFeaturesReply fr2b = createOFFeaturesReply();
         fr2b.setDatapathId(2L);
@@ -1363,8 +1364,8 @@ public class ControllerTest extends FloodlightTestCase {
         assertNotNull("Switch should be present", sw);
         assertEquals(1L, sw.getId());
         assertFalse("Switch should be inactive", sw.isActive());
-        assertEquals(new HashSet<OFPhysicalPort>(ports1a),
-                     new HashSet<OFPhysicalPort>(sw.getPorts()));
+        assertEquals(new HashSet<ImmutablePort>(ports1aImmutable),
+                     new HashSet<ImmutablePort>(sw.getPorts()));
 
         // add switch 2 with fr2a to store
         reset(switchListener);
@@ -1380,8 +1381,8 @@ public class ControllerTest extends FloodlightTestCase {
         assertNotNull("Switch should be present", sw);
         assertEquals(2L, sw.getId());
         assertFalse("Switch should be inactive", sw.isActive());
-        assertEquals(new HashSet<OFPhysicalPort>(ports2a),
-                     new HashSet<OFPhysicalPort>(sw.getPorts()));
+        assertEquals(new HashSet<ImmutablePort>(ports2aImmutable),
+                     new HashSet<ImmutablePort>(sw.getPorts()));
 
         // add switch 3 to store
         reset(switchListener);
@@ -1429,8 +1430,8 @@ public class ControllerTest extends FloodlightTestCase {
         assertNotNull("Switch should be present", sw);
         assertEquals(1L, sw.getId());
         assertFalse("Switch should be inactive", sw.isActive());
-        assertEquals(new HashSet<OFPhysicalPort>(ports1b),
-                     new HashSet<OFPhysicalPort>(sw.getPorts()));
+        assertEquals(new HashSet<ImmutablePort>(ports1bImmutable),
+                     new HashSet<ImmutablePort>(sw.getPorts()));
 
         // Check getAllSwitchDpids() and getAllSwitchMap()
         Set<Long> expectedDpids = new HashSet<Long>();
@@ -1952,7 +1953,7 @@ public class ControllerTest extends FloodlightTestCase {
        OFFeaturesReply fr2 = createOFFeaturesReply();
        fr1.setDatapathId(dpid);
        OFPhysicalPort p2 = createOFPhysicalPort("Port1", 1);
-       p2.setAdvertisedFeatures(0xFFFFFFFF); // just some bogus values
+       p2.setAdvertisedFeatures(0x2); // just some bogus values
        fr2.setPorts(Collections.singletonList(p2));
 
        OFDescriptionStatistics desc = createOFDescriptionStatistics();
@@ -1971,11 +1972,13 @@ public class ControllerTest extends FloodlightTestCase {
        controller.addOFSwitchListener(listener);
        // setup switch with the new, second features reply (and thus ports)
        setupSwitchForAddSwitch(sw, dpid, desc, fr2);
-       listener.switchPortChanged(dpid, p2, PortChangeType.OTHER_UPDATE);
+       listener.switchPortChanged(dpid, ImmutablePort.fromOFPhysicalPort(p2),
+                                  PortChangeType.OTHER_UPDATE);
        expectLastCall().once();
        replay(listener);
        replay(sw);
-       controller.notifyPortChanged(sw, p2, PortChangeType.OTHER_UPDATE);
+       controller.notifyPortChanged(sw, ImmutablePort.fromOFPhysicalPort(p2),
+                                    PortChangeType.OTHER_UPDATE);
        controller.processUpdateQueueForTesting();
        verify(listener);
        verify(sw);

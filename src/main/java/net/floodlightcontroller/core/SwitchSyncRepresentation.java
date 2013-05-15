@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import net.floodlightcontroller.util.EnumBitmaps;
 import net.floodlightcontroller.util.MACAddress;
 
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.util.HexString;
 
@@ -43,7 +45,7 @@ public class SwitchSyncRepresentation {
         @JsonProperty
         public int peerFeatures;
 
-        public static SyncedPort fromOFPhysicalPort(OFPhysicalPort p) {
+        public static SyncedPort fromImmutablePort(ImmutablePort p) {
             SyncedPort rv = new SyncedPort();
             rv.portNumber = p.getPortNumber();
             if (p.getHardwareAddress() == null) {
@@ -53,12 +55,16 @@ public class SwitchSyncRepresentation {
                         MACAddress.valueOf(p.getHardwareAddress()).toLong();
             }
             rv.name = p.getName();
-            rv.config = p.getConfig();
-            rv.state = p.getState();
-            rv.currentFeatures  = p.getCurrentFeatures();
-            rv.advertisedFeatures = p.getAdvertisedFeatures();
-            rv.supportedFeatures = p.getSupportedFeatures();
-            rv.peerFeatures = p.getPeerFeatures();
+            rv.config = EnumBitmaps.toBitmap(p.getConfig());
+            rv.state = p.getStpState().getValue();
+            if (p.isLinkDown())
+                rv.state |= OFPortState.OFPPS_LINK_DOWN.getValue();
+            rv.currentFeatures  = EnumBitmaps.toBitmap(p.getCurrentFeatures());
+            rv.advertisedFeatures =
+                    EnumBitmaps.toBitmap(p.getAdvertisedFeatures());
+            rv.supportedFeatures =
+                    EnumBitmaps.toBitmap(p.getSupportedFeatures());
+            rv.peerFeatures = EnumBitmaps.toBitmap(p.getPeerFeatures());
             return rv;
         }
 
@@ -156,7 +162,8 @@ public class SwitchSyncRepresentation {
         this.tables = fr.getTables();
         this.capabilities = fr.getCapabilities();
         this.actions = fr.getActions();
-        this.ports = toSyncedPortList(fr.getPorts());
+        this.ports = toSyncedPortList(
+                ImmutablePort.immutablePortListOf(fr.getPorts()));
 
         this.manufacturerDescription = d.getManufacturerDescription();
         this.hardwareDescription = d.getHardwareDescription();
@@ -165,10 +172,10 @@ public class SwitchSyncRepresentation {
         this.datapathDescription = d.getDatapathDescription();
     }
 
-    private static List<SyncedPort> toSyncedPortList(Collection<OFPhysicalPort> ports) {
+    private static List<SyncedPort> toSyncedPortList(Collection<ImmutablePort> ports) {
         List<SyncedPort> rv = new ArrayList<SyncedPort>(ports.size());
-        for (OFPhysicalPort p: ports) {
-            rv.add(SyncedPort.fromOFPhysicalPort(p));
+        for (ImmutablePort p: ports) {
+            rv.add(SyncedPort.fromImmutablePort(p));
         }
         return rv;
     }

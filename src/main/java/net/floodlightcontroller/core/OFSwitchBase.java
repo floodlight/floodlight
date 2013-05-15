@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
@@ -64,15 +63,13 @@ import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
-import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
-import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,24 +101,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
      */
     private Channel channel;
     private final AtomicInteger transactionIdSource;
-    // Lock to protect modification of the port maps. We only need to
-    // synchronize on modifications. For read operations we are fine since
-    // we rely on ConcurrentMaps which works for our use case.
-    protected Object portLock;
-    // Map port numbers to the appropriate OFPhysicalPort
-    protected ConcurrentHashMap<Short, OFPhysicalPort> portsByNumber;
-    // Map port names to the appropriate OFPhyiscalPort
-    // XXX: The OF spec doesn't specify if port names need to be unique but
-    //      according it's always the case in practice.
-    private final ConcurrentHashMap<String, OFPhysicalPort> portsByName;
     private final Map<Integer,OFStatisticsFuture> statsFutureMap;
     private final Map<Integer, IOFMessageListener> iofMsgListenersMap;
     private final Map<Integer,OFFeaturesReplyFuture> featuresFutureMap;
     private volatile boolean connected;
     private volatile Role role;
     private final TimedCache<Long> timedCache;
-    private final ReentrantReadWriteLock listenerLock;
     private final ConcurrentMap<Short, AtomicLong> portBroadcastCacheHitMap;
+
+    private final PortManager portManager;
 
     // Private members for throttling
     private boolean writeThrottleEnabled = false;
@@ -159,24 +147,461 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.attributes = new ConcurrentHashMap<Object, Object>();
         this.connectedSince = new Date();
         this.transactionIdSource = new AtomicInteger();
-        this.portLock = new Object();
-        this.portsByNumber = new ConcurrentHashMap<Short, OFPhysicalPort>();
-        this.portsByName = new ConcurrentHashMap<String, OFPhysicalPort>();
         this.connected = false;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
         this.featuresFutureMap = new ConcurrentHashMap<Integer,OFFeaturesReplyFuture>();
         this.iofMsgListenersMap = new ConcurrentHashMap<Integer,IOFMessageListener>();
         this.role = null;
         this.timedCache = new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
-        this.listenerLock = new ReentrantReadWriteLock();
         this.portBroadcastCacheHitMap = new ConcurrentHashMap<Short, AtomicLong>();
         this.description = new OFDescriptionStatistics();
         this.lastMessageTime = System.currentTimeMillis();
+
+        this.portManager = new PortManager();
 
         // Defaults properties for an ideal switch
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, Boolean.valueOf(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.valueOf(true));
+    }
+
+    /**
+     * Manages the ports of this switch.
+     *
+     * Provides methods to query and update the stored ports. The class ensures
+     * that every port name and port number is unique. When updating ports
+     * the class checks if port number <-> port name mappings have change due
+     * to the update. If a new port P has number and port that are inconsistent
+     * with the previous mapping(s) the class will delete all previous ports
+     * with name or number of the new port and then add the new port.
+     *
+     * The methods that change the stored ports return a list of
+     * PortChangeEvents that represent the changes that have been applied
+     * to the port list so that IOFSwitchListeners can be notified about the
+     * changes.
+     *
+     * Implementation notes:
+     * - We keep several different representations of the ports to allow for
+     *   fast lookups
+     * - Ports are stored in unchangeable lists. When a port is modified new
+     *   data structures are allocated.
+     * - We use a read-write-lock for synchronization, so multiple readers are
+     *   allowed.
+     */
+    protected class PortManager {
+        private ReentrantReadWriteLock lock;
+        private List<ImmutablePort> portList;
+        private List<ImmutablePort> enabledPortList;
+        private List<Short> enabledPortNumbers;
+        private Map<Short,ImmutablePort> portsByNumber;
+        private Map<String,ImmutablePort> portsByName;
+
+        public PortManager() {
+            this.lock = new ReentrantReadWriteLock();
+            this.portList = Collections.emptyList();
+            this.enabledPortList = Collections.emptyList();
+            this.enabledPortNumbers = Collections.emptyList();
+            this.portsByName = Collections.emptyMap();
+            this.portsByNumber = Collections.emptyMap();
+        }
+
+        /**
+         * Set the internal data structure storing this switch's port
+         * to the ports specified by newPortsByNumber
+         *
+         * CALLER MUST HOLD WRITELOCK
+         *
+         * @param newPortsByNumber
+         * @throws IllegaalStateException if called without holding the
+         * writelock
+         */
+        private void updatePortsWithNewPortsByNumber(
+                Map<Short,ImmutablePort> newPortsByNumber) {
+            if (!lock.writeLock().isHeldByCurrentThread()) {
+                throw new IllegalStateException("Method called without " +
+                                                "holding writeLock");
+            }
+            Map<String,ImmutablePort> newPortsByName =
+                    new HashMap<String, ImmutablePort>();
+            List<ImmutablePort> newPortList =
+                    new ArrayList<ImmutablePort>();
+            List<ImmutablePort> newEnabledPortList =
+                    new ArrayList<ImmutablePort>();
+            List<Short> newEnabledPortNumbers = new ArrayList<Short>();
+
+            for(ImmutablePort p: newPortsByNumber.values()) {
+                newPortList.add(p);
+                newPortsByName.put(p.getName(), p);
+                if (p.isEnabled()) {
+                    newEnabledPortList.add(p);
+                    newEnabledPortNumbers.add(p.getPortNumber());
+                }
+            }
+            portsByName = Collections.unmodifiableMap(newPortsByName);
+            portsByNumber =
+                    Collections.unmodifiableMap(newPortsByNumber);
+            enabledPortList =
+                    Collections.unmodifiableList(newEnabledPortList);
+            enabledPortNumbers =
+                    Collections.unmodifiableList(newEnabledPortNumbers);
+            portList = Collections.unmodifiableList(newPortList);
+        }
+
+        /**
+         * Handle a OFPortStatus delete message for the given port.
+         * Updates the internal port maps/lists of this switch and returns
+         * the PortChangeEvents caused by the delete. If the given port
+         * exists as it, it will be deleted. If the name<->number for the
+         * given port is inconsistent with the ports stored by this switch
+         * the method will delete all ports with the number or name of the
+         * given port.
+         *
+         * This method will increment error/warn counters and log
+         *
+         * @param delPort the port from the port status message that should
+         * be deleted.
+         * @return list of port changes applied to this switch
+         */
+        private List<PortChangeEvent>
+                handlePortStatusDelete(ImmutablePort delPort) {
+            lock.writeLock().lock();
+            List<PortChangeEvent> events = Collections.emptyList();
+            try {
+                Map<Short,ImmutablePort> newPortByNumber =
+                        new HashMap<Short, ImmutablePort>(portsByNumber);
+                ImmutablePort prevPort =
+                        portsByNumber.get(delPort.getPortNumber());
+                if (prevPort == null) {
+                    // so such port. That's weird
+                } else if (prevPort.getName().equals(delPort.getName())) {
+                    // port exists with consistent name-number mapping
+                    newPortByNumber.remove(delPort.getPortNumber());
+                    events = Collections.singletonList(
+                            new PortChangeEvent(delPort, PortChangeType.DELETE));
+                } else {
+                    // port with same number exists but its name differs. This
+                    // is weird. The best we can do is to delete the existing
+                    // port(s) that have delPort's name and number.
+                    events = new ArrayList<PortChangeEvent>(2);
+                    newPortByNumber.remove(delPort.getPortNumber());
+                    events.add(new PortChangeEvent(prevPort,
+                                                   PortChangeType.DELETE));
+                    // is there another port that has delPort's name?
+                    prevPort = portsByName.get(delPort.getName());
+                    if (prevPort != null) {
+                        newPortByNumber.remove(prevPort.getPortNumber());
+                        events.add(new PortChangeEvent(prevPort,
+                                                       PortChangeType.DELETE));
+                    }
+                }
+                updatePortsWithNewPortsByNumber(newPortByNumber);
+                return events;
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        /**
+         * Handle a OFPortStatus message, update the internal data structures
+         * that store ports and return the list of OFChangeEvents.
+         *
+         * This method will increment error/warn counters and log
+         *
+         * @param ps
+         * @return
+         */
+        public List<PortChangeEvent> handlePortStatusMessage(OFPortStatus ps) {
+            if (ps == null) {
+                throw new NullPointerException("OFPortStatus message must " +
+                                               "not be null");
+            }
+            lock.writeLock().lock();
+            try {
+                List<PortChangeEvent> events;
+                ImmutablePort port =
+                        ImmutablePort.fromOFPhysicalPort(ps.getDesc());
+                OFPortReason reason = OFPortReason.fromReasonCode(ps.getReason());
+                if (reason == null) {
+                    throw new IllegalArgumentException("Unknown PortStatus " +
+                            "reason code " + ps.getReason());
+                }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Handling OFPortStatus: {} for {}",
+                              reason, port.toBriefString());
+                }
+
+                if (reason == OFPortReason.OFPPR_DELETE)
+                        return handlePortStatusDelete(port);
+
+                Map<Short,ImmutablePort> newPortByNumber =
+                    new HashMap<Short, ImmutablePort>(portsByNumber);
+                events = getSinglePortChanges(port);
+                for (PortChangeEvent e: events) {
+                    switch(e.type) {
+                        case DELETE:
+                            newPortByNumber.remove(e.port.getPortNumber());
+                            break;
+                        case ADD:
+                            if (reason != OFPortReason.OFPPR_ADD) {
+                                // weird case
+                            }
+                            // fall through
+                        case DOWN:
+                        case OTHER_UPDATE:
+                        case UP:
+                            // update or add the port in the map
+                            newPortByNumber.put(e.port.getPortNumber(), e.port);
+                            break;
+                    }
+                }
+                updatePortsWithNewPortsByNumber(newPortByNumber);
+                return events;
+            } finally {
+                lock.writeLock().unlock();
+            }
+
+        }
+
+        /**
+         * Given a new or modified port newPort, returns the list of
+         * PortChangeEvents to "transform" the current ports stored by
+         * this switch to include / represent the new port. The ports stored
+         * by this switch are <b>NOT</b> updated.
+         *
+         * This method acquires the readlock and is thread-safe by itself.
+         * Most callers will need to acquire the write lock before calling
+         * this method though (if the caller wants to update the ports stored
+         * by this switch)
+         *
+         * @param newPort the new or modified port.
+         * @return the list of changes
+         */
+        public List<PortChangeEvent>
+                getSinglePortChanges(ImmutablePort newPort) {
+            lock.readLock().lock();
+            try {
+                List<PortChangeEvent> events = new ArrayList<PortChangeEvent>();
+                // Check if we have a port by the same number in our
+                // old map.
+                ImmutablePort prevPort =
+                        portsByNumber.get(newPort.getPortNumber());
+                if (newPort.equals(prevPort)) {
+                    // nothing has changed
+                    return events;
+                }
+
+                if (prevPort != null &&
+                        prevPort.getName().equals(newPort.getName())) {
+                    // A simple modify of a exiting port
+                    // A previous port with this number exists and it's name
+                    // also matches the new port. Find the differences
+                    if (prevPort.isEnabled() && !newPort.isEnabled()) {
+                        events.add(new PortChangeEvent(newPort,
+                                                       PortChangeType.DOWN));
+                    } else if (!prevPort.isEnabled() && newPort.isEnabled()) {
+                        events.add(new PortChangeEvent(newPort,
+                                                       PortChangeType.UP));
+                    } else {
+                        events.add(new PortChangeEvent(newPort,
+                                   PortChangeType.OTHER_UPDATE));
+                    }
+                    return events;
+                }
+
+                if (prevPort != null) {
+                    // There exists a previous port with the same port
+                    // number but the port name is different (otherwise we would
+                    // never have gotten here)
+                    // Remove the port. Name-number mapping(s) have changed
+                    events.add(new PortChangeEvent(prevPort,
+                                                   PortChangeType.DELETE));
+                }
+
+                // We now need to check if there exists a previous port sharing
+                // the same name as the new/updated port.
+                prevPort = portsByName.get(newPort.getName());
+                if (prevPort != null) {
+                    // There exists a previous port with the same port
+                    // name but the port number is different (otherwise we
+                    // never have gotten here).
+                    // Remove the port. Name-number mapping(s) have changed
+                    events.add(new PortChangeEvent(prevPort,
+                                                   PortChangeType.DELETE));
+                }
+
+                // We always need to add the new port. Either no previous port
+                // existed or we just deleted previous ports with inconsistent
+                // name-number mappings
+                events.add(new PortChangeEvent(newPort, PortChangeType.ADD));
+                return events;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        /**
+         * Compare the current ports of this switch to the newPorts list and
+         * return the changes that would be applied to transfort the current
+         * ports to the new ports. No internal data structures are updated
+         * see {@link #compareAndUpdatePorts(List, boolean)}
+         *
+         * @param newPorts the list of new ports
+         * @return The list of differences between the current ports and
+         * newPortList
+         */
+        public List<PortChangeEvent>
+                comparePorts(Collection<ImmutablePort> newPorts) {
+            return compareAndUpdatePorts(newPorts, false);
+        }
+
+        /**
+         * Compare the current ports of this switch to the newPorts list and
+         * return the changes that would be applied to transform the current
+         * ports to the new ports. No internal data structures are updated
+         * see {@link #compareAndUpdatePorts(List, boolean)}
+         *
+         * @param newPorts the list of new ports
+         * @return The list of differences between the current ports and
+         * newPortList
+         */
+        public List<PortChangeEvent>
+                updatePorts(Collection<ImmutablePort> newPorts) {
+            return compareAndUpdatePorts(newPorts, false);
+        }
+
+        /**
+         * Compare the current ports stored in this switch instance with the
+         * new port list given and return the differences in the form of
+         * PortChangeEvents. If the doUpdate flag is true, newPortList will
+         * replace the current list of this switch (and update the port maps)
+         *
+         * Implementation note:
+         * Since this method can optionally modify the current ports and
+         * since it's not possible to upgrade a read-lock to a write-lock
+         * we need to hold the write-lock for the entire operation. If this
+         * becomes a problem and if compares() are common we can consider
+         * splitting in two methods but this requires lots of code duplication
+         *
+         * @param newPorts the list of new ports.
+         * @param doUpdate If true the newPortList will replace the current
+         * port list for this switch. If false this switch will not be changed.
+         * @return The list of differences between the current ports and
+         * newPorts
+         * @throws NullPointerException if newPortsList is null
+         * @throws IllegalArgumentException if either port names or port numbers
+         * are duplicated in the newPortsList.
+         */
+        private List<PortChangeEvent> compareAndUpdatePorts(
+                Collection<ImmutablePort> newPorts,
+                boolean doUpdate) {
+            if (newPorts == null) {
+                throw new NullPointerException("newPortsList must not be null");
+            }
+            lock.writeLock().lock();
+            try {
+                List<PortChangeEvent> events = new ArrayList<PortChangeEvent>();
+
+                Map<Short,ImmutablePort> newPortsByNumber =
+                        new HashMap<Short, ImmutablePort>();
+                Map<String,ImmutablePort> newPortsByName =
+                        new HashMap<String, ImmutablePort>();
+                List<ImmutablePort> newEnabledPortList =
+                        new ArrayList<ImmutablePort>();
+                List<Short> newEnabledPortNumbers =
+                        new ArrayList<Short>();
+                List<ImmutablePort> newPortsList =
+                        new ArrayList<ImmutablePort>(newPorts);
+
+                for (ImmutablePort p: newPortsList) {
+                    // Add the port to the new maps and lists and check
+                    // that every port is unique
+                    ImmutablePort duplicatePort;
+                    duplicatePort = newPortsByNumber.put(p.getPortNumber(), p);
+                    if (duplicatePort != null) {
+                        String msg = String.format("Cannot have two ports " +
+                                "with the same number: %s <-> %s",
+                                p.toBriefString(),
+                                duplicatePort.toBriefString());
+                        throw new IllegalArgumentException(msg);
+                    }
+                    duplicatePort = newPortsByName.put(p.getName(), p);
+                    if (duplicatePort != null) {
+                        String msg = String.format("Cannot have two ports " +
+                                "with the same name: %s <-> %s",
+                                p.toBriefString(),
+                                duplicatePort.toBriefString());
+                        throw new IllegalArgumentException(msg);
+                    }
+                    if (p.isEnabled()) {
+                        newEnabledPortList.add(p);
+                        newEnabledPortNumbers.add(p.getPortNumber());
+                    }
+
+                    // get changes
+                    events.addAll(getSinglePortChanges(p));
+                }
+
+                if (doUpdate) {
+                    portsByName = Collections.unmodifiableMap(newPortsByName);
+                    portsByNumber =
+                            Collections.unmodifiableMap(newPortsByNumber);
+                    enabledPortList =
+                            Collections.unmodifiableList(newEnabledPortList);
+                    enabledPortNumbers =
+                            Collections.unmodifiableList(newEnabledPortNumbers);
+                    portList = Collections.unmodifiableList(newPortsList);
+                }
+                return events;
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        public ImmutablePort getPort(String name) {
+            lock.readLock().lock();
+            try {
+                return portsByName.get(name);
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public ImmutablePort getPort(Short portNumber) {
+            lock.readLock().lock();
+            try {
+                return portsByNumber.get(portNumber);
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public List<ImmutablePort> getPorts() {
+            lock.readLock().lock();
+            try {
+                return portList;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public List<ImmutablePort> getEnabledPorts() {
+            lock.readLock().lock();
+            try {
+                return enabledPortList;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public List<Short> getEnabledPortNumbers() {
+            lock.readLock().lock();
+            try {
+                return enabledPortNumbers;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
     }
 
 
@@ -342,115 +767,78 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public void setFeaturesReply(OFFeaturesReply featuresReply) {
-        synchronized(portLock) {
-            if (stringId == null) {
-                /* ports are updated via port status message, so we
-                 * only fill in ports on initial connection.
-                 */
-                for (OFPhysicalPort port : featuresReply.getPorts()) {
-                    setPort(port);
-                }
-            }
-            this.datapathId = featuresReply.getDatapathId();
-            this.capabilities = featuresReply.getCapabilities();
-            this.buffers = featuresReply.getBuffers();
-            this.actions = featuresReply.getActions();
-            this.tables = featuresReply.getTables();
-            this.stringId = HexString.toHexString(this.datapathId);
+        if (stringId == null) {
+            /* ports are updated via port status message, so we
+             * only fill in ports on initial connection.
+             */
+            List<ImmutablePort> immutablePorts = ImmutablePort
+                    .immutablePortListOf(featuresReply.getPorts());
+            portManager.updatePorts(immutablePorts);
         }
-    }
+        this.datapathId = featuresReply.getDatapathId();
+        this.capabilities = featuresReply.getCapabilities();
+        this.buffers = featuresReply.getBuffers();
+        this.actions = featuresReply.getActions();
+        this.tables = featuresReply.getTables();
+}
 
     @Override
     @JsonIgnore
-    public Collection<OFPhysicalPort> getEnabledPorts() {
-        List<OFPhysicalPort> result =
-                new ArrayList<OFPhysicalPort>(portsByNumber.size());
-        for (OFPhysicalPort port : portsByNumber.values()) {
-            if (portEnabled(port)) {
-                result.add(port);
-            }
-        }
-        return result;
+    public Collection<ImmutablePort> getEnabledPorts() {
+        return portManager.getEnabledPorts();
     }
 
     @Override
     @JsonIgnore
     public Collection<Short> getEnabledPortNumbers() {
-        List<Short> result =
-                new ArrayList<Short>(portsByNumber.size());
-        for (OFPhysicalPort port : portsByNumber.values()) {
-            if (portEnabled(port)) {
-                result.add(port.getPortNumber());
-            }
-        }
-        return result;
+        return portManager.getEnabledPortNumbers();
     }
 
     @Override
-    public OFPhysicalPort getPort(short portNumber) {
-        return portsByNumber.get(portNumber);
+    public ImmutablePort getPort(short portNumber) {
+        return portManager.getPort(portNumber);
     }
 
     @Override
-    public OFPhysicalPort getPort(String portName) {
-        return portsByName.get(portName);
+    public ImmutablePort getPort(String portName) {
+        return portManager.getPort(portName);
     }
 
     @Override
     @JsonIgnore
-    public void setPort(OFPhysicalPort port) {
-        synchronized(portLock) {
-            portsByNumber.put(port.getPortNumber(), port);
-            portsByName.put(port.getName(), port);
-        }
+    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
+        return portManager.handlePortStatusMessage(ps);
     }
 
     @Override
     @JsonProperty("ports")
-    public Collection<OFPhysicalPort> getPorts() {
-        return Collections.unmodifiableCollection(portsByNumber.values());
+    public Collection<ImmutablePort> getPorts() {
+        return portManager.getPorts();
     }
 
     @Override
-    public void deletePort(short portNumber) {
-        synchronized(portLock) {
-            portsByName.remove(portsByNumber.get(portNumber).getName());
-            portsByNumber.remove(portNumber);
-        }
+    public List<PortChangeEvent> comparePorts(Collection<ImmutablePort> ports) {
+        return portManager.comparePorts(ports);
     }
 
     @Override
-    public void deletePort(String portName) {
-        synchronized(portLock) {
-            portsByNumber.remove(portsByName.get(portName).getPortNumber());
-            portsByName.remove(portName);
-        }
+    @JsonIgnore
+    public List<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
+        return portManager.updatePorts(ports);
     }
 
     @Override
     public boolean portEnabled(short portNumber) {
-        if (portsByNumber.get(portNumber) == null) return false;
-        return portEnabled(portsByNumber.get(portNumber));
+        ImmutablePort p = portManager.getPort(portNumber);
+        if (p == null) return false;
+        return p.isEnabled();
     }
 
     @Override
     public boolean portEnabled(String portName) {
-        if (portsByName.get(portName) == null) return false;
-        return portEnabled(portsByName.get(portName));
-    }
-
-    @Override
-    public boolean portEnabled(OFPhysicalPort port) {
-        if (port == null)
-            return false;
-        if ((port.getConfig() & OFPortConfig.OFPPC_PORT_DOWN.getValue()) > 0)
-            return false;
-        if ((port.getState() & OFPortState.OFPPS_LINK_DOWN.getValue()) > 0)
-            return false;
-        // Port STP state doesn't work with multiple VLANs, so ignore it for now
-        // if ((port.getState() & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue())
-        //    return false;
-        return true;
+        ImmutablePort p = portManager.getPort(portName);
+        if (p == null) return false;
+        return p.isEnabled();
     }
 
     @Override
@@ -690,30 +1078,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
         }
     }
 
-    /**
-     * Return a read lock that must be held while calling the listeners for
-     * messages from the switch. Holding the read lock prevents the active
-     * switch list from being modified out from under the listeners.
-     * @return
-     */
-    @Override
-    @JsonIgnore
-    public Lock getListenerReadLock() {
-        return listenerLock.readLock();
-    }
-
-    /**
-     * Return a write lock that must be held when the controllers modifies the
-     * list of active switches. This is to ensure that the active switch list
-     * doesn't change out from under the listeners as they are handling a
-     * message from the switch.
-     * @return
-     */
-    @Override
-    @JsonIgnore
-    public Lock getListenerWriteLock() {
-        return listenerLock.writeLock();
-    }
 
     /**
      * Get the IP Address for the switch

@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -87,7 +88,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
 import org.openflow.util.HexString;
@@ -118,13 +118,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
     private IOFSwitch makeSwitchMock(long id) {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        ImmutablePort port = ImmutablePort.create("p1", (short)1);
         expect(mockSwitch.getId()).andReturn(id).anyTimes();
-        expect(mockSwitch.getStringId()).
-        andReturn(HexString.toHexString(id, 6)).anyTimes();
-        expect(mockSwitch.getPort(anyShort())).
-        andReturn(new OFPhysicalPort()).anyTimes();
-        expect(mockSwitch.portEnabled(isA(OFPhysicalPort.class))).
-        andReturn(true).anyTimes();
+        expect(mockSwitch.getStringId())
+                .andReturn(HexString.toHexString(id, 6)).anyTimes();
+        expect(mockSwitch.getPort(anyShort()))
+                .andReturn(port).anyTimes();
         return mockSwitch;
     }
 

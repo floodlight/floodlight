@@ -25,12 +25,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.Lock;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -38,7 +37,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
@@ -142,7 +141,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public Collection<OFPhysicalPort> getEnabledPorts() {
+    public Collection<ImmutablePort> getEnabledPorts() {
         assertTrue("Unexpected method call", false);
         return null;
     }
@@ -154,34 +153,19 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public OFPhysicalPort getPort(short portNumber) {
+    public ImmutablePort getPort(short portNumber) {
         assertTrue("Unexpected method call", false);
         return null;
     }
 
     @Override
-    public OFPhysicalPort getPort(String portName) {
+    public ImmutablePort getPort(String portName) {
         assertTrue("Unexpected method call", false);
         return null;
     }
 
     @Override
-    public void setPort(OFPhysicalPort port) {
-        assertTrue("Unexpected method call", false);
-    }
-
-    @Override
-    public void deletePort(short portNumber) {
-        assertTrue("Unexpected method call", false);
-    }
-
-    @Override
-    public void deletePort(String portName) {
-        assertTrue("Unexpected method call", false);
-    }
-
-    @Override
-    public Collection<OFPhysicalPort> getPorts() {
+    public Collection<ImmutablePort> getPorts() {
         assertTrue("Unexpected method call", false);
         return null;
     }
@@ -194,12 +178,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
     @Override
     public boolean portEnabled(String portName) {
-        assertTrue("Unexpected method call", false);
-        return false;
-    }
-
-    @Override
-    public boolean portEnabled(OFPhysicalPort port) {
         assertTrue("Unexpected method call", false);
         return false;
     }
@@ -334,97 +312,81 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     @Override
     public Future<OFFeaturesReply> querySwitchFeaturesReply()
             throws IOException {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return null;
     }
 
     @Override
     public void deliverOFFeaturesReply(OFMessage reply) {
-        // TODO Auto-generated method stub
-
+        fail("Unexpected method call");
     }
 
     @Override
     public void cancelFeaturesReply(int transactionId) {
-        // TODO Auto-generated method stub
-
+        fail("Unexpected method call");
     }
 
     @Override
     public int getBuffers() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return 0;
     }
 
     @Override
     public int getActions() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return 0;
     }
 
     @Override
     public int getCapabilities() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return 0;
     }
 
     @Override
     public byte getTables() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return 0;
     }
 
     @Override
     public void setChannel(Channel channel) {
-        // TODO Auto-generated method stub
-
+        fail("Unexpected method call");
     }
 
     @Override
     public void setFloodlightProvider(Controller controller) {
+        fail("Unexpected method call");
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public void setThreadPoolService(IThreadPoolService threadPool) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public Lock getListenerReadLock() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Lock getListenerWriteLock() {
-        // TODO Auto-generated method stub
-        return null;
+        fail("Unexpected method call");
     }
 
     @Override
     public void setHARole(Role role) {
-        // TODO Auto-generated method stub
-
+        fail("Unexpected method call");
     }
 
     @Override
     public OFPortType getPortType(short port_num) {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return null;
     }
 
     @Override
     public boolean isFastPort(short port_num) {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return false;
     }
 
     @Override
     public List<Short> getUplinkPorts() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return null;
     }
 
@@ -448,25 +410,43 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
     @Override
     public boolean inputThrottled(OFMessage ofm) {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return false;
     }
 
     @Override
     public boolean isOverloaded() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return false;
     }
 
     @Override
     public boolean isWriteThrottleEnabled() {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
         return false;
     }
 
     @Override
     public void setDebugCounterService(IDebugCounterService debugCounters) {
-        // TODO Auto-generated method stub
+        fail("Unexpected method call");
     }
 
+    @Override
+    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
+        fail("Unexpected method call");
+        return null;
+    }
+
+    @Override
+    public List<PortChangeEvent>
+            comparePorts(Collection<ImmutablePort> ports) {
+        fail("Unexpected method call");
+        return null;
+    }
+
+    @Override
+    public List<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
+        fail("Unexpected method call");
+        return null;
+    }
 }

@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -28,6 +28,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import org.junit.Test;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 
 /**
@@ -66,30 +67,38 @@ public class FloodlightTestCase extends TestCase {
             OFPacketIn pi = (OFPacketIn)m;
             Ethernet eth = new Ethernet();
             eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
-            IFloodlightProviderService.bcStore.put(bc, 
-                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+            IFloodlightProviderService.bcStore.put(bc,
+                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                     eth);
         }
         if (srcDevice != null) {
-            IDeviceService.fcStore.put(bc, 
-                    IDeviceService.CONTEXT_SRC_DEVICE, 
+            IDeviceService.fcStore.put(bc,
+                    IDeviceService.CONTEXT_SRC_DEVICE,
                     srcDevice);
         }
         if (dstDevice != null) {
-            IDeviceService.fcStore.put(bc, 
-                    IDeviceService.CONTEXT_DST_DEVICE, 
+            IDeviceService.fcStore.put(bc,
+                    IDeviceService.CONTEXT_DST_DEVICE,
                     dstDevice);
         }
         return bc;
     }
-    
+
     @Override
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
     }
-    
+
     @Test
     public void testSanity() throws Exception {
     	assertTrue(true);
+    }
+
+    public static OFPhysicalPort createOFPhysicalPort(String name, int number) {
+        OFPhysicalPort p = new OFPhysicalPort();
+        p.setHardwareAddress(new byte [] { 0, 0, 0, 0, 0, 0 });
+        p.setPortNumber((short)number);
+        p.setName(name);
+        return p;
     }
 }

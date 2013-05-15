@@ -24,8 +24,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.Lock;
-
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -34,7 +32,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
@@ -82,6 +80,26 @@ public interface IOFSwitch {
         }
     }
 
+    /**
+     * Describes a change of an open flow port
+     */
+    public static class PortChangeEvent {
+        public final ImmutablePort port;
+        public final PortChangeType type;
+        /**
+         * @param port
+         * @param type
+         */
+        public PortChangeEvent(ImmutablePort port,
+                               PortChangeType type) {
+            this.port = port;
+            this.type = type;
+        }
+    }
+
+    /**
+     * the type of change that happened to an open flow port
+     */
     public enum PortChangeType {
         ADD, OTHER_UPDATE, DELETE, UP, DOWN,
     }
@@ -212,7 +230,7 @@ public interface IOFSwitch {
      * been received.
      * @return Unmodifiable list of ports not backed by the underlying collection
      */
-    public Collection<OFPhysicalPort> getEnabledPorts();
+    public Collection<ImmutablePort> getEnabledPorts();
 
     /**
      * Get list of the port numbers of all enabled ports. This will typically
@@ -231,7 +249,7 @@ public interface IOFSwitch {
      * @param portNumber
      * @return port object
      */
-    public OFPhysicalPort getPort(short portNumber);
+    public ImmutablePort getPort(short portNumber);
 
     /**
      * Retrieve the port object by the port name. The port object
@@ -240,31 +258,16 @@ public interface IOFSwitch {
      * @param portName
      * @return port object
      */
-    public OFPhysicalPort getPort(String portName);
+    public ImmutablePort getPort(String portName);
 
     /**
-     * Add or modify a switch port. This is called by the core controller
+     * Add or modify a switch port.
+     * This is called by the core controller
      * code in response to a OFPortStatus message. It should not typically be
      * called by other floodlight applications.
-     * @param port
+     * @param ps the port status message
      */
-    public void setPort(OFPhysicalPort port);
-
-    /**
-     * Delete a port for the switch. This is called by the core controller
-     * code in response to a OFPortStatus message. It should not typically be
-     * called by other floodlight applications.
-     * @param portNumber
-     */
-    public void deletePort(short portNumber);
-
-    /**
-     * Delete a port for the switch. This is called by the core controller
-     * code in response to a OFPortStatus message. It should not typically be
-     * called by other floodlight applications.
-     * @param portName
-     */
-    public void deletePort(String portName);
+    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
 
     /**
      * Get list of all ports. This will typically be different from
@@ -274,7 +277,7 @@ public interface IOFSwitch {
      * been received.
      * @return Unmodifiable list of ports
      */
-    public Collection<OFPhysicalPort> getPorts();
+    public Collection<ImmutablePort> getPorts();
 
     /**
      * @param portNumber
@@ -290,12 +293,12 @@ public interface IOFSwitch {
      */
     public boolean portEnabled(String portName);
 
-    /**
-     * @param port
-     * @return Whether a port is enabled per latest port status message
-     * (not configured down nor link down nor in spanning tree blocking state)
-     */
-    public boolean portEnabled(OFPhysicalPort port);
+    public List<PortChangeEvent>
+            comparePorts(Collection<ImmutablePort> ports);
+
+    public List<PortChangeEvent>
+            setPorts(Collection<ImmutablePort> ports);
+
 
     /**
      * Get the datapathId of the switch
@@ -499,23 +502,6 @@ public interface IOFSwitch {
      * NOTE: The contract is limited to the current thread
      */
     public void flush();
-
-    /**
-     * Return a read lock that must be held while calling the listeners for
-     * messages from the switch. Holding the read lock prevents the active
-     * switch list from being modified out from under the listeners.
-     * @return
-     */
-    public Lock getListenerReadLock();
-
-    /**
-     * Return a write lock that must be held when the controllers modifies the
-     * list of active switches. This is to ensure that the active switch list
-     * doesn't change out from under the listeners as they are handling a
-     * message from the switch.
-     * @return
-     */
-    public Lock getListenerWriteLock();
 
     /***********************************************
      * The following method can be overridden by
