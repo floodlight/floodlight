@@ -1331,7 +1331,7 @@ class OFChannelHandler
     public void channelIdle(ChannelHandlerContext ctx, IdleStateEvent e)
             throws Exception {
         OFMessage m = BasicFactory.getInstance().getMessage(OFType.ECHO_REQUEST);
-        e.getChannel().write(m);
+        e.getChannel().write(Collections.singletonList(m));
     }
 
     @Override

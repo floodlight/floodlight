@@ -19,6 +19,8 @@ net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.debugcounter.DebugCounter
 net.floodlightcontroller.debugcounter.NullDebugCounter
+net.floodlightcontroller.debugevent.DebugEvent
+net.floodlightcontroller.debugevent.NullDebugEvent
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter

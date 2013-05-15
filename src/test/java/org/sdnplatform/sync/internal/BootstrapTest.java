@@ -138,7 +138,7 @@ public class BootstrapTest {
                 syncManagers.toArray(new SyncManager[syncManagers.size()]);
         waitForFullMesh(syncManagerArr, 5000);
         
-        logger.info("Cluster successfully build.  Attempting reseed");
+        logger.info("Cluster successfully built.  Attempting reseed");
         
         // Test reseeding
         nodeStores.get(0).delete(nodeIds.get(0));

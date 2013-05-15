@@ -55,6 +55,8 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.DebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugevent.DebugEvent;
+import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -133,6 +135,9 @@ public class ControllerTest extends FloodlightTestCase {
         DebugCounter debugCounterService = new DebugCounter();
         fmc.addService(IDebugCounterService.class, debugCounterService);
 
+        DebugEvent debugEventService = new DebugEvent();
+        fmc.addService(IDebugEventService.class, debugEventService);
+
         tp = new MockThreadPoolService();
         fmc.addService(IThreadPoolService.class, tp);
 
@@ -146,6 +151,7 @@ public class ControllerTest extends FloodlightTestCase {
         memstorage.init(fmc);
         tp.init(fmc);
         debugCounterService.init(fmc);
+        debugEventService.init(fmc);
         syncService.init(fmc);
         cm.init(fmc);
 
@@ -154,6 +160,7 @@ public class ControllerTest extends FloodlightTestCase {
         memstorage.startUp(fmc);
         tp.startUp(fmc);
         debugCounterService.startUp(fmc);
+        debugEventService.startUp(fmc);
         syncService.startUp(fmc);
         cm.startUp(fmc);
 
@@ -249,6 +256,9 @@ public class ControllerTest extends FloodlightTestCase {
                 .andReturn(featuresReply.getActions()).atLeastOnce();
         expect(sw.getPorts())
                 .andReturn(ports).atLeastOnce();
+        expect(sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true))
+                .andReturn(false).anyTimes();
+        expect(sw.getInetAddress()).andReturn(null).anyTimes();
     }
 
     @SuppressWarnings("unchecked")
@@ -1796,6 +1806,7 @@ public class ControllerTest extends FloodlightTestCase {
         IOFSwitch sw = doActivateNewSwitch(1L, null, null);
         expect(sw.getId()).andReturn(1L).anyTimes();
         expect(sw.getStringId()).andReturn(HexString.toHexString(1L)).anyTimes();
+        expect(sw.getInetAddress()).andReturn(null).once();
         sw.cancelAllStatisticsReplies();
         expectLastCall().once();
         IOFSwitchListener listener = createMock(IOFSwitchListener.class);

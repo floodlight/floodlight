@@ -60,6 +60,10 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
@@ -140,11 +144,15 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
     private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
+    // Event Ids for debug events
+    private int LINK_EVENT = -1;
+
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IThreadPoolService threadPool;
     protected IRestApiService restApi;
     protected IDebugCounterService debugCounters;
+    protected IDebugEventService debugEvents;
 
     // Role
     protected Role role;
@@ -660,8 +668,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         if (!remoteSwitch.portEnabled(remotePort)) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled source port: switch {} port {}",
-                          remoteSwitch.getStringId(), remotePort);
+                log.trace("Ignoring link with disabled source port: switch {} port {} {}",
+                          new Object[] { remoteSwitch.getStringId(),
+                                         remotePort,
+                                         remoteSwitch.getPort(remotePort)});
             }
             return Command.STOP;
         }
@@ -669,15 +679,19 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                                              remoteSwitch.getId(),
                                                              remotePort))) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with suppressed src port: switch {} port {}",
-                          remoteSwitch.getStringId(), remotePort);
+                log.trace("Ignoring link with suppressed src port: switch {} port {} {}",
+                          new Object[] { remoteSwitch.getStringId(),
+                                         remotePort,
+                                         remoteSwitch.getPort(remotePort)});
             }
             return Command.STOP;
         }
         if (!iofSwitch.portEnabled(inPort)) {
             if (log.isTraceEnabled()) {
-                log.trace("Ignoring link with disabled dest port: switch {} port {}",
-                          HexString.toHexString(sw), inPort);
+                log.trace("Ignoring link with disabled dest port: switch {} port {} {}",
+                          new Object[] { HexString.toHexString(sw),
+                                         inPort,
+                                         iofSwitch.getPort(inPort)});
             }
             return Command.STOP;
         }
@@ -1138,7 +1152,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
      */
     protected void discoverOnAllPorts() {
         if (log.isTraceEnabled()) {
-            log.trace("Sending LLDP packets out of all the enabled ports on switch {}");
+            log.trace("Sending LLDP packets out of all the enabled ports");
         }
         // Send standard LLDPs
         for (long sw : floodlightProvider.getAllSwitchDpids()) {
@@ -1347,6 +1361,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                          lt.getDst(), lt.getDstPort(),
                                          getLinkType(lt, newInfo),
                                          updateOperation));
+
+                String reason = (updateOperation == UpdateOperation.LINK_UPDATED)
+                           ? "link-updated" : "link-removed";
+                debugEvents.updateEvent(LINK_EVENT, new Object[] {
+                                           lt.getSrc(), lt.getSrcPort(),
+                                           lt.getDst(), lt.getDstPort(),
+                                           reason});
             }
         } finally {
             lock.writeLock().unlock();
@@ -1628,9 +1649,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     @Override
     public void switchRemoved(long sw) {
-        // Update event history
-        floodlightProvider.addSwitchEvent(sw, EvAction.SWITCH_DISCONNECTED,
-                "None");
         List<Link> eraseList = new ArrayList<Link>();
         lock.writeLock().lock();
         try {
@@ -1670,9 +1688,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 processNewPort(sw.getId(), p);
             }
         }
-        // Update event history
-        floodlightProvider.addSwitchEvent(switchId, EvAction.SWITCH_CONNECTED,
-                "None");
         LDUpdate update = new LDUpdate(sw.getId(), null,
                                        UpdateOperation.SWITCH_UPDATED);
         updates.add(update);
@@ -1970,6 +1985,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         debugCounters = context.getServiceImpl(IDebugCounterService.class);
+        debugEvents = context.getServiceImpl(IDebugEventService.class);
 
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
@@ -2056,6 +2072,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         registerLinkDiscoveryDebugCounters();
+        registerLinkDiscoveryDebugEvents();
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
@@ -2147,6 +2164,23 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         debugCounters.registerCounter(getName() + "-" + "quarantinedrops",
             "All packets arriving on qurantined ports dropped by this module",
                                       CounterType.COUNT_ON_DEMAND);
+    }
+
+    private void registerLinkDiscoveryDebugEvents() {
+        if (debugEvents == null) {
+            log.error("Debug Event Service not found.");
+            debugEvents = new NullDebugEvent();
+            return;
+        }
+        try {
+            LINK_EVENT = debugEvents.registerEvent(
+                               getName(), "linkevent", false,
+                               "Direct OpenFlow links discovered or timed-out",
+                               EventType.ALWAYS_LOG, 100,
+                               "srcSw=%dpid, srcPort=%d, dstSw=%dpid, dstPort=%d, reason=%s", null);
+        } catch (MaxEventsRegistered e) {
+            e.printStackTrace();
+        }
     }
 
     // ****************************************************
