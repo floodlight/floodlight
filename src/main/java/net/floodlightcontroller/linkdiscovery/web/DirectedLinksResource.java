@@ -46,10 +46,7 @@ public class DirectedLinksResource extends ServerResource {
                 LinkType type = ld.getLinkType(link, info);
                 if (type == LinkType.DIRECT_LINK || type == LinkType.TUNNEL) {
                     LinkWithType lwt = new LinkWithType(link,
-                            info.getSrcPortState(),
-                            info.getDstPortState(),
-                            type,
-                            LinkDirection.UNIDIRECTIONAL);
+                            type,LinkDirection.UNIDIRECTIONAL);
                     returnLinkSet.add(lwt);
                 }
             }
