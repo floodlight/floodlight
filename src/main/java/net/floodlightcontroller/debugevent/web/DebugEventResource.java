@@ -157,6 +157,8 @@ public class DebugEventResource extends DebugEventResourceBase {
      * "http://{controller-hostname}:8080/wm/debugevent/{param1}/{param2}
      *
      *  where {param1} must be one of (no quotes):
+     *       null                   if nothing is given then by default the list
+     *                              of all events is returned, not their histories.
      *       "all"                  returns value/info on all active events.
      *       "{moduleName}"         returns value/info on events for the specified module
      *                              depending on the value of param2

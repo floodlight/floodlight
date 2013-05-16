@@ -148,7 +148,7 @@ public interface IDebugEventService extends IFloodlightService {
     public DebugEventInfo getSingleEventHistory(String moduleName, String eventName);
 
     /**
-     * Wipe out all event history for all registered active events
+     * Wipe out all event history for all registered events
      */
     public void resetAllEvents();
 
