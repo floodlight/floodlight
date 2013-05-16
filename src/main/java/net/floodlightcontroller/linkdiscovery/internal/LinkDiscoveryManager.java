@@ -72,6 +72,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
+import net.floodlightcontroller.notification.INotificationManager;
+import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -122,6 +124,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
     IFloodlightModule, IInfoProvider {
     protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
+    protected static final INotificationManager notifier =
+        NotificationManagerFactory.getNotificationManager(LinkDiscoveryManager.class);
 
     public static final String MODULE_NAME = "linkdiscovery";
 
@@ -1328,6 +1332,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                newInfo.getDstPortState(),
                                linkType,
                                EvAction.LINK_ADDED, "LLDP Recvd");
+                notifier.postNotification("Link added: " + lt.toString());
             } else {
                 linkChanged = updateLink(lt, oldInfo, newInfo);
                 if (linkChanged) {
@@ -1345,6 +1350,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                    linkType,
                                    EvAction.LINK_PORT_STATE_UPDATED,
                                    "LLDP Recvd");
+                    notifier.postNotification("Link updated: " + lt.toString());
                 }
             }
 
@@ -1465,6 +1471,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
                 if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                     log.info("Inter-switch link removed: {}", lt);
+                    notifier.postNotification("Inter-switch link removed: " +
+                                              lt.toString());
                 } else if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
                 }

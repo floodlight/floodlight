@@ -72,6 +72,8 @@ import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.notification.INotificationManager;
+import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -84,7 +86,6 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.LoadMonitor;
 import net.floodlightcontroller.util.EventHistory.EvAction;
-
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
@@ -118,6 +119,8 @@ public class Controller implements IFloodlightProviderService,
             IStorageSourceListener {
 
     protected static Logger log = LoggerFactory.getLogger(Controller.class);
+    protected static INotificationManager notifier =
+            NotificationManagerFactory.getNotificationManager(Controller.class);
 
     static final String ERROR_DATABASE =
             "The controller could not communicate with the system database.";
@@ -1138,6 +1141,7 @@ public class Controller implements IFloodlightProviderService,
             sw.cancelAllStatisticsReplies();
             addUpdateToQueue(new SwitchUpdate(sw.getId(),
                                               SwitchUpdateType.REMOVED));
+            notifier.postNotification("Switch " + sw.getStringId() + " disconnected.");
         }
 
         /**
