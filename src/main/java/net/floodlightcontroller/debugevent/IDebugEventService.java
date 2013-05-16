@@ -18,6 +18,11 @@ public interface IDebugEventService extends IFloodlightService {
     }
 
     /**
+     *  A limit on the maximum number of event types that can be created
+     */
+    public static final int MAX_EVENTS = 2000;
+
+    /**
      * Public class for information returned in response to rest API calls.
      */
     public class DebugEventInfo {
@@ -54,7 +59,7 @@ public interface IDebugEventService extends IFloodlightService {
      *                         in the packet processing pipeline (eg. switch
      *                         connect/disconnect).
      * @param eventDescription A descriptive string describing event.
-     * @param et               EventType for this event.
+     * @param eventType        EventType for this event.
      * @param bufferCapacity   Number of events to store for this event in a circular
      *                         buffer. Older events will be discarded once the
      *                         buffer is full.
@@ -74,7 +79,7 @@ public interface IDebugEventService extends IFloodlightService {
      * @throws MaxEventsRegistered
      */
     public int registerEvent(String moduleName, String eventName, boolean flushNow,
-                             String eventDescription, EventType et,
+                             String eventDescription, EventType eventType,
                              int bufferCapacity, String formatStr, Object[] params)
                                      throws MaxEventsRegistered;
 
@@ -106,37 +111,67 @@ public interface IDebugEventService extends IFloodlightService {
     public void flushEvents();
 
     /**
-     * Determine if moduleEventName is a registered event. moduleEventName must
-     * be of the type {moduleName-eventName} eg. linkdiscovery-linkevent
+     * Determine if eventName is a registered event for a given moduleName
      */
-    public boolean containsMEName(String moduleEventName);
+    public boolean containsModuleEventName(String moduleName, String eventName);
 
     /**
-     * Determine if any events have been registerd by a module of name moduleName
+     * Determine if any events have been registered for module of name moduleName
      */
-    public boolean containsModName(String moduleName);
+    public boolean containsModuleName(String moduleName);
 
     /**
+     * Get event history for all events. This call can be expensive as it
+     * formats the event histories for all events.
      *
-     * @return
+     * @return  a list of all event histories or an empty list if no events have
+     *          been registered
      */
     public List<DebugEventInfo> getAllEventHistory();
 
     /**
+     * Get event history for all events registered for a given moduleName
      *
-     * @param moduleName
-     * @return
+     * @return  a list of all event histories for all events registered for the
+     *          the module or null if there are no events for this module
      */
     public List<DebugEventInfo> getModuleEventHistory(String moduleName);
 
     /**
-     * Get event history for an event of name moduleEventName. moduleEventName
-     * must be of the type {moduleName-eventName} eg. linkdiscovery-linkevent
+     * Get event history for a single event
      *
-     * @param  moduleEventName
+     * @param  moduleName  registered module name
+     * @param  eventName   registered event name for moduleName
      * @return DebugEventInfo for that event, or null if the moduleEventName
      *         does not correspond to a registered event.
      */
-    public DebugEventInfo getSingleEventHistory(String moduleEventName);
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName);
+
+    /**
+     * Wipe out all event history for all registered active events
+     */
+    public void resetAllEvents();
+
+    /**
+     * Wipe out all event history for all events registered for a specific module
+     *
+     * @param moduleName  registered module name
+     */
+    public void resetAllModuleEvents(String moduleName);
+
+    /**
+     * Wipe out event history for a single event
+     * @param  moduleName  registered module name
+     * @param  eventName   registered event name for moduleName
+     */
+    public void resetSingleEvent(String moduleName, String eventName);
+
+    /**
+     * Retrieve information on all registered events
+     *
+     * @return the arraylist of event-info or an empty list if no events are registered
+     */
+    public ArrayList<EventInfo> getEventList();
+
 
 }

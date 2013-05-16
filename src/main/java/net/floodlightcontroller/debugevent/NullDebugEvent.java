@@ -10,6 +10,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
 
 public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
@@ -70,13 +71,13 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public boolean containsMEName(String param) {
+    public boolean containsModuleEventName(String moduleName, String eventName) {
         // TODO Auto-generated method stub
         return false;
     }
 
     @Override
-    public boolean containsModName(String param) {
+    public boolean containsModuleName(String moduleName) {
         // TODO Auto-generated method stub
         return false;
     }
@@ -94,7 +95,31 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public DebugEventInfo getSingleEventHistory(String param) {
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public void resetAllEvents() {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void resetAllModuleEvents(String moduleName) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void resetSingleEvent(String moduleName, String eventName) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public ArrayList<EventInfo> getEventList() {
         // TODO Auto-generated method stub
         return null;
     }
