@@ -62,8 +62,6 @@ public class LinksResource extends ServerResource {
                         // It is sufficient to add only one side of it.
                         if ((src < dst) || (src == dst && srcPort < dstPort)) {
                             lwt = new LinkWithType(link,
-                                    info.getSrcPortState(),
-                                    info.getDstPortState(),
                                     type,
                                     LinkDirection.BIDIRECTIONAL);
                             returnLinkSet.add(lwt);
@@ -71,8 +69,6 @@ public class LinksResource extends ServerResource {
                     } else {
                         // This is a unidirectional link.
                         lwt = new LinkWithType(link,
-                                info.getSrcPortState(),
-                                info.getDstPortState(),
                                 type,
                                 LinkDirection.UNIDIRECTIONAL);
                         returnLinkSet.add(lwt);

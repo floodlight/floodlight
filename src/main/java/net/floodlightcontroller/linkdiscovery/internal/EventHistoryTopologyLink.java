@@ -32,8 +32,6 @@ public class EventHistoryTopologyLink {
     // the front end (e.g. in cli in Python)
     public long     srcSwDpid;
     public long     dstSwDpid;
-    public int      srcPortState;
-    public int      dstPortState;
     public int      srcSwport;
     public int      dstSwport;
     public String   linkType;
@@ -48,14 +46,6 @@ public class EventHistoryTopologyLink {
     @JsonSerialize(using=DPIDSerializer.class)
     public long getDstSwDpid() {
         return dstSwDpid;
-    }
-    @JsonProperty("SrcPortState")
-    public int getSrcPortState() {
-        return srcPortState;
-    }
-    @JsonProperty("DstPortState")
-    public int getDstPortState() {
-        return dstPortState;
     }
     @JsonProperty("SrcPort")
     public int getSrcSwport() {
