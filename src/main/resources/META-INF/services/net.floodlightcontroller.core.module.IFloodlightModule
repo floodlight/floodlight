@@ -5,7 +5,6 @@ net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
 net.floodlightcontroller.topology.TopologyManager
 net.floodlightcontroller.forwarding.Forwarding
-net.floodlightcontroller.flowcache.FlowCache
 net.floodlightcontroller.flowcache.FlowReconcileManager
 net.floodlightcontroller.core.OFMessageFilterManager
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
