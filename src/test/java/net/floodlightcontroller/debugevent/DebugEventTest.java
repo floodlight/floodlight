@@ -42,9 +42,9 @@ public class DebugEventTest extends FloodlightTestCase {
                                              get("switchevent").intValue());
         assertEquals(eventId2, debugEvent.moduleEvents.get("dbgevtest").
                      get("pktinevent").intValue());
-        assertEquals(true, debugEvent.containsModName("dbgevtest"));
-        assertEquals(true, debugEvent.containsMEName("dbgevtest-switchevent"));
-        assertEquals(true, debugEvent.containsMEName("dbgevtest-pktinevent"));
+        assertEquals(true, debugEvent.containsModuleName("dbgevtest"));
+        assertEquals(true, debugEvent.containsModuleEventName("dbgevtest","switchevent"));
+        assertEquals(true, debugEvent.containsModuleEventName("dbgevtest","pktinevent"));
 
         assertEquals(0, DebugEvent.allEvents[eventId1].eventBuffer.size());
         assertEquals(0, DebugEvent.allEvents[eventId2].eventBuffer.size());
@@ -61,12 +61,12 @@ public class DebugEventTest extends FloodlightTestCase {
         assertEquals(1, DebugEvent.allEvents[eventId1].eventBuffer.size());
         assertEquals(1, DebugEvent.allEvents[eventId2].eventBuffer.size());
 
-        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest-switchevent");
+        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent");
         assertEquals(1, de.events.size());
         assertEquals(true, de.events.get(0)
                          .contains("Sw=00:00:00:00:00:00:00:01, reason=connected"));
 
-        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest-pktinevent");
+        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent");
         assertEquals(1, de2.events.size());
         assertEquals(true, de2.events.get(0)
                      .contains("Sw=1, reason=switch sent pkt-in"));

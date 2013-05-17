@@ -11,7 +11,11 @@ public class DebugEventRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/{param}", DebugEventResource.class);
+        router.attach("/{param1}/{param2}/", DebugEventResource.class);
+        router.attach("/{param1}/{param2}", DebugEventResource.class);
+        router.attach("/{param1}/", DebugEventResource.class);
+        router.attach("/{param1}", DebugEventResource.class);
+        router.attach("/", DebugEventResource.class);
         return router;
     }
 

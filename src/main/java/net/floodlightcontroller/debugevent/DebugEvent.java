@@ -39,15 +39,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     protected int eventIdCounter = 0;
     protected Object eventIdLock = new Object();
 
-    /**
-     *  A limit on the maximum number of event types that can be created
-     */
-    protected static final int MAX_EVENTS = 2000;
-
     private static final long MIN_FLUSH_DELAY = 100; //ms
-
     private static final int PCT_LOCAL_CAP = 10; // % of global capacity
-
     private static final int MIN_LOCAL_CAPACITY = 10; //elements
 
     /**
@@ -62,8 +55,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         String eventDesc;
         String eventName;
         String moduleName;
-        String moduleEventName;
         boolean flushNow;
+        String moduleEventName;
 
         public EventInfo(int eventId, boolean enabled, int bufferCapacity,
                          EventType etype, String formatStr, String eventDesc,
@@ -76,8 +69,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             this.eventDesc = eventDesc;
             this.eventName = eventName;
             this.moduleName = moduleName;
-            this.moduleEventName = moduleName + "-" + eventName;
             this.flushNow = flushNow;
+            this.moduleEventName = moduleName + "/" + eventName;
         }
 
         public int getEventId() { return eventId; }
@@ -89,7 +82,6 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         public String getEventName() { return eventName; }
         public String getModuleName() { return moduleName; }
         public String getModuleEventName() { return moduleEventName; }
-
     }
 
     //******************
@@ -324,50 +316,107 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public boolean containsMEName(String moduleEventName) {
-        String[] temp = moduleEventName.split("-");
-        if (temp.length != 2) return false;
-        if (!moduleEvents.containsKey(temp[0])) return false;
-        if (moduleEvents.get(temp[0]).containsKey(temp[1])) return true;
+    public boolean containsModuleEventName(String moduleName, String eventName) {
+        if (!moduleEvents.containsKey(moduleName)) return false;
+        if (moduleEvents.get(moduleName).containsKey(eventName)) return true;
         return false;
     }
 
     @Override
-    public boolean containsModName(String moduleName) {
+    public boolean containsModuleName(String moduleName) {
         return moduleEvents.containsKey(moduleName);
     }
 
     @Override
     public List<DebugEventInfo> getAllEventHistory() {
-        // TODO Auto-generated method stub
-        return null;
+        ArrayList<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
+        for (Map<String, Integer> modev : moduleEvents.values()) {
+            for (int eventId : modev.values()) {
+                DebugEventHistory de = allEvents[eventId];
+                if (de != null) {
+                    ArrayList<String> ret = new ArrayList<String>();
+                    for (Event e : de.eventBuffer) {
+                        ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
+                    }
+                    moduleEventList.add(new DebugEventInfo(de.einfo, ret));
+                }
+            }
+        }
+        return moduleEventList;
     }
 
     @Override
     public List<DebugEventInfo> getModuleEventHistory(String moduleName) {
-        // TODO Auto-generated method stub
-        return null;
+        if (!moduleEvents.containsKey(moduleName)) return null;
+        ArrayList<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
+        for (int eventId : moduleEvents.get(moduleName).values()) {
+            DebugEventHistory de = allEvents[eventId];
+            if (de != null) {
+                ArrayList<String> ret = new ArrayList<String>();
+                for (Event e : de.eventBuffer) {
+                    ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
+                }
+                moduleEventList.add(new DebugEventInfo(de.einfo, ret));
+            }
+        }
+        return moduleEventList;
     }
 
     @Override
-    public DebugEventInfo getSingleEventHistory(String moduleEventName) {
-        String[] temp = moduleEventName.split("-");
-        if (temp.length != 2) return null;
-        if (!moduleEvents.containsKey(temp[0])) return null;
-        Integer eventId = moduleEvents.get(temp[0]).get(temp[1]);
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
+        if (!moduleEvents.containsKey(moduleName)) return null;
+        Integer eventId = moduleEvents.get(moduleName).get(eventName);
         if (eventId == null) return null;
         DebugEventHistory de = allEvents[eventId];
         if (de != null) {
             ArrayList<String> ret = new ArrayList<String>();
             for (Event e : de.eventBuffer) {
                 ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
-                //ret.add(e.toString());
             }
             return new DebugEventInfo(de.einfo, ret);
         }
         return null;
     }
 
+    @Override
+    public void resetAllEvents() {
+        for (Map<String, Integer> eventMap : moduleEvents.values()) {
+            for (Integer evId : eventMap.values()) {
+                allEvents[evId].eventBuffer.clear();
+            }
+        }
+    }
+
+    @Override
+    public void resetAllModuleEvents(String moduleName) {
+        if (!moduleEvents.containsKey(moduleName)) return;
+        Map<String, Integer> modEvents = moduleEvents.get(moduleName);
+        for (Integer evId : modEvents.values()) {
+            allEvents[evId].eventBuffer.clear();
+        }
+    }
+
+    @Override
+    public void resetSingleEvent(String moduleName, String eventName) {
+        if (!moduleEvents.containsKey(moduleName)) return;
+        Integer eventId = moduleEvents.get(moduleName).get(eventName);
+        if (eventId == null) return;
+        DebugEventHistory de = allEvents[eventId];
+        if (de != null) {
+            de.eventBuffer.clear();
+        }
+    }
+
+    @Override
+    public ArrayList<EventInfo> getEventList() {
+        ArrayList<EventInfo> eil = new ArrayList<EventInfo>();
+        for (Map<String, Integer> eventMap : moduleEvents.values()) {
+            for (Integer evId : eventMap.values()) {
+                eil.add(allEvents[evId].einfo);
+            }
+        }
+        return eil;
+    }
 
     protected void printEvents() {
         for (int eventId : currentEvents) {
