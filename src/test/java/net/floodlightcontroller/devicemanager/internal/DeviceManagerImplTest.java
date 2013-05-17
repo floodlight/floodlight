@@ -964,7 +964,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         Integer ipaddr = IPv4.toIPv4Address("192.168.1.1");
         Device device =
                 new Device(deviceManager,
-                        new Long(deviceManager.deviceKeyCounter),
+                        deviceManager.deviceKeyCounter.get(),
                         new Entity(Ethernet.toLong(deviceMac),
                                 (short)5,
                                 ipaddr,
