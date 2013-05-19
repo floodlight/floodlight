@@ -321,4 +321,10 @@ public interface IFloodlightProviderService extends
     */
    public EventHistory<EventHistorySwitch> getSwitchEventHistory();
 
+   /**
+    * Get the set of port prefixes that will define an UPLINK port.
+    * @return The set of prefixes
+    */
+   public Set<String> getUplinkPortPrefixSet();
+
 }

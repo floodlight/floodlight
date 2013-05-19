@@ -416,4 +416,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public Set<String> getUplinkPortPrefixSet() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
