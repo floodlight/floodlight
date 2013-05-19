@@ -718,6 +718,14 @@ class OFChannelHandler
                              h.getSwitchInfoString());
                     h.controller.reassertRole(h, Role.MASTER);
                 }
+                else if (m.getErrorType() ==
+                        OFErrorType.OFPET_PORT_MOD_FAILED.getValue() &&
+                    m.getErrorCode() ==
+                        OFFlowModFailedCode.OFPFMFC_ALL_TABLES_FULL.ordinal()) {
+                    if (h.sw != null) {
+                        h.sw.notifyTableFull(true);
+                    }
+                }
                 else {
                     logError(h, m);
                 }
