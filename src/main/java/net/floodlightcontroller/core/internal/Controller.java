@@ -24,6 +24,7 @@ import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -203,6 +204,17 @@ public class Controller implements IFloodlightProviderService,
     public static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
+    // Set of port name prefixes that will be classified as uplink ports,
+    // hence will not be autoportfast.
+    Set<String> uplinkPortPrefixSet;
+
+    public Set<String> getUplinkPortPrefixSet() {
+        return uplinkPortPrefixSet;
+    }
+
+    public void setUplinkPortPrefixSet(Set<String> prefixSet) {
+        this.uplinkPortPrefixSet = prefixSet;
+    }
 
     // Load monitor for overload protection
     protected final boolean overload_drop =
@@ -2201,6 +2213,22 @@ public class Controller implements IFloodlightProviderService,
             this.setAlwaysClearFlowsOnSwActivate(false);
             log.info("Flush switches on reconnect -- Disabled");
         }
+
+        uplinkPortPrefixSet = new HashSet<String>();
+        uplinkPortPrefixSet.add("eth");
+        uplinkPortPrefixSet.add("bond");
+        String str = configParams.get("uplinkPortPrefix");
+        if (str != null) {
+            List<String> items = Arrays.asList(str.split("\\s*,\\s*"));
+            if (items != null) {
+                for (String s: items) {
+                    if (s.length() > 0) {
+                        uplinkPortPrefixSet.add(s);
+                    }
+                }
+            }
+        }
+
         this.roleManager = new RoleManager(this.notifiedRole,
                                            INITIAL_ROLE_CHANGE_DESCRIPTION);
         this.switchManager = new SwitchManager(this.notifiedRole);
@@ -2511,5 +2539,4 @@ public class Controller implements IFloodlightProviderService,
     IStoreListener<Long> getStoreListener() {
         return this.switchManager;
     }
-
 }
