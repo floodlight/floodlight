@@ -70,9 +70,12 @@ public class CircularBuffer<T> implements Iterable<T>{
     }
 
     /**
-     * ArrayDeques are not threadsafe and thus must be externally synchronized.
-     * For concurrent iteration we call a copy constructor on the ArrayDeque and
-     * return the iterator of the newly created ArrayDeque.
+     * Returns an iterator over the elements in the circular buffer in proper sequence.
+     * The elements will be returned in order from oldest to most-recent.
+     * The returned Iterator is a "weakly consistent" iterator that will never
+     * throw ConcurrentModificationException, and guarantees to traverse elements
+     * as they existed upon construction of the iterator, and may (but is not
+     * guaranteed to) reflect any modifications subsequent to construction.
      */
     @Override
     public Iterator<T> iterator() {
@@ -81,5 +84,12 @@ public class CircularBuffer<T> implements Iterable<T>{
 
     public int size() {
         return buffer.size();
+    }
+
+    /**
+     *  Atomically removes all elements in the circular buffer
+     */
+    public void clear() {
+        buffer.clear();
     }
 }

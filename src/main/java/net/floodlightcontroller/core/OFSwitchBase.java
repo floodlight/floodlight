@@ -63,13 +63,16 @@ import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
+import org.openflow.protocol.statistics.OFStatisticsType;
+import org.openflow.protocol.statistics.OFTableStatistics;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.slf4j.Logger;
@@ -128,6 +131,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private TimedCache<Long> macBlockedCache;
     private TimedCache<Short> portCache;
     private TimedCache<Short> portBlockedCache;
+    private boolean flowTableFull = false;
 
     protected OFDescriptionStatistics description;
 
@@ -915,6 +919,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     public void deliverStatisticsReply(OFMessage reply) {
+        checkForTableStats(reply);
         OFStatisticsFuture future = this.statsFutureMap.get(reply.getXid());
         if (future != null) {
             future.deliverFuture(this, reply);
@@ -928,6 +933,45 @@ public abstract class OFSwitchBase implements IOFSwitch {
             caller.receive(this, reply, null);
         }
     }
+
+    @LogMessageDocs({
+        @LogMessageDoc(level="INFO",
+            message="Switch {switch} flow table is full",
+            explanation="The switch flow table at least 98% full, " +
+                    "this requires attention if using reactive flow setup"),
+        @LogMessageDoc(level="INFO",
+            message="Switch {switch} flow table capacity back to normal",
+            explanation="The switch flow table is less than 90% full")
+    })
+    private void checkForTableStats(OFMessage reply) {
+        assert(reply instanceof OFStatisticsReply);
+        OFStatisticsReply statReply = (OFStatisticsReply) reply;
+        if (statReply.getStatisticType() != OFStatisticsType.TABLE) {
+            return;
+        }
+        List<? extends OFStatistics> stats = statReply.getStatistics();
+        // Assume a single table only
+        OFStatistics stat = stats.get(0);
+        if (stat instanceof OFTableStatistics) {
+            OFTableStatistics tableStat = (OFTableStatistics) stat;
+            int activeCount = tableStat.getActiveCount();
+            int maxEntry = tableStat.getMaximumEntries();
+            log.debug("Switch {} active entries {} max entries {}",
+                    new Object[] { this.stringId, activeCount, maxEntry});
+            int percentFull = activeCount * 100 / maxEntry;
+            if (flowTableFull && percentFull < 90) {
+                log.info("Switch {} flow table is almost full", stringId);
+                floodlightProvider.addSwitchEvent(this.datapathId,
+                        EvAction.SWITCH_FLOW_TABLE_NORMAL, "< 90% full");
+            } else if (percentFull >= 98) {
+                log.info("Switch {} flow table is capacity is back to normal",
+                        stringId);
+                floodlightProvider.addSwitchEvent(this.datapathId,
+                        EvAction.SWITCH_FLOW_TABLE_ALMOST_FULL, ">= 98% full");
+            }
+        }
+    }
+
 
     @Override
     public void cancelStatisticsReply(int transactionId) {
@@ -1377,5 +1421,22 @@ public abstract class OFSwitchBase implements IOFSwitch {
             log.info("Excessive packet in from {}, block port for 5 sec",
                     swPort);
         }
+    }
+
+    @Override
+    @LogMessageDoc(level="WARN",
+        message="Switch {switch} flow table is full",
+        explanation="The controller received flow table full " +
+                "message from the switch, could be caused by increased " +
+                "traffic pattern",
+                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
+    public void notifyTableFull(boolean isFull) {
+        if (isFull && !flowTableFull) {
+            floodlightProvider.addSwitchEvent(this.datapathId,
+                    EvAction.SWITCH_FLOW_TABLE_FULL,
+                    "Table full error from switch");
+            log.warn("Switch {} flow table is full", stringId);
+        }
+        flowTableFull = isFull;
     }
 }

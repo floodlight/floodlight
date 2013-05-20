@@ -449,4 +449,9 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         fail("Unexpected method call");
         return null;
     }
+
+    @Override
+    public void notifyTableFull(boolean isFull) {
+        // TODO Auto-generated method stub
+    }
 }

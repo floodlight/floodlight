@@ -70,6 +70,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+
 /**
  * Channel handler deals with the switch connection and dispatches
  * switch messages to the appropriate locations.
@@ -93,6 +94,8 @@ class OFChannelHandler
     private volatile ChannelState state;
     private RoleChanger roleChanger;
     private OFFeaturesReply featuresReply;
+
+    private ArrayList<OFPortStatus> pendingPortStatusMsg;
 
     /** transaction Ids to use during handshake. Since only one thread
      * calls into the OFChannelHandler we don't need atomic.
@@ -539,6 +542,12 @@ class OFChannelHandler
             void processOFError(OFChannelHandler h, OFError m) {
                 logErrorDisconnect(h, m);
             }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                h.pendingPortStatusMsg.add(m);
+            }
         },
 
         /**
@@ -581,6 +590,9 @@ class OFChannelHandler
                     h.sw.setFloodlightProvider(h.controller);
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                     h.sw.setDebugCounterService(h.controller.getDebugCounter());
+                    for (OFPortStatus ps: h.pendingPortStatusMsg)
+                        handlePortStatusMessage(h, ps, false);
+                    h.pendingPortStatusMsg.clear();
                     h.readPropertyFromStorage();
                     log.info("Switch {} bound to class {}, writeThrottle={}," +
                             " description {}",
@@ -657,8 +669,7 @@ class OFChannelHandler
             @Override
             void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
                     throws IOException {
-                // TODO
-                handlePortStatusMessage(h, m);
+                handlePortStatusMessage(h, m, false);
             }
         },
 
@@ -705,6 +716,14 @@ class OFChannelHandler
                              h.getSwitchInfoString());
                     h.controller.reassertRole(h, Role.MASTER);
                 }
+                else if (m.getErrorType() ==
+                        OFErrorType.OFPET_PORT_MOD_FAILED.getValue() &&
+                    m.getErrorCode() ==
+                        OFFlowModFailedCode.OFPFMFC_ALL_TABLES_FULL.ordinal()) {
+                    if (h.sw != null) {
+                        h.sw.notifyTableFull(true);
+                    }
+                }
                 else {
                     logError(h, m);
                 }
@@ -740,8 +759,7 @@ class OFChannelHandler
             @Override
             void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
                     throws IOException {
-                handlePortStatusMessage(h, m);
-                // FIXME: ---> h.dispatchMessage(m);
+                handlePortStatusMessage(h, m, true);
             }
 
             @Override
@@ -975,9 +993,12 @@ class OFChannelHandler
          *
          * @param h The OFChannelHhandler that received the message
          * @param m The PortStatus message we received
+         * @param doNotify if true switch port changed events will be
+         * dispatched
          */
         protected void handlePortStatusMessage(OFChannelHandler h,
-                                               OFPortStatus m) {
+                                               OFPortStatus m,
+                                               boolean doNotify) {
             if (h.sw == null) {
                 String msg = getSwitchStateMessage(h, m,
                         "State machine error: switch is null. Should never " +
@@ -985,8 +1006,9 @@ class OFChannelHandler
                 throw new SwitchStateException(msg);
             }
             List<PortChangeEvent> changes = h.sw.processOFPortStatus(m);
-            for (PortChangeEvent ev: changes) {
-                h.controller.notifyPortChanged(h.sw, ev.port, ev.type);
+            if (doNotify) {
+                for (PortChangeEvent ev: changes)
+                    h.controller.notifyPortChanged(h.sw, ev.port, ev.type);
             }
         }
 
@@ -1170,6 +1192,7 @@ class OFChannelHandler
         this.counters = controller.getCounters();
         this.roleChanger = new RoleChanger(DEFAULT_ROLE_TIMEOUT_MS);
         this.state = ChannelState.INIT;
+        this.pendingPortStatusMsg = new ArrayList<OFPortStatus>();
     }
 
     /**

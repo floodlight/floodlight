@@ -73,6 +73,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
+import net.floodlightcontroller.notification.INotificationManager;
+import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -123,6 +125,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
     IFloodlightModule, IInfoProvider {
     protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
+    protected static final INotificationManager notifier =
+        NotificationManagerFactory.getNotificationManager(LinkDiscoveryManager.class);
 
     public static final String MODULE_NAME = "linkdiscovery";
 
@@ -135,10 +139,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private static final String LINK_ID = "id";
     private static final String LINK_SRC_SWITCH = "src_switch_id";
     private static final String LINK_SRC_PORT = "src_port";
-    private static final String LINK_SRC_PORT_STATE = "src_port_state";
     private static final String LINK_DST_SWITCH = "dst_switch_id";
     private static final String LINK_DST_PORT = "dst_port";
-    private static final String LINK_DST_PORT_STATE = "dst_port_state";
     private static final String LINK_VALID_TIME = "valid_time";
     private static final String LINK_TYPE = "link_type";
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
@@ -696,14 +698,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             return Command.STOP;
         }
 
-        OFPhysicalPort physicalPort =
-                remoteSwitch.getPort(remotePort).toOFPhysicalPort();
-        int srcPortState = (physicalPort != null) ? physicalPort.getState()
-                                                 : 0;
-        physicalPort = iofSwitch.getPort(inPort).toOFPhysicalPort();
-        int dstPortState = (physicalPort != null) ? physicalPort.getState()
-                                                 : 0;
-
         // Store the time of update to this link, and push it out to
         // routingEngine
         Link lt = new Link(remoteSwitch.getId(), remotePort,
@@ -725,8 +719,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             lastBddpTime = System.currentTimeMillis();
 
         LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime,
-                                            lastBddpTime, srcPortState,
-                                            dstPortState);
+                                            lastBddpTime);
 
         addOrUpdateLink(lt, newLinkInfo);
 
@@ -757,8 +750,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
             // srcPortState and dstPort state are reversed.
             LinkInfo reverseInfo = new LinkInfo(firstSeenTime, lastLldpTime,
-                                                lastBddpTime, dstPortState,
-                                                srcPortState);
+                                                lastBddpTime);
 
             addOrUpdateLink(reverseLink, reverseInfo);
         }
@@ -1274,13 +1266,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             linkChanged = true;
         }
 
-        // Only update the port states if they've changed
-        if (newInfo.getSrcPortState().intValue() != oldInfo.getSrcPortState()
-                                                           .intValue()
-            || newInfo.getDstPortState().intValue() != oldInfo.getDstPortState()
-                                                              .intValue())
-            linkChanged = true;
-
         return linkChanged;
     }
 
@@ -1326,15 +1311,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     log.info("Inter-switch link detected: {}", lt);
                 }
                 evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(), newInfo.getSrcPortState(),
-                               newInfo.getDstPortState(),
+                               lt.getDstPort(),
                                linkType,
                                EvAction.LINK_ADDED, "LLDP Recvd");
+                notifier.postNotification("Link added: " + lt.toString());
             } else {
                 linkChanged = updateLink(lt, oldInfo, newInfo);
                 if (linkChanged) {
-                    updateOperation = getUpdateOperation(newInfo.getSrcPortState(),
-                                                         newInfo.getDstPortState());
+                    updateOperation = UpdateOperation.LINK_UPDATED;
                     LinkType linkType = getLinkType(lt, newInfo);
                     if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                         log.info("Inter-switch link updated: {}", lt);
@@ -1342,11 +1326,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     // Add to event history
                     evHistTopoLink(lt.getSrc(), lt.getDst(),
                                    lt.getSrcPort(), lt.getDstPort(),
-                                   newInfo.getSrcPortState(),
-                                   newInfo.getDstPortState(),
                                    linkType,
                                    EvAction.LINK_PORT_STATE_UPDATED,
                                    "LLDP Recvd");
+                    notifier.postNotification("Link updated: " + lt.toString());
                 }
             }
 
@@ -1454,8 +1437,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
                 // Update Event History
                 evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(), 0,
-                               0, // Port states
+                               lt.getDstPort(),
                                ILinkDiscovery.LinkType.INVALID_LINK,
                                EvAction.LINK_DELETED, reason);
 
@@ -1467,6 +1449,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
                 if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                     log.info("Inter-switch link removed: {}", lt);
+                    notifier.postNotification("Inter-switch link removed: " +
+                                              lt.toString());
                 } else if (log.isTraceEnabled()) {
                     log.trace("Deleted link {}", lt);
                 }
@@ -1539,13 +1523,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     && info.getMulticastValidTime() == null) {
                     eraseList.add(entry.getKey());
                 } else if (linkChanged) {
-                    UpdateOperation operation;
-                    operation = getUpdateOperation(info.getSrcPortState(),
-                                                   info.getDstPortState());
                     updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
                                              lt.getDst(), lt.getDstPort(),
                                              getLinkType(lt, info),
-                                             operation));
+                                             UpdateOperation.LINK_UPDATED));
                 }
             }
 
@@ -1857,39 +1838,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         else
             rowValues.put(LINK_TYPE, "invalid");
 
-        if (linkInfo.linkStpBlocked()) {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, srcPortState Blocked",
-                          lt, linkInfo);
-            }
-            rowValues.put(LINK_SRC_PORT_STATE,
-                          OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-        } else {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, srcPortState {}",
-                          new Object[] { lt, linkInfo,
-                                        linkInfo.getSrcPortState() });
-            }
-            rowValues.put(LINK_SRC_PORT_STATE, linkInfo.getSrcPortState());
-        }
         String dstDpid = HexString.toHexString(lt.getDst());
         rowValues.put(LINK_DST_SWITCH, dstDpid);
         rowValues.put(LINK_DST_PORT, lt.getDstPort());
-        if (linkInfo.linkStpBlocked()) {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, dstPortState Blocked",
-                          lt, linkInfo);
-            }
-            rowValues.put(LINK_DST_PORT_STATE,
-                          OFPhysicalPort.OFPortState.OFPPS_STP_BLOCK.getValue());
-        } else {
-            if (log.isTraceEnabled()) {
-                log.trace("writeLink, link {}, info {}, dstPortState {}",
-                          new Object[] { lt, linkInfo,
-                                        linkInfo.getDstPortState() });
-            }
-            rowValues.put(LINK_DST_PORT_STATE, linkInfo.getDstPortState());
-        }
+
         storageSource.updateRowAsync(LINK_TABLE_NAME, rowValues);
     }
 
@@ -2196,8 +2148,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     public EventHistoryTopologyCluster evTopoCluster;
 
     private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
-                                short dstPort, int srcPortState,
-                                int dstPortState,
+                                short dstPort,
                                 ILinkDiscovery.LinkType linkType,
                                 EvAction actn, String reason) {
         if (evTopoLink == null) {
@@ -2207,8 +2158,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         evTopoLink.dstSwDpid = dstDpid;
         evTopoLink.srcSwport = srcPort & 0xffff;
         evTopoLink.dstSwport = dstPort & 0xffff;
-        evTopoLink.srcPortState = srcPortState;
-        evTopoLink.dstPortState = dstPortState;
         evTopoLink.reason = reason;
         switch (linkType) {
             case DIRECT_LINK:

@@ -537,7 +537,12 @@ public interface IOFSwitch {
     public List<Short> getUplinkPorts();
 
     /**
-     * Return whether write throtteling is enabled on the switch
+     * Return whether write throttling is enabled on the switch
      */
     public boolean isWriteThrottleEnabled();
+
+    /*
+     * Notify switch that flow table is full
+     */
+    public void notifyTableFull(boolean isFull);
 }
