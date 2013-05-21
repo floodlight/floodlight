@@ -561,6 +561,7 @@ class OFChannelHandler
          *    - add switch to FloodlightProvider and send the intial role
          *      request to the switch.
          * Next state: WAIT_INITIAL_ROLE
+         * All following states will have a h.sw instance!
          */
         WAIT_DESCRIPTION_STAT_REPLY(false) {
             @LogMessageDoc(message="Switch {switch info} bound to class " +
@@ -720,9 +721,7 @@ class OFChannelHandler
                         OFErrorType.OFPET_PORT_MOD_FAILED.getValue() &&
                     m.getErrorCode() ==
                         OFFlowModFailedCode.OFPFMFC_ALL_TABLES_FULL.ordinal()) {
-                    if (h.sw != null) {
-                        h.sw.notifyTableFull(true);
-                    }
+                    h.sw.setTableFull(true);
                 }
                 else {
                     logError(h, m);

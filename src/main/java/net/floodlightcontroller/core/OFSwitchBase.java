@@ -918,7 +918,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public void deliverStatisticsReply(OFMessage reply) {
+    public void deliverStatisticsReply(OFStatisticsReply reply) {
         checkForTableStats(reply);
         OFStatisticsFuture future = this.statsFutureMap.get(reply.getXid());
         if (future != null) {
@@ -943,9 +943,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             message="Switch {switch} flow table capacity back to normal",
             explanation="The switch flow table is less than 90% full")
     })
-    private void checkForTableStats(OFMessage reply) {
-        assert(reply instanceof OFStatisticsReply);
-        OFStatisticsReply statReply = (OFStatisticsReply) reply;
+    private void checkForTableStats(OFStatisticsReply statReply) {
         if (statReply.getStatisticType() != OFStatisticsType.TABLE) {
             return;
         }
@@ -960,12 +958,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     new Object[] { this.stringId, activeCount, maxEntry});
             int percentFull = activeCount * 100 / maxEntry;
             if (flowTableFull && percentFull < 90) {
-                log.info("Switch {} flow table is almost full", stringId);
+                log.info("Switch {} flow table is capacity is back to normal",
+                        toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
                         EvAction.SWITCH_FLOW_TABLE_NORMAL, "< 90% full");
             } else if (percentFull >= 98) {
-                log.info("Switch {} flow table is capacity is back to normal",
-                        stringId);
+                log.info("Switch {} flow table is almost full", toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
                         EvAction.SWITCH_FLOW_TABLE_ALMOST_FULL, ">= 98% full");
             }
@@ -1424,13 +1422,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
+    @JsonIgnore
     @LogMessageDoc(level="WARN",
         message="Switch {switch} flow table is full",
         explanation="The controller received flow table full " +
                 "message from the switch, could be caused by increased " +
                 "traffic pattern",
                 recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public void notifyTableFull(boolean isFull) {
+    public void setTableFull(boolean isFull) {
         if (isFull && !flowTableFull) {
             floodlightProvider.addSwitchEvent(this.datapathId,
                     EvAction.SWITCH_FLOW_TABLE_FULL,

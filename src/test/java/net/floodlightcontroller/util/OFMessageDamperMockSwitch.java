@@ -38,6 +38,7 @@ import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFStatisticsReply;
 import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.statistics.OFDescriptionStatistics;
 import org.openflow.protocol.statistics.OFStatistics;
@@ -243,7 +244,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void deliverStatisticsReply(OFMessage reply) {
+    public void deliverStatisticsReply(OFStatisticsReply reply) {
         assertTrue("Unexpected method call", false);
     }
 
@@ -451,7 +452,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void notifyTableFull(boolean isFull) {
+    public void setTableFull(boolean isFull) {
         // TODO Auto-generated method stub
     }
 }
