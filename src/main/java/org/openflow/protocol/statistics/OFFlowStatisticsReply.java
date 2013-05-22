@@ -279,7 +279,7 @@ public class OFFlowStatisticsReply implements OFStatistics, OFActionFactoryAware
     	str += " priority=" + this.priority;
     	str += " idleTimeout=" + this.idleTimeout;
     	str += " hardTimeout=" + this.hardTimeout;
-    	str += " cookie=" + this.cookie;
+        str += " cookie=" + Long.toHexString(this.cookie);
     	str += " packetCount=" + this.packetCount;
     	str += " byteCount=" + this.byteCount;
     	str += " action=" + this.actions;
