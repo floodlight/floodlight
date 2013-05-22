@@ -14,6 +14,7 @@ import org.openflow.protocol.OFPhysicalPort.OFPortConfig;
 import org.openflow.protocol.OFPhysicalPort.OFPortFeatures;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFPhysicalPort.PortSpeed;
+import org.openflow.util.HexString;
 
 
 /**
@@ -44,12 +45,178 @@ public class ImmutablePort {
     private final EnumSet<OFPortFeatures> supportedFeatures;
     private final EnumSet<OFPortFeatures> peerFeatures;
 
+    /**
+     * A builder class to create ImmutablePort instances
+     *
+     * TODO: add methods to remove elements from the EnumSets
+     */
+    public static class Builder {
+        private short portNumber;
+        private byte[] hardwareAddress;
+        private String name;
+        private EnumSet<OFPortConfig> config;
+        private boolean portStateLinkDown;
+        private OFPortState stpState;
+        private EnumSet<OFPortFeatures> currentFeatures;
+        private EnumSet<OFPortFeatures> advertisedFeatures;
+        private EnumSet<OFPortFeatures> supportedFeatures;
+        private EnumSet<OFPortFeatures> peerFeatures;
+
+        public Builder() {
+            this.portNumber = (short)1;
+            this.hardwareAddress = new byte[] { 0, 0, 0, 0, 0, 0 };
+            this.name = "";
+            this.config = EnumSet.noneOf(OFPortConfig.class);
+            this.portStateLinkDown = false;
+            this.stpState = OFPortState.OFPPS_STP_LISTEN;
+            this.currentFeatures = EnumSet.noneOf(OFPortFeatures.class);
+            this.advertisedFeatures = EnumSet.noneOf(OFPortFeatures.class);
+            this.supportedFeatures = EnumSet.noneOf(OFPortFeatures.class);
+            this.peerFeatures = EnumSet.noneOf(OFPortFeatures.class);
+        }
+
+        public Builder(ImmutablePort p) {
+            this.portNumber = p.getPortNumber();
+            this.hardwareAddress = p.getHardwareAddress();
+            this.name = p.getName();
+            this.config = EnumSet.copyOf(p.getConfig());
+            this.portStateLinkDown = p.isLinkDown();
+            this.stpState = p.getStpState();
+            this.currentFeatures = EnumSet.copyOf(p.getCurrentFeatures());
+            this.advertisedFeatures = EnumSet.copyOf(p.getAdvertisedFeatures());
+            this.supportedFeatures = EnumSet.copyOf(p.getSupportedFeatures());
+            this.peerFeatures = EnumSet.copyOf(p.getPeerFeatures());
+        }
+
+        /**
+         * @param portNumber the portNumber to set
+         */
+        public Builder setPortNumber(short portNumber) {
+            this.portNumber = portNumber;
+            return this;
+        }
+        /**
+         * @param hardwareAddress the hardwareAddress to set
+         */
+        public Builder setHardwareAddress(byte[] hardwareAddress) {
+            if (hardwareAddress== null)  {
+                throw new NullPointerException("Hardware address must not be null");
+            }
+            if (hardwareAddress.length != 6) {
+                throw new IllegalArgumentException("Harware address must be 6 " +
+                        "bytes long but hardware address is " +
+                        Arrays.toString(hardwareAddress));
+            }
+            this.hardwareAddress = Arrays.copyOf(hardwareAddress, 6);
+            return this;
+        }
+        /**
+         * @param name the name to set
+         */
+        public Builder setName(String name) {
+            if (name == null)
+                throw new NullPointerException("Port name must not be null");
+            this.name = name;
+            return this;
+        }
+        /**
+         * @param config the config to set
+         */
+        public Builder addConfig(OFPortConfig config) {
+            if (config == null)
+                throw new NullPointerException("PortConfig must not be null");
+            this.config.add(config);
+            return this;
+        }
+        /**
+         * @param portStateLinkDown the portStateLinkDown to set
+         */
+        public Builder setPortStateLinkDown(boolean portStateLinkDown) {
+            this.portStateLinkDown = portStateLinkDown;
+            return this;
+        }
+        /**
+         * @param stpState the stpState to set
+         */
+        public Builder setStpState(OFPortState stpState) {
+            if (stpState == null)
+                throw new NullPointerException("stpState must not be null");
+            if (!stpState.isStpState()) {
+                String msg = String.format("OFPortState enum constant %s " +
+                        "is not an STP state", stpState);
+                throw new IllegalArgumentException(msg);
+            }
+            this.stpState = stpState;
+            return this;
+        }
+        /**
+         * @param currentFeatures the currentFeatures to set
+         */
+        public Builder addCurrentFeature(OFPortFeatures currentFeature) {
+            if (currentFeature == null)
+                throw new NullPointerException("CurrentFeature must not be null");
+            this.currentFeatures.add(currentFeature);
+            return this;
+        }
+        /**
+         * @param advertisedFeatures the advertisedFeatures to set
+         */
+        public Builder
+                addAdvertisedFeature(OFPortFeatures advertisedFeature) {
+            if (advertisedFeature == null) {
+                throw new
+                    NullPointerException("AdvertisedFeature must not be null");
+            }
+            this.advertisedFeatures.add(advertisedFeature);
+            return this;
+        }
+        /**
+         * @param supportedFeatures the supportedFeatures to set
+         */
+        public Builder addSupportedFeature(OFPortFeatures supportedFeature) {
+            if (supportedFeature == null) {
+                throw new NullPointerException("SupportedFeature must not be null");
+            }
+            this.supportedFeatures.add(supportedFeature);
+            return this;
+        }
+        /**
+         * @param peerFeatures the peerFeatures to set
+         */
+        public Builder addPeerFeature(OFPortFeatures peerFeature) {
+            if (peerFeature == null)
+                throw new NullPointerException("PortFeature must not be null");
+            this.peerFeatures.add(peerFeature);
+            return this;
+        }
+
+        /**
+         * @return
+         */
+        public ImmutablePort build() {
+            return new ImmutablePort(portNumber,
+                                     hardwareAddress,
+                                     name,
+                                     EnumSet.copyOf(config),
+                                     portStateLinkDown,
+                                     stpState,
+                                     EnumSet.copyOf(currentFeatures),
+                                     EnumSet.copyOf(advertisedFeatures),
+                                     EnumSet.copyOf(supportedFeatures),
+                                     EnumSet.copyOf(peerFeatures));
+        }
+    }
+
+
     public static ImmutablePort fromOFPhysicalPort(OFPhysicalPort p) {
         if (p == null) {
             throw new NullPointerException("OFPhysicalPort must not be null");
         }
         if (p.getHardwareAddress() == null)  {
             throw new NullPointerException("Hardware address must not be null");
+        }
+        if (p.getName() == null) {
+            throw new NullPointerException("Port name must not be null");
         }
 
         return new ImmutablePort(
@@ -121,6 +288,19 @@ public class ImmutablePort {
                     "bytes long but hardware address is " +
                     Arrays.toString(hardwareAddress));
         }
+        if (config == null)
+            throw new NullPointerException("portConfig must not be null");
+        if (portStateStp == null)
+            throw new NullPointerException("portStateStp must not be null");
+        if (currentFeatures == null)
+            throw new NullPointerException("currentFeatures must not be null");
+        if (advertisedFeatures == null)
+            throw new NullPointerException("advertisedFeatures must not be null");
+        if (supportedFeatures == null)
+            throw new NullPointerException("supportedFeatures must not be null");
+        if (peerFeatures == null)
+            throw new NullPointerException("peerFeatures must not be null");
+
         this.portNumber = portNumber;
         this.hardwareAddress = hardwareAddress;
         this.name = name;
@@ -211,6 +391,7 @@ public class ImmutablePort {
 
     public OFPhysicalPort toOFPhysicalPort() {
         OFPhysicalPort ofpp = new OFPhysicalPort();
+        ofpp.setPortNumber(this.getPortNumber());
         ofpp.setHardwareAddress(this.getHardwareAddress());
         ofpp.setName(this.getName());
         ofpp.setConfig(EnumBitmaps.toBitmap(this.getConfig()));
@@ -233,13 +414,10 @@ public class ImmutablePort {
      * @return
      */
     public String toBriefString() {
-        return String.format("%d (%s)", portNumber, name);
+        return String.format("%s (%d)", name, portNumber);
     }
 
-    @Override
-    public String toString() {
-        return toBriefString();
-    }
+
 
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
@@ -357,5 +535,27 @@ public class ImmutablePort {
             ofppList.add(p.toOFPhysicalPort());
         }
         return ofppList;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        StringBuilder builder2 = new StringBuilder();
+        String linkState = (portStateLinkDown) ? "DOWN" : "UP";
+        builder2.append("Port [")
+                .append(name)
+                .append("(").append(portNumber).append(")")
+                .append(", hardwareAddress=")
+                .append(HexString.toHexString(hardwareAddress))
+                .append(", config=").append(config)
+                .append(", link=").append(linkState)
+                .append(", stpState=").append(stpState)
+                .append(", currentFeatures=").append(currentFeatures)
+                .append(", advertisedFeatures=").append(advertisedFeatures)
+                .append(", supportedFeatures=").append(supportedFeatures)
+                .append(", peerFeatures=").append(peerFeatures).append("]");
+        return builder2.toString();
     }
 }

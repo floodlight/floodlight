@@ -96,6 +96,39 @@ public interface IOFSwitch {
             this.port = port;
             this.type = type;
         }
+        /* (non-Javadoc)
+         * @see java.lang.Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((port == null) ? 0 : port.hashCode());
+            result = prime * result + ((type == null) ? 0 : type.hashCode());
+            return result;
+        }
+        /* (non-Javadoc)
+         * @see java.lang.Object#equals(java.lang.Object)
+         */
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (getClass() != obj.getClass()) return false;
+            PortChangeEvent other = (PortChangeEvent) obj;
+            if (port == null) {
+                if (other.port != null) return false;
+            } else if (!port.equals(other.port)) return false;
+            if (type != other.type) return false;
+            return true;
+        }
+        /* (non-Javadoc)
+         * @see java.lang.Object#toString()
+         */
+        @Override
+        public String toString() {
+            return "[" + type + " " + port.toBriefString() + "]";
+        }
     }
 
     /**
@@ -267,9 +300,22 @@ public interface IOFSwitch {
      * This is called by the core controller
      * code in response to a OFPortStatus message. It should not typically be
      * called by other floodlight applications.
+     *
+     * OFPPR_MODIFY and OFPPR_ADD will be treated as equivalent. The OpenFlow
+     * spec is not clear on whether portNames are portNumbers are considered
+     * authoritative identifiers. We treat portNames <-> portNumber mappings
+     * as fixed. If they change, we delete all previous conflicting ports and
+     * add all new ports.
+     *
      * @param ps the port status message
+     * @return the changes "applied" to the old ports of the switch according
+     * to the PortStatus message. A single PortStatus message can result in
+     * multiple changes.
+     * If portName <-> portNumber mappings have
+     * changed, the iteration order ensures that delete events for old
+     * conflicting appear before before events adding new ports
      */
-    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
+    public Collection<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
 
     /**
      * Get list of all ports. This will typically be different from
@@ -295,10 +341,29 @@ public interface IOFSwitch {
      */
     public boolean portEnabled(String portName);
 
-    public List<PortChangeEvent>
+    /**
+     * Compute the changes that would be required to replace the old ports
+     * of this switch with the new ports
+     * @param ports new ports to set
+     * @return the changes "applied" to the old ports of the switch in order
+     * to set them to the new set.
+     * If portName <-> portNumber mappings have
+     * changed, the iteration order ensures that delete events for old
+     * conflicting appear before before events adding new ports
+     */
+    public Collection<PortChangeEvent>
             comparePorts(Collection<ImmutablePort> ports);
 
-    public List<PortChangeEvent>
+    /**
+     * Replace the ports of this switch with the given ports.
+     * @param ports new ports to set
+     * @return the changes "applied" to the old ports of the switch in order
+     * to set them to the new set.
+     * If portName <-> portNumber mappings have
+     * changed, the iteration order ensures that delete events for old
+     * conflicting appear before before events adding new ports
+     */
+    public Collection<PortChangeEvent>
             setPorts(Collection<ImmutablePort> ports);
 
 
@@ -542,8 +607,8 @@ public interface IOFSwitch {
      */
     public boolean isWriteThrottleEnabled();
 
-    /*
-     * Notify switch that flow table is full
+    /**
+     * Set the flow table full flag in the switch
      */
     public void setTableFull(boolean isFull);
 }

@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,6 +58,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -269,27 +271,33 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * be deleted.
          * @return list of port changes applied to this switch
          */
-        private List<PortChangeEvent>
+        private Collection<PortChangeEvent>
                 handlePortStatusDelete(ImmutablePort delPort) {
             lock.writeLock().lock();
-            List<PortChangeEvent> events = Collections.emptyList();
+            Collection<PortChangeEvent> events =
+                    new ArrayList<PortChangeEvent>();
             try {
                 Map<Short,ImmutablePort> newPortByNumber =
                         new HashMap<Short, ImmutablePort>(portsByNumber);
                 ImmutablePort prevPort =
                         portsByNumber.get(delPort.getPortNumber());
                 if (prevPort == null) {
-                    // so such port. That's weird
+                    // so such port. Do we have a port with the name?
+                    prevPort = portsByName.get(delPort.getName());
+                    if (prevPort != null) {
+                        newPortByNumber.remove(prevPort.getPortNumber());
+                        events.add(new PortChangeEvent(prevPort,
+                                                       PortChangeType.DELETE));
+                    }
                 } else if (prevPort.getName().equals(delPort.getName())) {
                     // port exists with consistent name-number mapping
                     newPortByNumber.remove(delPort.getPortNumber());
-                    events = Collections.singletonList(
-                            new PortChangeEvent(delPort, PortChangeType.DELETE));
+                    events.add(new PortChangeEvent(delPort,
+                                                   PortChangeType.DELETE));
                 } else {
                     // port with same number exists but its name differs. This
                     // is weird. The best we can do is to delete the existing
                     // port(s) that have delPort's name and number.
-                    events = new ArrayList<PortChangeEvent>(2);
                     newPortByNumber.remove(delPort.getPortNumber());
                     events.add(new PortChangeEvent(prevPort,
                                                    PortChangeType.DELETE));
@@ -317,14 +325,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @param ps
          * @return
          */
-        public List<PortChangeEvent> handlePortStatusMessage(OFPortStatus ps) {
+        public Collection<PortChangeEvent> handlePortStatusMessage(OFPortStatus ps) {
             if (ps == null) {
                 throw new NullPointerException("OFPortStatus message must " +
                                                "not be null");
             }
             lock.writeLock().lock();
             try {
-                List<PortChangeEvent> events;
                 ImmutablePort port =
                         ImmutablePort.fromOFPhysicalPort(ps.getDesc());
                 OFPortReason reason = OFPortReason.fromReasonCode(ps.getReason());
@@ -341,9 +348,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
                 if (reason == OFPortReason.OFPPR_DELETE)
                         return handlePortStatusDelete(port);
 
+                // We handle ADD and MODIFY the same way. Since OpenFlow
+                // doesn't specify what uniquely identifies a port the
+                // notion of ADD vs. MODIFY can also be hazy. So we just
+                // compare the new port to the existing ones.
                 Map<Short,ImmutablePort> newPortByNumber =
                     new HashMap<Short, ImmutablePort>(portsByNumber);
-                events = getSinglePortChanges(port);
+                Collection<PortChangeEvent> events = getSinglePortChanges(port);
                 for (PortChangeEvent e: events) {
                     switch(e.type) {
                         case DELETE:
@@ -384,11 +395,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @param newPort the new or modified port.
          * @return the list of changes
          */
-        public List<PortChangeEvent>
+        public Collection<PortChangeEvent>
                 getSinglePortChanges(ImmutablePort newPort) {
             lock.readLock().lock();
             try {
-                List<PortChangeEvent> events = new ArrayList<PortChangeEvent>();
+                Collection<PortChangeEvent> events =
+                        new LinkedHashSet<PortChangeEvent>();
                 // Check if we have a port by the same number in our
                 // old map.
                 ImmutablePort prevPort =
@@ -457,7 +469,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @return The list of differences between the current ports and
          * newPortList
          */
-        public List<PortChangeEvent>
+        public Collection<PortChangeEvent>
                 comparePorts(Collection<ImmutablePort> newPorts) {
             return compareAndUpdatePorts(newPorts, false);
         }
@@ -472,7 +484,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @return The list of differences between the current ports and
          * newPortList
          */
-        public List<PortChangeEvent>
+        public Collection<PortChangeEvent>
                 updatePorts(Collection<ImmutablePort> newPorts) {
             return compareAndUpdatePorts(newPorts, true);
         }
@@ -499,7 +511,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @throws IllegalArgumentException if either port names or port numbers
          * are duplicated in the newPortsList.
          */
-        private List<PortChangeEvent> compareAndUpdatePorts(
+        private Collection<PortChangeEvent> compareAndUpdatePorts(
                 Collection<ImmutablePort> newPorts,
                 boolean doUpdate) {
             if (newPorts == null) {
@@ -507,7 +519,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
             }
             lock.writeLock().lock();
             try {
-                List<PortChangeEvent> events = new ArrayList<PortChangeEvent>();
+                Collection<PortChangeEvent> events =
+                        new LinkedHashSet<PortChangeEvent>();
 
                 Map<Short,ImmutablePort> newPortsByNumber =
                         new HashMap<Short, ImmutablePort>();
@@ -521,6 +534,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
                         new ArrayList<ImmutablePort>(newPorts);
 
                 for (ImmutablePort p: newPortsList) {
+                    if (p == null) {
+                        throw new NullPointerException("portList must not " +
+                                "contain null values");
+                    }
+
                     // Add the port to the new maps and lists and check
                     // that every port is unique
                     ImmutablePort duplicatePort;
@@ -549,6 +567,20 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     // get changes
                     events.addAll(getSinglePortChanges(p));
                 }
+                // find deleted ports
+                // We need to do this after looping through all the new ports
+                // to we can handle changed name<->number mappings correctly
+                // We could pull it into the loop of we address this but
+                // it's probably not worth it
+                for (ImmutablePort oldPort: this.portList) {
+                    if (!newPortsByNumber.containsKey(oldPort.getPortNumber())) {
+                        PortChangeEvent ev =
+                                new PortChangeEvent(oldPort,
+                                                    PortChangeType.DELETE);
+                        events.add(ev);
+                    }
+                }
+
 
                 if (doUpdate) {
                     portsByName = Collections.unmodifiableMap(newPortsByName);
@@ -818,7 +850,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
+    public Collection<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
         return portManager.handlePortStatusMessage(ps);
     }
 
@@ -829,13 +861,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public List<PortChangeEvent> comparePorts(Collection<ImmutablePort> ports) {
+    public Collection<PortChangeEvent> comparePorts(Collection<ImmutablePort> ports) {
         return portManager.comparePorts(ports);
     }
 
     @Override
     @JsonIgnore
-    public List<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
+    public Collection<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
         return portManager.updatePorts(ports);
     }
 

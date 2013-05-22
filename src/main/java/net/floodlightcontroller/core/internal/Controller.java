@@ -24,6 +24,7 @@ import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1222,7 +1223,7 @@ public class Controller implements IFloodlightProviderService,
         private synchronized void
                 sendNotificationsIfSwitchDiffers(IOFSwitch oldSw,
                                                  IOFSwitch newSw) {
-            List<PortChangeEvent> portDiffs =
+            Collection<PortChangeEvent> portDiffs =
                     oldSw.comparePorts(newSw.getPorts());
             for (PortChangeEvent ev: portDiffs) {
                 SwitchUpdate update =

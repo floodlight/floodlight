@@ -3,6 +3,7 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -1004,7 +1005,7 @@ class OFChannelHandler
                         "happen");
                 throw new SwitchStateException(msg);
             }
-            List<PortChangeEvent> changes = h.sw.processOFPortStatus(m);
+            Collection<PortChangeEvent> changes = h.sw.processOFPortStatus(m);
             if (doNotify) {
                 for (PortChangeEvent ev: changes)
                     h.controller.notifyPortChanged(h.sw, ev.port, ev.type);
