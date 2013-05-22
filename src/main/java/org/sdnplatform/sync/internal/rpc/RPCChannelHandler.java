@@ -84,9 +84,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     public void messageReceived(ChannelHandlerContext ctx,
                                 MessageEvent e) throws Exception {
         super.messageReceived(ctx, e);
-        rpcService.debugCounter.flushCounters();
     }
-        
+
     @Override
     @LogMessageDoc(level="ERROR",
               message="[{id}->{id}] Attempted connection from unrecognized " +
@@ -98,7 +97,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 "in your network.")
     protected void handleHello(HelloMessage hello, Channel channel) {
         if (!hello.isSetNodeId()) {
-            // this is a client connection.  Don't set this up as a node 
+            // this is a client connection.  Don't set this up as a node
             // connection
             isClientConnection = true;
             return;
@@ -107,7 +106,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         if (remoteNode == null) {
             logger.error("[{}->{}] Attempted connection from unrecognized " +
                          "floodlight node {}; disconnecting",
-                         new Object[]{getLocalNodeIdString(), 
+                         new Object[]{getLocalNodeIdString(),
                                       getRemoteNodeIdString(),
                                       hello.getNodeId()});
             channel.close();
@@ -121,7 +120,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         srm.setHeader(header);
         SyncMessage bsm = new SyncMessage(MessageType.FULL_SYNC_REQUEST);
         channel.write(bsm);
-        
+
         // XXX - TODO - if last connection was longer ago than the tombstone
         // timeout, then we need to do a complete flush and reload of our
         // state.  This is complex though since this applies across entire
@@ -133,47 +132,47 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     }
 
     @Override
-    protected void handleGetRequest(GetRequestMessage request, 
+    protected void handleGetRequest(GetRequestMessage request,
                                     Channel channel) {
         String storeName = request.getStoreName();
         try {
-            IStorageEngine<ByteArray, byte[]> store = 
+            IStorageEngine<ByteArray, byte[]> store =
                     syncManager.getRawStore(storeName);
-    
+
             GetResponseMessage m = new GetResponseMessage();
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             m.setHeader(header);
-    
-            List<Versioned<byte[]>> values = 
+
+            List<Versioned<byte[]>> values =
                     store.get(new ByteArray(request.getKey()));
             for (Versioned<byte[]> value : values) {
                 m.addToValues(TProtocolUtil.getTVersionedValue(value));
             }
-            
+
             SyncMessage bsm = new SyncMessage(MessageType.GET_RESPONSE);
             bsm.setGetResponse(m);
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.GET_REQUEST));
         }
     }
-    
+
     @Override
-    protected void handlePutRequest(PutRequestMessage request, 
+    protected void handlePutRequest(PutRequestMessage request,
                                     Channel channel) {
         String storeName = request.getStoreName();
         try {
-            IStorageEngine<ByteArray, byte[]> store = 
+            IStorageEngine<ByteArray, byte[]> store =
                     syncManager.getRawStore(storeName);
-    
+
             ByteArray key = new ByteArray(request.getKey());
             Versioned<byte[]> value = null;
             if (request.isSetVersionedValue()) {
                 value = TProtocolUtil.
                         getVersionedValued(request.getVersionedValue());
-                value.increment(syncManager.getLocalNodeId(), 
+                value.increment(syncManager.getLocalNodeId(),
                                 System.currentTimeMillis());
             } else if (request.isSetValue()) {
                 byte[] rvalue = request.getValue();
@@ -182,7 +181,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 for (IVersion v : versions) {
                     newclock = newclock.merge((VectorClock)v);
                 }
-                newclock = newclock.incremented(syncManager.getLocalNodeId(), 
+                newclock = newclock.incremented(syncManager.getLocalNodeId(),
                                                 System.currentTimeMillis());
                 value = Versioned.value(rvalue, newclock);
             } else {
@@ -195,22 +194,22 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             m.setHeader(header);
-    
+
             SyncMessage bsm = new SyncMessage(MessageType.PUT_RESPONSE);
             bsm.setPutResponse(m);
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.PUT_REQUEST));
         }
     }
-    
+
     @Override
-    protected void handleDeleteRequest(DeleteRequestMessage request, 
+    protected void handleDeleteRequest(DeleteRequestMessage request,
                                        Channel channel) {
         try {
             String storeName = request.getStoreName();
-            IStorageEngine<ByteArray, byte[]> store = 
+            IStorageEngine<ByteArray, byte[]> store =
                     syncManager.getRawStore(storeName);
             ByteArray key = new ByteArray(request.getKey());
             VectorClock newclock;
@@ -223,23 +222,23 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                     newclock = newclock.merge((VectorClock)v);
                 }
             }
-            newclock = 
-                    newclock.incremented(rpcService.syncManager.getLocalNodeId(), 
+            newclock =
+                    newclock.incremented(rpcService.syncManager.getLocalNodeId(),
                                          System.currentTimeMillis());
             Versioned<byte[]> value = Versioned.value(null, newclock);
             store.put(key, value);
-            
+
             DeleteResponseMessage m = new DeleteResponseMessage();
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             m.setHeader(header);
 
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     new SyncMessage(MessageType.DELETE_RESPONSE);
             bsm.setDeleteResponse(m);
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.DELETE_REQUEST));
         }
     }
@@ -248,13 +247,13 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected void handleSyncValue(SyncValueMessage request,
                                    Channel channel) {
         if (request.isSetResponseTo())
-            rpcService.messageAcked(MessageType.SYNC_REQUEST, 
+            rpcService.messageAcked(MessageType.SYNC_REQUEST,
                                     getRemoteNodeId());
         try {
             if (logger.isTraceEnabled()) {
-                logger.trace("[{}->{}] Got syncvalue {}", 
-                             new Object[]{getLocalNodeIdString(), 
-                                          getRemoteNodeIdString(), 
+                logger.trace("[{}->{}] Got syncvalue {}",
+                             new Object[]{getLocalNodeIdString(),
+                                          getRemoteNodeIdString(),
                                           request});
             }
 
@@ -264,7 +263,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 Iterable<Versioned<byte[]>> vs = new TVersionedValueIterable(tvvi);
                 syncManager.writeSyncValue(request.getStore().getStoreName(),
                                            scope,
-                                           request.getStore().isPersist(), 
+                                           request.getStore().isPersist(),
                                            kv.getKey(), vs);
             }
 
@@ -273,76 +272,77 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             m.setHeader(header);
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     new SyncMessage(MessageType.SYNC_VALUE_RESPONSE);
             bsm.setSyncValueResponse(m);
-            
-            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES, 
+
+            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES,
                           request.getValuesSize());
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.SYNC_VALUE));
         }
     }
-    
-    protected void handleSyncValueResponse(SyncValueResponseMessage message, 
+
+    @Override
+    protected void handleSyncValueResponse(SyncValueResponseMessage message,
                                            Channel channel) {
         rpcService.messageAcked(MessageType.SYNC_VALUE, getRemoteNodeId());
     }
 
     @Override
-    protected void handleSyncOffer(SyncOfferMessage request, 
+    protected void handleSyncOffer(SyncOfferMessage request,
                                    Channel channel) {
         try {
             String storeName = request.getStore().getStoreName();
-            
+
             SyncRequestMessage srm = new SyncRequestMessage();
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             srm.setHeader(header);
             srm.setStore(request.getStore());
-            
+
             for (KeyedVersions kv : request.getVersions()) {
-                Iterable<org.sdnplatform.sync.thrift.VectorClock> tvci = 
+                Iterable<org.sdnplatform.sync.thrift.VectorClock> tvci =
                         kv.getVersions();
                 Iterable<VectorClock> vci = new TVersionIterable(tvci);
-                
-                boolean wantKey = syncManager.handleSyncOffer(storeName, 
+
+                boolean wantKey = syncManager.handleSyncOffer(storeName,
                                                               kv.getKey(), vci);
                 if (wantKey)
                     srm.addToKeys(kv.bufferForKey());
             }
-            
-            SyncMessage bsm = 
+
+            SyncMessage bsm =
                     new SyncMessage(MessageType.SYNC_REQUEST);
             bsm.setSyncRequest(srm);
             if (logger.isTraceEnabled()) {
-                logger.trace("[{}->{}] Sending SyncRequest with {} elements", 
-                             new Object[]{getLocalNodeIdString(), 
-                                          getRemoteNodeIdString(), 
+                logger.trace("[{}->{}] Sending SyncRequest with {} elements",
+                             new Object[]{getLocalNodeIdString(),
+                                          getRemoteNodeIdString(),
                                           srm.getKeysSize()});
             }
             channel.write(bsm);
-            
+
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), 
+            channel.write(getError(request.getHeader().getTransactionId(),
                                    e, MessageType.SYNC_OFFER));
         }
     }
 
     @Override
-    protected void handleSyncRequest(SyncRequestMessage request, 
+    protected void handleSyncRequest(SyncRequestMessage request,
                                      Channel channel) {
         rpcService.messageAcked(MessageType.SYNC_OFFER, getRemoteNodeId());
         if (!request.isSetKeys()) return;
 
         String storeName = request.getStore().getStoreName();
         try {
-            IStorageEngine<ByteArray, byte[]> store = 
+            IStorageEngine<ByteArray, byte[]> store =
                     syncManager.getRawStore(storeName);
 
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     TProtocolUtil.getTSyncValueMessage(request.getStore());
             SyncValueMessage svm = bsm.getSyncValue();
             svm.setResponseTo(request.getHeader().getTransactionId());
@@ -350,22 +350,22 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
 
             for (ByteBuffer key : request.getKeys()) {
                 ByteArray keyArray = new ByteArray(key.array());
-                List<Versioned<byte[]>> values = 
+                List<Versioned<byte[]>> values =
                         store.get(keyArray);
                 if (values == null || values.size() == 0) continue;
-                KeyedValues kv = 
+                KeyedValues kv =
                         TProtocolUtil.getTKeyedValues(keyArray, values);
                 svm.addToValues(kv);
             }
-            
+
             if (svm.isSetValues()) {
-                updateCounter(SyncManager.COUNTER_SENT_VALUES, 
+                updateCounter(SyncManager.COUNTER_SENT_VALUES,
                               svm.getValuesSize());
                 rpcService.syncQueue.add(new NodeMessage(getRemoteNodeId(),
                                                          bsm));
             }
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.SYNC_REQUEST));
         }
     }
@@ -376,6 +376,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         startAntientropy();
     }
 
+    @Override
     protected void handleCursorRequest(CursorRequestMessage request,
                                        Channel channel) {
         try {
@@ -401,14 +402,14 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 int i = 0;
                 while (i < 50 && c.hasNext()) {
                     Entry<ByteArray, List<Versioned<byte[]>>> e = c.next();
-                    
-                    m.addToValues(TProtocolUtil.getTKeyedValues(e.getKey(), 
+
+                    m.addToValues(TProtocolUtil.getTKeyedValues(e.getKey(),
                                                                 e.getValue()));
                     i += 1;
                 }
             }
 
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     new SyncMessage(MessageType.CURSOR_RESPONSE);
             bsm.setCursorResponse(m);
             channel.write(bsm);
@@ -424,7 +425,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         try {
             Scope scope = TProtocolUtil.getScope(request.store.getScope());
             if (request.store.isPersist())
-                syncManager.registerPersistentStore(request.store.storeName, 
+                syncManager.registerPersistentStore(request.store.storeName,
                                                     scope);
             else
                 syncManager.registerStore(request.store.storeName, scope);
@@ -432,12 +433,12 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             m.setHeader(header);
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     new SyncMessage(MessageType.REGISTER_RESPONSE);
             bsm.setRegisterResponse(m);
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.REGISTER_REQUEST));
         }
     }
@@ -446,16 +447,16 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected void handleClusterJoinRequest(ClusterJoinRequestMessage request,
                                             Channel channel) {
         try {
-            // We can get this message in two circumstances.  Either this is 
+            // We can get this message in two circumstances.  Either this is
             // a totally new node, or this is an existing node that is changing
             // its port or IP address.  We can tell the difference because the
             // node ID and domain ID will already be set for an existing node
-            
+
             ClusterJoinResponseMessage cjrm = new ClusterJoinResponseMessage();
             AsyncMessageHeader header = new AsyncMessageHeader();
             header.setTransactionId(request.getHeader().getTransactionId());
             cjrm.setHeader(header);
-            
+
             org.sdnplatform.sync.thrift.Node tnode = request.getNode();
             if (!tnode.isSetNodeId()) {
                 // allocate a random node ID that's not currently in use
@@ -483,13 +484,13 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 // new domain ID into the system node store
                 tnode.setDomainId(tnode.getNodeId());
             }
-            IStoreClient<Short, Node> nodeStoreClient = 
+            IStoreClient<Short, Node> nodeStoreClient =
                     syncManager.getStoreClient(SyncStoreCCProvider.
                                                SYSTEM_NODE_STORE,
                                                Short.class, Node.class);
             while (true) {
                 try {
-                    Versioned<Node> node = 
+                    Versioned<Node> node =
                             nodeStoreClient.get(tnode.getNodeId());
                     node.setValue(new Node(tnode.getHostname(),
                                            tnode.getPort(),
@@ -499,30 +500,30 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                     break;
                 } catch (ObsoleteVersionException e) { }
             }
-            
-            IStorageEngine<ByteArray, byte[]> store = 
+
+            IStorageEngine<ByteArray, byte[]> store =
                     syncManager.getRawStore(SyncStoreCCProvider.
                                             SYSTEM_NODE_STORE);
-            IClosableIterator<Entry<ByteArray, 
+            IClosableIterator<Entry<ByteArray,
                 List<Versioned<byte[]>>>> entries = store.entries();
             try {
                 while (entries.hasNext()) {
-                    Entry<ByteArray, List<Versioned<byte[]>>> entry = 
+                    Entry<ByteArray, List<Versioned<byte[]>>> entry =
                             entries.next();
-                    KeyedValues kv = 
-                            TProtocolUtil.getTKeyedValues(entry.getKey(), 
+                    KeyedValues kv =
+                            TProtocolUtil.getTKeyedValues(entry.getKey(),
                                                           entry.getValue());
                     cjrm.addToNodeStore(kv);
                 }
             } finally {
                 entries.close();
             }
-            SyncMessage bsm = 
+            SyncMessage bsm =
                     new SyncMessage(MessageType.CLUSTER_JOIN_RESPONSE);
             bsm.setClusterJoinResponse(cjrm);
             channel.write(bsm);
         } catch (Exception e) {
-            channel.write(getError(request.getHeader().getTransactionId(), e, 
+            channel.write(getError(request.getHeader().getTransactionId(), e,
                                    MessageType.CLUSTER_JOIN_REQUEST));
         }
     }
@@ -542,10 +543,10 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected Short getLocalNodeId() {
         return syncManager.getLocalNodeId();
     }
-    
+
     @Override
     protected Short getRemoteNodeId() {
-        if (remoteNode != null) 
+        if (remoteNode != null)
             return remoteNode.getNodeId();
         return null;
     }
@@ -554,7 +555,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected String getLocalNodeIdString() {
         return ""+getLocalNodeId();
     }
-    
+
     @Override
     protected String getRemoteNodeIdString() {
         return ""+getRemoteNodeId();
@@ -564,7 +565,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected int getTransactionId() {
         return rpcService.getTransactionId();
     }
-    
+
     @Override
     protected AuthScheme getAuthScheme() {
         return syncManager.getClusterConfig().getAuthScheme();
@@ -577,12 +578,13 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
         try {
             return CryptoUtil.getSharedSecret(path, pass);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response " + 
+            throw new AuthException("Could not read challenge/response " +
                     "shared secret from key store " + path, e);
         }
     }
-    
-    protected SyncMessage getError(int transactionId, Exception error, 
+
+    @Override
+    protected SyncMessage getError(int transactionId, Exception error,
                                    MessageType type) {
         updateCounter(SyncManager.COUNTER_ERROR_PROCESSING, 1);
         return super.getError(transactionId, error, type);
@@ -592,10 +594,10 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // Utility functions
     // *****************
 
-    protected void updateCounter(String counter, int incr) {
-        rpcService.debugCounter.updateCounter(counter, incr);
+    protected void updateCounter(int counter, int incr) {
+        rpcService.debugCounter.updateCounter(counter, incr, true);
     }
-    
+
     protected void startAntientropy() {
         // Run antientropy in a background task so we don't use up an I/O
         // thread.  Note that this task will result in lots of traffic
@@ -621,7 +623,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
 
         @Override
         public Iterator<VectorClock> iterator() {
-            final Iterator<org.sdnplatform.sync.thrift.VectorClock> tcs = 
+            final Iterator<org.sdnplatform.sync.thrift.VectorClock> tcs =
                     tcvi.iterator();
             return new Iterator<VectorClock>() {
 

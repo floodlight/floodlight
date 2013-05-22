@@ -199,7 +199,7 @@ class OFChannelHandler
             if (!requestPending)
                 sendRoleRequest(role);
             else
-                counters.roleNotResentBecauseRolePending.increment();
+                counters.roleNotResentBecauseRolePending.increment(true);
         }
 
         /**
@@ -266,7 +266,7 @@ class OFChannelHandler
             if (pendingXid == xid && pendingRole == role) {
                 log.debug("Received role reply message from {}, setting role to {}",
                           getSwitchInfoString(), role);
-                counters.roleReplyReceived.increment();
+                counters.roleReplyReceived.increment(true);
                 setSwitchRole(role, RoleRecvStatus.RECEIVED_REPLY);
             } else {
                 log.debug("Received stale or unexpected role reply from " +
@@ -299,7 +299,7 @@ class OFChannelHandler
                         (error.getErrorType() == OFError.OFErrorType.
                         OFPET_BAD_REQUEST.getValue());
                 if (isBadRequestError) {
-                    counters.roleReplyErrorUnsupported.increment();
+                    counters.roleReplyErrorUnsupported.increment(true);
                     setSwitchRole(pendingRole, RoleRecvStatus.UNSUPPORTED);
                 } else {
                     // TODO: Is this the right thing to do if we receive
@@ -346,7 +346,7 @@ class OFChannelHandler
                 long now = System.currentTimeMillis();
                 if (now - roleSubmitTime > roleTimeoutMs) {
                     // timeout triggered.
-                    counters.roleReplyTimeout.increment();
+                    counters.roleReplyTimeout.increment(true);
                     setSwitchRole(pendingRole, RoleRecvStatus.NO_REPLY);
                 }
             }
@@ -712,7 +712,7 @@ class OFChannelHandler
                     // if two controllers are master (even if its only for
                     // a brief period). We might need to see if these errors
                     // persist before we reassert
-                    h.counters.epermErrorWhileSwitchIsMaster.increment();
+                    h.counters.epermErrorWhileSwitchIsMaster.increment(true);
                     log.warn("Received permission error from switch {} while" +
                              "being master. Reasserting master role.",
                              h.getSwitchInfoString());
@@ -838,7 +838,7 @@ class OFChannelHandler
                          LogMessageDoc.CHECK_CONTROLLER )
             void processOFPacketIn(OFChannelHandler h, OFPacketIn m) throws IOException {
                 // we don't expect packetIn while slave, reassert we are slave
-                h.counters.packetInWhileSwitchIsSlave.increment();
+                h.counters.packetInWhileSwitchIsSlave.increment(false);
                 log.warn("Received PacketIn from switch {} while" +
                          "being slave. Reasserting slave role.", h.sw);
                 h.controller.reassertRole(h, Role.SLAVE);
@@ -905,7 +905,7 @@ class OFChannelHandler
          */
         protected void unhandledMessageReceived(OFChannelHandler h,
                                                 OFMessage m) {
-            h.counters.unhandledMessage.increment();
+            h.counters.unhandledMessage.increment(false);
             if (log.isDebugEnabled()) {
                 String msg = getSwitchStateMessage(h, m,
                         "Ignoring unexpected message");
@@ -1238,13 +1238,12 @@ class OFChannelHandler
                             "specified IP address")
     public void channelConnected(ChannelHandlerContext ctx,
                                  ChannelStateEvent e) throws Exception {
-        counters.switchConnected.increment();
+        counters.switchConnected.increment(true);
         channel = e.getChannel();
         log.info("New switch connection from {}",
                  channel.getRemoteAddress());
         sendHandShakeMessage(OFType.HELLO);
         setState(ChannelState.WAIT_HELLO);
-        counters.flushCounters();
     }
 
     @Override
@@ -1257,7 +1256,6 @@ class OFChannelHandler
         this.sw.setConnected(false);
 
         log.info("Disconnected switch {}", getSwitchInfoString());
-        counters.flushCounters();
     }
 
     @Override
@@ -1308,31 +1306,31 @@ class OFChannelHandler
             // switch timeout
             log.error("Disconnecting switch {} due to read timeout",
                                  getSwitchInfoString());
-            counters.switchDisconnectReadTimeout.increment();
+            counters.switchDisconnectReadTimeout.increment(true);
             ctx.getChannel().close();
         } else if (e.getCause() instanceof HandshakeTimeoutException) {
             log.error("Disconnecting switch {}: failed to complete handshake",
                       getSwitchInfoString());
-            counters.switchDisconnectHandshakeTimeout.increment();
+            counters.switchDisconnectHandshakeTimeout.increment(true);
             ctx.getChannel().close();
         } else if (e.getCause() instanceof ClosedChannelException) {
             log.debug("Channel for sw {} already closed", getSwitchInfoString());
         } else if (e.getCause() instanceof IOException) {
             log.error("Disconnecting switch {} due to IO Error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
-            counters.switchDisconnectIOError.increment();
+            counters.switchDisconnectIOError.increment(true);
             ctx.getChannel().close();
         } else if (e.getCause() instanceof SwitchStateException) {
             log.error("Disconnecting switch {} due to switch state error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
-            counters.switchDisconnectSwitchStateException.increment();
+            counters.switchDisconnectSwitchStateException.increment(true);
             ctx.getChannel().close();
         } else if (e.getCause() instanceof MessageParseException) {
             log.error("Disconnecting switch "
                                  + getSwitchInfoString() +
                                  " due to message parse failure",
                                  e.getCause());
-            counters.switchDisconnectParseError.increment();
+            counters.switchDisconnectParseError.increment(true);
             ctx.getChannel().close();
         } else if (e.getCause() instanceof StorageException) {
             log.error("Terminating controller due to storage exception",
@@ -1340,14 +1338,13 @@ class OFChannelHandler
             this.controller.terminate();
         } else if (e.getCause() instanceof RejectedExecutionException) {
             log.warn("Could not process message: queue full");
-            counters.rejectedExecutionException.increment();
+            counters.rejectedExecutionException.increment(true);
         } else {
             log.error("Error while processing message from switch "
                                  + getSwitchInfoString(), e.getCause());
-            counters.switchDisconnectOtherException.increment();
+            counters.switchDisconnectOtherException.increment(true);
             ctx.getChannel().close();
         }
-        counters.flushCounters();
     }
 
     @Override
@@ -1377,10 +1374,10 @@ class OFChannelHandler
             }
 
             for (OFMessage ofm : msglist) {
-                counters.messageReceived.increment();
+                counters.messageReceived.increment(false);
                 // Per-switch input throttling
                 if (sw != null && sw.inputThrottled(ofm)) {
-                    counters.messageInputThrottled.increment();
+                    counters.messageInputThrottled.increment(false);
                     continue;
                 }
                 try {

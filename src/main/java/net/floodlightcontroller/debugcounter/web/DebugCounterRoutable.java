@@ -10,13 +10,21 @@ public class DebugCounterRoutable implements RestletRoutable {
 
     @Override
     public String basePath() {
-        return "/wm/counters";
+        return "/wm/debugcounter";
     }
 
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/{param}", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}/{param3}/{param4}/", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}/{param3}/{param4}", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}/{param3}/", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}/{param3}", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}/", DebugCounterResource.class);
+        router.attach("/{param1}/{param2}", DebugCounterResource.class);
+        router.attach("/{param1}/", DebugCounterResource.class);
+        router.attach("/{param1}", DebugCounterResource.class);
+        router.attach("/", DebugCounterResource.class);
         return router;
     }
 }

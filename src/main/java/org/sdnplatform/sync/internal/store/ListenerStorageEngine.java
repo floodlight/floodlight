@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * @author readams
  */
 @LogMessageCategory("State Synchronization")
-public class ListenerStorageEngine 
+public class ListenerStorageEngine
     implements IStorageEngine<ByteArray, byte[]> {
     protected static Logger logger =
             LoggerFactory.getLogger(ListenerStorageEngine.class);
@@ -34,7 +34,7 @@ public class ListenerStorageEngine
     /**
      * Listeners for this store
      */
-    protected List<MappingStoreListener> listeners = 
+    protected List<MappingStoreListener> listeners =
             new ArrayList<MappingStoreListener>();
 
     /**
@@ -46,7 +46,7 @@ public class ListenerStorageEngine
      * Debug counter service
      */
     protected IDebugCounterService debugCounter;
-    
+
     /**
      * Allocate new {@link ListenerStorageEngine}
      * @param localStorage the delegate store
@@ -130,7 +130,7 @@ public class ListenerStorageEngine
     public void setTombstoneInterval(int interval) {
         localStorage.setTombstoneInterval(interval);
     }
-    
+
     // *********************
     // ListenerStorageEngine
     // *********************
@@ -145,7 +145,7 @@ public class ListenerStorageEngine
 
     @LogMessageDoc(level="ERROR",
                    message="An error occurred in a sync listener",
-                   explanation="An unexpected error occured in a handler for " + 
+                   explanation="An unexpected error occured in a handler for " +
                                "an update to shared state.")
     protected void notifyListeners(Iterator<ByteArray> keys, UpdateType type) {
         for (MappingStoreListener msl : listeners) {
@@ -157,9 +157,9 @@ public class ListenerStorageEngine
         }
     }
 
-    protected void updateCounter(String counterName) {
+    protected void updateCounter(int counterName) {
         if (debugCounter != null) {
-            debugCounter.updateCounter(counterName);
+            debugCounter.updateCounter(counterName, true);
         }
-    }    
+    }
 }

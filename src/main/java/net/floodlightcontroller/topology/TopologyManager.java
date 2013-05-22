@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.MaxCountersRegistered;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
@@ -155,6 +156,11 @@ public class TopologyManager implements
     protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
 
     private IHAListener haListener;
+
+    /**
+     *  Debug Counters
+     */
+    protected static int INCOMING;
 
    //  Getter/Setter methods
     /**
@@ -654,7 +660,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter("topology-incoming");
+                debugCounters.updateCounter(INCOMING, false);
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -791,8 +797,13 @@ public class TopologyManager implements
             debugCounters = new NullDebugCounter();
             return;
         }
-        debugCounters.registerCounter(getName() + "-" + "incoming",
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        try {
+            INCOMING = debugCounters.registerCounter(getName(), "incoming",
+                "All incoming packets seen by this module", CounterType.ALWAYS_COUNT,
+                new Object[] {});
+        } catch (MaxCountersRegistered e) {
+            e.printStackTrace();
+        }
     }
 
     protected void addRestletRoutable() {

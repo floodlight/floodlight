@@ -1,6 +1,7 @@
 package net.floodlightcontroller.debugcounter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,10 +10,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Sets;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -31,32 +35,20 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
     protected static Logger log = LoggerFactory.getLogger(DebugCounter.class);
 
     /**
+     * registered counters need a counter id
+     */
+    protected AtomicInteger counterIdCounter = new AtomicInteger();
+
+    /**
      * The counter value
      */
     protected class MutableLong {
         long value = 0;
         public void increment() { value += 1; }
+        public void increment(long incr) { value += incr; }
         public long get() { return value; }
         public void set(long val) { value = val; }
       }
-
-    /**
-     * Global debug-counter storage across all threads. These are
-     * updated from the local per thread counters by the flush counters method.
-     */
-    protected ConcurrentHashMap<String, AtomicLong> debugCounters =
-            new ConcurrentHashMap<String, AtomicLong>();
-
-    /**
-     * Thread local debug counters used for maintaining counters local to a thread.
-     */
-    protected final ThreadLocal<Map<String, MutableLong>> threadlocalCounters =
-            new ThreadLocal<Map<String, MutableLong>>() {
-        @Override
-        protected Map<String, MutableLong> initialValue() {
-            return new HashMap<String, MutableLong>();
-        }
-    };
 
     /**
      * protected class to store counter information
@@ -67,14 +59,20 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
         CounterType ctype;
         String moduleName;
         String counterName;
+        int counterId;
+        boolean enabled;
+        Object[] metaData;
 
-        public CounterInfo(String name, String desc, CounterType ctype) {
-            this.moduleCounterName = name;
-            String[] temp = name.split("-");
-            this.moduleName = temp[0];
-            this.counterName = temp[1];
+        public CounterInfo(int counterId, boolean enabled, Object[] metaData,
+                           String moduleName, String counterName,
+                           String desc, CounterType ctype) {
+            this.moduleCounterName = moduleName + "/" + counterName;
+            this.moduleName = moduleName;
+            this.counterName = counterName;
             this.counterDesc = desc;
             this.ctype = ctype;
+            this.counterId = counterId;
+            this.enabled = enabled;
         }
 
         public String getModuleCounterName() { return moduleCounterName; }
@@ -82,28 +80,103 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
         public CounterType getCtype() { return ctype; }
         public String getModuleName() { return moduleName; }
         public String getCounterName() { return counterName; }
+        public int getCounterId() { return counterId; }
+        public boolean isEnabled() { return enabled; }
+        public Object[] getMetaData() { return metaData; }
+    }
+
+    //******************
+    //   Global stores
+    //******************
+
+    /**
+     * Counter info for a debug counter
+     */
+    public class DebugCounterInfo {
+        CounterInfo cinfo;
+        AtomicLong cvalue;
+
+        public DebugCounterInfo(CounterInfo cinfo) {
+            this.cinfo = cinfo;
+            this.cvalue = new AtomicLong();
+        }
+        public CounterInfo getCounterInfo() {
+            return cinfo;
+        }
+        public Long getCounterValue() {
+            return cvalue.get();
+        }
     }
 
     /**
-     * per module counters, indexed by the module name and storing Counter information.
+     * Global debug-counter storage across all threads. These are
+     * updated from the local per thread counters by the flush counters method.
      */
-    protected ConcurrentHashMap<String, List<CounterInfo>> moduleCounters =
-            new ConcurrentHashMap<String, List<CounterInfo>>();
+    protected static DebugCounterInfo[] allCounters =
+                            new DebugCounterInfo[MAX_COUNTERS];
+
 
     /**
-     * fast global cache for counter names that are currently active
+     * per module counters, indexed by the module name and storing three levels
+     * of Counter information in the form of CounterIndexStore
      */
-    Set<String> currentCounters = Collections.newSetFromMap(
-                                      new ConcurrentHashMap<String,Boolean>());
+    protected ConcurrentHashMap<String, ConcurrentHashMap<String, CounterIndexStore>>
+        moduleCounters = new ConcurrentHashMap<String,
+                                                ConcurrentHashMap<String,
+                                                                   CounterIndexStore>>();
+
+    protected class CounterIndexStore {
+        int index;
+        Map<String, CounterIndexStore> nextLevel;
+
+        public CounterIndexStore(int index, Map<String,CounterIndexStore> cis) {
+            this.index = index;
+            this.nextLevel = cis;
+        }
+    }
 
     /**
-     * Thread local cache for counter names that are currently active.
+     * fast global cache for counter ids that are currently active
      */
-    protected final ThreadLocal<Set<String>> threadlocalCurrentCounters =
-            new ThreadLocal<Set<String>>() {
+    protected Set<Integer> currentCounters = Collections.newSetFromMap(
+                                         new ConcurrentHashMap<Integer,Boolean>());
+
+    //******************
+    // Thread local stores
+    //******************
+
+    /**
+     * Thread local storage of counter info
+     */
+    protected class LocalCounterInfo {
+        boolean enabled;
+        MutableLong cvalue;
+
+        public LocalCounterInfo(boolean enabled) {
+            this.enabled = enabled;
+            this.cvalue = new MutableLong();
+        }
+    }
+
+    /**
+     * Thread local debug counters used for maintaining counters local to a thread.
+     */
+    protected final ThreadLocal<LocalCounterInfo[]> threadlocalCounters =
+            new ThreadLocal<LocalCounterInfo[]>() {
         @Override
-        protected Set<String> initialValue() {
-            return new HashSet<String>();
+        protected LocalCounterInfo[] initialValue() {
+            return new LocalCounterInfo[MAX_COUNTERS];
+        }
+    };
+
+    /**
+     * Thread local cache for counter ids that are currently active.
+     */
+    protected final ThreadLocal<Set<Integer>> threadlocalCurrentCounters =
+            new ThreadLocal<Set<Integer>>() {
+        @Override
+        protected Set<Integer> initialValue() {
+            return new HashSet<Integer>();
         }
     };
 
@@ -112,122 +185,184 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    //*******************************
 
    @Override
-   public boolean registerCounter(String moduleCounterName, String counterDescription,
-                               CounterType counterType) {
-       if (debugCounters.containsKey(moduleCounterName)) {
-           log.error("Cannot register counter: {}. Counter already exists",
-                     moduleCounterName);
-           return false;
+   public int registerCounter(String moduleName, String counterName,
+                              String counterDescription, CounterType counterType,
+                              Object[] metaData)  throws MaxCountersRegistered{
+       // check if counter already exists
+       if (!moduleCounters.containsKey(moduleName)) {
+           moduleCounters.putIfAbsent(moduleName,
+                new ConcurrentHashMap<String, CounterIndexStore>());
        }
-       String[] temp = moduleCounterName.split("-");
-       if (temp.length < 2) {
-           log.error("Cannot register counter: {}. Name not of type " +
-                     " <module name>-<counter name>", moduleCounterName);
-           return false;
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       if (rci.allLevelsFound) {
+           // counter exists
+           log.info("Counter exists for {}/{} -- resetting counters", moduleName,
+                    counterName);
+           resetCounterHierarchy(moduleName, counterName);
+           return rci.ctrIds[rci.foundUptoLevel-1];
        }
-
-       // store counter information on a per module basis
-       String moduleName = temp[0];
-       List<CounterInfo> a;
-       if (moduleCounters.containsKey(moduleName)) {
-           a = moduleCounters.get(moduleName);
-       } else {
-           a = new ArrayList<CounterInfo>();
-           moduleCounters.put(moduleName, a);
+       // check for validity of counter
+       if (rci.levels.length > MAX_HIERARCHY) {
+           log.error("Registry of counterName {} exceeds max hierachy {}.. aborting",
+                     counterName, MAX_HIERARCHY);
+           return -1;
        }
-       a.add(new CounterInfo(moduleCounterName, counterDescription, counterType));
-
-       // create counter in global map
-       // and add to counter name cache if it is meant to be always counted
-       if (counterType != CounterType.COUNT_ON_DEMAND) {
-           currentCounters.add(moduleCounterName);
-           debugCounters.put(moduleCounterName, new AtomicLong());
-       }
-       return true;
-   }
-
-   @Override
-   public void updateCounter(String moduleCounterName) {
-       updateCounter(moduleCounterName, 1);
-   }
-
-   @Override
-   public void updateCounter(String moduleCounterName, int incr) {
-       Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
-       MutableLong ml = thismap.get(moduleCounterName);
-       if (ml == null) {
-           // check locally to see if this counter should be created or not
-           // FIXME: this is an O(n) operation per update - change to a boolean check
-           Set<String> thisset = this.threadlocalCurrentCounters.get();
-           if (thisset.contains(moduleCounterName)) {
-               ml = new MutableLong();
-               ml.set(ml.get() + incr);
-               thismap.put(moduleCounterName, ml);
+       if (rci.foundUptoLevel < rci.levels.length-1) {
+           String needToRegister = "";
+           for (int i=0; i<=rci.foundUptoLevel; i++) {
+               needToRegister += rci.levels[i];
            }
-       } else {
-           ml.increment();
+           log.error("Attempting to register hierarchical counterName {}, "+
+                     "but parts of hierarchy missing. Please register {} first ",
+                     counterName, needToRegister);
+           return -1;
        }
+
+       // get a new counter id
+       int counterId = counterIdCounter.getAndIncrement();
+       if (counterId >= MAX_COUNTERS) {
+           throw new MaxCountersRegistered();
+       }
+       // create storage for counter
+       boolean enabled = (counterType == CounterType.ALWAYS_COUNT) ? true : false;
+       CounterInfo ci = new CounterInfo(counterId, enabled, metaData, moduleName,
+                                        counterName, counterDescription, counterType);
+       allCounters[counterId] = new DebugCounterInfo(ci);
+
+       // account for the new counter in the module counter hierarchy
+       addToModuleCounterHierarchy(moduleName, counterId, rci);
+
+       // finally add to active counters
+       if (enabled) {
+           currentCounters.add(counterId);
+       }
+       return counterId;
+   }
+
+
+   @Override
+   public void updateCounter(int counterId, boolean flushNow) {
+       updateCounter(counterId, 1, flushNow);
+   }
+
+   @Override
+   public void updateCounter(int counterId, int incr, boolean flushNow) {
+       if (counterId < 0 || counterId >= MAX_COUNTERS) return;
+
+       LocalCounterInfo[] thiscounters =  this.threadlocalCounters.get();
+       if (thiscounters[counterId] == null) {
+           // seeing this counter for the first time in this thread - create local
+           // store by consulting global store
+           DebugCounterInfo dc = allCounters[counterId];
+           if (dc != null) {
+               thiscounters[counterId] = new LocalCounterInfo(dc.cinfo.enabled);
+               if (dc.cinfo.enabled) {
+                   Set<Integer> thisset = this.threadlocalCurrentCounters.get();
+                   thisset.add(counterId);
+               }
+           } else {
+               log.error("updateCounter seen locally for counter {} but no global"
+                          + "storage exists for it yet .. not updating", counterId);
+               return;
+           }
+       }
+
+       // update local store if enabled locally for updating
+       LocalCounterInfo lc = thiscounters[counterId];
+       if (lc.enabled) {
+           lc.cvalue.increment(incr);
+           if (flushNow) {
+               DebugCounterInfo dc = allCounters[counterId];
+               if (dc.cinfo.enabled) {
+                   // globally enabled - flush now
+                   dc.cvalue.addAndGet(lc.cvalue.get());
+                   lc.cvalue.set(0);
+               } else {
+                   // global counter is disabled - don't flush, disable locally
+                   lc.enabled = false;
+                   Set<Integer> thisset = this.threadlocalCurrentCounters.get();
+                   thisset.remove(counterId);
+               }
+           }
+       }
+
    }
 
    @Override
    public void flushCounters() {
-       Map<String, MutableLong> thismap =  this.threadlocalCounters.get();
-       ArrayList<String> deleteKeys = new ArrayList<String>();
-       for (String key : thismap.keySet()) {
-           MutableLong curval = thismap.get(key);
-           long delta = curval.get();
-           if (delta > 0) {
-               AtomicLong ctr = debugCounters.get(key);
-               if (ctr == null) {
-                   // The global counter does not exist possibly because it has been
-                   // disabled. It should thus be removed from the thread-local
-                   // map (the counter) and set (the counter name). Removing it
-                   // from the threadlocal set ensures that the counter will not be
-                   // recreated (see updateCounter)
-                   Set<String> thisset = this.threadlocalCurrentCounters.get();
-                   thisset.remove(key);
-                   deleteKeys.add(key);
+       LocalCounterInfo[] thiscounters =  this.threadlocalCounters.get();
+       Set<Integer> thisset = this.threadlocalCurrentCounters.get();
+       ArrayList<Integer> temp = new ArrayList<Integer>();
+
+       for (int counterId : thisset) {
+           LocalCounterInfo lc = thiscounters[counterId];
+           if (lc.cvalue.get() > 0) {
+               DebugCounterInfo dc = allCounters[counterId];
+               if (dc.cinfo.enabled) {
+                   // globally enabled - flush now
+                   dc.cvalue.addAndGet(lc.cvalue.get());
+                   lc.cvalue.set(0);
                } else {
-                   ctr.addAndGet(delta);
-                   curval.set(0);
+                   // global counter is disabled - don't flush, disable locally
+                   lc.enabled = false;
+                   temp.add(counterId);
                }
            }
        }
-       for (String dkey : deleteKeys)
-           thismap.remove(dkey);
+       for (int cId : temp) {
+           thisset.remove(cId);
+       }
 
-       // At this point it is also possible that the threadlocal map/set does not
-       // include a counter that has been enabled and is present in the global
-       // currentCounters set. If so we need to sync such state so that the
-       // thread local counter can be created (in the updateCounter method)
-       Set<String> thisset = this.threadlocalCurrentCounters.get();
-       if (thisset.size() != currentCounters.size()) {
-           thisset.addAll(currentCounters);
+       // At this point it is possible that the thread-local set does not
+       // include a counter that has been enabled and is present in the global set.
+       // We need to sync thread-local currently enabled set of counterIds with
+       // the global set.
+       Sets.SetView<Integer> sv = Sets.difference(currentCounters, thisset);
+       for (int counterId : sv) {
+           if (thiscounters[counterId] != null) thiscounters[counterId].enabled = true;
+           thisset.add(counterId);
        }
    }
 
    @Override
-   public void resetCounter(String moduleCounterName) {
-       if (debugCounters.containsKey(moduleCounterName)) {
-           debugCounters.get(moduleCounterName).set(0);
+   public void resetCounterHierarchy(String moduleName, String counterName) {
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       if (!rci.allLevelsFound) {
+           String missing = rci.levels[rci.foundUptoLevel];
+           log.error("Cannot reset counter hierarchy - missing counter {}", missing);
+           return;
+       }
+       // reset at this level
+       allCounters[rci.ctrIds[rci.foundUptoLevel-1]].cvalue.set(0);
+       // reset all levels below
+       ArrayList<Integer> resetIds = getHierarchyBelow(moduleName, rci);
+       for (int index : resetIds) {
+           allCounters[index].cvalue.set(0);
        }
    }
 
    @Override
    public void resetAllCounters() {
-       for (AtomicLong v : debugCounters.values()) {
-           v.set(0);
+       RetCtrInfo rci = new RetCtrInfo();
+       rci.levels = "".split("/");
+       for (String moduleName : moduleCounters.keySet()) {
+           ArrayList<Integer> resetIds = getHierarchyBelow(moduleName, rci);
+           for (int index : resetIds) {
+               allCounters[index].cvalue.set(0);
+           }
        }
    }
 
    @Override
    public void resetAllModuleCounters(String moduleName) {
-       List<CounterInfo> cil = moduleCounters.get(moduleName);
-       if (cil != null) {
-           for (CounterInfo ci : cil) {
-               if (debugCounters.containsKey(ci.moduleCounterName)) {
-                   debugCounters.get(ci.moduleCounterName).set(0);
-               }
+       Map<String, CounterIndexStore> target = moduleCounters.get(moduleName);
+       RetCtrInfo rci = new RetCtrInfo();
+       rci.levels = "".split("/");
+
+       if (target != null) {
+           ArrayList<Integer> resetIds = getHierarchyBelow(moduleName, rci);
+           for (int index : resetIds) {
+               allCounters[index].cvalue.set(0);
            }
        } else {
            if (log.isDebugEnabled())
@@ -236,65 +371,66 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    }
 
    @Override
-   public void enableCtrOnDemand(String moduleCounterName) {
-       currentCounters.add(moduleCounterName);
-       debugCounters.putIfAbsent(moduleCounterName, new AtomicLong());
-   }
-
-   @Override
-   public void disableCtrOnDemand(String moduleCounterName) {
-       String[] temp = moduleCounterName.split("-");
-       if (temp.length < 2) {
-           log.error("moduleCounterName {} not recognized", moduleCounterName);
+   public void enableCtrOnDemand(String moduleName, String counterName) {
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       if (!rci.allLevelsFound) {
+           String missing = rci.levels[rci.foundUptoLevel];
+           log.error("Cannot enable counter - counter not found {}", missing);
            return;
        }
-       String moduleName = temp[0];
-       List<CounterInfo> cil = moduleCounters.get(moduleName);
-       for (CounterInfo ci : cil) {
-           if (ci.moduleCounterName.equals(moduleCounterName) &&
-               ci.ctype == CounterType.COUNT_ON_DEMAND) {
-               currentCounters.remove(moduleCounterName);
-               debugCounters.remove(moduleCounterName);
-               return;
-           }
+       // enable specific counter
+       DebugCounterInfo dc = allCounters[rci.ctrIds[rci.foundUptoLevel-1]];
+       dc.cinfo.enabled = true;
+       currentCounters.add(dc.cinfo.counterId);
+   }
+
+   @Override
+   public void disableCtrOnDemand(String moduleName, String counterName) {
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       if (!rci.allLevelsFound) {
+           String missing = rci.levels[rci.foundUptoLevel];
+           log.error("Cannot disable counter - counter not found {}", missing);
+           return;
+       }
+       // disable specific counter
+       DebugCounterInfo dc = allCounters[rci.ctrIds[rci.foundUptoLevel-1]];
+       if (dc.cinfo.ctype == CounterType.COUNT_ON_DEMAND) {
+           dc.cinfo.enabled = false;
+           dc.cvalue.set(0);
+           currentCounters.remove(dc.cinfo.counterId);
        }
    }
 
    @Override
-   public DebugCounterInfo getCounterValue(String moduleCounterName) {
-       if (!debugCounters.containsKey(moduleCounterName)) return null;
-       long counterValue = debugCounters.get(moduleCounterName).longValue();
-
-       String[] temp = moduleCounterName.split("-");
-       if (temp.length < 2) {
-           log.error("moduleCounterName {} not recognized", moduleCounterName);
+   public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
+                                                     String counterName) {
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       if (!rci.allLevelsFound) {
+           String missing = rci.levels[rci.foundUptoLevel];
+           log.error("Cannot fetch counter - counter not found {}", missing);
            return null;
        }
-       String moduleName = temp[0];
-       List<CounterInfo> cil = moduleCounters.get(moduleName);
-       for (CounterInfo ci : cil) {
-           if (ci.moduleCounterName.equals(moduleCounterName)) {
-               DebugCounterInfo dci = new DebugCounterInfo();
-               dci.counterInfo = ci;
-               dci.counterValue = counterValue;
-               return dci;
-           }
+       ArrayList<DebugCounterInfo> dcilist = new ArrayList<DebugCounterInfo>();
+       // get counter and all below it
+       DebugCounterInfo dc = allCounters[rci.ctrIds[rci.foundUptoLevel-1]];
+       dcilist.add(dc);
+       ArrayList<Integer> belowIds = getHierarchyBelow(moduleName, rci);
+       for (int index : belowIds) {
+           dcilist.add(allCounters[index]);
        }
-       return null;
+       return dcilist;
    }
 
    @Override
    public List<DebugCounterInfo> getAllCounterValues() {
        List<DebugCounterInfo> dcilist = new ArrayList<DebugCounterInfo>();
-       for (List<CounterInfo> cil : moduleCounters.values()) {
-           for (CounterInfo ci : cil) {
-               AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
-               if (ctr != null) {
-                   DebugCounterInfo dci = new DebugCounterInfo();
-                   dci.counterInfo = ci;
-                   dci.counterValue = ctr.longValue();
-                   dcilist.add(dci);
-               }
+       RetCtrInfo rci = new RetCtrInfo();
+       rci.levels = "".split("/");
+
+       for (String moduleName : moduleCounters.keySet()) {
+           ArrayList<Integer> resetIds = getHierarchyBelow(moduleName, rci);
+           for (int index : resetIds) {
+               dcilist.add(allCounters[index]);
            }
        }
        return dcilist;
@@ -303,36 +439,27 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    @Override
    public List<DebugCounterInfo> getModuleCounterValues(String moduleName) {
        List<DebugCounterInfo> dcilist = new ArrayList<DebugCounterInfo>();
+       RetCtrInfo rci = new RetCtrInfo();
+       rci.levels = "".split("/");
+
        if (moduleCounters.containsKey(moduleName)) {
-           List<CounterInfo> cil = moduleCounters.get(moduleName);
-           for (CounterInfo ci : cil) {
-               AtomicLong ctr = debugCounters.get(ci.moduleCounterName);
-               if (ctr != null) {
-                   DebugCounterInfo dci = new DebugCounterInfo();
-                   dci.counterInfo = ci;
-                   dci.counterValue = ctr.longValue();
-                   dcilist.add(dci);
-               }
+           ArrayList<Integer> resetIds = getHierarchyBelow(moduleName, rci);
+           for (int index : resetIds) {
+               dcilist.add(allCounters[index]);
            }
        }
        return dcilist;
    }
 
    @Override
-   public boolean containsMCName(String moduleCounterName) {
-       if (debugCounters.containsKey(moduleCounterName)) return true;
-       // it is possible that the counter may be disabled
-       for (List<CounterInfo> cil : moduleCounters.values()) {
-           for (CounterInfo ci : cil) {
-               if (ci.moduleCounterName.equals(moduleCounterName))
-                   return true;
-           }
-       }
-       return false;
+   public boolean containsModuleCounterName(String moduleName, String counterName) {
+       if (!moduleCounters.containsKey(moduleName)) return false;
+       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       return rci.allLevelsFound;
    }
 
    @Override
-   public boolean containsModName(String moduleName) {
+   public boolean containsModuleName(String moduleName) {
        return  (moduleCounters.containsKey(moduleName)) ? true : false;
    }
 
@@ -340,12 +467,155 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    //   Internal Methods
    //*******************************
 
+   protected class RetCtrInfo {
+       boolean allLevelsFound; // counter indices found all the way down the hierarchy
+       boolean hierarchical; // true if counterName is hierarchical
+       int foundUptoLevel;
+       int[]  ctrIds;
+       String[] levels;
+
+       public RetCtrInfo() {
+           ctrIds = new int[MAX_HIERARCHY];
+           for (int i=0; i<MAX_HIERARCHY; i++) {
+               ctrIds[i] = -1;
+           }
+       }
+
+       @Override
+       public boolean equals(Object oth) {
+           if (!(oth instanceof RetCtrInfo)) return false;
+           RetCtrInfo other = (RetCtrInfo)oth;
+           if (other.allLevelsFound != this.allLevelsFound) return false;
+           if (other.hierarchical != this.hierarchical) return false;
+           if (other.foundUptoLevel != this.foundUptoLevel) return false;
+           if (!Arrays.equals(other.ctrIds, this.ctrIds)) return false;
+           if (!Arrays.equals(other.levels, this.levels)) return false;
+           return true;
+       }
+
+   }
+
+   protected RetCtrInfo getCounterId(String moduleName, String counterName) {
+       RetCtrInfo rci = new RetCtrInfo();
+       Map<String, CounterIndexStore> templevel = moduleCounters.get(moduleName);
+       rci.levels = counterName.split("/");
+       if (rci.levels.length > 1) rci.hierarchical = true;
+       if (templevel == null) return rci;
+
+       /*
+       if (rci.levels.length > MAX_HIERARCHY) {
+           // chop off all array elems greater that MAX_HIERARCHY
+           String[] temp = new String[MAX_HIERARCHY];
+           System.arraycopy(rci.levels, 0, temp, 0, MAX_HIERARCHY);
+           rci.levels = temp;
+       }
+       */
+       for (int i=0; i<rci.levels.length; i++) {
+           if (templevel != null) {
+               CounterIndexStore cis = templevel.get(rci.levels[i]) ;
+               if (cis == null) {
+                   // could not find counterName part at this level
+                   break;
+               } else {
+                   rci.ctrIds[i] = cis.index;
+                   templevel = cis.nextLevel;
+                   rci.foundUptoLevel++;
+                   if (i == rci.levels.length-1) {
+                       rci.allLevelsFound = true;
+                   }
+               }
+           } else {
+               // there are no more levels, which means that some part of the
+               // counterName has no corresponding map
+               break;
+           }
+       }
+       return rci;
+   }
+
+   protected void addToModuleCounterHierarchy(String moduleName, int counterId,
+                                            RetCtrInfo rci) {
+       Map<String, CounterIndexStore> target = moduleCounters.get(moduleName);
+       if (target == null) return;
+       CounterIndexStore cis = null;
+
+       for (int i=0; i<rci.foundUptoLevel; i++) {
+           cis = target.get(rci.levels[i]);
+           target = cis.nextLevel;
+       }
+       if (cis != null) {
+           if (cis.nextLevel == null)
+               cis.nextLevel = new ConcurrentHashMap<String, CounterIndexStore>();
+           cis.nextLevel.put(rci.levels[rci.foundUptoLevel],
+                             new CounterIndexStore(counterId, null));
+       } else {
+           target.put(rci.levels[rci.foundUptoLevel],
+                      new CounterIndexStore(counterId, null));
+       }
+   }
+
+   // given a partial hierarchical counter, return the rest of the hierarchy
+   protected ArrayList<Integer> getHierarchyBelow(String moduleName, RetCtrInfo rci) {
+       Map<String, CounterIndexStore> target = moduleCounters.get(moduleName);
+       CounterIndexStore cis = null;
+       ArrayList<Integer> retval = new ArrayList<Integer>();
+       if (target == null) return retval;
+
+       // get to the level given
+       for (int i=0; i<rci.foundUptoLevel; i++) {
+           cis = target.get(rci.levels[i]);
+           target = cis.nextLevel;
+       }
+
+       if (target == null || rci.foundUptoLevel == MAX_HIERARCHY) {
+           // no more levels
+           return retval;
+       } else {
+           // recursively get all ids
+           getIdsAtLevel(target, retval, rci.foundUptoLevel+1);
+       }
+
+       return retval;
+   }
+
+   protected void getIdsAtLevel(Map<String, CounterIndexStore> hcy,
+                                ArrayList<Integer> retval, int level) {
+       if (level > MAX_HIERARCHY) return;
+       if (hcy == null || retval == null) return;
+
+       // Can return the counter names as well but for now ids are enough.
+       for (CounterIndexStore cistemp : hcy.values()) {
+           retval.add(cistemp.index); // value at this level
+           if (cistemp.nextLevel != null) {
+               getIdsAtLevel(cistemp.nextLevel, retval, level+1);
+           }
+       }
+   }
+
    protected void printAllCounters() {
-       for (List<CounterInfo> cilist : moduleCounters.values()) {
-           for (CounterInfo ci : cilist) {
-               log.info("Countername {} Countervalue {}", new Object[] {
-                    ci.moduleCounterName, debugCounters.get(ci.moduleCounterName)
-               });
+       Set<String> keys = moduleCounters.keySet();
+       for (String key : keys) {
+           log.info("ModuleName: {}", key);
+           Map<String, CounterIndexStore> lev1 = moduleCounters.get(key);
+           for (String key1 : lev1.keySet()) {
+               CounterIndexStore cis1 = lev1.get(key1);
+               log.info(" L1 {}:{}", key1, new Object[] {cis1.index, cis1.nextLevel});
+               if (cis1.nextLevel != null) {
+                   Map<String, CounterIndexStore> lev2 = cis1.nextLevel;
+                   for (String key2 : lev2.keySet()) {
+                       CounterIndexStore cis2 = lev2.get(key2);
+                       log.info("  L2 {}:{}", key2, new Object[] {cis2.index,
+                                                                  cis2.nextLevel});
+                       if (cis2.nextLevel != null) {
+                           Map<String, CounterIndexStore> lev3 = cis2.nextLevel;
+                           for (String key3 : lev3.keySet()) {
+                               CounterIndexStore cis3 = lev3.get(key3);
+                               log.info("   L3 {}:{}", key3, new Object[] {cis3.index,
+                                                                          cis3.nextLevel});
+                           }
+                       }
+                   }
+               }
            }
        }
    }

@@ -10,15 +10,10 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugcounter.DebugCounter.DebugCounterInfo;
 
 public class NullDebugCounter implements IFloodlightModule, IDebugCounterService {
 
-    @Override
-    public boolean registerCounter(String moduleCounterName,
-                                   String counterDescription,
-                                   CounterType counterType) {
-        return false;
-    }
 
     @Override
     public Collection<Class<? extends IFloodlightService>>
@@ -57,23 +52,9 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
     }
 
-    @Override
-    public void updateCounter(String moduleCounterName) {
 
-    }
-
-    @Override
-    public void updateCounter(String moduleCounterName, int incr) {
-
-    }
-    
     @Override
     public void flushCounters() {
-
-    }
-
-    @Override
-    public void resetCounter(String moduleCounterName) {
 
     }
 
@@ -87,18 +68,25 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
     }
 
+
     @Override
-    public void enableCtrOnDemand(String moduleCounterName) {
+    public void resetCounterHierarchy(String moduleName, String counterName) {
 
     }
 
     @Override
-    public void disableCtrOnDemand(String moduleCounterName) {
+    public void enableCtrOnDemand(String moduleName, String counterName) {
 
     }
 
     @Override
-    public DebugCounterInfo getCounterValue(String moduleCounterName) {
+    public void disableCtrOnDemand(String moduleName, String counterName) {
+
+    }
+
+    @Override
+    public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
+                                                      String counterName) {
         return null;
     }
 
@@ -113,13 +101,38 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
     }
 
     @Override
-    public boolean containsMCName(String moduleCounterName) {
+    public boolean containsModuleCounterName(String moduleName,
+                                             String counterName) {
         return false;
     }
 
     @Override
-    public boolean containsModName(String moduleName) {
+    public boolean containsModuleName(String moduleName) {
         return false;
     }
+
+    @Override
+    public
+            int
+            registerCounter(String moduleName, String counterName,
+                            String counterDescription,
+                            CounterType counterType, Object[] metaData)
+                                                                       throws MaxCountersRegistered {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public void updateCounter(int counterId, boolean flushNow) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void updateCounter(int counterId, int incr, boolean flushNow) {
+        // TODO Auto-generated method stub
+
+    }
+
 
 }

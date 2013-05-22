@@ -1,7 +1,8 @@
 package net.floodlightcontroller.debugcounter;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.debugcounter.DebugCounter.CounterInfo;
+import net.floodlightcontroller.debugcounter.DebugCounter.DebugCounterInfo;
+
 import java.util.List;
 
 public interface IDebugCounterService extends IFloodlightService {
@@ -12,22 +13,25 @@ public interface IDebugCounterService extends IFloodlightService {
      */
     public enum CounterType {
         ALWAYS_COUNT,
-        COUNT_ON_DEMAND,
-        WARN,
-        ERROR
+        COUNT_ON_DEMAND
     }
 
-    public class DebugCounterInfo {
-        CounterInfo counterInfo;
-        Long counterValue;
+    /**
+     *  A limit on the maximum number of counters that can be created
+     */
+    public static final int MAX_COUNTERS = 10000;
 
-        public CounterInfo getCounterInfo() {
-            return counterInfo;
-        }
-        public Long getCounterValue() {
-            return counterValue;
-        }
+    /**
+     * exception thrown when MAX_COUNTERS have been registered
+     */
+    public class MaxCountersRegistered extends Exception {
+        private static final long serialVersionUID = 3173747663719376745L;
     }
+
+    /**
+     *  maximum level of hierarchical counters
+     */
+    public static final int MAX_HIERARCHY = 3;
 
     /**
      * All modules that wish to have the DebugCounterService count for them, must
@@ -50,21 +54,22 @@ public interface IDebugCounterService extends IFloodlightService {
      * @return                     false if the counter has already been registered
      *                             or if the moduleCounterName is not as expected.
      */
-    public boolean registerCounter(String moduleCounterName, String counterDescription,
-                                   CounterType counterType);
+    public int registerCounter(String moduleName, String counterName,
+                               String counterDescription, CounterType counterType,
+                               Object[] metaData) throws MaxCountersRegistered;
 
     /**
      * Increments the counter by 1, if the counter is meant to be always counted,
      * or if the counter has been enabled for counting.
      * @param moduleCounterName   the registered counter name.
      */
-    public void updateCounter(String moduleCounterName);
+    void updateCounter(int counterId, boolean flushNow);
 
     /**
      * Increments the counter by the number specified
      * @param moduleCounterName   the registered counter name.
      */
-    public void updateCounter(String moduleCounterName, int incr);
+    void updateCounter(int counterId, int incr, boolean flushNow);
 
     /**
      * Update the global counter map with values from the thread local maps. This
@@ -80,7 +85,7 @@ public interface IDebugCounterService extends IFloodlightService {
      * zero with a get call as it may get updated between the reset and get calls.
      * @param moduleCounterName the registered counter name.
      */
-    public void resetCounter(String moduleCounterName);
+    void resetCounterHierarchy(String moduleName, String counterName);
 
     /**
      * Resets the values of all counters that are currently enabled to zero.
@@ -106,7 +111,7 @@ public interface IDebugCounterService extends IFloodlightService {
      *
      * @param moduleCounterName  the registered counter name.
      */
-    public void enableCtrOnDemand(String moduleCounterName);
+    public void enableCtrOnDemand(String moduleName, String counterName);
 
     /**
      * This method applies only to CounterType.ALWAYS_COUNT. It is used to disable
@@ -115,7 +120,7 @@ public interface IDebugCounterService extends IFloodlightService {
      *
      * @param moduleCounterName the registered counter name.
      */
-    public void disableCtrOnDemand(String moduleCounterName);
+    public void disableCtrOnDemand(String moduleName, String counterName);
 
     /**
      * Get counter value and associated information for a specific counter if it
@@ -124,7 +129,8 @@ public interface IDebugCounterService extends IFloodlightService {
      * @param moduleCounterName
      * @return DebugCounterInfo or null if the counter could not be found
      */
-    public DebugCounterInfo getCounterValue(String moduleCounterName);
+    public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
+                                                      String counterName);
 
     /**
      * Get counter values and associated information for all active counters
@@ -151,7 +157,7 @@ public interface IDebugCounterService extends IFloodlightService {
      * @param param
      * @return false if moduleCounterName is not a registered counter
      */
-    public boolean containsMCName(String moduleCounterName);
+    public boolean containsModuleCounterName(String moduleName, String counterName);
 
     /**
      * Convenience method to figure out if the the given 'moduleName' corresponds
@@ -162,6 +168,7 @@ public interface IDebugCounterService extends IFloodlightService {
      * @param param
      * @return false if moduleName is not a registered counter
      */
-    public boolean containsModName(String moduleName);
+    public boolean containsModuleName(String moduleName);
+
 
 }
