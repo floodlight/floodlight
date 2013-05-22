@@ -69,7 +69,7 @@
         <include name="args4j-2.0.16.jar"/>
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
-        <include name="libthrift-0.7.0.jar"/>
+        <include name="libthrift-0.9.0.jar"/>
         <include name="guava-13.0.1.jar" />
         <include name="findbugs-annotations-2.0.1.jar" />
         <include name="findbugs-jsr305-2.0.1.jar" />
@@ -166,22 +166,6 @@
 	  <include name="**/*.java"/>
 	</fileset>
       </replaceregexp>
-    </target>
-
-    <target name="do-gen-thrift">
-        <exec executable="./thrift/compiler/cpp/thrift" dir="${basedir}" failonerror="true">
-            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. '${foreach.file}'"/>
-        </exec>
-        <!-- Get rid of annoying warnings in thrift java: at annotations -->
-
-        <echo message="Adding @SuppressWarning annotations"/>
-        <replaceregexp byline="true">
-            <regexp pattern="^public "/>
-            <substitution expression='@SuppressWarnings("all") public '/>
-            <fileset id="thrift.output.files" dir="${thrift.out.dir}/..">
-                <include name="**/*.java"/>
-            </fileset>
-        </replaceregexp>
     </target>
 
     <target name="clean">

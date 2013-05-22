@@ -190,21 +190,21 @@ public class EnumBitmapsTest {
 
         // NPEs
         try {
-            EnumBitmaps.toEnumSet(null, 0);
+            EnumBitmaps.<ColorEnum>toEnumSet(null, 0);
             fail("Expected exception not thrown");
         } catch (NullPointerException e) {  }
         try {
-            EnumBitmaps.getMask(null);
+            EnumBitmaps.<ColorEnum>getMask(null);
             fail("Expected exception not thrown");
         } catch (NullPointerException e) {  }
         try {
-            EnumBitmaps.toBitmap(null);
+            EnumBitmaps.<ColorEnum>toBitmap(null);
             fail("Expected exception not thrown");
         } catch (NullPointerException e) {  }
 
         // Bits set that aren't covered by the enum
         try {
-            EnumBitmaps.toEnumSet(ColorEnum.class, 1 << 23);
+            EnumBitmaps.<ColorEnum>toEnumSet(ColorEnum.class, 1 << 23);
             fail("Expected exception not thrown");
         } catch(IllegalArgumentException e) { }
     }

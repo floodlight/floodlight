@@ -1,6 +1,6 @@
 package net.floodlightcontroller.notification;
 
-import junit.framework.Assert;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
@@ -13,8 +13,8 @@ public class NotificationTest {
         NotificationManagerFactory.init();
         INotificationManagerFactory factory =
                 NotificationManagerFactory.getNotificationManagerFactory();
-        Assert.assertNotNull(factory);
-        Assert.assertTrue(factory instanceof MockNotificationManagerFactory);
+        assertNotNull(factory);
+        assertTrue(factory instanceof MockNotificationManagerFactory);
     }
 
 }
