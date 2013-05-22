@@ -5,7 +5,6 @@ net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
 net.floodlightcontroller.topology.TopologyManager
 net.floodlightcontroller.forwarding.Forwarding
-net.floodlightcontroller.flowcache.FlowCache
 net.floodlightcontroller.flowcache.FlowReconcileManager
 net.floodlightcontroller.core.OFMessageFilterManager
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
@@ -19,6 +18,8 @@ net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.debugcounter.DebugCounter
 net.floodlightcontroller.debugcounter.NullDebugCounter
+net.floodlightcontroller.debugevent.DebugEvent
+net.floodlightcontroller.debugevent.NullDebugEvent
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter

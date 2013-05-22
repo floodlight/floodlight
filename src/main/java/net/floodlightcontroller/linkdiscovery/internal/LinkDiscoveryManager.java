@@ -59,6 +59,10 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
@@ -139,11 +143,15 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
     private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
+    // Event Ids for debug events
+    private int LINK_EVENT = -1;
+
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
     protected IThreadPoolService threadPool;
     protected IRestApiService restApi;
     protected IDebugCounterService debugCounters;
+    protected IDebugEventService debugEvents;
 
     // Role
     protected Role role;
@@ -1351,6 +1359,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                          lt.getDst(), lt.getDstPort(),
                                          getLinkType(lt, newInfo),
                                          updateOperation));
+
+                String reason = (updateOperation == UpdateOperation.LINK_UPDATED)
+                           ? "link-updated" : "link-removed";
+                debugEvents.updateEvent(LINK_EVENT, new Object[] {
+                                           lt.getSrc(), lt.getSrcPort(),
+                                           lt.getDst(), lt.getDstPort(),
+                                           reason});
             }
         } finally {
             lock.writeLock().unlock();
@@ -1968,6 +1983,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         debugCounters = context.getServiceImpl(IDebugCounterService.class);
+        debugEvents = context.getServiceImpl(IDebugEventService.class);
 
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
@@ -2054,6 +2070,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         registerLinkDiscoveryDebugCounters();
+        registerLinkDiscoveryDebugEvents();
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
@@ -2145,6 +2162,23 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         debugCounters.registerCounter(getName() + "-" + "quarantinedrops",
             "All packets arriving on qurantined ports dropped by this module",
                                       CounterType.COUNT_ON_DEMAND);
+    }
+
+    private void registerLinkDiscoveryDebugEvents() {
+        if (debugEvents == null) {
+            log.error("Debug Event Service not found.");
+            debugEvents = new NullDebugEvent();
+            return;
+        }
+        try {
+            LINK_EVENT = debugEvents.registerEvent(
+                               getName(), "linkevent", false,
+                               "Direct OpenFlow links discovered or timed-out",
+                               EventType.ALWAYS_LOG, 100,
+                               "srcSw=%dpid, srcPort=%d, dstSw=%dpid, dstPort=%d, reason=%s", null);
+        } catch (MaxEventsRegistered e) {
+            e.printStackTrace();
+        }
     }
 
     // ****************************************************
