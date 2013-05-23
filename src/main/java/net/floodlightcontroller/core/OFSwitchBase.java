@@ -269,7 +269,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          *
          * @param delPort the port from the port status message that should
          * be deleted.
-         * @return list of port changes applied to this switch
+         * @return ordered collection of port changes applied to this switch
          */
         private Collection<PortChangeEvent>
                 handlePortStatusDelete(ImmutablePort delPort) {

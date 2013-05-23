@@ -1410,18 +1410,17 @@ public class TopologyManager implements
      */
     @Override
     public Set<Short> getPorts(long sw) {
-        Set<Short> ports = new HashSet<Short>();
         IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
-        if (iofSwitch == null) return null;
+        if (iofSwitch == null) return Collections.emptySet();
 
         Collection<Short> ofpList = iofSwitch.getEnabledPortNumbers();
-        if (ofpList == null) return null;
+        if (ofpList == null) return Collections.emptySet();
 
+        Set<Short> ports = new HashSet<Short>(ofpList);
         Set<Short> qPorts = linkDiscovery.getQuarantinedPorts(sw);
         if (qPorts != null)
-            ofpList.removeAll(qPorts);
+            ports.removeAll(qPorts);
 
-        ports.addAll(ofpList);
         return ports;
     }
 }

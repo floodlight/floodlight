@@ -308,9 +308,9 @@ public interface IOFSwitch {
      * add all new ports.
      *
      * @param ps the port status message
-     * @return the changes "applied" to the old ports of the switch according
-     * to the PortStatus message. A single PortStatus message can result in
-     * multiple changes.
+     * @return the ordered Collection of changes "applied" to the old ports
+     * of the switch according to the PortStatus message. A single PortStatus
+     * message can result in multiple changes.
      * If portName <-> portNumber mappings have
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
@@ -345,8 +345,8 @@ public interface IOFSwitch {
      * Compute the changes that would be required to replace the old ports
      * of this switch with the new ports
      * @param ports new ports to set
-     * @return the changes "applied" to the old ports of the switch in order
-     * to set them to the new set.
+     * @return the ordered collection of changes "applied" to the old ports
+     * of the switch in order to set them to the new set.
      * If portName <-> portNumber mappings have
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
@@ -357,8 +357,8 @@ public interface IOFSwitch {
     /**
      * Replace the ports of this switch with the given ports.
      * @param ports new ports to set
-     * @return the changes "applied" to the old ports of the switch in order
-     * to set them to the new set.
+     * @return the ordered collection of changes "applied" to the old ports
+     * of the switch in order to set them to the new set.
      * If portName <-> portNumber mappings have
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
