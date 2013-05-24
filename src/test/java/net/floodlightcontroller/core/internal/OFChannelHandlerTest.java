@@ -19,6 +19,8 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.OrderedCollection;
+import net.floodlightcontroller.util.LinkedHashSetWrapper;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
@@ -1184,7 +1186,8 @@ public class OFChannelHandlerTest {
         // that a) sw.handlePortStatus is called
         //      b) the list of events sw.handlePortStatus returns is sent
         //         as IOFSwitchListener notifications.
-        List<PortChangeEvent> events =  new ArrayList<PortChangeEvent>();
+        OrderedCollection<PortChangeEvent> events =
+                new LinkedHashSetWrapper<PortChangeEvent>();
         ImmutablePort p1 = ImmutablePort.create("eth1", (short)1);
         ImmutablePort p2 = ImmutablePort.create("eth2", (short)2);
         ImmutablePort p3 = ImmutablePort.create("eth3", (short)3);

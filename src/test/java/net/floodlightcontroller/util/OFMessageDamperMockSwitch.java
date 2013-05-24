@@ -433,20 +433,22 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public List<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
+    public OrderedCollection<PortChangeEvent>
+            processOFPortStatus(OFPortStatus ps) {
         fail("Unexpected method call");
         return null;
     }
 
     @Override
-    public List<PortChangeEvent>
+    public OrderedCollection<PortChangeEvent>
             comparePorts(Collection<ImmutablePort> ports) {
         fail("Unexpected method call");
         return null;
     }
 
     @Override
-    public List<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
+    public OrderedCollection<PortChangeEvent>
+            setPorts(Collection<ImmutablePort> ports) {
         fail("Unexpected method call");
         return null;
     }

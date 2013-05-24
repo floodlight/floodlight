@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +50,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.EventHistory.EvAction;
+import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.OrderedCollection;
 import net.floodlightcontroller.util.TimedCache;
@@ -59,7 +59,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import com.google.common.collect.ForwardingCollection;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -174,33 +173,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.valueOf(true));
     }
 
-    /**
-     * A simple wrapper / forwarder that forwards all calls to a LinkedHashSet.
-     * This wrappers sole reason for existence is to implement the
-     * OrderedCollection marker interface.
-     * @author gregor
-     *
-     */
-    private static class LinkedHashSetWrapper<E>
-            extends ForwardingCollection<E> implements OrderedCollection<E> {
-        private final Collection<E> delegate;
 
-        public LinkedHashSetWrapper() {
-            super();
-            this.delegate = new LinkedHashSet<E>();
-        }
-
-        @SuppressWarnings("unused")
-        public LinkedHashSetWrapper(Collection<? extends E> c) {
-            super();
-            this.delegate = new LinkedHashSet<E>(c);
-        }
-
-        @Override
-        protected Collection<E> delegate() {
-            return this.delegate;
-        }
-    }
 
     /**
      * Manages the ports of this switch.
