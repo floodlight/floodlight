@@ -46,9 +46,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.MaxCountersRegistered;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
@@ -160,7 +160,7 @@ public class TopologyManager implements
     /**
      *  Debug Counters
      */
-    protected static int INCOMING;
+    protected static IDebugCounter ctrIncoming;
 
    //  Getter/Setter methods
     /**
@@ -660,7 +660,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter(INCOMING, false);
+                ctrIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -798,10 +798,10 @@ public class TopologyManager implements
             return;
         }
         try {
-            INCOMING = debugCounters.registerCounter(getName(), "incoming",
-                "All incoming packets seen by this module", CounterType.ALWAYS_COUNT,
-                new Object[] {});
-        } catch (MaxCountersRegistered e) {
+            ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
+                "All incoming packets seen by this module",
+                CounterType.ALWAYS_COUNT);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

@@ -239,7 +239,9 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    @Override
    public IDebugCounter registerCounter(String moduleName, String counterHierarchy,
                            String counterDescription, CounterType counterType,
-                           Object... metaData)  throws MaxCountersRegistered{
+                           Object... metaData)
+               throws MaxCountersRegistered, MaxHierarchyRegistered,
+                      MissingHierarchicalLevel {
        // check if counter already exists
        if (!moduleCounters.containsKey(moduleName)) {
            moduleCounters.putIfAbsent(moduleName,
@@ -257,7 +259,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        if (rci.levels.length > MAX_HIERARCHY) {
            log.error("Registry of counterHierarchy {} exceeds max hierachy {}.. aborting",
                      counterHierarchy, MAX_HIERARCHY);
-           return new CounterImpl(-1);
+           throw new MaxHierarchyRegistered();
        }
        if (rci.foundUptoLevel < rci.levels.length-1) {
            String needToRegister = "";
@@ -267,7 +269,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
            log.error("Attempting to register hierarchical counterHierarchy {}, "+
                      "but parts of hierarchy missing. Please register {} first ",
                      counterHierarchy, needToRegister);
-           return new CounterImpl(-1);
+           throw new MissingHierarchicalLevel();
        }
 
        // get a new counter id

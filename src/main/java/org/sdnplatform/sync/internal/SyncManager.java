@@ -58,9 +58,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.MaxCountersRegistered;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
@@ -154,14 +154,14 @@ public class SyncManager extends AbstractSyncManager {
     /**
      * Debug Counters
      */
-    public static int COUNTER_HINTS;
-    public static int COUNTER_SENT_VALUES;
-    public static int COUNTER_RECEIVED_VALUES;
-    public static int COUNTER_PUTS;
-    public static int COUNTER_GETS;
-    public static int COUNTER_ITERATORS;
-    public static int COUNTER_ERROR_REMOTE;
-    public static int COUNTER_ERROR_PROCESSING;
+    public static IDebugCounter counterHints;
+    public static IDebugCounter counterSentValues;
+    public static IDebugCounter counterReceivedValues;
+    public static IDebugCounter counterPuts;
+    public static IDebugCounter counterGets;
+    public static IDebugCounter counterIterators;
+    public static IDebugCounter counterErrorRemote;
+    public static IDebugCounter counterErrorProcessing;
 
     // ************
     // ISyncService
@@ -514,32 +514,31 @@ public class SyncManager extends AbstractSyncManager {
             throws FloodlightModuleException {
         if (context != null) {
             try {
-                COUNTER_HINTS = debugCounter.registerCounter(PACKAGE, " hints",
+                counterHints = debugCounter.registerCounter(PACKAGE, " hints",
                                              "Queued sync events processed",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_SENT_VALUES = debugCounter.registerCounter(PACKAGE, "sent-values",
+                                             CounterType.ALWAYS_COUNT);
+                counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
                                              "Values synced to remote node",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_RECEIVED_VALUES = debugCounter.registerCounter(PACKAGE, "received-values",
+                                             CounterType.ALWAYS_COUNT);
+                counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
                                              "Values received from remote node",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_PUTS = debugCounter.registerCounter(PACKAGE, "puts",
+                                             CounterType.ALWAYS_COUNT);
+                counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
                                              "Local puts to store",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_GETS = debugCounter.registerCounter(PACKAGE, "gets",
+                                             CounterType.ALWAYS_COUNT);
+                counterGets = debugCounter.registerCounter(PACKAGE, "gets",
                                              "Local gets from store",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_ITERATORS = debugCounter.registerCounter(PACKAGE, "iterators",
+                                             CounterType.ALWAYS_COUNT);
+                counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
                                              "Local iterators created over store",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_ERROR_REMOTE = debugCounter.registerCounter(PACKAGE, "error-remote",
+                                             CounterType.ALWAYS_COUNT);
+                counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
                                              "Number of errors sent from remote clients",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-                COUNTER_ERROR_PROCESSING = debugCounter.registerCounter(PACKAGE, "error-processing",
+                                             CounterType.ALWAYS_COUNT);
+                counterErrorProcessing = debugCounter.registerCounter(PACKAGE, "error-processing",
                                              "Number of errors processing messages from remote clients",
-                                             CounterType.ALWAYS_COUNT, new Object[] {});
-            } catch (MaxCountersRegistered e) {
-                // TODO Auto-generated catch block
+                                             CounterType.ALWAYS_COUNT);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -771,7 +770,7 @@ public class SyncManager extends AbstractSyncManager {
                     // XXX - todo - handle hints targeted to specific nodes
                     storeRegistry.takeHints(tasks, 50);
                     for (Hint task : tasks) {
-                        debugCounter.updateCounter(COUNTER_HINTS, true);
+                        counterHints.updateCounterWithFlush();
                         SynchronizingStorageEngine store =
                                 storeRegistry.get(task.getHintKey().
                                                   getStoreName());
@@ -804,9 +803,8 @@ public class SyncManager extends AbstractSyncManager {
                             svm.getHeader().
                             setTransactionId(rpcService.
                                              getTransactionId());
-                            debugCounter.updateCounter(COUNTER_SENT_VALUES,
-                                                       bsm.getSyncValue().
-                                                           getValuesSize(), true);
+                            counterSentValues.updateCounterWithFlush(bsm.getSyncValue().
+                                                           getValuesSize());
                             rpcService.writeToNode(n.getNodeId(), bsm);
                         }
                     }

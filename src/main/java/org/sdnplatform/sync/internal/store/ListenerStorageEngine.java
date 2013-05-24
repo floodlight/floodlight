@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.sdnplatform.sync.IClosableIterator;
@@ -65,20 +66,20 @@ public class ListenerStorageEngine
 
     @Override
     public List<Versioned<byte[]>> get(ByteArray key) throws SyncException {
-        updateCounter(SyncManager.COUNTER_GETS);
+        updateCounter(SyncManager.counterGets);
         return localStorage.get(key);
     }
 
     @Override
     public IClosableIterator<Entry<ByteArray,List<Versioned<byte[]>>>> entries() {
-        updateCounter(SyncManager.COUNTER_ITERATORS);
+        updateCounter(SyncManager.counterIterators);
         return localStorage.entries();
     }
 
     @Override
     public void put(ByteArray key, Versioned<byte[]> value)
             throws SyncException {
-        updateCounter(SyncManager.COUNTER_PUTS);
+        updateCounter(SyncManager.counterPuts);
         localStorage.put(key, value);
         notifyListeners(key, UpdateType.LOCAL);
     }
@@ -157,9 +158,9 @@ public class ListenerStorageEngine
         }
     }
 
-    protected void updateCounter(int counterName) {
+    protected void updateCounter(IDebugCounter counter) {
         if (debugCounter != null) {
-            debugCounter.updateCounter(counterName, true);
+            counter.updateCounterWithFlush();
         }
     }
 }

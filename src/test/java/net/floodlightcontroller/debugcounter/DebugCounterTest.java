@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.debugcounter.DebugCounter.DebugCounterInfo;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.MaxCountersRegistered;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugCounterTest extends FloodlightTestCase {
@@ -174,7 +173,7 @@ public class DebugCounterTest extends FloodlightTestCase {
     }
 
     @Test
-    public void testEnableDisableCounter() throws MaxCountersRegistered {
+    public void testEnableDisableCounter() throws Exception {
         testCounterHierarchy();
         IDebugCounter S1_pi_u, S1_fm, S1_fm_d;
 
@@ -237,7 +236,7 @@ public class DebugCounterTest extends FloodlightTestCase {
     }
 
     @Test
-    public void testCounterReregistry() throws MaxCountersRegistered {
+    public void testCounterReregistry() throws Exception {
         testCounterHierarchy();
         checkCounters(1, 2, 3, 10, 20, 100, 105);
         S1 =  dc.registerCounter("switch", "01", "switch01",
@@ -280,4 +279,9 @@ public class DebugCounterTest extends FloodlightTestCase {
         }
     }
 
+
+    @Test
+    public void testMissingHierarchy() {
+
+    }
 }

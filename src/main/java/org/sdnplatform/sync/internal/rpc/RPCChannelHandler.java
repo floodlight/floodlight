@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -276,7 +277,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                     new SyncMessage(MessageType.SYNC_VALUE_RESPONSE);
             bsm.setSyncValueResponse(m);
 
-            updateCounter(SyncManager.COUNTER_RECEIVED_VALUES,
+            updateCounter(SyncManager.counterReceivedValues,
                           request.getValuesSize());
             channel.write(bsm);
         } catch (Exception e) {
@@ -359,7 +360,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
             }
 
             if (svm.isSetValues()) {
-                updateCounter(SyncManager.COUNTER_SENT_VALUES,
+                updateCounter(SyncManager.counterSentValues,
                               svm.getValuesSize());
                 rpcService.syncQueue.add(new NodeMessage(getRemoteNodeId(),
                                                          bsm));
@@ -531,7 +532,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected void handleError(ErrorMessage error, Channel channel) {
         rpcService.messageAcked(error.getType(), getRemoteNodeId());
-        updateCounter(SyncManager.COUNTER_ERROR_REMOTE, 1);
+        updateCounter(SyncManager.counterErrorRemote, 1);
         super.handleError(error, channel);
     }
 
@@ -586,7 +587,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     @Override
     protected SyncMessage getError(int transactionId, Exception error,
                                    MessageType type) {
-        updateCounter(SyncManager.COUNTER_ERROR_PROCESSING, 1);
+        updateCounter(SyncManager.counterErrorProcessing, 1);
         return super.getError(transactionId, error, type);
     }
 
@@ -594,8 +595,8 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // Utility functions
     // *****************
 
-    protected void updateCounter(int counter, int incr) {
-        rpcService.debugCounter.updateCounter(counter, incr, true);
+    protected void updateCounter(IDebugCounter counter, int incr) {
+        counter.updateCounterWithFlush(incr);
     }
 
     protected void startAntientropy() {
