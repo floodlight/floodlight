@@ -17,7 +17,6 @@ net.floodlightcontroller.jython.JythonDebugInterface
 net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.debugcounter.DebugCounter
 net.floodlightcontroller.debugevent.DebugEvent
-net.floodlightcontroller.debugevent.NullDebugEvent
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter
