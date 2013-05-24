@@ -474,7 +474,11 @@ class OFChannelHandler
                 if (m.getTables() > 1) {
                     // likely supports L2 table extensions. Send set
                     h.sendHandshakeL2TableSet();
-                    h.setState(WAIT_SET_L2_TABLE_REPLY);
+                    // TODO: no L2 SET reply yet, so fire and forget the set
+                    // table message and move directly to sendHandshakeConfig
+                    h.sendHandshakeSetConfig();
+                    h.setState(WAIT_CONFIG_REPLY);
+                    //h.setState(WAIT_SET_L2_TABLE_REPLY);
                 } else {
                     h.sendHandshakeSetConfig();
                     h.setState(WAIT_CONFIG_REPLY);
@@ -495,6 +499,7 @@ class OFChannelHandler
         WAIT_SET_L2_TABLE_REPLY(false) {
             @Override void processOFVendor(OFChannelHandler h, OFVendor m)
                     throws IOException {
+                // TODO: actually parse the response
                 h.sendHandshakeSetConfig();
                 h.setState(WAIT_CONFIG_REPLY);
             };
