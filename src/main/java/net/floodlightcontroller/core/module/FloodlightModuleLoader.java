@@ -106,8 +106,7 @@ public class FloodlightModuleLoader implements IModuleService {
                 try {
                     m = moduleIter.next();
                 } catch (ServiceConfigurationError sce) {
-                    logger.debug("Could not find module");
-                    //moduleIter.remove();
+                    logger.error("Could not find module: {}", sce.getMessage());
                     continue;
                 }
             //}

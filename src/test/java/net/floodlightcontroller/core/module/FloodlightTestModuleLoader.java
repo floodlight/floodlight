@@ -151,18 +151,14 @@ public class FloodlightTestModuleLoader extends FloodlightModuleLoader {
      * module that provides this service will not be loaded.
      */
     public void setupModules(Collection<Class<? extends IFloodlightModule>> modules,
-            Collection<IFloodlightService> mockedServices) {
+            Collection<IFloodlightService> mockedServices) throws FloodlightModuleException {
         addDefaultModules(modules);
         Collection<String> modulesAsString = new ArrayList<String>();
         for (Class<? extends IFloodlightModule> m : modules) {
             modulesAsString.add(m.getCanonicalName());
         }
 
-        try {
-            fmc = loadModulesFromList(modulesAsString, null, mockedServices);
-        } catch (FloodlightModuleException e) {
-            log.error(e.getMessage());
-        }
+        fmc = loadModulesFromList(modulesAsString, null, mockedServices);
     }
 
     /**
