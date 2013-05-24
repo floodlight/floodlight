@@ -35,7 +35,7 @@
     <property name="coverage-output" location="${target}/coverage"/>
     <property name="source" location="src/main/java"/>
     <property name="resources" location="src/main/resources/"/>
-    <property name="testresources" location="src/test/resources/"/>
+    <property name="test-resources" location="src/test/resources/"/>
     <property name="source-test" location="src/test/java"/>
     <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
@@ -138,7 +138,6 @@
 
     <target name="compile-tests" depends="compile-test"/>
     <target name="compile-test" depends="compile">
-        <fileset dir="${testresources}"/>
         <javac includeAntRuntime="false" debug="true" 
            srcdir="${source-test}"
            classpath="${build}"
@@ -255,7 +254,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build-test}"/>
-            <fileset dir="${testresources}"/>
+            <fileset dir="${test-resources}"/>
             <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
                 <patternset refid="lib-cobertura"/>
