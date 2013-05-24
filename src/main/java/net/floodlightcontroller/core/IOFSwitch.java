@@ -28,6 +28,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.OrderedCollection;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -315,7 +316,7 @@ public interface IOFSwitch {
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
      */
-    public Collection<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
+    public OrderedCollection<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
 
     /**
      * Get list of all ports. This will typically be different from
@@ -351,7 +352,7 @@ public interface IOFSwitch {
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
      */
-    public Collection<PortChangeEvent>
+    public OrderedCollection<PortChangeEvent>
             comparePorts(Collection<ImmutablePort> ports);
 
     /**
@@ -363,7 +364,7 @@ public interface IOFSwitch {
      * changed, the iteration order ensures that delete events for old
      * conflicting appear before before events adding new ports
      */
-    public Collection<PortChangeEvent>
+    public OrderedCollection<PortChangeEvent>
             setPorts(Collection<ImmutablePort> ports);
 
 

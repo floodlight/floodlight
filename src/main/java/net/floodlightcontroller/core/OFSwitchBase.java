@@ -52,12 +52,14 @@ import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.EventHistory.EvAction;
 import net.floodlightcontroller.util.MACAddress;
+import net.floodlightcontroller.util.OrderedCollection;
 import net.floodlightcontroller.util.TimedCache;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.google.common.collect.ForwardingCollection;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -173,6 +175,34 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     /**
+     * A simple wrapper / forwarder that forwards all calls to a LinkedHashSet.
+     * This wrappers sole reason for existence is to implement the
+     * OrderedCollection marker interface.
+     * @author gregor
+     *
+     */
+    private static class LinkedHashSetWrapper<E>
+            extends ForwardingCollection<E> implements OrderedCollection<E> {
+        private final Collection<E> delegate;
+
+        public LinkedHashSetWrapper() {
+            super();
+            this.delegate = new LinkedHashSet<E>();
+        }
+
+        @SuppressWarnings("unused")
+        public LinkedHashSetWrapper(Collection<? extends E> c) {
+            super();
+            this.delegate = new LinkedHashSet<E>(c);
+        }
+
+        @Override
+        protected Collection<E> delegate() {
+            return this.delegate;
+        }
+    }
+
+    /**
      * Manages the ports of this switch.
      *
      * Provides methods to query and update the stored ports. The class ensures
@@ -204,6 +234,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
         private List<Short> enabledPortNumbers;
         private Map<Short,ImmutablePort> portsByNumber;
         private Map<String,ImmutablePort> portsByName;
+
+
+
 
         public PortManager() {
             this.lock = new ReentrantReadWriteLock();
@@ -271,11 +304,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * be deleted.
          * @return ordered collection of port changes applied to this switch
          */
-        private Collection<PortChangeEvent>
+        private OrderedCollection<PortChangeEvent>
                 handlePortStatusDelete(ImmutablePort delPort) {
             lock.writeLock().lock();
-            Collection<PortChangeEvent> events =
-                    new ArrayList<PortChangeEvent>();
+            OrderedCollection<PortChangeEvent> events =
+                    new LinkedHashSetWrapper<PortChangeEvent>();
             try {
                 Map<Short,ImmutablePort> newPortByNumber =
                         new HashMap<Short, ImmutablePort>(portsByNumber);
@@ -325,7 +358,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @param ps
          * @return
          */
-        public Collection<PortChangeEvent> handlePortStatusMessage(OFPortStatus ps) {
+        public OrderedCollection<PortChangeEvent> handlePortStatusMessage(OFPortStatus ps) {
             if (ps == null) {
                 throw new NullPointerException("OFPortStatus message must " +
                                                "not be null");
@@ -354,7 +387,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                 // compare the new port to the existing ones.
                 Map<Short,ImmutablePort> newPortByNumber =
                     new HashMap<Short, ImmutablePort>(portsByNumber);
-                Collection<PortChangeEvent> events = getSinglePortChanges(port);
+                OrderedCollection<PortChangeEvent> events = getSinglePortChanges(port);
                 for (PortChangeEvent e: events) {
                     switch(e.type) {
                         case DELETE:
@@ -395,12 +428,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @param newPort the new or modified port.
          * @return the list of changes
          */
-        public Collection<PortChangeEvent>
+        public OrderedCollection<PortChangeEvent>
                 getSinglePortChanges(ImmutablePort newPort) {
             lock.readLock().lock();
             try {
-                Collection<PortChangeEvent> events =
-                        new LinkedHashSet<PortChangeEvent>();
+                OrderedCollection<PortChangeEvent> events =
+                        new LinkedHashSetWrapper<PortChangeEvent>();
                 // Check if we have a port by the same number in our
                 // old map.
                 ImmutablePort prevPort =
@@ -469,7 +502,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @return The list of differences between the current ports and
          * newPortList
          */
-        public Collection<PortChangeEvent>
+        public OrderedCollection<PortChangeEvent>
                 comparePorts(Collection<ImmutablePort> newPorts) {
             return compareAndUpdatePorts(newPorts, false);
         }
@@ -484,7 +517,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @return The list of differences between the current ports and
          * newPortList
          */
-        public Collection<PortChangeEvent>
+        public OrderedCollection<PortChangeEvent>
                 updatePorts(Collection<ImmutablePort> newPorts) {
             return compareAndUpdatePorts(newPorts, true);
         }
@@ -511,7 +544,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
          * @throws IllegalArgumentException if either port names or port numbers
          * are duplicated in the newPortsList.
          */
-        private Collection<PortChangeEvent> compareAndUpdatePorts(
+        private OrderedCollection<PortChangeEvent> compareAndUpdatePorts(
                 Collection<ImmutablePort> newPorts,
                 boolean doUpdate) {
             if (newPorts == null) {
@@ -519,8 +552,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
             }
             lock.writeLock().lock();
             try {
-                Collection<PortChangeEvent> events =
-                        new LinkedHashSet<PortChangeEvent>();
+                OrderedCollection<PortChangeEvent> events =
+                        new LinkedHashSetWrapper<PortChangeEvent>();
 
                 Map<Short,ImmutablePort> newPortsByNumber =
                         new HashMap<Short, ImmutablePort>();
@@ -850,7 +883,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public Collection<PortChangeEvent> processOFPortStatus(OFPortStatus ps) {
+    public OrderedCollection<PortChangeEvent>
+            processOFPortStatus(OFPortStatus ps) {
         return portManager.handlePortStatusMessage(ps);
     }
 
@@ -861,13 +895,15 @@ public abstract class OFSwitchBase implements IOFSwitch {
     }
 
     @Override
-    public Collection<PortChangeEvent> comparePorts(Collection<ImmutablePort> ports) {
+    public OrderedCollection<PortChangeEvent>
+            comparePorts(Collection<ImmutablePort> ports) {
         return portManager.comparePorts(ports);
     }
 
     @Override
     @JsonIgnore
-    public Collection<PortChangeEvent> setPorts(Collection<ImmutablePort> ports) {
+    public OrderedCollection<PortChangeEvent>
+            setPorts(Collection<ImmutablePort> ports) {
         return portManager.updatePorts(ports);
     }
 
