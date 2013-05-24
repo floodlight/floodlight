@@ -70,6 +70,9 @@ import org.openflow.vendor.nicira.OFRoleRequestVendorData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.bigswitch.floodlight.vendor.OFBigSwitchVendorData;
+import com.bigswitch.floodlight.vendor.OFBsnL2TableSetVendorData;
+
 
 
 /**
@@ -83,9 +86,7 @@ class OFChannelHandler
     private static final Logger log = LoggerFactory.getLogger(OFChannelHandler.class);
 
     private static final long DEFAULT_ROLE_TIMEOUT_MS = 10*1000; // 10 sec
-    /**
-     *
-     */
+
     private final Controller controller;
     private final Counters counters;
     private IOFSwitch sw;
@@ -463,15 +464,21 @@ class OFChannelHandler
         /**
          * We are waiting for a features reply message. Once we receive it
          * we send a SetConfig request, barrier, and GetConfig request.
-         * Next stats is WAIT_CONFIG_REPLY
+         * Next stats is WAIT_CONFIG_REPLY or WAIT_SET_L2_TABLE_REPLY
          */
         WAIT_FEATURES_REPLY(false) {
             @Override
             void processOFFeaturesReply(OFChannelHandler h, OFFeaturesReply  m)
                     throws IOException {
                 h.featuresReply = m;
-                h.sendHandshakeSetConfig();
-                h.setState(WAIT_CONFIG_REPLY);
+                if (m.getTables() > 1) {
+                    // likely supports L2 table extensions. Send set
+                    h.sendHandshakeL2TableSet();
+                    h.setState(WAIT_SET_L2_TABLE_REPLY);
+                } else {
+                    h.sendHandshakeSetConfig();
+                    h.setState(WAIT_CONFIG_REPLY);
+                }
             }
             @Override
             void processOFStatisticsReply(OFChannelHandler h,
@@ -482,6 +489,43 @@ class OFChannelHandler
             @Override
             void processOFError(OFChannelHandler h, OFError m) {
                 logErrorDisconnect(h, m);
+            }
+        },
+
+        WAIT_SET_L2_TABLE_REPLY(false) {
+            @Override void processOFVendor(OFChannelHandler h, OFVendor m)
+                    throws IOException {
+                h.sendHandshakeSetConfig();
+                h.setState(WAIT_CONFIG_REPLY);
+            };
+
+            @Override
+            void processOFBarrierReply(OFChannelHandler h, OFBarrierReply m) {
+                // do nothing;
+            }
+
+            @Override
+            void processOFFeaturesReply(OFChannelHandler h, OFFeaturesReply  m)
+                    throws IOException {
+                // TODO: we could re-set the features reply
+                illegalMessageReceived(h, m);
+            }
+            @Override
+            void processOFStatisticsReply(OFChannelHandler h,
+                                          OFStatisticsReply  m)
+                    throws IOException {
+                illegalMessageReceived(h, m);
+            }
+
+            @Override
+            void processOFError(OFChannelHandler h, OFError m) {
+                logErrorDisconnect(h, m);
+            }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                h.pendingPortStatusMsg.add(m);
             }
         },
 
@@ -592,6 +636,8 @@ class OFChannelHandler
                     h.sw.setFloodlightProvider(h.controller);
                     h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                     h.sw.setDebugCounterService(h.controller.getDebugCounter());
+                    h.sw.setAccessFlowPriority(h.controller.getAccessFlowPriority());
+                    h.sw.setCoreFlowPriority(h.controller.getCoreFlowPriority());
                     for (OFPortStatus ps: h.pendingPortStatusMsg)
                         handlePortStatusMessage(h, ps, false);
                     h.pendingPortStatusMsg.clear();
@@ -1544,6 +1590,23 @@ class OFChannelHandler
         OFMessage m = BasicFactory.getInstance().getMessage(type);
         m.setXid(handshakeTransactionIds--);
         channel.write(Collections.singletonList(m));
+    }
+
+    /**
+     * Send an setL2TableSet message to the switch.
+     */
+    private void sendHandshakeL2TableSet() {
+        OFVendor l2TableSet = (OFVendor)
+                BasicFactory.getInstance().getMessage(OFType.VENDOR);
+        l2TableSet.setXid(handshakeTransactionIds--);
+        OFBsnL2TableSetVendorData l2TableSetData =
+                new OFBsnL2TableSetVendorData(true,
+                                              controller.getCoreFlowPriority());
+        l2TableSet.setVendor(OFBigSwitchVendorData.BSN_VENDOR_ID);
+        l2TableSet.setVendorData(l2TableSetData);
+        l2TableSet.setLengthU(OFVendor.MINIMUM_LENGTH +
+                              l2TableSetData.getLength());
+        channel.write(Collections.singletonList(l2TableSet));
     }
 
     /**

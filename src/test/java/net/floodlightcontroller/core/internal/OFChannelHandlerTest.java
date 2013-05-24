@@ -63,6 +63,8 @@ import static org.junit.Assert.*;
 
 
 public class OFChannelHandlerTest {
+    private static final short CORE_PRIORITY = 4242;
+    private static final short ACCESS_PRIORITY = 42;
     private Controller controller;
     private IThreadPoolService threadPool;
     private IDebugCounterService debugCounterService;
@@ -92,7 +94,7 @@ public class OFChannelHandlerTest {
                 .getMessage(OFType.FEATURES_REPLY);
         featuresReply.setDatapathId(0x42L);
         featuresReply.setBuffers(1);
-        featuresReply.setTables((byte)2);
+        featuresReply.setTables((byte)1);
         featuresReply.setCapabilities(3);
         featuresReply.setActions(4);
         List<OFPhysicalPort> ports = new ArrayList<OFPhysicalPort>();
@@ -206,14 +208,7 @@ public class OFChannelHandlerTest {
         verify(controller);
         reset(controller);
 
-        setupMessageEvent(messages);
-
-        // mock controller
-        controller.flushAll();
-        expectLastCall().atLeastOnce();
-        replay(controller);
-        handler.messageReceived(ctx, messageEvent);
-        verify(controller);
+        sendMessageToHandlerNoControllerReset(messages);
     }
 
     /** reset, setup, and replay the messageEvent mock for the given
@@ -516,6 +511,11 @@ public class OFChannelHandlerTest {
         expectLastCall().andReturn(cfg.dpid).atLeastOnce();
         sw.isWriteThrottleEnabled();  // used for log message only
         expectLastCall().andReturn(false).anyTimes();
+        sw.setAccessFlowPriority(ACCESS_PRIORITY);
+        expectLastCall().once();
+        sw.setCoreFlowPriority(CORE_PRIORITY);
+        expectLastCall().once();
+
         if (cfg.isPresent)
             sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, cfg.isCoreSwitch);
         replay(sw);
@@ -530,6 +530,10 @@ public class OFChannelHandlerTest {
                 .andReturn(threadPool).once();
         expect(controller.getOFSwitchInstance(eq(desc)))
                 .andReturn(sw).once();
+        expect(controller.getCoreFlowPriority())
+                .andReturn(CORE_PRIORITY).once();
+        expect(controller.getAccessFlowPriority())
+                .andReturn(ACCESS_PRIORITY).once();
         controller.addSwitchChannelAndSendInitialRole(handler);
         expectLastCall().once();
         expect(controller.getStorageSourceService())

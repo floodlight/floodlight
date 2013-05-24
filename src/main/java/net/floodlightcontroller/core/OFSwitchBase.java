@@ -103,6 +103,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected long datapathId;
     protected String stringId;
 
+    protected short accessFlowPriority;
+    protected short coreFlowPriority;
+
     /**
      * Members hidden from subclasses
      */
@@ -1478,5 +1481,29 @@ public abstract class OFSwitchBase implements IOFSwitch {
             log.warn("Switch {} flow table is full", stringId);
         }
         flowTableFull = isFull;
+    }
+
+
+    @Override
+    public short getAccessFlowPriority() {
+        return accessFlowPriority;
+    }
+
+
+    @Override
+    public short getCoreFlowPriority() {
+        return coreFlowPriority;
+    }
+
+
+    @Override
+    public void setAccessFlowPriority(short accessFlowPriority) {
+        this.accessFlowPriority = accessFlowPriority;
+    }
+
+
+    @Override
+    public void setCoreFlowPriority(short coreFlowPriority) {
+        this.coreFlowPriority = coreFlowPriority;
     }
 }
