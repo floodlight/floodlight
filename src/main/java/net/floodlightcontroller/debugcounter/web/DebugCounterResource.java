@@ -95,9 +95,9 @@ public class DebugCounterResource extends DebugCounterResourceBase {
      * The Reset command will reset the counter specified as well as all counters
      * in the hierarchical levels below. For example, if a counter hierarchy exists
      * as switch/00:00:00:00:01:02:03:04/pktin/drops, then a reset command with just
-     * the moduleName (param1=switch) and counterName (param2=00:00:00:00:01:02:03:04)
+     * the moduleName (param1=switch) and counterHierarchy (param2=00:00:00:00:01:02:03:04)
      * will reset all counters for that switch. Continuing the example -
-     * for a counterName (param2=00:00:00:00:01:02:03:04 and param3=pktin), the reset
+     * for a counterHierarchy (param2=00:00:00:00:01:02:03:04 and param3=pktin), the reset
      * command will remove all pktin counters for that switch.
      *
      * The enable/disable command will ONLY disable a specific counter (and only if
@@ -123,18 +123,18 @@ public class DebugCounterResource extends DebugCounterResourceBase {
             choice = Option.ALL;
         }
 
-        String counterName = "";
+        String counterHierarchy = "";
         if (param2 != null) {
-            counterName += "/" + param2;
+            counterHierarchy += "/" + param2;
             if (param3 != null) {
-                counterName += "/" + param3;
+                counterHierarchy += "/" + param3;
                 if (param4 != null) {
-                    counterName += "/" + param4;
+                    counterHierarchy += "/" + param4;
                 }
             }
         }
 
-        if (!moduleName.equals("all") && counterName.equals("")) {
+        if (!moduleName.equals("all") && counterHierarchy.equals("")) {
             // only module name specified
             boolean isRegistered = debugCounter.containsModuleName(param1);
             if (isRegistered) {
@@ -142,10 +142,10 @@ public class DebugCounterResource extends DebugCounterResourceBase {
             } else {
                 choice = Option.ERROR_BAD_MODULE_NAME;
             }
-        } else if (!moduleName.equals("all") && !counterName.equals("")) {
+        } else if (!moduleName.equals("all") && !counterHierarchy.equals("")) {
             // both module and counter names specified
-            boolean isRegistered = debugCounter.containsModuleCounterName(moduleName,
-                                                                          counterName);
+            boolean isRegistered = debugCounter.
+                    containsModuleCounterHierarchy(moduleName, counterHierarchy);
             if (isRegistered) {
                 choice = Option.MODULE_COUNTER_HIERARCHY;
             } else {
@@ -171,11 +171,11 @@ public class DebugCounterResource extends DebugCounterResourceBase {
                 break;
             case MODULE_COUNTER_HIERARCHY:
                 if (reset)
-                    debugCounter.resetCounterHierarchy(moduleName, counterName);
+                    debugCounter.resetCounterHierarchy(moduleName, counterHierarchy);
                 else if (turnOnOff && postData.getEnable())
-                    debugCounter.enableCtrOnDemand(moduleName, counterName);
+                    debugCounter.enableCtrOnDemand(moduleName, counterHierarchy);
                 else if (turnOnOff && !postData.getEnable())
-                    debugCounter.disableCtrOnDemand(moduleName, counterName);
+                    debugCounter.disableCtrOnDemand(moduleName, counterHierarchy);
                 break;
             case ERROR_BAD_MODULE_NAME:
                 output.error = "Module name has no corresponding registered counters";
@@ -226,16 +226,17 @@ public class DebugCounterResource extends DebugCounterResourceBase {
             choice = Option.ALL;
         }
 
-        String counterName = "";
+        String counterHierarchy = "";
         if (param2 != null) {
-            counterName += "/" + param2;
+            counterHierarchy += "/" + param2;
             if (param3 != null) {
-                counterName += "/" + param3;
+                counterHierarchy += "/" + param3;
                 if (param4 != null) {
-                    counterName += "/" + param4;
+                    counterHierarchy += "/" + param4;
                 }
             }
-            boolean isRegistered = debugCounter.containsModuleCounterName(param1, counterName);
+            boolean isRegistered = debugCounter.
+                    containsModuleCounterHierarchy(param1, counterHierarchy);
             if (isRegistered) {
                 choice = Option.MODULE_COUNTER_HIERARCHY;
             } else {
@@ -261,7 +262,7 @@ public class DebugCounterResource extends DebugCounterResourceBase {
                 populateCounters(debugCounter.getModuleCounterValues(param1), output);
                 break;
             case MODULE_COUNTER_HIERARCHY:
-                populateCounters(debugCounter.getCounterHierarchy(param1, counterName),
+                populateCounters(debugCounter.getCounterHierarchy(param1, counterHierarchy),
                                       output);
                 break;
             case ERROR_BAD_MODULE_NAME:
@@ -281,7 +282,7 @@ public class DebugCounterResource extends DebugCounterResourceBase {
                                        DebugCounterInfoOutput output) {
         if (debugCounterInfo != null)
             output.counterMap.put(debugCounterInfo.getCounterInfo().
-                                  getModuleCounterName(),
+                                  getModuleCounterHierarchy(),
                                   debugCounterInfo);
     }
 

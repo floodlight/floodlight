@@ -19,7 +19,7 @@ public interface IDebugCounterService extends IFloodlightService {
     /**
      *  A limit on the maximum number of counters that can be created
      */
-    public static final int MAX_COUNTERS = 10000;
+    public static final int MAX_COUNTERS = 5000;
 
     /**
      * exception thrown when MAX_COUNTERS have been registered
@@ -37,9 +37,9 @@ public interface IDebugCounterService extends IFloodlightService {
      * All modules that wish to have the DebugCounterService count for them, must
      * register their counters by making this call (typically from that module's
      * 'startUp' method). The counter can then be updated, displayed, reset etc.
-     * using the registered moduleCounterName.
+     * using the registered moduleCounterHierarchy.
      *
-     * @param moduleCounterName    the counter name which MUST be have the following
+     * @param moduleCounterHierarchy    the counter name which MUST be have the following
      *                             syntax:  <module name>-<counter name>
      *                             eg.: linkdiscovery-incoming
      *                             There should be only a single '-' in the name
@@ -52,24 +52,11 @@ public interface IDebugCounterService extends IFloodlightService {
      *                             methods in this API -- i.e. registering them is
      *                             not enough to start counting.
      * @return                     false if the counter has already been registered
-     *                             or if the moduleCounterName is not as expected.
+     *                             or if the moduleCounterHierarchy is not as expected.
      */
-    public int registerCounter(String moduleName, String counterName,
-                               String counterDescription, CounterType counterType,
-                               Object[] metaData) throws MaxCountersRegistered;
-
-    /**
-     * Increments the counter by 1, if the counter is meant to be always counted,
-     * or if the counter has been enabled for counting.
-     * @param moduleCounterName   the registered counter name.
-     */
-    void updateCounter(int counterId, boolean flushNow);
-
-    /**
-     * Increments the counter by the number specified
-     * @param moduleCounterName   the registered counter name.
-     */
-    void updateCounter(int counterId, int incr, boolean flushNow);
+    public IDebugCounter registerCounter(String moduleName, String counterHierarchy,
+                             String counterDescription, CounterType counterType,
+                             Object... metaData) throws MaxCountersRegistered;
 
     /**
      * Update the global counter map with values from the thread local maps. This
@@ -83,9 +70,9 @@ public interface IDebugCounterService extends IFloodlightService {
      * Resets the value of the counter to zero if it is currently enabled. Note
      * that with live traffic, it is not necessary that the counter will display
      * zero with a get call as it may get updated between the reset and get calls.
-     * @param moduleCounterName the registered counter name.
+     * @param moduleCounterHierarchy the registered counter name.
      */
-    void resetCounterHierarchy(String moduleName, String counterName);
+    void resetCounterHierarchy(String moduleName, String counterHierarchy);
 
     /**
      * Resets the values of all counters that are currently enabled to zero.
@@ -95,7 +82,7 @@ public interface IDebugCounterService extends IFloodlightService {
     /**
      * Resets the values of all counters that are currently active and belong
      * to a module with the given 'moduleName'. The moduleName MUST be the
-     * part of the moduleCounterName with which the counters were registered.
+     * part of the moduleCounterHierarchy with which the counters were registered.
      * eg. if 'linkdiscovery-incoming' and 'linkdiscovery-lldpeol' are two counters
      * the module name is 'linkdiscovery'
      * @param moduleName
@@ -109,28 +96,28 @@ public interface IDebugCounterService extends IFloodlightService {
      * enough (as is the case for CounterType.ALWAYS_COUNT). Note that newly
      * enabled counter starts from an initial value of zero.
      *
-     * @param moduleCounterName  the registered counter name.
+     * @param moduleCounterHierarchy  the registered counter name.
      */
-    public void enableCtrOnDemand(String moduleName, String counterName);
+    public void enableCtrOnDemand(String moduleName, String counterHierarchy);
 
     /**
      * This method applies only to CounterType.ALWAYS_COUNT. It is used to disable
      * counting on this counter. Note that disabling a counter results in a loss
      * of the counter value. When re-enabled the counter will restart from zero.
      *
-     * @param moduleCounterName the registered counter name.
+     * @param moduleCounterHierarchy the registered counter name.
      */
-    public void disableCtrOnDemand(String moduleName, String counterName);
+    public void disableCtrOnDemand(String moduleName, String counterHierarchy);
 
     /**
      * Get counter value and associated information for a specific counter if it
      * is active.
      *
-     * @param moduleCounterName
+     * @param moduleCounterHierarchy
      * @return DebugCounterInfo or null if the counter could not be found
      */
     public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
-                                                      String counterName);
+                                                      String counterHierarchy);
 
     /**
      * Get counter values and associated information for all active counters
@@ -149,15 +136,15 @@ public interface IDebugCounterService extends IFloodlightService {
     public  List<DebugCounterInfo> getModuleCounterValues(String moduleName);
 
     /**
-     * Convenience method to figure out if the the given 'moduleCounterName' corresponds
-     * to a registered moduleCounterName or not. Note that the counter may or
+     * Convenience method to figure out if the the given 'moduleCounterHierarchy' corresponds
+     * to a registered moduleCounterHierarchy or not. Note that the counter may or
      * may not be enabled for counting, but if it is registered the method will
      * return true.
      *
      * @param param
-     * @return false if moduleCounterName is not a registered counter
+     * @return false if moduleCounterHierarchy is not a registered counter
      */
-    public boolean containsModuleCounterName(String moduleName, String counterName);
+    public boolean containsModuleCounterHierarchy(String moduleName, String counterHierarchy);
 
     /**
      * Convenience method to figure out if the the given 'moduleName' corresponds

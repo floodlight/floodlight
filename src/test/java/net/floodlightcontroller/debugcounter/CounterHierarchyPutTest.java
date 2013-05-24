@@ -60,7 +60,7 @@ public class CounterHierarchyPutTest extends FloodlightTestCase {
         printRCI("got ==>", rci);
         printRCI("exp ==>", exp);
         assertEquals(rci, exp);
-        dc.printAllCounters();
+        dc.printAllCounterIds();
         // add and then check for 2nd level of hierarchy
         dc.addToModuleCounterHierarchy("switch", 77, rci);
         rci = dc.getCounterId("switch", counterName);
@@ -72,7 +72,7 @@ public class CounterHierarchyPutTest extends FloodlightTestCase {
         exp.levels = counterName.split("/");
         printRCI("got ==>", rci);
         printRCI("exp ==>", exp);
-        dc.printAllCounters();
+        dc.printAllCounterIds();
         assertEquals(rci, exp);
 
         counterName = "100hp/pktin/drops";
@@ -86,7 +86,7 @@ public class CounterHierarchyPutTest extends FloodlightTestCase {
         printRCI("got ==>", rci);
         printRCI("exp ==>", exp);
         assertEquals(rci, exp);
-        dc.printAllCounters();
+        dc.printAllCounterIds();
         // add and then check for 3rd level of hierarchy
         dc.addToModuleCounterHierarchy("switch", 132, rci);
         rci = dc.getCounterId("switch", counterName);
@@ -99,7 +99,7 @@ public class CounterHierarchyPutTest extends FloodlightTestCase {
         exp.levels = counterName.split("/");
         printRCI("got ==>", rci);
         printRCI("exp ==>", exp);
-        dc.printAllCounters();
+        dc.printAllCounterIds();
         assertEquals(rci, exp);
 
     }

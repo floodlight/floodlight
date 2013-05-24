@@ -54,32 +54,33 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
      * protected class to store counter information
      */
     public static class CounterInfo {
-        String moduleCounterName;
+        String moduleCounterHierarchy;
         String counterDesc;
         CounterType ctype;
         String moduleName;
-        String counterName;
+        String counterHierarchy;
         int counterId;
         boolean enabled;
         Object[] metaData;
 
-        public CounterInfo(int counterId, boolean enabled, Object[] metaData,
-                           String moduleName, String counterName,
-                           String desc, CounterType ctype) {
-            this.moduleCounterName = moduleName + "/" + counterName;
+        public CounterInfo(int counterId, boolean enabled,
+                           String moduleName, String counterHierarchy,
+                           String desc, CounterType ctype, Object... metaData) {
+            this.moduleCounterHierarchy = moduleName + "/" + counterHierarchy;
             this.moduleName = moduleName;
-            this.counterName = counterName;
+            this.counterHierarchy = counterHierarchy;
             this.counterDesc = desc;
             this.ctype = ctype;
             this.counterId = counterId;
             this.enabled = enabled;
+            this.metaData = metaData;
         }
 
-        public String getModuleCounterName() { return moduleCounterName; }
+        public String getModuleCounterHierarchy() { return moduleCounterHierarchy; }
         public String getCounterDesc() { return counterDesc; }
         public CounterType getCtype() { return ctype; }
         public String getModuleName() { return moduleName; }
-        public String getCounterName() { return counterName; }
+        public String getCounterHierarchy() { return counterHierarchy; }
         public int getCounterId() { return counterId; }
         public boolean isEnabled() { return enabled; }
         public Object[] getMetaData() { return metaData; }
@@ -180,42 +181,93 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
         }
     };
 
+    //*******************************
+    //   IDebugCounter
+    //*******************************
+
+    private class CounterImpl implements IDebugCounter {
+        private final int counterId;
+
+        public CounterImpl(int counterId) {
+            this.counterId = counterId;
+        }
+
+        @Override
+        public void updateCounterWithFlush() {
+            if (!validCounterId()) return;
+            updateCounter(counterId, 1, true);
+        }
+
+        @Override
+        public void updateCounterNoFlush() {
+            if (!validCounterId()) return;
+            updateCounter(counterId, 1, false);
+        }
+
+        @Override
+        public void updateCounterWithFlush(int incr) {
+            if (!validCounterId()) return;
+            updateCounter(counterId, incr, true);
+        }
+
+        @Override
+        public void updateCounterNoFlush(int incr) {
+            if (!validCounterId()) return;
+            updateCounter(counterId, incr, false);
+        }
+
+        @Override
+        public long getCounterValue() {
+            if (!validCounterId()) return -1;
+            return allCounters[counterId].cvalue.get();
+        }
+
+        private boolean validCounterId() {
+            if (counterId < 0 || counterId >= MAX_COUNTERS) {
+                log.error("Invalid counterId invoked");
+                return false;
+            }
+            return true;
+        }
+
+    }
+
    //*******************************
    //   IDebugCounterService
    //*******************************
 
    @Override
-   public int registerCounter(String moduleName, String counterName,
-                              String counterDescription, CounterType counterType,
-                              Object[] metaData)  throws MaxCountersRegistered{
+   public IDebugCounter registerCounter(String moduleName, String counterHierarchy,
+                           String counterDescription, CounterType counterType,
+                           Object... metaData)  throws MaxCountersRegistered{
        // check if counter already exists
        if (!moduleCounters.containsKey(moduleName)) {
            moduleCounters.putIfAbsent(moduleName,
                 new ConcurrentHashMap<String, CounterIndexStore>());
        }
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        if (rci.allLevelsFound) {
            // counter exists
            log.info("Counter exists for {}/{} -- resetting counters", moduleName,
-                    counterName);
-           resetCounterHierarchy(moduleName, counterName);
-           return rci.ctrIds[rci.foundUptoLevel-1];
+                    counterHierarchy);
+           resetCounterHierarchy(moduleName, counterHierarchy);
+           return new CounterImpl(rci.ctrIds[rci.foundUptoLevel-1]);
        }
        // check for validity of counter
        if (rci.levels.length > MAX_HIERARCHY) {
-           log.error("Registry of counterName {} exceeds max hierachy {}.. aborting",
-                     counterName, MAX_HIERARCHY);
-           return -1;
+           log.error("Registry of counterHierarchy {} exceeds max hierachy {}.. aborting",
+                     counterHierarchy, MAX_HIERARCHY);
+           return new CounterImpl(-1);
        }
        if (rci.foundUptoLevel < rci.levels.length-1) {
            String needToRegister = "";
            for (int i=0; i<=rci.foundUptoLevel; i++) {
                needToRegister += rci.levels[i];
            }
-           log.error("Attempting to register hierarchical counterName {}, "+
+           log.error("Attempting to register hierarchical counterHierarchy {}, "+
                      "but parts of hierarchy missing. Please register {} first ",
-                     counterName, needToRegister);
-           return -1;
+                     counterHierarchy, needToRegister);
+           return new CounterImpl(-1);
        }
 
        // get a new counter id
@@ -225,8 +277,9 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        }
        // create storage for counter
        boolean enabled = (counterType == CounterType.ALWAYS_COUNT) ? true : false;
-       CounterInfo ci = new CounterInfo(counterId, enabled, metaData, moduleName,
-                                        counterName, counterDescription, counterType);
+       CounterInfo ci = new CounterInfo(counterId, enabled, moduleName,
+                                        counterHierarchy, counterDescription,
+                                        counterType, metaData);
        allCounters[counterId] = new DebugCounterInfo(ci);
 
        // account for the new counter in the module counter hierarchy
@@ -236,17 +289,10 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        if (enabled) {
            currentCounters.add(counterId);
        }
-       return counterId;
+       return new CounterImpl(counterId);
    }
 
-
-   @Override
-   public void updateCounter(int counterId, boolean flushNow) {
-       updateCounter(counterId, 1, flushNow);
-   }
-
-   @Override
-   public void updateCounter(int counterId, int incr, boolean flushNow) {
+   private void updateCounter(int counterId, int incr, boolean flushNow) {
        if (counterId < 0 || counterId >= MAX_COUNTERS) return;
 
        LocalCounterInfo[] thiscounters =  this.threadlocalCounters.get();
@@ -285,7 +331,6 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                }
            }
        }
-
    }
 
    @Override
@@ -319,14 +364,16 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        // the global set.
        Sets.SetView<Integer> sv = Sets.difference(currentCounters, thisset);
        for (int counterId : sv) {
-           if (thiscounters[counterId] != null) thiscounters[counterId].enabled = true;
-           thisset.add(counterId);
+           if (thiscounters[counterId] != null) {
+               thiscounters[counterId].enabled = true;
+               thisset.add(counterId);
+           }
        }
    }
 
    @Override
-   public void resetCounterHierarchy(String moduleName, String counterName) {
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+   public void resetCounterHierarchy(String moduleName, String counterHierarchy) {
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        if (!rci.allLevelsFound) {
            String missing = rci.levels[rci.foundUptoLevel];
            log.error("Cannot reset counter hierarchy - missing counter {}", missing);
@@ -371,8 +418,8 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    }
 
    @Override
-   public void enableCtrOnDemand(String moduleName, String counterName) {
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+   public void enableCtrOnDemand(String moduleName, String counterHierarchy) {
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        if (!rci.allLevelsFound) {
            String missing = rci.levels[rci.foundUptoLevel];
            log.error("Cannot enable counter - counter not found {}", missing);
@@ -385,8 +432,8 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    }
 
    @Override
-   public void disableCtrOnDemand(String moduleName, String counterName) {
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+   public void disableCtrOnDemand(String moduleName, String counterHierarchy) {
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        if (!rci.allLevelsFound) {
            String missing = rci.levels[rci.foundUptoLevel];
            log.error("Cannot disable counter - counter not found {}", missing);
@@ -403,8 +450,8 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    @Override
    public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
-                                                     String counterName) {
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+                                                     String counterHierarchy) {
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        if (!rci.allLevelsFound) {
            String missing = rci.levels[rci.foundUptoLevel];
            log.error("Cannot fetch counter - counter not found {}", missing);
@@ -452,9 +499,10 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
    }
 
    @Override
-   public boolean containsModuleCounterName(String moduleName, String counterName) {
+   public boolean containsModuleCounterHierarchy(String moduleName,
+                                                 String counterHierarchy) {
        if (!moduleCounters.containsKey(moduleName)) return false;
-       RetCtrInfo rci = getCounterId(moduleName, counterName);
+       RetCtrInfo rci = getCounterId(moduleName, counterHierarchy);
        return rci.allLevelsFound;
    }
 
@@ -469,7 +517,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    protected class RetCtrInfo {
        boolean allLevelsFound; // counter indices found all the way down the hierarchy
-       boolean hierarchical; // true if counterName is hierarchical
+       boolean hierarchical; // true if counterHierarchy is hierarchical
        int foundUptoLevel;
        int[]  ctrIds;
        String[] levels;
@@ -495,12 +543,15 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
 
    }
 
-   protected RetCtrInfo getCounterId(String moduleName, String counterName) {
+   protected RetCtrInfo getCounterId(String moduleName, String counterHierarchy) {
        RetCtrInfo rci = new RetCtrInfo();
        Map<String, CounterIndexStore> templevel = moduleCounters.get(moduleName);
-       rci.levels = counterName.split("/");
+       rci.levels = counterHierarchy.split("/");
        if (rci.levels.length > 1) rci.hierarchical = true;
-       if (templevel == null) return rci;
+       if (templevel == null) {
+           log.error("moduleName {} does not exist in debugCounters", moduleName);
+           return rci;
+       }
 
        /*
        if (rci.levels.length > MAX_HIERARCHY) {
@@ -514,7 +565,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
            if (templevel != null) {
                CounterIndexStore cis = templevel.get(rci.levels[i]) ;
                if (cis == null) {
-                   // could not find counterName part at this level
+                   // could not find counterHierarchy part at this level
                    break;
                } else {
                    rci.ctrIds[i] = cis.index;
@@ -526,7 +577,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                }
            } else {
                // there are no more levels, which means that some part of the
-               // counterName has no corresponding map
+               // counterHierarchy has no corresponding map
                break;
            }
        }
@@ -592,7 +643,8 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        }
    }
 
-   protected void printAllCounters() {
+   protected void printAllCounterIds() {
+       log.info("<moduleCounterHierarchy>");
        Set<String> keys = moduleCounters.keySet();
        for (String key : keys) {
            log.info("ModuleName: {}", key);
@@ -618,6 +670,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
                }
            }
        }
+       log.info("<\\moduleCounterHierarchy>");
    }
 
    //*******************************

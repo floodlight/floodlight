@@ -70,23 +70,23 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
 
     @Override
-    public void resetCounterHierarchy(String moduleName, String counterName) {
+    public void resetCounterHierarchy(String moduleName, String counterHierarchy) {
 
     }
 
     @Override
-    public void enableCtrOnDemand(String moduleName, String counterName) {
+    public void enableCtrOnDemand(String moduleName, String counterHierarchy) {
 
     }
 
     @Override
-    public void disableCtrOnDemand(String moduleName, String counterName) {
+    public void disableCtrOnDemand(String moduleName, String counterHierarchy) {
 
     }
 
     @Override
     public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
-                                                      String counterName) {
+                                                      String counterHierarchy) {
         return null;
     }
 
@@ -101,8 +101,8 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
     }
 
     @Override
-    public boolean containsModuleCounterName(String moduleName,
-                                             String counterName) {
+    public boolean containsModuleCounterHierarchy(String moduleName,
+                                             String counterHierarchy) {
         return false;
     }
 
@@ -113,26 +113,15 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
     @Override
     public
-            int
-            registerCounter(String moduleName, String counterName,
+            IDebugCounter
+            registerCounter(String moduleName, String counterHierarchy,
                             String counterDescription,
-                            CounterType counterType, Object[] metaData)
-                                                                       throws MaxCountersRegistered {
-        // TODO Auto-generated method stub
-        return 0;
+                            CounterType counterType, Object... metaData)
+                                 throws MaxCountersRegistered {
+        return null;
     }
 
-    @Override
-    public void updateCounter(int counterId, boolean flushNow) {
-        // TODO Auto-generated method stub
 
-    }
-
-    @Override
-    public void updateCounter(int counterId, int incr, boolean flushNow) {
-        // TODO Auto-generated method stub
-
-    }
 
 
 }
