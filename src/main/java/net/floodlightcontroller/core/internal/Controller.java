@@ -791,7 +791,7 @@ public class Controller implements IFloodlightProviderService,
             if (role == this.role) {
                 counters.setSameRole.increment();
                 log.debug("Received role request for {} but controller is "
-                        + "already {}. Ingoring it.", role, this.role);
+                        + "already {}. Ignoring it.", role, this.role);
                 return;
             }
             if (this.role == Role.MASTER && role == Role.SLAVE) {
