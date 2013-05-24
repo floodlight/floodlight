@@ -30,16 +30,16 @@ public class AppCookie {
     static final int APP_ID_BITS = 12;
     static final int APP_ID_SHIFT = (64 - APP_ID_BITS);
     /**the following bit will be set accordingly if the field is rewritten by application. e.g. VRS or floating IP */
-    static final int SRC_MAC_REWRITE_BIT=13;
-    static final int DEST_MAC_REWRITE_BIT=14;
-    static final int SRC_IP_REWRITE_BIT=15;
-    static final int DEST_IP_REWRITE_BIT=16;
+    static final int SRC_MAC_REWRITE_BIT=33;
+    static final int DEST_MAC_REWRITE_BIT=34;
+    static final int SRC_IP_REWRITE_BIT=35;
+    static final int DEST_IP_REWRITE_BIT=36;
 
  // we have bits 17-31 unused here ... that's ok!
     static final int USER_BITS = 32;
     static final int USER_SHIFT = 0;
 
-    static final long REWRITE_MASK= 0x000f000000000000L;
+    static final long REWRITE_MASK= 0x000f00000000L;
     private static ConcurrentHashMap<Integer, String> appIdMap =
             new ConcurrentHashMap<Integer, String>();
 
@@ -69,36 +69,36 @@ public class AppCookie {
         return false;
     }
     static public boolean isSrcMacRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (64-SRC_MAC_REWRITE_BIT))) !=0L)
+        if ((cookie & (1L << (SRC_MAC_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
     static public boolean isDestMacRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (64-DEST_MAC_REWRITE_BIT))) !=0L)
+        if ((cookie & (1L << (DEST_MAC_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
     static public boolean isSrcIpRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (64-SRC_IP_REWRITE_BIT))) !=0L)
+        if ((cookie & (1L << (SRC_IP_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
     static public boolean isDestIpRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (64-DEST_IP_REWRITE_BIT))) !=0L)
+        if ((cookie & (1L << (DEST_IP_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
     static public long setSrcMacRewriteFlag(long cookie) {
-        return cookie | (1L << (64-SRC_MAC_REWRITE_BIT));
+        return cookie | (1L << (SRC_MAC_REWRITE_BIT-1));
     }
     static public long setDestMacRewriteFlag(long cookie) {
-        return cookie | (1L << (64-DEST_MAC_REWRITE_BIT));
+        return cookie | (1L << (DEST_MAC_REWRITE_BIT-1));
     }
     static public long setSrcIpRewriteFlag(long cookie) {
-        return cookie | (1L << (64-SRC_IP_REWRITE_BIT));
+        return cookie | (1L << (SRC_IP_REWRITE_BIT-1));
     }
     static public long setDestIpRewriteFlag(long cookie) {
-        return cookie | (1L << (64-DEST_IP_REWRITE_BIT));
+        return cookie | (1L << (DEST_IP_REWRITE_BIT-1));
     }
     /**
      * A lame attempt to prevent duplicate application ID.

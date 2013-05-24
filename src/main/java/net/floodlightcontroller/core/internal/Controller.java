@@ -121,8 +121,8 @@ import org.slf4j.LoggerFactory;
 public class Controller implements IFloodlightProviderService,
             IStorageSourceListener {
 
-    protected static Logger log = LoggerFactory.getLogger(Controller.class);
-    protected static INotificationManager notifier =
+    protected static final Logger log = LoggerFactory.getLogger(Controller.class);
+    protected static final INotificationManager notifier =
             NotificationManagerFactory.getNotificationManager(Controller.class);
 
     static final String ERROR_DATABASE =

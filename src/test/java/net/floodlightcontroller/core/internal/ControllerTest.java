@@ -1574,7 +1574,7 @@ public class ControllerTest extends FloodlightTestCase {
         switchListener.switchRemoved(3L);
         switchListener.switchRemoved(4L);
         replay(switchListener);
-        Thread.sleep(consolidateStoreDelayMs + 5);
+        Thread.sleep(2*consolidateStoreDelayMs);
         controller.processUpdateQueueForTesting();
         verify(switchListener);
         verify(readyForReconcileListener);
@@ -1771,7 +1771,7 @@ public class ControllerTest extends FloodlightTestCase {
         replay(switchListener);
         reset(readyForReconcileListener);
         replay(readyForReconcileListener);
-        Thread.sleep(consolidateStoreDelayMs + 5);
+        Thread.sleep(2*consolidateStoreDelayMs);
         controller.processUpdateQueueForTesting();
         verify(switchListener);
         verify(readyForReconcileListener);
