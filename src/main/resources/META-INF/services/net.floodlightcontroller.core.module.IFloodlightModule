@@ -15,6 +15,7 @@ net.floodlightcontroller.learningswitch.LearningSwitch
 net.floodlightcontroller.hub.Hub
 net.floodlightcontroller.jython.JythonDebugInterface
 net.floodlightcontroller.counter.CounterStore
+net.floodlightcontroller.counter.NullCounterStore
 net.floodlightcontroller.debugcounter.DebugCounter
 net.floodlightcontroller.debugevent.DebugEvent
 net.floodlightcontroller.threadpool.ThreadPool
