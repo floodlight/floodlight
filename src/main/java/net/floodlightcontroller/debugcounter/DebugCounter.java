@@ -185,7 +185,7 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
     //   IDebugCounter
     //*******************************
 
-    private class CounterImpl implements IDebugCounter {
+    protected class CounterImpl implements IDebugCounter {
         private final int counterId;
 
         public CounterImpl(int counterId) {

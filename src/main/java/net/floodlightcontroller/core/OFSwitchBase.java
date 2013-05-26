@@ -1392,7 +1392,6 @@ public abstract class OFSwitchBase implements IOFSwitch {
             log.error("Debug Counter Service not found");
             debugCounters = new NullDebugCounter();
             debugCountersRegistered = true;
-            return;
         }
         try {
             // every level of the hierarchical counter has to be registered

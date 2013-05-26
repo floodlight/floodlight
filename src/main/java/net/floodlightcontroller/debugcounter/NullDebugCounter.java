@@ -118,9 +118,42 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
                             String counterDescription,
                             CounterType counterType, Object... metaData)
                                  throws MaxCountersRegistered {
-        return null;
+        return new NullCounterImpl();
     }
 
+    public class NullCounterImpl implements IDebugCounter {
+
+        @Override
+        public void updateCounterWithFlush() {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void updateCounterNoFlush() {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void updateCounterWithFlush(int incr) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void updateCounterNoFlush(int incr) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public long getCounterValue() {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+    }
 
 
 

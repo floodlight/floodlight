@@ -905,7 +905,6 @@ IFlowReconcileListener, IInfoProvider {
         if (debugCounters == null) {
             logger.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
         try {
             cntIncoming = debugCounters.registerCounter(MODULE_NAME, "incoming",

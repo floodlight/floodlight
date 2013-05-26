@@ -795,7 +795,6 @@ public class TopologyManager implements
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
         try {
             ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
