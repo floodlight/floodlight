@@ -142,7 +142,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     private boolean debugCountersRegistered;
     @SuppressWarnings("unused")
     private IDebugCounter ctrSwitch, ctrSwitchPktin, ctrSwitchWrite;
-    private IDebugCounter ctrSwithPktinDrops, ctrSwitchWriteDrops;
+    private IDebugCounter ctrSwitchPktinDrops, ctrSwitchWriteDrops;
 
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
@@ -1334,7 +1334,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         OFMatch match = new OFMatch();
         match.loadFromPacket(pin.getPacketData(), pin.getInPort());
         if (ofMatchCache.update(match)) {
-           ctrSwithPktinDrops.updateCounterNoFlush();
+           ctrSwitchPktinDrops.updateCounterNoFlush();
             return true;
         }
 
@@ -1408,7 +1408,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                                        "switch", stringId + "/write",
                                        "Write counter for this switch",
                                        CounterType.ALWAYS_COUNT);
-            ctrSwithPktinDrops = debugCounters.registerCounter(
+            ctrSwitchPktinDrops = debugCounters.registerCounter(
                                        "switch", stringId + "/pktin/drops",
                                        "Packet in throttle drop count",
                                        CounterType.ALWAYS_COUNT);
