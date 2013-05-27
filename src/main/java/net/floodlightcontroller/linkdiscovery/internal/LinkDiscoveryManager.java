@@ -1,4 +1,4 @@
-/**
+floodlight/src/main/java/net/floodlightcontroller/linkdiscovery/LinkInfo.java/**
  *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
  *
@@ -506,6 +506,18 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             lock.readLock().unlock();
         }
         return result;
+    }
+
+    @Override
+    public LinkInfo getLinkInfo(Link link) {
+        lock.readLock().lock();
+        LinkInfo linkInfo = links.get(link);
+        LinkInfo retLinkInfo = null;
+        if (linkInfo != null) {
+            retLinkInfo  = new LinkInfo(linkInfo);
+        }
+        lock.readLock().unlock();
+        return retLinkInfo;
     }
 
     @Override

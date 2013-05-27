@@ -40,6 +40,12 @@ public class LinkInfo {
         this.lastBddpReceivedTime = null;
     }
 
+    public LinkInfo(LinkInfo fromLinkInfo) {
+        this.firstSeenTime = fromLinkInfo.getFirstSeenTime();
+        this.lastLldpReceivedTime = fromLinkInfo.getUnicastValidTime();
+        this.lastBddpReceivedTime = fromLinkInfo.getMulticastValidTime();
+    }
+
     protected Long firstSeenTime;
     protected Long lastLldpReceivedTime; /* Standard LLLDP received time */
     protected Long lastBddpReceivedTime; /* Modified LLDP received time  */
