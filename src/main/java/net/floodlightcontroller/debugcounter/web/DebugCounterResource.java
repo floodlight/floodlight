@@ -121,11 +121,13 @@ public class DebugCounterResource extends DebugCounterResourceBase {
         } else if (param1.equals("all")) {
             moduleName = "all";
             choice = Option.ALL;
+        } else {
+            moduleName = param1;
         }
 
         String counterHierarchy = "";
         if (param2 != null) {
-            counterHierarchy += "/" + param2;
+            counterHierarchy += param2;
             if (param3 != null) {
                 counterHierarchy += "/" + param3;
                 if (param4 != null) {
@@ -228,7 +230,7 @@ public class DebugCounterResource extends DebugCounterResourceBase {
 
         String counterHierarchy = "";
         if (param2 != null) {
-            counterHierarchy += "/" + param2;
+            counterHierarchy += param2;
             if (param3 != null) {
                 counterHierarchy += "/" + param3;
                 if (param4 != null) {
