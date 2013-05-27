@@ -1,4 +1,4 @@
-floodlight/src/main/java/net/floodlightcontroller/linkdiscovery/LinkInfo.java/**
+/*
  *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
  *
