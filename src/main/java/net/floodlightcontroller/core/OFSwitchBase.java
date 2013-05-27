@@ -1304,9 +1304,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
      */
     @Override
     public boolean inputThrottled(OFMessage ofm) {
+        ctrSwitch.updateCounterNoFlush();
         if (ofm.getType() != OFType.PACKET_IN) {
             return false;
         }
+        ctrSwitchPktin.updateCounterNoFlush();
         // Compute current packet in rate
         messageCount++;
         if (messageCount % 100 == 0) {
