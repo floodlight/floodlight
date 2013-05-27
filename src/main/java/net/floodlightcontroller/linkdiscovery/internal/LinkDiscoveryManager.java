@@ -1,4 +1,4 @@
-/*
+/**
  *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
  *
