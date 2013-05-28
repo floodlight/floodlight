@@ -472,6 +472,8 @@ class OFChannelHandler
                     throws IOException {
                 h.featuresReply = m;
                 if (m.getTables() > 1) {
+                    log.debug("Have {} table for switch {}", m.getTables(),
+                              h.getSwitchInfoString());
                     // likely supports L2 table extensions. Send set
                     h.sendHandshakeL2TableSet();
                     // TODO: no L2 SET reply yet, so fire and forget the set
@@ -590,6 +592,14 @@ class OFChannelHandler
 
             @Override
             void processOFError(OFChannelHandler h, OFError m) {
+                if (m.getErrorType() == OFErrorType.OFPET_BAD_REQUEST.getValue()
+                        && m.getErrorCode() ==
+                            OFBadRequestCode.OFPBRC_BAD_VENDOR.ordinal()) {
+                    log.debug("Switch {} has multiple tables but does not " +
+                            "support L2 table extension",
+                            h.getSwitchInfoString());
+                    return;
+                }
                 logErrorDisconnect(h, m);
             }
 
@@ -1302,9 +1312,14 @@ class OFChannelHandler
                    explanation="The specified switch has disconnected.")
     public void channelDisconnected(ChannelHandlerContext ctx,
                                     ChannelStateEvent e) throws Exception {
-        controller.switchDisconnected(this.sw);
         controller.removeSwitchChannel(this);
-        this.sw.setConnected(false);
+        if (this.sw != null) {
+            // TODO: switchDisconnected() will check if we've previously
+            // activated the switch. Nevertheless, we might want to check
+            // here as well.
+            controller.switchDisconnected(this.sw);
+            this.sw.setConnected(false);
+        }
 
         log.info("Disconnected switch {}", getSwitchInfoString());
     }
