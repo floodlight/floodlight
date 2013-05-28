@@ -57,6 +57,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
@@ -259,6 +260,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     protected Set<MACRange> ignoreMACSet;
 
     private IHAListener haListener;
+
+    /**
+     * Debug Counter
+     */
+    private IDebugCounter ctrQuarantineDrops;
+    private IDebugCounter ctrIgnoreSrcMacDrops;
+    private IDebugCounter ctrIncoming;
+    private IDebugCounter ctrLinkLocalDrops;
+    private IDebugCounter ctrLldpEol;
+
 
     //*********************
     // ILinkDiscoveryService
@@ -498,6 +509,18 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     @Override
+    public LinkInfo getLinkInfo(Link link) {
+        lock.readLock().lock();
+        LinkInfo linkInfo = links.get(link);
+        LinkInfo retLinkInfo = null;
+        if (linkInfo != null) {
+            retLinkInfo  = new LinkInfo(linkInfo);
+        }
+        lock.readLock().unlock();
+        return retLinkInfo;
+    }
+
+    @Override
     public String getName() {
         return MODULE_NAME;
     }
@@ -511,7 +534,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter("linkdiscovery-incoming");
+                ctrIncoming.updateCounterNoFlush();
                 return this.handlePacketIn(sw.getId(), (OFPacketIn) msg,
                                            cntx);
             default:
@@ -553,7 +576,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         } else if (eth.getEtherType() < 1500) {
             long destMac = eth.getDestinationMAC().toLong();
             if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
-                debugCounters.updateCounter("linkdiscovery-linklocaldrops");
+                ctrLinkLocalDrops.updateCounterNoFlush();
                 if (log.isTraceEnabled()) {
                     log.trace("Ignoring packet addressed to 802.1D/Q "
                               + "reserved address.");
@@ -563,14 +586,14 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
 
         if (ignorePacketInFromSource(eth.getSourceMAC().toLong())) {
-            debugCounters.updateCounter("linkdiscovery-ignoresrcmacdrops");
+            ctrIgnoreSrcMacDrops.updateCounterNoFlush();
             return Command.STOP;
         }
 
         // If packet-in is from a quarantine port, stop processing.
         NodePortTuple npt = new NodePortTuple(sw, pi.getInPort());
         if (quarantineQueue.contains(npt)) {
-            debugCounters.updateCounter("linkdiscovery-quarantinedrops");
+            ctrQuarantineDrops.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -766,7 +789,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         removeFromMaintenanceQueue(nptDst);
 
         // Consume this message
-        debugCounters.updateCounter("linkdiscovery-lldpeol");
+        ctrLldpEol.updateCounterNoFlush();
         return Command.STOP;
     }
 
@@ -2101,21 +2124,24 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
-        debugCounters.registerCounter(getName() + "-" + "incoming",
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(getName() + "-" + "lldpeol",
-            "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
-        debugCounters.registerCounter(getName() + "-" + "linklocaldrops",
-            "All link local packets dropped by this module",
-                                      CounterType.COUNT_ON_DEMAND);
-        debugCounters.registerCounter(getName() + "-" + "ignoresrcmacdrops",
-            "All packets whose srcmac is configured to be dropped by this module",
-                                      CounterType.COUNT_ON_DEMAND);
-        debugCounters.registerCounter(getName() + "-" + "quarantinedrops",
-            "All packets arriving on qurantined ports dropped by this module",
-                                      CounterType.COUNT_ON_DEMAND);
+        try {
+            ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
+                "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+            ctrLldpEol  = debugCounters.registerCounter(getName(), "lldp-eol",
+                "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
+            ctrLinkLocalDrops = debugCounters.registerCounter(getName(), "linklocal-drops",
+                "All link local packets dropped by this module",
+                CounterType.COUNT_ON_DEMAND);
+            ctrIgnoreSrcMacDrops = debugCounters.registerCounter(getName(), "ignore-srcmac-drops",
+                "All packets whose srcmac is configured to be dropped by this module",
+                CounterType.COUNT_ON_DEMAND);
+            ctrQuarantineDrops = debugCounters.registerCounter(getName(), "quarantine-drops",
+                "All packets arriving on quarantined ports dropped by this module",
+                CounterType.COUNT_ON_DEMAND);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void registerLinkDiscoveryDebugEvents() {

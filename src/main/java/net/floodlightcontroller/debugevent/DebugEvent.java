@@ -208,7 +208,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                                      et, formatStr, eventDescription, eventName,
                                      moduleName, flushImmediately);
         allEvents[eventId] = new DebugEventHistory(ei, bufferCapacity);
-        if (enabled && eventId < MAX_EVENTS) {
+        if (enabled) {
             currentEvents.add(eventId);
         }
 

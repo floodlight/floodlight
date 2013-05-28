@@ -52,6 +52,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
@@ -113,7 +114,6 @@ IFlowReconcileListener, IInfoProvider {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
 
-    public static final String MODULE_NAME = "devicemanager";
 
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
@@ -127,66 +127,38 @@ IFlowReconcileListener, IInfoProvider {
     private IStoreClient<String,DeviceSyncRepresentation> storeClient;
     private DeviceSyncManager deviceSyncManager;
 
-    public static final String CNT_INCOMING = MODULE_NAME + "-incoming";
-    public static final String CNT_RECONCILE_REQUEST = MODULE_NAME +
-            "-reconcileRequest";
-    public static final String CNT_RECONCILE_NO_SOURCE = MODULE_NAME +
-            "-reconcileNoSourceDevice";
-    public static final String CNT_RECONCILE_NO_DEST = MODULE_NAME +
-            "-reconcileNoDestDevice";
-    public static final String CNT_BROADCAST_SOURCE = MODULE_NAME +
-            "-broadcastSource";
-    public static final String CNT_NO_SOURCE = MODULE_NAME +
-            "-noSourceDevice";
-    public static final String CNT_NO_DEST = MODULE_NAME +
-            "-noDestDevice";
-    public static final String CNT_DHCP_CLIENT_NAME_SNOOPED = MODULE_NAME +
-            "-dhcpClientNameSnooped";
-    public static final String CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED =
-            MODULE_NAME + "-deviceOnInternalPortNotLearned";
-    public static final String CNT_PACKET_NOT_ALLOWED = MODULE_NAME +
-            "-packetNotAllowed";
-    public static final String CNT_NEW_DEVICE = MODULE_NAME +
-            "-newDevice";
-    public static final String CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE =
-            MODULE_NAME + "-packetOnInternalPortForKnownDevice";
-    public static final String CNT_NEW_ENTITY = MODULE_NAME +
-            "-newEntity";
-    public static final String CNT_DEVICE_CHANGED = MODULE_NAME +
-            "-deviceChanged";
-    public static final String CNT_DEVICE_MOVED = MODULE_NAME +
-            "-deviceMoved";
-    public static final String CNT_CLEANUP_ENTITIES_RUNS = MODULE_NAME +
-            "-cleanupEntitiesRuns";
-    public static final String CNT_ENTITY_REMOVED_TIMEOUT = MODULE_NAME +
-            "-entityRemovedTimeout";
-    public static final String CNT_DEVICE_DELETED = MODULE_NAME +
-            "-deviceDeleted";
-    public static final String CNT_DEVICE_RECLASSIFY_DELETE = MODULE_NAME +
-            "-deviceReclassifyDelete";
-    public static final String CNT_DEVICE_STORED = MODULE_NAME +
-            "-deviceStored";
-    public static final String CNT_DEVICE_STORE_THROTTLED = MODULE_NAME +
-            "-deviceStoreThrottled";
-    public static final String CNT_DEVICE_REMOVED_FROM_STORE = MODULE_NAME +
-            "-deviceRemovedFromStore";
-    public static final String CNT_SYNC_EXCEPTION = MODULE_NAME +
-            "-syncException";
-    public static final String CNT_DEVICES_FROM_STORE = MODULE_NAME +
-            "-devicesFromStore";
-    public static final String CNT_CONSOLIDATE_STORE_RUNS = MODULE_NAME +
-            "-consolidateStoreRuns";
-    public static final String CNT_CONSOLIDATE_STORE_DEVICES_REMOVED = MODULE_NAME +
-            "-consolidateStoreDevicesRemoved";
-    public static final String CNT_TRANSITION_TO_MASTER = MODULE_NAME +
-            "-transitionToMaster";
-
-
-
-
-
-
-
+    /**
+     * Debug Counters
+     */
+    public static final String MODULE_NAME = "devicemanager";
+    public static final String WARN = "warn";
+    public static IDebugCounter cntIncoming;
+    public static IDebugCounter cntReconcileRequest;
+    public static IDebugCounter cntReconcileNoSource;
+    public static IDebugCounter cntReconcileNoDest;
+    public static IDebugCounter cntBroadcastSource;
+    public static IDebugCounter cntNoSource;
+    public static IDebugCounter cntNoDest;
+    public static IDebugCounter cntDhcpClientNameSnooped;
+    public static IDebugCounter cntDeviceOnInternalPortNotLearned;
+    public static IDebugCounter cntPacketNotAllowed;
+    public static IDebugCounter cntNewDevice;
+    public static IDebugCounter cntPacketOnInternalPortForKnownDevice;
+    public static IDebugCounter cntNewEntity;
+    public static IDebugCounter cntDeviceChanged;
+    public static IDebugCounter cntDeviceMoved;
+    public static IDebugCounter cntCleanupEntitiesRuns;
+    public static IDebugCounter cntEntityRemovedTimeout;
+    public static IDebugCounter cntDeviceDeleted;
+    public static IDebugCounter cntDeviceReclassifyDelete;
+    public static IDebugCounter cntDeviceStrored;
+    public static IDebugCounter cntDeviceStoreThrottled;
+    public static IDebugCounter cntDeviceRemovedFromStore;
+    public static IDebugCounter cntSyncException;
+    public static IDebugCounter cntDevicesFromStore;
+    public static IDebugCounter cntConsolidateStoreRuns;
+    public static IDebugCounter cntConsolidateStoreDevicesRemoved;
+    public static IDebugCounter cntTransitionToMaster;
 
     private boolean isMaster = false;
 
@@ -725,7 +697,7 @@ IFlowReconcileListener, IInfoProvider {
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter(CNT_INCOMING);
+                cntIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -757,19 +729,19 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     protected Command reconcileFlow(OFMatchReconcile ofm) {
-        debugCounters.updateCounter(CNT_RECONCILE_REQUEST);
+        cntReconcileRequest.updateCounterNoFlush();
         // Extract source entity information
         Entity srcEntity =
                 getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
         if (srcEntity == null) {
-            debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE);
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
        }
 
         // Find the device by source entity
         Device srcDevice = findDeviceByEntity(srcEntity);
         if (srcDevice == null)  {
-            debugCounters.updateCounter(CNT_RECONCILE_NO_SOURCE);
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
         }
         // Store the source device in the context
@@ -784,9 +756,9 @@ IFlowReconcileListener, IInfoProvider {
             if (dstDevice != null)
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
             else
-                debugCounters.updateCounter(CNT_RECONCILE_NO_DEST);
+                cntReconcileNoDest.updateCounterNoFlush();
         } else {
-            debugCounters.updateCounter(CNT_RECONCILE_NO_DEST);
+            cntReconcileNoDest.updateCounterNoFlush();
         }
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, "
@@ -890,7 +862,6 @@ IFlowReconcileListener, IInfoProvider {
                 cleanupEntities();
                 entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                              TimeUnit.SECONDS);
-                debugCounters.flushCounters();
             }
         };
         entityCleanupTask = new SingletonTask(ses, ecr);
@@ -903,7 +874,6 @@ IFlowReconcileListener, IInfoProvider {
                 deviceSyncManager.consolidateStore();
                 storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
                                                 TimeUnit.MILLISECONDS);
-                debugCounters.flushCounters();
             }
         };
         storeConsolidateTask = new SingletonTask(ses, consolidateStoreRunner);
@@ -935,116 +905,138 @@ IFlowReconcileListener, IInfoProvider {
         if (debugCounters == null) {
             logger.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
-        debugCounters.registerCounter(CNT_INCOMING,
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_RECONCILE_REQUEST,
-            "Number of flows that have been received for reconciliation by " +
-            "this module",
-            CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_RECONCILE_NO_SOURCE,
-            "Number of flow reconcile events that failed because no source " +
-            "device could be identified",
-            CounterType.WARN); // is this really a warning
-        debugCounters.registerCounter(CNT_RECONCILE_NO_DEST,
-            "Number of flow reconcile events that failed because no " +
-            "destination device could be identified",
-            CounterType.WARN); // is this really a warning
-        debugCounters.registerCounter(CNT_BROADCAST_SOURCE,
-            "Number of packetIns that were discarded because the source " +
-            "MAC was broadcast or multicast",
-            CounterType.WARN);
-        debugCounters.registerCounter(CNT_NO_SOURCE,
-             "Number of packetIns that were discarded because the " +
-             "could not identify a source device. This can happen if a " +
-             "packet is not allowed, appears on an illegal port, does not " +
-             "have a valid address space, etc.",
-             CounterType.WARN);
-        debugCounters.registerCounter(CNT_NO_DEST,
-             "Number of packetIns that did not have an associated " +
-             "destination device. E.g., because the destination MAC is " +
-             "broadcast/multicast or is not yet known to the controller.",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DHCP_CLIENT_NAME_SNOOPED,
-             "Number of times a DHCP client name was snooped from a " +
-             "packetIn.",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED,
-             "Number of times packetIn was received on an internal port and" +
-             "no source device is known for the source MAC. The packetIn is " +
-             "discarded.",
-             CounterType.WARN);
-        debugCounters.registerCounter(CNT_PACKET_NOT_ALLOWED,
-             "Number of times a packetIn was not allowed due to spoofing " +
-             "protection configuration.",
-             CounterType.WARN); // is this really a warning?
-        debugCounters.registerCounter(CNT_NEW_DEVICE,
-             "Number of times a new device was learned",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE,
-             "Number of times a packetIn was received on an internal port " +
-             "for a known device.",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_NEW_ENTITY,
-             "Number of times a new entity was learned for an existing device",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_CHANGED,
-             "Number of times device properties have changed",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_MOVED,
-             "Number of times devices have moved",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_CLEANUP_ENTITIES_RUNS,
-             "Number of times the entity cleanup task has been run",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_ENTITY_REMOVED_TIMEOUT,
-             "Number of times entities have been removed due to timeout " +
-             "(entity has been inactive for " + ENTITY_TIMEOUT/1000 + "s)",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_DELETED,
-             "Number of devices that have been removed due to inactivity",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_RECLASSIFY_DELETE,
-             "Number of devices that required reclassification and have been " +
-             "temporarily delete for reclassification",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_STORED,
-             "Number of device entries written or updated to the sync store",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_STORE_THROTTLED,
-             "Number of times a device update to the sync store was " +
-             "requested but not performed because the same device entities " +
-             "have recently been updated already",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_DEVICE_REMOVED_FROM_STORE,
-             "Number of devices that were removed from the sync store " +
-             "because the local controller removed the device due to " +
-             "inactivity",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_SYNC_EXCEPTION,
-             "Number of times an operation on the sync store resulted in " +
-             "sync exception",
-             CounterType.WARN); // it this an error?
-        debugCounters.registerCounter(CNT_DEVICES_FROM_STORE,
-             "Number of devices that were read from the sync store after " +
-             "the local controller transitioned from SLAVE to MASTER",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_CONSOLIDATE_STORE_RUNS,
-             "Number of times the task to consolidate entries in the " +
-             "store witch live known devices has been run",
-             CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(CNT_CONSOLIDATE_STORE_DEVICES_REMOVED,
-             "Number of times a device has been removed from the sync " +
-             "store because no corresponding live device is known. " +
-             "This indicates a remote controller still writing device " +
-             "entries despite the local controller being MASTER or an " +
-             "incosistent store update from the local controller.",
-             CounterType.WARN);
-        debugCounters.registerCounter(CNT_TRANSITION_TO_MASTER,
-             "Number of times this controller has transitioned from SLAVE " +
-             "to MASTER role. Will be 0 or 1.",
-             CounterType.ALWAYS_COUNT);
+        try {
+            cntIncoming = debugCounters.registerCounter(MODULE_NAME, "incoming",
+                "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+            cntReconcileRequest = debugCounters.registerCounter(MODULE_NAME,
+                "reconcile-request",
+                "Number of flows that have been received for reconciliation by " +
+                "this module",
+                CounterType.ALWAYS_COUNT);
+            cntReconcileNoSource = debugCounters.registerCounter(MODULE_NAME,
+                "reconcile-no-source-device",
+                "Number of flow reconcile events that failed because no source " +
+                "device could be identified",
+                CounterType.ALWAYS_COUNT, WARN); // is this really a warning
+            cntReconcileNoDest = debugCounters.registerCounter(MODULE_NAME,
+                "reconcile-no-dest-device",
+                "Number of flow reconcile events that failed because no " +
+                "destination device could be identified",
+                CounterType.ALWAYS_COUNT, WARN); // is this really a warning
+            cntBroadcastSource = debugCounters.registerCounter(MODULE_NAME,
+                "broadcast-source",
+                "Number of packetIns that were discarded because the source " +
+                "MAC was broadcast or multicast",
+                CounterType.ALWAYS_COUNT, WARN);
+            cntNoSource = debugCounters.registerCounter(MODULE_NAME, "no-source-device",
+                 "Number of packetIns that were discarded because the " +
+                 "could not identify a source device. This can happen if a " +
+                 "packet is not allowed, appears on an illegal port, does not " +
+                 "have a valid address space, etc.",
+                 CounterType.ALWAYS_COUNT, WARN);
+            cntNoDest = debugCounters.registerCounter(MODULE_NAME, "no-dest-device",
+                 "Number of packetIns that did not have an associated " +
+                 "destination device. E.g., because the destination MAC is " +
+                 "broadcast/multicast or is not yet known to the controller.",
+                 CounterType.ALWAYS_COUNT);
+            cntDhcpClientNameSnooped = debugCounters.registerCounter(MODULE_NAME,
+                 "dhcp-client-name-snooped",
+                 "Number of times a DHCP client name was snooped from a " +
+                 "packetIn.",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceOnInternalPortNotLearned = debugCounters.registerCounter(
+                 MODULE_NAME,
+                 "device-on-internal-port-not-learned",
+                 "Number of times packetIn was received on an internal port and" +
+                 "no source device is known for the source MAC. The packetIn is " +
+                 "discarded.",
+                 CounterType.ALWAYS_COUNT, WARN);
+            cntPacketNotAllowed = debugCounters.registerCounter(MODULE_NAME,
+                 "packet-not-allowed",
+                 "Number of times a packetIn was not allowed due to spoofing " +
+                 "protection configuration.",
+                 CounterType.ALWAYS_COUNT, WARN); // is this really a warning?
+            cntNewDevice = debugCounters.registerCounter(MODULE_NAME, "new-device",
+                 "Number of times a new device was learned",
+                 CounterType.ALWAYS_COUNT);
+            cntPacketOnInternalPortForKnownDevice = debugCounters.registerCounter(
+                 MODULE_NAME,
+                 "packet-on-internal-port-for-known-device",
+                 "Number of times a packetIn was received on an internal port " +
+                 "for a known device.",
+                 CounterType.ALWAYS_COUNT);
+            cntNewEntity = debugCounters.registerCounter(MODULE_NAME, "new-entity",
+                 "Number of times a new entity was learned for an existing device",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceChanged = debugCounters.registerCounter(MODULE_NAME, "device-changed",
+                 "Number of times device properties have changed",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceMoved = debugCounters.registerCounter(MODULE_NAME, "device-moved",
+                 "Number of times devices have moved",
+                 CounterType.ALWAYS_COUNT);
+            cntCleanupEntitiesRuns = debugCounters.registerCounter(MODULE_NAME,
+                 "cleanup-entities-runs",
+                 "Number of times the entity cleanup task has been run",
+                 CounterType.ALWAYS_COUNT);
+            cntEntityRemovedTimeout = debugCounters.registerCounter(MODULE_NAME,
+                 "entity-removed-timeout",
+                 "Number of times entities have been removed due to timeout " +
+                 "(entity has been inactive for " + ENTITY_TIMEOUT/1000 + "s)",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceDeleted = debugCounters.registerCounter(MODULE_NAME, "device-deleted",
+                 "Number of devices that have been removed due to inactivity",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceReclassifyDelete = debugCounters.registerCounter(MODULE_NAME,
+                 "device-reclassify-delete",
+                 "Number of devices that required reclassification and have been " +
+                 "temporarily delete for reclassification",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceStrored = debugCounters.registerCounter(MODULE_NAME, "device-stored",
+                 "Number of device entries written or updated to the sync store",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceStoreThrottled = debugCounters.registerCounter(MODULE_NAME,
+                 "device-store-throttled",
+                 "Number of times a device update to the sync store was " +
+                 "requested but not performed because the same device entities " +
+                 "have recently been updated already",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceRemovedFromStore = debugCounters.registerCounter(MODULE_NAME,
+                 "device-removed-from-store",
+                 "Number of devices that were removed from the sync store " +
+                 "because the local controller removed the device due to " +
+                 "inactivity",
+                 CounterType.ALWAYS_COUNT);
+            cntSyncException = debugCounters.registerCounter(MODULE_NAME, "sync-exception",
+                 "Number of times an operation on the sync store resulted in " +
+                 "sync exception",
+                 CounterType.ALWAYS_COUNT, WARN); // it this an error?
+            cntDevicesFromStore = debugCounters.registerCounter(MODULE_NAME,
+                 "devices-from-store",
+                 "Number of devices that were read from the sync store after " +
+                 "the local controller transitioned from SLAVE to MASTER",
+                 CounterType.ALWAYS_COUNT);
+            cntConsolidateStoreRuns = debugCounters.registerCounter(MODULE_NAME,
+                 "consolidate-store-runs",
+                 "Number of times the task to consolidate entries in the " +
+                 "store witch live known devices has been run",
+                 CounterType.ALWAYS_COUNT);
+            cntConsolidateStoreDevicesRemoved = debugCounters.registerCounter(MODULE_NAME,
+                 "consolidate-store-devices-removed",
+                 "Number of times a device has been removed from the sync " +
+                 "store because no corresponding live device is known. " +
+                 "This indicates a remote controller still writing device " +
+                 "entries despite the local controller being MASTER or an " +
+                 "incosistent store update from the local controller.",
+                 CounterType.ALWAYS_COUNT, WARN);
+            cntTransitionToMaster = debugCounters.registerCounter(MODULE_NAME,
+                 "transition-to-master",
+                 "Number of times this controller has transitioned from SLAVE " +
+                 "to MASTER role. Will be 0 or 1.",
+                 CounterType.ALWAYS_COUNT);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // ***************
@@ -1101,7 +1093,7 @@ IFlowReconcileListener, IInfoProvider {
         Entity srcEntity =
                 getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
         if (srcEntity == null) {
-            debugCounters.updateCounter(CNT_BROADCAST_SOURCE);
+            cntBroadcastSource.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -1116,7 +1108,7 @@ IFlowReconcileListener, IInfoProvider {
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
         if (srcDevice == null) {
-            debugCounters.updateCounter(CNT_NO_SOURCE);
+            cntNoSource.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -1133,9 +1125,9 @@ IFlowReconcileListener, IInfoProvider {
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             else
-                debugCounters.updateCounter(CNT_NO_DEST);
+                cntNoDest.updateCounterNoFlush();
         } else {
-            debugCounters.updateCounter(CNT_NO_DEST);
+            cntNoDest.updateCounterNoFlush();
         }
 
        if (logger.isTraceEnabled()) {
@@ -1170,7 +1162,7 @@ IFlowReconcileListener, IInfoProvider {
             DHCPOption dhcpOption = dhcp.getOption(
                     DHCPOptionCode.OptionCode_Hostname);
             if (dhcpOption != null) {
-                debugCounters.updateCounter(CNT_DHCP_CLIENT_NAME_SNOOPED);
+                cntDhcpClientNameSnooped.updateCounterNoFlush();
                 srcDevice.dhcpClientName = new String(dhcpOption.getData());
             }
         }
@@ -1333,7 +1325,8 @@ IFlowReconcileListener, IInfoProvider {
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
         }
 
-        /**for the new flow cache design, the flow mods retrived are not always from the source, learn AP should be disabled --meiyang*/
+        /**for the new flow cache design, the flow mods retrived are not always
+         * from the source, learn AP should be disabled --meiyang*/
         boolean learnap = false;
         /**
          * if (swDpid == null ||
@@ -1510,7 +1503,7 @@ IFlowReconcileListener, IInfoProvider {
                 if (entity.hasSwitchPort() &&
                         !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
-                    debugCounters.updateCounter(CNT_DEVICE_ON_INTERAL_PORT_NOT_LEARNED);
+                    cntDeviceOnInternalPortNotLearned.updateCounterNoFlush();
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
                                      + " link: {}", entity);
@@ -1521,7 +1514,7 @@ IFlowReconcileListener, IInfoProvider {
                 // Before we create the new device also check if
                 // the entity is allowed (e.g., for spoofing protection)
                 if (!isEntityAllowed(entity, entityClass)) {
-                    debugCounters.updateCounter(CNT_PACKET_NOT_ALLOWED);
+                    cntPacketNotAllowed.updateCounterNoFlush();
                     if (logger.isDebugEnabled()) {
                         logger.debug("PacketIn is not allowed {} {}",
                                     entityClass.getName(), entity);
@@ -1551,7 +1544,7 @@ IFlowReconcileListener, IInfoProvider {
                 // We need to count and log here. If we log earlier we could
                 // hit a concurrent modification and restart the dev creation
                 // and potentially count the device twice.
-                debugCounters.updateCounter(CNT_NEW_DEVICE);
+                cntNewDevice.updateCounterNoFlush();
                 if (logger.isDebugEnabled()) {
                     logger.debug("New device created: {} deviceKey={}, entity={}",
                                  new Object[]{device, deviceKey, entity});
@@ -1565,7 +1558,7 @@ IFlowReconcileListener, IInfoProvider {
             }
             // if it gets here, we have a pre-existing Device for this Entity
             if (!isEntityAllowed(entity, device.getEntityClass())) {
-                debugCounters.updateCounter(CNT_PACKET_NOT_ALLOWED);
+                cntPacketNotAllowed.updateCounterNoFlush();
                 if (logger.isDebugEnabled()) {
                     logger.info("PacketIn is not allowed {} {}",
                                 device.getEntityClass().getName(), entity);
@@ -1578,7 +1571,7 @@ IFlowReconcileListener, IInfoProvider {
             if (entity.hasSwitchPort() &&
                     !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
-                debugCounters.updateCounter(CNT_PACKET_ON_INTERNAL_PORT_FOR_KNOWN_DEVICE);
+                cntPacketOnInternalPortForKnownDevice.updateCounterNoFlush();
                 break;
             }
             int entityindex = -1;
@@ -1622,9 +1615,9 @@ IFlowReconcileListener, IInfoProvider {
 
                 // We need to count here after all the possible "continue"
                 // statements in this branch
-                debugCounters.updateCounter(CNT_NEW_ENTITY);
+                cntNewEntity.updateCounterNoFlush();
                 if (changedFields.size() > 0) {
-                    debugCounters.updateCounter(CNT_DEVICE_CHANGED);
+                    cntDeviceChanged.updateCounterNoFlush();
                     deviceUpdates =
                     updateUpdates(deviceUpdates,
                                   new DeviceUpdate(newDevice, CHANGE,
@@ -1885,7 +1878,7 @@ IFlowReconcileListener, IInfoProvider {
      * Clean up expired entities/devices
      */
     protected void cleanupEntities () {
-        debugCounters.updateCounter(CNT_CLEANUP_ENTITIES_RUNS);
+        cntCleanupEntitiesRuns.updateCounterWithFlush();
 
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
@@ -1918,7 +1911,7 @@ IFlowReconcileListener, IInfoProvider {
                     break;
                 }
 
-                debugCounters.updateCounter(CNT_ENTITY_REMOVED_TIMEOUT);
+                cntEntityRemovedTimeout.updateCounterWithFlush();
                 for (Entity e : toRemove) {
                     removeEntity(e, d.getEntityClass(), d.getDeviceKey(), toKeep);
                 }
@@ -1954,7 +1947,7 @@ IFlowReconcileListener, IInfoProvider {
                     if (update != null) {
                         // need to count after all possibly continue stmts in
                         // this branch
-                        debugCounters.updateCounter(CNT_DEVICE_CHANGED);
+                        cntDeviceChanged.updateCounterWithFlush();
                         deviceUpdates.add(update);
                     }
                 } else {
@@ -1966,7 +1959,7 @@ IFlowReconcileListener, IInfoProvider {
                         d = deviceMap.get(d.getDeviceKey());
                         if (null != d)
                             continue;
-                        debugCounters.updateCounter(CNT_DEVICE_DELETED);
+                        cntDeviceDeleted.updateCounterWithFlush();
                     }
                     deviceUpdates.add(update);
                 }
@@ -2134,7 +2127,7 @@ IFlowReconcileListener, IInfoProvider {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
-        debugCounters.updateCounter(CNT_DEVICE_MOVED);
+        cntDeviceMoved.updateCounterNoFlush();
         deviceSyncManager.storeDevice(d);
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
@@ -2193,7 +2186,7 @@ IFlowReconcileListener, IInfoProvider {
             return false;
         }
 
-        debugCounters.updateCounter(CNT_DEVICE_RECLASSIFY_DELETE);
+        cntDeviceReclassifyDelete.updateCounterNoFlush();
         LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
         // delete this device and then re-learn all the entities
@@ -2236,7 +2229,7 @@ IFlowReconcileListener, IInfoProvider {
     private class DeviceSyncManager  {
         // maps (opaque) deviceKey to the time in System.nanoTime() when we
         // last wrote the device to the sync store
-        private ConcurrentMap<Long, Long> lastWriteTimes =
+        private final ConcurrentMap<Long, Long> lastWriteTimes =
                 new ConcurrentHashMap<Long, Long>();
 
         /**
@@ -2275,7 +2268,7 @@ IFlowReconcileListener, IInfoProvider {
                 writeUpdatedDeviceToStorage(d);
                 lastWriteTimes.put(d.getDeviceKey(), now);
             } else {
-                debugCounters.updateCounter(CNT_DEVICE_STORE_THROTTLED);
+                cntDeviceStoreThrottled.updateCounterWithFlush();
             }
         }
 
@@ -2296,12 +2289,12 @@ IFlowReconcileListener, IInfoProvider {
                 // TODO: should probably do versioned delete. OTOH, even
                 // if we accidentally delete, we'll write it again after
                 // the next entity ....
-                debugCounters.updateCounter(CNT_DEVICE_REMOVED_FROM_STORE);
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
                 storeClient.delete(DeviceSyncRepresentation.computeKey(d));
             } catch(ObsoleteVersionException e) {
                 // FIXME
             } catch (SyncException e) {
-                debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Could not remove device " + d + " from store", e);
             }
         }
@@ -2313,14 +2306,14 @@ IFlowReconcileListener, IInfoProvider {
          */
         private void removeDevice(Versioned<DeviceSyncRepresentation> dev) {
             try {
-                debugCounters.updateCounter(CNT_DEVICE_REMOVED_FROM_STORE);
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
                 storeClient.delete(dev.getValue().getKey(),
                                    dev.getVersion());
             } catch(ObsoleteVersionException e) {
                 // Key was locally modified by another thread.
                 // Do not delete and ignore.
             } catch(SyncException e) {
-                debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to remove device entry for " +
                             dev.toString() + " from store.", e);
             }
@@ -2334,13 +2327,13 @@ IFlowReconcileListener, IInfoProvider {
             if (logger.isDebugEnabled()) {
                 logger.debug("Transitioning to MASTER role");
             }
-            debugCounters.updateCounter(CNT_TRANSITION_TO_MASTER);
+            cntTransitionToMaster.updateCounterWithFlush();
             IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
                     iter = null;
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
-                debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to read devices from sync store", e);
                 return;
             }
@@ -2352,7 +2345,7 @@ IFlowReconcileListener, IInfoProvider {
                             versionedDevice.getValue();
                     if (storedDevice == null)
                         continue;
-                    debugCounters.updateCounter(CNT_DEVICES_FROM_STORE);
+                    cntDevicesFromStore.updateCounterWithFlush();
                     for(SyncEntity se: storedDevice.getEntities()) {
                         learnDeviceByEntity(se.asEntity());
                     }
@@ -2372,7 +2365,7 @@ IFlowReconcileListener, IInfoProvider {
          */
         private void writeUpdatedDeviceToStorage(Device device) {
             try {
-                debugCounters.updateCounter(CNT_DEVICE_STORED);
+                cntDeviceStrored.updateCounterWithFlush();
                 // FIXME: use a versioned put
                 DeviceSyncRepresentation storeDevice =
                         new DeviceSyncRepresentation(device);
@@ -2381,7 +2374,7 @@ IFlowReconcileListener, IInfoProvider {
                 // FIXME: what's the right behavior here. Can the store client
                 // even throw this error?
             } catch (SyncException e) {
-                debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Could not write device " + device +
                           " to sync store:", e);
             }
@@ -2405,7 +2398,7 @@ IFlowReconcileListener, IInfoProvider {
         private void consolidateStore() {
             if (!isMaster)
                 return;
-            debugCounters.updateCounter(CNT_CONSOLIDATE_STORE_RUNS);
+            cntConsolidateStoreRuns.updateCounterWithFlush();
             if (logger.isDebugEnabled()) {
                 logger.debug("Running consolidateStore.");
             }
@@ -2414,7 +2407,7 @@ IFlowReconcileListener, IInfoProvider {
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
-                debugCounters.updateCounter(CNT_SYNC_EXCEPTION);
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to read devices from sync store", e);
                 return;
             }
@@ -2451,7 +2444,7 @@ IFlowReconcileListener, IInfoProvider {
                                          + "corresponding live device",
                                          storedDevice.getKey());
                         }
-                        debugCounters.updateCounter(CNT_CONSOLIDATE_STORE_DEVICES_REMOVED);
+                        cntConsolidateStoreDevicesRemoved.updateCounterWithFlush();
                         removeDevice(versionedDevice);
                     }
                 }

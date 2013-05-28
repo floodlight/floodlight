@@ -108,7 +108,7 @@ public class OFChannelHandlerTest {
 
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         controller = createMock(Controller.class);
         threadPool = createMock(IThreadPoolService.class);
         ctx = createMock(ChannelHandlerContext.class);

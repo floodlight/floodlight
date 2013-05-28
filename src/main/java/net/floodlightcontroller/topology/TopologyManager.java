@@ -46,6 +46,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
@@ -155,6 +156,11 @@ public class TopologyManager implements
     protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
 
     private IHAListener haListener;
+
+    /**
+     *  Debug Counters
+     */
+    protected static IDebugCounter ctrIncoming;
 
    //  Getter/Setter methods
     /**
@@ -654,7 +660,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter("topology-incoming");
+                ctrIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -789,10 +795,14 @@ public class TopologyManager implements
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
-        debugCounters.registerCounter(getName() + "-" + "incoming",
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        try {
+            ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
+                "All incoming packets seen by this module",
+                CounterType.ALWAYS_COUNT);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     protected void addRestletRoutable() {

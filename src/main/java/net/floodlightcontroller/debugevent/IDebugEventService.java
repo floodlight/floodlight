@@ -18,7 +18,7 @@ public interface IDebugEventService extends IFloodlightService {
     }
 
     /**
-     *  A limit on the maximum number of event types that can be created
+     *  A limit on the maximum number of events that can be created
      */
     public static final int MAX_EVENTS = 2000;
 

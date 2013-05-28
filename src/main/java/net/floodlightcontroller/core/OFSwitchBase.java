@@ -42,6 +42,7 @@ import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
@@ -142,6 +143,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected OFDescriptionStatistics description;
 
     private boolean debugCountersRegistered;
+    @SuppressWarnings("unused")
+    private IDebugCounter ctrSwitch, ctrSwitchPktin, ctrSwitchWrite;
+    private IDebugCounter ctrSwithPktinDrops, ctrSwitchWriteDrops;
+
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
@@ -204,7 +209,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
      *   allowed.
      */
     protected class PortManager {
-        private ReentrantReadWriteLock lock;
+        private final ReentrantReadWriteLock lock;
         private List<ImmutablePort> portList;
         private List<ImmutablePort> enabledPortList;
         private List<Short> enabledPortNumbers;
@@ -729,7 +734,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             write(m, bc);
         } else {
             // Let logback duplicate filtering take care of excessive logs
-            debugCounters.updateCounter(stringId + "-writeDrops");
+            ctrSwitchWriteDrops.updateCounterNoFlush();
             log.warn("Drop throttled OF message to switch {}", this);
         }
     }
@@ -741,8 +746,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             write(msglist, bc);
         } else {
             // Let logback duplicate filtering take care of excessive logs
-            debugCounters.updateCounter(stringId + "-writeDrops",
-                    msglist.size());
+            ctrSwitchWriteDrops.updateCounterNoFlush(msglist.size());
             log.warn("Drop throttled OF messages to switch {}", this);
         }
     }
@@ -1333,7 +1337,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         OFMatch match = new OFMatch();
         match.loadFromPacket(pin.getPacketData(), pin.getInPort());
         if (ofMatchCache.update(match)) {
-            debugCounters.updateCounter(stringId + "-pktinDrops");
+           ctrSwithPktinDrops.updateCounterNoFlush();
             return true;
         }
 
@@ -1391,12 +1395,33 @@ public abstract class OFSwitchBase implements IOFSwitch {
             log.error("Debug Counter Service not found");
             debugCounters = new NullDebugCounter();
             debugCountersRegistered = true;
-            return;
         }
-        debugCounters.registerCounter(stringId + "-pktinDrops",
-                "Packet in throttle drop count", CounterType.ALWAYS_COUNT);
-        debugCounters.registerCounter(stringId + "-writeDrops",
-                "Switch write throttle drop count", CounterType.ALWAYS_COUNT);
+        try {
+            // every level of the hierarchical counter has to be registered
+            // even if they are not used
+            ctrSwitch = debugCounters.registerCounter(
+                                       "switch", stringId,
+                                       "Counter for this switch",
+                                       CounterType.ALWAYS_COUNT);
+            ctrSwitchPktin = debugCounters.registerCounter(
+                                       "switch", stringId + "/pktin",
+                                       "Packet in counter for this switch",
+                                       CounterType.ALWAYS_COUNT);
+            ctrSwitchWrite = debugCounters.registerCounter(
+                                       "switch", stringId + "/write",
+                                       "Write counter for this switch",
+                                       CounterType.ALWAYS_COUNT);
+            ctrSwithPktinDrops = debugCounters.registerCounter(
+                                       "switch", stringId + "/pktin/drops",
+                                       "Packet in throttle drop count",
+                                       CounterType.ALWAYS_COUNT);
+            ctrSwitchWriteDrops = debugCounters.registerCounter(
+                                       "switch", stringId + "/write/drops",
+                                       "Switch write throttle drop count",
+                                       CounterType.ALWAYS_COUNT);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**

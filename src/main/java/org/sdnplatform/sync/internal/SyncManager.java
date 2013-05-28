@@ -58,6 +58,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -77,18 +78,18 @@ public class SyncManager extends AbstractSyncManager {
 
     protected IThreadPoolService threadPool;
     protected IDebugCounterService debugCounter;
-    
+
     /**
-     * The store registry holds the storage engines that provide 
+     * The store registry holds the storage engines that provide
      * access to the data
      */
     private StoreRegistry storeRegistry = null;
-    
+
     private IClusterConfigProvider clusterConfigProvider;
     private ClusterConfig clusterConfig = new ClusterConfig();
 
     protected RPCService rpcService = null;
-    
+
     /**
      * Interval between cleanup tasks in seconds
      */
@@ -103,12 +104,12 @@ public class SyncManager extends AbstractSyncManager {
      * Interval between configuration rescans
      */
     private static final int CONFIG_RESCAN_INTERVAL = 10;
-    
+
     /**
      * Task for performing periodic maintenance/cleanup on local stores
      */
     private SingletonTask cleanupTask;
-    
+
     /**
      * Task for periodic antientropy between nodes
      */
@@ -118,13 +119,13 @@ public class SyncManager extends AbstractSyncManager {
      * Task to periodically rescan configuration
      */
     private SingletonTask updateConfigTask;
-    
+
     /**
-     * Number of {@link HintWorker} workers used to drain the queue of writes 
+     * Number of {@link HintWorker} workers used to drain the queue of writes
      * that need to be sent to the connected nodes
      */
     private static final int SYNC_WORKER_POOL = 2;
-    
+
     /**
      * A thread pool for the {@link HintWorker} threads.
      */
@@ -133,32 +134,34 @@ public class SyncManager extends AbstractSyncManager {
     /**
      * Random number generator
      */
-    private Random random = new Random();
+    private final Random random = new Random();
 
     /**
      * A map of the currently-allocated cursors
      */
-    private Map<Integer, Cursor> cursorMap = 
-            new ConcurrentHashMap<Integer, Cursor>(); 
-    
+    private final Map<Integer, Cursor> cursorMap =
+            new ConcurrentHashMap<Integer, Cursor>();
+
     /**
-     * Whether to allow persistent stores or to use in-memory even 
+     * Whether to allow persistent stores or to use in-memory even
      * when persistence is requested
      */
     private boolean persistenceEnabled = true;
-    
-    private static final String PACKAGE = 
+
+    private static final String PACKAGE =
             ISyncService.class.getPackage().getName();
-    public static final String COUNTER_HINTS = PACKAGE + "-hints";
-    public static final String COUNTER_SENT_VALUES = PACKAGE + "-sent_values";
-    public static final String COUNTER_RECEIVED_VALUES = 
-            PACKAGE + "-received_values";
-    public static final String COUNTER_PUTS = PACKAGE + "-puts";
-    public static final String COUNTER_GETS = PACKAGE + "-gets";
-    public static final String COUNTER_ITERATORS = PACKAGE + "-iterators";
-    public static final String COUNTER_ERROR_REMOTE = PACKAGE + "-error-remote";
-    public static final String COUNTER_ERROR_PROCESSING = 
-            PACKAGE + "-error-processing";
+
+    /**
+     * Debug Counters
+     */
+    public static IDebugCounter counterHints;
+    public static IDebugCounter counterSentValues;
+    public static IDebugCounter counterReceivedValues;
+    public static IDebugCounter counterPuts;
+    public static IDebugCounter counterGets;
+    public static IDebugCounter counterIterators;
+    public static IDebugCounter counterErrorRemote;
+    public static IDebugCounter counterErrorProcessing;
 
     // ************
     // ISyncService
@@ -175,7 +178,7 @@ public class SyncManager extends AbstractSyncManager {
     }
 
     @Override
-    public void registerPersistentStore(String storeName, Scope scope) 
+    public void registerPersistentStore(String storeName, Scope scope)
             throws PersistException {
         storeRegistry.register(storeName, scope, persistenceEnabled);
     }
@@ -197,11 +200,11 @@ public class SyncManager extends AbstractSyncManager {
      * Perform periodic scheduled cleanup.  Note that this will be called
      * automatically and you shouldn't generally call it directly except for
      * testing
-     * @throws SyncException 
+     * @throws SyncException
      */
     public void cleanup() throws SyncException {
         for (SynchronizingStorageEngine store : storeRegistry.values()) {
-            store.cleanupTask();                
+            store.cleanupTask();
         }
     }
 
@@ -214,34 +217,34 @@ public class SyncManager extends AbstractSyncManager {
     public void antientropy(Node node) {
         if (!rpcService.isConnected(node.getNodeId())) return;
 
-        logger.info("[{}->{}] Synchronizing local state to remote node", 
+        logger.info("[{}->{}] Synchronizing local state to remote node",
                     getLocalNodeId(), node.getNodeId());
 
         for (SynchronizingStorageEngine store : storeRegistry.values()) {
             if (Scope.LOCAL.equals(store.getScope())) {
-                if (node.getDomainId() != 
+                if (node.getDomainId() !=
                         getClusterConfig().getNode().getDomainId())
                     continue;
             } else if (Scope.UNSYNCHRONIZED.equals(store.getScope())) {
                 continue;
             }
-            
-            IClosableIterator<Entry<ByteArray, 
-                                  List<Versioned<byte[]>>>> entries = 
+
+            IClosableIterator<Entry<ByteArray,
+                                  List<Versioned<byte[]>>>> entries =
                     store.entries();
             try {
-                SyncMessage bsm = 
-                        TProtocolUtil.getTSyncOfferMessage(store.getName(), 
+                SyncMessage bsm =
+                        TProtocolUtil.getTSyncOfferMessage(store.getName(),
                                                            store.getScope(),
                                                            store.isPersistent());
                 int count = 0;
                 while (entries.hasNext()) {
                     if (!rpcService.isConnected(node.getNodeId())) return;
 
-                    Entry<ByteArray, List<Versioned<byte[]>>> pair = 
+                    Entry<ByteArray, List<Versioned<byte[]>>> pair =
                             entries.next();
-                    KeyedVersions kv = 
-                            TProtocolUtil.getTKeyedVersions(pair.getKey(), 
+                    KeyedVersions kv =
+                            TProtocolUtil.getTKeyedVersions(pair.getKey(),
                                                             pair.getValue());
                     bsm.getSyncOffer().addToVersions(kv);
                     count += 1;
@@ -277,9 +280,9 @@ public class SyncManager extends AbstractSyncManager {
         int rn = random.nextInt(numNodes);
         antientropy(nodes[rn]);
     }
-    
+
     /**
-     * Write a value synchronized from another node, bypassing some of the 
+     * Write a value synchronized from another node, bypassing some of the
      * usual logic when a client writes data.  If the store is not known,
      * this will automatically register it
      * @param storeName the store name
@@ -287,11 +290,11 @@ public class SyncManager extends AbstractSyncManager {
      * @param persist TODO
      * @param key the key to write
      * @param values a list of versions for the key to write
-     * @throws PersistException 
+     * @throws PersistException
      */
     public void writeSyncValue(String storeName, Scope scope,
                                boolean persist,
-                               byte[] key, Iterable<Versioned<byte[]>> values) 
+                               byte[] key, Iterable<Versioned<byte[]>> values)
                                        throws PersistException {
         SynchronizingStorageEngine store = storeRegistry.get(storeName);
         if (store == null) {
@@ -311,11 +314,11 @@ public class SyncManager extends AbstractSyncManager {
      */
     public boolean handleSyncOffer(String storeName,
                                    byte[] key,
-                                   Iterable<VectorClock> versions) 
+                                   Iterable<VectorClock> versions)
                                            throws SyncException {
         SynchronizingStorageEngine store = storeRegistry.get(storeName);
         if (store == null) return true;
-        
+
         List<Versioned<byte[]>> values = store.get(new ByteArray(key));
         if (values == null || values.size() == 0) return true;
 
@@ -327,22 +330,22 @@ public class SyncManager extends AbstractSyncManager {
                     return true;
             }
         }
-        
+
         return false;
     }
 
     /**
-     * Get access to the raw storage engine.  This is useful for some 
+     * Get access to the raw storage engine.  This is useful for some
      * on-the-wire communication
      * @param storeName the store name to get
      * @return the {@link IStorageEngine}
      * @throws UnknownStoreException
      */
-    public IStorageEngine<ByteArray, byte[]> getRawStore(String storeName) 
+    public IStorageEngine<ByteArray, byte[]> getRawStore(String storeName)
             throws UnknownStoreException {
         return getStoreInternal(storeName);
     }
-    
+
     /**
      * Return the threadpool
      * @return the {@link IThreadPoolService}
@@ -350,7 +353,7 @@ public class SyncManager extends AbstractSyncManager {
     public IThreadPoolService getThreadPool() {
         return threadPool;
     }
-    
+
     /**
      * Queue a synchronization of the specified {@link KeyedValues} to all nodes
      * assocatiated with the storage engine specified
@@ -361,21 +364,21 @@ public class SyncManager extends AbstractSyncManager {
             message="Sync task queue full and not emptying",
             explanation="The synchronization service is overloaded",
             recommendation=LogMessageDoc.CHECK_CONTROLLER)
-    public void queueSyncTask(SynchronizingStorageEngine e, 
+    public void queueSyncTask(SynchronizingStorageEngine e,
                               ByteArray key, Versioned<byte[]> value) {
         storeRegistry.queueHint(e.getName(), key, value);
     }
-    
+
     @Override
-    public void addListener(String storeName, MappingStoreListener listener) 
+    public void addListener(String storeName, MappingStoreListener listener)
             throws UnknownStoreException {
         SynchronizingStorageEngine store = getStoreInternal(storeName);
         store.addListener(listener);
     }
-    
+
     /**
      * Update the node configuration to add or remove nodes
-     * @throws FloodlightModuleException 
+     * @throws FloodlightModuleException
      */
     public void updateConfiguration() {
         if (updateConfigTask != null)
@@ -404,7 +407,7 @@ public class SyncManager extends AbstractSyncManager {
         cursorMap.put(Integer.valueOf(cursorId), cursor);
         return cursor;
     }
-    
+
     /**
      * Close the given cursor and remove it from the map
      * @param cursor the cursor to close
@@ -413,17 +416,17 @@ public class SyncManager extends AbstractSyncManager {
         cursor.close();
         cursorMap.remove(Integer.valueOf(cursor.getCursorId()));
     }
-    
+
     // *******************
     // AbstractSyncManager
     // *******************
 
     @Override
-    public IStore<ByteArray,byte[]> getStore(String storeName) 
+    public IStore<ByteArray,byte[]> getStore(String storeName)
             throws UnknownStoreException {
         return getRawStore(storeName);
     }
-    
+
     @Override
     public short getLocalNodeId() {
         Node l = clusterConfig.getNode();
@@ -461,7 +464,7 @@ public class SyncManager extends AbstractSyncManager {
         debugCounter = context.getServiceImpl(IDebugCounterService.class);
         Map<String, String> config = context.getConfigParams(this);
         storeRegistry = new StoreRegistry(this, config.get("dbPath"));
-        
+
         String[] configProviders =
              {PropertyCCProvider.class.getName(),
               SyncStoreCCProvider.class.getName(),
@@ -493,8 +496,8 @@ public class SyncManager extends AbstractSyncManager {
         if (manualStoreString != null) {
             List<String> manualStores = null;
             try {
-                manualStores = 
-                        (new ObjectMapper()).readValue(manualStoreString, 
+                manualStores =
+                        (new ObjectMapper()).readValue(manualStoreString,
                                          new TypeReference<List<String>>() {});
             } catch (Exception e) {
                 throw new FloodlightModuleException("Failed to parse sync " +
@@ -507,55 +510,59 @@ public class SyncManager extends AbstractSyncManager {
     }
 
     @Override
-    public void startUp(FloodlightModuleContext context) 
+    public void startUp(FloodlightModuleContext context)
             throws FloodlightModuleException {
         if (context != null) {
-            debugCounter.registerCounter(COUNTER_HINTS,
-                                         "Queued sync events processed",
-                                         CounterType.ALWAYS_COUNT);
-            debugCounter.registerCounter(COUNTER_SENT_VALUES,
-                                         "Values synced to remote node",
-                                         CounterType.ALWAYS_COUNT);
-            debugCounter.registerCounter(COUNTER_RECEIVED_VALUES,
-                                         "Values received from remote node",
-                                         CounterType.ALWAYS_COUNT);
-            debugCounter.registerCounter(COUNTER_PUTS,
-                                         "Local puts to store",
-                                         CounterType.ALWAYS_COUNT);        
-            debugCounter.registerCounter(COUNTER_GETS,
-                                         "Local gets from store",
-                                         CounterType.ALWAYS_COUNT);     
-            debugCounter.registerCounter(COUNTER_ITERATORS,
-                                         "Local iterators created over store",
-                                         CounterType.ALWAYS_COUNT);
-            debugCounter.registerCounter(COUNTER_ERROR_REMOTE,
-                                         "Number of errors sent from remote clients",
-                                         CounterType.ALWAYS_COUNT);
-            debugCounter.registerCounter(COUNTER_ERROR_PROCESSING,
-                                         "Number of errors processing messages from remote clients",
-                                         CounterType.ALWAYS_COUNT);
+            try {
+                counterHints = debugCounter.registerCounter(PACKAGE, " hints",
+                                             "Queued sync events processed",
+                                             CounterType.ALWAYS_COUNT);
+                counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
+                                             "Values synced to remote node",
+                                             CounterType.ALWAYS_COUNT);
+                counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
+                                             "Values received from remote node",
+                                             CounterType.ALWAYS_COUNT);
+                counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
+                                             "Local puts to store",
+                                             CounterType.ALWAYS_COUNT);
+                counterGets = debugCounter.registerCounter(PACKAGE, "gets",
+                                             "Local gets from store",
+                                             CounterType.ALWAYS_COUNT);
+                counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
+                                             "Local iterators created over store",
+                                             CounterType.ALWAYS_COUNT);
+                counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
+                                             "Number of errors sent from remote clients",
+                                             CounterType.ALWAYS_COUNT);
+                counterErrorProcessing = debugCounter.registerCounter(PACKAGE, "error-processing",
+                                             "Number of errors processing messages from remote clients",
+                                             CounterType.ALWAYS_COUNT);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         rpcService = new RPCService(this, debugCounter);
-        
-        cleanupTask = new SingletonTask(threadPool.getScheduledExecutor(), 
+
+        cleanupTask = new SingletonTask(threadPool.getScheduledExecutor(),
                                         new CleanupTask());
-        cleanupTask.reschedule(CLEANUP_INTERVAL + 
+        cleanupTask.reschedule(CLEANUP_INTERVAL +
                                random.nextInt(30), TimeUnit.SECONDS);
-        
+
         antientropyTask = new SingletonTask(threadPool.getScheduledExecutor(),
                                        new AntientropyTask());
-        antientropyTask.reschedule(ANTIENTROPY_INTERVAL + 
+        antientropyTask.reschedule(ANTIENTROPY_INTERVAL +
                                    random.nextInt(30), TimeUnit.SECONDS);
 
         final ThreadGroup tg = new ThreadGroup("Hint Workers");
         tg.setMaxPriority(Thread.NORM_PRIORITY - 2);
         ThreadFactory f = new ThreadFactory() {
             AtomicInteger id = new AtomicInteger();
-            
+
             @Override
             public Thread newThread(Runnable runnable) {
-                return new Thread(tg, runnable, 
+                return new Thread(tg, runnable,
                                   "HintWorker-" + id.getAndIncrement());
             }
         };
@@ -599,13 +606,13 @@ public class SyncManager extends AbstractSyncManager {
     })
     protected void doUpdateConfiguration()
             throws FloodlightModuleException {
-        
+
         try {
             ClusterConfig oldConfig = clusterConfig;
             clusterConfig = clusterConfigProvider.getConfig();
             if (clusterConfig.equals(oldConfig)) return;
 
-            logger.info("[{}] Updating sync configuration {}", 
+            logger.info("[{}] Updating sync configuration {}",
                         clusterConfig.getNode().getNodeId(),
                         clusterConfig);
             if (oldConfig.getNode() != null &&
@@ -642,30 +649,30 @@ public class SyncManager extends AbstractSyncManager {
         }
     }
 
-    protected SynchronizingStorageEngine getStoreInternal(String storeName) 
+    protected SynchronizingStorageEngine getStoreInternal(String storeName)
             throws UnknownStoreException {
         SynchronizingStorageEngine store = storeRegistry.get(storeName);
         if (store == null) {
-            throw new UnknownStoreException("Store " + storeName + 
+            throw new UnknownStoreException("Store " + storeName +
                                             " has not been registered");
         }
         return store;
     }
-    
-    private void sendSyncOffer(short nodeId, SyncMessage bsm) 
+
+    private void sendSyncOffer(short nodeId, SyncMessage bsm)
             throws InterruptedException {
         SyncOfferMessage som = bsm.getSyncOffer();
         if (!som.isSetVersions()) return;
         if (logger.isTraceEnabled()) {
-            logger.trace("[{}->{}] Sending SyncOffer with {} elements", 
-                         new Object[]{getLocalNodeId(), nodeId, 
+            logger.trace("[{}->{}] Sending SyncOffer with {} elements",
+                         new Object[]{getLocalNodeId(), nodeId,
                                       som.getVersionsSize()});
         }
 
         som.getHeader().setTransactionId(rpcService.getTransactionId());
         rpcService.writeToNode(nodeId, bsm);
     }
-    
+
     /**
      * Periodically perform cleanup
      * @author readams
@@ -685,7 +692,7 @@ public class SyncManager extends AbstractSyncManager {
             }
 
             if (rpcService != null) {
-                cleanupTask.reschedule(CLEANUP_INTERVAL + 
+                cleanupTask.reschedule(CLEANUP_INTERVAL +
                                        random.nextInt(30), TimeUnit.SECONDS);
             }
         }
@@ -710,13 +717,13 @@ public class SyncManager extends AbstractSyncManager {
             }
 
             if (rpcService != null) {
-                antientropyTask.reschedule(ANTIENTROPY_INTERVAL + 
-                                           random.nextInt(30), 
+                antientropyTask.reschedule(ANTIENTROPY_INTERVAL +
+                                           random.nextInt(30),
                                            TimeUnit.SECONDS);
             }
         }
     }
-    
+
     /**
      * Worker task to periodically rescan the configuration
      * @author readams
@@ -735,12 +742,12 @@ public class SyncManager extends AbstractSyncManager {
                 logger.error("Failed to update configuration", e);
             }
             if (rpcService != null) {
-                updateConfigTask.reschedule(CONFIG_RESCAN_INTERVAL, 
+                updateConfigTask.reschedule(CONFIG_RESCAN_INTERVAL,
                                             TimeUnit.SECONDS);
             }
         }
     }
-    
+
     /**
      * Worker thread that will drain the sync item queue and write the
      * appropriate messages to the node I/O channels
@@ -752,7 +759,7 @@ public class SyncManager extends AbstractSyncManager {
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class HintWorker implements Runnable {
         ArrayList<Hint> tasks = new ArrayList<Hint>(50);
-        protected Map<String, SyncMessage> messages = 
+        protected Map<String, SyncMessage> messages =
                 new LinkedHashMap<String, SyncMessage>();
 
         @Override
@@ -763,22 +770,22 @@ public class SyncManager extends AbstractSyncManager {
                     // XXX - todo - handle hints targeted to specific nodes
                     storeRegistry.takeHints(tasks, 50);
                     for (Hint task : tasks) {
-                        debugCounter.updateCounter(COUNTER_HINTS);
-                        SynchronizingStorageEngine store = 
+                        counterHints.updateCounterWithFlush();
+                        SynchronizingStorageEngine store =
                                 storeRegistry.get(task.getHintKey().
                                                   getStoreName());
                         SyncMessage bsm = getMessage(store);
-                        KeyedValues kv = 
+                        KeyedValues kv =
                                 TProtocolUtil.
-                                getTKeyedValues(task.getHintKey().getKey(), 
+                                getTKeyedValues(task.getHintKey().getKey(),
                                                 task.getValues());
                         bsm.getSyncValue().addToValues(kv);
                     }
-                    
+
                     Iterable<Node> nodes = getClusterConfig().getNodes();
-                    short localDomainId = 
+                    short localDomainId =
                             getClusterConfig().getNode().getDomainId();
-                    short localNodeId = 
+                    short localNodeId =
                             getClusterConfig().getNode().getNodeId();
                     for (Node n : nodes) {
                         if (localNodeId == n.getNodeId())
@@ -796,14 +803,12 @@ public class SyncManager extends AbstractSyncManager {
                             svm.getHeader().
                             setTransactionId(rpcService.
                                              getTransactionId());
-                            debugCounter.updateCounter(COUNTER_SENT_VALUES, 
-                                                       bsm.getSyncValue().
+                            counterSentValues.updateCounterWithFlush(bsm.getSyncValue().
                                                            getValuesSize());
                             rpcService.writeToNode(n.getNodeId(), bsm);
                         }
                     }
-                    debugCounter.flushCounters();
-                    tasks.clear(); 
+                    tasks.clear();
                     clearMessages();
 
                 } catch (Exception e) {
@@ -811,16 +816,16 @@ public class SyncManager extends AbstractSyncManager {
                 }
             }
         }
-        
+
         /**
          * Clear the current list of pending messages
          */
         private void clearMessages() {
             messages.clear();
         }
-        
+
         /**
-         * Allocate a partially-initialized {@link SyncMessage} object for 
+         * Allocate a partially-initialized {@link SyncMessage} object for
          * the given store
          * @param store the store
          * @return the {@link SyncMessage} object
@@ -829,7 +834,7 @@ public class SyncManager extends AbstractSyncManager {
             String storeName = store.getName();
             SyncMessage bsm = messages.get(storeName);
             if (bsm == null) {
-                bsm = TProtocolUtil.getTSyncValueMessage(storeName, 
+                bsm = TProtocolUtil.getTSyncValueMessage(storeName,
                                                          store.getScope(),
                                                          store.isPersistent());
                 messages.put(storeName, bsm);
