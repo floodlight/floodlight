@@ -455,6 +455,29 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
     @Override
     public void setTableFull(boolean isFull) {
+        fail("Unexpected method call");
         // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void setAccessFlowPriority(short prio) {
+        fail("Unexpected method call");
+    }
+
+    @Override
+    public void setCoreFlowPriority(short prio) {
+        fail("Unexpected method call");
+    }
+
+    @Override
+    public short getAccessFlowPriority() {
+        fail("Unexpected method call");
+        return 0;
+    }
+
+    @Override
+    public short getCoreFlowPriority() {
+        fail("Unexpected method call");
+        return 0;
     }
 }

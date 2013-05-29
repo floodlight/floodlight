@@ -202,6 +202,24 @@ public class Controller implements IFloodlightProviderService,
     protected static final String CONTROLLER_INTERFACE_NUMBER = "number";
     protected static final String CONTROLLER_INTERFACE_DISCOVERED_IP = "discovered_ip";
 
+    // FIXME: don't use "forwardingconfig" as table name
+    private static final String FLOW_PRIORITY_TABLE_NAME = "controller_forwardingconfig";
+    private static final String FLOW_COLUMN_PRIMARY_KEY = "id";
+    private static final String FLOW_VALUE_PRIMARY_KEY = "forwarding";
+    private static final String FLOW_COLUMN_ACCESS_PRIORITY = "access_priority";
+    private static final String FLOW_COLUMN_CORE_PRIORITY = "core_priority";
+    private static final String[] FLOW_COLUMN_NAMES = new String[] {
+            FLOW_COLUMN_PRIMARY_KEY,
+            FLOW_COLUMN_ACCESS_PRIORITY,
+            FLOW_COLUMN_CORE_PRIORITY
+    };
+
+    private static final short DEFAULT_ACCESS_PRIORITY = 10;
+    private static final short DEFAULT_CORE_PRIORITY = 1000;
+    private short accessPriority = DEFAULT_ACCESS_PRIORITY;
+    private short corePriority = DEFAULT_CORE_PRIORITY;
+
+
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
     public static final int BATCH_MAX_SIZE = 100;
@@ -2233,6 +2251,12 @@ public class Controller implements IFloodlightProviderService,
                                              CONTROLLER_ID);
         storageSource.addListener(CONTROLLER_INTERFACE_TABLE_NAME, this);
 
+        storageSource.createTable(FLOW_PRIORITY_TABLE_NAME, null);
+        storageSource.setTablePrimaryKeyName(FLOW_PRIORITY_TABLE_NAME,
+                                             FLOW_COLUMN_PRIMARY_KEY);
+        storageSource.addListener(FLOW_PRIORITY_TABLE_NAME, this);
+        readFlowPriorityConfigurationFromStorage();
+
         // Startup load monitoring
         if (overload_drop) {
             this.loadmonitor.startMonitoring(
@@ -2263,6 +2287,47 @@ public class Controller implements IFloodlightProviderService,
 
         registerControllerDebugEvents();
     }
+
+    @LogMessageDoc(level="ERROR",
+            message="failed to access storage: {reason}",
+            explanation="Could not retrieve forwarding configuration",
+            recommendation=LogMessageDoc.CHECK_CONTROLLER)
+    private void readFlowPriorityConfigurationFromStorage() {
+        try {
+            Map<String, Object> row;
+            IResultSet resultSet = storageSource.executeQuery(
+                FLOW_PRIORITY_TABLE_NAME, FLOW_COLUMN_NAMES, null, null);
+            if (resultSet == null)
+                return;
+
+            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                row = it.next().getRow();
+                if (row.containsKey(FLOW_COLUMN_PRIMARY_KEY)) {
+                    String primary_key = (String) row.get(FLOW_COLUMN_PRIMARY_KEY);
+                    if (primary_key.equals(FLOW_VALUE_PRIMARY_KEY)) {
+                        if (row.containsKey(FLOW_COLUMN_ACCESS_PRIORITY)) {
+                            accessPriority =
+                                Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
+                        }
+                        if (row.containsKey(FLOW_COLUMN_CORE_PRIORITY)) {
+                            corePriority =
+                                    Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
+                        }
+                    }
+                }
+            }
+        }
+        catch (StorageException e) {
+            log.error("Failed to access storage for forwarding configuration: {}",
+                      e.getMessage());
+        }
+        catch (NumberFormatException e) {
+            // log error, no stack-trace
+            log.error("Failed to read core or access flow priority from " +
+                      "storage. Illegal number: {}", e.getMessage());
+        }
+    }
+
 
     private void registerControllerDebugEvents() {
         if (debugEvents == null) {
@@ -2398,11 +2463,25 @@ public class Controller implements IFloodlightProviderService,
         return retval;
     }
 
+    private static final String FLOW_PRIORITY_CHANGED_AFTER_STARTUP =
+            "Flow priority configuration has changed after " +
+            "controller startup. Restart controller for new " +
+            "configuration to take effect.";
+    @LogMessageDoc(level="WARN",
+            message=FLOW_PRIORITY_CHANGED_AFTER_STARTUP,
+            explanation="A user has changed the priority with which access " +
+                    "and core flows are installed after controller startup. " +
+                    "Changing this setting will only take affect after a " +
+                    "controller restart",
+            recommendation="Restart controller")
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
         if (tableName.equals(CONTROLLER_INTERFACE_TABLE_NAME)) {
             handleControllerNodeIPChanges();
+        } else if (tableName.equals(FLOW_PRIORITY_TABLE_NAME)) {
+            log.warn(FLOW_PRIORITY_CHANGED_AFTER_STARTUP);
         }
+
 
     }
 
@@ -2410,6 +2489,8 @@ public class Controller implements IFloodlightProviderService,
     public void rowsDeleted(String tableName, Set<Object> rowKeys) {
         if (tableName.equals(CONTROLLER_INTERFACE_TABLE_NAME)) {
             handleControllerNodeIPChanges();
+        } else if (tableName.equals(FLOW_PRIORITY_TABLE_NAME)) {
+            log.warn(FLOW_PRIORITY_CHANGED_AFTER_STARTUP);
         }
     }
 
@@ -2490,6 +2571,14 @@ public class Controller implements IFloodlightProviderService,
         counterStore.updateFlush();
         debugCounters.flushCounters();
         debugEvents.flushEvents();
+    }
+
+    short getAccessFlowPriority() {
+        return accessPriority;
+    }
+
+    short getCoreFlowPriority() {
+        return corePriority;
     }
 
     /**

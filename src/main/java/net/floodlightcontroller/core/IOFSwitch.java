@@ -612,4 +612,28 @@ public interface IOFSwitch {
      * Set the flow table full flag in the switch
      */
     public void setTableFull(boolean isFull);
+
+    /**
+     * Set the suggested priority to use when installing access flows in
+     * this switch.
+     */
+    public void setAccessFlowPriority(short prio);
+
+    /**
+     * Set the suggested priority to use when installing core flows in
+     * this switch.
+     */
+    public void setCoreFlowPriority(short prio);
+
+    /**
+     * Get the suggested priority to use when installing access flows in
+     * this switch.
+     */
+    public short getAccessFlowPriority();
+
+    /**
+     * Get the suggested priority to use when installing core flows in
+     * this switch.
+     */
+    public short getCoreFlowPriority();
 }
