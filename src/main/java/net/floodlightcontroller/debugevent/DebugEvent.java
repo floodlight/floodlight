@@ -51,37 +51,37 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         boolean enabled;
         int bufferCapacity;
         EventType etype;
-        String formatStr;
         String eventDesc;
         String eventName;
         String moduleName;
-        boolean flushNow;
         String moduleEventName;
+        Class<?> eventClass;
+        String[] metaData;
 
         public EventInfo(int eventId, boolean enabled, int bufferCapacity,
-                         EventType etype, String formatStr, String eventDesc,
-                         String eventName, String moduleName, boolean flushNow) {
+                         EventType etype, Class<?> eventClass, String eventDesc,
+                         String eventName, String moduleName, String... metaData) {
             this.enabled = enabled;
             this.eventId = eventId;
             this.bufferCapacity = bufferCapacity;
             this.etype = etype;
-            this.formatStr = formatStr;
+            this.eventClass = eventClass;
             this.eventDesc = eventDesc;
             this.eventName = eventName;
             this.moduleName = moduleName;
-            this.flushNow = flushNow;
             this.moduleEventName = moduleName + "/" + eventName;
+            this.metaData = metaData;
         }
 
         public int getEventId() { return eventId; }
         public boolean isEnabled() { return enabled; }
         public int getBufferCapacity() { return bufferCapacity; }
         public EventType getEtype() { return etype; }
-        public String getFormatStr() { return formatStr; }
         public String getEventDesc() { return eventDesc; }
         public String getEventName() { return eventName; }
         public String getModuleName() { return moduleName; }
         public String getModuleEventName() { return moduleEventName; }
+        public String[] getMetaData() { return metaData; }
     }
 
     //******************
@@ -175,14 +175,47 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     };
 
     //*******************************
+    //   IEventUpdater
+    //*******************************
+
+    protected class EventUpdaterImpl<T> implements IEventUpdater<T> {
+        private final int eventId;
+
+        public EventUpdaterImpl(int evId) {
+            this.eventId = evId;
+        }
+
+        @Override
+        public void updateEventNoFlush(Object event) {
+            if (!validEventId()) return;
+            updateEvent(eventId, false, event);
+        }
+
+        @Override
+        public void updateEventWithFlush(Object event) {
+            if (!validEventId()) return;
+            updateEvent(eventId, true, event);
+        }
+
+        private boolean validEventId() {
+            if (eventId < 0 || eventId >= MAX_EVENTS) {
+                log.error("Invalid eventId invoked");
+                return false;
+            }
+            return true;
+        }
+
+    }
+
+    //*******************************
     //   IDebugEventService
     //*******************************
 
     @Override
-    public int registerEvent(String moduleName, String eventName,
-                             boolean flushImmediately, String eventDescription,
-                             EventType et, int bufferCapacity, String formatStr,
-                             Object[] params) throws MaxEventsRegistered {
+    public <T> IEventUpdater<T> registerEvent(String moduleName, String eventName,
+                                              String eventDescription, EventType et,
+                                              Class<T> eventClass, int bufferCapacity,
+                                              String... metaData) throws MaxEventsRegistered {
         int eventId = -1;
         synchronized (eventIdLock) {
              eventId = Integer.valueOf(eventIdCounter++);
@@ -198,25 +231,26 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         if (!moduleEvents.get(moduleName).containsKey(eventName)) {
             moduleEvents.get(moduleName).put(eventName, new Integer(eventId));
         } else {
+            int existingEventId = moduleEvents.get(moduleName).get(eventName);
             log.error("Duplicate event registration for moduleName {} eventName {}",
                       moduleName, eventName);
+            return new EventUpdaterImpl<T>(existingEventId);
         }
 
         // create storage for event-type
         boolean enabled = (et == EventType.ALWAYS_LOG) ? true : false;
         EventInfo ei = new EventInfo(eventId, enabled, bufferCapacity,
-                                     et, formatStr, eventDescription, eventName,
-                                     moduleName, flushImmediately);
+                                     et, eventClass, eventDescription, eventName,
+                                     moduleName, metaData);
         allEvents[eventId] = new DebugEventHistory(ei, bufferCapacity);
         if (enabled) {
             currentEvents.add(eventId);
         }
 
-        return eventId;
+        return new EventUpdaterImpl<T>(eventId);
     }
 
-    @Override
-    public void updateEvent(int eventId, Object[] params) {
+    private void updateEvent(int eventId, boolean flushNow, Object eventData) {
         if (eventId < 0 || eventId > MAX_EVENTS-1) return;
 
         LocalEventHistory[] thishist = this.threadlocalEvents.get();
@@ -229,7 +263,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                 int localCapacity = de.einfo.bufferCapacity * PCT_LOCAL_CAP/ 100;
                 if (localCapacity < 10)  localCapacity = MIN_LOCAL_CAPACITY;
                 thishist[eventId] = new LocalEventHistory(enabled, localCapacity,
-                                                          de.einfo.flushNow);
+                                                          flushNow);
                 if (enabled) {
                     Set<Integer> thisset = this.threadlocalCurrentEvents.get();
                     thisset.add(eventId);
@@ -249,15 +283,15 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             if (le.nextIndex < le.eventList.size()) {
                 if (le.eventList.get(le.nextIndex) == null) {
                     le.eventList.set(le.nextIndex, new Event(timestamp, thisthread,
-                                                             params));
+                                                             eventData));
                 } else {
                     Event e = le.eventList.get(le.nextIndex);
                     e.timestamp = timestamp;
                     e.threadId = thisthread;
-                    e.params = params;
+                    e.eventData = eventData;
                 }
             } else {
-                le.eventList.add(new Event(timestamp, thisthread, params));
+                le.eventList.add(new Event(timestamp, thisthread, eventData));
             }
             le.nextIndex++;
 
@@ -336,7 +370,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                 if (de != null) {
                     ArrayList<String> ret = new ArrayList<String>();
                     for (Event e : de.eventBuffer) {
-                        ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
+                        ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
                     }
                     moduleEventList.add(new DebugEventInfo(de.einfo, ret));
                 }
@@ -354,7 +388,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             if (de != null) {
                 ArrayList<String> ret = new ArrayList<String>();
                 for (Event e : de.eventBuffer) {
-                    ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
+                    ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
                 }
                 moduleEventList.add(new DebugEventInfo(de.einfo, ret));
             }
@@ -371,7 +405,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         if (de != null) {
             ArrayList<String> ret = new ArrayList<String>();
             for (Event e : de.eventBuffer) {
-                ret.add(e.toString(de.einfo.formatStr, de.einfo.moduleEventName));
+                ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
             }
             return new DebugEventInfo(de.einfo, ret);
         }
@@ -423,7 +457,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             DebugEventHistory de = allEvents[eventId];
             if (de != null) {
                 for (Event e : de.eventBuffer) {
-                    log.info("{}", e.toString(de.einfo.formatStr,
+                    log.info("{}", e.toString(de.einfo.eventClass,
                                               de.einfo.moduleEventName));
                 }
             }

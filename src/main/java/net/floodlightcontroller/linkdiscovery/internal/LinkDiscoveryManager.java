@@ -62,7 +62,10 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.IEventUpdater;
 import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
@@ -147,8 +150,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
     private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
-    // Event Ids for debug events
-    private int LINK_EVENT = -1;
+    // Event updaters for debug events
+    protected IEventUpdater<DirectLinkEvent> evDirectLink;
 
     protected IFloodlightProviderService floodlightProvider;
     protected IStorageSourceService storageSource;
@@ -1332,6 +1335,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 LinkType linkType = getLinkType(lt, newInfo);
                 if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                     log.info("Inter-switch link detected: {}", lt);
+                    evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
+                         lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-added"));
                 }
                 evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
                                lt.getDstPort(),
@@ -1345,6 +1350,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     LinkType linkType = getLinkType(lt, newInfo);
                     if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                         log.info("Inter-switch link updated: {}", lt);
+                        evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
+                            lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-updated"));
                     }
                     // Add to event history
                     evHistTopoLink(lt.getSrc(), lt.getDst(),
@@ -1367,13 +1374,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                          lt.getDst(), lt.getDstPort(),
                                          getLinkType(lt, newInfo),
                                          updateOperation));
-
-                String reason = (updateOperation == UpdateOperation.LINK_UPDATED)
-                           ? "link-updated" : "link-removed";
-                debugEvents.updateEvent(LINK_EVENT, new Object[] {
-                                           lt.getSrc(), lt.getSrcPort(),
-                                           lt.getDst(), lt.getDstPort(),
-                                           reason});
             }
         } finally {
             lock.writeLock().unlock();
@@ -1463,7 +1463,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                lt.getDstPort(),
                                ILinkDiscovery.LinkType.INVALID_LINK,
                                EvAction.LINK_DELETED, reason);
-
+                // link type shows up as invalid now -- thus not checking if
+                // link type is a direct link
+                evDirectLink.updateEventWithFlush(new DirectLinkEvent(lt.getSrc(),
+                      lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-removed"));
                 // remove link from storage.
                 removeLinkFromStorage(lt);
 
@@ -2120,6 +2123,10 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         setControllerTLV();
     }
 
+    // ****************************************************
+    // Link Discovery DebugCounters and DebugEvents
+    // ****************************************************
+
     private void registerLinkDiscoveryDebugCounters() {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
@@ -2150,14 +2157,41 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             debugEvents = new NullDebugEvent();
             return;
         }
+
         try {
-            LINK_EVENT = debugEvents.registerEvent(
-                               getName(), "linkevent", false,
+            evDirectLink = debugEvents.registerEvent(
+                               getName(), "linkevent",
                                "Direct OpenFlow links discovered or timed-out",
-                               EventType.ALWAYS_LOG, 100,
-                               "srcSw=%dpid, srcPort=%d, dstSw=%dpid, dstPort=%d, reason=%s", null);
+                               EventType.ALWAYS_LOG, DirectLinkEvent.class, 100);
         } catch (MaxEventsRegistered e) {
             e.printStackTrace();
+        }
+
+    }
+
+    public class DirectLinkEvent {
+        @EventColumn(name = "srcSw", description = EventFieldType.DPID)
+        long srcDpid;
+
+        @EventColumn(name = "srcPort", description = EventFieldType.PRIMITIVE)
+        short srcPort;
+
+        @EventColumn(name = "dstSw", description = EventFieldType.DPID)
+        long dstDpid;
+
+        @EventColumn(name = "dstPort", description = EventFieldType.PRIMITIVE)
+        short dstPort;
+
+        @EventColumn(name = "reason", description = EventFieldType.STRING)
+        String reason;
+
+        public DirectLinkEvent(long srcDpid, short srcPort, long dstDpid,
+                               short dstPort, String reason) {
+            this.srcDpid = srcDpid;
+            this.srcPort = srcPort;
+            this.dstDpid = dstDpid;
+            this.dstPort = dstPort;
+            this.reason = reason;
         }
     }
 

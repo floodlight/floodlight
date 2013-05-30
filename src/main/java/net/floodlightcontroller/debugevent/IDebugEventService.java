@@ -1,5 +1,9 @@
 package net.floodlightcontroller.debugevent;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +20,30 @@ public interface IDebugEventService extends IFloodlightService {
         ALWAYS_LOG,
         LOG_ON_DEMAND
     }
+
+    /**
+     * Describes the type of field obtained from reflection
+     */
+    enum EventFieldType {
+        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE
+    }
+
+    /**
+     * EventColumn is the only annotation given to the fields of the event
+     * when updating an event.
+     */
+    @Target(ElementType.FIELD)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface EventColumn {
+        String name() default "param";
+        EventFieldType description() default EventFieldType.PRIMITIVE;
+    }
+
+    /**
+     * Debug Event Qualifiers
+     */
+    public static final String EV_MDATA_WARN = "warn";
+    public static final String EV_MDATA_ERROR = "error";
 
     /**
      *  A limit on the maximum number of events that can be created
@@ -55,52 +83,27 @@ public interface IDebugEventService extends IFloodlightService {
      *
      * @param moduleName       module registering event eg. linkdiscovery, virtualrouting.
      * @param eventName        name given to event.
-     * @param flushNow         set true for rare events that are not triggered
-     *                         in the packet processing pipeline (eg. switch
-     *                         connect/disconnect).
-     * @param eventDescription A descriptive string describing event.
-     * @param eventType        EventType for this event.
+     * @param eventDescription A descriptive string describing the event.
+     * @param eventType        EventType for this event. On-demand events have to
+     *                         be explicitly enabled using other methods in this API
+     * @param eventClass       A user defined class that annotates the fields
+     *                         with @EventColumn
      * @param bufferCapacity   Number of events to store for this event in a circular
      *                         buffer. Older events will be discarded once the
      *                         buffer is full.
-     * @param formatStr        A descriptive string for displaying the 'params'
-     *                         For example, if 'params' consists of 3 objects -
-     *                         a dpid, an IP address, and a number, the format string
-     *                         can be "dpid=%dpid, ipAddr=%ipv4, count=%d".
-     *                         Any normal conversion can be used including %d, %x, %s etc.
-     *                         In addition 3 special conversions can be used
-     *                         %dpid which displays xx:xx:xx:xx:xx:xx:xx:xx
-     *                         %mac  which displays xx:xx:xx:xx:xx:xx
-     *                         %ipv4 which displays ip addrs in dotted decimal form
-     * @param params           an Object[] with the parameters to register for this
-     *                         event. This can just be null for now.
-     * @return                 an eventId for this event. All updates to this
-     *                         event must use the returned eventId.
+     * @param metaData         variable arguments that qualify an event
+     *                         eg. EV_MDATA_WARN, EV_MDATA_ERROR etc. See Debug Event Qualifiers
+     * @return                 IEventUpdater with update methods that can be used to
+     *                         update an event of the given eventClass
      * @throws MaxEventsRegistered
      */
-    public int registerEvent(String moduleName, String eventName, boolean flushNow,
-                             String eventDescription, EventType eventType,
-                             int bufferCapacity, String formatStr, Object[] params)
-                                     throws MaxEventsRegistered;
-
-    /**
-     * updateEvent is used to log events for pre-registered events.  This method
-     * will not check to see if the parameters passed in are consistent on
-     * each invocation for the same event.
-     *
-     * @param eventId     The id of the pre-registered event
-     * @param params      an Object[] with the parameters to log for this event.
-     *                    For example, switch dpids, host macs or ip-addrs or
-     *                    any other user defined parameter. Once a set of params
-     *                    are used with an event, the same event should always
-     *                    be updated with the same type of parameters in the same order.
-     *                    i.e different parts of the code base can update the same
-     *                    event but it should do so in the same way, maintaining
-     *                    the order of parameters.
-     *                    updateEvent(3, new Object[] { dpid1, ip1, "connected" })
-     *                    updateEvent(3, new Object[] { dpid4, ip4, "disconnected" })
-     */
-    public void updateEvent(int eventId, Object[] params);
+    public <T> IEventUpdater<T> registerEvent(String moduleName, String eventName,
+                                              String eventDescription,
+                                              EventType eventType,
+                                              Class<T> eventClass,
+                                              int bufferCapacity,
+                                              String... metaData)
+                                                      throws MaxEventsRegistered;
 
     /**
      * Update the global event stores with values from the thread local stores. This

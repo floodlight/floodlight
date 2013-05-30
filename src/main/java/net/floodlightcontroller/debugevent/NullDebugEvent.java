@@ -14,18 +14,6 @@ import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
 
 public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
-    @Override
-    public int registerEvent(String moduleName, String eventName,
-                             boolean flushNow, String eventDescription,
-                             EventType et, int bufferCapacity,
-                             String formatStr, Object[] params) {
-        return -1;
-    }
-
-    @Override
-    public void updateEvent(int eventId, Object[] params) {
-
-    }
 
     @Override
     public void flushEvents() {
@@ -123,6 +111,17 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public <T> IEventUpdater<T>
+            registerEvent(String moduleName, String eventName,
+                          String eventDescription, EventType eventType,
+                          Class<T> eventClass, int bufferCapacity,
+                          String... metaData) throws MaxEventsRegistered {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 
 
 }
