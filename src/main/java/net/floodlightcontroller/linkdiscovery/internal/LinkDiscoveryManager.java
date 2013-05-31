@@ -1996,6 +1996,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.ignoreMACSet = Collections.newSetFromMap(
                                 new ConcurrentHashMap<MACRange,Boolean>());
         this.haListener = new HAListenerDelegate();
+        registerLinkDiscoveryDebugCounters();
+        registerLinkDiscoveryDebugEvents();
+
     }
 
     @Override
@@ -2048,9 +2051,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             log.error("Error in installing listener for "
                       + "switch table {}", SWITCH_CONFIG_TABLE_NAME);
         }
-
-        registerLinkDiscoveryDebugCounters();
-        registerLinkDiscoveryDebugEvents();
 
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
@@ -2155,7 +2155,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         if (debugEvents == null) {
             log.error("Debug Event Service not found.");
             debugEvents = new NullDebugEvent();
-            return;
         }
 
         try {

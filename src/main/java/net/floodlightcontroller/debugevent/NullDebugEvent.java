@@ -118,10 +118,23 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
                           String eventDescription, EventType eventType,
                           Class<T> eventClass, int bufferCapacity,
                           String... metaData) throws MaxEventsRegistered {
-        // TODO Auto-generated method stub
-        return null;
+        return new NullEventImpl<T>();
     }
 
+    public class NullEventImpl<T> implements IEventUpdater<T> {
 
+        @Override
+        public void updateEventNoFlush(Object event) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void updateEventWithFlush(Object event) {
+            // TODO Auto-generated method stub
+
+        }
+
+    }
 
 }
