@@ -136,7 +136,7 @@ public interface IDebugEventService extends IFloodlightService {
      * Get event history for all events registered for a given moduleName
      *
      * @return  a list of all event histories for all events registered for the
-     *          the module or null if there are no events for this module
+     *          the module or an empty list if there are no events for this module
      */
     public List<DebugEventInfo> getModuleEventHistory(String moduleName);
 

@@ -43,7 +43,7 @@ public interface IDebugCounterService extends IFloodlightService {
 
     /**
      *  maximum levels of hierarchy
-     *  Example: moduleName/counterHierarchy
+     *  Example of moduleName/counterHierarchy:
      *           switch/00:00:00:00:01:02:03:04/pktin/drops where
      *           moduleName ==> "switch"  and
      *           counterHierarchy of 3 ==> "00:00:00:00:01:02:03:04/pktin/drops"

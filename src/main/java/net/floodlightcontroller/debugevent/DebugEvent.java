@@ -106,8 +106,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
      * A particular event type is accessed by directly indexing into the array
      * with the corresponding event-id.
      */
-    protected static DebugEventHistory[] allEvents =
-                          new DebugEventHistory[MAX_EVENTS];
+    protected DebugEventHistory[] allEvents =
+                    new DebugEventHistory[MAX_EVENTS];
 
     /**
      * Global storage for all event ids registered for a module. The map is indexed
@@ -199,8 +199,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
 
         private boolean validEventId() {
             if (eventId < 0 || eventId >= MAX_EVENTS) {
-                log.error("Invalid eventId invoked");
-                return false;
+                throw new IllegalStateException();
             }
             return true;
         }
@@ -381,7 +380,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
 
     @Override
     public List<DebugEventInfo> getModuleEventHistory(String moduleName) {
-        if (!moduleEvents.containsKey(moduleName)) return null;
+        if (!moduleEvents.containsKey(moduleName)) return Collections.emptyList();
         ArrayList<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
         for (int eventId : moduleEvents.get(moduleName).values()) {
             DebugEventHistory de = allEvents[eventId];

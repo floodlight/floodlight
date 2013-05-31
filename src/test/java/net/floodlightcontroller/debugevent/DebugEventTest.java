@@ -53,20 +53,20 @@ public class DebugEventTest extends FloodlightTestCase {
         assertEquals(true, debugEvent.containsModuleEventName("dbgevtest","switchevent"));
         assertEquals(true, debugEvent.containsModuleEventName("dbgevtest","pktinevent"));
 
-        assertEquals(0, DebugEvent.allEvents[eventId1].eventBuffer.size());
-        assertEquals(0, DebugEvent.allEvents[eventId2].eventBuffer.size());
+        assertEquals(0, debugEvent.allEvents[eventId1].eventBuffer.size());
+        assertEquals(0, debugEvent.allEvents[eventId2].eventBuffer.size());
 
         // update is immediately flushed to global store
         event1.updateEventWithFlush(new SwitchyEvent(1L, "connected"));
-        assertEquals(1, DebugEvent.allEvents[eventId1].eventBuffer.size());
+        assertEquals(1, debugEvent.allEvents[eventId1].eventBuffer.size());
 
         // update is flushed only when flush is explicitly called
         event2.updateEventNoFlush(new PacketyEvent(1L, 24L));
-        assertEquals(0, DebugEvent.allEvents[eventId2].eventBuffer.size());
+        assertEquals(0, debugEvent.allEvents[eventId2].eventBuffer.size());
 
         debugEvent.flushEvents();
-        assertEquals(1, DebugEvent.allEvents[eventId1].eventBuffer.size());
-        assertEquals(1, DebugEvent.allEvents[eventId2].eventBuffer.size());
+        assertEquals(1, debugEvent.allEvents[eventId1].eventBuffer.size());
+        assertEquals(1, debugEvent.allEvents[eventId2].eventBuffer.size());
 
         DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent");
         assertEquals(1, de.events.size());
