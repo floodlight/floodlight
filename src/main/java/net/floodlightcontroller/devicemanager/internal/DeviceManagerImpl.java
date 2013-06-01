@@ -132,33 +132,34 @@ IFlowReconcileListener, IInfoProvider {
      */
     public static final String MODULE_NAME = "devicemanager";
     public static final String WARN = "warn";
-    public static IDebugCounter cntIncoming;
-    public static IDebugCounter cntReconcileRequest;
-    public static IDebugCounter cntReconcileNoSource;
-    public static IDebugCounter cntReconcileNoDest;
-    public static IDebugCounter cntBroadcastSource;
-    public static IDebugCounter cntNoSource;
-    public static IDebugCounter cntNoDest;
-    public static IDebugCounter cntDhcpClientNameSnooped;
-    public static IDebugCounter cntDeviceOnInternalPortNotLearned;
-    public static IDebugCounter cntPacketNotAllowed;
-    public static IDebugCounter cntNewDevice;
-    public static IDebugCounter cntPacketOnInternalPortForKnownDevice;
-    public static IDebugCounter cntNewEntity;
-    public static IDebugCounter cntDeviceChanged;
-    public static IDebugCounter cntDeviceMoved;
-    public static IDebugCounter cntCleanupEntitiesRuns;
-    public static IDebugCounter cntEntityRemovedTimeout;
-    public static IDebugCounter cntDeviceDeleted;
-    public static IDebugCounter cntDeviceReclassifyDelete;
-    public static IDebugCounter cntDeviceStrored;
-    public static IDebugCounter cntDeviceStoreThrottled;
-    public static IDebugCounter cntDeviceRemovedFromStore;
-    public static IDebugCounter cntSyncException;
-    public static IDebugCounter cntDevicesFromStore;
-    public static IDebugCounter cntConsolidateStoreRuns;
-    public static IDebugCounter cntConsolidateStoreDevicesRemoved;
-    public static IDebugCounter cntTransitionToMaster;
+    public IDebugCounter cntIncoming;
+    public IDebugCounter cntReconcileRequest;
+    public IDebugCounter cntReconcileNoSource;
+    public IDebugCounter cntReconcileNoDest;
+    public IDebugCounter cntInvalidSource;
+    public IDebugCounter cntInvalidDest;
+    public IDebugCounter cntNoSource;
+    public IDebugCounter cntNoDest;
+    public IDebugCounter cntDhcpClientNameSnooped;
+    public IDebugCounter cntDeviceOnInternalPortNotLearned;
+    public IDebugCounter cntPacketNotAllowed;
+    public IDebugCounter cntNewDevice;
+    public IDebugCounter cntPacketOnInternalPortForKnownDevice;
+    public IDebugCounter cntNewEntity;
+    public IDebugCounter cntDeviceChanged;
+    public IDebugCounter cntDeviceMoved;
+    public IDebugCounter cntCleanupEntitiesRuns;
+    public IDebugCounter cntEntityRemovedTimeout;
+    public IDebugCounter cntDeviceDeleted;
+    public IDebugCounter cntDeviceReclassifyDelete;
+    public IDebugCounter cntDeviceStrored;
+    public IDebugCounter cntDeviceStoreThrottled;
+    public IDebugCounter cntDeviceRemovedFromStore;
+    public IDebugCounter cntSyncException;
+    public IDebugCounter cntDevicesFromStore;
+    public IDebugCounter cntConsolidateStoreRuns;
+    public IDebugCounter cntConsolidateStoreDevicesRemoved;
+    public IDebugCounter cntTransitionToMaster;
 
     private boolean isMaster = false;
 
@@ -924,10 +925,10 @@ IFlowReconcileListener, IInfoProvider {
                 "Number of flow reconcile events that failed because no " +
                 "destination device could be identified",
                 CounterType.ALWAYS_COUNT, WARN); // is this really a warning
-            cntBroadcastSource = debugCounters.registerCounter(MODULE_NAME,
-                "broadcast-source",
+            cntInvalidSource = debugCounters.registerCounter(MODULE_NAME,
+                "invalid-source",
                 "Number of packetIns that were discarded because the source " +
-                "MAC was broadcast or multicast",
+                "MAC was invalid (broadcast, multicast, or zero)",
                 CounterType.ALWAYS_COUNT, WARN);
             cntNoSource = debugCounters.registerCounter(MODULE_NAME, "no-source-device",
                  "Number of packetIns that were discarded because the " +
@@ -935,6 +936,11 @@ IFlowReconcileListener, IInfoProvider {
                  "packet is not allowed, appears on an illegal port, does not " +
                  "have a valid address space, etc.",
                  CounterType.ALWAYS_COUNT, WARN);
+            cntInvalidDest = debugCounters.registerCounter(MODULE_NAME,
+                "invalid-dest",
+                "Number of packetIns that were discarded because the dest " +
+                "MAC was invalid (zero)",
+                CounterType.ALWAYS_COUNT, WARN);
             cntNoDest = debugCounters.registerCounter(MODULE_NAME, "no-dest-device",
                  "Number of packetIns that did not have an associated " +
                  "destination device. E.g., because the destination MAC is " +
@@ -1093,7 +1099,7 @@ IFlowReconcileListener, IInfoProvider {
         Entity srcEntity =
                 getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
         if (srcEntity == null) {
-            cntBroadcastSource.updateCounterNoFlush();
+            cntInvalidSource.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -1117,6 +1123,10 @@ IFlowReconcileListener, IInfoProvider {
 
         // Find the device matching the destination from the entity
         // classes of the source.
+        if (eth.getDestinationMAC().toLong() == 0) {
+            cntInvalidDest.updateCounterNoFlush();
+            return Command.STOP;
+        }
         Entity dstEntity = getDestEntityFromPacket(eth);
         Device dstDevice = null;
         if (dstEntity != null) {
@@ -1188,8 +1198,9 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     /**
-     * Get sender IP address from packet if the packet is either an ARP
-     * packet.
+     * Get sender IP address from packet if the packet is an ARP
+     * packet and if the source MAC address matches the ARP packets
+     * sender MAC address.
      * @param eth
      * @param dlAddr
      * @return
@@ -1220,6 +1231,9 @@ IFlowReconcileListener, IInfoProvider {
 
         // Ignore broadcast/multicast source
         if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        // Ignore 0 source mac
+        if (dlAddr == 0)
             return null;
 
         short vlan = eth.getVlanID();
@@ -1255,6 +1269,9 @@ IFlowReconcileListener, IInfoProvider {
         // Ignore broadcast/multicast source
         if ((senderHardwareAddr[0] & 0x1) != 0)
             return;
+        // Ignore zero sender mac
+        if (senderAddr == 0)
+            return;
 
         short vlan = eth.getVlanID();
         int nwSrc = IPv4.toIPv4Address(arp.getSenderProtocolAddress());
@@ -1282,6 +1299,9 @@ IFlowReconcileListener, IInfoProvider {
 
         // Ignore broadcast/multicast destination
         if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        // Ignore zero dest mac
+        if (dlAddr == 0)
             return null;
 
         if (eth.getPayload() instanceof IPv4) {
