@@ -2,6 +2,7 @@ package net.floodlightcontroller.debugevent;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,18 +15,6 @@ import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
 
 public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
-    @Override
-    public int registerEvent(String moduleName, String eventName,
-                             boolean flushNow, String eventDescription,
-                             EventType et, int bufferCapacity,
-                             String formatStr, Object[] params) {
-        return -1;
-    }
-
-    @Override
-    public void updateEvent(int eventId, Object[] params) {
-
-    }
 
     @Override
     public void flushEvents() {
@@ -72,57 +61,70 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
     @Override
     public boolean containsModuleEventName(String moduleName, String eventName) {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public boolean containsModuleName(String moduleName) {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public List<DebugEventInfo> getAllEventHistory() {
-        // TODO Auto-generated method stub
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public List<DebugEventInfo> getModuleEventHistory(String param) {
-        // TODO Auto-generated method stub
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public void resetAllEvents() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public void resetAllModuleEvents(String moduleName) {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public void resetSingleEvent(String moduleName, String eventName) {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public ArrayList<EventInfo> getEventList() {
-        // TODO Auto-generated method stub
-        return null;
+        return new ArrayList<EventInfo>();
     }
 
+    @Override
+    public <T> IEventUpdater<T>
+            registerEvent(String moduleName, String eventName,
+                          String eventDescription, EventType eventType,
+                          Class<T> eventClass, int bufferCapacity,
+                          String... metaData) throws MaxEventsRegistered {
+        return new NullEventImpl<T>();
+    }
+
+    public class NullEventImpl<T> implements IEventUpdater<T> {
+
+        @Override
+        public void updateEventNoFlush(Object event) {
+
+        }
+
+        @Override
+        public void updateEventWithFlush(Object event) {
+
+        }
+
+    }
 
 }

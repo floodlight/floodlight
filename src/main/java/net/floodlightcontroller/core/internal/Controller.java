@@ -74,6 +74,9 @@ import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
+import net.floodlightcontroller.debugevent.IEventUpdater;
 import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
@@ -167,8 +170,6 @@ public class Controller implements IFloodlightProviderService,
     protected int openFlowPort = 6633;
     protected int workerThreads = 0;
 
-    // Event IDs for debug events
-    private int SWITCH_EVENT = -1;
 
     // This controller's current role that modules can use/query to decide
     // if they should operate in master or slave mode.
@@ -240,11 +241,13 @@ public class Controller implements IFloodlightProviderService,
         this.uplinkPortPrefixSet = prefixSet;
     }
 
+    // Event IDs for debug events
+    protected IEventUpdater<SwitchEvent> evSwitch;
+
     // Load monitor for overload protection
     protected final boolean overload_drop =
         Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
     protected final LoadMonitor loadmonitor = new LoadMonitor(log);
-
 
     public static class Counters {
         public static final String prefix = "controller";
@@ -944,7 +947,7 @@ public class Controller implements IFloodlightProviderService,
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
             // Update event history
             addSwitchEvent(dpid, EvAction.SWITCH_CONNECTED, "None");
-            debugEvents.updateEvent(SWITCH_EVENT, new Object[] {sw.getId(), "connected"});
+            evSwitch.updateEventWithFlush(new SwitchEvent(dpid, "connected"));
 
             if (oldSw == sw)  {
                 // Note == for object equality, not .equals for value
@@ -1123,7 +1126,7 @@ public class Controller implements IFloodlightProviderService,
             //       in switchActivated(). Should we have events on the
             //       slave as well?
             addSwitchEvent(dpid, EvAction.SWITCH_DISCONNECTED, "None");
-            debugEvents.updateEvent(SWITCH_EVENT, new Object[] {dpid, "disconnected"});
+            evSwitch.updateEventWithFlush(new SwitchEvent(dpid, "disconnected"));
             counters.switchDisconnected.updateCounterWithFlush();
             IOFSwitch oldSw = this.activeSwitches.get(dpid);
             if (oldSw != sw) {
@@ -2340,13 +2343,25 @@ public class Controller implements IFloodlightProviderService,
             return;
         }
         try {
-            SWITCH_EVENT = debugEvents.registerEvent(
-                               "controller", "switchevent", true,
+            evSwitch = debugEvents.registerEvent(
+                               "controller", "switchevent",
                                "Switch connected, disconnected or port changed",
-                               EventType.ALWAYS_LOG, 100,
-                               "Sw=%dpid, reason=%s", null);
+                               EventType.ALWAYS_LOG, SwitchEvent.class, 100);
         } catch (MaxEventsRegistered e) {
             e.printStackTrace();
+        }
+    }
+
+    public class SwitchEvent {
+        @EventColumn(name = "dpid", description = EventFieldType.DPID)
+        long dpid;
+
+        @EventColumn(name = "reason", description = EventFieldType.STRING)
+        String reason;
+
+        public SwitchEvent(long dpid, String reason) {
+            this.dpid = dpid;
+            this.reason = reason;
         }
     }
 

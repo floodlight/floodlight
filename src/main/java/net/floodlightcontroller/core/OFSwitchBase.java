@@ -1310,6 +1310,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
         if (ofm.getType() != OFType.PACKET_IN) {
             return false;
         }
+        ctrSwitchPktin.updateCounterNoFlush();
         // Compute current packet in rate
         messageCount++;
         if (messageCount % 100 == 0) {
