@@ -341,8 +341,10 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         // sync thread local currently enabled set of eventIds with global set.
         Sets.SetView<Integer> sv = Sets.difference(currentEvents, thisset);
         for (int eventId : sv) {
-            if (thishist[eventId] != null) thishist[eventId].enabled = true;
-            thisset.add(eventId);
+            if (thishist[eventId] != null) {
+                thishist[eventId].enabled = true;
+                thisset.add(eventId);
+            }
         }
 
         //printEvents();

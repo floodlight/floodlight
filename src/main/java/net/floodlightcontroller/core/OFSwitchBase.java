@@ -40,10 +40,12 @@ import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -146,6 +148,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @SuppressWarnings("unused")
     private IDebugCounter ctrSwitch, ctrSwitchPktin, ctrSwitchWrite;
     private IDebugCounter ctrSwitchPktinDrops, ctrSwitchWriteDrops;
+
+    private static final String PACKAGE = OFSwitchBase.class.getPackage().getName();
 
 
     protected final static ThreadLocal<Map<IOFSwitch,List<OFMessage>>> local_msg_buffer =
@@ -1056,7 +1060,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     @Override
     @JsonIgnore
-    public void setDebugCounterService(IDebugCounterService debugCounters) {
+    public void setDebugCounterService(IDebugCounterService debugCounters)
+            throws FloodlightModuleException {
         this.debugCounters = debugCounters;
         registerOverloadCounters();
     }
@@ -1388,7 +1393,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                 currentRate, this);
     }
 
-    private void registerOverloadCounters() {
+    private void registerOverloadCounters() throws FloodlightModuleException {
         if (debugCountersRegistered) {
             return;
         }
@@ -1401,27 +1406,27 @@ public abstract class OFSwitchBase implements IOFSwitch {
             // every level of the hierarchical counter has to be registered
             // even if they are not used
             ctrSwitch = debugCounters.registerCounter(
-                                       "switch", stringId,
+                                       PACKAGE , stringId,
                                        "Counter for this switch",
                                        CounterType.ALWAYS_COUNT);
             ctrSwitchPktin = debugCounters.registerCounter(
-                                       "switch", stringId + "/pktin",
+                                       PACKAGE, stringId + "/pktin",
                                        "Packet in counter for this switch",
                                        CounterType.ALWAYS_COUNT);
             ctrSwitchWrite = debugCounters.registerCounter(
-                                       "switch", stringId + "/write",
+                                       PACKAGE, stringId + "/write",
                                        "Write counter for this switch",
                                        CounterType.ALWAYS_COUNT);
             ctrSwitchPktinDrops = debugCounters.registerCounter(
-                                       "switch", stringId + "/pktin/drops",
+                                       PACKAGE, stringId + "/pktin/drops",
                                        "Packet in throttle drop count",
                                        CounterType.ALWAYS_COUNT);
             ctrSwitchWriteDrops = debugCounters.registerCounter(
-                                       "switch", stringId + "/write/drops",
+                                       PACKAGE, stringId + "/write/drops",
                                        "Switch write throttle drop count",
                                        CounterType.ALWAYS_COUNT);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
         }
     }
 

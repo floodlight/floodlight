@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.OrderedCollection;
@@ -62,7 +63,7 @@ public interface IOFSwitch {
         MANAGEMENT("management"), // for in-band management
         TUNNEL_LOOPBACK("tunnel-loopback");
 
-        private String value;
+        private final String value;
         OFPortType(String v) {
             value = v;
         }
@@ -159,8 +160,10 @@ public interface IOFSwitch {
      * Set debug counter service for per-switch counters
      * Called immediately after instantiation
      * @param debugCounters
+     * @throws FloodlightModuleException
      */
-    public void setDebugCounterService(IDebugCounterService debugCounters);
+    public void setDebugCounterService(IDebugCounterService debugCounters)
+            throws FloodlightModuleException;
 
     /**
      * Set the netty Channel this switch instance is associated with

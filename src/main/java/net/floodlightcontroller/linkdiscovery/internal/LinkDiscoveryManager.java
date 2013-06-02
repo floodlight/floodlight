@@ -59,6 +59,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugevent.IDebugEventService;
@@ -265,13 +266,15 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     private IHAListener haListener;
 
     /**
-     * Debug Counter
+     * Debug Counters
      */
     private IDebugCounter ctrQuarantineDrops;
     private IDebugCounter ctrIgnoreSrcMacDrops;
     private IDebugCounter ctrIncoming;
     private IDebugCounter ctrLinkLocalDrops;
     private IDebugCounter ctrLldpEol;
+
+    private final String PACKAGE = LinkDiscoveryManager.class.getPackage().getName();
 
 
     //*********************
@@ -1998,7 +2001,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.haListener = new HAListenerDelegate();
         registerLinkDiscoveryDebugCounters();
         registerLinkDiscoveryDebugEvents();
-
     }
 
     @Override
@@ -2024,7 +2026,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                     explanation = "An unknown error occured while sending LLDP "
                                                   + "messages to switches.",
                                     recommendation = LogMessageDoc.CHECK_SWITCH) })
-    public void startUp(FloodlightModuleContext context) {
+    public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 
         // Initialize role to floodlight provider role.
         this.role = floodlightProvider.getRole();
@@ -2127,31 +2129,31 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     // Link Discovery DebugCounters and DebugEvents
     // ****************************************************
 
-    private void registerLinkDiscoveryDebugCounters() {
+    private void registerLinkDiscoveryDebugCounters() throws FloodlightModuleException {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
         }
         try {
-            ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
+            ctrIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
                 "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
-            ctrLldpEol  = debugCounters.registerCounter(getName(), "lldp-eol",
+            ctrLldpEol  = debugCounters.registerCounter(PACKAGE, "lldp-eol",
                 "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
-            ctrLinkLocalDrops = debugCounters.registerCounter(getName(), "linklocal-drops",
+            ctrLinkLocalDrops = debugCounters.registerCounter(PACKAGE, "linklocal-drops",
                 "All link local packets dropped by this module",
                 CounterType.COUNT_ON_DEMAND);
-            ctrIgnoreSrcMacDrops = debugCounters.registerCounter(getName(), "ignore-srcmac-drops",
+            ctrIgnoreSrcMacDrops = debugCounters.registerCounter(PACKAGE, "ignore-srcmac-drops",
                 "All packets whose srcmac is configured to be dropped by this module",
                 CounterType.COUNT_ON_DEMAND);
-            ctrQuarantineDrops = debugCounters.registerCounter(getName(), "quarantine-drops",
+            ctrQuarantineDrops = debugCounters.registerCounter(PACKAGE, "quarantine-drops",
                 "All packets arriving on quarantined ports dropped by this module",
                 CounterType.COUNT_ON_DEMAND);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
         }
     }
 
-    private void registerLinkDiscoveryDebugEvents() {
+    private void registerLinkDiscoveryDebugEvents() throws FloodlightModuleException {
         if (debugEvents == null) {
             log.error("Debug Event Service not found.");
             debugEvents = new NullDebugEvent();
@@ -2163,7 +2165,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                "Direct OpenFlow links discovered or timed-out",
                                EventType.ALWAYS_LOG, DirectLinkEvent.class, 100);
         } catch (MaxEventsRegistered e) {
-            e.printStackTrace();
+            throw new FloodlightModuleException("max events registered", e);
         }
 
     }

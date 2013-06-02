@@ -136,7 +136,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
     }
 
     @Override
-    public void init(FloodlightModuleContext fmc) {
+    public void init(FloodlightModuleContext fmc) throws FloodlightModuleException {
         super.init(fmc);
         setSyncServiceIfNotSet(new MockSyncService());
     }

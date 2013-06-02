@@ -54,6 +54,7 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -131,7 +132,7 @@ IFlowReconcileListener, IInfoProvider {
      * Debug Counters
      */
     public static final String MODULE_NAME = "devicemanager";
-    public static final String WARN = "warn";
+    public static final String PACKAGE = DeviceManagerImpl.class.getPackage().getName();
     public IDebugCounter cntIncoming;
     public IDebugCounter cntReconcileRequest;
     public IDebugCounter cntReconcileNoSource;
@@ -190,7 +191,6 @@ IFlowReconcileListener, IInfoProvider {
             75*60*1000; // 75 min
     private final int syncStoreConsolidateIntervalMs =
             DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS;
-
 
     /**
      * Time in milliseconds before entities will expire
@@ -811,7 +811,7 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public void init(FloodlightModuleContext fmc) {
+    public void init(FloodlightModuleContext fmc) throws FloodlightModuleException {
         this.perClassIndices =
                 new HashSet<EnumSet<DeviceField>>();
         addIndex(true, EnumSet.of(DeviceField.IPV4));
@@ -835,6 +835,7 @@ IFlowReconcileListener, IInfoProvider {
         this.syncService = fmc.getServiceImpl(ISyncService.class);
         this.deviceSyncManager = new DeviceSyncManager();
         this.haListenerDelegate = new HAListenerDelegate();
+        registerDeviceManagerDebugCounters();
     }
 
     @Override
@@ -889,8 +890,6 @@ IFlowReconcileListener, IInfoProvider {
             logger.debug("Could not instantiate REST API");
         }
 
-        registerDeviceManagerDebugCounters();
-
         try {
             this.syncService.registerStore(DEVICE_SYNC_STORE_NAME, Scope.LOCAL);
             this.storeClient = this.syncService
@@ -902,146 +901,146 @@ IFlowReconcileListener, IInfoProvider {
         }
     }
 
-    private void registerDeviceManagerDebugCounters() {
+    private void registerDeviceManagerDebugCounters() throws FloodlightModuleException {
         if (debugCounters == null) {
             logger.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
         }
         try {
-            cntIncoming = debugCounters.registerCounter(MODULE_NAME, "incoming",
+            cntIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
                 "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
-            cntReconcileRequest = debugCounters.registerCounter(MODULE_NAME,
+            cntReconcileRequest = debugCounters.registerCounter(PACKAGE,
                 "reconcile-request",
                 "Number of flows that have been received for reconciliation by " +
                 "this module",
                 CounterType.ALWAYS_COUNT);
-            cntReconcileNoSource = debugCounters.registerCounter(MODULE_NAME,
+            cntReconcileNoSource = debugCounters.registerCounter(PACKAGE,
                 "reconcile-no-source-device",
                 "Number of flow reconcile events that failed because no source " +
                 "device could be identified",
-                CounterType.ALWAYS_COUNT, WARN); // is this really a warning
-            cntReconcileNoDest = debugCounters.registerCounter(MODULE_NAME,
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing
+            cntReconcileNoDest = debugCounters.registerCounter(PACKAGE,
                 "reconcile-no-dest-device",
                 "Number of flow reconcile events that failed because no " +
                 "destination device could be identified",
-                CounterType.ALWAYS_COUNT, WARN); // is this really a warning
-            cntInvalidSource = debugCounters.registerCounter(MODULE_NAME,
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing
+            cntInvalidSource = debugCounters.registerCounter(PACKAGE,
                 "invalid-source",
                 "Number of packetIns that were discarded because the source " +
                 "MAC was invalid (broadcast, multicast, or zero)",
-                CounterType.ALWAYS_COUNT, WARN);
-            cntNoSource = debugCounters.registerCounter(MODULE_NAME, "no-source-device",
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntNoSource = debugCounters.registerCounter(PACKAGE, "no-source-device",
                  "Number of packetIns that were discarded because the " +
                  "could not identify a source device. This can happen if a " +
                  "packet is not allowed, appears on an illegal port, does not " +
                  "have a valid address space, etc.",
-                 CounterType.ALWAYS_COUNT, WARN);
-            cntInvalidDest = debugCounters.registerCounter(MODULE_NAME,
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntInvalidDest = debugCounters.registerCounter(PACKAGE,
                 "invalid-dest",
                 "Number of packetIns that were discarded because the dest " +
                 "MAC was invalid (zero)",
-                CounterType.ALWAYS_COUNT, WARN);
-            cntNoDest = debugCounters.registerCounter(MODULE_NAME, "no-dest-device",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntNoDest = debugCounters.registerCounter(PACKAGE, "no-dest-device",
                  "Number of packetIns that did not have an associated " +
                  "destination device. E.g., because the destination MAC is " +
                  "broadcast/multicast or is not yet known to the controller.",
                  CounterType.ALWAYS_COUNT);
-            cntDhcpClientNameSnooped = debugCounters.registerCounter(MODULE_NAME,
+            cntDhcpClientNameSnooped = debugCounters.registerCounter(PACKAGE,
                  "dhcp-client-name-snooped",
                  "Number of times a DHCP client name was snooped from a " +
                  "packetIn.",
                  CounterType.ALWAYS_COUNT);
             cntDeviceOnInternalPortNotLearned = debugCounters.registerCounter(
-                 MODULE_NAME,
+                 PACKAGE,
                  "device-on-internal-port-not-learned",
                  "Number of times packetIn was received on an internal port and" +
                  "no source device is known for the source MAC. The packetIn is " +
                  "discarded.",
-                 CounterType.ALWAYS_COUNT, WARN);
-            cntPacketNotAllowed = debugCounters.registerCounter(MODULE_NAME,
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntPacketNotAllowed = debugCounters.registerCounter(PACKAGE,
                  "packet-not-allowed",
                  "Number of times a packetIn was not allowed due to spoofing " +
                  "protection configuration.",
-                 CounterType.ALWAYS_COUNT, WARN); // is this really a warning?
-            cntNewDevice = debugCounters.registerCounter(MODULE_NAME, "new-device",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing?
+            cntNewDevice = debugCounters.registerCounter(PACKAGE, "new-device",
                  "Number of times a new device was learned",
                  CounterType.ALWAYS_COUNT);
             cntPacketOnInternalPortForKnownDevice = debugCounters.registerCounter(
-                 MODULE_NAME,
+                 PACKAGE,
                  "packet-on-internal-port-for-known-device",
                  "Number of times a packetIn was received on an internal port " +
                  "for a known device.",
                  CounterType.ALWAYS_COUNT);
-            cntNewEntity = debugCounters.registerCounter(MODULE_NAME, "new-entity",
+            cntNewEntity = debugCounters.registerCounter(PACKAGE, "new-entity",
                  "Number of times a new entity was learned for an existing device",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceChanged = debugCounters.registerCounter(MODULE_NAME, "device-changed",
+            cntDeviceChanged = debugCounters.registerCounter(PACKAGE, "device-changed",
                  "Number of times device properties have changed",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceMoved = debugCounters.registerCounter(MODULE_NAME, "device-moved",
+            cntDeviceMoved = debugCounters.registerCounter(PACKAGE, "device-moved",
                  "Number of times devices have moved",
                  CounterType.ALWAYS_COUNT);
-            cntCleanupEntitiesRuns = debugCounters.registerCounter(MODULE_NAME,
+            cntCleanupEntitiesRuns = debugCounters.registerCounter(PACKAGE,
                  "cleanup-entities-runs",
                  "Number of times the entity cleanup task has been run",
                  CounterType.ALWAYS_COUNT);
-            cntEntityRemovedTimeout = debugCounters.registerCounter(MODULE_NAME,
+            cntEntityRemovedTimeout = debugCounters.registerCounter(PACKAGE,
                  "entity-removed-timeout",
                  "Number of times entities have been removed due to timeout " +
                  "(entity has been inactive for " + ENTITY_TIMEOUT/1000 + "s)",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceDeleted = debugCounters.registerCounter(MODULE_NAME, "device-deleted",
+            cntDeviceDeleted = debugCounters.registerCounter(PACKAGE, "device-deleted",
                  "Number of devices that have been removed due to inactivity",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceReclassifyDelete = debugCounters.registerCounter(MODULE_NAME,
+            cntDeviceReclassifyDelete = debugCounters.registerCounter(PACKAGE,
                  "device-reclassify-delete",
                  "Number of devices that required reclassification and have been " +
                  "temporarily delete for reclassification",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceStrored = debugCounters.registerCounter(MODULE_NAME, "device-stored",
+            cntDeviceStrored = debugCounters.registerCounter(PACKAGE, "device-stored",
                  "Number of device entries written or updated to the sync store",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceStoreThrottled = debugCounters.registerCounter(MODULE_NAME,
+            cntDeviceStoreThrottled = debugCounters.registerCounter(PACKAGE,
                  "device-store-throttled",
                  "Number of times a device update to the sync store was " +
                  "requested but not performed because the same device entities " +
                  "have recently been updated already",
                  CounterType.ALWAYS_COUNT);
-            cntDeviceRemovedFromStore = debugCounters.registerCounter(MODULE_NAME,
+            cntDeviceRemovedFromStore = debugCounters.registerCounter(PACKAGE,
                  "device-removed-from-store",
                  "Number of devices that were removed from the sync store " +
                  "because the local controller removed the device due to " +
                  "inactivity",
                  CounterType.ALWAYS_COUNT);
-            cntSyncException = debugCounters.registerCounter(MODULE_NAME, "sync-exception",
+            cntSyncException = debugCounters.registerCounter(PACKAGE, "sync-exception",
                  "Number of times an operation on the sync store resulted in " +
                  "sync exception",
-                 CounterType.ALWAYS_COUNT, WARN); // it this an error?
-            cntDevicesFromStore = debugCounters.registerCounter(MODULE_NAME,
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // it this an error?
+            cntDevicesFromStore = debugCounters.registerCounter(PACKAGE,
                  "devices-from-store",
                  "Number of devices that were read from the sync store after " +
                  "the local controller transitioned from SLAVE to MASTER",
                  CounterType.ALWAYS_COUNT);
-            cntConsolidateStoreRuns = debugCounters.registerCounter(MODULE_NAME,
+            cntConsolidateStoreRuns = debugCounters.registerCounter(PACKAGE,
                  "consolidate-store-runs",
                  "Number of times the task to consolidate entries in the " +
                  "store witch live known devices has been run",
                  CounterType.ALWAYS_COUNT);
-            cntConsolidateStoreDevicesRemoved = debugCounters.registerCounter(MODULE_NAME,
+            cntConsolidateStoreDevicesRemoved = debugCounters.registerCounter(PACKAGE,
                  "consolidate-store-devices-removed",
                  "Number of times a device has been removed from the sync " +
                  "store because no corresponding live device is known. " +
                  "This indicates a remote controller still writing device " +
                  "entries despite the local controller being MASTER or an " +
                  "incosistent store update from the local controller.",
-                 CounterType.ALWAYS_COUNT, WARN);
-            cntTransitionToMaster = debugCounters.registerCounter(MODULE_NAME,
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntTransitionToMaster = debugCounters.registerCounter(PACKAGE,
                  "transition-to-master",
                  "Number of times this controller has transitioned from SLAVE " +
                  "to MASTER role. Will be 0 or 1.",
                  CounterType.ALWAYS_COUNT);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
         }
     }
 

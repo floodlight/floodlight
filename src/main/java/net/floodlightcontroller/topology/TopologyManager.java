@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
@@ -160,7 +161,8 @@ public class TopologyManager implements
     /**
      *  Debug Counters
      */
-    protected static IDebugCounter ctrIncoming;
+    protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
+    protected IDebugCounter ctrIncoming;
 
    //  Getter/Setter methods
     /**
@@ -769,6 +771,7 @@ public class TopologyManager implements
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         haListener = new HAListenerDelegate();
+        registerTopologyDebugCounters();
     }
 
     @Override
@@ -788,20 +791,19 @@ public class TopologyManager implements
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addHAListener(this.haListener);
         addRestletRoutable();
-        registerTopologyDebugCounters();
     }
 
-    private void registerTopologyDebugCounters() {
+    private void registerTopologyDebugCounters() throws FloodlightModuleException {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
         }
         try {
-            ctrIncoming = debugCounters.registerCounter(getName(), "incoming",
+            ctrIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
                 "All incoming packets seen by this module",
                 CounterType.ALWAYS_COUNT);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
         }
     }
 
