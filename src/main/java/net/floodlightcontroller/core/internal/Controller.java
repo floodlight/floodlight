@@ -114,6 +114,8 @@ import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.bigswitch.floodlight.vendor.OFVendorActions;
+
 
 
 /**
@@ -2176,6 +2178,9 @@ public class Controller implements IFloodlightProviderService,
         // Configure openflowj to be able to parse the role request/reply
         // vendor messages.
         OFNiciraVendorExtensions.initialize();
+
+        // Register the standard Vendor actions that we support
+        OFVendorActions.registerStandardVendorActions();
     }
 
     /**
