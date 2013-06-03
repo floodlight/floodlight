@@ -1,8 +1,11 @@
 package com.bigswitch.floodlight.vendor;
 
+import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
 import net.floodlightcontroller.packet.IPv4;
 
 import org.jboss.netty.buffer.ChannelBuffer;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 public class OFActionTunnelDstIP extends OFActionBigSwitchVendor {
     public final static int MINIMUM_LENGTH_TUNNEL_DST = 16;
@@ -20,6 +23,7 @@ public class OFActionTunnelDstIP extends OFActionBigSwitchVendor {
         this.dstIPAddr = dstIPAddr;
     }
 
+    @JsonSerialize(using=IPv4Serializer.class)
     public int getTunnelDstIP() {
         return this.dstIPAddr;
     }

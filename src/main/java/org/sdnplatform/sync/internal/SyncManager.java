@@ -60,6 +60,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -507,41 +508,48 @@ public class SyncManager extends AbstractSyncManager {
                 registerStore(s, Scope.GLOBAL);
             }
         }
+        registerDebugCounters(context);
+    }
+
+    private void registerDebugCounters(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        if (context != null) {
+            try {
+                counterHints = debugCounter.registerCounter(PACKAGE, " hints",
+                                    "Queued sync events processed",
+                                    CounterType.ALWAYS_COUNT);
+                counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
+                                    "Values synced to remote node",
+                                    CounterType.ALWAYS_COUNT);
+                counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
+                                    "Values received from remote node",
+                                    CounterType.ALWAYS_COUNT);
+                counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
+                                    "Local puts to store",
+                                    CounterType.ALWAYS_COUNT);
+                counterGets = debugCounter.registerCounter(PACKAGE, "gets",
+                                    "Local gets from store",
+                                    CounterType.ALWAYS_COUNT);
+                counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
+                                    "Local iterators created over store",
+                                    CounterType.ALWAYS_COUNT);
+                counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
+                                    "Number of errors sent from remote clients",
+                                    CounterType.ALWAYS_COUNT);
+                counterErrorProcessing = debugCounter.registerCounter(PACKAGE,
+                                    "error-processing",
+                                    "Number of errors processing messages from remote clients",
+                                    CounterType.ALWAYS_COUNT);
+            } catch (CounterException e) {
+                throw new FloodlightModuleException(e.getMessage());
+            }
+        }
+
     }
 
     @Override
     public void startUp(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        if (context != null) {
-            try {
-                counterHints = debugCounter.registerCounter(PACKAGE, " hints",
-                                             "Queued sync events processed",
-                                             CounterType.ALWAYS_COUNT);
-                counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
-                                             "Values synced to remote node",
-                                             CounterType.ALWAYS_COUNT);
-                counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
-                                             "Values received from remote node",
-                                             CounterType.ALWAYS_COUNT);
-                counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
-                                             "Local puts to store",
-                                             CounterType.ALWAYS_COUNT);
-                counterGets = debugCounter.registerCounter(PACKAGE, "gets",
-                                             "Local gets from store",
-                                             CounterType.ALWAYS_COUNT);
-                counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
-                                             "Local iterators created over store",
-                                             CounterType.ALWAYS_COUNT);
-                counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
-                                             "Number of errors sent from remote clients",
-                                             CounterType.ALWAYS_COUNT);
-                counterErrorProcessing = debugCounter.registerCounter(PACKAGE, "error-processing",
-                                             "Number of errors processing messages from remote clients",
-                                             CounterType.ALWAYS_COUNT);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
 
         rpcService = new RPCService(this, debugCounter);
 

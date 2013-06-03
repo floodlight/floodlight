@@ -17,6 +17,12 @@ public interface IDebugCounterService extends IFloodlightService {
     }
 
     /**
+     * Debug Counter Qualifiers
+     */
+    public static final String CTR_MDATA_WARN = "warn";
+    public static final String CTR_MDATA_ERROR = "error";
+
+    /**
      *  A limit on the maximum number of counters that can be created
      */
     public static final int MAX_COUNTERS = 5000;
@@ -24,26 +30,54 @@ public interface IDebugCounterService extends IFloodlightService {
     /**
      * Exception thrown when MAX_COUNTERS have been registered
      */
-    public class MaxCountersRegistered extends Exception {
+    public class MaxCountersRegistered extends CounterException {
         private static final long serialVersionUID = 3173747663719376745L;
+        String errormsg;
+        public MaxCountersRegistered(String errormsg) {
+            this.errormsg = errormsg;
+        }
+        @Override
+        public String getMessage() {
+            return this.errormsg;
+        }
     }
     /**
      * Exception thrown when MAX_HIERARCHY has been reached
      */
-    public class MaxHierarchyRegistered extends Exception {
+    public class MaxHierarchyRegistered extends CounterException {
         private static final long serialVersionUID = 967431358683523871L;
+        String errormsg;
+        public MaxHierarchyRegistered(String errormsg) {
+            this.errormsg = errormsg;
+        }
+        @Override
+        public String getMessage() {
+            return this.errormsg;
+        }
     }
     /**
      * Exception thrown when attempting to register a hierarchical counter
      * where higher levels of the hierarchy have not been pre-registered
      */
-    public class MissingHierarchicalLevel extends Exception {
+    public class MissingHierarchicalLevel extends CounterException {
         private static final long serialVersionUID = 517315311533995739L;
+        String errormsg;
+        public MissingHierarchicalLevel(String errormsg) {
+            this.errormsg = errormsg;
+        }
+        @Override
+        public String getMessage() {
+            return this.errormsg;
+        }
+    }
+
+    public class CounterException extends Exception {
+        private static final long serialVersionUID = 2219781500857866035L;
     }
 
     /**
      *  maximum levels of hierarchy
-     *  Example: moduleName/counterHierarchy
+     *  Example of moduleName/counterHierarchy:
      *           switch/00:00:00:00:01:02:03:04/pktin/drops where
      *           moduleName ==> "switch"  and
      *           counterHierarchy of 3 ==> "00:00:00:00:01:02:03:04/pktin/drops"
@@ -85,7 +119,7 @@ public interface IDebugCounterService extends IFloodlightService {
      */
     public IDebugCounter registerCounter(String moduleName, String counterHierarchy,
                              String counterDescription, CounterType counterType,
-                             Object... metaData)
+                             String... metaData)
                 throws MaxCountersRegistered, MaxHierarchyRegistered,
                        MissingHierarchicalLevel;
 
@@ -163,7 +197,8 @@ public interface IDebugCounterService extends IFloodlightService {
      * get call will return information on the 'pktin' as well as the 'drops'
      * counters for the switch dpid specified.
      *
-     * @return A list of DebugCounterInfo or null if the counter could not be found
+     * @return A list of DebugCounterInfo or an empty list if the counter
+     *         could not be found
      */
     public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
                                                       String counterHierarchy);

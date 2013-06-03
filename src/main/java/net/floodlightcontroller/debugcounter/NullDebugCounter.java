@@ -2,6 +2,7 @@ package net.floodlightcontroller.debugcounter;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,17 +88,17 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
     @Override
     public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
                                                       String counterHierarchy) {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public List<DebugCounterInfo> getAllCounterValues() {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public List<DebugCounterInfo> getModuleCounterValues(String moduleName) {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
@@ -116,7 +117,7 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
             IDebugCounter
             registerCounter(String moduleName, String counterHierarchy,
                             String counterDescription,
-                            CounterType counterType, Object... metaData)
+                            CounterType counterType, String... metaData)
                                  throws MaxCountersRegistered {
         return new NullCounterImpl();
     }
@@ -125,32 +126,26 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
 
         @Override
         public void updateCounterWithFlush() {
-            // TODO Auto-generated method stub
 
         }
 
         @Override
         public void updateCounterNoFlush() {
-            // TODO Auto-generated method stub
 
         }
 
         @Override
         public void updateCounterWithFlush(int incr) {
-            // TODO Auto-generated method stub
-
         }
 
         @Override
         public void updateCounterNoFlush(int incr) {
-            // TODO Auto-generated method stub
 
         }
 
         @Override
         public long getCounterValue() {
-            // TODO Auto-generated method stub
-            return 0;
+            return -1;
         }
 
     }

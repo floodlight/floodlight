@@ -1,10 +1,10 @@
 package net.floodlightcontroller.debugevent;
 
+import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.IllegalFormatConversionException;
-import java.util.UnknownFormatConversionException;
 
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.packet.IPv4;
 
 import org.openflow.util.HexString;
@@ -12,13 +12,14 @@ import org.openflow.util.HexString;
 public class Event {
     long timestamp;
     long threadId;
-    Object[] params;
+    Object eventData;
+    private String returnString;
 
-    public Event(long timestamp, long threadId, Object[] params) {
+    public Event(long timestamp, long threadId, Object eventData) {
         super();
         this.timestamp = timestamp;
         this.threadId = threadId;
-        this.params = params;
+        this.eventData = eventData;
     }
 
     public long getTimestamp() {
@@ -37,74 +38,72 @@ public class Event {
         this.threadId = threadId;
     }
 
-    public Object[] getParams() {
-        return params;
+    public Object geteventData() {
+        return eventData;
     }
 
-    public void setParams(Object[] params) {
-        this.params = params;
+    public void seteventData(Object eventData) {
+        this.eventData = eventData;
     }
 
     @Override
     public String toString() {
         return "Event [timestamp=" + timestamp + ", threadId=" + threadId
-               + ", params=" + Arrays.toString(params) + "]";
+               + ", eventData=" + eventData.toString() + "]";
     }
 
-    public String toString(String formatStr, String moduleEventName) {
-        String val = new StringBuilder().append(moduleEventName)
+    public String toString(Class<?> eventClass, String moduleEventName) {
+        if (this.returnString != null && eventClass != null &&
+                eventClass.equals(eventData.getClass()))
+            return this.returnString;
+
+        this.returnString = new StringBuilder().append(moduleEventName)
                         .append(" [")
-                        .append(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS").format(timestamp))
+                        .append(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+                                        .format(timestamp))
                         .append(", threadId=").append(threadId).append(", ")
-                        .append(customFormat(formatStr, params))
+                        .append(customFormat(eventClass, eventData))
                         .append("]").toString();
-        return val;
+        return this.returnString;
     }
 
-    private String customFormat(String formatStr, Object[] params) {
+    private String customFormat(Class<?> clazz, Object eventData) {
+        if (eventData == null || clazz == null) {
+            return "Error: null event data or event class";
+        }
         StringBuilder result = new StringBuilder();
-        String[] elem = formatStr.split(",");
-        if (elem.length != params.length) {
-            result.append(" format string does not match number of params - missing \',\'? ");
-            return result.toString();
-        }
-        for (int index=0; index < elem.length; index++) {
-            String[] temp = elem[index].split("%");
-            if (temp.length != 2) {
-                result.append(" incorrect format string - missing % ");
-                continue;
-            }
-            if (temp[1].equals("dpid")) {
-                try {
-                    result.append(temp[0]).append(HexString.toHexString((Long)params[index]));
-                } catch (ClassCastException e) {
-                    result.append(e);
-                }
-            } else if (temp[1].equals("mac")) {
-                try {
-                    result.append(temp[0]).append(HexString.toHexString((Long)params[index], 6));
-                } catch (ClassCastException e) {
-                    result.append(e.toString());
-                }
-            } else if (temp[1].equals("ipv4")) {
-                try {
-                    result.append(temp[0]).append(IPv4.fromIPv4Address((Integer)params[index]));
-                } catch (ClassCastException e) {
-                    result.append(e.toString());
-                }
-            } else {
-                try {
-                    result.append(String.format(elem[index], params[index]));
-                } catch (UnknownFormatConversionException e) {
-                    result.append(temp[0]).append(e.toString());
-                } catch (IllegalFormatConversionException e) {
-                    result.append(temp[0]).append(e.toString());
-                }
-            }
-            if (index+1 < elem.length) result.append(",");
-        }
 
-        return result.toString();
+        for (Field f : clazz.getDeclaredFields()) {
+            EventColumn ec = f.getAnnotation(EventColumn.class);
+            if (ec == null) continue;
+            f.setAccessible(true);
+            try {
+                Object obj =  f.get(eventData);
+                if (ec.description() == EventFieldType.DPID) {
+                    result.append(ec.name()).append("=")
+                    .append(HexString.toHexString((Long) obj));
+                } else if (ec.description() == EventFieldType.MAC) {
+                    result.append(ec.name()).append("=")
+                    .append(HexString.toHexString((Long) obj, 6));
+                } else if (ec.description() == EventFieldType.IPv4) {
+                    result.append(ec.name()).append("=")
+                    .append(IPv4.fromIPv4Address((Integer) obj));
+                } else {
+                    result.append(ec.name()).append("=")
+                    .append(obj.toString());
+                }
+            } catch (ClassCastException e) {
+                result.append(e);
+            } catch (IllegalArgumentException e) {
+                result.append(e);
+            } catch (IllegalAccessException e) {
+                result.append(e);
+            }
+            result.append(", ");
+        }
+        String retval = result.toString();
+        int index = retval.lastIndexOf(',');
+        return (index > 0) ? retval.substring(0, index) : retval;
     }
 
 }
