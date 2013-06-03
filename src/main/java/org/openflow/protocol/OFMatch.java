@@ -32,7 +32,7 @@ import org.openflow.util.U8;
 
 /**
  * Represents an ofp_match structure
- * 
+ *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  */
@@ -137,7 +137,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get dl_dst
-     * 
+     *
      * @return an arrays of bytes
      */
     public byte[] getDataLayerDestination() {
@@ -146,7 +146,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_dst
-     * 
+     *
      * @param dataLayerDestination
      */
     public OFMatch setDataLayerDestination(byte[] dataLayerDestination) {
@@ -156,7 +156,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_dst, but first translate to byte[] using HexString
-     * 
+     *
      * @param mac
      *            A colon separated string of 6 pairs of octets, e..g.,
      *            "00:17:42:EF:CD:8D"
@@ -174,7 +174,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get dl_src
-     * 
+     *
      * @return an array of bytes
      */
     public byte[] getDataLayerSource() {
@@ -183,7 +183,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_src
-     * 
+     *
      * @param dataLayerSource
      */
     public OFMatch setDataLayerSource(byte[] dataLayerSource) {
@@ -193,7 +193,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_src, but first translate to byte[] using HexString
-     * 
+     *
      * @param mac
      *            A colon separated string of 6 pairs of octets, e..g.,
      *            "00:17:42:EF:CD:8D"
@@ -211,7 +211,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get dl_type
-     * 
+     *
      * @return ether_type
      */
     public short getDataLayerType() {
@@ -220,7 +220,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_type
-     * 
+     *
      * @param dataLayerType
      */
     public OFMatch setDataLayerType(short dataLayerType) {
@@ -230,7 +230,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get dl_vlan
-     * 
+     *
      * @return vlan tag; VLAN_NONE == no tag
      */
     public short getDataLayerVirtualLan() {
@@ -239,7 +239,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_vlan
-     * 
+     *
      * @param dataLayerVirtualLan
      */
     public OFMatch setDataLayerVirtualLan(short dataLayerVirtualLan) {
@@ -249,7 +249,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get dl_vlan_pcp
-     * 
+     *
      * @return
      */
     public byte getDataLayerVirtualLanPriorityCodePoint() {
@@ -258,7 +258,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set dl_vlan_pcp
-     * 
+     *
      * @param pcp
      */
     public OFMatch setDataLayerVirtualLanPriorityCodePoint(byte pcp) {
@@ -268,7 +268,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get in_port
-     * 
+     *
      * @return
      */
     public short getInputPort() {
@@ -277,7 +277,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set in_port
-     * 
+     *
      * @param inputPort
      */
     public OFMatch setInputPort(short inputPort) {
@@ -287,7 +287,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get nw_dst
-     * 
+     *
      * @return
      */
     public int getNetworkDestination() {
@@ -296,7 +296,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set nw_dst
-     * 
+     *
      * @param networkDestination
      */
     public OFMatch setNetworkDestination(int networkDestination) {
@@ -309,7 +309,7 @@ public class OFMatch implements Cloneable, Serializable {
      * bits in the IP destination field. NOTE: this returns the number of bits
      * that are fixed, i.e., like CIDR, not the number of bits that are free
      * like OpenFlow encodes.
-     * 
+     *
      * @return a number between 0 (matches all IPs) and 63 ( 32>= implies exact
      *         match)
      */
@@ -323,7 +323,7 @@ public class OFMatch implements Cloneable, Serializable {
      * bits in the IP destination field. NOTE: this returns the number of bits
      * that are fixed, i.e., like CIDR, not the number of bits that are free
      * like OpenFlow encodes.
-     * 
+     *
      * @return a number between 0 (matches all IPs) and 32 (exact match)
      */
     public int getNetworkSourceMaskLen() {
@@ -333,7 +333,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get nw_proto
-     * 
+     *
      * @return
      */
     public byte getNetworkProtocol() {
@@ -342,7 +342,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set nw_proto
-     * 
+     *
      * @param networkProtocol
      */
     public OFMatch setNetworkProtocol(byte networkProtocol) {
@@ -352,7 +352,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get nw_src
-     * 
+     *
      * @return
      */
     public int getNetworkSource() {
@@ -361,7 +361,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set nw_src
-     * 
+     *
      * @param networkSource
      */
     public OFMatch setNetworkSource(int networkSource) {
@@ -372,7 +372,7 @@ public class OFMatch implements Cloneable, Serializable {
     /**
      * Get nw_tos OFMatch stores the ToS bits as top 6-bits, so right shift by 2
      * bits before returning the value
-     * 
+     *
      * @return : 6-bit DSCP value (0-63)
      */
     public byte getNetworkTypeOfService() {
@@ -382,7 +382,7 @@ public class OFMatch implements Cloneable, Serializable {
     /**
      * Set nw_tos OFMatch stores the ToS bits as top 6-bits, so left shift by 2
      * bits before storing the value
-     * 
+     *
      * @param networkTypeOfService
      *            : 6-bit DSCP value (0-63)
      */
@@ -393,7 +393,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get tp_dst
-     * 
+     *
      * @return
      */
     public short getTransportDestination() {
@@ -402,7 +402,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set tp_dst
-     * 
+     *
      * @param transportDestination
      */
     public OFMatch setTransportDestination(short transportDestination) {
@@ -412,7 +412,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get tp_src
-     * 
+     *
      * @return
      */
     public short getTransportSource() {
@@ -421,7 +421,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set tp_src
-     * 
+     *
      * @param transportSource
      */
     public OFMatch setTransportSource(short transportSource) {
@@ -431,7 +431,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get wildcards
-     * 
+     *
      * @return
      */
     public int getWildcards() {
@@ -440,7 +440,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Get wildcards
-     * 
+     *
      * @return
      */
     public Wildcards getWildcardObj() {
@@ -449,7 +449,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Set wildcards
-     * 
+     *
      * @param wildcards
      */
     public OFMatch setWildcards(int wildcards) {
@@ -468,7 +468,7 @@ public class OFMatch implements Cloneable, Serializable {
      * specified packet. Must specify the input port, to ensure that
      * this.in_port is set correctly. Specify OFPort.NONE or OFPort.ANY if input
      * port not applicable or available
-     * 
+     *
      * @param packetData
      *            The packet's data
      * @param inputPort
@@ -550,6 +550,11 @@ public class OFMatch implements Cloneable, Serializable {
                 }
                 break;
             default:
+                // Not ARP or IP. Wildcard NW_DST and NW_SRC
+                this.wildcards |= OFPFW_NW_DST_ALL |
+                                  OFPFW_NW_SRC_ALL |
+                                  OFPFW_NW_PROTO |
+                                  OFPFW_NW_TOS;
                 setNetworkTypeOfService((byte) 0);
                 setNetworkProtocol((byte) 0);
                 setNetworkSource(0);
@@ -580,6 +585,8 @@ public class OFMatch implements Cloneable, Serializable {
                 this.transportDestination = packetDataBB.getShort();
                 break;
             default:
+                // Unknown network proto.
+                this.wildcards |= OFPFW_TP_DST | OFPFW_TP_SRC;
                 setTransportDestination((short) 0);
                 setTransportSource((short) 0);
                 break;
@@ -589,7 +596,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Read this message off the wire from the specified ByteBuffer
-     * 
+     *
      * @param data
      */
     public void readFrom(ChannelBuffer data) {
@@ -615,7 +622,7 @@ public class OFMatch implements Cloneable, Serializable {
 
     /**
      * Write this message's binary format to the specified ByteBuffer
-     * 
+     *
      * @param data
      */
     public void writeTo(ChannelBuffer data) {
@@ -734,8 +741,8 @@ public class OFMatch implements Cloneable, Serializable {
     /**
      * Output a dpctl-styled string, i.e., only list the elements that are not
      * wildcarded A match-everything OFMatch outputs "OFMatch[]"
-     * 
-     * @return 
+     *
+     * @return
      *         "OFMatch[dl_src:00:20:01:11:22:33,nw_src:192.168.0.0/24,tp_dst:80]"
      */
     @Override
@@ -812,6 +819,47 @@ public class OFMatch implements Cloneable, Serializable {
                                                                                  // leading
                                                                                  // ","
         // done
+        return "OFMatch[" + str + "]";
+    }
+
+    /**
+     * Return a string including all match fields, regardless whether they
+     * are wildcarded or not.
+     */
+    public String toStringUnmasked() {
+        String str = "";
+
+        // l1
+        str += STR_IN_PORT + "=" + U16.f(this.inputPort);
+
+        // l2
+        str += "," + STR_DL_DST + "="
+                + HexString.toHexString(this.dataLayerDestination);
+        str += "," + STR_DL_SRC + "="
+                + HexString.toHexString(this.dataLayerSource);
+        str += "," + STR_DL_TYPE + "=0x"
+                + Integer.toHexString(U16.f(this.dataLayerType));
+        str += "," + STR_DL_VLAN + "=0x"
+                + Integer.toHexString(U16.f(this.dataLayerVirtualLan));
+        str += "," + STR_DL_VLAN_PCP + "="
+                + Integer.toHexString(U8.f(this.dataLayerVirtualLanPriorityCodePoint));
+
+        // l3
+        str += "," + STR_NW_DST + "="
+                + cidrToString(networkDestination,
+                               getNetworkDestinationMaskLen());
+        str += "," + STR_NW_SRC + "="
+                + cidrToString(networkSource,
+                               getNetworkSourceMaskLen());
+        str += "," + STR_NW_PROTO + "=" + this.networkProtocol;
+        str += "," + STR_NW_TOS + "=" + this.getNetworkTypeOfService();
+
+        // l4
+        str += "," + STR_TP_DST + "=" + this.transportDestination;
+        str += "," + STR_TP_SRC + "=" + this.transportSource;
+
+        // wildcards
+        str += ", wildcards=" + debugWildCards(wildcards);
         return "OFMatch[" + str + "]";
     }
 
@@ -908,7 +956,7 @@ public class OFMatch implements Cloneable, Serializable {
      * <p>
      * The CIDR-style netmasks assume 32 netmask if none given, so:
      * "128.8.128.118/32" is the same as "128.8.128.118"
-     * 
+     *
      * @param match
      *            a key=value comma separated string, e.g.
      *            "in_port=5,ip_dst=192.168.0.0/16,tp_src=80"
@@ -999,7 +1047,7 @@ public class OFMatch implements Cloneable, Serializable {
     /**
      * Set the networkSource or networkDestionation address and their wildcards
      * from the CIDR string
-     * 
+     *
      * @param cidr
      *            "192.168.0.0/16" or "172.16.1.5"
      * @param which
