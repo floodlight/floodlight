@@ -417,7 +417,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);
         this.counterStore = context.getServiceImpl(ICounterStoreService.class);
-        
+
+        /*
         // read our config options
         Map<String, String> configOptions = context.getConfigParams(this);
         try {
@@ -444,6 +445,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                   FLOWMOD_DEFAULT_IDLE_TIMEOUT);
         log.debug("FlowMod hard timeout set to {} seconds", 
                   FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        */
         try {
             AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
         } catch (AppIDInUseException e) {
