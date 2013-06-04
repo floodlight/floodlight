@@ -227,6 +227,8 @@ public class OFSwitchBaseTest {
     @Test
     public void testNoPacketInThrottle() {
         replay(floodlightProvider);
+        /* disable input throttle */
+        sw.setThresholds(Integer.MAX_VALUE, 1, 0, 0);
         for (int i = 0; i < 200; i++) {
             assertFalse(sw.inputThrottled(pi));
         }
