@@ -225,7 +225,7 @@ public class Controller implements IFloodlightProviderService,
 
 
     // Perf. related configuration
-    protected static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected static final int SEND_BUFFER_SIZE = 128 * 1024;
     public static final int BATCH_MAX_SIZE = 100;
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
