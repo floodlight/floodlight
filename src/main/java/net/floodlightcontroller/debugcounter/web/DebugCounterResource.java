@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.debugcounter.DebugCounter.DebugCounterInfo;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 
 /**
  * Web interface for Debug Counters
@@ -24,15 +25,59 @@ public class DebugCounterResource extends DebugCounterResourceBase {
     /**
      * The output JSON model that contains the counter information
      */
-    public static class DebugCounterInfoOutput {
-        public Map<String, DebugCounterInfo> counterMap;
+    public class DebugCounterInfoOutput {
+        protected class DCInfo {
+            private final Long counterValue;
+            private final CounterType cType;
+            private final String counterDesc;
+            private final boolean enabled;
+            private final String counterHierarchy;
+            private final String moduleName;
+
+            DCInfo(DebugCounterInfo dci) {
+                this.moduleName = dci.getCounterInfo().getModuleName();
+                this.counterHierarchy = dci.getCounterInfo().getCounterHierarchy();
+                this.counterDesc = dci.getCounterInfo().getCounterHierarchy();
+                //this.metaData = dci.getCounterInfo().getMetaData();
+                this.enabled = dci.getCounterInfo().isEnabled();
+                this.cType = dci.getCounterInfo().getCtype();
+                this.counterValue = dci.getCounterValue();
+            }
+
+            public Long getCounterValue() {
+                return counterValue;
+            }
+
+            public CounterType getcType() {
+                return cType;
+            }
+
+            public String getCounterDesc() {
+                return counterDesc;
+            }
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getCounterHierarchy() {
+                return counterHierarchy;
+            }
+
+            public String getModuleName() {
+                return moduleName;
+            }
+
+        }
+
+        public Map<String, DCInfo> counterMap;
         public String error;
 
         DebugCounterInfoOutput() {
-            counterMap = new HashMap<String, DebugCounterInfo>();
+            counterMap = new HashMap<String, DCInfo>();
             error = null;
         }
-        public Map<String, DebugCounterInfo> getCounterMap() {
+        public Map<String, DCInfo> getCounterMap() {
             return counterMap;
         }
 
@@ -215,7 +260,6 @@ public class DebugCounterResource extends DebugCounterResourceBase {
     public DebugCounterInfoOutput handleCounterInfoQuery() {
         DebugCounterInfoOutput output = new DebugCounterInfoOutput();
         Option choice = Option.ERROR_BAD_PARAM;
-
         String param1 = (String)getRequestAttributes().get("param1");
         String param2 = (String)getRequestAttributes().get("param2");
         String param3 = (String)getRequestAttributes().get("param3");
@@ -285,7 +329,7 @@ public class DebugCounterResource extends DebugCounterResourceBase {
         if (debugCounterInfo != null)
             output.counterMap.put(debugCounterInfo.getCounterInfo().
                                   getModuleCounterHierarchy(),
-                                  debugCounterInfo);
+                                  output.new DCInfo(debugCounterInfo));
     }
 
     private void populateCounters(List<DebugCounterInfo> counterValues,
