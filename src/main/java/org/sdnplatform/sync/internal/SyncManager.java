@@ -515,7 +515,7 @@ public class SyncManager extends AbstractSyncManager {
             throws FloodlightModuleException {
         if (context != null) {
             try {
-                counterHints = debugCounter.registerCounter(PACKAGE, " hints",
+                counterHints = debugCounter.registerCounter(PACKAGE, "hints",
                                     "Queued sync events processed",
                                     CounterType.ALWAYS_COUNT);
                 counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",

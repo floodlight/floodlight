@@ -28,28 +28,28 @@ public class DebugCounterResource extends DebugCounterResourceBase {
     public class DebugCounterInfoOutput {
         protected class DCInfo {
             private final Long counterValue;
-            private final CounterType cType;
+            private final CounterType counterType;
             private final String counterDesc;
             private final boolean enabled;
             private final String counterHierarchy;
             private final String moduleName;
+            private final String[] metaData;
 
             DCInfo(DebugCounterInfo dci) {
                 this.moduleName = dci.getCounterInfo().getModuleName();
                 this.counterHierarchy = dci.getCounterInfo().getCounterHierarchy();
-                this.counterDesc = dci.getCounterInfo().getCounterHierarchy();
-                //this.metaData = dci.getCounterInfo().getMetaData();
+                this.counterDesc = dci.getCounterInfo().getCounterDesc();
+                this.metaData = dci.getCounterInfo().getMetaData();
                 this.enabled = dci.getCounterInfo().isEnabled();
-                this.cType = dci.getCounterInfo().getCtype();
+                this.counterType = dci.getCounterInfo().getCtype();
                 this.counterValue = dci.getCounterValue();
             }
 
             public Long getCounterValue() {
                 return counterValue;
             }
-
-            public CounterType getcType() {
-                return cType;
+            public CounterType getCounterType() {
+                return counterType;
             }
 
             public String getCounterDesc() {
@@ -68,13 +68,24 @@ public class DebugCounterResource extends DebugCounterResourceBase {
                 return moduleName;
             }
 
-        }
+            public String[] getMetaData() {
+                return metaData;
+            }
 
+        }
+        // complete counter information - null if only names are requested or
+        // if an error occurs
         public Map<String, DCInfo> counterMap;
+        // list of names could be just moduleNames or counter hierarchical names
+        // for a specific module
+        public List<String> names;
+
         public String error;
 
-        DebugCounterInfoOutput() {
-            counterMap = new HashMap<String, DCInfo>();
+        DebugCounterInfoOutput(boolean getList) {
+            if (!getList) {
+                counterMap = new HashMap<String, DCInfo>();
+            }
             error = null;
         }
         public Map<String, DCInfo> getCounterMap() {
@@ -83,6 +94,10 @@ public class DebugCounterResource extends DebugCounterResourceBase {
 
         public String getError() {
             return error;
+        }
+
+        public List<String> getNames() {
+            return names;
         }
 
     }
@@ -258,7 +273,7 @@ public class DebugCounterResource extends DebugCounterResourceBase {
      */
     @Get
     public DebugCounterInfoOutput handleCounterInfoQuery() {
-        DebugCounterInfoOutput output = new DebugCounterInfoOutput();
+        DebugCounterInfoOutput output;
         Option choice = Option.ERROR_BAD_PARAM;
         String param1 = (String)getRequestAttributes().get("param1");
         String param2 = (String)getRequestAttributes().get("param2");
@@ -266,14 +281,34 @@ public class DebugCounterResource extends DebugCounterResourceBase {
         String param4 = (String)getRequestAttributes().get("param4");
 
         if (param1 == null) {
-            param1 = "all";
-            choice = Option.ALL;
+            output = new DebugCounterInfoOutput(true);
+            return listCounters(output);
         } else if (param1.equals("all")) {
-            choice = Option.ALL;
+            output = new DebugCounterInfoOutput(false);
+            populateCounters(debugCounter.getAllCounterValues(), output);
+            return output;
         }
 
+        output = new DebugCounterInfoOutput(false);
         String counterHierarchy = "";
-        if (param2 != null) {
+        if (param2 == null) {
+            // param2 is null -- return list of counternames for param1
+            boolean isRegistered = debugCounter.containsModuleName(param1);
+            output = new DebugCounterInfoOutput(true);
+            if (isRegistered) {
+                return listCounters(param1, output);
+            } else {
+                choice = Option.ERROR_BAD_MODULE_NAME;
+            }
+        } else if (param2.equals("all")) {
+            // get all counter info for a single module
+            boolean isRegistered = debugCounter.containsModuleName(param1);
+            if (isRegistered) {
+                choice = Option.ONE_MODULE;
+            } else {
+                choice = Option.ERROR_BAD_MODULE_NAME;
+            }
+        } else {
             counterHierarchy += param2;
             if (param3 != null) {
                 counterHierarchy += "/" + param3;
@@ -288,22 +323,9 @@ public class DebugCounterResource extends DebugCounterResourceBase {
             } else {
                 choice = Option.ERROR_BAD_MODULE_COUNTER_NAME;
             }
-        } else {
-            if (!param1.equals("all")) {
-                // get all counters for a single module
-                boolean isRegistered = debugCounter.containsModuleName(param1);
-                if (isRegistered) {
-                    choice = Option.ONE_MODULE;
-                } else {
-                    choice = Option.ERROR_BAD_MODULE_NAME;
-                }
-            }
         }
 
         switch (choice) {
-            case ALL:
-                populateCounters(debugCounter.getAllCounterValues(), output);
-                break;
             case ONE_MODULE:
                 populateCounters(debugCounter.getModuleCounterValues(param1), output);
                 break;
@@ -312,15 +334,27 @@ public class DebugCounterResource extends DebugCounterResourceBase {
                                       output);
                 break;
             case ERROR_BAD_MODULE_NAME:
-                output.error = "Module name has no corresponding registered counters";
+                output.error = "Module name is not registered for debug-counters";
                 break;
             case ERROR_BAD_MODULE_COUNTER_NAME:
                 output.error = "Counter not registered";
                 break;
             case ERROR_BAD_PARAM:
+            default:
                 output.error = "Bad param";
         }
 
+        return output;
+    }
+
+    private DebugCounterInfoOutput listCounters(String moduleName,
+                                                DebugCounterInfoOutput output) {
+        output.names = debugCounter.getModuleCounterList(moduleName);
+        return output;
+    }
+
+    private DebugCounterInfoOutput listCounters(DebugCounterInfoOutput output) {
+        output.names = debugCounter.getModuleList();
         return output;
     }
 

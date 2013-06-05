@@ -513,6 +513,29 @@ public class DebugCounter implements IFloodlightModule, IDebugCounterService {
        return  (moduleCounters.containsKey(moduleName)) ? true : false;
    }
 
+   @Override
+   public List<String> getModuleList() {
+       List<String> retval = new ArrayList<String>();
+       retval.addAll(moduleCounters.keySet());
+       return retval;
+   }
+
+   @Override
+   public List<String> getModuleCounterList(String moduleName) {
+       if (!moduleCounters.containsKey(moduleName))
+           return Collections.emptyList();
+
+       List<String> retval = new ArrayList<String>();
+       RetCtrInfo rci = new RetCtrInfo();
+       rci.levels = "".split("/");
+
+       ArrayList<Integer> cids = getHierarchyBelow(moduleName, rci);
+       for (int index : cids) {
+           retval.add(allCounters[index].cinfo.counterHierarchy);
+       }
+       return retval;
+   }
+
    //*******************************
    //   Internal Methods
    //*******************************
