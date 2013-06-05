@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.core.module;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,8 +70,10 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
         return moduleSet;
     }
     
-    public void setModuleSet(Collection<IFloodlightModule> modSet) {
-        this.moduleSet = modSet;
+    public void addModules(Collection<IFloodlightModule> modSet) {
+        if (this.moduleSet == null) 
+            this.moduleSet = new ArrayList<IFloodlightModule>();
+        this.moduleSet.addAll(modSet);
     }
 
     @Override

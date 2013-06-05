@@ -20,8 +20,8 @@ package org.openflow.protocol.statistics;
 
 import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**

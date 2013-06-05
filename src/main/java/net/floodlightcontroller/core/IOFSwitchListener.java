@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -18,34 +18,71 @@
 package net.floodlightcontroller.core;
 
 /**
+ * Switch lifecycle notifications.
  *
+ * These updates /happen-after/ the corresponding changes have been
+ * committed. I.e., the changes are visible when
+ * {@link IFloodlightProviderService#getSwitch(long)}
+ * {@link IFloodlightProviderService#getAllSwitchDpids()}
+ * {@link IFloodlightProviderService#getAllSwitchMap()}
+ * or any method on the IOFSwitch returned by these methods are
+ * called from the notification method or after it.
  *
- * @author David Erickson (daviderickson@cs.stanford.edu)
+ * Note however, that additional changes could have been committed before
+ * the notification for which the notification is still pending. E.g.,
+ * {@link IFloodlightProviderService#getSwitch(long)} might return null after
+ * a switchAdded() (which happens if the switch has been added and then
+ * removed and the remove hasn't been dispatched yet).
+ *
+ * These lifecycle notification methods are called by a single thread and they
+ * will always be called by the same thread.
+ * The calls are always in order.
+ *
  */
 public interface IOFSwitchListener {
+    /**
+     * Fired when switch becomes known to the controller cluster. I.e.,
+     * the switch is connected at some controller in the cluster
+     * @param switchId the datapath Id of the new switch
+     */
+    public void switchAdded(long switchId);
 
     /**
-     * Fired when a switch is connected to the controller, and has sent
-     * a features reply.
-     * @param sw
+     * Fired when a switch disconnects from the cluster ,
+     * @param switchId the datapath Id of the switch
      */
-    public void addedSwitch(IOFSwitch sw);
+    public void switchRemoved(long switchId);
 
     /**
-     * Fired when a switch is disconnected from the controller.
-     * @param sw
+     * Fired when a switch becomes active *on the local controller*, I.e.,
+     * the switch is connected to the local controller and is in MASTER mode
+     * @param switchId the datapath Id of the switch
      */
-    public void removedSwitch(IOFSwitch sw);
-    
+    public void switchActivated(long switchId);
+
     /**
-     * Fired when ports on a switch change (any change to the collection
-     * of OFPhysicalPorts and/or to a particular port)
+     * Fired when a port on a known switch changes.
+     *
+     * A user of this notification needs to take care if the port and type
+     * information is used directly and if the collection of ports has been
+     * queried as well. This notification will only be dispatched after the
+     * the port changes have been committed to the IOFSwitch instance. However,
+     * if a user has previously called {@link IOFSwitch#getPorts()} or related
+     * method a subsequent update might already be present in the information
+     * returned by getPorts.
+     * @param switchId
+     * @param port
+     * @param type
      */
-    public void switchPortChanged(Long switchId);
-    
+    public void switchPortChanged(long switchId,
+                                  ImmutablePort port,
+                                  IOFSwitch.PortChangeType type);
+
     /**
-     * The name assigned to this listener
-     * @return
+     * Fired when any non-port related information (e.g., attributes,
+     * features) change after a switchAdded
+     * TODO: currently unused
+     * @param switchId
      */
-    public String getName();
+    public void switchChanged(long switchId);
 }

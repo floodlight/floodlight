@@ -100,4 +100,76 @@ public class OFMatchReconcile  {
                 " cookie=" + cookie + " appInstName=" + appInstName + " newAppInstName=" + newAppInstName + 
                 " ReconcileAction=" + rcAction + "outPort=" + outPort + "]";
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + action;
+        result = prime * result
+                 + ((appInstName == null) ? 0 : appInstName.hashCode());
+        result = prime * result + (int) (cookie ^ (cookie >>> 32));
+        result = prime
+                 * result
+                 + ((newAppInstName == null) ? 0 : newAppInstName.hashCode());
+        result = prime * result
+                 + ((ofmWithSwDpid == null) ? 0 : ofmWithSwDpid.hashCode());
+        result = prime * result + outPort;
+        result = prime * result + priority;
+        result = prime * result
+                 + ((rcAction == null) ? 0 : rcAction.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof OFMatchReconcile)) {
+            return false;
+        }
+        OFMatchReconcile other = (OFMatchReconcile) obj;
+        if (action != other.action) {
+            return false;
+        }
+        if (appInstName == null) {
+            if (other.appInstName != null) {
+                return false;
+            }
+        } else if (!appInstName.equals(other.appInstName)) {
+            return false;
+        }
+        if (cookie != other.cookie) {
+            return false;
+        }
+        if (newAppInstName == null) {
+            if (other.newAppInstName != null) {
+                return false;
+            }
+        } else if (!newAppInstName.equals(other.newAppInstName)) {
+            return false;
+        }
+        if (ofmWithSwDpid == null) {
+            if (other.ofmWithSwDpid != null) {
+                return false;
+            }
+        } else if (!ofmWithSwDpid.equals(other.ofmWithSwDpid)) {
+            return false;
+        }
+        if (outPort != other.outPort) {
+            return false;
+        }
+        if (priority != other.priority) {
+            return false;
+        }
+        if (rcAction != other.rcAction) {
+            return false;
+        }
+        return true;
+    }
+
 }

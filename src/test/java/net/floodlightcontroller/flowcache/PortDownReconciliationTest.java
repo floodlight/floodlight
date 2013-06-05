@@ -180,7 +180,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         // Expect that the switch's ID is 1
         expect(sw1.getId()).andReturn(1L).anyTimes();
-        expect(sw1.getStatistics(req)).andReturn(results).once();
+        expect(sw1.queryStatistics(req)).andReturn(results).once();
         // Captures to hold resulting flowmod delete messages
         wc1 = new Capture<List<OFMessage>>(CaptureType.ALL);
         bc1 = new Capture<FloodlightContext>(CaptureType.ALL);
@@ -193,7 +193,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         sw2 = EasyMock.createNiceMock(IOFSwitch.class);
         // Expect that the switch's ID is 2
         expect(sw2.getId()).andReturn(2L).anyTimes();
-        expect(sw2.getStatistics(req)).andReturn(results).once();
+        expect(sw2.queryStatistics(req)).andReturn(results).once();
         wc2 = new Capture<List<OFMessage>>(CaptureType.ALL);
         bc2 = new Capture<FloodlightContext>(CaptureType.ALL);
         // Capture the parameters passwed when sw1.write is invoked
@@ -205,7 +205,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         sw3 = EasyMock.createNiceMock(IOFSwitch.class);
         // Expect that the switch's ID is 3
         expect(sw3.getId()).andReturn(3L).anyTimes();
-        expect(sw3.getStatistics(req)).andReturn(results).once();
+        expect(sw3.queryStatistics(req)).andReturn(results).once();
         wc3 = new Capture<List<OFMessage>>(CaptureType.ALL);
         bc3 = new Capture<FloodlightContext>(CaptureType.ALL);
         // Capture the parameters passwed when sw1.write is invoked
@@ -217,7 +217,7 @@ public class PortDownReconciliationTest extends FloodlightTestCase {
         sw4 = EasyMock.createNiceMock(IOFSwitch.class);
         // Expect that the switch's ID is 4
         expect(sw4.getId()).andReturn(4L).anyTimes();
-        expect(sw4.getStatistics(req)).andReturn(results).once();
+        expect(sw4.queryStatistics(req)).andReturn(results).once();
         wc4 = new Capture<List<OFMessage>>(CaptureType.ALL);
         bc4 = new Capture<FloodlightContext>(CaptureType.ALL);
         // Capture the parameters passed when sw1.write is invoked

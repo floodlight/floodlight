@@ -36,14 +36,14 @@ public class EnabledPortsResource extends ServerResource {
                 (IFloodlightProviderService)getContext().getAttributes().
                 get(IFloodlightProviderService.class.getCanonicalName());
 
-        ITopologyService topology= 
+        ITopologyService topology=
                 (ITopologyService)getContext().getAttributes().
                 get(ITopologyService.class.getCanonicalName());
 
         if (floodlightProvider == null || topology == null)
             return result;
 
-        Set<Long> switches = floodlightProvider.getSwitches().keySet();
+        Set<Long> switches = floodlightProvider.getAllSwitchDpids();
         if (switches == null) return result;
 
         for(long sw: switches) {

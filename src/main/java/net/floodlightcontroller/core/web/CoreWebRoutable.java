@@ -18,9 +18,6 @@
 package net.floodlightcontroller.core.web;
 
 import net.floodlightcontroller.core.module.ModuleLoaderResource;
-import net.floodlightcontroller.debugcounter.DebugCounterGetResource;
-import net.floodlightcontroller.debugcounter.DebugCounterResetResource;
-import net.floodlightcontroller.debugcounter.DebugCounterStateResource;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
 import org.restlet.Context;
@@ -63,9 +60,6 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/role/json", ControllerRoleResource.class);
         router.attach("/health/json", HealthCheckResource.class);
         router.attach("/system/uptime/json", SystemUptimeResource.class);
-        router.attach("/debugcounter/{param}/json", DebugCounterGetResource.class);
-        router.attach("/debugcounter/reset/{param}/json", DebugCounterResetResource.class);
-        router.attach("/debugcounter/{moduleCounterName}/{state}/json", DebugCounterStateResource.class);
         return router;
     }
 }

@@ -35,10 +35,12 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -46,11 +48,14 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -60,7 +65,9 @@ import net.floodlightcontroller.devicemanager.IEntityClassListener;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
+import net.floodlightcontroller.flowcache.IFlowReconcileEngineService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
@@ -86,6 +93,13 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
+import org.sdnplatform.sync.IClosableIterator;
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.ObsoleteVersionException;
+import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,9 +112,10 @@ import org.slf4j.LoggerFactory;
 public class DeviceManagerImpl implements
 IDeviceService, IOFMessageListener, ITopologyListener,
 IFloodlightModule, IEntityClassListener,
-IFlowReconcileListener, IInfoProvider, IHAListener {
+IFlowReconcileListener, IInfoProvider {
     protected static Logger logger =
             LoggerFactory.getLogger(DeviceManagerImpl.class);
+
 
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
@@ -108,7 +123,75 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected IRestApiService restApi;
     protected IThreadPoolService threadPool;
     protected IFlowReconcileService flowReconcileMgr;
+    protected IFlowReconcileEngineService flowReconcileEngine;
     protected IDebugCounterService debugCounters;
+    private ISyncService syncService;
+    private IStoreClient<String,DeviceSyncRepresentation> storeClient;
+    private DeviceSyncManager deviceSyncManager;
+
+    /**
+     * Debug Counters
+     */
+    public static final String MODULE_NAME = "devicemanager";
+    public static final String PACKAGE = DeviceManagerImpl.class.getPackage().getName();
+    public IDebugCounter cntIncoming;
+    public IDebugCounter cntReconcileRequest;
+    public IDebugCounter cntReconcileNoSource;
+    public IDebugCounter cntReconcileNoDest;
+    public IDebugCounter cntInvalidSource;
+    public IDebugCounter cntInvalidDest;
+    public IDebugCounter cntNoSource;
+    public IDebugCounter cntNoDest;
+    public IDebugCounter cntDhcpClientNameSnooped;
+    public IDebugCounter cntDeviceOnInternalPortNotLearned;
+    public IDebugCounter cntPacketNotAllowed;
+    public IDebugCounter cntNewDevice;
+    public IDebugCounter cntPacketOnInternalPortForKnownDevice;
+    public IDebugCounter cntNewEntity;
+    public IDebugCounter cntDeviceChanged;
+    public IDebugCounter cntDeviceMoved;
+    public IDebugCounter cntCleanupEntitiesRuns;
+    public IDebugCounter cntEntityRemovedTimeout;
+    public IDebugCounter cntDeviceDeleted;
+    public IDebugCounter cntDeviceReclassifyDelete;
+    public IDebugCounter cntDeviceStrored;
+    public IDebugCounter cntDeviceStoreThrottled;
+    public IDebugCounter cntDeviceRemovedFromStore;
+    public IDebugCounter cntSyncException;
+    public IDebugCounter cntDevicesFromStore;
+    public IDebugCounter cntConsolidateStoreRuns;
+    public IDebugCounter cntConsolidateStoreDevicesRemoved;
+    public IDebugCounter cntTransitionToMaster;
+
+    private boolean isMaster = false;
+
+    static final String DEVICE_SYNC_STORE_NAME =
+            DeviceManagerImpl.class.getCanonicalName() + ".stateStore";
+
+    /**
+     * Time interval between writes of entries for the same device to
+     * the sync store.
+     */
+    static final int DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS =
+            5*60*1000; // 5 min
+    private int syncStoreWriteIntervalMs = DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS;
+
+    /**
+     * Time after SLAVE->MASTER until we run the consolidate store
+     * code.
+     */
+    static final int DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS =
+            15*1000; // 15 sec
+    private int initialSyncStoreConsolidateMs =
+            DEFAULT_INITIAL_SYNC_STORE_CONSOLIDATE_MS;
+
+    /**
+     * Time interval between consolidate store runs.
+     */
+    static final int DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS =
+            75*60*1000; // 75 min
+    private final int syncStoreConsolidateIntervalMs =
+            DEFAULT_SYNC_STORE_CONSOLIDATE_INTERVAL_MS;
 
     /**
      * Time in milliseconds before entities will expire
@@ -214,7 +297,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         /**
          * The affected device
          */
-        protected IDevice device;
+        protected Device device;
 
         /**
          * The change that was made
@@ -226,7 +309,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
          */
         protected EnumSet<DeviceField> fieldsChanged;
 
-        public DeviceUpdate(IDevice device, Change change,
+        public DeviceUpdate(Device device, Change change,
                             EnumSet<DeviceField> fieldsChanged) {
             super();
             this.device = device;
@@ -332,6 +415,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Periodic task to clean up expired entities
      */
     public SingletonTask entityCleanupTask;
+
+
+    /**
+     * Periodic task to consolidate entries in the store. I.e., delete
+     * entries in the store that are not known to DeviceManager
+     */
+    private SingletonTask storeConsolidateTask;
+
+    /**
+     * Listens for HA notifications
+     */
+    protected HAListenerDelegate haListenerDelegate;
+
 
     // *********************
     // IDeviceManagerService
@@ -541,6 +637,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         suppressAPs.remove(new SwitchPort(swId, port));
     }
 
+    @Override
+    public Set<SwitchPort> getSuppressAPs() {
+        return Collections.unmodifiableSet(suppressAPs);
+    }
+
     private void logListeners() {
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
@@ -574,7 +675,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
     @Override
     public String getName() {
-        return "devicemanager";
+        return MODULE_NAME;
     }
 
     @Override
@@ -593,7 +694,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter("devicemanager-incoming");
+                cntIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -625,17 +726,21 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     protected Command reconcileFlow(OFMatchReconcile ofm) {
+        cntReconcileRequest.updateCounterNoFlush();
         // Extract source entity information
         Entity srcEntity =
                 getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
-        if (srcEntity == null)
+        if (srcEntity == null) {
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
+       }
 
         // Find the device by source entity
         Device srcDevice = findDeviceByEntity(srcEntity);
-        if (srcDevice == null)
+        if (srcDevice == null)  {
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
-
+        }
         // Store the source device in the context
         fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -647,6 +752,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             dstDevice = findDestByEntity(srcDevice.getEntityClass(), dstEntity);
             if (dstDevice != null)
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
+            else
+                cntReconcileNoDest.updateCounterNoFlush();
+        } else {
+            cntReconcileNoDest.updateCounterNoFlush();
         }
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, "
@@ -693,11 +802,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         l.add(IThreadPoolService.class);
         l.add(IFlowReconcileService.class);
         l.add(IEntityClassifierService.class);
+        l.add(ISyncService.class);
         return l;
     }
 
     @Override
-    public void init(FloodlightModuleContext fmc) {
+    public void init(FloodlightModuleContext fmc) throws FloodlightModuleException {
         this.perClassIndices =
                 new HashSet<EnumSet<DeviceField>>();
         addIndex(true, EnumSet.of(DeviceField.IPV4));
@@ -715,12 +825,19 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         this.restApi = fmc.getServiceImpl(IRestApiService.class);
         this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
         this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
+        this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
+        this.syncService = fmc.getServiceImpl(ISyncService.class);
+        this.deviceSyncManager = new DeviceSyncManager();
+        this.haListenerDelegate = new HAListenerDelegate();
+        registerDeviceManagerDebugCounters();
     }
 
     @Override
-    public void startUp(FloodlightModuleContext fmc) {
+    public void startUp(FloodlightModuleContext fmc)
+            throws FloodlightModuleException {
+        isMaster = (floodlightProvider.getRole() == Role.MASTER);
         primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
         secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
@@ -730,12 +847,13 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         apComparator = new AttachmentPointComparator();
 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListenerDelegate);
         if (topology != null)
             topology.addListener(this);
         flowReconcileMgr.addFlowReconcileListener(this);
         entityClassifier.addListener(this);
 
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         Runnable ecr = new Runnable() {
             @Override
             public void run() {
@@ -744,10 +862,23 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                              TimeUnit.SECONDS);
             }
         };
-        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         entityCleanupTask = new SingletonTask(ses, ecr);
         entityCleanupTask.reschedule(ENTITY_CLEANUP_INTERVAL,
                                      TimeUnit.SECONDS);
+
+        Runnable consolidateStoreRunner = new Runnable() {
+            @Override
+            public void run() {
+                deviceSyncManager.consolidateStore();
+                storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+                                                TimeUnit.MILLISECONDS);
+            }
+        };
+        storeConsolidateTask = new SingletonTask(ses, consolidateStoreRunner);
+        if (isMaster)
+            storeConsolidateTask.reschedule(syncStoreConsolidateIntervalMs,
+                                            TimeUnit.MILLISECONDS);
+
 
         if (restApi != null) {
             restApi.addRestletRoutable(new DeviceRoutable());
@@ -755,42 +886,199 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             logger.debug("Could not instantiate REST API");
         }
 
-        registerDeviceManagerDebugCounters();
+        try {
+            this.syncService.registerStore(DEVICE_SYNC_STORE_NAME, Scope.LOCAL);
+            this.storeClient = this.syncService
+                    .getStoreClient(DEVICE_SYNC_STORE_NAME,
+                                    String.class,
+                                    DeviceSyncRepresentation.class);
+        } catch (SyncException e) {
+            throw new FloodlightModuleException("Error while setting up sync service", e);
+        }
     }
 
-    private void registerDeviceManagerDebugCounters() {
+    private void registerDeviceManagerDebugCounters() throws FloodlightModuleException {
         if (debugCounters == null) {
             logger.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
-        debugCounters.registerCounter(getName() + "-" + "incoming",
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        try {
+            cntIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
+                "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+            cntReconcileRequest = debugCounters.registerCounter(PACKAGE,
+                "reconcile-request",
+                "Number of flows that have been received for reconciliation by " +
+                "this module",
+                CounterType.ALWAYS_COUNT);
+            cntReconcileNoSource = debugCounters.registerCounter(PACKAGE,
+                "reconcile-no-source-device",
+                "Number of flow reconcile events that failed because no source " +
+                "device could be identified",
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing
+            cntReconcileNoDest = debugCounters.registerCounter(PACKAGE,
+                "reconcile-no-dest-device",
+                "Number of flow reconcile events that failed because no " +
+                "destination device could be identified",
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing
+            cntInvalidSource = debugCounters.registerCounter(PACKAGE,
+                "invalid-source",
+                "Number of packetIns that were discarded because the source " +
+                "MAC was invalid (broadcast, multicast, or zero)",
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntNoSource = debugCounters.registerCounter(PACKAGE, "no-source-device",
+                 "Number of packetIns that were discarded because the " +
+                 "could not identify a source device. This can happen if a " +
+                 "packet is not allowed, appears on an illegal port, does not " +
+                 "have a valid address space, etc.",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntInvalidDest = debugCounters.registerCounter(PACKAGE,
+                "invalid-dest",
+                "Number of packetIns that were discarded because the dest " +
+                "MAC was invalid (zero)",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntNoDest = debugCounters.registerCounter(PACKAGE, "no-dest-device",
+                 "Number of packetIns that did not have an associated " +
+                 "destination device. E.g., because the destination MAC is " +
+                 "broadcast/multicast or is not yet known to the controller.",
+                 CounterType.ALWAYS_COUNT);
+            cntDhcpClientNameSnooped = debugCounters.registerCounter(PACKAGE,
+                 "dhcp-client-name-snooped",
+                 "Number of times a DHCP client name was snooped from a " +
+                 "packetIn.",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceOnInternalPortNotLearned = debugCounters.registerCounter(
+                 PACKAGE,
+                 "device-on-internal-port-not-learned",
+                 "Number of times packetIn was received on an internal port and" +
+                 "no source device is known for the source MAC. The packetIn is " +
+                 "discarded.",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntPacketNotAllowed = debugCounters.registerCounter(PACKAGE,
+                 "packet-not-allowed",
+                 "Number of times a packetIn was not allowed due to spoofing " +
+                 "protection configuration.",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // is this really a IDebugCounterService.CTR_MDATA_WARNing?
+            cntNewDevice = debugCounters.registerCounter(PACKAGE, "new-device",
+                 "Number of times a new device was learned",
+                 CounterType.ALWAYS_COUNT);
+            cntPacketOnInternalPortForKnownDevice = debugCounters.registerCounter(
+                 PACKAGE,
+                 "packet-on-internal-port-for-known-device",
+                 "Number of times a packetIn was received on an internal port " +
+                 "for a known device.",
+                 CounterType.ALWAYS_COUNT);
+            cntNewEntity = debugCounters.registerCounter(PACKAGE, "new-entity",
+                 "Number of times a new entity was learned for an existing device",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceChanged = debugCounters.registerCounter(PACKAGE, "device-changed",
+                 "Number of times device properties have changed",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceMoved = debugCounters.registerCounter(PACKAGE, "device-moved",
+                 "Number of times devices have moved",
+                 CounterType.ALWAYS_COUNT);
+            cntCleanupEntitiesRuns = debugCounters.registerCounter(PACKAGE,
+                 "cleanup-entities-runs",
+                 "Number of times the entity cleanup task has been run",
+                 CounterType.ALWAYS_COUNT);
+            cntEntityRemovedTimeout = debugCounters.registerCounter(PACKAGE,
+                 "entity-removed-timeout",
+                 "Number of times entities have been removed due to timeout " +
+                 "(entity has been inactive for " + ENTITY_TIMEOUT/1000 + "s)",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceDeleted = debugCounters.registerCounter(PACKAGE, "device-deleted",
+                 "Number of devices that have been removed due to inactivity",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceReclassifyDelete = debugCounters.registerCounter(PACKAGE,
+                 "device-reclassify-delete",
+                 "Number of devices that required reclassification and have been " +
+                 "temporarily delete for reclassification",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceStrored = debugCounters.registerCounter(PACKAGE, "device-stored",
+                 "Number of device entries written or updated to the sync store",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceStoreThrottled = debugCounters.registerCounter(PACKAGE,
+                 "device-store-throttled",
+                 "Number of times a device update to the sync store was " +
+                 "requested but not performed because the same device entities " +
+                 "have recently been updated already",
+                 CounterType.ALWAYS_COUNT);
+            cntDeviceRemovedFromStore = debugCounters.registerCounter(PACKAGE,
+                 "device-removed-from-store",
+                 "Number of devices that were removed from the sync store " +
+                 "because the local controller removed the device due to " +
+                 "inactivity",
+                 CounterType.ALWAYS_COUNT);
+            cntSyncException = debugCounters.registerCounter(PACKAGE, "sync-exception",
+                 "Number of times an operation on the sync store resulted in " +
+                 "sync exception",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN); // it this an error?
+            cntDevicesFromStore = debugCounters.registerCounter(PACKAGE,
+                 "devices-from-store",
+                 "Number of devices that were read from the sync store after " +
+                 "the local controller transitioned from SLAVE to MASTER",
+                 CounterType.ALWAYS_COUNT);
+            cntConsolidateStoreRuns = debugCounters.registerCounter(PACKAGE,
+                 "consolidate-store-runs",
+                 "Number of times the task to consolidate entries in the " +
+                 "store witch live known devices has been run",
+                 CounterType.ALWAYS_COUNT);
+            cntConsolidateStoreDevicesRemoved = debugCounters.registerCounter(PACKAGE,
+                 "consolidate-store-devices-removed",
+                 "Number of times a device has been removed from the sync " +
+                 "store because no corresponding live device is known. " +
+                 "This indicates a remote controller still writing device " +
+                 "entries despite the local controller being MASTER or an " +
+                 "incosistent store update from the local controller.",
+                 CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
+            cntTransitionToMaster = debugCounters.registerCounter(PACKAGE,
+                 "transition-to-master",
+                 "Number of times this controller has transitioned from SLAVE " +
+                 "to MASTER role. Will be 0 or 1.",
+                 CounterType.ALWAYS_COUNT);
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
+        }
     }
 
     // ***************
     // IHAListener
     // ***************
 
-    @Override
-    public void roleChanged(Role oldRole, Role newRole) {
-        switch(newRole) {
-            case SLAVE:
-                logger.debug("Resetting device state because of role change");
-                startUp(null);
-                break;
-            default:
-                break;
+    protected class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToMaster() {
+            DeviceManagerImpl.this.isMaster = true;
+            DeviceManagerImpl.this.deviceSyncManager.goToMaster();
+        }
+
+        @Override
+        public void controllerNodeIPsChanged(
+                Map<String, String> curControllerNodeIPs,
+                Map<String, String> addedControllerNodeIPs,
+                Map<String, String> removedControllerNodeIPs) {
+            // no-op
+        }
+
+        @Override
+        public String getName() {
+            return DeviceManagerImpl.this.getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            return ("topology".equals(name) ||
+                    "bvsmanager".equals(name));
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
         }
     }
 
-    @Override
-    public void controllerNodeIPsChanged(
-                                         Map<String, String> curControllerNodeIPs,
-                                         Map<String, String> addedControllerNodeIPs,
-                                         Map<String, String> removedControllerNodeIPs) {
-        // no-op
-    }
 
     // ****************
     // Internal methods
@@ -805,8 +1093,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         // Extract source entity information
         Entity srcEntity =
                 getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
-        if (srcEntity == null)
+        if (srcEntity == null) {
+            cntInvalidSource.updateCounterNoFlush();
             return Command.STOP;
+        }
 
         // Learn from ARP packet for special VRRP settings.
         // In VRRP settings, the source MAC address and sender MAC
@@ -818,14 +1108,20 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
-        if (srcDevice == null)
+        if (srcDevice == null) {
+            cntNoSource.updateCounterNoFlush();
             return Command.STOP;
+        }
 
         // Store the source device in the context
         fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
         // Find the device matching the destination from the entity
         // classes of the source.
+        if (eth.getDestinationMAC().toLong() == 0) {
+            cntInvalidDest.updateCounterNoFlush();
+            return Command.STOP;
+        }
         Entity dstEntity = getDestEntityFromPacket(eth);
         Device dstDevice = null;
         if (dstEntity != null) {
@@ -833,6 +1129,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     findDestByEntity(srcDevice.getEntityClass(), dstEntity);
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
+            else
+                cntNoDest.updateCounterNoFlush();
+        } else {
+            cntNoDest.updateCounterNoFlush();
         }
 
        if (logger.isTraceEnabled()) {
@@ -867,6 +1167,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             DHCPOption dhcpOption = dhcp.getOption(
                     DHCPOptionCode.OptionCode_Hostname);
             if (dhcpOption != null) {
+                cntDhcpClientNameSnooped.updateCounterNoFlush();
                 srcDevice.dhcpClientName = new String(dhcpOption.getData());
             }
         }
@@ -892,8 +1193,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     }
 
     /**
-     * Get sender IP address from packet if the packet is either an ARP
-     * packet.
+     * Get sender IP address from packet if the packet is an ARP
+     * packet and if the source MAC address matches the ARP packets
+     * sender MAC address.
      * @param eth
      * @param dlAddr
      * @return
@@ -924,6 +1226,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         // Ignore broadcast/multicast source
         if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        // Ignore 0 source mac
+        if (dlAddr == 0)
             return null;
 
         short vlan = eth.getVlanID();
@@ -959,6 +1264,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         // Ignore broadcast/multicast source
         if ((senderHardwareAddr[0] & 0x1) != 0)
             return;
+        // Ignore zero sender mac
+        if (senderAddr == 0)
+            return;
 
         short vlan = eth.getVlanID();
         int nwSrc = IPv4.toIPv4Address(arp.getSenderProtocolAddress());
@@ -986,6 +1294,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
         // Ignore broadcast/multicast destination
         if ((dlAddrArr[0] & 0x1) != 0)
+            return null;
+        // Ignore zero dest mac
+        if (dlAddr == 0)
             return null;
 
         if (eth.getPayload() instanceof IPv4) {
@@ -1029,8 +1340,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             inPort = ofmWithSwDpid.getOfMatch().getInputPort();
         }
 
-        boolean learnap = true;
-        if (swDpid == null ||
+        /**for the new flow cache design, the flow mods retrived are not always
+         * from the source, learn AP should be disabled --meiyang*/
+        boolean learnap = false;
+        /**
+         * if (swDpid == null ||
             inPort == null ||
             !isValidAttachmentPoint(swDpid, inPort)) {
             // If this is an internal port or we otherwise don't want
@@ -1041,6 +1355,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             // as a key field.
             learnap = false;
         }
+        */
 
         short vlan = ofmWithSwDpid.getOfMatch().getDataLayerVirtualLan();
         return new Entity(dlAddr,
@@ -1203,6 +1518,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 if (entity.hasSwitchPort() &&
                         !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
+                    cntDeviceOnInternalPortNotLearned.updateCounterNoFlush();
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
                                      + " link: {}", entity);
@@ -1213,17 +1529,17 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 // Before we create the new device also check if
                 // the entity is allowed (e.g., for spoofing protection)
                 if (!isEntityAllowed(entity, entityClass)) {
-                    logger.info("PacketIn is not allowed {} {}",
-                                entityClass.getName(), entity);
+                    cntPacketNotAllowed.updateCounterNoFlush();
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("PacketIn is not allowed {} {}",
+                                    entityClass.getName(), entity);
+                    }
                     device = null;
                     break;
                 }
                 deviceKey = deviceKeyCounter.getAndIncrement();
                 device = allocateDevice(deviceKey, entity, entityClass);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("New device created: {} deviceKey={}, entity={}",
-                                 new Object[]{device, deviceKey, entity});
-                }
+
 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
@@ -1238,6 +1554,14 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
 
                 updateSecondaryIndices(entity, entityClass, deviceKey);
 
+                // We need to count and log here. If we log earlier we could
+                // hit a concurrent modification and restart the dev creation
+                // and potentially count the device twice.
+                cntNewDevice.updateCounterNoFlush();
+                if (logger.isDebugEnabled()) {
+                    logger.debug("New device created: {} deviceKey={}, entity={}",
+                                 new Object[]{device, deviceKey, entity});
+                }
                 // generate new device update
                 deviceUpdates =
                         updateUpdates(deviceUpdates,
@@ -1247,8 +1571,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             }
             // if it gets here, we have a pre-existing Device for this Entity
             if (!isEntityAllowed(entity, device.getEntityClass())) {
-                logger.info("PacketIn is not allowed {} {}",
-                            device.getEntityClass().getName(), entity);
+                cntPacketNotAllowed.updateCounterNoFlush();
+                if (logger.isDebugEnabled()) {
+                    logger.info("PacketIn is not allowed {} {}",
+                                device.getEntityClass().getName(), entity);
+                }
                 return null;
             }
             // If this is not an attachment point port we don't learn the new entity
@@ -1257,6 +1584,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (entity.hasSwitchPort() &&
                     !topology.isAttachmentPointPort(entity.getSwitchDPID(),
                                                  entity.getSwitchPort().shortValue())) {
+                cntPacketOnInternalPortForKnownDevice.updateCounterNoFlush();
                 break;
             }
             int entityindex = -1;
@@ -1298,7 +1626,11 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                        device.getEntityClass(),
                                        deviceKey);
 
+                // We need to count here after all the possible "continue"
+                // statements in this branch
+                cntNewEntity.updateCounterNoFlush();
                 if (changedFields.size() > 0) {
+                    cntDeviceChanged.updateCounterNoFlush();
                     deviceUpdates =
                     updateUpdates(deviceUpdates,
                                   new DeviceUpdate(newDevice, CHANGE,
@@ -1316,6 +1648,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                 // TODO: use update mechanism instead of sending the
                 // notification directly
                 if (moved) {
+                    // we count device moved events in sendDeviceMovedNotification()
                     sendDeviceMovedNotification(device);
                     if (logger.isTraceEnabled()) {
                         logger.trace("Device moved: attachment points {}," +
@@ -1342,6 +1675,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
         }
 
         processUpdates(deviceUpdates);
+        deviceSyncManager.storeDeviceThrottled(device);
 
         return device;
     }
@@ -1349,6 +1683,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
     protected boolean isEntityAllowed(Entity entity, IEntityClass entityClass) {
         return true;
     }
+
+
+
+
 
     protected EnumSet<DeviceField> findChangedFields(Device device,
                                                      Entity newEntity) {
@@ -1399,6 +1737,10 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             if (logger.isTraceEnabled()) {
                 logger.trace("Dispatching device update: {}", update);
             }
+            if (update.change == DeviceUpdate.Change.DELETE)
+                deviceSyncManager.removeDevice(update.device);
+            else
+                deviceSyncManager.storeDevice(update.device);
             List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
             notifyListeners(listeners, update);
         }
@@ -1549,6 +1891,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Clean up expired entities/devices
      */
     protected void cleanupEntities () {
+        cntCleanupEntitiesRuns.updateCounterWithFlush();
 
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
@@ -1581,8 +1924,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                     break;
                 }
 
+                cntEntityRemovedTimeout.updateCounterWithFlush();
                 for (Entity e : toRemove) {
-                    removeEntity(e, d.getEntityClass(), d.deviceKey, toKeep);
+                    removeEntity(e, d.getEntityClass(), d.getDeviceKey(), toKeep);
                 }
 
                 if (toKeep.size() > 0) {
@@ -1591,7 +1935,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                                                       d.oldAPs,
                                                       d.attachmentPoints,
                                                       toKeep,
-                                                      d.entityClass);
+                                                      d.getEntityClass());
 
                     EnumSet<DeviceField> changedFields =
                             EnumSet.noneOf(DeviceField.class);
@@ -1599,8 +1943,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         changedFields.addAll(findChangedFields(newDevice, e));
                     }
                     DeviceUpdate update = null;
-                    if (changedFields.size() > 0)
+                    if (changedFields.size() > 0) {
                         update = new DeviceUpdate(d, CHANGE, changedFields);
+                    }
 
                     if (!deviceMap.replace(newDevice.getDeviceKey(),
                                            d,
@@ -1612,8 +1957,12 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         if (null != d)
                             continue;
                     }
-                    if (update != null)
+                    if (update != null) {
+                        // need to count after all possibly continue stmts in
+                        // this branch
+                        cntDeviceChanged.updateCounterWithFlush();
                         deviceUpdates.add(update);
+                    }
                 } else {
                     DeviceUpdate update = new DeviceUpdate(d, DELETE, null);
                     if (!deviceMap.remove(d.getDeviceKey(), d)) {
@@ -1623,6 +1972,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                         d = deviceMap.get(d.getDeviceKey());
                         if (null != d)
                             continue;
+                        cntDeviceDeleted.updateCounterWithFlush();
                     }
                     deviceUpdates.add(update);
                 }
@@ -1636,6 +1986,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
                               IEntityClass entityClass,
                               Long deviceKey,
                               Collection<Entity> others) {
+        // Don't count in this method. This method CAN BE called to clean-up
+        // after concurrent device adds/updates and thus counting here
+        // is misleading
         for (DeviceIndex index : secondaryIndexMap.values()) {
             index.removeEntityIfNeeded(removed, deviceKey, others);
         }
@@ -1659,6 +2012,9 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param device
      */
     protected void deleteDevice(Device device) {
+        // Don't count in this method. This method CAN BE called to clean-up
+        // after concurrent device adds/updates and thus counting here
+        // is misleading
         ArrayList<Entity> emptyToKeep = new ArrayList<Entity>();
         for (Entity entity : device.getEntities()) {
             this.removeEntity(entity, device.getEntityClass(),
@@ -1758,9 +2114,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * Topology listener method.
      */
     @Override
-    public void topologyChanged() {
+    public void topologyChanged(List<LDUpdate> updateList) {
         Iterator<Device> diter = deviceMap.values().iterator();
-        List<LDUpdate> updateList = topology.getLastLinkUpdates();
         if (updateList != null) {
             if (logger.isTraceEnabled()) {
                 for(LDUpdate update: updateList) {
@@ -1785,6 +2140,8 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
+        cntDeviceMoved.updateCounterNoFlush();
+        deviceSyncManager.storeDevice(d);
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
             for (IDeviceListener listener : listeners) {
@@ -1842,6 +2199,7 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             return false;
         }
 
+        cntDeviceReclassifyDelete.updateCounterNoFlush();
         LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
         // delete this device and then re-learn all the entities
@@ -1854,5 +2212,278 @@ IFlowReconcileListener, IInfoProvider, IHAListener {
             this.learnDeviceByEntity(entity);
         }
         return true;
+    }
+
+    /**
+     * For testing: sets the interval between writes of the same device
+     * to the device store.
+     * @param intervalMs
+     */
+    void setSyncStoreWriteInterval(int intervalMs) {
+        this.syncStoreWriteIntervalMs = intervalMs;
+    }
+
+    /**
+     * For testing: sets the time between transition to MASTER and
+     * consolidate store
+     * @param intervalMs
+     */
+    void setInitialSyncStoreConsolidateMs(int intervalMs) {
+        this.initialSyncStoreConsolidateMs = intervalMs;
+    }
+
+    /**
+     * For testing: consolidate the store NOW
+     */
+    void scheduleConsolidateStoreNow() {
+        this.storeConsolidateTask.reschedule(0, TimeUnit.MILLISECONDS);
+    }
+
+    private class DeviceSyncManager  {
+        // maps (opaque) deviceKey to the time in System.nanoTime() when we
+        // last wrote the device to the sync store
+        private final ConcurrentMap<Long, Long> lastWriteTimes =
+                new ConcurrentHashMap<Long, Long>();
+
+        /**
+         * Write the given device to storage if we are MASTER.
+         * Use this method if the device has significantly changed (e.g.,
+         * new AP, new IP, entities removed).
+         * @param d the device to store
+         */
+        public void storeDevice(Device d) {
+            if (!isMaster)
+                return;
+            if (d == null)
+                return;
+            long now = System.nanoTime();
+            writeUpdatedDeviceToStorage(d);
+            lastWriteTimes.put(d.getDeviceKey(), now);
+        }
+
+        /**
+         * Write the given device to storage if we are MASTER and if the
+         * last write for the device was more than this.syncStoreIntervalNs
+         * time ago.
+         * Use this method to updated last active times in the store.
+         * @param d the device to store
+         */
+        public void storeDeviceThrottled(Device d) {
+            long intervalNs = syncStoreWriteIntervalMs*1000L*1000L;
+            if (!isMaster)
+                return;
+            if (d == null)
+                return;
+            long now = System.nanoTime();
+            Long last = lastWriteTimes.get(d.getDeviceKey());
+            if (last == null ||
+                    now - last > intervalNs) {
+                writeUpdatedDeviceToStorage(d);
+                lastWriteTimes.put(d.getDeviceKey(), now);
+            } else {
+                cntDeviceStoreThrottled.updateCounterWithFlush();
+            }
+        }
+
+        /**
+         * Remove the given device from the store. If only some entities have
+         * been removed the updated device should be written using
+         * {@link #storeDevice(Device)}
+         * @param d
+         */
+        public void removeDevice(Device d) {
+            if (!isMaster)
+                return;
+            // FIXME: could we have a problem with concurrent put to the
+            // hashMap? I.e., we write a stale entry to the map after the
+            // delete and now are left with an entry we'll never clean up
+            lastWriteTimes.remove(d.getDeviceKey());
+            try {
+                // TODO: should probably do versioned delete. OTOH, even
+                // if we accidentally delete, we'll write it again after
+                // the next entity ....
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
+                storeClient.delete(DeviceSyncRepresentation.computeKey(d));
+            } catch(ObsoleteVersionException e) {
+                // FIXME
+            } catch (SyncException e) {
+                cntSyncException.updateCounterWithFlush();
+                logger.error("Could not remove device " + d + " from store", e);
+            }
+        }
+
+        /**
+         * Remove the given Versioned device from the store. If the device
+         * was locally modified ignore the delete request.
+         * @param syncedDeviceKey
+         */
+        private void removeDevice(Versioned<DeviceSyncRepresentation> dev) {
+            try {
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
+                storeClient.delete(dev.getValue().getKey(),
+                                   dev.getVersion());
+            } catch(ObsoleteVersionException e) {
+                // Key was locally modified by another thread.
+                // Do not delete and ignore.
+            } catch(SyncException e) {
+                cntSyncException.updateCounterWithFlush();
+                logger.error("Failed to remove device entry for " +
+                            dev.toString() + " from store.", e);
+            }
+        }
+
+        /**
+         * Synchronously transition from SLAVE to MASTER. By iterating through
+         * the store and learning all devices from the store
+         */
+        private void goToMaster() {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Transitioning to MASTER role");
+            }
+            cntTransitionToMaster.updateCounterWithFlush();
+            IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
+                    iter = null;
+            try {
+                iter = storeClient.entries();
+            } catch (SyncException e) {
+                cntSyncException.updateCounterWithFlush();
+                logger.error("Failed to read devices from sync store", e);
+                return;
+            }
+            try {
+                while(iter.hasNext()) {
+                    Versioned<DeviceSyncRepresentation> versionedDevice =
+                            iter.next().getValue();
+                    DeviceSyncRepresentation storedDevice =
+                            versionedDevice.getValue();
+                    if (storedDevice == null)
+                        continue;
+                    cntDevicesFromStore.updateCounterWithFlush();
+                    for(SyncEntity se: storedDevice.getEntities()) {
+                        learnDeviceByEntity(se.asEntity());
+                    }
+                }
+            } finally {
+                if (iter != null)
+                    iter.close();
+            }
+            storeConsolidateTask.reschedule(initialSyncStoreConsolidateMs,
+                                            TimeUnit.MILLISECONDS);
+        }
+
+        /**
+         * Actually perform the write of the device to the store
+         * FIXME: concurrent modification behavior
+         * @param device The device to write
+         */
+        private void writeUpdatedDeviceToStorage(Device device) {
+            try {
+                cntDeviceStrored.updateCounterWithFlush();
+                // FIXME: use a versioned put
+                DeviceSyncRepresentation storeDevice =
+                        new DeviceSyncRepresentation(device);
+                storeClient.put(storeDevice.getKey(), storeDevice);
+            } catch (ObsoleteVersionException e) {
+                // FIXME: what's the right behavior here. Can the store client
+                // even throw this error?
+            } catch (SyncException e) {
+                cntSyncException.updateCounterWithFlush();
+                logger.error("Could not write device " + device +
+                          " to sync store:", e);
+            }
+        }
+
+        /**
+         * Iterate through all entries in the sync store. For each device
+         * in the store check if any stored entity matches a live device. If
+         * no entities match a live device we remove the entry from the store.
+         *
+         * Note: we do not check if all devices known to device manager are
+         * in the store. We rely on regular packetIns for that.
+         * Note: it's possible that multiple entries in the store map to the
+         * same device. We don't check or handle this case.
+         *
+         * We need to perform this check after a SLAVE->MASTER transition to
+         * get rid of all entries the old master might have written to the
+         * store after we took over. We also run it regularly in MASTER
+         * state to ensure we don't have stale entries in the store
+         */
+        private void consolidateStore() {
+            if (!isMaster)
+                return;
+            cntConsolidateStoreRuns.updateCounterWithFlush();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Running consolidateStore.");
+            }
+            IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
+                    iter = null;
+            try {
+                iter = storeClient.entries();
+            } catch (SyncException e) {
+                cntSyncException.updateCounterWithFlush();
+                logger.error("Failed to read devices from sync store", e);
+                return;
+            }
+            try {
+                while(iter.hasNext()) {
+                    boolean found = false;
+                    Versioned<DeviceSyncRepresentation> versionedDevice =
+                            iter.next().getValue();
+                    DeviceSyncRepresentation storedDevice =
+                            versionedDevice.getValue();
+                    if (storedDevice == null)
+                        continue;
+                    for(SyncEntity se: storedDevice.getEntities()) {
+                        try {
+                            // Do we have a device for this entity??
+                            IDevice d = findDevice(se.macAddress, se.vlan,
+                                                   se.ipv4Address,
+                                                   se.switchDPID,
+                                                   se.switchPort);
+                            if (d != null) {
+                                found = true;
+                                break;
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // not all key fields provided. Skip entity
+                        }
+                    }
+                    if (!found) {
+                        // We currently DO NOT have a live device that
+                        // matches the current device from the store.
+                        // Delete device from store.
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Removing device {} from store. No "
+                                         + "corresponding live device",
+                                         storedDevice.getKey());
+                        }
+                        cntConsolidateStoreDevicesRemoved.updateCounterWithFlush();
+                        removeDevice(versionedDevice);
+                    }
+                }
+            } finally {
+                if (iter != null)
+                    iter.close();
+            }
+        }
+    }
+
+
+    /**
+     * For testing. Sets the syncService. Only call after init but before
+     * startUp. Used by MockDeviceManager
+     * @param syncService
+     */
+    protected void setSyncServiceIfNotSet(ISyncService syncService) {
+        if (this.syncService == null)
+            this.syncService = syncService;
+    }
+
+    /**
+     * For testing.
+     * @return
+     */
+    IHAListener getHAListener() {
+        return this.haListenerDelegate;
     }
 }

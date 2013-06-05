@@ -47,9 +47,45 @@ public class OFMatchWithSwDpid {
         this.switchDataPathId = dpid;
         return this;
     }
-    
+
     @Override
     public String toString() {
         return "OFMatchWithSwDpid [" + HexString.toHexString(switchDataPathId) + ofMatch + "]";
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                 + ((ofMatch == null) ? 0 : ofMatch.hashCode());
+        result = prime * result
+                 + (int) (switchDataPathId ^ (switchDataPathId >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof OFMatchWithSwDpid)) {
+            return false;
+        }
+        OFMatchWithSwDpid other = (OFMatchWithSwDpid) obj;
+        if (ofMatch == null) {
+            if (other.ofMatch != null) {
+                return false;
+            }
+        } else if (!ofMatch.equals(other.ofMatch)) {
+            return false;
+        }
+        if (switchDataPathId != other.switchDataPathId) {
+            return false;
+        }
+        return true;
     }
 }

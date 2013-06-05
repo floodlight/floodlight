@@ -1,0 +1,46 @@
+#!/bin/sh -e
+
+NAME=floodlight
+KEYSTORE=/etc/floodlight/auth_credentials.jceks
+KEYSTOREPASS=/etc/floodlight/conf.d/01-keystorepass.properties
+
+case "$1" in
+    configure)
+        if ! id $NAME > /dev/null 2>&1 ; then
+            adduser --quiet --group --system --disabled-password \
+                --no-create-home --home /dev/null $NAME
+        fi
+	mkdir -p /var/log/floodlight
+	mkdir -p /var/lib/floodlight
+	mkdir -p /etc/floodlight/conf.d
+	
+        chown -R syslog:adm /var/log/floodlight
+        chown -R $NAME:$NAME /var/lib/floodlight
+
+        if [ ! -f $KEYSTORE ]; then
+	    KSPASS=`dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev`
+	    umask 0077
+	    echo "org.sdnplatform.sync.internal.SyncManager.keyStorePassword=$KSPASS" > \
+		$KEYSTOREPASS
+            authtool -a CHALLENGE_RESPONSE \
+                -ks $KEYSTORE \
+                -kp $KSPASS
+	    chown $NAME:$NAME $KEYSTORE $KEYSTOREPASS
+        fi
+
+	service rsyslog restart
+	service floodlight restart
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

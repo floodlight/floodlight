@@ -19,6 +19,7 @@ package net.floodlightcontroller.topology;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,11 +32,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -44,9 +46,11 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -63,9 +67,9 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPacketOut;
 import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,12 +82,19 @@ import org.slf4j.LoggerFactory;
 public class TopologyManager implements
         IFloodlightModule, ITopologyService,
         IRoutingService, ILinkDiscoveryListener,
-        IOFMessageListener, IHAListener {
+        IOFMessageListener {
 
     protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
+    public static final String MODULE_NAME = "topology";
+
     public static final String CONTEXT_TUNNEL_ENABLED =
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
+
+    /**
+     * Role of the controller.
+     */
+    private Role role;
 
     /**
      * Set of ports for each switch
@@ -120,7 +131,6 @@ public class TopologyManager implements
     protected ArrayList<ITopologyListener> topologyAware;
 
     protected BlockingQueue<LDUpdate> ldUpdates;
-    protected List<LDUpdate> appliedUpdates;
 
     // These must be accessed using getCurrentInstance(), not directly
     protected TopologyInstance currentInstance;
@@ -145,6 +155,14 @@ public class TopologyManager implements
     protected boolean tunnelPortsUpdated;
 
     protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+
+    private IHAListener haListener;
+
+    /**
+     *  Debug Counters
+     */
+    protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
+    protected IDebugCounter ctrIncoming;
 
    //  Getter/Setter methods
     /**
@@ -202,10 +220,10 @@ public class TopologyManager implements
         linksUpdated = false;
         dtLinksUpdated = false;
         tunnelPortsUpdated = false;
-        applyUpdates();
+        List<LDUpdate> appliedUpdates = applyUpdates();
         newInstanceFlag = createNewInstance();
         lastUpdateTime = new Date();
-        informListeners();
+        informListeners(appliedUpdates);
         return newInstanceFlag;
     }
 
@@ -272,7 +290,7 @@ public class TopologyManager implements
         if ((port & 0xff00) == 0xff00 && port != (short)0xfffe) return false;
 
         // Make sure that the port is enabled.
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchid);
+        IOFSwitch sw = floodlightProvider.getSwitch(switchid);
         if (sw == null) return false;
         return (sw.portEnabled(port));
     }
@@ -568,11 +586,6 @@ public class TopologyManager implements
 
         return blockedPorts;
     }
-
-    @Override
-    public List<LDUpdate> getLastLinkUpdates() {
-    	return appliedUpdates;
-    }
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
@@ -600,7 +613,7 @@ public class TopologyManager implements
     public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie,
                           boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-        return ti.getRoute(src, srcPort, dst, dstPort, cookie);
+        return ti.getRoute(null, src, srcPort, dst, dstPort, cookie);
     }
 
     @Override
@@ -631,7 +644,7 @@ public class TopologyManager implements
 
     @Override
     public String getName() {
-        return "topology";
+        return MODULE_NAME;
     }
 
     @Override
@@ -649,7 +662,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                debugCounters.updateCounter("topology-incoming");
+                ctrIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -663,34 +676,42 @@ public class TopologyManager implements
     // IHAListener
     // ***************
 
-    @Override
-    public void roleChanged(Role oldRole, Role newRole) {
-        switch(newRole) {
-            case MASTER:
-                if (oldRole == Role.SLAVE) {
-                    log.debug("Re-computing topology due " +
-                            "to HA change from SLAVE->MASTER");
-                    newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-                                               TimeUnit.MILLISECONDS);
-                }
-                break;
-            case SLAVE:
-                log.debug("Clearing topology due to " +
-                        "HA change to SLAVE");
-                ldUpdates.clear();
-                clearCurrentTopology();
-                break;
-            default:
-            	break;
+    private class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToMaster() {
+            role = Role.MASTER;
+            log.debug("Re-computing topology due " +
+                    "to HA change from SLAVE->MASTER");
+            newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                                       TimeUnit.MILLISECONDS);
         }
-    }
 
-    @Override
-    public void controllerNodeIPsChanged(
-                          Map<String, String> curControllerNodeIPs,
-                          Map<String, String> addedControllerNodeIPs,
-                          Map<String, String> removedControllerNodeIPs) {
-        // no-op
+        @Override
+        public void controllerNodeIPsChanged(
+                                             Map<String, String> curControllerNodeIPs,
+                                             Map<String, String> addedControllerNodeIPs,
+                                             Map<String, String> removedControllerNodeIPs) {
+            // no-op
+        }
+
+        @Override
+        public String getName() {
+            return TopologyManager.this.getName();
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                                                String name) {
+            return "linkdiscovery".equals(name) ||
+                    "tunnelmanager".equals(name);
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                                                 String name) {
+            // TODO Auto-generated method stub
+            return false;
+        }
     }
 
     // *****************
@@ -749,34 +770,41 @@ public class TopologyManager implements
         tunnelPorts = new HashSet<NodePortTuple>();
         topologyAware = new ArrayList<ITopologyListener>();
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-        appliedUpdates = new ArrayList<LDUpdate>();
-        clearCurrentTopology();
+        haListener = new HAListenerDelegate();
+        registerTopologyDebugCounters();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) {
+        clearCurrentTopology();
+        // Initialize role to floodlight provider role.
+        this.role = floodlightProvider.getRole();
+
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
-        if (floodlightProvider.getRole() != Role.SLAVE)
+        if (role != Role.SLAVE)
             newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
                                    TimeUnit.MILLISECONDS);
 
         linkDiscovery.addListener(this);
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addHAListener(this);
+        floodlightProvider.addHAListener(this.haListener);
         addRestletRoutable();
-        registerTopologyDebugCounters();
     }
 
-    private void registerTopologyDebugCounters() {
+    private void registerTopologyDebugCounters() throws FloodlightModuleException {
         if (debugCounters == null) {
             log.error("Debug Counter Service not found.");
             debugCounters = new NullDebugCounter();
-            return;
         }
-        debugCounters.registerCounter(getName() + "-" + "incoming",
-            "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
+        try {
+            ctrIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
+                "All incoming packets seen by this module",
+                CounterType.ALWAYS_COUNT);
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
+        }
     }
 
     protected void addRestletRoutable() {
@@ -921,7 +949,7 @@ public class TopologyManager implements
         }
 
         for(long sid: switches) {
-            IOFSwitch sw = floodlightProvider.getSwitches().get(sid);
+            IOFSwitch sw = floodlightProvider.getSwitch(sid);
             if (sw == null) continue;
             Collection<Short> enabledPorts = sw.getEnabledPortNumbers();
             if (enabledPorts == null)
@@ -995,8 +1023,8 @@ public class TopologyManager implements
             message="Error reading link discovery update.",
             explanation="Unable to process link discovery update",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public void applyUpdates() {
-        appliedUpdates.clear();
+    public List<LDUpdate> applyUpdates() {
+        List<LDUpdate> appliedUpdates = new ArrayList<LDUpdate>();
         LDUpdate update = null;
         while (ldUpdates.peek() != null) {
             try {
@@ -1007,21 +1035,41 @@ public class TopologyManager implements
             if (log.isTraceEnabled()) {
                 log.trace("Applying update: {}", update);
             }
-            if (update.getOperation() == UpdateOperation.LINK_UPDATED) {
+
+            switch (update.getOperation()) {
+            case LINK_UPDATED:
                 addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-                                update.getDst(), update.getDstPort(),
-                                update.getType());
-            } else if (update.getOperation() == UpdateOperation.LINK_REMOVED){
+                        update.getDst(), update.getDstPort(),
+                        update.getType());
+                break;
+            case LINK_REMOVED:
                 removeLink(update.getSrc(), update.getSrcPort(),
-                           update.getDst(), update.getDstPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_ADDED) {
+                        update.getDst(), update.getDstPort());
+                break;
+            case SWITCH_UPDATED:
+                addOrUpdateSwitch(update.getSrc());
+                break;
+            case SWITCH_REMOVED:
+                removeSwitch(update.getSrc());
+                break;
+            case TUNNEL_PORT_ADDED:
                 addTunnelPort(update.getSrc(), update.getSrcPort());
-            } else if (update.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
+                break;
+            case TUNNEL_PORT_REMOVED:
                 removeTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case PORT_UP: case PORT_DOWN:
+                break;
             }
             // Add to the list of applied updates.
             appliedUpdates.add(update);
         }
+        return (Collections.unmodifiableList(appliedUpdates));
+    }
+
+    protected void addOrUpdateSwitch(long sw) {
+        // nothing to do here for the time being.
+        return;
     }
 
     public void addTunnelPort(long sw, short port) {
@@ -1156,10 +1204,14 @@ public class TopologyManager implements
 
 
 
-    public void informListeners() {
+    public void informListeners(List<LDUpdate> linkUpdates) {
+
+        if (role != null && role != Role.MASTER)
+            return;
+
         for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
-            listener.topologyChanged();
+            listener.topologyChanged(linkUpdates);
         }
     }
 
@@ -1174,23 +1226,17 @@ public class TopologyManager implements
         switchPorts.get(s).add(p);
     }
 
-    public boolean removeSwitchPort(long sw, short port) {
-
-        Set<Link> linksToRemove = new HashSet<Link>();
-        NodePortTuple npt = new NodePortTuple(sw, port);
-        if (switchPortLinks.containsKey(npt) == false) return false;
-
-        linksToRemove.addAll(switchPortLinks.get(npt));
-        for(Link link: linksToRemove) {
-            removeLink(link);
-        }
-        return true;
-    }
-
-    public boolean removeSwitch(long sid) {
+    public void removeSwitch(long sid) {
         // Delete all the links in the switch, switch and all
         // associated data should be deleted.
-        if (switchPorts.containsKey(sid) == false) return false;
+        if (switchPorts.containsKey(sid) == false) return;
+
+        // Check if any tunnel ports need to be removed.
+        for(NodePortTuple npt: tunnelPorts) {
+            if (npt.getNodeId() == sid) {
+                removeTunnelPort(npt.getNodeId(), npt.getPortId());
+            }
+        }
 
         Set<Link> linksToRemove = new HashSet<Link>();
         for(Short p: switchPorts.get(sid)) {
@@ -1198,12 +1244,11 @@ public class TopologyManager implements
             linksToRemove.addAll(switchPortLinks.get(n1));
         }
 
-        if (linksToRemove.isEmpty()) return false;
+        if (linksToRemove.isEmpty()) return;
 
         for(Link link: linksToRemove) {
             removeLink(link);
         }
-        return true;
     }
 
     /**
@@ -1332,7 +1377,6 @@ public class TopologyManager implements
         switchPortLinks.clear();
         portBroadcastDomainLinks.clear();
         directLinks.clear();
-        appliedUpdates.clear();
     }
 
     /**
@@ -1378,20 +1422,17 @@ public class TopologyManager implements
      */
     @Override
     public Set<Short> getPorts(long sw) {
-        Set<Short> ports = new HashSet<Short>();
-        IOFSwitch iofSwitch = floodlightProvider.getSwitches().get(sw);
-        if (iofSwitch == null) return null;
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
+        if (iofSwitch == null) return Collections.emptySet();
 
         Collection<Short> ofpList = iofSwitch.getEnabledPortNumbers();
-        if (ofpList == null) return null;
+        if (ofpList == null) return Collections.emptySet();
 
+        Set<Short> ports = new HashSet<Short>(ofpList);
         Set<Short> qPorts = linkDiscovery.getQuarantinedPorts(sw);
         if (qPorts != null)
-            ofpList.removeAll(qPorts);
+            ports.removeAll(qPorts);
 
-        ports.addAll(ofpList);
         return ports;
     }
-
-
 }

@@ -56,7 +56,10 @@ public class MockEntityClassifierMac extends DefaultEntityClassifier {
     
     @Override
     public IEntityClass classifyEntity(Entity entity) {
-        if (entity.getSwitchDPID() == 1L) {
+        if (entity.getSwitchDPID() == null) {
+            throw new IllegalArgumentException("Not all key fields specified."
+                    + " Required fields: " + getKeyFields());
+        } else if (entity.getSwitchDPID() == 1L) {
             return testECMac1;
         } else if (entity.getSwitchDPID() == 2L) {
             return testECMac2;

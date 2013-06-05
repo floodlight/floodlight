@@ -196,7 +196,7 @@ public class LoadBalancer implements IFloodlightModule,
         if (eth.isBroadcast() || eth.isMulticast()) {
             // handle ARP for VIP
             if (pkt instanceof ARP) {
-                // retrieve arp to determine target IP address
+                // retrieve arp to determine target IP address                                                       
                 ARP arpRequest = (ARP) eth.getPayload();
 
                 int targetProtocolAddress = IPv4.toIPv4Address(arpRequest
@@ -268,7 +268,7 @@ public class LoadBalancer implements IFloodlightModule,
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // retrieve original arp to determine host configured gw IP address
+        // retrieve original arp to determine host configured gw IP address                                          
         if (! (eth.getPayload() instanceof ARP))
             return;
         ARP arpRequest = (ARP) eth.getPayload();
