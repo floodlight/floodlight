@@ -127,10 +127,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
     // Private members for throttling
     private boolean writeThrottleEnabled = false;
     protected boolean packetInThrottleEnabled = false; // used by test
-    private int packetInRateThresholdHigh = Integer.MAX_VALUE;
+    private int packetInRateThresholdHigh =
+            Integer.parseInt(System.getProperty("input_threshold", "1000"));
     private int packetInRateThresholdLow = 1;
-    private int packetInRatePerMacThreshold = Integer.MAX_VALUE;
-    private int packetInRatePerPortThreshold = Integer.MAX_VALUE;
+    private int packetInRatePerMacThreshold = 50;
+    private int packetInRatePerPortThreshold = 100;
     private long messageCount = 0;
     private long messageCountUniqueOFMatch = 0;
     private long lastMessageTime;
@@ -183,6 +184,11 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.setAttribute(PROP_FASTWILDCARDS, OFMatch.OFPFW_ALL);
         this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, Boolean.valueOf(true));
         this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.valueOf(true));
+        if (packetInRateThresholdHigh == 0) {
+            packetInRateThresholdHigh = Integer.MAX_VALUE;
+        } else {
+            packetInRateThresholdLow = packetInRateThresholdHigh / 2;
+        }
     }
 
 
