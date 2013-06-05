@@ -841,6 +841,9 @@ public class Controller implements IFloodlightProviderService,
                 h.sendRoleRequest(this.role);
 
             Controller.this.addUpdateToQueue(new HARoleUpdate(this.role));
+            if ((role == Role.MASTER) &&
+                    Controller.this.switchManager.syncedSwitches.isEmpty())
+                Controller.this.addUpdateToQueue(new ReadyForReconcileUpdate());
         }
 
         /**
@@ -1047,15 +1050,15 @@ public class Controller implements IFloodlightProviderService,
                                                   SwitchUpdateType.ACTIVATED));
                 sendNotificationsIfSwitchDiffers(storedSwitch, sw);
                 counters.syncedSwitchActivated.updateCounterWithFlush();
+                if (this.syncedSwitches.isEmpty()) {
+                    // we have just activated the last synced switch. I.e.,
+                    // all previously known switch are now active. Send
+                    // notification
+                    // update dispatcher will increment counter
+                    addUpdateToQueue(new ReadyForReconcileUpdate());
+                }
             }
             addSwitchToStore(sw);
-            if (this.syncedSwitches.isEmpty()) {
-                // we have just activated the last synced switch. I.e.,
-                // all previously known switch are now active. Send
-                // notification
-                // update dispatcher will increment counter
-                addUpdateToQueue(new ReadyForReconcileUpdate());
-            }
         }
 
         /**
