@@ -17,7 +17,6 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
@@ -34,7 +33,8 @@ public class TopologyManagerTest extends FloodlightTestCase {
     protected static Logger log = LoggerFactory.getLogger(TopologyManagerTest.class);
     TopologyManager tm;
     FloodlightModuleContext fmc;
-    
+
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -50,7 +50,7 @@ public class TopologyManagerTest extends FloodlightTestCase {
 
     @Test
     public void testBasic1() throws Exception {
-        tm.addOrUpdateLink((long)1, (short)1, (long)2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
+        tm.addOrUpdateLink(1, (short)1, 2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
         assertTrue(tm.getSwitchPorts().size() == 2);  // for two nodes.
         assertTrue(tm.getSwitchPorts().get((long)1).size()==1);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==1);
@@ -58,7 +58,7 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getPortBroadcastDomainLinks().size()==0);
         assertTrue(tm.getTunnelPorts().size()==0);
 
-        tm.addOrUpdateLink((long)1, (short)2, (long)2, (short)2, ILinkDiscovery.LinkType.MULTIHOP_LINK);
+        tm.addOrUpdateLink(1, (short)2, 2, (short)2, ILinkDiscovery.LinkType.MULTIHOP_LINK);
         assertTrue(tm.getSwitchPorts().size() == 2);  // for two nodes.
         assertTrue(tm.getSwitchPorts().get((long)1).size()==2);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==2);
@@ -66,23 +66,23 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getPortBroadcastDomainLinks().size()==2);
         assertTrue(tm.getTunnelPorts().size()==0);
 
-        tm.removeLink((long)1, (short)2, (long)2, (short)2);
+        tm.removeLink(1, (short)2, 2, (short)2);
         assertTrue(tm.getSwitchPorts().get((long)1).size()==1);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==1);
         assertTrue(tm.getSwitchPorts().size() == 2);
         assertTrue(tm.getSwitchPortLinks().size()==2);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==0);
 
-        tm.removeLink((long)1, (short)1, (long)2, (short)1);
-        assertTrue(tm.getSwitchPorts().size() == 0); 
+        tm.removeLink(1, (short)1, 2, (short)1);
+        assertTrue(tm.getSwitchPorts().size() == 0);
         assertTrue(tm.getSwitchPortLinks().size()==0);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==0);
     }
 
     @Test
     public void testBasic2() throws Exception {
-        tm.addOrUpdateLink((long)1, (short)1, (long)2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
-        tm.addOrUpdateLink((long)2, (short)2, (long)3, (short)1, ILinkDiscovery.LinkType.MULTIHOP_LINK);
+        tm.addOrUpdateLink(1, (short)1, 2, (short)1, ILinkDiscovery.LinkType.DIRECT_LINK);
+        tm.addOrUpdateLink(2, (short)2, 3, (short)1, ILinkDiscovery.LinkType.MULTIHOP_LINK);
         assertTrue(tm.getSwitchPorts().size() == 3);  // for two nodes.
         assertTrue(tm.getSwitchPorts().get((long)1).size()==1);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==2);
@@ -90,7 +90,7 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getSwitchPortLinks().size()==4);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==2);
 
-        tm.removeLink((long)1, (short)1, (long)2, (short)1);
+        tm.removeLink(1, (short)1, 2, (short)1);
         assertTrue(tm.getSwitchPorts().size() == 2);
         assertTrue(tm.getSwitchPorts().get((long)1) == null);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==1);
@@ -99,7 +99,7 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getPortBroadcastDomainLinks().size()==2);
 
         // nonexistent link // no null pointer exceptions.
-        tm.removeLink((long)3, (short)1, (long)2, (short)2);
+        tm.removeLink(3, (short)1, 2, (short)2);
         assertTrue(tm.getSwitchPorts().size() == 2);
         assertTrue(tm.getSwitchPorts().get((long)1) == null);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==1);
@@ -107,7 +107,7 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getSwitchPortLinks().size()==2);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==2);
 
-        tm.removeLink((long)3, (short)2, (long)1, (short)2);
+        tm.removeLink(3, (short)2, 1, (short)2);
         assertTrue(tm.getSwitchPorts().size() == 2);
         assertTrue(tm.getSwitchPorts().get((long)1)==null);
         assertTrue(tm.getSwitchPorts().get((long)2).size()==1);
@@ -115,20 +115,11 @@ public class TopologyManagerTest extends FloodlightTestCase {
         assertTrue(tm.getSwitchPortLinks().size()==2);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==2);
 
-        tm.removeLink((long)2, (short)2, (long)3, (short)1);
+        tm.removeLink(2, (short)2, 3, (short)1);
         assertTrue(tm.getSwitchPorts().size() == 0);  // for two nodes.
         assertTrue(tm.getSwitchPortLinks().size()==0);
         assertTrue(tm.getPortBroadcastDomainLinks().size()==0);
         assertTrue(tm.getTunnelPorts().size()==0);
     }
 
-    @Test
-    public void testHARoleChange() throws Exception {
-        testBasic2();
-        getMockFloodlightProvider().dispatchRoleChanged(null, Role.SLAVE);
-        assertTrue(tm.switchPorts.isEmpty());
-        assertTrue(tm.switchPortLinks.isEmpty());
-        assertTrue(tm.portBroadcastDomainLinks.isEmpty());
-        assertTrue(tm.tunnelPorts.isEmpty());
-    }
 }

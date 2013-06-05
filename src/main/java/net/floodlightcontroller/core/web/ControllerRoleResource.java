@@ -35,12 +35,12 @@ public class ControllerRoleResource extends ServerResource {
 
     @Get("json")
     public RoleInfo getRole() {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
         return floodlightProvider.getRoleInfo();
     }
-    
+
     @Post("json")
     @LogMessageDoc(level="WARN",
                    message="Invalid role value specified in REST API to " +
@@ -64,11 +64,14 @@ public class ControllerRoleResource extends ServerResource {
             setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid role value");
             return;
         }
-        
-        IFloodlightProviderService floodlightProvider = 
+        String roleChangeDescription = roleInfo.getRoleChangeDescription();
+        if (roleChangeDescription == null)
+            roleChangeDescription = "<none>";
+
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
-        
-        floodlightProvider.setRole(role, roleInfo.getRoleChangeDescription());
+
+        floodlightProvider.setRole(role, roleChangeDescription);
     }
 }

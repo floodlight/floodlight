@@ -7,8 +7,8 @@
 .settings
 .DS_Store
 target
-thrift
 *.swp
 *.pyc
 findbugs-results
 *.launch
+/thrift

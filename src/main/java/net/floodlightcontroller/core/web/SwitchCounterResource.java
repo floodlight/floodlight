@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -30,25 +30,23 @@ import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
 
 /**
- * Get counters for a particular switch 
+ * Get counters for a particular switch
  * @author readams
  */
 public class SwitchCounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
-        
+
         String switchID = (String) getRequestAttributes().get("switchId");
         String counterName = (String) getRequestAttributes().get("counterName");
 
-        Long[] switchDpids;
         if (switchID.equalsIgnoreCase("all")) {
-            switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
             getOneSwitchCounterJson(model, ICounterStoreService.CONTROLLER_NAME, counterName);
-            for (Long dpid : switchDpids) {
+            for (Long dpid : floodlightProvider.getAllSwitchDpids()) {
                 switchID = HexString.toHexString(dpid);
 
                 getOneSwitchCounterJson(model, switchID, counterName);
@@ -58,14 +56,14 @@ public class SwitchCounterResource extends CounterResourceBase {
         }
         return model;
     }
-    
-    protected void getOneSwitchCounterJson(Map<String, Object> model, 
+
+    protected void getOneSwitchCounterJson(Map<String, Object> model,
                                            String switchID, String counterName) {
-        String fullCounterName = "";      
-        
+        String fullCounterName = "";
+
         try {
             counterName = URLDecoder.decode(counterName, "UTF-8");
-            fullCounterName = 
+            fullCounterName =
                 switchID + ICounterStoreService.TitleDelimitor + counterName;
         } catch (UnsupportedEncodingException e) {
             //Just leave counterTitle undecoded if there is an issue - fail silently
@@ -74,10 +72,10 @@ public class SwitchCounterResource extends CounterResourceBase {
         ICounter counter = this.counterStore.getCounter(fullCounterName);
         Map<String, Long> sample = new HashMap<String, Long> ();
         if (counter != null) {
-            sample.put(counter.getCounterDate().toString(), 
+            sample.put(counter.getCounterDate().toString(),
                        counter.getCounterValue().getLong());
             model.put(switchID, sample);
         }
     }
-    
+
 }

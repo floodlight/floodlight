@@ -16,9 +16,13 @@
 
 package net.floodlightcontroller.topology;
 
+import java.util.List;
+
+import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
+
 public interface ITopologyListener {
     /**
      * Happens when the switch clusters are recomputed
      */
-    void topologyChanged();
+    void topologyChanged(List<LDUpdate> linkUpdates);
 }

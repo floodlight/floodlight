@@ -41,6 +41,13 @@ public interface ILinkDiscoveryService extends IFloodlightService {
     public Map<Link, LinkInfo> getLinks();
 
     /**
+     * Retrieves the link info for a given link
+     * @param link link for which the link info should be returned
+     * @return the link info for the given link
+     */
+    public LinkInfo getLinkInfo(Link link);
+
+    /**
      * Returns link type of a given link
      * @param info
      * @return

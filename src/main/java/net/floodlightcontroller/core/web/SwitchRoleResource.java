@@ -35,26 +35,26 @@ public class SwitchRoleResource extends ServerResource {
 
     @Get("json")
     public Object getRole() {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
 
         String switchId = (String) getRequestAttributes().get("switchId");
-        
+
         RoleInfo roleInfo;
-        
+
         if (switchId.equalsIgnoreCase("all")) {
             HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
-            for (IOFSwitch sw: floodlightProvider.getSwitches().values()) {
+            for (IOFSwitch sw: floodlightProvider.getAllSwitchMap().values()) {
                 switchId = sw.getStringId();
                 roleInfo = new RoleInfo(sw.getHARole(), null);
                 model.put(switchId, roleInfo);
             }
             return model;
         }
-        
+
         Long dpid = HexString.toLong(switchId);
-        IOFSwitch sw = floodlightProvider.getSwitches().get(dpid);
+        IOFSwitch sw = floodlightProvider.getSwitch(dpid);
         if (sw == null)
             return null;
         roleInfo = new RoleInfo(sw.getHARole(), null);

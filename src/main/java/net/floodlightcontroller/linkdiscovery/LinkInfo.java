@@ -17,25 +17,35 @@ package net.floodlightcontroller.linkdiscovery;
 
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 
-import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class LinkInfo {
 
     public LinkInfo(Long firstSeenTime,
                     Long lastLldpReceivedTime,
-                    Long lastBddpReceivedTime,
-                    int srcPortState,
-                    int dstPortState) {
+                    Long lastBddpReceivedTime) {
         super();
-        this.srcPortState = srcPortState;
-        this.dstPortState = dstPortState;
         this.firstSeenTime = firstSeenTime;
         this.lastLldpReceivedTime = lastLldpReceivedTime;
         this.lastBddpReceivedTime = lastBddpReceivedTime;
     }
 
-    protected Integer srcPortState;
-    protected Integer dstPortState;
+    /*
+     * Do not use this constructor. Used primarily for JSON
+     * Serialization/Deserialization
+     */
+    public LinkInfo() {
+        this.firstSeenTime = null;
+        this.lastLldpReceivedTime = null;
+        this.lastBddpReceivedTime = null;
+    }
+
+    public LinkInfo(LinkInfo fromLinkInfo) {
+        this.firstSeenTime = fromLinkInfo.getFirstSeenTime();
+        this.lastLldpReceivedTime = fromLinkInfo.getUnicastValidTime();
+        this.lastBddpReceivedTime = fromLinkInfo.getMulticastValidTime();
+    }
+
     protected Long firstSeenTime;
     protected Long lastLldpReceivedTime; /* Standard LLLDP received time */
     protected Long lastBddpReceivedTime; /* Modified LLDP received time  */
@@ -49,13 +59,6 @@ public class LinkInfo {
      * it can determine if the port state has changed and therefore
      * requires the new state to be written to storage.
      */
-
-
-
-    public boolean linkStpBlocked() {
-        return ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue()) ||
-            ((dstPortState & OFPortState.OFPPS_STP_MASK.getValue()) == OFPortState.OFPPS_STP_BLOCK.getValue());
-    }
 
     public Long getFirstSeenTime() {
         return firstSeenTime;
@@ -81,22 +84,7 @@ public class LinkInfo {
         this.lastBddpReceivedTime = multicastValidTime;
     }
 
-    public Integer getSrcPortState() {
-        return srcPortState;
-    }
-
-    public void setSrcPortState(Integer srcPortState) {
-        this.srcPortState = srcPortState;
-    }
-
-    public Integer getDstPortState() {
-        return dstPortState;
-    }
-
-    public void setDstPortState(int dstPortState) {
-        this.dstPortState = dstPortState;
-    }
-
+    @JsonIgnore
     public LinkType getLinkType() {
         if (lastLldpReceivedTime != null) {
             return LinkType.DIRECT_LINK;
@@ -116,8 +104,6 @@ public class LinkInfo {
         result = prime * result + ((firstSeenTime == null) ? 0 : firstSeenTime.hashCode());
         result = prime * result + ((lastLldpReceivedTime == null) ? 0 : lastLldpReceivedTime.hashCode());
         result = prime * result + ((lastBddpReceivedTime == null) ? 0 : lastBddpReceivedTime.hashCode());
-        result = prime * result + ((srcPortState == null) ? 0 : srcPortState.hashCode());
-        result = prime * result + ((dstPortState == null) ? 0 : dstPortState.hashCode());
         return result;
     }
 
@@ -152,18 +138,6 @@ public class LinkInfo {
         } else if (!lastBddpReceivedTime.equals(other.lastBddpReceivedTime))
             return false;
 
-        if (srcPortState == null) {
-            if (other.srcPortState != null)
-                return false;
-        } else if (!srcPortState.equals(other.srcPortState))
-            return false;
-
-        if (dstPortState == null) {
-            if (other.dstPortState != null)
-                return false;
-        } else if (!dstPortState.equals(other.dstPortState))
-            return false;
-
         return true;
     }
 
@@ -175,8 +149,6 @@ public class LinkInfo {
     public String toString() {
         return "LinkInfo [unicastValidTime=" + ((lastLldpReceivedTime == null) ? "null" : lastLldpReceivedTime)
                 + ", multicastValidTime=" + ((lastBddpReceivedTime == null) ? "null" : lastBddpReceivedTime)
-                + ", srcPortState=" + ((srcPortState == null) ? "null" : srcPortState)
-                + ", dstPortState=" + ((dstPortState == null) ? "null" : srcPortState)
                 + "]";
     }
 }

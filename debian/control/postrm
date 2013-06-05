@@ -1,0 +1,25 @@
+#!/bin/sh -e
+
+NAME=floodlight
+
+case "$1" in
+    purge)
+        deluser --quiet --system $NAME || true
+        delgroup --quiet --system $NAME || true
+	rm -f /etc/floodlight/auth_credentials.jceks
+	rm -f /etc/floodlight/conf.d/01-keystorepass.properties
+	rm -rf /var/lib/floodlight/SyncDB
+    ;;
+
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

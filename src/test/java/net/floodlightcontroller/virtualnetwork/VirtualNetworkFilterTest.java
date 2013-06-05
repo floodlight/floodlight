@@ -27,6 +27,8 @@ import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFPacketIn.OFPacketInReason;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.test.MockSyncService;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -58,7 +60,7 @@ import net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter;
 public class VirtualNetworkFilterTest extends FloodlightTestCase {
     protected VirtualNetworkFilter vns;
     protected MockDeviceManager deviceService;
-    
+
     protected static String guid1 = "guid1";
     protected static String net1 = "net1";
     protected static String gw1 = "1.1.1.1";
@@ -67,20 +69,20 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
     protected static String guid3 = "guid3";
     protected static String net3 = "net3";
     protected static String gw2 = "2.2.2.2";
-    
-    protected static MACAddress mac1 = 
+
+    protected static MACAddress mac1 =
             new MACAddress(Ethernet.toMACAddress("00:11:22:33:44:55"));
-    protected static MACAddress mac2 = 
+    protected static MACAddress mac2 =
             new MACAddress(Ethernet.toMACAddress("00:11:22:33:44:66"));
-    protected static MACAddress mac3 = 
+    protected static MACAddress mac3 =
             new MACAddress(Ethernet.toMACAddress("00:11:22:33:44:77"));
-    protected static MACAddress mac4 = 
+    protected static MACAddress mac4 =
             new MACAddress(Ethernet.toMACAddress("00:11:22:33:44:88"));
     protected static String hostPort1 = "port1";
     protected static String hostPort2 = "port2";
     protected static String hostPort3 = "port3";
     protected static String hostPort4 = "port4";
-    
+
     // For testing forwarding behavior
     protected IOFSwitch sw1;
     protected FloodlightContext cntx;
@@ -94,10 +96,14 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
     protected IPacket mac1ToGwPacketIntestPacket;
     protected byte[] mac1ToGwPacketIntestPacketSerialized;
     protected OFPacketIn packetInDHCPDiscoveryRequest;
-    
+    private MockSyncService mockSyncService;
+
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
+
+        mockSyncService = new MockSyncService();
 
         // Module loading stuff
         FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -115,6 +121,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         fmc.addService(IThreadPoolService.class, tps);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
         fmc.addService(ITopologyService.class, topology);
+        fmc.addService(ISyncService.class, mockSyncService);
         tps.init(fmc);
         frm.init(fmc);
         deviceService.init(fmc);
@@ -135,20 +142,20 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         replay(topology);
         // Mock switches
         //fastWilcards mocked as this constant
-        int fastWildcards = 
-                OFMatch.OFPFW_IN_PORT | 
-                OFMatch.OFPFW_NW_PROTO | 
-                OFMatch.OFPFW_TP_SRC | 
-                OFMatch.OFPFW_TP_DST | 
-                OFMatch.OFPFW_NW_SRC_ALL | 
+        int fastWildcards =
+                OFMatch.OFPFW_IN_PORT |
+                OFMatch.OFPFW_NW_PROTO |
+                OFMatch.OFPFW_TP_SRC |
+                OFMatch.OFPFW_TP_DST |
+                OFMatch.OFPFW_NW_SRC_ALL |
                 OFMatch.OFPFW_NW_DST_ALL |
                 OFMatch.OFPFW_NW_TOS;
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(1L).anyTimes();
-        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
+        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn(fastWildcards).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
         replay(sw1);
-        
+
         // Mock packets
         // Mock from MAC1 -> MAC2
         mac1ToMac2PacketIntestPacket = new Ethernet()
@@ -165,7 +172,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                             .setDestinationPort((short) 5001)
                             .setPayload(new Data(new byte[] {0x01}))));
         mac1ToMac2PacketIntestPacketSerialized = mac1ToMac2PacketIntestPacket.serialize();
-        mac1ToMac2PacketIn = 
+        mac1ToMac2PacketIn =
                 ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
                         getMessage(OFType.PACKET_IN))
                         .setBufferId(-1)
@@ -173,7 +180,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                         .setPacketData(mac1ToMac2PacketIntestPacketSerialized)
                         .setReason(OFPacketInReason.NO_MATCH)
                         .setTotalLength((short) mac1ToMac2PacketIntestPacketSerialized.length);
-        
+
         // Mock from MAC1 -> MAC4
         mac1ToMac4PacketIntestPacket = new Ethernet()
         .setDestinationMACAddress(mac4.toBytes())
@@ -189,7 +196,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                         .setDestinationPort((short) 5001)
                         .setPayload(new Data(new byte[] {0x01}))));
         mac1ToMac4PacketIntestPacketSerialized = mac1ToMac4PacketIntestPacket.serialize();
-        mac1ToMac4PacketIn = 
+        mac1ToMac4PacketIn =
             ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.PACKET_IN))
                     .setBufferId(-1)
@@ -197,7 +204,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                     .setPacketData(mac1ToMac4PacketIntestPacketSerialized)
                     .setReason(OFPacketInReason.NO_MATCH)
                     .setTotalLength((short) mac1ToMac4PacketIntestPacketSerialized.length);
-        
+
         // Mock from MAC1 to gateway1
         mac1ToGwPacketIntestPacket = new Ethernet()
         .setDestinationMACAddress("00:11:33:33:44:55") // mac shouldn't matter, can't be other host
@@ -213,7 +220,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                         .setDestinationPort((short) 5001)
                         .setPayload(new Data(new byte[] {0x01}))));
         mac1ToGwPacketIntestPacketSerialized = mac1ToGwPacketIntestPacket.serialize();
-        mac1ToGwPacketIn = 
+        mac1ToGwPacketIn =
             ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.PACKET_IN))
                     .setBufferId(-1)
@@ -222,7 +229,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
                     .setReason(OFPacketInReason.NO_MATCH)
                     .setTotalLength((short) mac1ToGwPacketIntestPacketSerialized.length);
     }
-    
+
     @Test
     public void testCreateNetwork() {
         // Test creating a network with all parameters
@@ -244,7 +251,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertTrue(vns.vNetsByGuid.get(guid2).guid.equals(guid2));
         assertTrue(vns.vNetsByGuid.get(guid2).gateway == null);
         assertTrue(vns.vNetsByGuid.get(guid2).hosts.size()==0);
-        
+
         // Test creating a network that shares the gateway with net1
         vns.createNetwork(guid3, net3, IPv4.toIPv4Address(gw1));
         assertTrue(vns.gatewayToGuid.get(IPv4.toIPv4Address(gw1)).contains(guid1));
@@ -258,11 +265,11 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertTrue(vns.vNetsByGuid.get(guid3).hosts.size()==0);
 
     }
-    
+
     @Test
     public void testModifyNetwork() {
         // Create some networks
-        
+
         testCreateNetwork();
         // Modify net2 to add a gateway
         vns.createNetwork(guid2, net2, IPv4.toIPv4Address(gw1));
@@ -283,7 +290,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         // and the old one was deleted
         assertFalse(vns.nameToGuid.containsKey(net2));
     }
-    
+
     @Test
     public void testDeleteNetwork() {
         testModifyNetwork();
@@ -296,7 +303,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertFalse(vns.guidToGateway.containsKey(net2));
         assertTrue(vns.vNetsByGuid.get(guid2)==null);
     }
-    
+
     @Test
     public void testAddHost() {
         testModifyNetwork();
@@ -312,7 +319,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         vns.addHost(mac4, guid3, hostPort4);
         assertTrue(vns.vNetsByGuid.get(guid3).hosts.contains(mac4));
     }
-    
+
     @Test
     public void testDeleteHost() {
         testAddHost();
@@ -322,36 +329,36 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertFalse(vns.macToGuid.containsKey(mac1));
         assertFalse(vns.portToMac.containsKey(hostPort1));
         assertFalse(vns.vNetsByGuid.get(host1Guid).hosts.contains(mac1));
-        
+
         String host2Guid = vns.macToGuid.get(vns.portToMac.get(hostPort2));
         vns.deleteHost(null, hostPort2);
         assertFalse(vns.macToGuid.containsKey(mac2));
         assertFalse(vns.portToMac.containsKey(hostPort2));
         assertFalse(vns.vNetsByGuid.get(host2Guid).hosts.contains(mac2));
 
-        String host3Guid = vns.macToGuid.get(mac3);        
+        String host3Guid = vns.macToGuid.get(mac3);
         vns.deleteHost(mac3, hostPort3);
         assertFalse(vns.macToGuid.containsKey(mac3));
         assertFalse(vns.portToMac.containsKey(hostPort3));
         assertFalse(vns.vNetsByGuid.get(host3Guid).hosts.contains(mac3));
-        
+
     }
-    
+
     @Test
     public void testForwarding() {
         testAddHost();
         // make sure mac1 can communicate with mac2
         IOFMessageListener listener = getVirtualNetworkListener();
         cntx = new FloodlightContext();
-        IFloodlightProviderService.bcStore.put(cntx, 
-                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+        IFloodlightProviderService.bcStore.put(cntx,
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                                (Ethernet)mac1ToMac2PacketIntestPacket);
         Command ret = listener.receive(sw1, mac1ToMac2PacketIn, cntx);
         assertTrue(ret == Command.CONTINUE);
         // make sure mac1 can't communicate with mac4
         cntx = new FloodlightContext();
         IFloodlightProviderService.bcStore.put(cntx,
-                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                                (Ethernet)mac1ToMac4PacketIntestPacket);
         ret = listener.receive(sw1, mac1ToMac4PacketIn, cntx);
         assertTrue(ret == Command.STOP);
@@ -362,28 +369,28 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         testAddHost();
         IOFMessageListener listener = getVirtualNetworkListener();
         cntx = new FloodlightContext();
-        IFloodlightProviderService.bcStore.put(cntx, 
-                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+        IFloodlightProviderService.bcStore.put(cntx,
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                                (Ethernet)mac1ToGwPacketIntestPacket);
-        deviceService.learnEntity(((Ethernet)mac1ToGwPacketIntestPacket).getDestinationMAC().toLong(), 
+        deviceService.learnEntity(((Ethernet)mac1ToGwPacketIntestPacket).getDestinationMAC().toLong(),
         		null, IPv4.toIPv4Address(gw1), null, null);
         Command ret = listener.receive(sw1, mac1ToGwPacketIn, cntx);
         assertTrue(ret == Command.CONTINUE);
     }
-    
+
     @Test
     public void testDhcp() {
         IOFMessageListener listener = getVirtualNetworkListener();
         Ethernet dhcpPacket = PacketFactory.DhcpDiscoveryRequestEthernet(mac1);
         OFPacketIn dhcpPacketOf = PacketFactory.DhcpDiscoveryRequestOFPacketIn(mac1);
         cntx = new FloodlightContext();
-        IFloodlightProviderService.bcStore.put(cntx, 
-                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+        IFloodlightProviderService.bcStore.put(cntx,
+                           IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                            dhcpPacket);
         Command ret = listener.receive(sw1, dhcpPacketOf, cntx);
         assertTrue(ret == Command.CONTINUE);
     }
-    
+
     protected IOFMessageListener getVirtualNetworkListener() {
     	List<IOFMessageListener> listeners = mockFloodlightProvider.getListeners().get(OFType.PACKET_IN);
     	return listeners.get(listeners.indexOf(vns));

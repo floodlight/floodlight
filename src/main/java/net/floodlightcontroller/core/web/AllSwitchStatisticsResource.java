@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import org.openflow.protocol.OFFeaturesReply;
@@ -37,21 +38,21 @@ import org.slf4j.LoggerFactory;
  * @author readams
  */
 public class AllSwitchStatisticsResource extends SwitchResourceBase {
-    protected static Logger log = 
+    protected static Logger log =
         LoggerFactory.getLogger(AllSwitchStatisticsResource.class);
-    
+
     @Get("json")
-    public Map<String, Object> retrieve() {    
+    public Map<String, Object> retrieve() {
         String statType = (String) getRequestAttributes().get("statType");
         return retrieveInternal(statType);
     }
-        
+
     public Map<String, Object> retrieveInternal(String statType) {
         HashMap<String, Object> model = new HashMap<String, Object>();
 
         OFStatisticsType type = null;
         REQUESTTYPE rType = null;
-        
+
         if (statType.equals("port")) {
             type = OFStatisticsType.PORT;
             rType = REQUESTTYPE.OFSTATS;
@@ -75,12 +76,12 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         } else {
             return model;
         }
-        
-        IFloodlightProviderService floodlightProvider = 
+
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());        
-        Long[] switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
-        List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.length);
+                    get(IFloodlightProviderService.class.getCanonicalName());
+        Set<Long> switchDpids = floodlightProvider.getAllSwitchDpids();
+        List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.size());
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
         GetConcurrentStatsThread t;
         for (Long l : switchDpids) {
@@ -88,10 +89,10 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             activeThreads.add(t);
             t.start();
         }
-        
+
         // Join all the threads after the timeout. Set a hard timeout
         // of 12 seconds for the threads to finish. If the thread has not
-        // finished the switch has not replied yet and therefore we won't 
+        // finished the switch has not replied yet and therefore we won't
         // add the switch's stats to the reply.
         for (int iSleepCycles = 0; iSleepCycles < 12; iSleepCycles++) {
             for (GetConcurrentStatsThread curThread : activeThreads) {
@@ -104,19 +105,19 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
                     pendingRemovalThreads.add(curThread);
                 }
             }
-            
+
             // remove the threads that have completed the queries to the switches
             for (GetConcurrentStatsThread curThread : pendingRemovalThreads) {
                 activeThreads.remove(curThread);
             }
             // clear the list so we don't try to double remove them
             pendingRemovalThreads.clear();
-            
+
             // if we are done finish early so we don't always get the worst case
             if (activeThreads.isEmpty()) {
                 break;
             }
-            
+
             // sleep for 1 s here
             try {
                 Thread.sleep(1000);
@@ -124,17 +125,17 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
                 log.error("Interrupted while waiting for statistics", e);
             }
         }
-        
+
         return model;
     }
-    
+
     protected class GetConcurrentStatsThread extends Thread {
         private List<OFStatistics> switchReply;
         private long switchId;
         private OFStatisticsType statType;
         private REQUESTTYPE requestType;
         private OFFeaturesReply featuresReply;
-        
+
         public GetConcurrentStatsThread(long switchId, REQUESTTYPE requestType, OFStatisticsType statType) {
             this.switchId = switchId;
             this.requestType = requestType;
@@ -142,19 +143,20 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             this.switchReply = null;
             this.featuresReply = null;
         }
-        
+
         public List<OFStatistics> getStatisticsReply() {
             return switchReply;
         }
-        
+
         public OFFeaturesReply getFeaturesReply() {
             return featuresReply;
         }
-        
+
         public long getSwitchId() {
             return switchId;
         }
-        
+
+        @Override
         public void run() {
             if ((requestType == REQUESTTYPE.OFSTATS) && (statType != null)) {
                 switchReply = getSwitchStatistics(switchId, statType);

@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -416,33 +417,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);
         this.counterStore = context.getServiceImpl(ICounterStoreService.class);
-        
-        // read our config options
-        Map<String, String> configOptions = context.getConfigParams(this);
+
         try {
-            String idleTimeout = configOptions.get("idletimeout");
-            if (idleTimeout != null) {
-                FLOWMOD_DEFAULT_IDLE_TIMEOUT = Short.parseShort(idleTimeout);
-            }
-        } catch (NumberFormatException e) {
-            log.warn("Error parsing flow idle timeout, " +
-            		 "using default of {} seconds",
-                     FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+            AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
+        } catch (AppIDInUseException e) {
+            // This is not fatal, CLI will be confused
+            log.error("Failed register application ID", e);
         }
-        try {
-            String hardTimeout = configOptions.get("hardtimeout");
-            if (hardTimeout != null) {
-                FLOWMOD_DEFAULT_HARD_TIMEOUT = Short.parseShort(hardTimeout);
-            }
-        } catch (NumberFormatException e) {
-            log.warn("Error parsing flow hard timeout, " +
-            		 "using default of {} seconds",
-                     FLOWMOD_DEFAULT_HARD_TIMEOUT);
-        }
-        log.debug("FlowMod idle timeout set to {} seconds", 
-                  FLOWMOD_DEFAULT_IDLE_TIMEOUT);
-        log.debug("FlowMod hard timeout set to {} seconds", 
-                  FLOWMOD_DEFAULT_HARD_TIMEOUT);
+
     }
 
     @Override

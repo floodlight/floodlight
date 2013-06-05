@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.perfmon;
 
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import net.floodlightcontroller.core.IOFMessageListener;
 

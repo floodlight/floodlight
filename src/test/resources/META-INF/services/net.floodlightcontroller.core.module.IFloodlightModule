@@ -1,0 +1,4 @@
+net.floodlightcontroller.devicemanager.test.MockDeviceManager
+net.floodlightcontroller.core.test.MockFloodlightProvider
+net.floodlightcontroller.core.test.MockThreadPoolService
+org.sdnplatform.sync.test.MockSyncService

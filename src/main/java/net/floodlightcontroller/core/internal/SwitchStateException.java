@@ -20,7 +20,7 @@ package net.floodlightcontroller.core.internal;
 /**
  * 
  */
-public class SwitchStateException extends Exception {
+public class SwitchStateException extends IllegalArgumentException {
 
     private static final long serialVersionUID = 9153954512470002631L;
 

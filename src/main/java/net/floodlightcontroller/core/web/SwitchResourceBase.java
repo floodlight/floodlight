@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -49,31 +49,31 @@ import org.slf4j.LoggerFactory;
  */
 public class SwitchResourceBase extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(SwitchResourceBase.class);
-    
+
     public enum REQUESTTYPE {
         OFSTATS,
         OFFEATURES
     }
-    
+
     @Override
     protected void doInit() throws ResourceException {
         super.doInit();
-        
+
     }
-    
+
     @LogMessageDoc(level="ERROR",
                    message="Failure retrieving statistics from switch {switch}",
                    explanation="An error occurred while retrieving statistics" +
                    		"from the switch",
                    recommendation=LogMessageDoc.CHECK_SWITCH + " " +
                    		LogMessageDoc.GENERIC_ACTION)
-    protected List<OFStatistics> getSwitchStatistics(long switchId, 
+    protected List<OFStatistics> getSwitchStatistics(long switchId,
                                                      OFStatisticsType statType) {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
-        
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
+
+        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
         Future<List<OFStatistics>> future;
         List<OFStatistics> values = null;
         if (sw != null) {
@@ -100,12 +100,12 @@ public class SwitchResourceBase extends ServerResource {
                 requestLength += specificReq.getLength();
             } else if (statType == OFStatisticsType.PORT) {
                 OFPortStatisticsRequest specificReq = new OFPortStatisticsRequest();
-                specificReq.setPortNumber((short)OFPort.OFPP_NONE.getValue());
+                specificReq.setPortNumber(OFPort.OFPP_NONE.getValue());
                 req.setStatistics(Collections.singletonList((OFStatistics)specificReq));
                 requestLength += specificReq.getLength();
             } else if (statType == OFStatisticsType.QUEUE) {
                 OFQueueStatisticsRequest specificReq = new OFQueueStatisticsRequest();
-                specificReq.setPortNumber((short)OFPort.OFPP_ALL.getValue());
+                specificReq.setPortNumber(OFPort.OFPP_ALL.getValue());
                 // LOOK! openflowj does not define OFPQ_ALL! pulled this from openflow.h
                 // note that I haven't seen this work yet though...
                 specificReq.setQueueId(0xffffffff);
@@ -117,7 +117,7 @@ public class SwitchResourceBase extends ServerResource {
             }
             req.setLengthU(requestLength);
             try {
-                future = sw.getStatistics(req);
+                future = sw.queryStatistics(req);
                 values = future.get(10, TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.error("Failure retrieving statistics from switch " + sw, e);
@@ -129,13 +129,13 @@ public class SwitchResourceBase extends ServerResource {
     protected List<OFStatistics> getSwitchStatistics(String switchId, OFStatisticsType statType) {
         return getSwitchStatistics(HexString.toLong(switchId), statType);
     }
-    
+
     protected OFFeaturesReply getSwitchFeaturesReply(long switchId) {
-        IFloodlightProviderService floodlightProvider = 
+        IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                 get(IFloodlightProviderService.class.getCanonicalName());
 
-        IOFSwitch sw = floodlightProvider.getSwitches().get(switchId);
+        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
         Future<OFFeaturesReply> future;
         OFFeaturesReply featuresReply = null;
         if (sw != null) {

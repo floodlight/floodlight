@@ -16,7 +16,6 @@
 
 package net.floodlightcontroller.core.internal;
 
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
@@ -27,6 +26,7 @@ public class OFSwitchImplTest extends FloodlightTestCase {
     protected OFSwitchImpl sw;
     
     
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -34,37 +34,16 @@ public class OFSwitchImplTest extends FloodlightTestCase {
     }    
     
     @Test
-    public void testSetHARoleReplyReceived() {
-        assertEquals(null, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
+    public void testSetHARoleReply() {
 
-        sw.setHARole(Role.MASTER, true);
+        sw.setHARole(Role.MASTER);
         assertEquals(Role.MASTER, sw.getHARole());
-        assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
-        sw.setHARole(Role.EQUAL, true);
+        sw.setHARole(Role.EQUAL);
         assertEquals(Role.EQUAL, sw.getHARole());
-        assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
         
-        sw.setHARole(Role.SLAVE, true);
+        sw.setHARole(Role.SLAVE);
         assertEquals(Role.SLAVE, sw.getHARole());
-        assertEquals(true, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
     }
     
-    @Test
-    public void testSetHARoleNoReply() {
-        assertEquals(null, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-
-        sw.setHARole(Role.MASTER, false);
-        assertEquals(Role.MASTER, sw.getHARole());
-        assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        
-        sw.setHARole(Role.EQUAL, false);
-        assertEquals(Role.EQUAL, sw.getHARole());
-        assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-        
-        sw.setHARole(Role.SLAVE, false);
-        assertEquals(Role.SLAVE, sw.getHARole());
-        assertEquals(false, sw.getAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE));
-    }
-
 }

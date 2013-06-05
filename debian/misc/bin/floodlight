@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec java -cp '/usr/share/floodlight/java/*' net.floodlightcontroller.core.Main "$@"
