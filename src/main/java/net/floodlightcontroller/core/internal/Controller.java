@@ -250,6 +250,36 @@ public class Controller implements IFloodlightProviderService,
         Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
     protected final LoadMonitor loadmonitor = new LoadMonitor(log);
 
+    private class NotificationSwitchListener implements IOFSwitchListener {
+
+        @Override
+        public void switchAdded(long switchId) {
+            notifier.postNotification("Switch " + HexString.toHexString(switchId) + " connected.");
+        }
+
+        @Override
+        public void switchRemoved(long switchId) {
+            notifier.postNotification("Switch " + HexString.toHexString(switchId) + " disconnected.");
+        }
+
+        @Override
+        public void switchActivated(long switchId) {
+        }
+
+        @Override
+        public void switchPortChanged(long switchId, ImmutablePort port,
+                                      PortChangeType type) {
+            String msg = String.format("Switch %s port %s changed: %s",
+                                       HexString.toHexString(switchId),
+                                       port.getName(),
+                                       type.toString());
+            notifier.postNotification(msg);
+        }
+
+        @Override
+        public void switchChanged(long switchId) {
+        }
+    }
     public static class Counters {
         public static final String prefix = Controller.class.getPackage().getName();
         public IDebugCounter setRoleEqual;
@@ -1174,7 +1204,6 @@ public class Controller implements IFloodlightProviderService,
             sw.cancelAllStatisticsReplies();
             addUpdateToQueue(new SwitchUpdate(sw.getId(),
                                               SwitchUpdateType.REMOVED));
-            notifier.postNotification("Switch " + sw.getStringId() + " disconnected.");
         }
 
         /**
@@ -1677,7 +1706,6 @@ public class Controller implements IFloodlightProviderService,
                      "switch=%s, port=%s", sw, port);
              throw new NullPointerException(msg);
          }
-
          this.switchManager.switchPortsChanged(sw, port, changeType);
      }
 
@@ -2223,6 +2251,8 @@ public class Controller implements IFloodlightProviderService,
                                       ListenerDispatcher<OFType,
                                                          IOFMessageListener>>();
         this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+        // add switch notification listener
+        this.addOFSwitchListener(new NotificationSwitchListener());
         this.readyForReconcileListeners =
                 new CopyOnWriteArraySet<IReadyForReconcileListener>();
         this.haListeners =
