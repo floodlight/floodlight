@@ -810,6 +810,8 @@ public class Controller implements IFloodlightProviderService,
                 h.sendRoleRequest(this.role);
 
             Controller.this.addUpdateToQueue(new HARoleUpdate(this.role));
+            if (role == Role.MASTER)
+                Controller.this.addUpdateToQueue(new ReadyForReconcileUpdate());
         }
 
         /**
