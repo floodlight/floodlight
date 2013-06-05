@@ -22,9 +22,9 @@ public interface IOFSwitchDriver {
     /**
      * Return an IOFSwitch object based on switch's manufacturer description
      * from OFDescriptionStatitics.
-     * @param registered_desc string used to register this driver
      * @param description DescriptionStatistics from the switch instance
+     * @return A IOFSwitch instance if the driver found an implementation
+     * for the given description. Null otherwise
      */
-    public IOFSwitch getOFSwitchImpl(String registered_desc,
-            OFDescriptionStatistics description);
+    public IOFSwitch getOFSwitchImpl(OFDescriptionStatistics description);
 }

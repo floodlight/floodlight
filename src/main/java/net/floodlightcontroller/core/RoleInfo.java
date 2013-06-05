@@ -22,7 +22,7 @@ import java.util.TimeZone;
 
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 
 public class RoleInfo {
@@ -31,6 +31,12 @@ public class RoleInfo {
     protected Date roleChangeDateTime;
 
     public RoleInfo() {
+    }
+
+    public RoleInfo(RoleInfo o) {
+        role = o.role;
+        roleChangeDescription = o.roleChangeDescription;
+        roleChangeDateTime = (Date)o.roleChangeDateTime.clone();
     }
 
     public RoleInfo(String role) {

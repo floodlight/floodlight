@@ -29,6 +29,10 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
 import net.floodlightcontroller.util.ClusterDFS;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -36,7 +40,7 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-import com.google.common.cache.*;
+import net.floodlightcontroller.servicechaining.ServiceChain;
 
 /**
  * A representation of a network topology.  Used internally by
@@ -659,7 +663,7 @@ public class TopologyInstance {
         return true;
     }
 
-    protected Route getRoute(long srcId, short srcPort,
+    protected Route getRoute(ServiceChain sc, long srcId, short srcPort,
                              long dstId, short dstPort, long cookie) {
 
 

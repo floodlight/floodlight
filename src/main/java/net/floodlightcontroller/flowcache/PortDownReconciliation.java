@@ -1,6 +1,6 @@
 /**
- *    Copyright 2012, Jason Parraga, Marist College 
- * 
+ *    Copyright 2012, Jason Parraga, Marist College
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
@@ -50,6 +50,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
@@ -64,7 +65,7 @@ import net.floodlightcontroller.topology.ITopologyService;
  * and remove them (specifically flows with an idle timeout that would not be
  * exhausted). Once the flows are deleted Floodlight will re-evaluate the path
  * the traffic should take with it's updated topology map.
- * 
+ *
  * @author Jason Parraga
  */
 
@@ -84,14 +85,13 @@ public class PortDownReconciliation implements IFloodlightModule,
 
     // ITopologyListener
     @Override
-    public void topologyChanged() {
-        for (LDUpdate ldu : topology.getLastLinkUpdates()) {
+    public void topologyChanged(List<LDUpdate> appliedUpdates) {
+        for (LDUpdate ldu : appliedUpdates) {
             if (ldu.getOperation()
                    .equals(ILinkDiscovery.UpdateOperation.PORT_DOWN)) {
 
                 // Get the switch ID for the OFMatchWithSwDpid object
-                long affectedSwitch = floodlightProvider.getSwitches()
-                                                        .get(ldu.getSrc())
+                long affectedSwitch = floodlightProvider.getSwitch(ldu.getSrc())
                                                         .getId();
 
                 // Create an OFMatchReconcile object
@@ -117,7 +117,7 @@ public class PortDownReconciliation implements IFloodlightModule,
                 ofmr.outPort = ldu.getSrcPort();
 
                 // Tell the reconcile manager to reconcile matching flows
-                frm.reconcileFlow(ofmr);
+                frm.reconcileFlow(ofmr, EventPriority.HIGH);
             }
         }
     }
@@ -181,7 +181,7 @@ public class PortDownReconciliation implements IFloodlightModule,
     /**
      * Base case for the reconciliation of flows. This is triggered at the
      * switch which is immediately affected by the PORT_DOWN event
-     * 
+     *
      * @return the Command whether to STOP or Continue
      */
     @Override
@@ -197,8 +197,8 @@ public class PortDownReconciliation implements IFloodlightModule,
                 // update the path to a switch
                 if (ofmr.rcAction.equals(OFMatchReconcile.ReconcileAction.UPDATE_PATH)) {
                     // Get the switch object from the OFMatchReconcile
-                    IOFSwitch sw = floodlightProvider.getSwitches()
-                                                     .get(ofmr.ofmWithSwDpid.getSwitchDataPathId());
+                    IOFSwitch sw = floodlightProvider
+                            .getSwitch(ofmr.ofmWithSwDpid.getSwitchDataPathId());
 
                     // Map data structure that holds the invalid matches and the
                     // ingress ports of those matches
@@ -260,8 +260,7 @@ public class PortDownReconciliation implements IFloodlightModule,
                                                                        invalidBaseIngressAndMatch.getValue());
                                     // Link a neighbor switch's invalid match
                                     // and outport to their Switch object
-                                    neighborSwitches.put(floodlightProvider.getSwitches()
-                                                                           .get(link.getSrc()),
+                                    neighborSwitches.put(floodlightProvider.getSwitch(link.getSrc()),
                                                          invalidNeighborOutportAndMatch);
                                 }
                             }
@@ -314,7 +313,7 @@ public class PortDownReconciliation implements IFloodlightModule,
 
         try {
             // System.out.println(sw.getStatistics(req));
-            future = sw.getStatistics(req);
+            future = sw.queryStatistics(req);
             values = future.get(10, TimeUnit.SECONDS);
             if (values != null) {
                 for (OFStatistics stat : values) {
@@ -384,7 +383,7 @@ public class PortDownReconciliation implements IFloodlightModule,
     /**
      * Deletes flows with similar matches and output action ports on the
      * specified switch
-     * 
+     *
      * @param sw
      *            the switch to query flows on
      * @param match
@@ -471,8 +470,7 @@ public class PortDownReconciliation implements IFloodlightModule,
                                                                ingressPort.getValue());
                             // Link a neighbor switch's invalid match and
                             // outport to their Switch object
-                            neighborSwitches.put(floodlightProvider.getSwitches()
-                                                                   .get(link.getSrc()),
+                            neighborSwitches.put(floodlightProvider.getSwitch(link.getSrc()),
                                                  invalidNeighborOutportAndMatch);
                         }
                     }

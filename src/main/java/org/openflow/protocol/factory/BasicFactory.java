@@ -43,13 +43,19 @@ import org.openflow.protocol.vendor.OFVendorId;
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  *
  */
-public class BasicFactory implements OFMessageFactory, OFActionFactory,
+public enum BasicFactory implements OFMessageFactory, OFActionFactory,
         OFStatisticsFactory, OFVendorDataFactory {
+    SINGLETON_INSTANCE;
+
 
     private final OFVendorActionRegistry vendorActionRegistry;
 
-    public BasicFactory() {
+    private BasicFactory() {
         vendorActionRegistry = OFVendorActionRegistry.getInstance();
+    }
+
+    public static BasicFactory getInstance() {
+        return SINGLETON_INSTANCE;
     }
 
     /**

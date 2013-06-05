@@ -38,14 +38,17 @@ public class OFVendorTest extends OFTestCase {
     static class AcmeVendorData implements OFVendorData {
         protected int dataType;
         
+        @Override
         public int getLength() {
             return 4;
         }
         
+        @Override
         public void readFrom(ChannelBuffer data, int length) {
             dataType = data.readInt();
         }
         
+        @Override
         public void writeTo(ChannelBuffer data) {
             data.writeInt(dataType);
         }
@@ -74,16 +77,19 @@ public class OFVendorTest extends OFTestCase {
             return value;
         }
         
+        @Override
         public int getLength() {
             return 8;
         }
         
+        @Override
         public void readFrom(ChannelBuffer data, int length) {
             super.readFrom(data, length);
             flags = data.readShort();
             value = data.readShort();
 
         }
+        @Override
         public void writeTo(ChannelBuffer data) {
             super.writeTo(data);
             data.writeShort(flags);
@@ -92,6 +98,7 @@ public class OFVendorTest extends OFTestCase {
         
         public static Instantiable<OFVendorData> getInstantiable() {
             return new Instantiable<OFVendorData>() {
+                @Override
                 public OFVendorData instantiate() {
                     return new AcmeVendorData1();
                 }
@@ -122,16 +129,19 @@ public class OFVendorTest extends OFTestCase {
             return subtype;
         }
         
+        @Override
         public int getLength() {
             return 12;
         }
         
+        @Override
         public void readFrom(ChannelBuffer data, int length) {
             super.readFrom(data, length);
             type = data.readShort();
             subtype = data.readShort();
 
         }
+        @Override
         public void writeTo(ChannelBuffer data) {
             super.writeTo(data);
             data.writeShort(type);
@@ -140,6 +150,7 @@ public class OFVendorTest extends OFTestCase {
         
         public static Instantiable<OFVendorData> getInstantiable() {
             return new Instantiable<OFVendorData>() {
+                @Override
                 public OFVendorData instantiate() {
                     return new AcmeVendorData2();
                 }
@@ -160,7 +171,7 @@ public class OFVendorTest extends OFTestCase {
     
     private OFVendor makeVendorMessage(int vendor) {
         OFVendor msg = (OFVendor) messageFactory.getMessage(OFType.VENDOR);
-        msg.setVendorDataFactory(new BasicFactory());
+        msg.setVendorDataFactory(BasicFactory.getInstance());
         msg.setVendor(vendor);
         return msg;
     }

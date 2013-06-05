@@ -1,0 +1,25 @@
+{
+    "name": "simpleforwarding",
+    "modules": [
+        "net.floodlightcontroller.counter.CounterStore",
+        "net.floodlightcontroller.storage.memory.MemoryStorageSource",
+        "net.floodlightcontroller.core.internal.FloodlightProvider",
+        "net.floodlightcontroller.threadpool.ThreadPool",
+        "net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl",
+        "net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier",
+        "net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher",
+        "net.floodlightcontroller.firewall.Firewall",
+        "net.floodlightcontroller.forwarding.Forwarding",
+        "net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager",
+        "net.floodlightcontroller.topology.TopologyManager",
+        "net.floodlightcontroller.flowcache.FlowReconcileManager",
+        "net.floodlightcontroller.debugcounter.DebugCounter",
+        "net.floodlightcontroller.debugevent.DebugEvent",
+        "net.floodlightcontroller.perfmon.PktInProcessingTime",
+        "net.floodlightcontroller.ui.web.StaticWebRoutable",
+        "net.floodlightcontroller.loadbalancer.LoadBalancer",
+        "org.sdnplatform.sync.internal.SyncManager"
+    ],
+    "config": {
+    }
+}

@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -21,6 +21,8 @@ package org.openflow.protocol.statistics;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.StringByteSerializer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * Represents an ofp_desc_stats structure
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -34,6 +36,24 @@ public class OFDescriptionStatistics implements OFStatistics {
     protected String softwareDescription;
     protected String serialNumber;
     protected String datapathDescription;
+
+
+    /**
+     *
+     */
+    public OFDescriptionStatistics() {
+    }
+
+    /**
+     * Copy constructor
+     */
+    public OFDescriptionStatistics(OFDescriptionStatistics other) {
+        manufacturerDescription = other.manufacturerDescription;
+        hardwareDescription = other.hardwareDescription;
+        softwareDescription = other.softwareDescription;
+        serialNumber = other.serialNumber;
+        datapathDescription = other.datapathDescription;
+    }
 
     /**
      * @return the manufacturerDescription
@@ -106,6 +126,7 @@ public class OFDescriptionStatistics implements OFStatistics {
     }
 
     @Override
+    @JsonIgnore
     public int getLength() {
         return 1056;
     }

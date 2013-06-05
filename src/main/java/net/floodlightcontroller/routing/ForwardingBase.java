@@ -1,7 +1,7 @@
 /**
- *    Copyright 2011, Big Switch Networks, Inc. 
+ *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by David Erickson, Stanford University
- * 
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
@@ -63,26 +63,29 @@ import org.slf4j.LoggerFactory;
  * decision.
  */
 @LogMessageCategory("Flow Programming")
-public abstract class ForwardingBase 
+public abstract class ForwardingBase
     implements IOFMessageListener {
-    
+
     protected static Logger log =
             LoggerFactory.getLogger(ForwardingBase.class);
 
     protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
-    protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
+    protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
     public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
-    
+
+    public static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
+    public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
+
     protected IFloodlightProviderService floodlightProvider;
     protected IDeviceService deviceManager;
     protected IRoutingService routingEngine;
     protected ITopologyService topology;
     protected ICounterStoreService counterStore;
-    
+
     protected OFMessageDamper messageDamper;
-    
+
     // for broadcast loop suppression
     protected boolean broadcastCacheFeature = true;
     public final int prime1 = 2633;  // for hash calculation
@@ -94,26 +97,26 @@ public abstract class ForwardingBase
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
                                                    // by a global APP_ID class
     public long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-    
+
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    Long d1ClusterId = 
+                    Long d1ClusterId =
                             topology.getL2DomainId(d1.getSwitchDPID());
-                    Long d2ClusterId = 
+                    Long d2ClusterId =
                             topology.getL2DomainId(d2.getSwitchDPID());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
-            
+
     /**
      * init data structures
-     * 
+     *
      */
     protected void init() {
-        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY, 
+        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                                             EnumSet.of(OFType.FLOW_MOD),
                                             OFMESSAGE_DAMPER_TIMEOUT);
     }
@@ -136,7 +139,7 @@ public abstract class ForwardingBase
     /**
      * All subclasses must define this function if they want any specific
      * forwarding action
-     * 
+     *
      * @param sw
      *            Switch that the packet came in from
      * @param pi
@@ -196,13 +199,13 @@ public abstract class ForwardingBase
             message="Failure writing flow mod",
             explanation="An I/O error occurred while writing a " +
                         "flow modification to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH)            
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     })
-    public boolean pushRoute(Route route, OFMatch match, 
+    public boolean pushRoute(Route route, OFMatch match,
                              Integer wildcard_hints,
                              OFPacketIn pi,
                              long pinSwitch,
-                             long cookie, 
+                             long cookie,
                              FloodlightContext cntx,
                              boolean reqeustFlowRemovedNotifn,
                              boolean doFlush,
@@ -231,7 +234,7 @@ public abstract class ForwardingBase
         for (int indx = switchPortList.size()-1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
             long switchDPID = switchPortList.get(indx).getNodeId();
-            IOFSwitch sw = floodlightProvider.getSwitches().get(switchDPID);
+            IOFSwitch sw = floodlightProvider.getSwitch(switchDPID);
             if (sw == null) {
                 if (log.isWarnEnabled()) {
                     log.warn("Unable to push route, switch at DPID {} " +
@@ -250,7 +253,9 @@ public abstract class ForwardingBase
                 // cache. Don't set the flag for ARP messages - TODO generalize check
                 if ((reqeustFlowRemovedNotifn)
                         && (match.getDataLayerType() != Ethernet.TYPE_ARP)) {
+                    /**with new flow cache design, we don't need the flow removal message from switch anymore
                     fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
+                    */
                     match.setWildcards(fm.getMatch().getWildcards());
                 }
             }
@@ -264,7 +269,7 @@ public abstract class ForwardingBase
             try {
                 counterStore.updatePktOutFMCounterStoreLocal(sw, fm);
                 if (log.isTraceEnabled()) {
-                    log.trace("Pushing Route flowmod routeIndx={} " + 
+                    log.trace("Pushing Route flowmod routeIndx={} " +
                             "sw={} inPort={} outPort={}",
                             new Object[] {indx,
                                           sw,
@@ -279,8 +284,8 @@ public abstract class ForwardingBase
 
                 // Push the packet out the source switch
                 if (sw.getId() == pinSwitch) {
-                    // TODO: Instead of doing a packetOut here we could also 
-                    // send a flowMod with bufferId set.... 
+                    // TODO: Instead of doing a packetOut here we could also
+                    // send a flowMod with bufferId set....
                     pushPacket(sw, pi, false, outPort, cntx);
                     srcSwitchIncluded = true;
                 }
@@ -305,9 +310,9 @@ public abstract class ForwardingBase
         }
         return match.clone();
     }
-    
+
     /**
-     * Pushes a packet-out to a switch. If bufferId != BUFFER_ID_NONE we 
+     * Pushes a packet-out to a switch. If bufferId != BUFFER_ID_NONE we
      * assume that the packetOut switch is the same as the packetIn switch
      * and we will use the bufferId. In this case the packet can be null
      * Caller needs to make sure that inPort and outPort differs
@@ -331,45 +336,45 @@ public abstract class ForwardingBase
             message="Failure writing packet out",
             explanation="An I/O error occurred while writing a " +
                     "packet out to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH)            
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     })
 
     /**
      * Pushes a packet-out to a switch.  The assumption here is that
      * the packet-in was also generated from the same switch.  Thus, if the input
-     * port of the packet-in and the outport are the same, the function will not 
+     * port of the packet-in and the outport are the same, the function will not
      * push the packet-out.
      * @param sw        switch that generated the packet-in, and from which packet-out is sent
      * @param pi        packet-in
-     * @param useBufferId  if true, use the bufferId from the packet in and 
-     * do not add the packetIn's payload. If false set bufferId to 
-     * BUFFER_ID_NONE and use the packetIn's payload 
+     * @param useBufferId  if true, use the bufferId from the packet in and
+     * do not add the packetIn's payload. If false set bufferId to
+     * BUFFER_ID_NONE and use the packetIn's payload
      * @param outport   output port
      * @param cntx      context of the packet
      */
-    protected void pushPacket(IOFSwitch sw, OFPacketIn pi, 
-                           boolean useBufferId, 
+    protected void pushPacket(IOFSwitch sw, OFPacketIn pi,
+                           boolean useBufferId,
                            short outport, FloodlightContext cntx) {
 
         if (pi == null) {
             return;
         }
 
-        // The assumption here is (sw) is the switch that generated the 
+        // The assumption here is (sw) is the switch that generated the
         // packet-in. If the input port is the same as output port, then
         // the packet-out should be ignored.
         if (pi.getInPort() == outport) {
             if (log.isDebugEnabled()) {
-                log.debug("Attempting to do packet-out to the same " + 
-                          "interface as packet-in. Dropping packet. " + 
-                          " SrcSwitch={}, pi={}", 
+                log.debug("Attempting to do packet-out to the same " +
+                          "interface as packet-in. Dropping packet. " +
+                          " SrcSwitch={}, pi={}",
                           new Object[]{sw, pi});
                 return;
             }
         }
 
         if (log.isTraceEnabled()) {
-            log.trace("PacketOut srcSwitch={} pi={}", 
+            log.trace("PacketOut srcSwitch={} pi={}",
                       new Object[] {sw, pi});
         }
 
@@ -391,7 +396,7 @@ public abstract class ForwardingBase
         } else {
             po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         }
-        
+
         if (po.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
             byte[] packetData = pi.getPacketData();
             poLength += packetData.length;
@@ -409,7 +414,7 @@ public abstract class ForwardingBase
         }
     }
 
-    
+
     /**
      * Write packetout message to sw with output actions to one or more
      * output ports with inPort/outPorts passed in.
@@ -431,15 +436,15 @@ public abstract class ForwardingBase
 
         while (j.hasNext())
         {
-            actions.add(new OFActionOutput(j.next().shortValue(), 
+            actions.add(new OFActionOutput(j.next().shortValue(),
                                            (short) 0));
         }
 
-        OFPacketOut po = 
+        OFPacketOut po =
                 (OFPacketOut) floodlightProvider.getOFMessageFactory().
                 getMessage(OFType.PACKET_OUT);
         po.setActions(actions);
-        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * 
+        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH *
                 outPorts.size()));
 
         // set buffer-id to BUFFER_ID_NONE, and set in-port to OFPP_NONE
@@ -447,7 +452,7 @@ public abstract class ForwardingBase
         po.setInPort(inPort);
 
         // data (note buffer_id is always BUFFER_ID_NONE) and length
-        short poLength = (short)(po.getActionsLength() + 
+        short poLength = (short)(po.getActionsLength() +
                 OFPacketOut.MINIMUM_LENGTH);
         poLength += packetData.length;
         po.setPacketData(packetData);
@@ -456,7 +461,7 @@ public abstract class ForwardingBase
         try {
             counterStore.updatePktOutFMCounterStoreLocal(sw, po);
             if (log.isTraceEnabled()) {
-                log.trace("write broadcast packet on switch-id={} " + 
+                log.trace("write broadcast packet on switch-id={} " +
                         "interfaces={} packet-out={}",
                         new Object[] {sw.getId(), outPorts, po});
             }
@@ -466,8 +471,8 @@ public abstract class ForwardingBase
             log.error("Failure writing packet out", e);
         }
     }
-    
-    /** 
+
+    /**
      * @see packetOutMultiPort
      * Accepts a PacketIn instead of raw packet data. Note that the inPort
      * and switch can be different than the packet in switch/port
@@ -479,8 +484,8 @@ public abstract class ForwardingBase
                                    FloodlightContext cntx) {
         packetOutMultiPort(pi.getPacketData(), sw, inPort, outPorts, cntx);
     }
-    
-    /** 
+
+    /**
      * @see packetOutMultiPort
      * Accepts an IPacket instead of raw packet data. Note that the inPort
      * and switch can be different than the packet in switch/port
@@ -497,15 +502,15 @@ public abstract class ForwardingBase
                         FloodlightContext cntx) {
         // Get the cluster id of the switch.
         // Get the hash of the Ethernet packet.
-        if (sw == null) return true;  
-        
+        if (sw == null) return true;
+
         // If the feature is disabled, always return false;
         if (!broadcastCacheFeature) return false;
 
-        Ethernet eth = 
+        Ethernet eth =
             IFloodlightProviderService.bcStore.get(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
+
         Long broadcastHash;
         broadcastHash = topology.getL2DomainId(sw.getId()) * prime1 +
                         pi.getInPort() * prime2 + eth.hashCode();
@@ -519,7 +524,7 @@ public abstract class ForwardingBase
 
     protected boolean isInSwitchBroadcastCache(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         if (sw == null) return true;
-        
+
         // If the feature is disabled, always return false;
         if (!broadcastCacheFeature) return false;
 
@@ -538,7 +543,7 @@ public abstract class ForwardingBase
             message="Failure writing deny flow mod",
             explanation="An I/O error occurred while writing a " +
                     "deny flow mod to a switch",
-            recommendation=LogMessageDoc.CHECK_SWITCH)            
+            recommendation=LogMessageDoc.CHECK_SWITCH)
     })
     public static boolean
             blockHost(IFloodlightProviderService floodlightProvider,
@@ -549,12 +554,12 @@ public abstract class ForwardingBase
             return false;
         }
 
-        IOFSwitch sw = 
-                floodlightProvider.getSwitches().get(sw_tup.getSwitchDPID());
+        IOFSwitch sw =
+                floodlightProvider.getSwitch(sw_tup.getSwitchDPID());
         if (sw == null) return false;
         int inputPort = sw_tup.getPort();
         log.debug("blockHost sw={} port={} mac={}",
-                  new Object[] { sw, sw_tup.getPort(), new Long(host_mac) });
+                  new Object[] { sw, sw_tup.getPort(), Long.valueOf(host_mac) });
 
         // Create flow-mod based on packet-in and src-switch
         OFFlowMod fm =
@@ -563,14 +568,17 @@ public abstract class ForwardingBase
         OFMatch match = new OFMatch();
         List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
                                                             // drop
-        match.setDataLayerSource(Ethernet.toByteArray(host_mac))
-             .setInputPort((short)inputPort)
-             .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
-                     & ~OFMatch.OFPFW_IN_PORT);
+        match.setInputPort((short)inputPort);
+        if (host_mac != -1L) {
+            match.setDataLayerSource(Ethernet.toByteArray(host_mac))
+                .setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC
+                               & ~OFMatch.OFPFW_IN_PORT);
+        } else {
+            match.setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_IN_PORT);
+        }
         fm.setCookie(cookie)
           .setHardTimeout(hardTimeout)
           .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-          .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
           .setBufferId(OFPacketOut.BUFFER_ID_NONE)
           .setMatch(match)
           .setActions(actions)
@@ -591,8 +599,8 @@ public abstract class ForwardingBase
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return (type.equals(OFType.PACKET_IN) && 
-                (name.equals("topology") || 
+        return (type.equals(OFType.PACKET_IN) &&
+                (name.equals("topology") ||
                  name.equals("devicemanager")));
     }
 

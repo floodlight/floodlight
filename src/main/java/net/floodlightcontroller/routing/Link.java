@@ -17,17 +17,17 @@
 
 package net.floodlightcontroller.routing;
 
-import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
-import net.floodlightcontroller.core.web.serializers.UShortSerializer;
-
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.openflow.util.HexString;
 
 public class Link implements Comparable<Link> {
+    @JsonProperty("src-switch")
     private long src;
+    @JsonProperty("src-port")
     private short srcPort;
+    @JsonProperty("dst-switch")
     private long dst;
+    @JsonProperty("dst-port")
     private short dstPort;
 
 
@@ -46,27 +46,44 @@ public class Link implements Comparable<Link> {
         this.dstPort = (short) dstPort;
     }
 
-    @JsonProperty("src-switch")
-    @JsonSerialize(using=DPIDSerializer.class)
+    /*
+     * Do not use this constructor. Used primarily for JSON
+     * Serialization/Deserialization
+     */
+    public Link() {
+        super();
+    }
+
     public long getSrc() {
         return src;
     }
 
-    @JsonProperty("src-port")
-    @JsonSerialize(using=UShortSerializer.class)
     public short getSrcPort() {
         return srcPort;
     }
 
-    @JsonProperty("dst-switch")
-    @JsonSerialize(using=DPIDSerializer.class)
     public long getDst() {
         return dst;
     }
-    @JsonProperty("dst-port")
-    @JsonSerialize(using=UShortSerializer.class)
+
     public short getDstPort() {
         return dstPort;
+    }
+
+    public void setSrc(long src) {
+        this.src = src;
+    }
+
+    public void setSrcPort(short srcPort) {
+        this.srcPort = srcPort;
+    }
+
+    public void setDst(long dst) {
+        this.dst = dst;
+    }
+
+    public void setDstPort(short dstPort) {
+        this.dstPort = dstPort;
     }
 
     @Override

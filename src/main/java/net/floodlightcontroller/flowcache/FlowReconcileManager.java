@@ -22,8 +22,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,23 +36,22 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.SimpleCounter;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.flowcache.IFlowCacheService.FCQueryEvType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FlowReconcileManager 
+public class FlowReconcileManager
         implements IFloodlightModule, IFlowReconcileService {
 
     /** The logger. */
     private static Logger logger =
                         LoggerFactory.getLogger(FlowReconcileManager.class);
-    
+
     /** Reference to dependent modules */
     protected IThreadPoolService threadPool;
     protected ICounterStoreService counterStore;
@@ -69,29 +66,29 @@ public class FlowReconcileManager
                                                flowReconcileListeners;
 
     /** A FIFO queue to keep all outstanding flows for reconciliation */
-    Queue<OFMatchReconcile> flowQueue;
-    
+    PriorityPendingQueue <OFMatchReconcile> flowQueue;
+
     /** Asynchronous task to feed the flowReconcile pipeline */
     protected SingletonTask flowReconcileTask;
-    
+
     String controllerPktInCounterName;
     protected SimpleCounter lastPacketInCounter;
-    
-    protected static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
+
+    protected final static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
     /** a minimum flow reconcile rate so that it won't stave */
-    protected static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
-    
+    protected final static int MIN_FLOW_RECONCILE_PER_SECOND = 200;
+
     /** start flow reconcile in 10ms after a new reconcile request is received.
      *  The max delay is 1 second. */
-    protected static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
+    protected final static int FLOW_RECONCILE_DELAY_MILLISEC = 10;
     protected Date lastReconcileTime;
-    
+
     /** Config to enable or disable flowReconcile */
     protected static final String EnableConfigKey = "enable";
     protected boolean flowReconcileEnabled;
-    
+
     public AtomicInteger flowReconcileThreadRunCount;
-    
+
     @Override
     public synchronized void addFlowReconcileListener(
                 IFlowReconcileListener listener) {
@@ -114,25 +111,26 @@ public class FlowReconcileManager
                 IFlowReconcileListener listener) {
         flowReconcileListeners.removeListener(listener);
     }
-    
+
     @Override
     public synchronized void clearFlowReconcileListeners() {
         flowReconcileListeners.clearListeners();
     }
-    
+
     /**
      * Add to-be-reconciled flow to the queue.
      *
      * @param ofmRcIn the ofm rc in
      */
-    public void reconcileFlow(OFMatchReconcile ofmRcIn) {
+    @Override
+    public void reconcileFlow(OFMatchReconcile ofmRcIn, EventPriority priority) {
         if (ofmRcIn == null) return;
-        
+
         // Make a copy before putting on the queue.
         OFMatchReconcile myOfmRc = new OFMatchReconcile(ofmRcIn);
-    
-        flowQueue.add(myOfmRc);
-    
+
+        flowQueue.offer(myOfmRc, priority);
+
         Date currTime = new Date();
         long delay = 0;
 
@@ -146,58 +144,28 @@ public class FlowReconcileManager
             delay = FLOW_RECONCILE_DELAY_MILLISEC;
         }
         flowReconcileTask.reschedule(delay, TimeUnit.MILLISECONDS);
-    
+
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: {}, total: {}",
                 myOfmRc.toString(), flowQueue.size());
         }
     }
-    
-    @Override
-    public void updateFlowForDestinationDevice(IDevice device,
-                                            IFlowQueryHandler handler,
-                                            FCQueryEvType fcEvType) {
-        // NO-OP
-    }
 
-    @Override
-    public void updateFlowForSourceDevice(IDevice device,
-                                          IFlowQueryHandler handler,
-                                          FCQueryEvType fcEvType) {
-        // NO-OP
-    }
-    
-    @Override
-    public void flowQueryGenericHandler(FlowCacheQueryResp flowResp) {
-        if (flowResp.queryObj.evType != FCQueryEvType.GET) {
-            OFMatchReconcile ofmRc = new OFMatchReconcile();;
-            /* Re-provision these flows */
-            for (QRFlowCacheObj entry : flowResp.qrFlowCacheObjList) {
-                /* reconcile the flows in entry */
-                entry.toOFMatchReconcile(ofmRc,
-                        flowResp.queryObj.applInstName,
-                        OFMatchReconcile.ReconcileAction.UPDATE_PATH);
-                reconcileFlow(ofmRc);
-            }
-        }
-        return;
-    }
-    
     // IFloodlightModule
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
             new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFlowReconcileService.class);
         return l;
     }
 
     @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService> 
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
                                                             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
+        IFloodlightService> m =
             new HashMap<Class<? extends IFloodlightService>,
                 IFloodlightService>();
         m.put(IFlowReconcileService.class, this);
@@ -205,9 +173,9 @@ public class FlowReconcileManager
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>> 
+    public Collection<Class<? extends IFloodlightService>>
                                                     getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IThreadPoolService.class);
         l.add(ICounterStoreService.class);
@@ -219,11 +187,11 @@ public class FlowReconcileManager
             throws FloodlightModuleException {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         counterStore = context.getServiceImpl(ICounterStoreService.class);
-    
-        flowQueue = new ConcurrentLinkedQueue<OFMatchReconcile>();
-        flowReconcileListeners = 
+
+        flowQueue = new PriorityPendingQueue<OFMatchReconcile>();
+        flowReconcileListeners =
                 new ListenerDispatcher<OFType, IFlowReconcileListener>();
-        
+
         Map<String, String> configParam = context.getConfigParams(this);
         String enableValue = configParam.get(EnableConfigKey);
         // Set flowReconcile default to true
@@ -232,7 +200,7 @@ public class FlowReconcileManager
             enableValue.equalsIgnoreCase("false")) {
             flowReconcileEnabled = false;
         }
-        
+
         flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);
@@ -252,23 +220,21 @@ public class FlowReconcileManager
                             TimeUnit.MILLISECONDS);
                     }
                 } catch (Exception e) {
-                    logger.warn("Exception in doReconcile(): {}",
-                                e.getMessage());
-                    e.printStackTrace();
+                    logger.warn("Exception in doReconcile(): {}", e);
                 }
             }
         });
-        
+
         String packetInName = OFType.PACKET_IN.toClass().getName();
-        packetInName = packetInName.substring(packetInName.lastIndexOf('.')+1); 
-        
+        packetInName = packetInName.substring(packetInName.lastIndexOf('.')+1);
+
         // Construct controller counter for the packet_in
         controllerPktInCounterName =
-            CounterStore.createCounterName(ICounterStoreService.CONTROLLER_NAME, 
+            CounterStore.createCounterName(ICounterStoreService.CONTROLLER_NAME,
                                            -1,
                                            packetInName);
     }
-    
+
     protected void updateFlush() {
         // No-OP
     }
@@ -281,13 +247,13 @@ public class FlowReconcileManager
         if (!flowReconcileEnabled) {
             return false;
         }
-    
+
         // Record the execution time.
         lastReconcileTime = new Date();
-    
+
         ArrayList<OFMatchReconcile> ofmRcList =
                         new ArrayList<OFMatchReconcile>();
-        
+
         // Get the maximum number of flows that can be reconciled.
         int reconcileCapacity = getCurrentCapacity();
         if (logger.isTraceEnabled()) {
@@ -305,7 +271,7 @@ public class FlowReconcileManager
                 break;
             }
         }
-        
+
         // Run the flow through all the flow reconcile listeners
         IFlowReconcileListener.Command retCmd;
         if (ofmRcList.size() > 0) {
@@ -317,10 +283,11 @@ public class FlowReconcileManager
                 }
                 return false;
             }
-        
+
             for (IFlowReconcileListener flowReconciler :
                 flowReconcileListeners.getOrderedListeners()) {
-                if (logger.isTraceEnabled()) {
+                if (logger.isTraceEnabled())
+                {
                     logger.trace("Reconciling flow: call listener {}",
                             flowReconciler.getName());
                 }
@@ -337,7 +304,7 @@ public class FlowReconcileManager
                 logger.trace("No flow to be reconciled.");
             }
         }
-        
+
         // Return true if there are more flows to be reconciled
         if (flowQueue.isEmpty()) {
             return false;
@@ -349,10 +316,10 @@ public class FlowReconcileManager
             return true;
         }
     }
-    
+
     /**
      * Compute the maximum number of flows to be reconciled.
-     * 
+     *
      * It computes the packetIn increment from the counter values in
      * the counter store;
      * Then computes the rate based on the elapsed time
@@ -371,7 +338,7 @@ public class FlowReconcileManager
             counterStore.getCounter(controllerPktInCounterName);
         int minFlows = MIN_FLOW_RECONCILE_PER_SECOND *
                         FLOW_RECONCILE_DELAY_MILLISEC / 1000;
-        
+
         // If no packetInCounter, then there shouldn't be any flow.
         if (pktInCounter == null ||
             pktInCounter.getCounterDate() == null ||
@@ -380,7 +347,7 @@ public class FlowReconcileManager
                         controllerPktInCounterName);
             return minFlows;
         }
-        
+
         // Haven't get any counter yet.
         if (lastPacketInCounter == null) {
             logger.debug("First time get the count for {}",
@@ -389,9 +356,9 @@ public class FlowReconcileManager
             SimpleCounter.createCounter(pktInCounter);
             return minFlows;
         }
-        
+
         int pktInRate = getPktInRate(pktInCounter, new Date());
-        
+
         // Update the last packetInCounter
         lastPacketInCounter = (SimpleCounter)
         SimpleCounter.createCounter(pktInCounter);
@@ -401,20 +368,20 @@ public class FlowReconcileManager
             capacity = (MAX_SYSTEM_LOAD_PER_SECOND - pktInRate)
                     * FLOW_RECONCILE_DELAY_MILLISEC / 1000;
         }
-        
+
         if (logger.isTraceEnabled()) {
             logger.trace("Capacity is {}", capacity);
         }
         return capacity;
     }
-    
+
     protected int getPktInRate(ICounter newCnt, Date currentTime) {
         if (newCnt == null ||
             newCnt.getCounterDate() == null ||
             newCnt.getCounterValue() == null) {
             return 0;
         }
-    
+
         // Somehow the system time is messed up. return max packetIn rate
         // to reduce the system load.
         if (newCnt.getCounterDate().before(
@@ -424,14 +391,14 @@ public class FlowReconcileManager
                     lastPacketInCounter.getCounterDate());
             return MAX_SYSTEM_LOAD_PER_SECOND;
         }
-    
+
         long elapsedTimeInSecond = (currentTime.getTime() -
                     lastPacketInCounter.getCounterDate().getTime()) / 1000;
         if (elapsedTimeInSecond == 0) {
             // This should never happen. Check to avoid division by zero.
             return 0;
         }
-    
+
         long diff = 0;
         switch (newCnt.getCounterValue().getType()) {
             case LONG:
@@ -444,7 +411,7 @@ public class FlowReconcileManager
                     diff = newLong - oldLong;
                 }
                 break;
-    
+
             case DOUBLE:
                 double newDouble = newCnt.getCounterValue().getDouble();
                 double oldDouble = lastPacketInCounter.getCounterValue().getDouble();
@@ -456,7 +423,7 @@ public class FlowReconcileManager
                 }
                 break;
         }
-    
+
         return (int)(diff/elapsedTimeInSecond);
     }
 }

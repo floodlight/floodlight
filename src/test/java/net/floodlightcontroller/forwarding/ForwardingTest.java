@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -69,6 +69,8 @@ import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.util.HexString;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.test.MockSyncService;
 
 public class ForwardingTest extends FloodlightTestCase {
     protected FloodlightContext cntx;
@@ -88,13 +90,14 @@ public class ForwardingTest extends FloodlightTestCase {
     protected byte[] testPacketSerialized;
     protected int expected_wildcards;
     protected Date currentDate;
-    
+    private MockSyncService mockSyncService;
+
     @Override
     public void setUp() throws Exception {
         super.setUp();
 
         cntx = new FloodlightContext();
-        
+
         // Module loader setup
         /*
         Collection<Class<? extends IFloodlightModule>> mods = new ArrayList<Class<? extends IFloodlightModule>>();
@@ -122,11 +125,12 @@ public class ForwardingTest extends FloodlightTestCase {
         flowReconcileMgr = new FlowReconcileManager();
         routingEngine = createMock(IRoutingService.class);
         topology = createMock(ITopologyService.class);
+        mockSyncService = new MockSyncService();
         DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
 
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class, 
+        fmc.addService(IFloodlightProviderService.class,
                        mockFloodlightProvider);
         fmc.addService(IThreadPoolService.class, threadPool);
         fmc.addService(ITopologyService.class, topology);
@@ -135,22 +139,26 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(IDeviceService.class, deviceManager);
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
+        fmc.addService(ISyncService.class, mockSyncService);
 
         topology.addListener(anyObject(ITopologyListener.class));
         expectLastCall().anyTimes();
         replay(topology);
+
         threadPool.init(fmc);
+        mockSyncService.init(fmc);
         forwarding.init(fmc);
         deviceManager.init(fmc);
         flowReconcileMgr.init(fmc);
         entityClassifier.init(fmc);
         threadPool.startUp(fmc);
+        mockSyncService.startUp(fmc);
         deviceManager.startUp(fmc);
         forwarding.startUp(fmc);
         flowReconcileMgr.startUp(fmc);
         entityClassifier.startUp(fmc);
         verify(topology);
-        
+
         swFeatures = new OFFeaturesReply();
         swFeatures.setBuffers(1000);
         // Mock switches
@@ -160,26 +168,26 @@ public class ForwardingTest extends FloodlightTestCase {
         expect(sw1.getStringId())
                 .andReturn(HexString.toHexString(1L)).anyTimes();
 
-        sw2 = EasyMock.createMock(IOFSwitch.class);  
+        sw2 = EasyMock.createMock(IOFSwitch.class);
         expect(sw2.getId()).andReturn(2L).anyTimes();
         expect(sw2.getBuffers()).andReturn(swFeatures.getBuffers()).anyTimes();
         expect(sw2.getStringId())
                 .andReturn(HexString.toHexString(2L)).anyTimes();
 
         //fastWilcards mocked as this constant
-        int fastWildcards = 
-                OFMatch.OFPFW_IN_PORT | 
-                OFMatch.OFPFW_NW_PROTO | 
-                OFMatch.OFPFW_TP_SRC | 
-                OFMatch.OFPFW_TP_DST | 
-                OFMatch.OFPFW_NW_SRC_ALL | 
+        int fastWildcards =
+                OFMatch.OFPFW_IN_PORT |
+                OFMatch.OFPFW_NW_PROTO |
+                OFMatch.OFPFW_TP_SRC |
+                OFMatch.OFPFW_TP_DST |
+                OFMatch.OFPFW_NW_SRC_ALL |
                 OFMatch.OFPFW_NW_DST_ALL |
                 OFMatch.OFPFW_NW_TOS;
 
-        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
+        expect(sw1.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn(fastWildcards).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
-        expect(sw2.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn((Integer)fastWildcards).anyTimes();
+        expect(sw2.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).andReturn(fastWildcards).anyTimes();
         expect(sw2.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
         // Load the switch map
@@ -206,10 +214,10 @@ public class ForwardingTest extends FloodlightTestCase {
 
 
         currentDate = new Date();
-        
+
         // Mock Packet-in
         testPacketSerialized = testPacket.serialize();
-        packetIn = 
+        packetIn =
                 ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().
                         getMessage(OFType.PACKET_IN))
                         .setBufferId(-1)
@@ -219,7 +227,7 @@ public class ForwardingTest extends FloodlightTestCase {
                         .setTotalLength((short) testPacketSerialized.length);
 
         // Mock Packet-out
-        packetOut = 
+        packetOut =
                 (OFPacketOut) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.PACKET_OUT);
         packetOut.setBufferId(this.packetIn.getBufferId())
@@ -232,15 +240,15 @@ public class ForwardingTest extends FloodlightTestCase {
             .setLengthU(OFPacketOut.MINIMUM_LENGTH+
                         packetOut.getActionsLength()+
                         testPacketSerialized.length);
-        
+
         // Mock Packet-out with OFPP_FLOOD action
-        packetOutFlooded = 
+        packetOutFlooded =
                 (OFPacketOut) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.PACKET_OUT);
         packetOutFlooded.setBufferId(this.packetIn.getBufferId())
             .setInPort(this.packetIn.getInPort());
         poactions = new ArrayList<OFAction>();
-        poactions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(), 
+        poactions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(),
                                          (short) 0xffff));
         packetOutFlooded.setActions(poactions)
             .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
@@ -250,32 +258,32 @@ public class ForwardingTest extends FloodlightTestCase {
                         testPacketSerialized.length);
 
         expected_wildcards = fastWildcards;
-        expected_wildcards &= ~OFMatch.OFPFW_IN_PORT & 
+        expected_wildcards &= ~OFMatch.OFPFW_IN_PORT &
                               ~OFMatch.OFPFW_DL_VLAN &
-                              ~OFMatch.OFPFW_DL_SRC & 
+                              ~OFMatch.OFPFW_DL_SRC &
                               ~OFMatch.OFPFW_DL_DST;
-        expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK & 
+        expected_wildcards &= ~OFMatch.OFPFW_NW_SRC_MASK &
                               ~OFMatch.OFPFW_NW_DST_MASK;
 
         IFloodlightProviderService.bcStore.
-            put(cntx, 
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+            put(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 (Ethernet)testPacket);
     }
-    
+
     enum DestDeviceToLearn { NONE, DEVICE1 ,DEVICE2 };
     public void learnDevices(DestDeviceToLearn destDeviceToLearn) {
         // Build src and dest devices
         byte[] dataLayerSource = ((Ethernet)testPacket).getSourceMACAddress();
-        byte[] dataLayerDest = 
+        byte[] dataLayerDest =
                 ((Ethernet)testPacket).getDestinationMACAddress();
         int networkSource =
                 ((IPv4)((Ethernet)testPacket).getPayload()).
                     getSourceAddress();
-        int networkDest = 
+        int networkDest =
                 ((IPv4)((Ethernet)testPacket).getPayload()).
                     getDestinationAddress();
-        
+
         reset(topology);
         expect(topology.isAttachmentPointPort(1L, (short)1))
                                               .andReturn(true)
@@ -288,29 +296,29 @@ public class ForwardingTest extends FloodlightTestCase {
                                               .anyTimes();
         replay(topology);
 
-        srcDevice = 
-                deviceManager.learnEntity(Ethernet.toLong(dataLayerSource), 
+        srcDevice =
+                deviceManager.learnEntity(Ethernet.toLong(dataLayerSource),
                                           null, networkSource,
                                           1L, 1);
-        IDeviceService.fcStore. put(cntx, 
+        IDeviceService.fcStore. put(cntx,
                                     IDeviceService.CONTEXT_SRC_DEVICE,
                                     srcDevice);
         if (destDeviceToLearn == DestDeviceToLearn.DEVICE1) {
-            dstDevice1 = 
-                    deviceManager.learnEntity(Ethernet.toLong(dataLayerDest), 
+            dstDevice1 =
+                    deviceManager.learnEntity(Ethernet.toLong(dataLayerDest),
                                               null, networkDest,
                                               2L, 3);
-            IDeviceService.fcStore.put(cntx, 
-                                       IDeviceService.CONTEXT_DST_DEVICE, 
+            IDeviceService.fcStore.put(cntx,
+                                       IDeviceService.CONTEXT_DST_DEVICE,
                                        dstDevice1);
         }
         if (destDeviceToLearn == DestDeviceToLearn.DEVICE2) {
-            dstDevice2 = 
-                    deviceManager.learnEntity(Ethernet.toLong(dataLayerDest), 
+            dstDevice2 =
+                    deviceManager.learnEntity(Ethernet.toLong(dataLayerDest),
                                               null, networkDest,
                                               1L, 3);
-            IDeviceService.fcStore.put(cntx, 
-                                       IDeviceService.CONTEXT_DST_DEVICE, 
+            IDeviceService.fcStore.put(cntx,
+                                       IDeviceService.CONTEXT_DST_DEVICE,
                                        dstDevice2);
         }
         verify(topology);
@@ -319,12 +327,12 @@ public class ForwardingTest extends FloodlightTestCase {
     @Test
     public void testForwardMultiSwitchPath() throws Exception {
         learnDevices(DestDeviceToLearn.DEVICE1);
-        
+
         Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
         Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<FloodlightContext> bc1 = 
+        Capture<FloodlightContext> bc1 =
                 new Capture<FloodlightContext>(CaptureType.ALL);
-        Capture<FloodlightContext> bc2 = 
+        Capture<FloodlightContext> bc2 =
                 new Capture<FloodlightContext>(CaptureType.ALL);
 
 
@@ -344,7 +352,7 @@ public class ForwardingTest extends FloodlightTestCase {
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        OFFlowMod fm1 = 
+        OFFlowMod fm1 =
                 (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.FLOW_MOD);
         fm1.setIdleTimeout((short)5)
@@ -357,10 +365,10 @@ public class ForwardingTest extends FloodlightTestCase {
         OFFlowMod fm2 = fm1.clone();
         ((OFActionOutput)fm2.getActions().get(0)).setPort((short) 3);
 
-        sw1.write(capture(wc1), capture(bc1));
-        expectLastCall().anyTimes(); 
-        sw2.write(capture(wc2), capture(bc2));
-        expectLastCall().anyTimes(); 
+        sw1.writeThrottled(capture(wc1), capture(bc1));
+        expectLastCall().anyTimes();
+        sw2.writeThrottled(capture(wc2), capture(bc2));
+        expectLastCall().anyTimes();
 
         reset(topology);
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
@@ -373,28 +381,28 @@ public class ForwardingTest extends FloodlightTestCase {
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);
-        
+
         assertTrue(wc1.hasCaptured());  // wc1 should get packetout + flowmod.
         assertTrue(wc2.hasCaptured());  // wc2 should be a flowmod.
-        
+
         List<OFMessage> msglist = wc1.getValues();
-        
+
         for (OFMessage m: msglist) {
-            if (m instanceof OFFlowMod) 
+            if (m instanceof OFFlowMod)
                 assertEquals(fm1, m);
             else if (m instanceof OFPacketOut)
                 assertEquals(packetOut, m);
         }
-        
+
         OFMessage m = wc2.getValue();
         assert (m instanceof OFFlowMod);
         assertTrue(m.equals(fm2));
     }
 
     @Test
-    public void testForwardSingleSwitchPath() throws Exception {        
+    public void testForwardSingleSwitchPath() throws Exception {
         learnDevices(DestDeviceToLearn.DEVICE2);
-        
+
         Route route = new  Route(1L, 1L);
         route.getPath().add(new NodePortTuple(1L, (short)1));
         route.getPath().add(new NodePortTuple(1L, (short)3));
@@ -407,7 +415,7 @@ public class ForwardingTest extends FloodlightTestCase {
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
 
-        OFFlowMod fm1 = 
+        OFFlowMod fm1 =
                 (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.FLOW_MOD);
         fm1.setIdleTimeout((short)5)
@@ -420,9 +428,9 @@ public class ForwardingTest extends FloodlightTestCase {
                         OFActionOutput.MINIMUM_LENGTH);
 
         // Record expected packet-outs/flow-mods
-        sw1.write(fm1, cntx);
-        sw1.write(packetOut, cntx);
-        
+        sw1.writeThrottled(fm1, cntx);
+        sw1.writeThrottled(packetOut, cntx);
+
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
@@ -436,29 +444,29 @@ public class ForwardingTest extends FloodlightTestCase {
     }
 
     @Test
-    public void testFlowModDampening() throws Exception {        
+    public void testFlowModDampening() throws Exception {
         learnDevices(DestDeviceToLearn.DEVICE2);
-    
+
         reset(topology);
         expect(topology.isAttachmentPointPort(EasyMock.anyLong(), EasyMock.anyShort()))
         .andReturn(true).anyTimes();
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         replay(topology);
-    
-    
+
+
         Route route = new  Route(1L, 1L);
         route.getPath().add(new NodePortTuple(1L, (short)1));
         route.getPath().add(new NodePortTuple(1L, (short)3));
         expect(routingEngine.getRoute(1L, (short)1, 1L, (short)3, 0)).andReturn(route).atLeastOnce();
-    
+
         // Expected Flow-mods
         OFMatch match = new OFMatch();
         match.loadFromPacket(testPacketSerialized, (short) 1);
         OFActionOutput action = new OFActionOutput((short)3, (short)0xffff);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
-    
-        OFFlowMod fm1 = 
+
+        OFFlowMod fm1 =
                 (OFFlowMod) mockFloodlightProvider.getOFMessageFactory().
                     getMessage(OFType.FLOW_MOD);
         fm1.setIdleTimeout((short)5)
@@ -469,21 +477,21 @@ public class ForwardingTest extends FloodlightTestCase {
             .setCookie(2L << 52)
             .setLengthU(OFFlowMod.MINIMUM_LENGTH +
                         OFActionOutput.MINIMUM_LENGTH);
-    
+
         // Record expected packet-outs/flow-mods
         // We will inject the packet_in 3 times and expect 1 flow mod and
         // 3 packet outs due to flow mod dampening
-        sw1.write(fm1, cntx);
+        sw1.writeThrottled(fm1, cntx);
         expectLastCall().once();
-        sw1.write(packetOut, cntx);
+        sw1.writeThrottled(packetOut, cntx);
         expectLastCall().times(3);
-        
+
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(anyLong(), anyShort())).andReturn(true).anyTimes();
         expect(topology.getL2DomainId(1L)).andReturn(1L).anyTimes();
         expect(topology.isAttachmentPointPort(1L,  (short)1)).andReturn(true).anyTimes();
         expect(topology.isAttachmentPointPort(1L,  (short)3)).andReturn(true).anyTimes();
-    
+
         // Reset mocks, trigger the packet in, and validate results
         replay(sw1, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
@@ -497,8 +505,8 @@ public class ForwardingTest extends FloodlightTestCase {
         learnDevices(DestDeviceToLearn.NONE);
 
         // Set no destination attachment point or route
-        // expect no Flow-mod but expect the packet to be flooded 
-                
+        // expect no Flow-mod but expect the packet to be flooded
+
         // Reset mocks, trigger the packet in, and validate results
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(1L, (short)1)).andReturn(true).anyTimes();
@@ -508,7 +516,7 @@ public class ForwardingTest extends FloodlightTestCase {
                                               .anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
                 .andReturn(true).anyTimes();
-        sw1.write(packetOutFlooded, cntx);
+        sw1.writeThrottled(packetOutFlooded, cntx);
         expectLastCall().once();
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);

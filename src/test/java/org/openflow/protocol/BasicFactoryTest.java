@@ -37,7 +37,7 @@ import org.openflow.util.U16;
 public class BasicFactoryTest extends TestCase {
 
     public void testCreateAndParse() throws MessageParseException {
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         OFMessage m = factory.getMessage(OFType.HELLO);
         m.setVersion((byte) 1);
         m.setType(OFType.ECHO_REQUEST);
@@ -56,7 +56,7 @@ public class BasicFactoryTest extends TestCase {
     }
 
     public void testInvalidMsgParse() throws MessageParseException {
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         OFMessage m = factory.getMessage(OFType.HELLO);
         m.setVersion((byte) 1);
         m.setType(OFType.ECHO_REQUEST);
@@ -69,7 +69,7 @@ public class BasicFactoryTest extends TestCase {
     }
 
     public void testCurrouptedMsgParse() throws MessageParseException {
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         OFMessage m = factory.getMessage(OFType.HELLO);
         m.setVersion((byte) 1);
         m.setType(OFType.ERROR);
@@ -86,7 +86,7 @@ public class BasicFactoryTest extends TestCase {
     }
 
     public void testCustomVendorAction() throws MessageParseException {
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         OFVendorActionRegistry.getInstance().register(
                 MockVendorAction.VENDOR_ID, new MockVendorActionFactory());
 
@@ -119,7 +119,7 @@ public class BasicFactoryTest extends TestCase {
                 0x05, 0x06, 0x07, 0x08               // pad
             };
 
-        BasicFactory factory = new BasicFactory();
+        BasicFactory factory = BasicFactory.getInstance();
         OFVendorActionRegistry.getInstance().register(
                 MockVendorAction.VENDOR_ID, new MockVendorActionFactory());
 

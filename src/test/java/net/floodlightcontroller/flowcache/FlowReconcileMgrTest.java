@@ -30,9 +30,9 @@ import net.floodlightcontroller.counter.SimpleCounter;
 import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
+import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.junit.Before;
@@ -135,7 +135,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         Date startTime = new Date();
         OFMatchReconcile ofmRcIn = new OFMatchReconcile();
         try {
-            flowReconcileMgr.reconcileFlow(ofmRcIn);
+            flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
             flowReconcileMgr.doReconcile();
         } catch (RuntimeException e) {
             assertEquals(e.getMessage()
@@ -164,7 +164,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             flowReconcileMgr.flowReconcileThreadRunCount.get();
         startTime = new Date();
         replay(r1, r2, r3);
-        flowReconcileMgr.reconcileFlow(ofmRcIn);
+        flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
         while (flowReconcileMgr.flowReconcileThreadRunCount.get() <=
                 pre_flowReconcileThreadRunCount) {
             Thread.sleep(10);
@@ -192,7 +192,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         startTime = new Date();
         
         replay(r1, r2, r3);
-        flowReconcileMgr.reconcileFlow(ofmRcIn);
+        flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
         while (flowReconcileMgr.flowReconcileThreadRunCount.get() <=
                 pre_flowReconcileThreadRunCount) {
             Thread.sleep(10);
@@ -215,7 +215,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         startTime = new Date();
         
         replay(r1, r2, r3);
-        flowReconcileMgr.reconcileFlow(ofmRcIn);
+        flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
         while (flowReconcileMgr.flowReconcileThreadRunCount.get() <=
                 pre_flowReconcileThreadRunCount) {
             Thread.sleep(10);
@@ -244,7 +244,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             flowReconcileMgr.flowReconcileThreadRunCount.get();
         startTime = new Date();
         replay(r1, r2, r3);
-        flowReconcileMgr.reconcileFlow(ofmRcIn);
+        flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
         while (flowReconcileMgr.flowReconcileThreadRunCount.get() <=
                 pre_flowReconcileThreadRunCount) {
             Thread.sleep(10);
@@ -431,7 +431,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         int index = 0;
         for (index = 0; index < 10; index++) {
             ofmRcIn.cookie = index;
-            flowReconcileMgr.reconcileFlow(ofmRcIn);
+            flowReconcileMgr.reconcileFlow(ofmRcIn,EventPriority.HIGH);
         }
         flowReconcileMgr.flowReconcileEnabled = true;
         flowReconcileMgr.doReconcile();
@@ -496,7 +496,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             Date currTime = new Date();
             assertTrue((currTime.getTime() - startTime.getTime()) < 1000);
         }
-    
+
         // Make sure all flows are in the queue.
         assertEquals(totalFlows, flowReconcileMgr.flowQueue.size());
     }
@@ -507,7 +507,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
             OFMatchReconcile ofmRc = new OFMatchReconcile();
             // push large number of flows to be reconciled.
             for (int i = 0; i < NUM_FLOWS_PER_THREAD; i++) {
-                flowReconcileMgr.reconcileFlow(ofmRc);
+                flowReconcileMgr.reconcileFlow(ofmRc,EventPriority.LOW);
             }
         }
     }
