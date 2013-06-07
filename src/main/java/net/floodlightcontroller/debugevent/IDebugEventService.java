@@ -87,7 +87,8 @@ public interface IDebugEventService extends IFloodlightService {
      * @param eventType        EventType for this event. On-demand events have to
      *                         be explicitly enabled using other methods in this API
      * @param eventClass       A user defined class that annotates the fields
-     *                         with @EventColumn
+     *                         with @EventColumn. This class specifies the
+     *                         fields/columns of this event.
      * @param bufferCapacity   Number of events to store for this event in a circular
      *                         buffer. Older events will be discarded once the
      *                         buffer is full.

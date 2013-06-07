@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -16,7 +16,7 @@
 **/
 
 /**
- * 
+ *
  */
 package net.floodlightcontroller.packet;
 
@@ -302,6 +302,7 @@ public class IPv4 extends BasePacket {
      *      -headerLength : 0
      *      -totalLength : 0
      */
+    @Override
     public byte[] serialize() {
         byte[] payloadData = null;
         if (payload != null) {
@@ -359,6 +360,10 @@ public class IPv4 extends BasePacket {
         this.version = bb.get();
         this.headerLength = (byte) (this.version & 0xf);
         this.version = (byte) ((this.version >> 4) & 0xf);
+        if (this.version != 4) {
+            throw new RuntimeException("Invalid version for IPv4 packet: " +
+                    this.version);
+        }
         this.diffServ = bb.get();
         this.totalLength = bb.getShort();
         this.identification = bb.getShort();
@@ -422,7 +427,7 @@ public class IPv4 extends BasePacket {
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
         String[] octets = ipAddress.split("\\.");
-        if (octets.length != 4) 
+        if (octets.length != 4)
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
 
@@ -455,7 +460,7 @@ public class IPv4 extends BasePacket {
     /**
      * Accepts an IPv4 address and returns of string of the form xxx.xxx.xxx.xxx
      * ie 192.168.0.1
-     * 
+     *
      * @param ipAddress
      * @return
      */
@@ -475,7 +480,7 @@ public class IPv4 extends BasePacket {
      * Accepts a collection of IPv4 addresses as integers and returns a single
      * String useful in toString method's containing collections of IP
      * addresses.
-     * 
+     *
      * @param ipAddresses collection
      * @return
      */
@@ -500,7 +505,7 @@ public class IPv4 extends BasePacket {
      */
     public static byte[] toIPv4AddressBytes(String ipAddress) {
         String[] octets = ipAddress.split("\\.");
-        if (octets.length != 4) 
+        if (octets.length != 4)
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
 
@@ -510,7 +515,7 @@ public class IPv4 extends BasePacket {
         }
         return result;
     }
-    
+
     /**
      * Accepts an IPv4 address in the form of an integer and
      * returns the corresponding byte array.
