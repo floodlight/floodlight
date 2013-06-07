@@ -122,6 +122,16 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
         return new NullCounterImpl();
     }
 
+    @Override
+    public List<String> getModuleList() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<String> getModuleCounterList(String moduleName) {
+        return Collections.emptyList();
+    }
+
     public class NullCounterImpl implements IDebugCounter {
 
         @Override
@@ -149,7 +159,5 @@ public class NullDebugCounter implements IFloodlightModule, IDebugCounterService
         }
 
     }
-
-
 
 }

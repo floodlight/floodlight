@@ -243,5 +243,17 @@ public interface IDebugCounterService extends IFloodlightService {
      */
     public boolean containsModuleName(String moduleName);
 
+    /**
+     * Returns a list of moduleNames registered for debug counters or an empty
+     * list if no counters have been registered in the system
+     */
+    public List<String> getModuleList();
+
+    /**
+     * Returns a list of all counters registered for a specific moduleName
+     * or a empty list
+     */
+    public List<String> getModuleCounterList(String moduleName);
+
 
 }
