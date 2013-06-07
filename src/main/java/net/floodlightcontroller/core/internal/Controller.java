@@ -328,6 +328,7 @@ public class Controller implements IFloodlightProviderService,
         public IDebugCounter roleReplyTimeout;
         public IDebugCounter roleReplyReceived; // expected RoleReply received
         public IDebugCounter roleReplyErrorUnsupported;
+        public IDebugCounter switchCounterRegistrationFailed;
 
         void createCounters(IDebugCounterService debugCounters) throws CounterException {
             setRoleEqual =
@@ -709,6 +710,14 @@ public class Controller implements IFloodlightProviderService,
                             "request indicating that the switch does not " +
                             "support roles.",
                             CounterType.ALWAYS_COUNT);
+
+            switchCounterRegistrationFailed =
+                debugCounters.registerCounter(prefix,
+                            "switch-counter-registration-failed",
+                            "Number of times the controller failed to " +
+                            "register per-switch debug counters",
+                            CounterType.ALWAYS_COUNT,
+                            IDebugCounterService.CTR_MDATA_WARN);
         }
     }
 
