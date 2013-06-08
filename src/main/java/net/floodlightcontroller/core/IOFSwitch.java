@@ -601,12 +601,6 @@ public interface IOFSwitch {
     public boolean isFastPort(short port_num);
 
     /**
-     * Retun a list of uplink port (for virtual switches only)
-     * @return
-     */
-    public List<Short> getUplinkPorts();
-
-    /**
      * Return whether write throttling is enabled on the switch
      */
     public boolean isWriteThrottleEnabled();
