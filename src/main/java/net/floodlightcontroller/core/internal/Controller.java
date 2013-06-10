@@ -970,6 +970,10 @@ public class Controller implements IFloodlightProviderService,
                     consolidateStore();
                 }
             };
+            if ((role == Role.MASTER) &&
+                    this.syncedSwitches.isEmpty())
+                addUpdateToQueue(new ReadyForReconcileUpdate());
+
             Controller.this.ses.schedule(consolidateStoreTask,
                                          consolidateStoreTimeDelayMs,
                                          TimeUnit.MILLISECONDS);
@@ -1303,7 +1307,6 @@ public class Controller implements IFloodlightProviderService,
                 addUpdateToQueue(update);
             }
         }
-
         /**
          * Remove all entries from the store that don't correspond to an
          * active switch.
