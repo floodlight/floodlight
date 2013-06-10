@@ -2,6 +2,8 @@ package net.floodlightcontroller.debugevent;
 
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
@@ -14,6 +16,7 @@ public class Event {
     long threadId;
     Object eventData;
     private String returnString;
+    private Map<String, String> returnMap;
 
     public Event(long timestamp, long threadId, Object eventData) {
         super();
@@ -57,13 +60,12 @@ public class Event {
                 eventClass.equals(eventData.getClass()))
             return this.returnString;
 
-        this.returnString = new StringBuilder().append(moduleEventName)
-                        .append(" [")
+        this.returnString = new StringBuilder()
                         .append(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
                                         .format(timestamp))
                         .append(", threadId=").append(threadId).append(", ")
                         .append(customFormat(eventClass, eventData))
-                        .append("]").toString();
+                        .toString();
         return this.returnString;
     }
 
@@ -104,6 +106,46 @@ public class Event {
         String retval = result.toString();
         int index = retval.lastIndexOf(',');
         return (index > 0) ? retval.substring(0, index) : retval;
+    }
+
+    public Map<String, String> getFormattedEvent(Class<?> eventClass, String moduleEventName) {
+        if (returnMap != null && eventClass != null &&
+                eventClass.equals(eventData.getClass()))
+            return returnMap;
+
+        returnMap = new HashMap<String, String>();
+        returnMap.put("Timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+                                            .format(timestamp));
+        returnMap.put("threadId", String.valueOf(threadId));
+        customFormat(eventClass, eventData, returnMap);
+        return returnMap;
+    }
+
+    private void customFormat(Class<?> clazz, Object eventData,
+                              Map<String, String> retMap) {
+        for (Field f : clazz.getDeclaredFields()) {
+            EventColumn ec = f.getAnnotation(EventColumn.class);
+            if (ec == null) continue;
+            f.setAccessible(true);
+            try {
+                Object obj =  f.get(eventData);
+                if (ec.description() == EventFieldType.DPID) {
+                    retMap.put(ec.name(), HexString.toHexString((Long) obj));
+                } else if (ec.description() == EventFieldType.MAC) {
+                    retMap.put(ec.name(), HexString.toHexString((Long) obj, 6));
+                } else if (ec.description() == EventFieldType.IPv4) {
+                    retMap.put(ec.name(), IPv4.fromIPv4Address((Integer) obj));
+                } else {
+                    retMap.put(ec.name(), obj.toString());
+                }
+            } catch (ClassCastException e) {
+                retMap.put("Error", e.getMessage());
+            } catch (IllegalArgumentException e) {
+                retMap.put("Error", e.getMessage());
+            } catch (IllegalAccessException e) {
+                retMap.put("Error", e.getMessage());
+            }
+        }
     }
 
 }

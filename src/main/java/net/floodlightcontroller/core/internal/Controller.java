@@ -2411,7 +2411,7 @@ public class Controller implements IFloodlightProviderService,
         }
         try {
             evSwitch = debugEvents.registerEvent(
-                               "controller", "switchevent",
+                               Counters.prefix, "switchevent",
                                "Switch connected, disconnected or port changed",
                                EventType.ALWAYS_LOG, SwitchEvent.class, 100);
         } catch (MaxEventsRegistered e) {

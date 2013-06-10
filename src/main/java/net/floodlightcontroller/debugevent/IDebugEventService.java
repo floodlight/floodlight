@@ -4,8 +4,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
@@ -55,9 +55,10 @@ public interface IDebugEventService extends IFloodlightService {
      */
     public class DebugEventInfo {
         EventInfo eventInfo;
-        ArrayList<String> events;
+        List<Map<String,String>> events;
 
-        public DebugEventInfo(EventInfo eventInfo, ArrayList<String> eventHistory) {
+        public DebugEventInfo(EventInfo eventInfo,
+                              List<Map<String, String>> eventHistory) {
             this.eventInfo = eventInfo;
             this.events = eventHistory;
         }
@@ -66,7 +67,7 @@ public interface IDebugEventService extends IFloodlightService {
             return eventInfo;
         }
 
-        public ArrayList<String> getEvents() {
+        public List<Map<String,String>> getEvents() {
             return events;
         }
     }
@@ -171,11 +172,15 @@ public interface IDebugEventService extends IFloodlightService {
     public void resetSingleEvent(String moduleName, String eventName);
 
     /**
-     * Retrieve information on all registered events
-     *
-     * @return the arraylist of event-info or an empty list if no events are registered
+     * Retrieve a list of moduleNames registered for debug events or an empty
+     * list if no events have been registered in the system
      */
-    public ArrayList<EventInfo> getEventList();
+    public List<String> getModuleList();
 
+    /**
+     * Returns a list of all events registered for a specific moduleName
+     * or a empty list
+     */
+    public List<String> getModuleEventList(String moduleName);
 
 }

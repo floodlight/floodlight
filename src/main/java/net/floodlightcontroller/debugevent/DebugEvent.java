@@ -364,14 +364,15 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
 
     @Override
     public List<DebugEventInfo> getAllEventHistory() {
-        ArrayList<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
+        List<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
         for (Map<String, Integer> modev : moduleEvents.values()) {
             for (int eventId : modev.values()) {
                 DebugEventHistory de = allEvents[eventId];
                 if (de != null) {
-                    ArrayList<String> ret = new ArrayList<String>();
+                    List<Map<String,String>> ret = new ArrayList<Map<String,String>>();
                     for (Event e : de.eventBuffer) {
-                        ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
+                        ret.add(e.getFormattedEvent(de.einfo.eventClass,
+                                                    de.einfo.moduleEventName));
                     }
                     moduleEventList.add(new DebugEventInfo(de.einfo, ret));
                 }
@@ -383,13 +384,14 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     @Override
     public List<DebugEventInfo> getModuleEventHistory(String moduleName) {
         if (!moduleEvents.containsKey(moduleName)) return Collections.emptyList();
-        ArrayList<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
+        List<DebugEventInfo> moduleEventList = new ArrayList<DebugEventInfo>();
         for (int eventId : moduleEvents.get(moduleName).values()) {
             DebugEventHistory de = allEvents[eventId];
             if (de != null) {
-                ArrayList<String> ret = new ArrayList<String>();
+                List<Map<String,String>> ret = new ArrayList<Map<String,String>>();
                 for (Event e : de.eventBuffer) {
-                    ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
+                    ret.add(e.getFormattedEvent(de.einfo.eventClass,
+                                                de.einfo.moduleEventName));
                 }
                 moduleEventList.add(new DebugEventInfo(de.einfo, ret));
             }
@@ -404,9 +406,10 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         if (eventId == null) return null;
         DebugEventHistory de = allEvents[eventId];
         if (de != null) {
-            ArrayList<String> ret = new ArrayList<String>();
+            List<Map<String,String>> ret = new ArrayList<Map<String,String>>();
             for (Event e : de.eventBuffer) {
-                ret.add(e.toString(de.einfo.eventClass, de.einfo.moduleEventName));
+                ret.add(e.getFormattedEvent(de.einfo.eventClass,
+                                            de.einfo.moduleEventName));
             }
             return new DebugEventInfo(de.einfo, ret);
         }
@@ -443,15 +446,21 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public ArrayList<EventInfo> getEventList() {
-        ArrayList<EventInfo> eil = new ArrayList<EventInfo>();
-        for (Map<String, Integer> eventMap : moduleEvents.values()) {
-            for (Integer evId : eventMap.values()) {
-                eil.add(allEvents[evId].einfo);
-            }
-        }
-        return eil;
+    public List<String> getModuleList() {
+        List<String> el = new ArrayList<String>();
+        el.addAll(moduleEvents.keySet());
+        return el;
     }
+
+    @Override
+    public List<String> getModuleEventList(String moduleName) {
+        if (!moduleEvents.containsKey(moduleName))
+            return Collections.emptyList();
+        List<String> el = new ArrayList<String>();
+        el.addAll(moduleEvents.get(moduleName).keySet());
+        return el;
+    }
+
 
     protected void printEvents() {
         for (int eventId : currentEvents) {
