@@ -93,12 +93,6 @@ public class OFSwitchBaseTest {
         }
 
         @Override
-        public List<Short> getUplinkPorts() {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
         public void write(OFMessage msg, FloodlightContext cntx) {
             blockMessage = msg;
         }
