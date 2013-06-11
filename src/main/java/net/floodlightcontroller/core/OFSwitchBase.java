@@ -161,6 +161,9 @@ public abstract class OFSwitchBase implements IOFSwitch {
     };
 
     public static final int OFSWITCH_APP_ID = 5;
+    static {
+        AppCookie.registerApp(OFSwitchBase.OFSWITCH_APP_ID, "switch");
+    }
 
     public OFSwitchBase() {
         this.stringId = null;

@@ -48,7 +48,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
@@ -64,28 +63,31 @@ import net.floodlightcontroller.util.MACAddress;
  * A simple Layer 2 (MAC based) network virtualization module. This module allows
  * you to create simple L2 networks (host + gateway) and will drop traffic if
  * they are not on the same virtual network.
- * 
+ *
  * LIMITATIONS
  * - This module does not allow overlapping of IPs or MACs
  * - You can only have 1 gateway per virtual network (can be shared)
  * - There is filtering of multicast/broadcast traffic
  * - All DHCP traffic will be allowed, regardless of unicast/broadcast
- * 
+ *
  * @author alexreimers
  */
-public class VirtualNetworkFilter 
+public class VirtualNetworkFilter
     implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(VirtualNetworkFilter.class);
-    
-    private final short APP_ID = 20;
-    
+
+    private static final short APP_ID = 20;
+    static {
+        AppCookie.registerApp(APP_ID, "VirtualNetworkFilter");
+    }
+
     // Our dependencies
     IFloodlightProviderService floodlightProvider;
     IRestApiService restApi;
     IDeviceService deviceService;
 
     // Our internal state
-    protected Map<String, VirtualNetwork> vNetsByGuid; // List of all created virtual networks 
+    protected Map<String, VirtualNetwork> vNetsByGuid; // List of all created virtual networks
     protected Map<String, String> nameToGuid; // Logical name -> Network ID
     protected Map<String, Integer> guidToGateway; // Network ID -> Gateway IP
     protected Map<Integer, Set<String>> gatewayToGuid; // Gateway IP -> Network ID
@@ -95,7 +97,7 @@ public class VirtualNetworkFilter
 
     // Device Listener impl class
     protected DeviceListenerImpl deviceListener;
-    
+
     /**
      * Adds a gateway to a virtual network.
      * @param guid The ID (not name) of the network.
@@ -121,7 +123,7 @@ public class VirtualNetworkFilter
             }
         }
     }
-    
+
     /**
      * Deletes a gateway for a virtual network.
      * @param guid The ID (not name) of the network to delete
@@ -135,9 +137,9 @@ public class VirtualNetworkFilter
         if(vNetsByGuid.get(guid)!=null)
             vNetsByGuid.get(guid).setGateway(null);
     }
-    
+
     // IVirtualNetworkService
-    
+
     @Override
     public void createNetwork(String guid, String network, Integer gateway) {
         if (log.isDebugEnabled()) {
@@ -147,10 +149,10 @@ public class VirtualNetworkFilter
             } catch (Exception e) {
                 // fail silently
             }
-            log.debug("Creating network {} with ID {} and gateway {}", 
+            log.debug("Creating network {} with ID {} and gateway {}",
                       new Object[] {network, guid, gw});
         }
-        
+
         if (!nameToGuid.isEmpty()) {
             // We have to iterate all the networks to handle name/gateway changes
             for (Entry<String, String> entry : nameToGuid.entrySet()) {
@@ -166,7 +168,7 @@ public class VirtualNetworkFilter
             vNetsByGuid.get(guid).setName(network); //network already exists, just updating name
         else
             vNetsByGuid.put(guid, new VirtualNetwork(network, guid)); //new network
-        
+
         // If they don't specify a new gateway the old one will be preserved
         if ((gateway != null) && (gateway != 0)) {
             addGateway(guid, gateway);
@@ -191,10 +193,10 @@ public class VirtualNetworkFilter
             log.warn("Could not delete network with ID {}, network doesn't exist",
                      guid);
         }
-        
-        if (log.isDebugEnabled()) 
+
+        if (log.isDebugEnabled())
             log.debug("Deleting network with name {} ID {}", name, guid);
-        
+
         nameToGuid.remove(name);
         deleteGateway(guid);
         if(vNetsByGuid.get(guid)!=null){
@@ -209,7 +211,7 @@ public class VirtualNetworkFilter
         }
         for (MACAddress mac : deleteList) {
             if (log.isDebugEnabled()) {
-                log.debug("Removing host {} from network {}", 
+                log.debug("Removing host {} from network {}",
                           HexString.toHexString(mac.toBytes()), guid);
             }
             macToGuid.remove(mac);
@@ -265,12 +267,12 @@ public class VirtualNetworkFilter
             }
         }
     }
-    
+
     // IFloodlightModule
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IVirtualNetworkService.class);
         return l;
@@ -280,7 +282,7 @@ public class VirtualNetworkFilter
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                     IFloodlightService>();
         m.put(IVirtualNetworkService.class, this);
@@ -289,7 +291,7 @@ public class VirtualNetworkFilter
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IRestApiService.class);
@@ -298,12 +300,12 @@ public class VirtualNetworkFilter
     }
 
     @Override
-    public void init(FloodlightModuleContext context)  
+    public void init(FloodlightModuleContext context)
                                  throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         deviceService = context.getServiceImpl(IDeviceService.class);
-        
+
         vNetsByGuid = new ConcurrentHashMap<String, VirtualNetwork>();
         nameToGuid = new ConcurrentHashMap<String, String>();
         guidToGateway = new ConcurrentHashMap<String, Integer>();
@@ -312,12 +314,7 @@ public class VirtualNetworkFilter
         portToMac = new ConcurrentHashMap<String, MACAddress>();
         macToGateway = new ConcurrentHashMap<MACAddress, Integer>();
         deviceListener = new DeviceListenerImpl();
-        try {
-            AppCookie.registerApp(APP_ID, "VirtualNetworkFilter");
-        } catch (AppIDInUseException e) {
-            // This is not fatal, CLI will be confused
-            log.error("Failed register application ID", e);
-        }
+
     }
 
     @Override
@@ -328,7 +325,7 @@ public class VirtualNetworkFilter
     }
 
     // IOFMessageListener
-    
+
     @Override
     public String getName() {
         return "virtualizer";
@@ -337,7 +334,7 @@ public class VirtualNetworkFilter
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
         // Link discovery should go before us so we don't block LLDPs
-        return (type.equals(OFType.PACKET_IN) && 
+        return (type.equals(OFType.PACKET_IN) &&
                 (name.equals("linkdiscovery") || (name.equals("devicemanager"))));
     }
 
@@ -358,7 +355,7 @@ public class VirtualNetworkFilter
         log.warn("Received unexpected message {}", msg);
         return Command.CONTINUE;
     }
-    
+
     /**
      * Checks whether the frame is destined to or from a gateway.
      * @param frame The ethernet frame to check.
@@ -381,7 +378,7 @@ public class VirtualNetworkFilter
 
         return false;
     }
-    
+
     /**
      * Checks to see if two MAC Addresses are on the same network.
      * @param m1 The first MAC.
@@ -396,7 +393,7 @@ public class VirtualNetworkFilter
         if (net2 == null) return false;
         return net1.equals(net2);
     }
-    
+
     /**
      * Checks to see if an Ethernet frame is a DHCP packet.
      * @param frame The Ethernet frame.
@@ -411,7 +408,7 @@ public class VirtualNetworkFilter
         if ((p3 != null) && (p3 instanceof DHCP)) return true;
         return false;
     }
-    
+
     /**
      * Processes an OFPacketIn message and decides if the OFPacketIn should be dropped
      * or the processing should continue.
@@ -421,7 +418,7 @@ public class VirtualNetworkFilter
      * @return Command.CONTINUE if processing should be continued, Command.STOP otherwise.
      */
     protected Command processPacketIn(IOFSwitch sw, OFPacketIn msg, FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                                               IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         Command ret = Command.STOP;
         String srcNetwork = macToGuid.get(eth.getSourceMAC());
@@ -437,13 +434,13 @@ public class VirtualNetworkFilter
             // if they are on the same network continue
             ret = Command.CONTINUE;
         }
-        
+
         if (log.isTraceEnabled())
             log.trace("Results for flow between {} and {} is {}",
                     new Object[] {eth.getSourceMAC(), eth.getDestinationMAC(), ret});
         /*
          * TODO - figure out how to still detect gateways while using
-         * drop mods 
+         * drop mods
         if (ret == Command.STOP) {
             if (!(eth.getPayload() instanceof ARP))
                 doDropFlow(sw, msg, cntx);
@@ -451,7 +448,7 @@ public class VirtualNetworkFilter
         */
         return ret;
     }
-    
+
     /**
      * Writes a FlowMod to a switch that inserts a drop flow.
      * @param sw The switch to write the FlowMod to.
@@ -470,7 +467,7 @@ public class VirtualNetworkFilter
         }
 
         // Create flow-mod based on packet-in and src-switch
-        OFFlowMod fm = 
+        OFFlowMod fm =
             (OFFlowMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.FLOW_MOD);
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort());
@@ -486,7 +483,7 @@ public class VirtualNetworkFilter
 //        fm.setFlags(OFFlowMod.OFPFF_SEND_FLOW_REM);
         try {
             if (log.isTraceEnabled()) {
-                log.trace("write drop flow-mod srcSwitch={} match={} " + 
+                log.trace("write drop flow-mod srcSwitch={} match={} " +
                           "pi={} flow-mod={}",
                           new Object[] {sw, match, pi, fm});
             }
@@ -501,7 +498,7 @@ public class VirtualNetworkFilter
     public Collection <VirtualNetwork> listNetworks() {
         return vNetsByGuid.values();
     }
-    
+
     // IDeviceListener
     class DeviceListenerImpl implements IDeviceListener{
         @Override
