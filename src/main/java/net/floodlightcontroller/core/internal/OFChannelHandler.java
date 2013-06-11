@@ -16,6 +16,7 @@ import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.Counters;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.util.LoadMonitor;
@@ -632,43 +633,43 @@ class OFChannelHandler
             @Override
             void processOFStatisticsReply(OFChannelHandler h,
                                           OFStatisticsReply m) {
+                // Read description, if it has been updated
+                OFDescriptionStatistics description =
+                        new OFDescriptionStatistics();
+                ChannelBuffer data =
+                        ChannelBuffers.buffer(description.getLength());
+                OFStatistics f = m.getFirstStatistics();
+                f.writeTo(data);
+                description.readFrom(data);
+                h.sw = h.controller.getOFSwitchInstance(description);
+                // set switch information
+                // set features reply and channel first so we a DPID and
+                // channel info.
+                h.sw.setFeaturesReply(h.featuresReply);
+                h.sw.setConnected(true);
+                h.sw.setChannel(h.channel);
+                h.sw.setFloodlightProvider(h.controller);
+                h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                 try {
-                    // Read description, if it has been updated
-                    OFDescriptionStatistics description =
-                            new OFDescriptionStatistics();
-                    ChannelBuffer data =
-                            ChannelBuffers.buffer(description.getLength());
-                    OFStatistics f = m.getFirstStatistics();
-                    f.writeTo(data);
-                    description.readFrom(data);
-                    h.sw = h.controller.getOFSwitchInstance(description);
-                    // set switch information
-                    // set features reply and channel first so we a DPID and
-                    // channel info.
-                    h.sw.setFeaturesReply(h.featuresReply);
-                    h.sw.setConnected(true);
-                    h.sw.setChannel(h.channel);
-                    h.sw.setFloodlightProvider(h.controller);
-                    h.sw.setThreadPoolService(h.controller.getThreadPoolService());
                     h.sw.setDebugCounterService(h.controller.getDebugCounter());
-                    h.sw.setAccessFlowPriority(h.controller.getAccessFlowPriority());
-                    h.sw.setCoreFlowPriority(h.controller.getCoreFlowPriority());
-                    for (OFPortStatus ps: h.pendingPortStatusMsg)
-                        handlePortStatusMessage(h, ps, false);
-                    h.pendingPortStatusMsg.clear();
-                    h.readPropertyFromStorage();
-                    log.info("Switch {} bound to class {}, writeThrottle={}," +
-                            " description {}",
-                             new Object[] { h.sw, h.sw.getClass(),
-                                            h.sw.isWriteThrottleEnabled(),
-                                            description });
+                } catch (CounterException e) {
+                    h.counters.switchCounterRegistrationFailed
+                            .updateCounterNoFlush();
+                    log.warn("Could not register counters for switch {} ",
+                              h.getSwitchInfoString(), e);
                 }
-                catch (Exception ex) {
-                    String msg = getSwitchStateMessage(h, m,
-                            "Exception while reading description during handshake");
-                    throw new SwitchStateException(msg, ex);
-                }
-                // We need to set the new state /before/ we call addSwitchChannel
+                h.sw.setAccessFlowPriority(h.controller.getAccessFlowPriority());
+                h.sw.setCoreFlowPriority(h.controller.getCoreFlowPriority());
+                for (OFPortStatus ps: h.pendingPortStatusMsg)
+                    handlePortStatusMessage(h, ps, false);
+                h.pendingPortStatusMsg.clear();
+                h.readPropertyFromStorage();
+                log.info("Switch {} bound to class {}, writeThrottle={}," +
+                        " description {}",
+                         new Object[] { h.sw, h.sw.getClass(),
+                                        h.sw.isWriteThrottleEnabled(),
+                                    description });
+            // We need to set the new state /before/ we call addSwitchChannel
                 // because addSwitchChannel will eventually call setRole
                 // which can in turn decide that the switch doesn't support
                 // roles and transition the state straight to MASTER.
@@ -1384,11 +1385,19 @@ class OFChannelHandler
         } else if (e.getCause() instanceof IOException) {
             log.error("Disconnecting switch {} due to IO Error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
+            if (log.isDebugEnabled()) {
+                // still print stack trace if debug is enabled
+                log.debug("StackTrace for previous Exception: ", e.getCause());
+            }
             counters.switchDisconnectIOError.updateCounterWithFlush();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof SwitchStateException) {
             log.error("Disconnecting switch {} due to switch state error: {}",
                       getSwitchInfoString(), e.getCause().getMessage());
+            if (log.isDebugEnabled()) {
+                // still print stack trace if debug is enabled
+                log.debug("StackTrace for previous Exception: ", e.getCause());
+            }
             counters.switchDisconnectSwitchStateException.updateCounterWithFlush();
             ctx.getChannel().close();
         } else if (e.getCause() instanceof MessageParseException) {
@@ -1407,7 +1416,8 @@ class OFChannelHandler
             counters.rejectedExecutionException.updateCounterWithFlush();
         } else {
             log.error("Error while processing message from switch "
-                                 + getSwitchInfoString(), e.getCause());
+                                 + getSwitchInfoString()
+                                 + "state " + this.state, e.getCause());
             counters.switchDisconnectOtherException.updateCounterWithFlush();
             ctx.getChannel().close();
         }

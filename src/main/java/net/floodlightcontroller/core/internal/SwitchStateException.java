@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -18,7 +18,10 @@
 package net.floodlightcontroller.core.internal;
 
 /**
- * 
+ * We don't allow wrapping other exception in a switch state exception. We
+ * only log the SwitchStateExceptions message so the casuing exceptions
+ * stack trace is generally not available.
+ *
  */
 public class SwitchStateException extends IllegalArgumentException {
 
@@ -26,10 +29,6 @@ public class SwitchStateException extends IllegalArgumentException {
 
     public SwitchStateException() {
         super();
-    }
-
-    public SwitchStateException(String arg0, Throwable arg1) {
-        super(arg0, arg1);
     }
 
     public SwitchStateException(String arg0) {

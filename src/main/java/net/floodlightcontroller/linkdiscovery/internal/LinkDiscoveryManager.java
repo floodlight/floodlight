@@ -2161,7 +2161,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         try {
             evDirectLink = debugEvents.registerEvent(
-                               getName(), "linkevent",
+                               PACKAGE, "linkevent",
                                "Direct OpenFlow links discovered or timed-out",
                                EventType.ALWAYS_LOG, DirectLinkEvent.class, 100);
         } catch (MaxEventsRegistered e) {

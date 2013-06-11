@@ -40,7 +40,6 @@ import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
@@ -1067,7 +1066,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public void setDebugCounterService(IDebugCounterService debugCounters)
-            throws FloodlightModuleException {
+            throws CounterException {
         this.debugCounters = debugCounters;
         registerOverloadCounters();
     }
@@ -1399,7 +1398,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                 currentRate, this);
     }
 
-    private void registerOverloadCounters() throws FloodlightModuleException {
+    private void registerOverloadCounters() throws CounterException {
         if (debugCountersRegistered) {
             return;
         }
@@ -1408,33 +1407,29 @@ public abstract class OFSwitchBase implements IOFSwitch {
             debugCounters = new NullDebugCounter();
             debugCountersRegistered = true;
         }
-        try {
-            // every level of the hierarchical counter has to be registered
-            // even if they are not used
-            ctrSwitch = debugCounters.registerCounter(
-                                       PACKAGE , stringId,
-                                       "Counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchPktin = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/pktin",
-                                       "Packet in counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchWrite = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/write",
-                                       "Write counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchPktinDrops = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/pktin/drops",
-                                       "Packet in throttle drop count",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchWriteDrops = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/write/drops",
-                                       "Switch write throttle drop count",
-                                       CounterType.ALWAYS_COUNT);
-        } catch (CounterException e) {
-            throw new FloodlightModuleException(e.getMessage());
-        }
-    }
+        // every level of the hierarchical counter has to be registered
+        // even if they are not used
+        ctrSwitch = debugCounters.registerCounter(
+                                   PACKAGE , stringId,
+                                   "Counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchPktin = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/pktin",
+                                   "Packet in counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchWrite = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/write",
+                                   "Write counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchPktinDrops = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/pktin/drops",
+                                   "Packet in throttle drop count",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchWriteDrops = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/write/drops",
+                                   "Switch write throttle drop count",
+                                   CounterType.ALWAYS_COUNT);
+}
 
     /**
      * Check if we have sampled this mac in the last second.

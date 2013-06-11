@@ -70,13 +70,13 @@ public class DebugEventTest extends FloodlightTestCase {
 
         DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent");
         assertEquals(1, de.events.size());
-        assertEquals(true, de.events.get(0)
-                         .contains("dpid=00:00:00:00:00:00:00:01, reason=connected"));
+        assertEquals(true, de.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
+        assertEquals(true, de.events.get(0).get("reason").equals("connected"));
 
         DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent");
         assertEquals(1, de2.events.size());
-        assertEquals(true, de2.events.get(0)
-                     .contains("dpid=00:00:00:00:00:00:00:01, srcMac=00:00:00:00:00:18"));
+        assertEquals(true, de2.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
+        assertEquals(true, de2.events.get(0).get("srcMac").equals("00:00:00:00:00:18"));
     }
 
     public class SwitchyEvent {

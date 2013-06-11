@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -160,10 +160,10 @@ public interface IOFSwitch {
      * Set debug counter service for per-switch counters
      * Called immediately after instantiation
      * @param debugCounters
-     * @throws FloodlightModuleException
+     * @throws CounterException
      */
     public void setDebugCounterService(IDebugCounterService debugCounters)
-            throws FloodlightModuleException;
+            throws CounterException;
 
     /**
      * Set the netty Channel this switch instance is associated with
@@ -599,12 +599,6 @@ public interface IOFSwitch {
      * @return
      */
     public boolean isFastPort(short port_num);
-
-    /**
-     * Retun a list of uplink port (for virtual switches only)
-     * @return
-     */
-    public List<Short> getUplinkPorts();
 
     /**
      * Return whether write throttling is enabled on the switch

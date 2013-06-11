@@ -386,12 +386,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public List<Short> getUplinkPorts() {
-        fail("Unexpected method call");
-        return null;
-    }
-
-    @Override
     public boolean attributeEquals(String name, Object other) {
         fail("Unexpected method call");
         return false;
