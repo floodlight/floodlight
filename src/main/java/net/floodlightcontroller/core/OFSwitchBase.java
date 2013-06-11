@@ -108,10 +108,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected short accessFlowPriority;
     protected short coreFlowPriority;
 
+    private boolean startDriverHandshakeCalled = false;
+    protected Channel channel;
+
     /**
      * Members hidden from subclasses
      */
-    private Channel channel;
     private final AtomicInteger transactionIdSource;
     private final Map<Integer,OFStatisticsFuture> statsFutureMap;
     private final Map<Integer, IOFMessageListener> iofMsgListenersMap;
@@ -1540,5 +1542,27 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public void setCoreFlowPriority(short coreFlowPriority) {
         this.coreFlowPriority = coreFlowPriority;
+    }
+
+    @Override
+    public void startDriverHandshake() {
+        if (startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeAlreadyStarted();
+        startDriverHandshakeCalled = true;
+    }
+
+    @Override
+    public boolean isDriverHandshakeComplete() {
+        if (!startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeNotStarted();
+        return true;
+    }
+
+    @Override
+    public void processDriverHandshakeMessage(OFMessage m) {
+        if (startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeCompleted(m);
+        else
+            throw new SwitchDriverSubHandshakeNotStarted();
     }
 }

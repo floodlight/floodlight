@@ -669,12 +669,11 @@ class OFChannelHandler
                          new Object[] { h.sw, h.sw.getClass(),
                                         h.sw.isWriteThrottleEnabled(),
                                     description });
-            // We need to set the new state /before/ we call addSwitchChannel
-                // because addSwitchChannel will eventually call setRole
-                // which can in turn decide that the switch doesn't support
-                // roles and transition the state straight to MASTER.
-                h.setState(WAIT_INITIAL_ROLE);
-                h.controller.addSwitchChannelAndSendInitialRole(h);
+                h.sw.startDriverHandshake();
+                if (h.sw.isDriverHandshakeComplete())
+                    h.gotoWaitInitialRoleState();
+                else
+                    h.setState(WAIT_SWITCH_DRIVER_SUB_HANDSHAKE);
             }
 
             @Override
@@ -687,6 +686,26 @@ class OFChannelHandler
                     throws IOException {
                 // TODO: we could re-set the features reply
                 illegalMessageReceived(h, m);
+            }
+        },
+
+        WAIT_SWITCH_DRIVER_SUB_HANDSHAKE(false) {
+            @Override
+            void processOFError(OFChannelHandler h, OFError m)
+                    throws IOException {
+                // will never be called. We override processOFMessage
+            }
+
+            @Override
+            void processOFMessage(OFChannelHandler h, OFMessage m)
+                    throws IOException {
+                if (m.getType() == OFType.ECHO_REQUEST)
+                    processOFEchoRequest(h, (OFEchoRequest)m);
+                // FIXME: other message to handle here?
+                h.sw.processDriverHandshakeMessage(m);
+                if (h.sw.isDriverHandshakeComplete()) {
+                    h.setState(WAIT_INITIAL_ROLE);
+                }
             }
         },
 
@@ -1634,6 +1653,16 @@ class OFChannelHandler
         l2TableSet.setLengthU(OFVendor.MINIMUM_LENGTH +
                               l2TableSetData.getLength());
         channel.write(Collections.singletonList(l2TableSet));
+    }
+
+
+    private void gotoWaitInitialRoleState() {
+        // We need to set the new state /before/ we call addSwitchChannel
+        // because addSwitchChannel will eventually call setRole
+        // which can in turn decide that the switch doesn't support
+        // roles and transition the state straight to MASTER.
+        setState(ChannelState.WAIT_INITIAL_ROLE);
+        controller.addSwitchChannelAndSendInitialRole(this);
     }
 
     /**

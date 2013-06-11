@@ -633,4 +633,37 @@ public interface IOFSwitch {
      * this switch.
      */
     public short getCoreFlowPriority();
+
+    /**
+     * Start this switch driver's sub handshake. This might be a no-op but
+     * this method must be called at least once for the switch to be become
+     * ready.
+     * This method must only be called from the I/O thread
+     * @throws SwitchDriverSubHandshakeAlreadyStarted if the sub-handshake has
+     * already been started
+     */
+    public void startDriverHandshake();
+
+    /**
+     * Check if the sub-handshake for this switch driver has been completed.
+     * This method can only be called after startDriverHandshake()
+     *
+     * This methods must only be called from the I/O thread
+     * @return true if the sub-handshake has been completed. False otherwise
+     * @throws SwitchDriverSubHandshakeNotStarted if startDriverHandshake() has
+     * not been called yet.
+     */
+    public boolean isDriverHandshakeComplete();
+
+    /**
+     * Pass the given OFMessage to the driver as part of this driver's
+     * sub-handshake. Must not be called after the handshake has been completed
+     * This methods must only be called from the I/O thread
+     * @param m The message that the driver should process
+     * @throws SwitchDriverSubHandshakeCompleted if isDriverHandshake() returns
+     * false before this method call
+     * @throws SwitchDriverSubHandshakeNotStarted if startDriverHandshake() has
+     * not been called yet.
+     */
+    public void processDriverHandshakeMessage(OFMessage m);
 }

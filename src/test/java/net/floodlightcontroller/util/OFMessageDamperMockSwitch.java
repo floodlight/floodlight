@@ -474,4 +474,20 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
         fail("Unexpected method call");
         return 0;
     }
+
+    @Override
+    public void startDriverHandshake() {
+        fail("Unexpected method call");
+    }
+
+    @Override
+    public boolean isDriverHandshakeComplete() {
+        fail("Unexpected method call");
+        return false;
+    }
+
+    @Override
+    public void processDriverHandshakeMessage(OFMessage m) {
+        fail("Unexpected method call");
+    }
 }
