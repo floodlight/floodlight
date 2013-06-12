@@ -515,6 +515,10 @@ public class OFChannelHandlerTest {
         expectLastCall().once();
         sw.setCoreFlowPriority(CORE_PRIORITY);
         expectLastCall().once();
+        sw.startDriverHandshake();
+        expectLastCall().once();
+        sw.isDriverHandshakeComplete();
+        expectLastCall().andReturn(true).once();
 
         if (cfg.isPresent)
             sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, cfg.isCoreSwitch);
