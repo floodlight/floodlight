@@ -16,6 +16,7 @@ import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.debugcounter.DebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -462,24 +463,7 @@ public class OFChannelHandlerTest {
         verify(storageResultSet);
     }
 
-    /** Move the channel from scratch to WAIT_INITIAL_ROLE state
-     * Builds on moveToWaitDescriptionStatReply()
-     * adds testing for WAIT_DESCRIPTION_STAT_REPLY state
-     * @param storageSourceConfig paramterizes the contents of the storage
-     * source (for IS_CORE_SWITCH)
-     */
-    public void doMoveToWaitInitialRole(MockStorageSourceConfig cfg)
-            throws Exception {
-        moveToWaitDescriptionStatReply();
-
-        // We do not expect a write to the channel per-se. We add
-        // the channel to the controller and the controller will in turn
-        // call handler.sendRoleRequest(). However, we mock the controller so
-        // we don't expect that call.
-        resetChannel();
-        replay(channel);
-
-        // build the stats reply
+    private static OFStatisticsReply createDescriptionStatsReply() {
         OFStatisticsReply sr = (OFStatisticsReply)BasicFactory.getInstance()
                 .getMessage(OFType.STATS_REPLY);
         sr.setStatisticType(OFStatisticsType.DESC);
@@ -490,10 +474,17 @@ public class OFChannelHandlerTest {
         desc.setSerialNumber("Serial Number");
         desc.setSoftwareDescription("Software Description");
         sr.setStatistics(Collections.singletonList(desc));
+        return sr;
+    }
 
-        setupMessageEvent(Collections.<OFMessage>singletonList(sr));
-        setupMockStorageSource(cfg);
-
+    /**
+     * setup the expectations for the mock switch that are needed
+     * after the switch is instantiated in the WAIT_DESCRIPTION_STATS STATE
+     * Will reset the switch
+     * @throws CounterException
+     */
+    private void setupSwitchForInstantiationWithReset(String dpid)
+            throws Exception {
         reset(sw);
         sw.setChannel(channel);
         expectLastCall().once();
@@ -508,13 +499,43 @@ public class OFChannelHandlerTest {
         sw.setConnected(true);
         expectLastCall().once();
         sw.getStringId();
-        expectLastCall().andReturn(cfg.dpid).atLeastOnce();
+        expectLastCall().andReturn(dpid).atLeastOnce();
         sw.isWriteThrottleEnabled();  // used for log message only
         expectLastCall().andReturn(false).anyTimes();
         sw.setAccessFlowPriority(ACCESS_PRIORITY);
         expectLastCall().once();
         sw.setCoreFlowPriority(CORE_PRIORITY);
         expectLastCall().once();
+    }
+
+    /** Move the channel from scratch to WAIT_INITIAL_ROLE state
+     * for a switch that does not have a sub-handshake
+     * Builds on moveToWaitDescriptionStatReply()
+     * adds testing for WAIT_DESCRIPTION_STAT_REPLY state
+     * @param storageSourceConfig paramterizes the contents of the storage
+     * source (for IS_CORE_SWITCH)
+     */
+    public void doMoveToWaitInitialRole(MockStorageSourceConfig cfg)
+            throws Exception {
+        moveToWaitDescriptionStatReply();
+
+        // We do not expect a write to the channel for the role request. We add
+        // the channel to the controller and the controller would in turn
+        // call handler.sendRoleRequest(). Since we mock the controller so
+        // we won't see the handler.sendRoleRequest() call and therefore we
+        // won't see any calls on the channel.
+        resetChannel();
+        replay(channel);
+
+        // build the stats reply
+        OFStatisticsReply sr = createDescriptionStatsReply();
+        OFDescriptionStatistics desc =
+                (OFDescriptionStatistics) sr.getFirstStatistics();
+
+        setupMessageEvent(Collections.<OFMessage>singletonList(sr));
+        setupMockStorageSource(cfg);
+
+        setupSwitchForInstantiationWithReset(cfg.dpid);
         sw.startDriverHandshake();
         expectLastCall().once();
         sw.isDriverHandshakeComplete();
@@ -550,6 +571,142 @@ public class OFChannelHandlerTest {
         assertEquals(OFChannelHandler.ChannelState.WAIT_INITIAL_ROLE,
                      handler.getStateForTesting());
         verifyStorageSource();
+    }
+
+    /**
+     * Move the channel from scratch to WAIT_INITIAL_ROLE state via
+     * WAIT_SWITCH_DRIVER_SUB_HANDSHAKE
+     * Does extensive testing for the WAIT_SWITCH_DRIVER_SUB_HANDSHAKE state
+     *
+     */
+    @Test
+    public void testSwitchDriverSubHandshake()
+            throws Exception {
+        MockStorageSourceConfig cfg = new MockStorageSourceConfig();
+        cfg.dpid = HexString.toHexString(featuresReply.getDatapathId());
+        cfg.isPresent = false;
+
+        moveToWaitDescriptionStatReply();
+
+        resetChannel();
+        channel.write(capture(writeCapture));
+        expectLastCall().andReturn(null).atLeastOnce();
+        replay(channel);
+
+        // build the stats reply
+        OFStatisticsReply sr = createDescriptionStatsReply();
+        OFDescriptionStatistics desc =
+                (OFDescriptionStatistics) sr.getFirstStatistics();
+
+        setupMessageEvent(Collections.<OFMessage>singletonList(sr));
+        setupMockStorageSource(cfg);
+
+        // Start the sub-handshake. Switch will indicate that it's not
+        // complete yet
+        setupSwitchForInstantiationWithReset(cfg.dpid);
+        sw.startDriverHandshake();
+        expectLastCall().once();
+        sw.isDriverHandshakeComplete();
+        expectLastCall().andReturn(false).once();
+
+        if (cfg.isPresent)
+            sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, cfg.isCoreSwitch);
+        replay(sw);
+
+        // mock controller
+        reset(controller);
+        expect(controller.getDebugCounter()).andReturn(debugCounterService)
+                .once();
+        controller.flushAll();
+        expectLastCall().once();
+        expect(controller.getThreadPoolService())
+                .andReturn(threadPool).once();
+        expect(controller.getOFSwitchInstance(eq(desc)))
+                .andReturn(sw).once();
+        expect(controller.getCoreFlowPriority())
+                .andReturn(CORE_PRIORITY).once();
+        expect(controller.getAccessFlowPriority())
+                .andReturn(ACCESS_PRIORITY).once();
+        expect(controller.getStorageSourceService())
+                .andReturn(storageSource).atLeastOnce();
+        replay(controller);
+
+        // send the description stats reply
+        handler.messageReceived(ctx, messageEvent);
+
+        assertEquals(OFChannelHandler.ChannelState.WAIT_SWITCH_DRIVER_SUB_HANDSHAKE,
+                     handler.getStateForTesting());
+        assertFalse("Unexpected message captured", writeCapture.hasCaptured());
+        verifyStorageSource();
+        verify(sw);
+
+
+        //-------------------------------------------------
+        // Send a message to the handler, it should be passed to the
+        // switch's sub-handshake handling.
+        OFMessage m = BasicFactory.getInstance().getMessage(OFType.HELLO);
+        resetToStrict(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        sw.processDriverHandshakeMessage(m);
+        expectLastCall().once();
+        expect(sw.isDriverHandshakeComplete()).andReturn(false).once();
+        replay(sw);
+
+        sendMessageToHandlerWithControllerReset(Collections.singletonList(m));
+        assertEquals(OFChannelHandler.ChannelState.WAIT_SWITCH_DRIVER_SUB_HANDSHAKE,
+                     handler.getStateForTesting());
+        assertFalse("Unexpected message captured", writeCapture.hasCaptured());
+        verify(sw);
+
+        //-------------------------------------------------
+        // Send a ECHO_REQUEST. This should be handled by the OFChannelHandler
+        // and *not* passed to switch sub-handshake
+        // TODO: should this be also passed to the switch handshake instead?
+        m = BasicFactory.getInstance().getMessage(OFType.ECHO_REQUEST);
+        m.setXid(0x042042);
+
+        reset(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        replay(sw);
+        sendMessageToHandlerWithControllerReset(Collections.singletonList(m));
+        assertEquals(OFChannelHandler.ChannelState.WAIT_SWITCH_DRIVER_SUB_HANDSHAKE,
+                     handler.getStateForTesting());
+        List<OFMessage> msgs = getMessagesFromCapture();
+        assertEquals(1, msgs.size());
+        assertEquals(OFType.ECHO_REPLY, msgs.get(0).getType());
+        assertEquals(0x42042, msgs.get(0).getXid());
+        verify(sw);
+
+
+        //-------------------------------------------------
+        //-------------------------------------------------
+        // Send a message to the handler, it should be passed to the
+        // switch's sub-handshake handling. After this message the
+        // sub-handshake will be complete
+        m = BasicFactory.getInstance().getMessage(OFType.FLOW_REMOVED);
+        resetToStrict(sw);
+        expect(sw.inputThrottled(anyObject(OFMessage.class)))
+                .andReturn(false).anyTimes();
+        sw.processDriverHandshakeMessage(m);
+        expectLastCall().once();
+        expect(sw.isDriverHandshakeComplete()).andReturn(true).once();
+        replay(sw);
+
+        verify(controller);
+        reset(controller);
+        controller.addSwitchChannelAndSendInitialRole(handler);
+        expectLastCall().once();
+        sendMessageToHandlerNoControllerReset(Collections.singletonList(m));
+        assertEquals(OFChannelHandler.ChannelState.WAIT_INITIAL_ROLE,
+                     handler.getStateForTesting());
+        assertFalse("Unexpected message captured", writeCapture.hasCaptured());
+        verify(sw);
+
+        //-------------------------------------------------
+
+        //-------------------------------------------------
     }
 
     @Test

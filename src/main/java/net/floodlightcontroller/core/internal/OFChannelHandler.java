@@ -701,10 +701,12 @@ class OFChannelHandler
                     throws IOException {
                 if (m.getType() == OFType.ECHO_REQUEST)
                     processOFEchoRequest(h, (OFEchoRequest)m);
-                // FIXME: other message to handle here?
-                h.sw.processDriverHandshakeMessage(m);
-                if (h.sw.isDriverHandshakeComplete()) {
-                    h.setState(WAIT_INITIAL_ROLE);
+                else {
+                    // FIXME: other message to handle here?
+                    h.sw.processDriverHandshakeMessage(m);
+                    if (h.sw.isDriverHandshakeComplete()) {
+                        h.gotoWaitInitialRoleState();
+                    }
                 }
             }
         },
