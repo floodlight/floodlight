@@ -46,7 +46,6 @@ public class DebugEventAppender<E> extends UnsynchronizedAppenderBase<E> {
     @Override
     protected void append(E eventObject) {
         if (!isStarted()) {
-            System.out.println("returning wihout doing anything");
             return;
         }
         if (evWarnError != null) {
