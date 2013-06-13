@@ -214,7 +214,6 @@ public class FlowReconcileManager
             enableValue.equalsIgnoreCase("false")) {
             flowReconcileEnabled = false;
         }
-        registerFlowReconcileManagerDebugCounters();
         flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);
