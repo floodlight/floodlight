@@ -30,6 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.ImmutablePort;
@@ -1486,6 +1489,35 @@ public class OFSwitchBaseTest {
         anytime.add(portBar2Del);
         assertChangeEvents(early, late, anytime, actualChanges);
         assertCollectionEqualsNoOrder(ports, sw.getPorts());
+    }
+
+    @Test
+    public void testSubHandshake() {
+        OFMessage m = BasicFactory.getInstance().getMessage(OFType.VENDOR);
+        // test execptions before handshake is started
+        try {
+            sw.processDriverHandshakeMessage(m);
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeNotStarted e) { /* expected */ }
+        try {
+            sw.isDriverHandshakeComplete();
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeNotStarted e) { /* expected */ }
+
+        // start the handshake -- it should immediately complete
+        sw.startDriverHandshake();
+        assertTrue("Handshake should be complete",
+                   sw.isDriverHandshakeComplete());
+
+        // test exceptions after handshake is completed
+        try {
+            sw.processDriverHandshakeMessage(m);
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeCompleted e) { /* expected */ }
+        try {
+            sw.startDriverHandshake();
+            fail("Expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeAlreadyStarted e) { /* expected */ }
     }
 
 }
