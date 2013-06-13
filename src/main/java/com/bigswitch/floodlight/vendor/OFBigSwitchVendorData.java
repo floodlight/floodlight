@@ -6,13 +6,13 @@ import org.openflow.protocol.vendor.OFVendorData;
 /**
  * Base class for vendor data corresponding to BigSwitch vendor extensions
  * BigSwitch vendor data always starts with a 4-byte integer data type value
- * 
+ *
  * @author Munish Mehta (munish.mehta@bigswitch.com)
  */
 public class OFBigSwitchVendorData implements OFVendorData {
-    
+
     public static final int BSN_VENDOR_ID = 0x005c16c7;
- 
+
     /**
      * The value of the integer data type at the beginning of the vendor data
      */
@@ -26,7 +26,7 @@ public class OFBigSwitchVendorData implements OFVendorData {
         super();
         this.dataType = dataType;
     }
-    
+
     /**
      * Get the data type value at the beginning of the vendor data
      * @return
@@ -72,6 +72,24 @@ public class OFBigSwitchVendorData implements OFVendorData {
     @Override
     public void writeTo(ChannelBuffer data) {
         data.writeInt(dataType);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + dataType;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        OFBigSwitchVendorData other = (OFBigSwitchVendorData) obj;
+        if (dataType != other.dataType) return false;
+        return true;
     }
 
 }
