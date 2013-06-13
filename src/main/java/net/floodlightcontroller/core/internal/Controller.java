@@ -126,7 +126,7 @@ import com.bigswitch.floodlight.vendor.OFVendorActions;
  * The main controller class.  Handles all setup and network listeners
  */
 public class Controller implements IFloodlightProviderService,
-            IStorageSourceListener {
+            IStorageSourceListener, IInfoProvider {
 
     protected static final Logger log = LoggerFactory.getLogger(Controller.class);
     protected static final INotificationManager notifier =
@@ -2361,6 +2361,8 @@ public class Controller implements IFloodlightProviderService,
             throw new FloodlightModuleException(e.getMessage());
         }
 
+        addInfoProvider("summary", this);
+
         registerControllerDebugEvents();
     }
 
@@ -2702,5 +2704,15 @@ public class Controller implements IFloodlightProviderService,
      */
     IStoreListener<Long> getStoreListener() {
         return this.switchManager;
+    }
+
+    @Override
+    public Map<String, Object> getInfo(String type) {
+        if (!"summary".equals(type)) return null;
+
+        Map<String, Object> info = new HashMap<String, Object>();
+
+        info.put("# Switches", this.getAllSwitchDpids().size());
+        return info;
     }
 }
