@@ -2265,7 +2265,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         for (Set<Link> links : switchLinks.values()) {
             for (Link link : links) {
                 LinkInfo linkInfo = this.getLinkInfo(link);
-                if (linkInfo.getLinkType() == LinkType.DIRECT_LINK) {
+                if (linkInfo != null &&
+                    linkInfo.getLinkType() == LinkType.DIRECT_LINK) {
                     numDirectLinks++;
                 }
             }
