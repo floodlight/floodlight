@@ -2261,10 +2261,16 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         Map<String, Object> info = new HashMap<String, Object>();
 
-        int num_links = 0;
-        for (Set<Link> links : switchLinks.values())
-            num_links += links.size();
-        info.put("# inter-switch links", num_links / 2);
+        int numDirectLinks = 0;
+        for (Set<Link> links : switchLinks.values()) {
+            for (Link link : links) {
+                LinkInfo linkInfo = this.getLinkInfo(link);
+                if (linkInfo.getLinkType() == LinkType.DIRECT_LINK) {
+                    numDirectLinks++;
+                }
+            }
+        }
+        info.put("# inter-switch links", numDirectLinks / 2);
         info.put("# quarantine ports", quarantineQueue.size());
         return info;
     }

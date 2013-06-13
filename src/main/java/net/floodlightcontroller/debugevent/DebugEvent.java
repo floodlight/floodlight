@@ -513,6 +513,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         IRestApiService restService =
                 context.getServiceImpl(IRestApiService.class);
         restService.addRestletRoutable(new DebugEventRoutable());
+        DebugEventAppender.setDebugEventServiceImpl(this);
     }
 
 }

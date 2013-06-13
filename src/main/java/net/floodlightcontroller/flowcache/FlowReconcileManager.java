@@ -61,7 +61,6 @@ public class FlowReconcileManager
     protected IThreadPoolService threadPool;
     protected ICounterStoreService counterStore;
     protected IDebugCounterService debugCounters;
-
     /**
      * The list of flow reconcile listeners that have registered to get
      * flow reconcile callbacks. Such callbacks are invoked, for example, when
@@ -92,10 +91,12 @@ public class FlowReconcileManager
     /** Config to enable or disable flowReconcile */
     protected static final String EnableConfigKey = "enable";
 
+    /*
+     * Debug Counters
+     */
     public static final String PACKAGE = FlowReconcileManager.class.getPackage().getName();
     private IDebugCounter ctrFlowReconcileRequest;
     private IDebugCounter ctrReconciledFlows;
-
     protected boolean flowReconcileEnabled;
 
     public AtomicInteger flowReconcileThreadRunCount;
@@ -213,6 +214,7 @@ public class FlowReconcileManager
             enableValue.equalsIgnoreCase("false")) {
             flowReconcileEnabled = false;
         }
+        registerFlowReconcileManagerDebugCounters();
         flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);
@@ -228,7 +230,7 @@ public class FlowReconcileManager
                 "All flow reconcile request received by this module",
                 CounterType.ALWAYS_COUNT);
             ctrReconciledFlows = debugCounters.registerCounter(PACKAGE, "reconciled-flows",
-                "All flows reconciled successfully",
+                "All flows reconciled successfully by this module",
                 CounterType.ALWAYS_COUNT);
         } catch (CounterException e) {
             throw new FloodlightModuleException(e.getMessage());
