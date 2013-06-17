@@ -1066,8 +1066,6 @@ public class Controller implements IFloodlightProviderService,
                 // The switch isn't known to the controller cluster. We
                 // need to send a switchAdded notification and clear all
                 // flows.
-                // TODO: if we switch was recently (seconds) connected we
-                // might decide to not wipe the flow table.
                 if (!swConnectCache.update(sw.getId()))
                     sw.clearAllFlowMods();
                 addUpdateToQueue(new SwitchUpdate(dpid,
@@ -1079,8 +1077,7 @@ public class Controller implements IFloodlightProviderService,
                 // FIXME: switch was in store. check if ports or anything else
                 // has changed and send update.
                 if (alwaysClearFlowsOnSwActivate) {
-                    if (!swConnectCache.update(sw.getId()))
-                        sw.clearAllFlowMods();
+                    sw.clearAllFlowMods();
                 }
                 if (sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true)) {
                     // We have a stored switch and the newly activated switch
@@ -2316,7 +2313,7 @@ public class Controller implements IFloodlightProviderService,
         this.switchManager = new SwitchManager(this.notifiedRole);
         this.counters = new Counters();
         this.swConnectCache =
-                new TimedCache<Long>(100, 10*1000 );  // 10 seconds interval
+                new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
      }
 
     /**
