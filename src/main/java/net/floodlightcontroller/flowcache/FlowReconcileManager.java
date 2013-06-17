@@ -207,13 +207,13 @@ public class FlowReconcileManager
 
         Map<String, String> configParam = context.getConfigParams(this);
         String enableValue = configParam.get(EnableConfigKey);
+        registerFlowReconcileManagerDebugCounters();
         // Set flowReconcile default to true
         flowReconcileEnabled = true;
         if (enableValue != null &&
             enableValue.equalsIgnoreCase("false")) {
             flowReconcileEnabled = false;
         }
-        registerFlowReconcileManagerDebugCounters();
         flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);

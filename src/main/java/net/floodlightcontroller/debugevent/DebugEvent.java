@@ -406,10 +406,13 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         if (eventId == null) return null;
         DebugEventHistory de = allEvents[eventId];
         if (de != null) {
+            int num = 1;
             List<Map<String,String>> ret = new ArrayList<Map<String,String>>();
             for (Event e : de.eventBuffer) {
-                ret.add(e.getFormattedEvent(de.einfo.eventClass,
-                                            de.einfo.moduleEventName));
+                Map<String, String> temp = e.getFormattedEvent(de.einfo.eventClass,
+                                                               de.einfo.moduleEventName);
+                temp.put("#", String.valueOf(num++));
+                ret.add(temp);
             }
             return new DebugEventInfo(de.einfo, ret);
         }
@@ -513,6 +516,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         IRestApiService restService =
                 context.getServiceImpl(IRestApiService.class);
         restService.addRestletRoutable(new DebugEventRoutable());
+        DebugEventAppender.setDebugEventServiceImpl(this);
     }
 
 }

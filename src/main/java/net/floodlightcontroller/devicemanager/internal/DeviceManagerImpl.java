@@ -899,6 +899,7 @@ IFlowReconcileListener, IInfoProvider {
         } catch (SyncException e) {
             throw new FloodlightModuleException("Error while setting up sync service", e);
         }
+        floodlightProvider.addInfoProvider("summary", this);
     }
 
     private void registerDeviceManagerDebugCounters() throws FloodlightModuleException {
