@@ -1103,11 +1103,16 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.role = role;
     }
 
+    @LogMessageDoc(level="INFO",
+            message="Switch {switch} flow cleared",
+            explanation="The switch flow table has been cleared, " +
+                    "this normally happens on switch connection")
     @Override
     public void clearAllFlowMods() {
         if (channel == null || !isConnected())
             return;
         // Delete all pre-existing flows
+        log.info("Clearing all flows on switch {}", this);
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
             .getMessage(OFType.FLOW_MOD))

@@ -95,6 +95,8 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.LoadMonitor;
 import net.floodlightcontroller.util.EventHistory.EvAction;
+import net.floodlightcontroller.util.TimedCache;
+
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
@@ -191,6 +193,7 @@ public class Controller implements IFloodlightProviderService,
 
     // Flag to always flush flow table on switch reconnect (HA or otherwise)
     private boolean alwaysClearFlowsOnSwActivate = false;
+    private TimedCache<Long> swConnectCache;
 
     // Storage table names
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
@@ -1063,9 +1066,8 @@ public class Controller implements IFloodlightProviderService,
                 // The switch isn't known to the controller cluster. We
                 // need to send a switchAdded notification and clear all
                 // flows.
-                // TODO: if we switch was recently (seconds) connected we
-                // might decide to not wipe the flow table.
-                sw.clearAllFlowMods();
+                if (!swConnectCache.update(sw.getId()))
+                    sw.clearAllFlowMods();
                 addUpdateToQueue(new SwitchUpdate(dpid,
                                                   SwitchUpdateType.ADDED));
                 addUpdateToQueue(new SwitchUpdate(dpid,
@@ -1074,8 +1076,9 @@ public class Controller implements IFloodlightProviderService,
             } else {
                 // FIXME: switch was in store. check if ports or anything else
                 // has changed and send update.
-                if (alwaysClearFlowsOnSwActivate)
+                if (alwaysClearFlowsOnSwActivate) {
                     sw.clearAllFlowMods();
+                }
                 if (sw.attributeEquals(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true)) {
                     // We have a stored switch and the newly activated switch
                     // supports roles. This indicates that the switch was
@@ -1208,6 +1211,7 @@ public class Controller implements IFloodlightProviderService,
                 return;
             }
             log.debug("removeSwitch {}", sw);
+            swConnectCache.update(sw.getId());
             this.activeSwitches.remove(sw.getId());
             removeSwitchFromStore(sw.getId());
             // We cancel all outstanding statistics replies if the switch transition
@@ -2308,6 +2312,8 @@ public class Controller implements IFloodlightProviderService,
                                            INITIAL_ROLE_CHANGE_DESCRIPTION);
         this.switchManager = new SwitchManager(this.notifiedRole);
         this.counters = new Counters();
+        this.swConnectCache =
+                new TimedCache<Long>(100, 5*1000 );  // 5 seconds interval
      }
 
     /**

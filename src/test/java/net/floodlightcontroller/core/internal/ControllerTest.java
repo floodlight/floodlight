@@ -1074,15 +1074,14 @@ public class ControllerTest extends FloodlightTestCase {
 
 
     /**
-     * Create and activate a new switch with the given dpid, features reply
-     * and description. If description and/or features reply are null we'll
-     * allocate the default one
+     * Create and activate a switch, either completely new or reconnected
      * The mocked switch instance will be returned. It wil be reset.
      */
-    public IOFSwitch doActivateNewSwitch(long dpid,
-                                         OFDescriptionStatistics desc,
-                                         OFFeaturesReply featuresReply)
-                                         throws Exception {
+    private IOFSwitch doActivateSwitchInt(long dpid,
+                                          OFDescriptionStatistics desc,
+                                          OFFeaturesReply featuresReply,
+                                          boolean clearFlows)
+                                          throws Exception {
         controller.setAlwaysClearFlowsOnSwActivate(true);
 
         IOFSwitch sw = createMock(IOFSwitch.class);
@@ -1094,8 +1093,10 @@ public class ControllerTest extends FloodlightTestCase {
             desc = createOFDescriptionStatistics();
         }
         setupSwitchForAddSwitch(sw, dpid, desc, featuresReply);
-        sw.clearAllFlowMods();
-        expectLastCall().once();
+        if (clearFlows) {
+            sw.clearAllFlowMods();
+            expectLastCall().once();
+        }
 
         replay(sw);
         controller.switchActivated(sw);
@@ -1109,6 +1110,30 @@ public class ControllerTest extends FloodlightTestCase {
         assertEquals(desc, storedSwitch.getDescription());
         reset(sw);
         return sw;
+    }
+
+    /**
+     * Create and activate a new switch with the given dpid, features reply
+     * and description. If description and/or features reply are null we'll
+     * allocate the default one
+     * The mocked switch instance will be returned. It wil be reset.
+     */
+    private IOFSwitch doActivateNewSwitch(long dpid,
+                                          OFDescriptionStatistics desc,
+                                          OFFeaturesReply featuresReply)
+                                          throws Exception {
+        return doActivateSwitchInt(dpid, desc, featuresReply, true);
+    }
+
+    /**
+     * Create and activate a switch that's just been disconnected.
+     * The mocked switch instance will be returned. It wil be reset.
+     */
+    private IOFSwitch doActivateOldSwitch(long dpid,
+                                          OFDescriptionStatistics desc,
+                                          OFFeaturesReply featuresReply)
+                                          throws Exception {
+        return doActivateSwitchInt(dpid, desc, featuresReply, false);
     }
 
 
@@ -1802,7 +1827,8 @@ public class ControllerTest extends FloodlightTestCase {
      * Disconnect a switch. normal program flow
      */
     @Test
-    public void testSwitchDisconnected() throws Exception {
+    private void doTestSwitchConnectReconnect(boolean reconnect)
+            throws Exception {
         IOFSwitch sw = doActivateNewSwitch(1L, null, null);
         expect(sw.getId()).andReturn(1L).anyTimes();
         expect(sw.getStringId()).andReturn(HexString.toHexString(1L)).anyTimes();
@@ -1820,6 +1846,23 @@ public class ControllerTest extends FloodlightTestCase {
 
         assertNull(controller.getSwitch(1L));
         assertNull(storeClient.getValue(1L));
+        if (reconnect) {
+            controller.removeOFSwitchListener(listener);
+            sw = doActivateOldSwitch(1L, null, null);
+        }
+    }
+
+    @Test
+    public void testSwitchDisconnected() throws Exception {
+        doTestSwitchConnectReconnect(false);
+    }
+
+    /**
+     * Disconnect a switch and reconnect, verify no clearAllFlowmods()
+     */
+    @Test
+    public void testSwitchReconnect() throws Exception {
+        doTestSwitchConnectReconnect(true);
     }
 
     /**
