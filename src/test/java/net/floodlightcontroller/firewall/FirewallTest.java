@@ -1,14 +1,14 @@
 /**
  *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by Amer Tahir
- *    
- *    Licensed under the Apache License, Version 2.0 (the "License"); you may 
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
- *    
- *         http://www.apache.org/licenses/LICENSE-2.0 
- *    
- *    Unless required by applicable law or agreed to in writing, software 
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
  *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  *    License for the specific language governing permissions and limitations
@@ -29,7 +29,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -55,7 +54,7 @@ import org.openflow.util.HexString;
 
 /**
  * Unit test for stateless firewall implemented as a Google Summer of Code project.
- * 
+ *
  * @author Amer Tahir
  */
 public class FirewallTest extends FloodlightTestCase {
@@ -71,6 +70,7 @@ public class FirewallTest extends FloodlightTestCase {
     private Firewall firewall;
     public static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
 
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -92,17 +92,13 @@ public class FirewallTest extends FloodlightTestCase {
         mockFloodlightProvider.setSwitches(switches);
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class, 
+        fmc.addService(IFloodlightProviderService.class,
                 mockFloodlightProvider);
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);
 
-        try {
-            restApi.init(fmc);
-        } catch (FloodlightModuleException e) {
-            e.printStackTrace();
-        }
+        restApi.init(fmc);
 
         firewall.init(fmc);
         firewall.startUp(fmc);
@@ -122,7 +118,7 @@ public class FirewallTest extends FloodlightTestCase {
                 .setSourcePort((short) 81)
                 .setDestinationPort((short) 80)
                 .setPayload(new Data(new byte[] {0x01}))));
-        
+
         // Build a broadcast ARP packet
         this.broadcastARPPacket = new Ethernet()
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
@@ -141,7 +137,7 @@ public class FirewallTest extends FloodlightTestCase {
                 .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
                 .setTargetProtocolAddress(IPv4.toIPv4Address("192.168.1.2"))
                 .setPayload(new Data(new byte[] {0x01})));
-        
+
         // Build a ARP packet
         this.ARPReplyPacket = new Ethernet()
         .setDestinationMACAddress("00:44:33:22:11:00")
@@ -160,7 +156,7 @@ public class FirewallTest extends FloodlightTestCase {
                 .setTargetHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
                 .setTargetProtocolAddress(IPv4.toIPv4Address("192.168.1.1"))
                 .setPayload(new Data(new byte[] {0x01})));
-        
+
         // Build a broadcast IP packet
         this.broadcastIPPacket = new Ethernet()
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
@@ -221,8 +217,8 @@ public class FirewallTest extends FloodlightTestCase {
 
         // Add the packet to the context store
         IFloodlightProviderService.bcStore.
-        put(cntx, 
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
+        put(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 (Ethernet)packet);
     }
 
@@ -241,7 +237,7 @@ public class FirewallTest extends FloodlightTestCase {
         // no rules to match, so firewall should deny
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
     }
-    
+
     @Test
     public void testReadRulesFromStorage() throws Exception {
         // add 2 rules first
@@ -440,10 +436,10 @@ public class FirewallTest extends FloodlightTestCase {
         // broadcast-ARP traffic should be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
-        
+
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
-        
+
         // simulate an ARP reply packet-in event
 
         this.setPacketIn(ARPReplyPacket);
@@ -454,12 +450,12 @@ public class FirewallTest extends FloodlightTestCase {
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
     }
-    
+
     @Test
     public void testIPBroadcast() throws Exception {
         // enable firewall first
         firewall.enableFirewall(true);
-        
+
         // set subnet mask for IP broadcast
         firewall.setSubnetMask("255.255.255.0");
 
