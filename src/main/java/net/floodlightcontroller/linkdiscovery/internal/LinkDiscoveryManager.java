@@ -20,11 +20,13 @@ package net.floodlightcontroller.linkdiscovery.internal;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1571,36 +1573,39 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //******************
     // Internal Helper Methods
     //******************
-
+    @LogMessageDoc(level="WARN",
+            message="Could not get list of interfaces of local machine to " +
+                     "encode in TLV: {detail-msg}",
+            explanation="Outgoing LLDP packets encode a unique hash to " +
+                     "identify the local machine. The list of network " +
+                     "interfaces is used as input and the controller failed " +
+                     "to query this list",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void setControllerTLV() {
         // Setting the controllerTLVValue based on current nano time,
         // controller's IP address, and the network interface object hash
         // the corresponding IP address.
 
         final int prime = 7867;
-        InetAddress localIPAddress = null;
-        NetworkInterface localInterface = null;
 
         byte[] controllerTLVValue = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 }; // 8
                                                                            // byte
                                                                            // value.
         ByteBuffer bb = ByteBuffer.allocate(10);
 
-        try {
-            localIPAddress = java.net.InetAddress.getLocalHost();
-            localInterface = NetworkInterface.getByInetAddress(localIPAddress);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         long result = System.nanoTime();
-        if (localIPAddress != null)
-                                   result = result
-                                            * prime
-                                            + IPv4.toIPv4Address(localIPAddress.getHostAddress());
-        if (localInterface != null)
-                                   result = result * prime
-                                            + localInterface.hashCode();
+        try{
+            // Use some data specific to the machine this controller is
+            // running on. In this case: the list of network interfaces
+            Enumeration<NetworkInterface> ifaces =
+                    NetworkInterface.getNetworkInterfaces();
+            if (ifaces != null) {
+                result = result * prime + ifaces.hashCode();
+            }
+        } catch (SocketException e) {
+            log.warn("Could not get list of interfaces of local machine to " +
+                     "encode in TLV: {}", e.toString());
+        }
         // set the first 4 bits to 0.
         result = result & (0x0fffffffffffffffL);
 
