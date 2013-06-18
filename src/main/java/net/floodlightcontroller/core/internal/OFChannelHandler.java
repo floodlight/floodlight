@@ -733,6 +733,12 @@ class OFChannelHandler
                     }
                 }
             }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                handlePortStatusMessage(h, m, false);
+            }
         },
 
         /**
