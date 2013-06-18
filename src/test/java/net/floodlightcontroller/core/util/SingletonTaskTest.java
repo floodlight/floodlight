@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -27,25 +27,26 @@ import org.junit.Test;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class SingletonTaskTest extends FloodlightTestCase {
-    
+
     public int ran = 0;
     public int finished = 0;
     public long time = 0;
-    
+
+    @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        
+
         ran = 0;
         finished = 0;
         time = 0;
     }
-    
+
     @Test
     public void testBasic() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
-        
+
         SingletonTask st1 = new SingletonTask(ses, new Runnable() {
             @Override
             public void run() {
@@ -55,13 +56,13 @@ public class SingletonTaskTest extends FloodlightTestCase {
         st1.reschedule(0, null);
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
-        
+
         assertEquals("Check that task ran", 1, ran);
     }
 
     @Test
     public void testDelay() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
 
         SingletonTask st1 = new SingletonTask(ses, new Runnable() {
@@ -74,10 +75,10 @@ public class SingletonTaskTest extends FloodlightTestCase {
         long start = System.nanoTime();
         st1.reschedule(10, TimeUnit.MILLISECONDS);
         assertFalse("Check that task hasn't run yet", ran > 0);
-        
+
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
-        
+
         assertEquals("Check that task ran", 1, ran);
         assertTrue("Check that time passed appropriately",
                    (time - start) >= TimeUnit.NANOSECONDS.convert(10, TimeUnit.MILLISECONDS));
@@ -85,7 +86,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
 
     @Test
     public void testReschedule() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
 
         final Object tc = this;
@@ -123,10 +124,10 @@ public class SingletonTaskTest extends FloodlightTestCase {
         st1.reschedule(20, TimeUnit.MILLISECONDS);
         Thread.sleep(5);
         assertFalse("Check that task hasn't run yet", ran > 0);
-        
+
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
-        
+
         assertEquals("Check that task ran only once", 1, ran);
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) >= TimeUnit.NANOSECONDS.convert(55, TimeUnit.MILLISECONDS));
@@ -134,7 +135,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
 
     @Test
     public void testConcurrentAddDelay() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
 
         final Object tc = this;
@@ -155,7 +156,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
                 }
             }
         });
-        
+
         long start = System.nanoTime();
         st1.reschedule(5, TimeUnit.MILLISECONDS);
         Thread.sleep(20);
@@ -173,19 +174,19 @@ public class SingletonTaskTest extends FloodlightTestCase {
         assertTrue("Check task should run state false", !st1.context.taskShouldRun);
         assertEquals("Check that task ran exactly twice", 2, ran);
         assertEquals("Check that task finished exactly twice", 2, finished);
-        
+
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) >= TimeUnit.NANOSECONDS.convert(130, TimeUnit.MILLISECONDS));
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) <= TimeUnit.NANOSECONDS.convert(160, TimeUnit.MILLISECONDS));
-        
+
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
     }
 
     @Test
     public void testConcurrentAddDelay2() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
 
         final Object tc = this;
@@ -225,12 +226,12 @@ public class SingletonTaskTest extends FloodlightTestCase {
         assertTrue("Check task should run state false", !st1.context.taskShouldRun);
         assertEquals("Check that task ran exactly twice", 2, ran);
         assertEquals("Check that task finished exactly twice", 2, finished);
-        
+
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) >= TimeUnit.NANOSECONDS.convert(100, TimeUnit.MILLISECONDS));
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) <= TimeUnit.NANOSECONDS.convert(125, TimeUnit.MILLISECONDS));
-        
+
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
     }
@@ -238,7 +239,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
 
     @Test
     public void testConcurrentAddNoDelay() throws InterruptedException {
-        ScheduledExecutorService ses = 
+        ScheduledExecutorService ses =
             Executors.newSingleThreadScheduledExecutor();
 
         final Object tc = this;
@@ -260,7 +261,7 @@ public class SingletonTaskTest extends FloodlightTestCase {
                 }
             }
         });
-        
+
         long start = System.nanoTime();
         st1.reschedule(0, null);
         Thread.sleep(20);
@@ -278,12 +279,12 @@ public class SingletonTaskTest extends FloodlightTestCase {
         assertTrue("Check task should run state false", !st1.context.taskShouldRun);
         assertEquals("Check that task ran exactly twice", 2, ran);
         assertEquals("Check that task finished exactly twice", 2, finished);
-        
+
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) >= TimeUnit.NANOSECONDS.convert(90, TimeUnit.MILLISECONDS));
         assertTrue("Check that time passed appropriately: " + (time - start),
                 (time - start) <= TimeUnit.NANOSECONDS.convert(130, TimeUnit.MILLISECONDS));
-        
+
         ses.shutdown();
         ses.awaitTermination(5, TimeUnit.SECONDS);
     }

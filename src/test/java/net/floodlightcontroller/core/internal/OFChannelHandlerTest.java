@@ -163,7 +163,6 @@ public class OFChannelHandlerTest {
         /* ensure no exception was thrown */
         if (exceptionEventCapture.hasCaptured()) {
             Throwable ex = exceptionEventCapture.getValue().getCause();
-            ex.printStackTrace();
             throw new AssertionError("Unexpected exception: " +
                        ex.getClass().getName() + "(" + ex + ")");
         }
