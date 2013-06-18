@@ -57,6 +57,13 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.IEventUpdater;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
@@ -92,6 +99,7 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
+import org.openflow.util.HexString;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
@@ -161,6 +169,12 @@ IFlowReconcileListener, IInfoProvider {
     public IDebugCounter cntConsolidateStoreRuns;
     public IDebugCounter cntConsolidateStoreDevicesRemoved;
     public IDebugCounter cntTransitionToMaster;
+
+    /**
+     * Debug Events
+     */
+    private IDebugEventService debugEvents;
+    private IEventUpdater<DeviceEvent> evDevice;
 
     private boolean isMaster = false;
 
@@ -659,6 +673,102 @@ IFlowReconcileListener, IInfoProvider {
         }
     }
 
+    // ***************
+    // IDeviceListener
+    // ***************
+    private class DeviceDebugEventLogger implements IDeviceListener {
+        @Override
+        public String getName() {
+            return "deviceDebugEventLogger";
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(String type, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(String type, String name) {
+            return false;
+        }
+
+        @Override
+        public void deviceAdded(IDevice device) {
+            generateDeviceEvent(device, "host-added");
+        }
+
+        @Override
+        public void deviceRemoved(IDevice device) {
+            generateDeviceEvent(device, "host-removed");
+        }
+
+        @Override
+        public void deviceMoved(IDevice device) {
+            generateDeviceEvent(device, "host-moved");
+        }
+
+        @Override
+        public void deviceIPV4AddrChanged(IDevice device) {
+            generateDeviceEvent(device, "host-ipv4-addr-changed");
+        }
+
+        @Override
+        public void deviceVlanChanged(IDevice device) {
+            generateDeviceEvent(device, "host-vlan-changed");
+        }
+
+        private StringBuilder getAttachmentPointsStringRepr(SwitchPort[] aps) {
+            StringBuilder apsStr = new StringBuilder();
+            if (aps == null || aps.length == 0) {
+                apsStr.append("--");
+            } else {
+                for (SwitchPort ap : aps) {
+                    apsStr.append(HexString.toHexString(ap.getSwitchDPID()));
+                    apsStr.append("/");
+                    apsStr.append(ap.getPort());
+                    apsStr.append(" ");
+                }
+            }
+            return apsStr;
+        }
+
+        private void generateDeviceEvent(IDevice device, String reason) {
+            StringBuilder ipv4AddressesStr = new StringBuilder();
+            Integer[] ipv4Addresses = device.getIPv4Addresses();
+            if (ipv4Addresses == null || ipv4Addresses.length == 0) {
+                ipv4AddressesStr.append("--");
+            } else {
+                for (int ipv4Addr : ipv4Addresses) {
+                    ipv4AddressesStr.append(IPv4.fromIPv4Address(ipv4Addr));
+                    ipv4AddressesStr.append(" ");
+                }
+            }
+
+            StringBuilder oldApsStr =
+                getAttachmentPointsStringRepr(device.getOldAP());
+            StringBuilder currentApsStr =
+                getAttachmentPointsStringRepr(device.getAttachmentPoints());
+
+            StringBuilder vlanIdsStr = new StringBuilder();
+            Short[] vlanIds = device.getVlanId();
+            if (vlanIds == null || vlanIds.length == 0) {
+                vlanIdsStr.append("--");
+            } else {
+                for (short vlanId : vlanIds) {
+                    vlanIdsStr.append(vlanId);
+                    vlanIdsStr.append(" ");
+                }
+            }
+
+            evDevice.updateEventNoFlush(
+                    new DeviceEvent(device.getMACAddress(),
+                                    ipv4AddressesStr.toString(),
+                                    oldApsStr.toString(),
+                                    currentApsStr.toString(),
+                                    vlanIdsStr.toString(), reason));
+        }
+    }
+
     // *************
     // IInfoProvider
     // *************
@@ -832,10 +942,27 @@ IFlowReconcileListener, IInfoProvider {
         this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
+        this.debugEvents = fmc.getServiceImpl(IDebugEventService.class);
         this.syncService = fmc.getServiceImpl(ISyncService.class);
         this.deviceSyncManager = new DeviceSyncManager();
         this.haListenerDelegate = new HAListenerDelegate();
         registerDeviceManagerDebugCounters();
+        registerDeviceManagerDebugEvents();
+        this.addListener(new DeviceDebugEventLogger());
+    }
+
+    private void registerDeviceManagerDebugEvents() throws FloodlightModuleException {
+        if (debugEvents == null) {
+            debugEvents = new NullDebugEvent();
+        }
+        try {
+            evDevice =
+                debugEvents.registerEvent(PACKAGE, "hostevent",
+                                          "Host added, removed, updated, or moved",
+                                          EventType.ALWAYS_LOG, DeviceEvent.class, 500);
+        } catch (MaxEventsRegistered e) {
+            throw new FloodlightModuleException("Max events registered", e);
+        }
     }
 
     @Override
@@ -2492,5 +2619,35 @@ IFlowReconcileListener, IInfoProvider {
      */
     IHAListener getHAListener() {
         return this.haListenerDelegate;
+    }
+
+    /**
+     * Device Event Class used to log Device related events
+     */
+    private class DeviceEvent {
+        @EventColumn(name = "MAC", description = EventFieldType.MAC)
+        private final long macAddress;
+        @EventColumn(name = "IPs", description = EventFieldType.STRING)
+        private final String ipv4Addresses;
+        @EventColumn(name = "Old Attachment Points", description = EventFieldType.STRING)
+        private final String oldAttachmentPoints;
+        @EventColumn(name = "Current Attachment Points", description = EventFieldType.STRING)
+        private final String currentAttachmentPoints;
+        @EventColumn(name = "VLAN IDs", description = EventFieldType.STRING)
+        private final String vlanIds;
+        @EventColumn(name = "Reason", description = EventFieldType.STRING)
+        private final String reason;
+
+        public DeviceEvent(long macAddress, String ipv4Addresses,
+                String oldAttachmentPoints, String currentAttachmentPoints,
+                String vlanIds, String reason) {
+            super();
+            this.macAddress = macAddress;
+            this.ipv4Addresses = ipv4Addresses;
+            this.oldAttachmentPoints = oldAttachmentPoints;
+            this.currentAttachmentPoints = currentAttachmentPoints;
+            this.vlanIds = vlanIds;
+            this.reason = reason;
+        }
     }
 }
