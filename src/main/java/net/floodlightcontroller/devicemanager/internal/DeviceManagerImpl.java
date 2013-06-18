@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -717,55 +718,22 @@ IFlowReconcileListener, IInfoProvider {
             generateDeviceEvent(device, "host-vlan-changed");
         }
 
-        private StringBuilder getAttachmentPointsStringRepr(SwitchPort[] aps) {
-            StringBuilder apsStr = new StringBuilder();
-            if (aps == null || aps.length == 0) {
-                apsStr.append("--");
-            } else {
-                for (SwitchPort ap : aps) {
-                    apsStr.append(HexString.toHexString(ap.getSwitchDPID()));
-                    apsStr.append("/");
-                    apsStr.append(ap.getPort());
-                    apsStr.append(" ");
-                }
-            }
-            return apsStr;
-        }
-
         private void generateDeviceEvent(IDevice device, String reason) {
-            StringBuilder ipv4AddressesStr = new StringBuilder();
-            Integer[] ipv4Addresses = device.getIPv4Addresses();
-            if (ipv4Addresses == null || ipv4Addresses.length == 0) {
-                ipv4AddressesStr.append("--");
-            } else {
-                for (int ipv4Addr : ipv4Addresses) {
-                    ipv4AddressesStr.append(IPv4.fromIPv4Address(ipv4Addr));
-                    ipv4AddressesStr.append(" ");
-                }
-            }
-
-            StringBuilder oldApsStr =
-                getAttachmentPointsStringRepr(device.getOldAP());
-            StringBuilder currentApsStr =
-                getAttachmentPointsStringRepr(device.getAttachmentPoints());
-
-            StringBuilder vlanIdsStr = new StringBuilder();
-            Short[] vlanIds = device.getVlanId();
-            if (vlanIds == null || vlanIds.length == 0) {
-                vlanIdsStr.append("--");
-            } else {
-                for (short vlanId : vlanIds) {
-                    vlanIdsStr.append(vlanId);
-                    vlanIdsStr.append(" ");
-                }
-            }
+            List<Integer> ipv4Addresses =
+                new ArrayList<Integer>(Arrays.asList(device.getIPv4Addresses()));
+            List<SwitchPort> oldAps =
+                new ArrayList<SwitchPort>(Arrays.asList(device.getOldAP()));
+            List<SwitchPort> currentAps =
+                    new ArrayList<SwitchPort>(Arrays.asList(device.getAttachmentPoints()));
+            List<Short> vlanIds =
+                    new ArrayList<Short>(Arrays.asList(device.getVlanId()));
 
             evDevice.updateEventNoFlush(
                     new DeviceEvent(device.getMACAddress(),
-                                    ipv4AddressesStr.toString(),
-                                    oldApsStr.toString(),
-                                    currentApsStr.toString(),
-                                    vlanIdsStr.toString(), reason));
+                                    ipv4Addresses,
+                                    oldAps,
+                                    currentAps,
+                                    vlanIds, reason));
         }
     }
 
@@ -2627,20 +2595,23 @@ IFlowReconcileListener, IInfoProvider {
     private class DeviceEvent {
         @EventColumn(name = "MAC", description = EventFieldType.MAC)
         private final long macAddress;
-        @EventColumn(name = "IPs", description = EventFieldType.STRING)
-        private final String ipv4Addresses;
-        @EventColumn(name = "Old Attachment Points", description = EventFieldType.STRING)
-        private final String oldAttachmentPoints;
-        @EventColumn(name = "Current Attachment Points", description = EventFieldType.STRING)
-        private final String currentAttachmentPoints;
-        @EventColumn(name = "VLAN IDs", description = EventFieldType.STRING)
-        private final String vlanIds;
+        @EventColumn(name = "IPs", description = EventFieldType.LIST_IPV4)
+        private final List<Integer> ipv4Addresses;
+        @EventColumn(name = "Old Attachment Points",
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
+        private final List<SwitchPort> oldAttachmentPoints;
+        @EventColumn(name = "Current Attachment Points",
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
+        private final List<SwitchPort> currentAttachmentPoints;
+        @EventColumn(name = "VLAN IDs", description = EventFieldType.LIST_VLAN)
+        private final List<Short> vlanIds;
         @EventColumn(name = "Reason", description = EventFieldType.STRING)
         private final String reason;
 
-        public DeviceEvent(long macAddress, String ipv4Addresses,
-                String oldAttachmentPoints, String currentAttachmentPoints,
-                String vlanIds, String reason) {
+        public DeviceEvent(long macAddress, List<Integer> ipv4Addresses,
+                List<SwitchPort> oldAttachmentPoints,
+                List<SwitchPort> currentAttachmentPoints,
+                List<Short> vlanIds, String reason) {
             super();
             this.macAddress = macAddress;
             this.ipv4Addresses = ipv4Addresses;

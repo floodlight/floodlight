@@ -3,10 +3,12 @@ package net.floodlightcontroller.debugevent;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.IPv4;
 
 import org.openflow.util.HexString;
@@ -135,6 +137,48 @@ public class Event {
                     retMap.put(ec.name(), HexString.toHexString((Long) obj, 6));
                 } else if (ec.description() == EventFieldType.IPv4) {
                     retMap.put(ec.name(), IPv4.fromIPv4Address((Integer) obj));
+                } else if (ec.description() == EventFieldType.LIST_IPV4) {
+                    @SuppressWarnings("unchecked")
+                    List<Integer> ipv4Addresses = (List<Integer>)obj;
+                    StringBuilder ipv4AddressesStr = new StringBuilder();
+                    if (ipv4Addresses.size() == 0) {
+                        ipv4AddressesStr.append("--");
+                    } else {
+                        for (Integer ipv4Addr : ipv4Addresses) {
+                            ipv4AddressesStr.append(IPv4.fromIPv4Address(ipv4Addr.intValue()));
+                            ipv4AddressesStr.append(" ");
+                        }
+                    }
+                    retMap.put(ec.name(), ipv4AddressesStr.toString());
+                } else if (ec.description() ==
+                           EventFieldType.LIST_ATTACHMENT_POINT) {
+                    @SuppressWarnings("unchecked")
+                    List<SwitchPort> aps = (List<SwitchPort>)obj;
+                    StringBuilder apsStr = new StringBuilder();
+                    if (aps.size() == 0) {
+                        apsStr.append("--");
+                    } else {
+                        for (SwitchPort ap : aps) {
+                            apsStr.append(HexString.toHexString(ap.getSwitchDPID()));
+                            apsStr.append("/");
+                            apsStr.append(ap.getPort());
+                            apsStr.append(" ");
+                        }
+                    }
+                    retMap.put(ec.name(), apsStr.toString());
+                } else if (ec.description() == EventFieldType.LIST_VLAN) {
+                    @SuppressWarnings("unchecked")
+                    List<Short> vlanIds = (List<Short>)obj;
+                    StringBuilder vlanIdsStr = new StringBuilder();
+                    if (vlanIds.size() == 0) {
+                        vlanIdsStr.append("--");
+                    } else {
+                        for (Short vlanId : vlanIds) {
+                            vlanIdsStr.append(vlanId.toString());
+                            vlanIdsStr.append(" ");
+                        }
+                    }
+                    retMap.put(ec.name(), vlanIdsStr.toString());
                 } else {
                     retMap.put(ec.name(), obj.toString());
                 }
