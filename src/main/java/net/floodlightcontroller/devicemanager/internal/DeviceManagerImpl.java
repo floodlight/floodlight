@@ -100,7 +100,6 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFType;
-import org.openflow.util.HexString;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
