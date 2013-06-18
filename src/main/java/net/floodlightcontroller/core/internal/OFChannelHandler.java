@@ -430,6 +430,12 @@ class OFChannelHandler
                 // need to implement since its abstract but it will never
                 // be called
             }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                unhandledMessageReceived(h, m);
+            }
         },
 
         /**
@@ -459,6 +465,12 @@ class OFChannelHandler
             @Override
             void processOFError(OFChannelHandler h, OFError m) {
                 logErrorDisconnect(h, m);
+            }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                unhandledMessageReceived(h, m);
             }
         },
 
@@ -496,6 +508,12 @@ class OFChannelHandler
             @Override
             void processOFError(OFChannelHandler h, OFError m) {
                 logErrorDisconnect(h, m);
+            }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                unhandledMessageReceived(h, m);
             }
         },
 
@@ -687,6 +705,12 @@ class OFChannelHandler
                 // TODO: we could re-set the features reply
                 illegalMessageReceived(h, m);
             }
+
+            @Override
+            void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                    throws IOException {
+                h.pendingPortStatusMsg.add(m);
+            }
         },
 
         WAIT_SWITCH_DRIVER_SUB_HANDSHAKE(false) {
@@ -755,6 +779,7 @@ class OFChannelHandler
             void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
                     throws IOException {
                 handlePortStatusMessage(h, m, false);
+
             }
         },
 
@@ -1240,10 +1265,9 @@ class OFChannelHandler
             unhandledMessageReceived(h, m);
         }
 
-        void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
-                throws IOException {
-            unhandledMessageReceived(h, m);
-        }
+        // bi default implementation. Every state needs to handle it.
+        abstract void processOFPortStatus(OFChannelHandler h, OFPortStatus m)
+                throws IOException;
 
         void processOFQueueGetConfigReply(OFChannelHandler h,
                                           OFQueueGetConfigReply m)

@@ -25,20 +25,16 @@ public class DebugEventTest extends FloodlightTestCase {
 
 
     @Test
-    public void testRegisterAndUpdateEvent() {
+    public void testRegisterAndUpdateEvent() throws Exception {
         assertEquals(0, debugEvent.currentEvents.size());
         IEventUpdater<SwitchyEvent> event1 = null;
         IEventUpdater<PacketyEvent> event2 = null;
-        try {
-            event1 = debugEvent.registerEvent("dbgevtest", "switchevent",
-                                               "switchtest", EventType.ALWAYS_LOG,
-                                               SwitchyEvent.class, 100);
-            event2 = debugEvent.registerEvent("dbgevtest", "pktinevent",
-                                               "pktintest", EventType.ALWAYS_LOG,
-                                               PacketyEvent.class, 100);
-        } catch (MaxEventsRegistered e) {
-            e.printStackTrace();
-        }
+        event1 = debugEvent.registerEvent("dbgevtest", "switchevent",
+                                           "switchtest", EventType.ALWAYS_LOG,
+                                           SwitchyEvent.class, 100);
+        event2 = debugEvent.registerEvent("dbgevtest", "pktinevent",
+                                           "pktintest", EventType.ALWAYS_LOG,
+                                           PacketyEvent.class, 100);
 
         assertEquals(2, debugEvent.currentEvents.size());
         assertTrue(null != debugEvent.moduleEvents.get("dbgevtest").
