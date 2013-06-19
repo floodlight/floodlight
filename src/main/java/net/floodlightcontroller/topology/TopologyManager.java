@@ -1230,8 +1230,8 @@ public class TopologyManager implements
 
         TopologyEventInfo topologyInfo =
                 new TopologyEventInfo(nt.getClusters().size(), 0, 0, 0);
-            evTopology.updateEventWithFlush(new TopologyEvent(reason,
-                                                              topologyInfo));
+        evTopology.updateEventWithFlush(new TopologyEvent(reason,
+                                                          topologyInfo));
         return true;
     }
 
