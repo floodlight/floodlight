@@ -9,7 +9,6 @@ import net.floodlightcontroller.debugevent.IDebugEventService.DebugEventInfo;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
-import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugEventTest extends FloodlightTestCase {
