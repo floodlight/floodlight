@@ -2602,7 +2602,7 @@ IFlowReconcileListener, IInfoProvider {
         @EventColumn(name = "Current Attachment Points",
                      description = EventFieldType.LIST_ATTACHMENT_POINT)
         private final List<SwitchPort> currentAttachmentPoints;
-        @EventColumn(name = "VLAN IDs", description = EventFieldType.LIST_VLAN)
+        @EventColumn(name = "VLAN IDs", description = EventFieldType.LIST_OBJECT)
         private final List<Short> vlanIds;
         @EventColumn(name = "Reason", description = EventFieldType.STRING)
         private final String reason;
