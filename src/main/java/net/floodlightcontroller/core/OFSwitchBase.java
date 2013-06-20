@@ -95,7 +95,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
     protected IDebugCounterService debugCounters;
-    protected Date connectedSince;
+    // FIXME: Don't use java.util.Date
+    protected volatile Date connectedSince;
 
     /* Switch features from initial featuresReply */
     protected int capabilities;
@@ -170,7 +171,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public OFSwitchBase() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
-        this.connectedSince = new Date();
+        this.connectedSince = null;
         this.transactionIdSource = new AtomicInteger();
         this.connected = false;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
@@ -1094,6 +1095,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @JsonIgnore
     public void setConnected(boolean connected) {
         // No lock needed since we use volatile
+        if (connected && this.connectedSince == null)
+            this.connectedSince = new Date();
+        else if (!connected)
+            this.connectedSince = null;
         this.connected = connected;
     }
 
