@@ -25,7 +25,8 @@ public interface IDebugEventService extends IFloodlightService {
      * Describes the type of field obtained from reflection
      */
     enum EventFieldType {
-        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE
+        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE, LIST_IPV4,
+        LIST_ATTACHMENT_POINT, LIST_OBJECT, SREF_LIST_OBJECT, SREF_OBJECT,
     }
 
     /**
@@ -89,7 +90,7 @@ public interface IDebugEventService extends IFloodlightService {
      *                         be explicitly enabled using other methods in this API
      * @param eventClass       A user defined class that annotates the fields
      *                         with @EventColumn. This class specifies the
-     *                         fields/columns of this event.
+     *                         fields/columns for this event.
      * @param bufferCapacity   Number of events to store for this event in a circular
      *                         buffer. Older events will be discarded once the
      *                         buffer is full.

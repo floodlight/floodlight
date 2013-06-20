@@ -62,16 +62,24 @@ public class ControllerSwitchesResource extends ServerResource {
 
         public Map<String,String> getDescription() {
             Map<String,String> rv = new HashMap<String, String>();
-            rv.put("manufacturer",
-                   sw.getDescriptionStatistics().getManufacturerDescription());
-            rv.put("hardware",
-                   sw.getDescriptionStatistics().getHardwareDescription());
-            rv.put("software",
-                   sw.getDescriptionStatistics().getSoftwareDescription());
-            rv.put("serialNum",
-                   sw.getDescriptionStatistics().getSerialNumber());
-            rv.put("datapath",
-                   sw.getDescriptionStatistics().getDatapathDescription());
+            if (sw.getDescriptionStatistics() == null) {
+                rv.put("manufacturer", "");
+                rv.put("hardware", "");
+                rv.put("software", "");
+                rv.put("serialNum", "");
+                rv.put("datapath", "");
+            } else {
+                rv.put("manufacturer",
+                       sw.getDescriptionStatistics().getManufacturerDescription());
+                rv.put("hardware",
+                       sw.getDescriptionStatistics().getHardwareDescription());
+                rv.put("software",
+                       sw.getDescriptionStatistics().getSoftwareDescription());
+                rv.put("serialNum",
+                       sw.getDescriptionStatistics().getSerialNumber());
+                rv.put("datapath",
+                       sw.getDescriptionStatistics().getDatapathDescription());
+            }
             return rv;
         }
 
@@ -92,6 +100,8 @@ public class ControllerSwitchesResource extends ServerResource {
         }
 
         public String getHarole() {
+            if (sw.getHARole() == null)
+                return "null";
             return sw.getHARole().toString();
         }
 

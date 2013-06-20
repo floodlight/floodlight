@@ -51,6 +51,13 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IEventUpdater;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -164,6 +171,65 @@ public class TopologyManager implements
     protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
     protected IDebugCounter ctrIncoming;
 
+    /**
+     * Debug Events
+     */
+    protected IDebugEventService debugEvents;
+
+    /*
+     * Topology Event Updater
+     */
+    protected IEventUpdater<TopologyEvent> evTopology;
+
+    /**
+     * Topology Information exposed for a Topology related event - used inside
+     * the BigTopologyEvent class
+     */
+    protected class TopologyEventInfo {
+        private final int numOpenflowClusters;
+        private final int numExternalClusters;
+        private final int numExternalPorts;
+        private final int numTunnelPorts;
+        public TopologyEventInfo(int numOpenflowClusters,
+                int numExternalClusters, int numExternalPorts,
+                int numTunnelPorts) {
+            super();
+            this.numOpenflowClusters = numOpenflowClusters;
+            this.numExternalClusters = numExternalClusters;
+            this.numExternalPorts = numExternalPorts;
+            this.numTunnelPorts = numTunnelPorts;
+        }
+        @Override
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("# Openflow Clusters: ");
+            builder.append(numOpenflowClusters);
+            builder.append(", # External Clusters: ");
+            builder.append(numExternalClusters);
+            builder.append(", # External Ports: ");
+            builder.append(numExternalPorts);
+            builder.append(", # Tunnel Ports: ");
+            builder.append(numTunnelPorts);
+            return builder.toString();
+        }
+    }
+
+    /**
+     * Topology Event class to track topology related events
+     */
+    protected class TopologyEvent {
+        @EventColumn(name = "Reason", description = EventFieldType.STRING)
+        private final String reason;
+        @EventColumn(name = "Topology Summary")
+        private final TopologyEventInfo topologyInfo;
+        public TopologyEvent(String reason,
+                TopologyEventInfo topologyInfo) {
+            super();
+            this.reason = reason;
+            this.topologyInfo = topologyInfo;
+        }
+    }
+
    //  Getter/Setter methods
     /**
      * Get the time interval for the period topology updates, if any.
@@ -221,7 +287,7 @@ public class TopologyManager implements
         dtLinksUpdated = false;
         tunnelPortsUpdated = false;
         List<LDUpdate> appliedUpdates = applyUpdates();
-        newInstanceFlag = createNewInstance();
+        newInstanceFlag = createNewInstance("link-discovery-updates");
         lastUpdateTime = new Date();
         informListeners(appliedUpdates);
         return newInstanceFlag;
@@ -762,6 +828,7 @@ public class TopologyManager implements
                 context.getServiceImpl(IFloodlightProviderService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         debugCounters = context.getServiceImpl(IDebugCounterService.class);
+        debugEvents = context.getServiceImpl(IDebugEventService.class);
 
         switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -772,6 +839,22 @@ public class TopologyManager implements
         ldUpdates = new LinkedBlockingQueue<LDUpdate>();
         haListener = new HAListenerDelegate();
         registerTopologyDebugCounters();
+        registerTopologyDebugEvents();
+    }
+
+    protected void registerTopologyDebugEvents() throws FloodlightModuleException {
+        if (debugEvents == null) {
+            debugEvents = new NullDebugEvent();
+        }
+        try {
+            evTopology =
+                debugEvents.registerEvent(PACKAGE, "topologyevent",
+                                          "Topology Computation",
+                                          EventType.ALWAYS_LOG,
+                                          TopologyEvent.class, 100);
+        } catch (MaxEventsRegistered e) {
+            throw new FloodlightModuleException("Max events registered", e);
+        }
     }
 
     @Override
@@ -1084,13 +1167,17 @@ public class TopologyManager implements
         tunnelPortsUpdated = true;
     }
 
+    public boolean createNewInstance() {
+        return createNewInstance("internal");
+    }
+
     /**
      * This function computes a new topology instance.
      * It ignores links connected to all broadcast domain ports
      * and tunnel ports. The method returns if a new instance of
      * topology was created or not.
      */
-    protected boolean createNewInstance() {
+    protected boolean createNewInstance(String reason) {
         Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
 
         if (!linksUpdated) return false;
@@ -1140,6 +1227,11 @@ public class TopologyManager implements
         // If needed, we may compute them differently.
         currentInstance = nt;
         currentInstanceWithoutTunnels = nt;
+
+        TopologyEventInfo topologyInfo =
+                new TopologyEventInfo(nt.getClusters().size(), 0, 0, 0);
+        evTopology.updateEventWithFlush(new TopologyEvent(reason,
+                                                          topologyInfo));
         return true;
     }
 
@@ -1388,7 +1480,7 @@ public class TopologyManager implements
         linksUpdated = true;
         dtLinksUpdated = true;
         tunnelPortsUpdated = true;
-        createNewInstance();
+        createNewInstance("startup");
         lastUpdateTime = new Date();
     }
 
