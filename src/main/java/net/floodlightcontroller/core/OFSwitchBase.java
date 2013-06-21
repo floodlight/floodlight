@@ -51,7 +51,6 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.OrderedCollection;
@@ -1020,14 +1019,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     new Object[] { this.stringId, activeCount, maxEntry});
             int percentFull = activeCount * 100 / maxEntry;
             if (flowTableFull && percentFull < 90) {
-                log.info("Switch {} flow table is capacity is back to normal",
+                log.info("Switch {} flow table capacity is back to normal",
                         toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
-                        EvAction.SWITCH_FLOW_TABLE_NORMAL, "< 90% full");
+                        "SWITCH_FLOW_TABLE_NORMAL < 90% full", false);
             } else if (percentFull >= 98) {
                 log.info("Switch {} flow table is almost full", toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
-                        EvAction.SWITCH_FLOW_TABLE_ALMOST_FULL, ">= 98% full");
+                        "SWITCH_FLOW_TABLE_ALMOST_FULL >= 98% full", false);
             }
         }
     }
@@ -1377,7 +1376,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     /**
      * We rely on the fact that packet in processing is single threaded
-     * per switch, so no locking is necessary.
+     * per packet-in, so no locking is necessary.
      */
     private void disablePacketInThrottle() {
         ofMatchCache = null;
@@ -1387,8 +1386,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         portBlockedCache = null;
         packetInThrottleEnabled = false;
         floodlightProvider.addSwitchEvent(this.datapathId,
-                EvAction.SWITCH_OVERLOAD_THROTTLE_DISABLED,
-                "Pktin rate " + currentRate + "/s");
+                "SWITCH_OVERLOAD_THROTTLE_DISABLED ==>" +
+                "Pktin rate " + currentRate + "/s", false);
         log.info("Packet in rate is {}, disable throttling on {}",
                 currentRate, this);
     }
@@ -1402,8 +1401,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         packetInThrottleEnabled = true;
         messageCountUniqueOFMatch = 0;
         floodlightProvider.addSwitchEvent(this.datapathId,
-                EvAction.SWITCH_OVERLOAD_THROTTLE_ENABLED,
-                "Pktin rate " + currentRate + "/s");
+                "SWITCH_OVERLOAD_THROTTLE_ENABLED ==>" +
+                "Pktin rate " + currentRate + "/s", false);
         log.info("Packet in rate is {}, enable throttling on {}",
                 currentRate, this);
     }
@@ -1472,8 +1471,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     swPort, srcMac.toLong(), (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 0));
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
-                    "OFPort " + port + " mac " + srcMac);
+                    "SWITCH_PORT_BLOCKED_TEMPORARILY " +
+                    "OFPort " + port + " mac " + srcMac, false);
             log.info("Excessive packet in from {} on {}, block host for 5 sec",
                     srcMac.toString(), swPort);
         }
@@ -1500,8 +1499,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     swPort, -1L, (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 1));
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
-                    "OFPort " + port);
+                    "SWITCH_PORT_BLOCKED_TEMPORARILY " +
+                    "OFPort " + port, false);
             log.info("Excessive packet in from {}, block port for 5 sec",
                     swPort);
         }
@@ -1518,8 +1517,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public void setTableFull(boolean isFull) {
         if (isFull && !flowTableFull) {
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_FLOW_TABLE_FULL,
-                    "Table full error from switch");
+                    "SWITCH_FLOW_TABLE_FULL " +
+                    "Table full error from switch", false);
             log.warn("Switch {} flow table is full", stringId);
         }
         flowTableFull = isFull;

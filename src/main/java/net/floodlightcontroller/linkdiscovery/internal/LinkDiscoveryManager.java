@@ -94,8 +94,6 @@ import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.util.EventHistory;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -1339,12 +1337,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                     log.info("Inter-switch link detected: {}", lt);
                     evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-                         lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-added"));
+                         lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "direct-link-added::rcvd LLDP"));
                 }
-                evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(),
-                               linkType,
-                               EvAction.LINK_ADDED, "LLDP Recvd");
                 notifier.postNotification("Link added: " + lt.toString());
             } else {
                 linkChanged = updateLink(lt, oldInfo, newInfo);
@@ -1354,14 +1348,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                         log.info("Inter-switch link updated: {}", lt);
                         evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-                            lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-updated"));
+                            lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
+                            "link-port-state-updated::rcvd LLDP"));
                     }
-                    // Add to event history
-                    evHistTopoLink(lt.getSrc(), lt.getDst(),
-                                   lt.getSrcPort(), lt.getDstPort(),
-                                   linkType,
-                                   EvAction.LINK_PORT_STATE_UPDATED,
-                                   "LLDP Recvd");
                     notifier.postNotification("Link updated: " + lt.toString());
                 }
             }
@@ -1461,15 +1450,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                                 linkType,
                                                 UpdateOperation.LINK_REMOVED));
 
-                // Update Event History
-                evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(),
-                               ILinkDiscovery.LinkType.INVALID_LINK,
-                               EvAction.LINK_DELETED, reason);
-                // link type shows up as invalid now -- thus not checking if
+                // FIXME: link type shows up as invalid now -- thus not checking if
                 // link type is a direct link
                 evDirectLink.updateEventWithFlush(new DirectLinkEvent(lt.getSrc(),
-                      lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-removed"));
+                      lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
+                      "link-deleted::" + reason));
                 // remove link from storage.
                 removeLinkFromStorage(lt);
 
@@ -1997,8 +1982,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
-        this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
                                 new ConcurrentHashMap<MACRange,Boolean>());
         this.haListener = new HAListenerDelegate();
@@ -2199,60 +2182,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
     }
 
-    // ****************************************************
-    // Topology Manager's Event History members and methods
-    // ****************************************************
-
-    /**
-     *  Topology Manager event history
-     */
-    public EventHistory<EventHistoryTopologyLink> evHistTopologyLink;
-    public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
-    public EventHistoryTopologyLink evTopoLink;
-    public EventHistoryTopologyCluster evTopoCluster;
-
-    private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
-                                short dstPort,
-                                ILinkDiscovery.LinkType linkType,
-                                EvAction actn, String reason) {
-        if (evTopoLink == null) {
-            evTopoLink = new EventHistoryTopologyLink();
-        }
-        evTopoLink.srcSwDpid = srcDpid;
-        evTopoLink.dstSwDpid = dstDpid;
-        evTopoLink.srcSwport = srcPort & 0xffff;
-        evTopoLink.dstSwport = dstPort & 0xffff;
-        evTopoLink.reason = reason;
-        switch (linkType) {
-            case DIRECT_LINK:
-                evTopoLink.linkType = "DIRECT_LINK";
-                break;
-            case MULTIHOP_LINK:
-                evTopoLink.linkType = "MULTIHOP_LINK";
-                break;
-            case TUNNEL:
-                evTopoLink.linkType = "TUNNEL";
-                break;
-            case INVALID_LINK:
-            default:
-                evTopoLink.linkType = "Unknown";
-                break;
-        }
-        evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
-    }
-
-    public void evHistTopoCluster(long dpid, long clusterIdOld,
-                                  long clusterIdNew, EvAction action,
-                                  String reason) {
-        if (evTopoCluster == null) {
-            evTopoCluster = new EventHistoryTopologyCluster();
-        }
-        evTopoCluster.dpid = dpid;
-        evTopoCluster.clusterIdOld = clusterIdOld;
-        evTopoCluster.clusterIdNew = clusterIdNew;
-        evTopoCluster.reason = reason;
-        evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
-    }
 
     //*********************
     //  IInfoProvider
