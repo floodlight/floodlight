@@ -186,28 +186,46 @@ public class TopologyManager implements
      * the BigTopologyEvent class
      */
     protected class TopologyEventInfo {
-        private final int numOpenflowClusters;
-        private final int numExternalClusters;
-        private final int numExternalPorts;
+        private final int numOpenflowClustersWithTunnels;
+        private final int numOpenflowClustersWithoutTunnels;
+        private final Map<Long, List<NodePortTuple>> externalPortsMap;
         private final int numTunnelPorts;
-        public TopologyEventInfo(int numOpenflowClusters,
-                int numExternalClusters, int numExternalPorts,
-                int numTunnelPorts) {
+        public TopologyEventInfo(int numOpenflowClustersWithTunnels,
+                                 int numOpenflowClustersWithoutTunnels,
+                                 Map<Long, List<NodePortTuple>> externalPortsMap,
+                                 int numTunnelPorts) {
             super();
-            this.numOpenflowClusters = numOpenflowClusters;
-            this.numExternalClusters = numExternalClusters;
-            this.numExternalPorts = numExternalPorts;
+            this.numOpenflowClustersWithTunnels = numOpenflowClustersWithTunnels;
+            this.numOpenflowClustersWithoutTunnels = numOpenflowClustersWithoutTunnels;
+            this.externalPortsMap = externalPortsMap;
             this.numTunnelPorts = numTunnelPorts;
         }
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder();
-            builder.append("# Openflow Clusters: ");
-            builder.append(numOpenflowClusters);
+            builder.append("# Openflow Clusters:");
+            builder.append(" { With Tunnels: ");
+            builder.append(numOpenflowClustersWithTunnels);
+            builder.append(" Without Tunnels: ");
+            builder.append(numOpenflowClustersWithoutTunnels);
+            builder.append(" }");
             builder.append(", # External Clusters: ");
+            int numExternalClusters = externalPortsMap.size();
             builder.append(numExternalClusters);
-            builder.append(", # External Ports: ");
-            builder.append(numExternalPorts);
+            if (numExternalClusters > 0) {
+                builder.append(" { ");
+                int count = 0;
+                for (Long extCluster : externalPortsMap.keySet()) {
+                    builder.append("#" + extCluster + ":Ext Ports: ");
+                    builder.append(externalPortsMap.get(extCluster).size());
+                    if (++count < numExternalClusters) {
+                        builder.append(", ");
+                    } else {
+                        builder.append(" ");
+                    }
+                }
+                builder.append("}");
+            }
             builder.append(", # Tunnel Ports: ");
             builder.append(numTunnelPorts);
             return builder.toString();
@@ -1229,7 +1247,9 @@ public class TopologyManager implements
         currentInstanceWithoutTunnels = nt;
 
         TopologyEventInfo topologyInfo =
-                new TopologyEventInfo(nt.getClusters().size(), 0, 0, 0);
+                new TopologyEventInfo(0, nt.getClusters().size(),
+                                      new HashMap<Long, List<NodePortTuple>>(),
+                                      0);
         evTopology.updateEventWithFlush(new TopologyEvent(reason,
                                                           topologyInfo));
         return true;
