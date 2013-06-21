@@ -1832,7 +1832,6 @@ public class ControllerTest extends FloodlightTestCase {
         IOFSwitch sw = doActivateNewSwitch(1L, null, null);
         expect(sw.getId()).andReturn(1L).anyTimes();
         expect(sw.getStringId()).andReturn(HexString.toHexString(1L)).anyTimes();
-        expect(sw.getInetAddress()).andReturn(null).once();
         sw.cancelAllStatisticsReplies();
         expectLastCall().once();
         IOFSwitchListener listener = createMock(IOFSwitchListener.class);

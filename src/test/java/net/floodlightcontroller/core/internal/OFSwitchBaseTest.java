@@ -43,7 +43,6 @@ import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -241,8 +240,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInStartThrottle() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         replay(floodlightProvider);
 
         int high = 500;
@@ -266,8 +264,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInStopThrottle() throws InterruptedException {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 
@@ -297,8 +294,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInBlockHost() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 
@@ -345,8 +341,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInBlockPort() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 

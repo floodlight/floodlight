@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Arrays;
@@ -84,7 +83,6 @@ import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistere
 import net.floodlightcontroller.notification.INotificationManager;
 import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IResultSet;
@@ -92,9 +90,7 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.util.EventHistory;
 import net.floodlightcontroller.util.LoadMonitor;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 import net.floodlightcontroller.util.TimedCache;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -910,14 +906,11 @@ public class Controller implements IFloodlightProviderService,
         private Role role;
         private final ConcurrentHashMap<Long,IOFSwitch> activeSwitches;
         private final ConcurrentHashMap<Long,IOFSwitch> syncedSwitches;
-        private final EventHistory<EventHistorySwitch> evHistSwitch;
 
         public SwitchManager(Role role) {
             this.role = role;
             this.activeSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
             this.syncedSwitches = new ConcurrentHashMap<Long, IOFSwitch>();
-            this.evHistSwitch = new EventHistory<EventHistorySwitch>(
-                    EventHistory.EV_HISTORY_DEFAULT_SIZE);
        }
 
         @Override
@@ -1018,7 +1011,6 @@ public class Controller implements IFloodlightProviderService,
             counters.switchActivated.updateCounterWithFlush();
             IOFSwitch oldSw = this.activeSwitches.put(dpid, sw);
             // Update event history
-            addSwitchEvent(dpid, EvAction.SWITCH_CONNECTED, "None");
             evSwitch.updateEventWithFlush(new SwitchEvent(dpid, "connected"));
 
             if (oldSw == sw)  {
@@ -1197,7 +1189,6 @@ public class Controller implements IFloodlightProviderService,
             // TODO: this is asymmetric with respect to connect event
             //       in switchActivated(). Should we have events on the
             //       slave as well?
-            addSwitchEvent(dpid, EvAction.SWITCH_DISCONNECTED, "None");
             evSwitch.updateEventWithFlush(new SwitchEvent(dpid, "disconnected"));
             counters.switchDisconnected.updateCounterWithFlush();
             IOFSwitch oldSw = this.activeSwitches.get(dpid);
@@ -1424,28 +1415,11 @@ public class Controller implements IFloodlightProviderService,
             return this.syncedSwitches.get(dpid);
         }
 
-        public void addSwitchEvent(long dpid, EvAction actn, String reason) {
-            EventHistorySwitch evSwitch = new EventHistorySwitch();
-            evSwitch.dpid = dpid;
-
-            // NOTE: when this method is called due to switch removed event,
-            // floodlightProvier may not have the switch object, thus may be
-            // null.
-            IOFSwitch sw = getSwitch(dpid);
-
-            if ( sw != null &&
-                    (SocketAddress.class.isInstance(sw.getInetAddress()))) {
-                evSwitch.ipv4Addr = IPv4.toIPv4Address(((InetSocketAddress)
-                        (sw.getInetAddress())).getAddress()
-                        .getAddress());
-                evSwitch.l4Port = ((InetSocketAddress)
-                        (sw.getInetAddress())).getPort();
-            } else {
-                evSwitch.ipv4Addr = 0;
-                evSwitch.l4Port = 0;
-            }
-            evSwitch.reason = reason;
-            evSwitch = evHistSwitch.put(evSwitch, actn);
+        public void addSwitchEvent(long dpid, String reason, boolean flushNow) {
+            if (flushNow)
+                evSwitch.updateEventWithFlush(new SwitchEvent(dpid, reason));
+            else
+                evSwitch.updateEventNoFlush(new SwitchEvent(dpid, reason));
         }
 
     }
@@ -2637,13 +2611,8 @@ public class Controller implements IFloodlightProviderService,
      *  Switch Added/Deleted Events
      */
     @Override
-    public void addSwitchEvent(long switchDPID, EvAction actn, String reason) {
-        switchManager.addSwitchEvent(switchDPID, actn, reason);
-    }
-
-    @Override
-    public EventHistory<EventHistorySwitch> getSwitchEventHistory() {
-        return switchManager.evHistSwitch;
+    public void addSwitchEvent(long switchDPID, String reason, boolean flushNow) {
+        switchManager.addSwitchEvent(switchDPID, reason, flushNow);
     }
 
     @LogMessageDoc(level="WARN",

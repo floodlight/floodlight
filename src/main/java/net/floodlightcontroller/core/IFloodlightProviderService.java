@@ -23,11 +23,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 
-import net.floodlightcontroller.core.internal.EventHistorySwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.util.EventHistory;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
@@ -59,7 +56,7 @@ public interface IFloodlightProviderService extends
         MASTER(OFRoleVendorData.NX_ROLE_MASTER),
         SLAVE(OFRoleVendorData.NX_ROLE_SLAVE);
 
-        private int nxRole;
+        private final int nxRole;
 
         private Role(int nxRole) {
             this.nxRole = nxRole;
@@ -308,18 +305,12 @@ public interface IFloodlightProviderService extends
    public void addOFSwitchDriver(String desc, IOFSwitchDriver driver);
 
    /**
-    * Record a switch event in in-memory event history
+    * Record a switch event in in-memory debug-event
     * @param switchDPID
-    * @param actn   Action associated with this event
     * @param reason Reason for this event
+    * @param flushNow see debug-event flushing in IDebugEventService
     */
-   public void addSwitchEvent(long switchDPID, EvAction actn, String reason);
-
-   /**
-    * Retrieve switch event history
-    * @return The EventHistory object for switch events
-    */
-   public EventHistory<EventHistorySwitch> getSwitchEventHistory();
+   public void addSwitchEvent(long switchDPID, String reason, boolean flushNow);
 
    /**
     * Get the set of port prefixes that will define an UPLINK port.
