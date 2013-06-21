@@ -119,7 +119,7 @@ public class Event {
         returnMap = new HashMap<String, String>();
         returnMap.put("Timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
                                             .format(timestamp));
-        returnMap.put("threadId", String.valueOf(threadId));
+        returnMap.put("Thread Id", String.valueOf(threadId));
         customFormat(eventClass, eventData, returnMap);
         return returnMap;
     }
