@@ -1333,10 +1333,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
         ctrSwitchPktin.updateCounterNoFlush();
         // Compute current packet in rate
         messageCount++;
-        if (messageCount % 100 == 0) {
+        if (messageCount % 1000 == 0) {
             long now = System.currentTimeMillis();
             if (now != lastMessageTime) {
-                currentRate = (int) (100000 / (now - lastMessageTime));
+                currentRate = (int) (1000000 / (now - lastMessageTime));
                 lastMessageTime = now;
             } else {
                 currentRate = Integer.MAX_VALUE;
@@ -1439,7 +1439,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
                                    PACKAGE, stringId + "/write/drops",
                                    "Switch write throttle drop count",
                                    CounterType.ALWAYS_COUNT);
-}
+    }
 
     /**
      * Check if we have sampled this mac in the last second.

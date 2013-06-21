@@ -247,8 +247,8 @@ public class OFSwitchBaseTest {
 
         int high = 500;
         sw.setThresholds(high, 10, 50, 200);
-        // We measure time lapse every 100 packets
-        for (int i = 0; i < 100; i++) {
+        // We measure time lapse every 1000 packets
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
@@ -273,14 +273,14 @@ public class OFSwitchBaseTest {
 
         sw.setThresholds(100, 10, 50, 200);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
         assertTrue(sw.inputThrottleEnabled());
 
         sw.setThresholds(Integer.MAX_VALUE, 100000, 50, 200);
-        for (int i = 0; i < 99; i++) {
+        for (int i = 0; i < 999; i++) {
             assertTrue(sw.inputThrottled(pi));
             assertTrue(sw.inputThrottleEnabled());
         }
@@ -306,7 +306,7 @@ public class OFSwitchBaseTest {
         int perMac = 50;
         sw.setThresholds(high, 10, perMac, 200);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
@@ -354,7 +354,7 @@ public class OFSwitchBaseTest {
         int perPort = 200;
         sw.setThresholds(high, 10, 50, perPort);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
