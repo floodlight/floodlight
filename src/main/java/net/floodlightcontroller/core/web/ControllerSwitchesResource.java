@@ -92,6 +92,8 @@ public class ControllerSwitchesResource extends ServerResource {
         }
 
         public long getConnectedSince() {
+            if (sw.getConnectedSince() == null)
+                return 0;
             return sw.getConnectedSince().getTime();
         }
 
