@@ -2124,7 +2124,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
             ctrIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
                 "All incoming packets seen by this module", CounterType.ALWAYS_COUNT);
             ctrLldpEol  = debugCounters.registerCounter(PACKAGE, "lldp-eol",
-                "End of Life for LLDP packets", CounterType.ALWAYS_COUNT);
+                "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
             ctrLinkLocalDrops = debugCounters.registerCounter(PACKAGE, "linklocal-drops",
                 "All link local packets dropped by this module",
                 CounterType.ALWAYS_COUNT);
