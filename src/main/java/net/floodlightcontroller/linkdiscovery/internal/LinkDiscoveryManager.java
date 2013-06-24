@@ -2127,13 +2127,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
             ctrLinkLocalDrops = debugCounters.registerCounter(PACKAGE, "linklocal-drops",
                 "All link local packets dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT);
             ctrIgnoreSrcMacDrops = debugCounters.registerCounter(PACKAGE, "ignore-srcmac-drops",
                 "All packets whose srcmac is configured to be dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT);
             ctrQuarantineDrops = debugCounters.registerCounter(PACKAGE, "quarantine-drops",
                 "All packets arriving on quarantined ports dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
         } catch (CounterException e) {
             throw new FloodlightModuleException(e.getMessage());
         }

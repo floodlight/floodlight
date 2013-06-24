@@ -64,6 +64,13 @@ public class OFActionTunnelDstIP extends OFActionBigSwitchVendor {
 
     @Override
     public String toString() {
-        return super.toString() + "; dstIP=" + IPv4.fromIPv4Address(dstIPAddr);
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append("BSN-SET-TUNNEL-DST-IP");
+        builder.append(", IP: ");
+        builder.append(IPv4.fromIPv4Address(dstIPAddr));
+        builder.append("]");
+        return builder.toString();
     }
 }

@@ -12,6 +12,7 @@ import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.IPv4;
 
+import org.openflow.protocol.OFFlowMod;
 import org.openflow.util.HexString;
 
 public class Event {
@@ -141,6 +142,25 @@ public class Event {
                         break;
                     case IPv4:
                         retMap.put(ec.name(), IPv4.fromIPv4Address((Integer) obj));
+                        break;
+                    case FLOW_MOD_FLAGS:
+                        int flags = (Integer)obj;
+                        StringBuilder builder = new StringBuilder();
+                        if (flags == 0) {
+                            builder.append("None");
+                        }
+                        else {
+                            if ((flags & OFFlowMod.OFPFF_SEND_FLOW_REM) != 0) {
+                                builder.append("SEND_FLOW_REM ");
+                            }
+                            if ((flags & OFFlowMod.OFPFF_CHECK_OVERLAP) != 0) {
+                                builder.append("CHECK_OVERLAP ");
+                            }
+                            if ((flags & OFFlowMod.OFPFF_EMERG) != 0) {
+                                builder.append("EMERG ");
+                            }
+                        }
+                        retMap.put(ec.name(), builder.toString());
                         break;
                     case LIST_IPV4:
                         @SuppressWarnings("unchecked")
