@@ -27,6 +27,7 @@ public interface IDebugEventService extends IFloodlightService {
     enum EventFieldType {
         DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE, LIST_IPV4,
         LIST_ATTACHMENT_POINT, LIST_OBJECT, SREF_LIST_OBJECT, SREF_OBJECT,
+        FLOW_MOD_FLAGS
     }
 
     /**
