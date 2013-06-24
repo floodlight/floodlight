@@ -1438,11 +1438,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
         ctrSwitchPktinDrops = debugCounters.registerCounter(
                                    PACKAGE, stringId + "/pktin/drops",
                                    "Packet in throttle drop count",
-                                   CounterType.ALWAYS_COUNT);
+                                   CounterType.ALWAYS_COUNT,
+                                   IDebugCounterService.CTR_MDATA_WARN);
         ctrSwitchWriteDrops = debugCounters.registerCounter(
                                    PACKAGE, stringId + "/write/drops",
                                    "Switch write throttle drop count",
-                                   CounterType.ALWAYS_COUNT);
+                                   CounterType.ALWAYS_COUNT,
+                                   IDebugCounterService.CTR_MDATA_WARN);
     }
 
     /**

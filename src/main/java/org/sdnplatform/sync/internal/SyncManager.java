@@ -535,11 +535,13 @@ public class SyncManager extends AbstractSyncManager {
                                     CounterType.ALWAYS_COUNT);
                 counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
                                     "Number of errors sent from remote clients",
-                                    CounterType.ALWAYS_COUNT);
+                                    CounterType.ALWAYS_COUNT,
+                                    IDebugCounterService.CTR_MDATA_ERROR);
                 counterErrorProcessing = debugCounter.registerCounter(PACKAGE,
                                     "error-processing",
                                     "Number of errors processing messages from remote clients",
-                                    CounterType.ALWAYS_COUNT);
+                                    CounterType.ALWAYS_COUNT,
+                                    IDebugCounterService.CTR_MDATA_ERROR);
             } catch (CounterException e) {
                 throw new FloodlightModuleException(e.getMessage());
             }
