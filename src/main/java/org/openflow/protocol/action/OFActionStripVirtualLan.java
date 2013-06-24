@@ -50,4 +50,11 @@ public class OFActionStripVirtualLan extends OFAction {
         // PAD
         data.writeInt(0);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        return builder.toString();
+    }
 }

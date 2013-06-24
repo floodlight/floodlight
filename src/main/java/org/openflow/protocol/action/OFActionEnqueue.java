@@ -20,7 +20,6 @@
  */
 package org.openflow.protocol.action;
 
-
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
@@ -120,5 +119,18 @@ public class OFActionEnqueue extends OFAction {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append("Port: ");
+        builder.append(port);
+        builder.append(", Queue Id: ");
+        builder.append(queueId);
+        builder.append("]");
+        return builder.toString();
     }
 }

@@ -95,4 +95,20 @@ public class OFActionMirror extends OFActionBigSwitchVendor {
         data.writeByte(this.pad1);
         data.writeByte(this.pad2);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append("BSN-MIRROR");
+        builder.append(", Dest Port: ");
+        builder.append(destPort);
+        builder.append(", Vlan: ");
+        builder.append(vlanTag);
+        builder.append(", Copy Stage: ");
+        builder.append(copyStage);
+        builder.append("]");
+        return builder.toString();
+    }
 }

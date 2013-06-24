@@ -21,6 +21,8 @@
 package org.openflow.protocol.action;
 
 
+import net.floodlightcontroller.packet.IPv4;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
@@ -82,5 +84,15 @@ public abstract class OFActionNetworkLayerAddress extends OFAction {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append(IPv4.fromIPv4Address(networkAddress));
+        builder.append("]");
+        return builder.toString();
     }
 }
