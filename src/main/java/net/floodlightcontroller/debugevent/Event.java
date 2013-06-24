@@ -20,7 +20,6 @@ public class Event {
     Object eventData;
     private String returnString;
     private Map<String, String> returnMap;
-
     public Event(long timestamp, long threadId, Object eventData) {
         super();
         this.timestamp = timestamp;
@@ -210,12 +209,18 @@ public class Event {
                     case SREF_OBJECT:
                         @SuppressWarnings("unchecked")
                         SoftReference<Object> srefObj = (SoftReference<Object>)obj;
-                        Object o = srefObj.get();
-                        if (o != null) {
-                            retMap.put(ec.name(), o.toString());
+                        if (srefObj == null) {
+                            retMap.put(ec.name(), "--");
                         } else {
-                            retMap.put(ec.name(), "-- reference not available --");
+                            Object o = srefObj.get();
+                            if (o != null) {
+                                retMap.put(ec.name(), o.toString());
+                            } else {
+                                retMap.put(ec.name(),
+                                           "-- reference not available --");
+                            }
                         }
+                        break;
                     case STRING:
                     case OBJECT:
                     case PRIMITIVE:

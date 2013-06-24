@@ -67,4 +67,19 @@ public class FRQueryBvsAcl extends FlowReconcileQuery {
         if (! direction.equals(other.direction)) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(evType.toString());
+        builder.append("[");
+        builder.append("BVS Name: ");
+        builder.append(bvsName);
+        builder.append(", BVS Interface Name: ");
+        builder.append(bvsInterfaceName);
+        builder.append(", ACL Direction: ");
+        builder.append(direction);
+        builder.append("]");
+        return builder.toString();
+    }
 }

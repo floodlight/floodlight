@@ -56,4 +56,14 @@ public class FRQueryVRSRuleChange extends FlowReconcileQuery {
         if (! bvsNames.equals(other.bvsNames)) return false;
         return true;
     }
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(evType.toString());
+        builder.append("[");
+        builder.append("BVS Names: ");
+        builder.append(bvsNames);
+        builder.append("]");
+        return builder.toString();
+    }
 }

@@ -16,6 +16,8 @@
 
 package net.floodlightcontroller.flowcache;
 
+import org.openflow.util.HexString;
+
 /**
  * The Class for FlowReconcileQuery for link down event.
  */
@@ -59,5 +61,18 @@ public class FlowReconcileQueryPortDown extends FlowReconcileQuery {
         if (swId != other.swId) return false;
         if (port != other.port) return false;
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(evType.toString());
+        builder.append("[");
+        builder.append("Switch: ");
+        builder.append(HexString.toHexString(swId));
+        builder.append(", Port: ");
+        builder.append(port);
+        builder.append("]");
+        return builder.toString();
     }
 }

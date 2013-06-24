@@ -56,4 +56,15 @@ public class FRQueryBvsMatchTag extends FlowReconcileQuery {
         if (! tag.equals(other.tag)) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(evType.toString());
+        builder.append("[");
+        builder.append("Tags: ");
+        builder.append(tag);
+        builder.append("]");
+        return builder.toString();
+    }
 }

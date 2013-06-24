@@ -20,6 +20,7 @@ import java.util.Arrays;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.util.MACAddress;
 
 /**
  * The Class for FlowReconcileQuery for device move event.
@@ -66,5 +67,18 @@ public class FlowReconcileQueryDeviceMove extends FlowReconcileQuery {
             if (other.deviceMoved != null) return false;
         } else if (!deviceMoved.equals(other.deviceMoved)) return false;
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(evType.toString());
+        builder.append("[");
+        builder.append("Device: ");
+        builder.append(MACAddress.valueOf(deviceMoved.getMACAddress()).toString());
+        builder.append(", Old Attachment Points:");
+        builder.append(Arrays.toString(oldAp));
+        builder.append("]");
+        return builder.toString();
     }
 }
