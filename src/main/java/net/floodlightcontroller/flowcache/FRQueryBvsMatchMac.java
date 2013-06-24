@@ -61,7 +61,6 @@ public class FRQueryBvsMatchMac extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("MAC: ");
         builder.append(MACAddress.valueOf(mac).toString());

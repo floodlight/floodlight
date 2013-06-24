@@ -71,7 +71,6 @@ public class FRQueryBvsAcl extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("BVS Name: ");
         builder.append(bvsName);

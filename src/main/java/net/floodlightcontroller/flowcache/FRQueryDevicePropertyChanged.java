@@ -60,7 +60,6 @@ public class FRQueryDevicePropertyChanged extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("Device: ");
         builder.append(MACAddress.valueOf(device.getMACAddress()));

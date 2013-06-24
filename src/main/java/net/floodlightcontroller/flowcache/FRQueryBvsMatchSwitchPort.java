@@ -66,7 +66,6 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("Switch: ");
         builder.append(HexString.toHexString(swId));

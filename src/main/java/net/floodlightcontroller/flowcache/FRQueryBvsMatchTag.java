@@ -60,7 +60,6 @@ public class FRQueryBvsMatchTag extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("Tags: ");
         builder.append(tag);

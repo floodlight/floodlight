@@ -72,7 +72,6 @@ public class FlowReconcileQueryDeviceMove extends FlowReconcileQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(evType.toString());
         builder.append("[");
         builder.append("Device: ");
         builder.append(MACAddress.valueOf(deviceMoved.getMACAddress()).toString());
