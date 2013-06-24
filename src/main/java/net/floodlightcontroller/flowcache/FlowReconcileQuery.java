@@ -97,7 +97,7 @@ public class FlowReconcileQuery {
                                                   this.toString(),
                                                   EventType.ALWAYS_LOG,
                                                   FlowReconcileQueryDebugEvent.class,
-                                                  100);
+                                                  500);
             } catch (MaxEventsRegistered e) {
                 throw e;
             }
