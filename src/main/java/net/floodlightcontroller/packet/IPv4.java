@@ -362,7 +362,8 @@ public class IPv4 extends BasePacket {
         this.headerLength = (byte) (this.version & 0xf);
         this.version = (byte) ((this.version >> 4) & 0xf);
         if (this.version != 4) {
-            throw new RuntimeException("Invalid version for IPv4 packet: " +
+            throw new PacketParsingException(
+                    "Invalid version for IPv4 packet: " +
                     this.version);
         }
         this.diffServ = bb.get();

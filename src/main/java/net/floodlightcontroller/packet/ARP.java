@@ -233,18 +233,14 @@ public class ARP extends BasePacket {
         this.hardwareAddressLength = bb.get();
         this.protocolAddressLength = bb.get();
         if (this.hardwareAddressLength != 6) {
-            if (log.isTraceEnabled()) {
-                log.trace("Incorrect ARP hardware address length: {}",
-                        hardwareAddressLength);
-            }
-            throw new PacketParsingException();
+            String msg = "Incorrect ARP hardware address length: " +
+                        hardwareAddressLength;
+            throw new PacketParsingException(msg);
         }
         if (this.protocolAddressLength != 4) {
-            if (log.isTraceEnabled()) {
-                log.trace("Incorrect ARP protocol address length: {}",
-                        protocolAddressLength);
-            }
-            throw new PacketParsingException();
+            String msg = "Incorrect ARP protocol address length: " +
+                        protocolAddressLength;
+            throw new PacketParsingException(msg);
         }
         this.opCode = bb.getShort();
         this.senderHardwareAddress = new byte[0xff & this.hardwareAddressLength];

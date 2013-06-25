@@ -102,13 +102,13 @@ public class BSN extends BasePacket {
 
         int magic = bb.getInt();
         if (magic != BSN_MAGIC) {
-            throw new RuntimeException("Invalid BSN magic " + magic);
+            throw new PacketParsingException("Invalid BSN magic " + magic);
         }
 
         this.type = bb.getShort();
         this.version = bb.getShort();
         if (this.version != BSN_VERSION_CURRENT) {
-            throw new RuntimeException(
+            throw new PacketParsingException(
                     "Invalid BSN packet version " + this.version + ", should be "
                     + BSN_VERSION_CURRENT);
         }

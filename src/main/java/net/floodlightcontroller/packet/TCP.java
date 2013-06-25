@@ -268,7 +268,7 @@ public class TCP extends BasePacket {
         this.flags = bb.getShort();
         this.dataOffset = (byte) ((this.flags >> 12) & 0xf);
         if (this.dataOffset < 5) {
-            throw new RuntimeException("Invalid tcp header length < 20");
+            throw new PacketParsingException("Invalid tcp header length < 20");
         }
         this.flags = (short) (this.flags & 0x1ff);
         this.windowSize = bb.getShort();
