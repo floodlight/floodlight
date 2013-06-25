@@ -57,47 +57,68 @@ public class FlowReconcileQuery {
     }
     public static enum ReconcileQueryEvType {
         /* Interface rule of a bvs was modified */
-        BVS_INTERFACE_RULE_CHANGED(EventPriority.LOW),
-        BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT(EventPriority.LOW),
-        BVS_INTERFACE_RULE_CHANGED_MATCH_MAC(EventPriority.LOW),
-        BVS_INTERFACE_RULE_CHANGED_MATCH_VLAN(EventPriority.LOW),
-        BVS_INTERFACE_RULE_CHANGED_MATCH_IPSUBNET(EventPriority.LOW),
-        BVS_INTERFACE_RULE_CHANGED_MATCH_TAG(EventPriority.LOW),
+        BVS_INTERFACE_RULE_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by BVS Interface Rule Changes"),
+        BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT(EventPriority.LOW,
+            "Flow Reconcile Events triggered by Switch-Port based BVS Interface Rule Changes"),
+        BVS_INTERFACE_RULE_CHANGED_MATCH_MAC(EventPriority.LOW,
+            "Flow Reconcile Events triggered by MAC based BVS Interface Rule Changes"),
+        BVS_INTERFACE_RULE_CHANGED_MATCH_VLAN(EventPriority.LOW,
+            "Flow Reconcile Events triggered by VLAN based BVS Interface Rule Changes"),
+        BVS_INTERFACE_RULE_CHANGED_MATCH_IPSUBNET(EventPriority.LOW,
+            "Flow Reconcile Events triggered by IP Subnet based BVS Interface Rule Changes"),
+        BVS_INTERFACE_RULE_CHANGED_MATCH_TAG(EventPriority.LOW,
+            "Flow Reconcile Events triggered by Tag based BVS Interface Rule Changes"),
         /* Some bvs configuration was changed */
-        BVS_PRIORITY_CHANGED(EventPriority.LOW),
+        BVS_PRIORITY_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by BVS Priority Changes"),
         /* ACL configuration was changed */
-        ACL_CONFIG_CHANGED(EventPriority.LOW),
+        ACL_CONFIG_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by ACL Config Changes"),
         /* VRS routing rule was changed */
-        VRS_ROUTING_RULE_CHANGED(EventPriority.LOW),
+        VRS_ROUTING_RULE_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by VRS Routing Rule Changes"),
         /* VRS static ARP table was changed*/
-        VRS_STATIC_ARP_CHANGED(EventPriority.LOW),
+        VRS_STATIC_ARP_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by VRS Static ARP Config Changes"),
         /* device had moved to a different port in the network */
-        DEVICE_MOVED(EventPriority.HIGH),
+        DEVICE_MOVED(EventPriority.HIGH,
+            "Flow Reconcile Events triggered by Host moves"),
         /* device's property had changed, such as tag assignment */
-        DEVICE_PROPERTY_CHANGED(EventPriority.LOW),
+        DEVICE_PROPERTY_CHANGED(EventPriority.LOW,
+            "Flow Reconcile Events triggered by Host Property Changes"),
         /* Link down */
-        LINK_DOWN(EventPriority.MEDIUM);
+        LINK_DOWN(EventPriority.MEDIUM,
+            "Flow Reconcile Events triggered by Link Down Events");
 
+        private String description;
         private EventPriority priority;
         private IEventUpdater<FlowReconcileQueryDebugEvent>
                 evReconcileQueryDebugEvent;
 
-        private ReconcileQueryEvType(EventPriority priority) {
+        private ReconcileQueryEvType(EventPriority priority,
+                                     String description) {
             this.priority = priority;
+            this.description = description;
         }
         public EventPriority getPriority() {
              return this.priority;
+        }
+        public String getDescription() {
+            return description;
         }
         public void registerDebugEvent(String packageName,
                                        IDebugEventService debugEvents)
                                        throws MaxEventsRegistered {
             try {
                 evReconcileQueryDebugEvent =
-                        debugEvents.registerEvent(packageName, this.toString(),
-                                                  this.toString(),
-                                                  EventType.ALWAYS_LOG,
-                                                  FlowReconcileQueryDebugEvent.class,
-                                                  500);
+                    debugEvents.registerEvent(
+                        packageName,
+                        this.toString().toLowerCase().replace("_", "-"),
+                        this.getDescription(),
+                        EventType.ALWAYS_LOG,
+                        FlowReconcileQueryDebugEvent.class,
+                        500);
             } catch (MaxEventsRegistered e) {
                 throw e;
             }
