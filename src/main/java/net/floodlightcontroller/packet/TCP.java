@@ -258,7 +258,8 @@ public class TCP extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         this.sourcePort = bb.getShort();
         this.destinationPort = bb.getShort();
