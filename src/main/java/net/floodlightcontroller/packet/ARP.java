@@ -225,12 +225,27 @@ public class ARP extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         this.hardwareType = bb.getShort();
         this.protocolType = bb.getShort();
         this.hardwareAddressLength = bb.get();
         this.protocolAddressLength = bb.get();
+        if (this.hardwareAddressLength != 6) {
+            if (log.isTraceEnabled()) {
+                log.trace("Incorrect ARP hardware address length: {}",
+                        hardwareAddressLength);
+            }
+            throw new PacketParsingException();
+        }
+        if (this.protocolAddressLength != 4) {
+            if (log.isTraceEnabled()) {
+                log.trace("Incorrect ARP protocol address length: {}",
+                        protocolAddressLength);
+            }
+            throw new PacketParsingException();
+        }
         this.opCode = bb.getShort();
         this.senderHardwareAddress = new byte[0xff & this.hardwareAddressLength];
         bb.get(this.senderHardwareAddress, 0, this.senderHardwareAddress.length);
