@@ -1,6 +1,6 @@
 /**
-*    Copyright 2012, Big Switch Networks, Inc. 
-* 
+*    Copyright 2012, Big Switch Networks, Inc.
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -15,7 +15,7 @@
 **/
 
 /**
- * 
+ *
  */
 package net.floodlightcontroller.packet;
 
@@ -28,66 +28,66 @@ import java.util.Map;
  *
  */
 public class BSN extends BasePacket {
-	public static final int BSN_MAGIC = 0x20000604;
-	public static final short BSN_VERSION_CURRENT = 0x0;
-	public static final short BSN_TYPE_PROBE = 0x1;
-	public static final short BSN_TYPE_BDDP  = 0x2;
-	public static Map<Short, Class<? extends IPacket>> typeClassMap;
-	
+    public static final int BSN_MAGIC = 0x20000604;
+    public static final short BSN_VERSION_CURRENT = 0x0;
+    public static final short BSN_TYPE_PROBE = 0x1;
+    public static final short BSN_TYPE_BDDP  = 0x2;
+    public static Map<Short, Class<? extends IPacket>> typeClassMap;
+
     static {
         typeClassMap = new HashMap<Short, Class<? extends IPacket>>();
         typeClassMap.put(BSN_TYPE_PROBE, BSNPROBE.class);
         typeClassMap.put(BSN_TYPE_BDDP, LLDP.class);
     }
 
-	protected short type;
-	protected short version;
+    protected short type;
+    protected short version;
 
-	public BSN() {
-    	version = BSN_VERSION_CURRENT;
-	}
-	
+    public BSN() {
+        version = BSN_VERSION_CURRENT;
+    }
+
     public BSN(short type) {
-    	this.type = type;
-    	version = BSN_VERSION_CURRENT;
+        this.type = type;
+        version = BSN_VERSION_CURRENT;
     }
 
     public short getType() {
-		return type;
-	}
+        return type;
+    }
 
-	public BSN setType(short type) {
-		this.type = type;
-		return this;
-	}
-	
+    public BSN setType(short type) {
+        this.type = type;
+        return this;
+    }
+
     public short getVersion() {
-		return version;
-	}
+        return version;
+    }
 
-	public BSN setVersion(short version) {
-		this.version = version;
-		return this;
-	}
+    public BSN setVersion(short version) {
+        this.version = version;
+        return this;
+    }
 
     @Override
     public byte[] serialize() {
-    	short length = 4 /* magic */ + 2 /* type */ + 2 /* version */;
-    	
-    	byte[] payloadData = null;
-    	if (this.payload != null) {
+        short length = 4 /* magic */ + 2 /* type */ + 2 /* version */;
+
+        byte[] payloadData = null;
+        if (this.payload != null) {
             payload.setParent(this);
             payloadData = payload.serialize();
             length += payloadData.length;
         }
-    
+
         byte[] data = new byte[length];
         ByteBuffer bb = ByteBuffer.wrap(data);
         bb.putInt(BSN_MAGIC);
         bb.putShort(this.type);
         bb.putShort(this.version);
         if (payloadData != null)
-        	bb.put(payloadData);
+            bb.put(payloadData);
 
         if (this.parent != null && this.parent instanceof Ethernet)
             ((Ethernet)this.parent).setEtherType(Ethernet.TYPE_BSN);
@@ -99,20 +99,20 @@ public class BSN extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        
+
         int magic = bb.getInt();
         if (magic != BSN_MAGIC) {
-        	throw new RuntimeException("Invalid BSN magic " + magic);
+            throw new RuntimeException("Invalid BSN magic " + magic);
         }
-        
+
         this.type = bb.getShort();
         this.version = bb.getShort();
         if (this.version != BSN_VERSION_CURRENT) {
-        	throw new RuntimeException(
-        			"Invalid BSN packet version " + this.version + ", should be "
-        	        + BSN_VERSION_CURRENT);
+            throw new RuntimeException(
+                    "Invalid BSN packet version " + this.version + ", should be "
+                    + BSN_VERSION_CURRENT);
         }
-        
+
         IPacket payload;
         if (typeClassMap.containsKey(this.type)) {
             Class<? extends IPacket> clazz = typeClassMap.get(this.type);
@@ -124,11 +124,10 @@ public class BSN extends BasePacket {
         } else {
             payload = new Data();
         }
-        
-        this.payload = new Data();
+
         this.payload = payload.deserialize(data, bb.position(), bb.limit() - bb.position());
         this.payload.setParent(this);
-        
+
         return this;
     }
 
@@ -157,17 +156,17 @@ public class BSN extends BasePacket {
             return false;
         BSN other = (BSN) obj;
         return (type == other.type &&
-        		version == other.version);
+                version == other.version);
     }
-    
+
     public String toString() {
-    	StringBuffer sb = new StringBuffer("\n");
-    	sb.append("BSN packet");
+        StringBuffer sb = new StringBuffer("\n");
+        sb.append("BSN packet");
         if (typeClassMap.containsKey(this.type))
-        	sb.append(" type: " + typeClassMap.get(this.type).getCanonicalName());
+            sb.append(" type: " + typeClassMap.get(this.type).getCanonicalName());
         else
-        	sb.append(" type: " + this.type);
-        
-    	return sb.toString();
+            sb.append(" type: " + this.type);
+
+        return sb.toString();
     }
 }
