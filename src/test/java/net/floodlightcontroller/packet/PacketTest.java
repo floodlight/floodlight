@@ -100,7 +100,7 @@ public class PacketTest {
         this.packets = new IPacket[] { pkt1, pkt2, pkt3, pkt4 };
     }
     
-    protected void doTestClone(IPacket pkt) throws PacketParsingException {
+    protected void doTestClone(IPacket pkt) throws Exception {
         if (pkt.getPayload() != null)
             doTestClone(pkt.getPayload());
         IPacket newPkt = (IPacket)pkt.clone();
@@ -136,7 +136,7 @@ public class PacketTest {
     }
     
     @Test
-    public void testClone() throws PacketParsingException {
+    public void testClone() throws Exception {
         for (IPacket pkt: packets) {
             doTestClone(pkt);
         }
