@@ -2081,6 +2081,9 @@ IFlowReconcileListener, IInfoProvider {
                 break;
             }
         }
+        // Since cleanupEntities() is not called in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
     }
 
     protected void removeEntity(Entity removed,
@@ -2234,6 +2237,9 @@ IFlowReconcileListener, IInfoProvider {
                 sendDeviceMovedNotification(d);
             }
         }
+        // Since topologyChanged() does not occur in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
     }
 
     /**
@@ -2312,6 +2318,9 @@ IFlowReconcileListener, IInfoProvider {
         for (Entity entity: device.entities ) {
             this.learnDeviceByEntity(entity);
         }
+        // Since reclassifyDevices() is not called in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
         return true;
     }
 
