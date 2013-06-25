@@ -133,8 +133,9 @@ public class DebugEventResource extends DebugEventResourceBase {
      *
      * Not giving {param1} will reset all events
      * {param1} can be 'all' or the name of a module. The former case will reset
-     * all events, while the latter will reset all events for the moduleName.
-     * {param2} must be an eventName for the given moduleName
+     * all events, while the latter will reset all events for the moduleName (if
+     * param2 is null).{param2} must be an eventName for the given moduleName to
+     * reset a specific event.
      */
     @Post
     public ResetOutput postHandler(DebugEventPost postData) {
@@ -195,9 +196,9 @@ public class DebugEventResource extends DebugEventResourceBase {
     /**
      * Return the debug event data for the get rest-api call
      *
-     * URL must be in one of the following forms for retrieving a list of all
-     * registered events:
-     * "http://{controller-hostname}:8080/wm/debugevent/
+     * URL must be in one of the following forms for retrieving a list
+     * moduleNames    "http://{controller-hostname}:8080/wm/debugevent/
+     * counterNames   "http://{controller-hostname}:8080/wm/debugevent/{moduleName}
      *
      * URL must be in one of the following forms for retrieving event data:
      * "http://{controller-hostname}:8080/wm/debugevent/{param1}
@@ -205,15 +206,16 @@ public class DebugEventResource extends DebugEventResourceBase {
      *
      *  where {param1} must be one of (no quotes):
      *       null                   if nothing is given then by default the list
-     *                              of all events is returned, not their histories.
-     *       "all"                  returns value/info on all active events.
+     *                              of all moduleNames is returned for which
+     *                              events have been registered
+     *       "all"                  can return value/info on all active events
+     *                              but is currently disallowed
      *       "{moduleName}"         returns value/info on events for the specified module
      *                              depending on the value of param2
      *  and   {param2} must be one of (no quotes):
+     *       null                   returns all eventNames registered for the
+     *                              given moduleName (in param1)
      *       "{eventName}"          returns value/info for specific event if it is active.
-     *
-     *  {param2} is optional; in which case the event history for all the events registered
-     *  for that moduleName will be returned.
      *
      */
     @Get("json")

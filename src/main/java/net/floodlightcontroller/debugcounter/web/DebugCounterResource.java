@@ -260,7 +260,8 @@ public class DebugCounterResource extends DebugCounterResourceBase {
      *
      *  where {param1} must be one of (no quotes):
      *       null                   if nothing is given then by default all
-     *                              counters are returned
+     *                              module names are returned for which counters
+     *                              have been registered
      *       "all"                  returns value/info on all counters.
      *       "{moduleName}"         returns value/info on all counters for
      *                              the specified module 'moduelName'.
@@ -270,6 +271,9 @@ public class DebugCounterResource extends DebugCounterResourceBase {
      *                              all counters in the hierarchical level below.
      *                              So giving just the switch dpid will fetch
      *                              all counters for that switch.
+     *                              A special case => if param2 is null, then
+     *                              all hierarchical counterNames are returned
+     *                              for the given moduleName (in param1)
      */
     @Get
     public DebugCounterInfoOutput handleCounterInfoQuery() {
