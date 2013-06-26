@@ -37,6 +37,12 @@ public class PerfMonDataResource extends ServerResource {
                 get(IPktInProcessingTimeService.class.getCanonicalName());
         
         setStatus(Status.SUCCESS_OK, "OK");
+        // If the user is requesting this they must think that it is enabled, 
+        // so lets enable it to prevent from erroring out
+        if (!pktinProcTime.isEnabled()){
+        	pktinProcTime.setEnabled(true);
+        	logger.warn("Requesting performance monitor data when performance monitor is disabled. Turning it on");
+        }
         // Allocate output object
         if (pktinProcTime.isEnabled()) {
             CumulativeTimeBucket ctb = pktinProcTime.getCtb();
