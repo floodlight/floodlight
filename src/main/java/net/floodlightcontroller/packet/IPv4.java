@@ -353,7 +353,8 @@ public class IPv4 extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         short sscratch;
 
@@ -361,7 +362,8 @@ public class IPv4 extends BasePacket {
         this.headerLength = (byte) (this.version & 0xf);
         this.version = (byte) ((this.version >> 4) & 0xf);
         if (this.version != 4) {
-            throw new RuntimeException("Invalid version for IPv4 packet: " +
+            throw new PacketParsingException(
+                    "Invalid version for IPv4 packet: " +
                     this.version);
         }
         this.diffServ = bb.get();

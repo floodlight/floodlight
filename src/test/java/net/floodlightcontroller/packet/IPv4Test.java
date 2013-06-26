@@ -85,7 +85,7 @@ public class IPv4Test {
     };
     
     @Test
-    public void testDeserialize() {
+    public void testDeserialize() throws Exception {
         IPv4 packet = new IPv4();
         packet.deserialize(pktSerialized, 0, pktSerialized.length);
         byte[] pktSerialized1 = packet.serialize();
@@ -93,7 +93,7 @@ public class IPv4Test {
     }
 
     @Test
-    public void testDeserializePadded() {
+    public void testDeserializePadded() throws Exception {
         // A real TLSv1 packet with crap added to the end
         byte[] pktSerializedPadded = new byte[] { 0x45, 0x00,
                 0x00, 0x2e, 0x41, (byte) 0xbe, 0x40, 0x00, 0x40, 0x06,
@@ -112,7 +112,7 @@ public class IPv4Test {
     }
 
     @Test
-    public void testDeserializeFragment() {
+    public void testDeserializeFragment() throws Exception {
         // IP packet with more frag bit set
         byte[] pktSerializedFirstFrag = new byte[] { 0x45, 0x00,
                 0x00, 0x2e, 0x41, (byte) 0xbe, 0x20, 0x00, 0x40, 0x06,
@@ -145,7 +145,7 @@ public class IPv4Test {
     }
 
     @Test
-    public void testDeserializeDontFragment() {
+    public void testDeserializeDontFragment() throws Exception {
         // IP packet with more frag bit set
         byte[] pktSerializedDontFrag = new byte[] { 0x45, 0x00,
                 0x00, 0x2e, 0x41, (byte) 0xbe, 0x60, 0x00, 0x40, 0x06,

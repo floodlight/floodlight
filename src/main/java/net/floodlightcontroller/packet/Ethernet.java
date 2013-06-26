@@ -262,7 +262,7 @@ public class Ethernet extends BasePacket {
             try {
                 payload = clazz.newInstance();
                 this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
-            } catch (Exception e) {
+            } catch (PacketParsingException e) {
                 if (log.isTraceEnabled()) {
                     log.trace("Failed to parse ethernet packet {}->{}" +
                             " payload as {}, treat as plain ethernet packet",
@@ -271,12 +271,27 @@ public class Ethernet extends BasePacket {
                                           clazz.getClass().getName()});
                     log.trace("Exception from parsing {}", e);
                 }
-                payload = new Data();
-                this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+                this.payload = new Data(data);
+            } catch (InstantiationException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Fail to instantiate class {}, {}",
+                              clazz.getClass().getName(), e);
+                }
+                this.payload = new Data(data);
+            } catch (IllegalAccessException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Fail to access class for instantiation {}, {}",
+                              clazz.getClass().getName(), e);
+                }
+                this.payload = new Data(data);
+            } catch (RuntimeException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Runtime exception during packet parsing {}", e);
+                }
+                this.payload = new Data(data);
             }
         } else {
-            payload = new Data();
-            this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+            this.payload = new Data(data);
         }
         this.payload.setParent(this);
         return this;
