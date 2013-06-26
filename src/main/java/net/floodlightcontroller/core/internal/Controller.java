@@ -1804,7 +1804,6 @@ public class Controller implements IFloodlightProviderService,
                     // Get the starting time (overall and per-component) of
                     // the processing chain for this packet if performance
                     // monitoring is turned on
-                    pktinProcTime.bootstrap(listeners);
                     pktinProcTime.recordStartTimePktIn();
                     Command cmd;
                     for (IOFMessageListener listener : listeners) {
