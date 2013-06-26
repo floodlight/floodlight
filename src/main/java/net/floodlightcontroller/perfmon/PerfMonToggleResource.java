@@ -30,6 +30,10 @@ public class PerfMonToggleResource extends ServerResource {
         
         String param = ((String)getRequestAttributes().get("perfmonstate")).toLowerCase();
         if (param.equals("reset")) {
+        	// We cannot reset something that is disabled, so enable it first.
+        	if(!pktinProcTime.isEnabled()){
+        		pktinProcTime.setEnabled(true);
+        	}
             pktinProcTime.getCtb().reset();
         } else {
             if (param.equals("enable") || param.equals("true")) {
