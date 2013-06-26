@@ -279,9 +279,11 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         if (le.enabled) {
             long timestamp = System.currentTimeMillis();
             long thisthread = Thread.currentThread().getId();
+            String thisthreadname = Thread.currentThread().getName();
             if (le.nextIndex < le.eventList.size()) {
                 if (le.eventList.get(le.nextIndex) == null) {
                     le.eventList.set(le.nextIndex, new Event(timestamp, thisthread,
+                                                             thisthreadname,
                                                              eventData));
                 } else {
                     Event e = le.eventList.get(le.nextIndex);
@@ -290,7 +292,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                     e.eventData = eventData;
                 }
             } else {
-                le.eventList.add(new Event(timestamp, thisthread, eventData));
+                le.eventList.add(new Event(timestamp, thisthread, thisthreadname, eventData));
             }
             le.nextIndex++;
 
@@ -347,7 +349,6 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             }
         }
 
-        //printEvents();
     }
 
     @Override
@@ -400,7 +401,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName,
+                                                int last) {
         if (!moduleEvents.containsKey(moduleName)) return null;
         Integer eventId = moduleEvents.get(moduleName).get(eventName);
         if (eventId == null) return null;
@@ -409,6 +411,8 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             int num = 1;
             List<Map<String,String>> ret = new ArrayList<Map<String,String>>();
             for (Event e : de.eventBuffer) {
+                if (num > last)
+                    break;
                 Map<String, String> temp = e.getFormattedEvent(de.einfo.eventClass,
                                                                de.einfo.moduleEventName);
                 temp.put("#", String.valueOf(num++));
@@ -462,19 +466,6 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
         List<String> el = new ArrayList<String>();
         el.addAll(moduleEvents.get(moduleName).keySet());
         return el;
-    }
-
-
-    protected void printEvents() {
-        for (int eventId : currentEvents) {
-            DebugEventHistory de = allEvents[eventId];
-            if (de != null) {
-                for (Event e : de.eventBuffer) {
-                    log.info("{}", e.toString(de.einfo.eventClass,
-                                              de.einfo.moduleEventName));
-                }
-            }
-        }
     }
 
     //*******************************

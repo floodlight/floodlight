@@ -149,10 +149,11 @@ public interface IDebugEventService extends IFloodlightService {
      *
      * @param  moduleName  registered module name
      * @param  eventName   registered event name for moduleName
+     * @param  last        last X events
      * @return DebugEventInfo for that event, or null if the moduleEventName
      *         does not correspond to a registered event.
      */
-    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName);
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName, int last);
 
     /**
      * Wipe out all event history for all registered events

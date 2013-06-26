@@ -63,12 +63,12 @@ public class DebugEventTest extends FloodlightTestCase {
         assertEquals(1, debugEvent.allEvents[eventId1].eventBuffer.size());
         assertEquals(1, debugEvent.allEvents[eventId2].eventBuffer.size());
 
-        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent");
+        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent", 100);
         assertEquals(1, de.events.size());
         assertEquals(true, de.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
         assertEquals(true, de.events.get(0).get("reason").equals("connected"));
 
-        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent");
+        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent", 100);
         assertEquals(1, de2.events.size());
         assertEquals(true, de2.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
         assertEquals(true, de2.events.get(0).get("srcMac").equals("00:00:00:00:00:18"));

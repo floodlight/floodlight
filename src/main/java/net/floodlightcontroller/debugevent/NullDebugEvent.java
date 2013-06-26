@@ -79,7 +79,8 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName,
+                                                int last) {
         return null;
     }
 

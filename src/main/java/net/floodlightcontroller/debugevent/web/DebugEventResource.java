@@ -222,7 +222,18 @@ public class DebugEventResource extends DebugEventResourceBase {
     public DebugEventInfoOutput handleEventInfoQuery() {
         Option choice = Option.ERROR_BAD_PARAM;
         DebugEventInfoOutput output;
-
+        String laststr = getQueryValue("last");
+        int last = Integer.MAX_VALUE;
+        try {
+            if (laststr != null)
+                last = Integer.valueOf(laststr);
+            if (last < 1) last = Integer.MAX_VALUE;
+        } catch (NumberFormatException e) {
+            output = new DebugEventInfoOutput(false);
+            output.error = "Expected an integer requesting last X events;" +
+                           " received " + laststr;
+            return output;
+        }
         String param1 = (String)getRequestAttributes().get("param1");
         String param2 = (String)getRequestAttributes().get("param2");
 
@@ -265,7 +276,7 @@ public class DebugEventResource extends DebugEventResourceBase {
                 populateEvents(debugEvent.getModuleEventHistory(param1), output);
                 break;
             case ONE_MODULE_EVENT:
-                populateSingleEvent(debugEvent.getSingleEventHistory(param1, param2),
+                populateSingleEvent(debugEvent.getSingleEventHistory(param1, param2, last),
                                     output);
                 break;
             case ERROR_BAD_MODULE_NAME:
