@@ -96,7 +96,10 @@ public abstract class ForwardingBase
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
                                                    // by a global APP_ID class
-    public long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    static {
+        AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
+    }
+    public static final long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =

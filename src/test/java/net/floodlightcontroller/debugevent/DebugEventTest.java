@@ -9,7 +9,6 @@ import net.floodlightcontroller.debugevent.IDebugEventService.DebugEventInfo;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
-import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugEventTest extends FloodlightTestCase {
@@ -25,20 +24,16 @@ public class DebugEventTest extends FloodlightTestCase {
 
 
     @Test
-    public void testRegisterAndUpdateEvent() {
+    public void testRegisterAndUpdateEvent() throws Exception {
         assertEquals(0, debugEvent.currentEvents.size());
         IEventUpdater<SwitchyEvent> event1 = null;
         IEventUpdater<PacketyEvent> event2 = null;
-        try {
-            event1 = debugEvent.registerEvent("dbgevtest", "switchevent",
-                                               "switchtest", EventType.ALWAYS_LOG,
-                                               SwitchyEvent.class, 100);
-            event2 = debugEvent.registerEvent("dbgevtest", "pktinevent",
-                                               "pktintest", EventType.ALWAYS_LOG,
-                                               PacketyEvent.class, 100);
-        } catch (MaxEventsRegistered e) {
-            e.printStackTrace();
-        }
+        event1 = debugEvent.registerEvent("dbgevtest", "switchevent",
+                                           "switchtest", EventType.ALWAYS_LOG,
+                                           SwitchyEvent.class, 100);
+        event2 = debugEvent.registerEvent("dbgevtest", "pktinevent",
+                                           "pktintest", EventType.ALWAYS_LOG,
+                                           PacketyEvent.class, 100);
 
         assertEquals(2, debugEvent.currentEvents.size());
         assertTrue(null != debugEvent.moduleEvents.get("dbgevtest").
@@ -68,15 +63,15 @@ public class DebugEventTest extends FloodlightTestCase {
         assertEquals(1, debugEvent.allEvents[eventId1].eventBuffer.size());
         assertEquals(1, debugEvent.allEvents[eventId2].eventBuffer.size());
 
-        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent");
+        DebugEventInfo de = debugEvent.getSingleEventHistory("dbgevtest","switchevent", 100);
         assertEquals(1, de.events.size());
-        assertEquals(true, de.events.get(0)
-                         .contains("dpid=00:00:00:00:00:00:00:01, reason=connected"));
+        assertEquals(true, de.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
+        assertEquals(true, de.events.get(0).get("reason").equals("connected"));
 
-        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent");
+        DebugEventInfo de2 = debugEvent.getSingleEventHistory("dbgevtest","pktinevent", 100);
         assertEquals(1, de2.events.size());
-        assertEquals(true, de2.events.get(0)
-                     .contains("dpid=00:00:00:00:00:00:00:01, srcMac=00:00:00:00:00:18"));
+        assertEquals(true, de2.events.get(0).get("dpid").equals("00:00:00:00:00:00:00:01"));
+        assertEquals(true, de2.events.get(0).get("srcMac").equals("00:00:00:00:00:18"));
     }
 
     public class SwitchyEvent {

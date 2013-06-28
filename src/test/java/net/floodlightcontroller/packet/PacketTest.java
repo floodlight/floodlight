@@ -100,7 +100,7 @@ public class PacketTest {
         this.packets = new IPacket[] { pkt1, pkt2, pkt3, pkt4 };
     }
     
-    protected void doTestClone(IPacket pkt) {
+    protected void doTestClone(IPacket pkt) throws Exception {
         if (pkt.getPayload() != null)
             doTestClone(pkt.getPayload());
         IPacket newPkt = (IPacket)pkt.clone();
@@ -127,16 +127,16 @@ public class PacketTest {
             assertEquals(false, Arrays.equals(newArp.getSenderProtocolAddress(),
                                               arp.getSenderProtocolAddress()));
             assertEquals(false, newPkt.equals(pkt));
+        } else {
+            byte[] dummyData = dummyPkt.serialize().clone();
+            newPkt = (IPacket)pkt.clone();
+            newPkt.deserialize(dummyData, 0, dummyData.length);
+            assertEquals(false, newPkt.equals(pkt));
         }
-        
-        byte[] dummyData = dummyPkt.serialize().clone();
-        newPkt = (IPacket)pkt.clone();
-        newPkt.deserialize(dummyData, 0, dummyData.length);
-        assertEquals(false, newPkt.equals(pkt));
     }
     
     @Test
-    public void testClone() {
+    public void testClone() throws Exception {
         for (IPacket pkt: packets) {
             doTestClone(pkt);
         }

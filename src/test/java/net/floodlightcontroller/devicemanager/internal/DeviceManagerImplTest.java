@@ -661,6 +661,106 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         verify(mockListener);
     }
 
+    /**
+     * In this test, a device is moved from attachment point (1,1) to (5,1)
+     * and then moved back to (1,1) within 30 seconds.  Both the moves should
+     * generate device moved notification.
+     * @throws Exception
+     */
+    @Test
+    public void testAttachmentPointMovingBack() throws Exception {
+        IDeviceListener mockListener =
+                createMock(IDeviceListener.class);
+        expect(mockListener.getName()).andReturn("mockListener").atLeastOnce();
+        expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+        expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+        .andReturn(false).atLeastOnce();
+
+        replay(mockListener);
+        deviceManager.addListener(mockListener);
+        verify(mockListener);
+        reset(mockListener);
+
+        ITopologyService mockTopology = createMock(ITopologyService.class);
+        expect(mockTopology.getL2DomainId(1L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.getL2DomainId(5L)).
+        andReturn(1L).anyTimes();
+        expect(mockTopology.isBroadcastDomainPort(anyLong(), anyShort())).
+        andReturn(false).anyTimes();
+        expect(mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
+                                                    anyLong(), anyShort()))
+                                                    .andReturn(false).anyTimes();
+
+        expect(mockTopology.isAttachmentPointPort(anyLong(),
+                                                  anyShort())).andReturn(true).anyTimes();
+        expect(mockTopology.isConsistent(1L, (short)1, 5L, (short)1)).
+        andReturn(false).anyTimes();
+
+        Date topologyUpdateTime = new Date();
+        expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+        anyTimes();
+
+        replay(mockTopology);
+
+        deviceManager.topology = mockTopology;
+
+        Calendar c = Calendar.getInstance();
+        Entity entity1 = new Entity(1L, null, null, 1L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity2 = new Entity(1L, null, null, 5L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity3 = new Entity(1L, null, null, 1L, 1, c.getTime());
+        c.add(Calendar.SECOND, 1);
+        Entity entity4 = new Entity(1L, null, null, 5L, 1, c.getTime());
+
+        IDevice d;
+        SwitchPort[] aps;
+
+        mockListener.deviceAdded(isA(IDevice.class));
+        replay(mockListener);
+
+        d = deviceManager.learnDeviceByEntity(entity1);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1) }, aps);
+        verify(mockListener);
+
+        reset(mockListener);
+        mockListener.deviceMoved((isA(IDevice.class)));
+        replay(mockListener);
+
+        d = deviceManager.learnDeviceByEntity(entity2);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        aps = d.getAttachmentPoints();
+
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(5L, 1) }, aps);
+        verify(mockListener);
+
+        reset(mockListener);
+        mockListener.deviceMoved((isA(IDevice.class)));
+        replay(mockListener);
+
+        d = deviceManager.learnDeviceByEntity(entity3);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                new SwitchPort(5L, 1, ErrorStatus.DUPLICATE_DEVICE)},
+                                              d.getAttachmentPoints(true));
+        verify(mockListener);
+
+        // Generate a packet-in again from 5,1 and ensure that it doesn't
+        // create a device moved event.
+        reset(mockListener);
+        replay(mockListener);
+        d = deviceManager.learnDeviceByEntity(entity4);
+        assertEquals(1, deviceManager.getAllDevices().size());
+        assertArrayEquals(new SwitchPort[] { new SwitchPort(1L, 1),
+                new SwitchPort(5L, 1, ErrorStatus.DUPLICATE_DEVICE)},
+                                              d.getAttachmentPoints(true));
+        verify(mockListener);
+    }
+
     private void verifyEntityArray(Entity[] expected, Device d) {
         Arrays.sort(expected);
         assertArrayEquals(expected, d.entities);

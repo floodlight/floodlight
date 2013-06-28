@@ -71,7 +71,7 @@ public class CircularBuffer<T> implements Iterable<T>{
 
     /**
      * Returns an iterator over the elements in the circular buffer in proper sequence.
-     * The elements will be returned in order from oldest to most-recent.
+     * The elements will be returned in order from most-recent to oldest.
      * The returned Iterator is a "weakly consistent" iterator that will never
      * throw ConcurrentModificationException, and guarantees to traverse elements
      * as they existed upon construction of the iterator, and may (but is not
@@ -79,7 +79,7 @@ public class CircularBuffer<T> implements Iterable<T>{
      */
     @Override
     public Iterator<T> iterator() {
-        return buffer.iterator();
+        return buffer.descendingIterator();
     }
 
     public int size() {

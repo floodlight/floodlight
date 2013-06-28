@@ -65,7 +65,7 @@ public class TCPTest {
     }
     
     @Test
-    public void testDeserialize() {
+    public void testDeserialize() throws PacketParsingException {
         IPacket packet = new IPv4();
         packet.deserialize(pktSerialized, 0, pktSerialized.length);
         byte[] pktSerialized1 = packet.serialize();

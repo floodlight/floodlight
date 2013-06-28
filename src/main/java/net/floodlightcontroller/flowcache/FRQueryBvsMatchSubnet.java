@@ -55,4 +55,14 @@ public class FRQueryBvsMatchSubnet extends FlowReconcileQuery {
         if (! ipSubnet.equals(other.ipSubnet)) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        builder.append("IP Subnet: ");
+        builder.append(ipSubnet);
+        builder.append("]");
+        return builder.toString();
+    }
 }

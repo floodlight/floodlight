@@ -50,7 +50,8 @@ public class OFMatchWithSwDpid {
 
     @Override
     public String toString() {
-        return "OFMatchWithSwDpid [" + HexString.toHexString(switchDataPathId) + ofMatch + "]";
+        return "OFMatchWithSwDpid [" + HexString.toHexString(switchDataPathId)
+                + " " + ofMatch + "]";
     }
 
     @Override

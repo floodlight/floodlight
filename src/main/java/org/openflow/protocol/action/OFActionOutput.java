@@ -22,7 +22,6 @@ package org.openflow.protocol.action;
 
 
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.openflow.util.U16;
 
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu) - Mar 11, 2010
@@ -152,7 +151,11 @@ public class OFActionOutput extends OFAction implements Cloneable {
      */
     @Override
     public String toString() {
-        return "OFActionOutput [maxLength=" + maxLength + ", port=" + U16.f(port)
-                + ", length=" + length + ", type=" + type + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append(port);
+        builder.append("]");
+        return builder.toString();
     }
 }

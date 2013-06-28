@@ -40,7 +40,6 @@ import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.OFFeaturesReplyFuture;
 import net.floodlightcontroller.core.internal.OFStatisticsFuture;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
@@ -52,7 +51,6 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.OrderedCollection;
@@ -96,7 +94,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected IFloodlightProviderService floodlightProvider;
     protected IThreadPoolService threadPool;
     protected IDebugCounterService debugCounters;
-    protected Date connectedSince;
+    // FIXME: Don't use java.util.Date
+    protected volatile Date connectedSince;
 
     /* Switch features from initial featuresReply */
     protected int capabilities;
@@ -109,10 +108,12 @@ public abstract class OFSwitchBase implements IOFSwitch {
     protected short accessFlowPriority;
     protected short coreFlowPriority;
 
+    private boolean startDriverHandshakeCalled = false;
+    protected Channel channel;
+
     /**
      * Members hidden from subclasses
      */
-    private Channel channel;
     private final AtomicInteger transactionIdSource;
     private final Map<Integer,OFStatisticsFuture> statsFutureMap;
     private final Map<Integer, IOFMessageListener> iofMsgListenersMap;
@@ -162,11 +163,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
     };
 
     public static final int OFSWITCH_APP_ID = 5;
+    static {
+        AppCookie.registerApp(OFSwitchBase.OFSWITCH_APP_ID, "switch");
+    }
 
     public OFSwitchBase() {
         this.stringId = null;
         this.attributes = new ConcurrentHashMap<Object, Object>();
-        this.connectedSince = new Date();
+        this.connectedSince = null;
         this.transactionIdSource = new AtomicInteger();
         this.connected = false;
         this.statsFutureMap = new ConcurrentHashMap<Integer,OFStatisticsFuture>();
@@ -1016,14 +1020,14 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     new Object[] { this.stringId, activeCount, maxEntry});
             int percentFull = activeCount * 100 / maxEntry;
             if (flowTableFull && percentFull < 90) {
-                log.info("Switch {} flow table is capacity is back to normal",
+                log.info("Switch {} flow table capacity is back to normal",
                         toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
-                        EvAction.SWITCH_FLOW_TABLE_NORMAL, "< 90% full");
+                        "SWITCH_FLOW_TABLE_NORMAL < 90% full", false);
             } else if (percentFull >= 98) {
                 log.info("Switch {} flow table is almost full", toString());
                 floodlightProvider.addSwitchEvent(this.datapathId,
-                        EvAction.SWITCH_FLOW_TABLE_ALMOST_FULL, ">= 98% full");
+                        "SWITCH_FLOW_TABLE_ALMOST_FULL >= 98% full", false);
             }
         }
     }
@@ -1067,7 +1071,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     @JsonIgnore
     public void setDebugCounterService(IDebugCounterService debugCounters)
-            throws FloodlightModuleException {
+            throws CounterException {
         this.debugCounters = debugCounters;
         registerOverloadCounters();
     }
@@ -1090,6 +1094,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @JsonIgnore
     public void setConnected(boolean connected) {
         // No lock needed since we use volatile
+        if (connected && this.connectedSince == null)
+            this.connectedSince = new Date();
+        else if (!connected)
+            this.connectedSince = null;
         this.connected = connected;
     }
 
@@ -1104,11 +1112,16 @@ public abstract class OFSwitchBase implements IOFSwitch {
         this.role = role;
     }
 
+    @LogMessageDoc(level="INFO",
+            message="Switch {switch} flow cleared",
+            explanation="The switch flow table has been cleared, " +
+                    "this normally happens on switch connection")
     @Override
     public void clearAllFlowMods() {
         if (channel == null || !isConnected())
             return;
         // Delete all pre-existing flows
+        log.info("Clearing all flows on switch {}", this);
         OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL);
         OFMessage fm = ((OFFlowMod) floodlightProvider.getOFMessageFactory()
             .getMessage(OFType.FLOW_MOD))
@@ -1324,10 +1337,10 @@ public abstract class OFSwitchBase implements IOFSwitch {
         ctrSwitchPktin.updateCounterNoFlush();
         // Compute current packet in rate
         messageCount++;
-        if (messageCount % 100 == 0) {
+        if (messageCount % 1000 == 0) {
             long now = System.currentTimeMillis();
             if (now != lastMessageTime) {
-                currentRate = (int) (100000 / (now - lastMessageTime));
+                currentRate = (int) (1000000 / (now - lastMessageTime));
                 lastMessageTime = now;
             } else {
                 currentRate = Integer.MAX_VALUE;
@@ -1368,7 +1381,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
 
     /**
      * We rely on the fact that packet in processing is single threaded
-     * per switch, so no locking is necessary.
+     * per packet-in, so no locking is necessary.
      */
     private void disablePacketInThrottle() {
         ofMatchCache = null;
@@ -1378,8 +1391,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
         portBlockedCache = null;
         packetInThrottleEnabled = false;
         floodlightProvider.addSwitchEvent(this.datapathId,
-                EvAction.SWITCH_OVERLOAD_THROTTLE_DISABLED,
-                "Pktin rate " + currentRate + "/s");
+                "SWITCH_OVERLOAD_THROTTLE_DISABLED ==>" +
+                "Pktin rate " + currentRate + "/s", false);
         log.info("Packet in rate is {}, disable throttling on {}",
                 currentRate, this);
     }
@@ -1393,13 +1406,13 @@ public abstract class OFSwitchBase implements IOFSwitch {
         packetInThrottleEnabled = true;
         messageCountUniqueOFMatch = 0;
         floodlightProvider.addSwitchEvent(this.datapathId,
-                EvAction.SWITCH_OVERLOAD_THROTTLE_ENABLED,
-                "Pktin rate " + currentRate + "/s");
+                "SWITCH_OVERLOAD_THROTTLE_ENABLED ==>" +
+                "Pktin rate " + currentRate + "/s", false);
         log.info("Packet in rate is {}, enable throttling on {}",
                 currentRate, this);
     }
 
-    private void registerOverloadCounters() throws FloodlightModuleException {
+    private void registerOverloadCounters() throws CounterException {
         if (debugCountersRegistered) {
             return;
         }
@@ -1408,32 +1421,30 @@ public abstract class OFSwitchBase implements IOFSwitch {
             debugCounters = new NullDebugCounter();
             debugCountersRegistered = true;
         }
-        try {
-            // every level of the hierarchical counter has to be registered
-            // even if they are not used
-            ctrSwitch = debugCounters.registerCounter(
-                                       PACKAGE , stringId,
-                                       "Counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchPktin = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/pktin",
-                                       "Packet in counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchWrite = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/write",
-                                       "Write counter for this switch",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchPktinDrops = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/pktin/drops",
-                                       "Packet in throttle drop count",
-                                       CounterType.ALWAYS_COUNT);
-            ctrSwitchWriteDrops = debugCounters.registerCounter(
-                                       PACKAGE, stringId + "/write/drops",
-                                       "Switch write throttle drop count",
-                                       CounterType.ALWAYS_COUNT);
-        } catch (CounterException e) {
-            throw new FloodlightModuleException(e.getMessage());
-        }
+        // every level of the hierarchical counter has to be registered
+        // even if they are not used
+        ctrSwitch = debugCounters.registerCounter(
+                                   PACKAGE , stringId,
+                                   "Counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchPktin = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/pktin",
+                                   "Packet in counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchWrite = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/write",
+                                   "Write counter for this switch",
+                                   CounterType.ALWAYS_COUNT);
+        ctrSwitchPktinDrops = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/pktin/drops",
+                                   "Packet in throttle drop count",
+                                   CounterType.ALWAYS_COUNT,
+                                   IDebugCounterService.CTR_MDATA_WARN);
+        ctrSwitchWriteDrops = debugCounters.registerCounter(
+                                   PACKAGE, stringId + "/write/drops",
+                                   "Switch write throttle drop count",
+                                   CounterType.ALWAYS_COUNT,
+                                   IDebugCounterService.CTR_MDATA_WARN);
     }
 
     /**
@@ -1467,8 +1478,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     swPort, srcMac.toLong(), (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 0));
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
-                    "OFPort " + port + " mac " + srcMac);
+                    "SWITCH_PORT_BLOCKED_TEMPORARILY " +
+                    "OFPort " + port + " mac " + srcMac, false);
             log.info("Excessive packet in from {} on {}, block host for 5 sec",
                     srcMac.toString(), swPort);
         }
@@ -1495,8 +1506,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
                     swPort, -1L, (short) 5,
                     AppCookie.makeCookie(OFSWITCH_APP_ID, 1));
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_PORT_BLOCKED_TEMPORARILY,
-                    "OFPort " + port);
+                    "SWITCH_PORT_BLOCKED_TEMPORARILY " +
+                    "OFPort " + port, false);
             log.info("Excessive packet in from {}, block port for 5 sec",
                     swPort);
         }
@@ -1513,8 +1524,8 @@ public abstract class OFSwitchBase implements IOFSwitch {
     public void setTableFull(boolean isFull) {
         if (isFull && !flowTableFull) {
             floodlightProvider.addSwitchEvent(this.datapathId,
-                    EvAction.SWITCH_FLOW_TABLE_FULL,
-                    "Table full error from switch");
+                    "SWITCH_FLOW_TABLE_FULL " +
+                    "Table full error from switch", false);
             log.warn("Switch {} flow table is full", stringId);
         }
         flowTableFull = isFull;
@@ -1542,5 +1553,27 @@ public abstract class OFSwitchBase implements IOFSwitch {
     @Override
     public void setCoreFlowPriority(short coreFlowPriority) {
         this.coreFlowPriority = coreFlowPriority;
+    }
+
+    @Override
+    public void startDriverHandshake() {
+        if (startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeAlreadyStarted();
+        startDriverHandshakeCalled = true;
+    }
+
+    @Override
+    public boolean isDriverHandshakeComplete() {
+        if (!startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeNotStarted();
+        return true;
+    }
+
+    @Override
+    public void processDriverHandshakeMessage(OFMessage m) {
+        if (startDriverHandshakeCalled)
+            throw new SwitchDriverSubHandshakeCompleted(m);
+        else
+            throw new SwitchDriverSubHandshakeNotStarted();
     }
 }

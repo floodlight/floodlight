@@ -53,4 +53,14 @@ public class FRQueryVRSArpChange extends FlowReconcileQuery {
         if (! tenant.equals(other.tenant)) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        builder.append("Tenant: ");
+        builder.append(tenant);
+        builder.append("]");
+        return builder.toString();
+    }
 }

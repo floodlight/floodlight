@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -17,22 +17,91 @@
 
 package net.floodlightcontroller.core.util;
 
-import junit.framework.TestCase;
-import net.floodlightcontroller.test.FloodlightTestCase;
+import static org.junit.Assert.*;
+
+import org.junit.Test;
 
 
-public class AppCookieTest extends FloodlightTestCase {
+public class AppCookieTest {
+    /* Unfortunately the AppCookie registry is static. So we need to pick
+     * app ids that are not otherwise used for testing.
+     * NOTE: MSB bit is set for appId and cleared or appId2 ==> allows
+     * testing for sign handling
+     *
+     */
+    private static int appId = 0xF42;
+    private static int appId2 = 0x743;
+    private static int invalidAppId1 = 0x1000;
+    private static int invalidAppId2 = -1;
+
+    @Test
     public void testAppCookie(){
-        int appID = 12;
-        int user = 12345;
-        long cookie = AppCookie.makeCookie(appID, user);
-        TestCase.assertEquals(appID, AppCookie.extractApp(cookie));
-        TestCase.assertEquals(user, AppCookie.extractUser(cookie));
-        
-        // now ensure that we don't exceed our size
-        cookie = AppCookie.makeCookie(appID + 0x10000, user);
-        TestCase.assertEquals(appID, AppCookie.extractApp(cookie));
-        TestCase.assertEquals(user, AppCookie.extractUser(cookie));
+        int user = 0xF123F123; // MSB set
+        int user2 = 0x42;      // MSB cleared
+        long expectedCookie11 =  0xF4200000F123F123L; // app1, user1
+        long expectedCookie21 =  0x74300000F123F123L; // app2, user1
+        long expectedCookie12 =  0xF420000000000042L; // app1, user2
+        long expectedCookie22 =  0x7430000000000042L; // app2, user2
+        String name = "FooBar";
+        String name2 = "FooFooFoo";
+
+
+        // try get a cookie or an unregistered appId
+        try {
+            AppCookie.makeCookie(appId, user);
+            fail("Expected exception not thrown");
+        } catch(AppIDNotRegisteredException e) { /* expected */ }
+
+        AppCookie.registerApp(appId, name);
+
+        long cookie = AppCookie.makeCookie(appId, user);
+        assertEquals(expectedCookie11, cookie);
+        assertEquals(appId, AppCookie.extractApp(cookie));
+        assertEquals(user, AppCookie.extractUser(cookie));
+
+        cookie = AppCookie.makeCookie(appId, user2);
+        assertEquals(expectedCookie12, cookie);
+        assertEquals(appId, AppCookie.extractApp(cookie));
+        assertEquals(user2, AppCookie.extractUser(cookie));
+
+        // Register again with the same name
+        AppCookie.registerApp(appId, name);
+
+        // Register again with different name ==> exception
+        try {
+            AppCookie.registerApp(appId, name + "XXXXX");
+            fail("Expected exception not thrown");
+        } catch (AppIDInUseException e) { /* expected */ }
+
+        // try get a cookie or an unregistered appId
+        try {
+            AppCookie.makeCookie(appId2, user);
+            fail("Expected exception not thrown");
+        } catch(AppIDNotRegisteredException e) { /* expected */ }
+
+        AppCookie.registerApp(appId2, name2);
+
+        cookie = AppCookie.makeCookie(appId2, user);
+        assertEquals(expectedCookie21, cookie);
+        assertEquals(appId2, AppCookie.extractApp(cookie));
+        assertEquals(user, AppCookie.extractUser(cookie));
+
+        cookie = AppCookie.makeCookie(appId2, user2);
+        assertEquals(expectedCookie22, cookie);
+        assertEquals(appId2, AppCookie.extractApp(cookie));
+        assertEquals(user2, AppCookie.extractUser(cookie));
+
+        // Register invalid app ids
+        try {
+            AppCookie.registerApp(invalidAppId1, "invalid");
+            fail("Expected exception not thrown");
+        } catch (InvalidAppIDValueException e) { /* expected */ }
+
+        try {
+            AppCookie.registerApp(invalidAppId2, "also invalid");
+            fail("Expected exception not thrown");
+        } catch (InvalidAppIDValueException e) { /* expected */ }
+
 
     }
 }

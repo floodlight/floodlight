@@ -36,6 +36,12 @@ import net.floodlightcontroller.counter.CounterStore;
 import net.floodlightcontroller.counter.ICounter;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.counter.SimpleCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.flowcache.FlowReconcileQuery.FlowReconcileQueryDebugEvent;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
@@ -55,7 +61,7 @@ public class FlowReconcileManager
     /** Reference to dependent modules */
     protected IThreadPoolService threadPool;
     protected ICounterStoreService counterStore;
-
+    protected IDebugCounterService debugCounters;
     /**
      * The list of flow reconcile listeners that have registered to get
      * flow reconcile callbacks. Such callbacks are invoked, for example, when
@@ -85,6 +91,13 @@ public class FlowReconcileManager
 
     /** Config to enable or disable flowReconcile */
     protected static final String EnableConfigKey = "enable";
+
+    /*
+     * Debug Counters
+     */
+    public static final String PACKAGE = FlowReconcileManager.class.getPackage().getName();
+    private IDebugCounter ctrFlowReconcileRequest;
+    private IDebugCounter ctrReconciledFlows;
     protected boolean flowReconcileEnabled;
 
     public AtomicInteger flowReconcileThreadRunCount;
@@ -130,6 +143,7 @@ public class FlowReconcileManager
         OFMatchReconcile myOfmRc = new OFMatchReconcile(ofmRcIn);
 
         flowQueue.offer(myOfmRc, priority);
+        ctrFlowReconcileRequest.updateCounterWithFlush();
 
         Date currTime = new Date();
         long delay = 0;
@@ -187,24 +201,42 @@ public class FlowReconcileManager
             throws FloodlightModuleException {
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         counterStore = context.getServiceImpl(ICounterStoreService.class);
-
+        debugCounters = context.getServiceImpl(IDebugCounterService.class);
         flowQueue = new PriorityPendingQueue<OFMatchReconcile>();
         flowReconcileListeners =
                 new ListenerDispatcher<OFType, IFlowReconcileListener>();
 
         Map<String, String> configParam = context.getConfigParams(this);
         String enableValue = configParam.get(EnableConfigKey);
+        registerFlowReconcileManagerDebugCounters();
         // Set flowReconcile default to true
         flowReconcileEnabled = true;
         if (enableValue != null &&
             enableValue.equalsIgnoreCase("false")) {
             flowReconcileEnabled = false;
         }
-
         flowReconcileThreadRunCount = new AtomicInteger(0);
         lastReconcileTime = new Date(0);
         logger.debug("FlowReconcile is {}", flowReconcileEnabled);
     }
+
+    private void registerFlowReconcileManagerDebugCounters() throws FloodlightModuleException {
+        if (debugCounters == null) {
+            logger.error("Debug Counter Service not found.");
+            debugCounters = new NullDebugCounter();
+        }
+        try {
+            ctrFlowReconcileRequest = debugCounters.registerCounter(PACKAGE, "flow-reconcile-request",
+                "All flow reconcile request received by this module",
+                CounterType.ALWAYS_COUNT);
+            ctrReconciledFlows = debugCounters.registerCounter(PACKAGE, "reconciled-flows",
+                "All flows reconciled successfully by this module",
+                CounterType.ALWAYS_COUNT);
+        } catch (CounterException e) {
+            throw new FloodlightModuleException(e.getMessage());
+        }
+    }
+
 
     @Override
     public void startUp(FloodlightModuleContext context) {
@@ -264,6 +296,7 @@ public class FlowReconcileManager
             reconcileCapacity--;
             if (ofmRc != null) {
                 ofmRcList.add(ofmRc);
+                ctrReconciledFlows.updateCounterWithFlush();
                 if (logger.isTraceEnabled()) {
                     logger.trace("Add flow {} to be the reconcileList", ofmRc.cookie);
                 }
@@ -294,6 +327,15 @@ public class FlowReconcileManager
                 retCmd = flowReconciler.reconcileFlows(ofmRcList);
                 if (retCmd == IFlowReconcileListener.Command.STOP) {
                     break;
+                }
+            }
+            for (OFMatchReconcile ofmRc : ofmRcList) {
+                if (ofmRc.origReconcileQueryEvent != null) {
+                    ofmRc.origReconcileQueryEvent.evType.getDebugEvent()
+                        .updateEventWithFlush(new FlowReconcileQueryDebugEvent(
+                            ofmRc.origReconcileQueryEvent,
+                            "Flow Reconciliation Complete",
+                            ofmRc));
                 }
             }
             // Flush the flowCache counters.

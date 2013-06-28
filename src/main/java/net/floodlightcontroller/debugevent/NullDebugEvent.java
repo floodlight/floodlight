@@ -11,7 +11,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
 
 public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
@@ -80,7 +79,8 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
     }
 
     @Override
-    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName) {
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName,
+                                                int last) {
         return null;
     }
 
@@ -97,11 +97,6 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
     @Override
     public void resetSingleEvent(String moduleName, String eventName) {
 
-    }
-
-    @Override
-    public ArrayList<EventInfo> getEventList() {
-        return new ArrayList<EventInfo>();
     }
 
     @Override
@@ -125,6 +120,16 @@ public class NullDebugEvent implements IFloodlightModule, IDebugEventService {
 
         }
 
+    }
+
+    @Override
+    public List<String> getModuleList() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<String> getModuleEventList(String moduleName) {
+        return Collections.emptyList();
     }
 
 }
