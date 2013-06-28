@@ -1,10 +1,9 @@
 package net.floodlightcontroller.flowcache;
 
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
 
 /**
  * PriorityPendingQueue class - This class is a variant implementation for PriorityBlockingQueue
@@ -25,9 +24,9 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  */
 public class PriorityPendingQueue<E> {
-    private ArrayBlockingQueue<E> highPriorityQueue;
-    private ArrayBlockingQueue<E> mediumPriorityQueue;
-    private ArrayBlockingQueue<E> lowPriorityQueue;
+    private LinkedBlockingQueue<E> highPriorityQueue;
+    private LinkedBlockingQueue<E> mediumPriorityQueue;
+    private LinkedBlockingQueue<E> lowPriorityQueue;
     private final AtomicInteger count = new AtomicInteger(0);
     private final ReentrantLock takeLock = new ReentrantLock();
     private final Condition notEmpty = takeLock.newCondition();
@@ -40,9 +39,9 @@ public class PriorityPendingQueue<E> {
         LOW,
     }
     public PriorityPendingQueue() {
-        highPriorityQueue=   new ArrayBlockingQueue<E>(1000);
-        mediumPriorityQueue= new ArrayBlockingQueue<E>(1000);
-        lowPriorityQueue=    new ArrayBlockingQueue<E>(5000);
+        highPriorityQueue=   new LinkedBlockingQueue<E>();
+        mediumPriorityQueue= new LinkedBlockingQueue<E>();
+        lowPriorityQueue=    new LinkedBlockingQueue<E>();
         capacity= Integer.MAX_VALUE;
     }
 

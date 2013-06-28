@@ -20,7 +20,6 @@
  */
 package org.openflow.protocol.action;
 
-
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
@@ -97,5 +96,15 @@ public class OFActionNetworkTypeOfService extends OFAction {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append(networkTypeOfService);
+        builder.append("]");
+        return builder.toString();
     }
 }

@@ -59,4 +59,16 @@ public class FRQueryBvsPriority extends FlowReconcileQuery {
         if (highP != other.highP) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        builder.append("Lower Priority: ");
+        builder.append(lowP);
+        builder.append("Higher Priority: ");
+        builder.append(highP);
+        builder.append("]");
+        return builder.toString();
+    }
 }

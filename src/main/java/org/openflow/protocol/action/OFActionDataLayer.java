@@ -23,6 +23,7 @@ package org.openflow.protocol.action;
 import java.util.Arrays;
 
 import net.floodlightcontroller.core.web.serializers.ByteArrayMACSerializer;
+import net.floodlightcontroller.util.MACAddress;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -94,5 +95,15 @@ public abstract class OFActionDataLayer extends OFAction {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append(MACAddress.valueOf(dataLayerAddress).toString());
+        builder.append("]");
+        return builder.toString();
     }
 }

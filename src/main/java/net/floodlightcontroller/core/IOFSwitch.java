@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -160,10 +160,10 @@ public interface IOFSwitch {
      * Set debug counter service for per-switch counters
      * Called immediately after instantiation
      * @param debugCounters
-     * @throws FloodlightModuleException
+     * @throws CounterException
      */
     public void setDebugCounterService(IDebugCounterService debugCounters)
-            throws FloodlightModuleException;
+            throws CounterException;
 
     /**
      * Set the netty Channel this switch instance is associated with
@@ -601,12 +601,6 @@ public interface IOFSwitch {
     public boolean isFastPort(short port_num);
 
     /**
-     * Retun a list of uplink port (for virtual switches only)
-     * @return
-     */
-    public List<Short> getUplinkPorts();
-
-    /**
      * Return whether write throttling is enabled on the switch
      */
     public boolean isWriteThrottleEnabled();
@@ -639,4 +633,37 @@ public interface IOFSwitch {
      * this switch.
      */
     public short getCoreFlowPriority();
+
+    /**
+     * Start this switch driver's sub handshake. This might be a no-op but
+     * this method must be called at least once for the switch to be become
+     * ready.
+     * This method must only be called from the I/O thread
+     * @throws SwitchDriverSubHandshakeAlreadyStarted if the sub-handshake has
+     * already been started
+     */
+    public void startDriverHandshake();
+
+    /**
+     * Check if the sub-handshake for this switch driver has been completed.
+     * This method can only be called after startDriverHandshake()
+     *
+     * This methods must only be called from the I/O thread
+     * @return true if the sub-handshake has been completed. False otherwise
+     * @throws SwitchDriverSubHandshakeNotStarted if startDriverHandshake() has
+     * not been called yet.
+     */
+    public boolean isDriverHandshakeComplete();
+
+    /**
+     * Pass the given OFMessage to the driver as part of this driver's
+     * sub-handshake. Must not be called after the handshake has been completed
+     * This methods must only be called from the I/O thread
+     * @param m The message that the driver should process
+     * @throws SwitchDriverSubHandshakeCompleted if isDriverHandshake() returns
+     * false before this method call
+     * @throws SwitchDriverSubHandshakeNotStarted if startDriverHandshake() has
+     * not been called yet.
+     */
+    public void processDriverHandshakeMessage(OFMessage m);
 }

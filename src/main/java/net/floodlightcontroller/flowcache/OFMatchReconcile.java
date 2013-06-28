@@ -70,7 +70,11 @@ public class OFMatchReconcile  {
 
     // The context for the reconcile action
     public FloodlightContext cntx;
-    
+
+    // The original flow reconcile query event that triggered this flow
+    // to be reconciled
+    public FlowReconcileQuery origReconcileQueryEvent;
+
     /**
      * Instantiates a new oF match reconcile object.
      */
@@ -92,6 +96,7 @@ public class OFMatchReconcile  {
         rcAction = copy.rcAction;
         outPort = copy.outPort;
         cntx = new FloodlightContext();
+        origReconcileQueryEvent = copy.origReconcileQueryEvent;
     }
     
     @Override

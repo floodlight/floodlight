@@ -4,8 +4,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.debugevent.DebugEvent.EventInfo;
@@ -25,7 +25,9 @@ public interface IDebugEventService extends IFloodlightService {
      * Describes the type of field obtained from reflection
      */
     enum EventFieldType {
-        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE
+        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE, LIST_IPV4,
+        LIST_ATTACHMENT_POINT, LIST_OBJECT, SREF_LIST_OBJECT, SREF_OBJECT,
+        FLOW_MOD_FLAGS
     }
 
     /**
@@ -55,9 +57,10 @@ public interface IDebugEventService extends IFloodlightService {
      */
     public class DebugEventInfo {
         EventInfo eventInfo;
-        ArrayList<String> events;
+        List<Map<String,String>> events;
 
-        public DebugEventInfo(EventInfo eventInfo, ArrayList<String> eventHistory) {
+        public DebugEventInfo(EventInfo eventInfo,
+                              List<Map<String, String>> eventHistory) {
             this.eventInfo = eventInfo;
             this.events = eventHistory;
         }
@@ -66,7 +69,7 @@ public interface IDebugEventService extends IFloodlightService {
             return eventInfo;
         }
 
-        public ArrayList<String> getEvents() {
+        public List<Map<String,String>> getEvents() {
             return events;
         }
     }
@@ -87,7 +90,8 @@ public interface IDebugEventService extends IFloodlightService {
      * @param eventType        EventType for this event. On-demand events have to
      *                         be explicitly enabled using other methods in this API
      * @param eventClass       A user defined class that annotates the fields
-     *                         with @EventColumn
+     *                         with @EventColumn. This class specifies the
+     *                         fields/columns for this event.
      * @param bufferCapacity   Number of events to store for this event in a circular
      *                         buffer. Older events will be discarded once the
      *                         buffer is full.
@@ -145,10 +149,11 @@ public interface IDebugEventService extends IFloodlightService {
      *
      * @param  moduleName  registered module name
      * @param  eventName   registered event name for moduleName
+     * @param  last        last X events
      * @return DebugEventInfo for that event, or null if the moduleEventName
      *         does not correspond to a registered event.
      */
-    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName);
+    public DebugEventInfo getSingleEventHistory(String moduleName, String eventName, int last);
 
     /**
      * Wipe out all event history for all registered events
@@ -170,11 +175,15 @@ public interface IDebugEventService extends IFloodlightService {
     public void resetSingleEvent(String moduleName, String eventName);
 
     /**
-     * Retrieve information on all registered events
-     *
-     * @return the arraylist of event-info or an empty list if no events are registered
+     * Retrieve a list of moduleNames registered for debug events or an empty
+     * list if no events have been registered in the system
      */
-    public ArrayList<EventInfo> getEventList();
+    public List<String> getModuleList();
 
+    /**
+     * Returns a list of all events registered for a specific moduleName
+     * or a empty list
+     */
+    public List<String> getModuleEventList(String moduleName);
 
 }

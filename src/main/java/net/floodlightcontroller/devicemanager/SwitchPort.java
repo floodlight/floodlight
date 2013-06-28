@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import org.openflow.util.HexString;
+
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -130,8 +132,8 @@ public class SwitchPort {
 
     @Override
     public String toString() {
-        return "SwitchPort [switchDPID=" + switchDPID + ", port=" + port
-                + ", errorStatus=" + errorStatus + "]";
+        return "SwitchPort [switchDPID=" + HexString.toHexString(switchDPID) +
+               ", port=" + port + ", errorStatus=" + errorStatus + "]";
     }
 
 }

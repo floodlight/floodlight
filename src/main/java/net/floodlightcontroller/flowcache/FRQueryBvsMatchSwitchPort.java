@@ -17,6 +17,8 @@
 package net.floodlightcontroller.flowcache;
 
 import java.util.List;
+
+import org.openflow.util.HexString;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match switch port.
  */
@@ -59,5 +61,17 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
         if (swId != other.swId) return false;
         if (! matchPortList.equals(other.matchPortList)) return false;
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        builder.append("Switch: ");
+        builder.append(HexString.toHexString(swId));
+        builder.append(", Match Port List:");
+        builder.append(matchPortList);
+        builder.append("]");
+        return builder.toString();
     }
 }

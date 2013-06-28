@@ -24,5 +24,13 @@ public class OFActionNiciraTtlDecrement extends OFActionNiciraVendor {
         data.writeZero(6);
     }
 
-    
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append("NICIRA-TTL-DECR");
+        builder.append("]");
+        return builder.toString();
+    }
 }

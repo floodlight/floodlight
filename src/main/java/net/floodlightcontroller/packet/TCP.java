@@ -258,7 +258,8 @@ public class TCP extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         this.sourcePort = bb.getShort();
         this.destinationPort = bb.getShort();
@@ -267,7 +268,7 @@ public class TCP extends BasePacket {
         this.flags = bb.getShort();
         this.dataOffset = (byte) ((this.flags >> 12) & 0xf);
         if (this.dataOffset < 5) {
-            throw new RuntimeException("Invalid tcp header length < 20");
+            throw new PacketParsingException("Invalid tcp header length < 20");
         }
         this.flags = (short) (this.flags & 0x1ff);
         this.windowSize = bb.getShort();

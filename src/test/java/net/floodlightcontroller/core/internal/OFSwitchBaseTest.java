@@ -30,6 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeEvent;
 import net.floodlightcontroller.core.IOFSwitch.PortChangeType;
 import net.floodlightcontroller.core.ImmutablePort;
@@ -40,7 +43,6 @@ import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -90,12 +92,6 @@ public class OFSwitchBaseTest {
         public boolean isFastPort(short port_num) {
             // TODO Auto-generated method stub
             return false;
-        }
-
-        @Override
-        public List<Short> getUplinkPorts() {
-            // TODO Auto-generated method stub
-            return null;
         }
 
         @Override
@@ -244,14 +240,13 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInStartThrottle() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         replay(floodlightProvider);
 
         int high = 500;
         sw.setThresholds(high, 10, 50, 200);
-        // We measure time lapse every 100 packets
-        for (int i = 0; i < 100; i++) {
+        // We measure time lapse every 1000 packets
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
@@ -269,21 +264,20 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInStopThrottle() throws InterruptedException {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 
         sw.setThresholds(100, 10, 50, 200);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
         assertTrue(sw.inputThrottleEnabled());
 
         sw.setThresholds(Integer.MAX_VALUE, 100000, 50, 200);
-        for (int i = 0; i < 99; i++) {
+        for (int i = 0; i < 999; i++) {
             assertTrue(sw.inputThrottled(pi));
             assertTrue(sw.inputThrottleEnabled());
         }
@@ -300,8 +294,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInBlockHost() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 
@@ -309,7 +302,7 @@ public class OFSwitchBaseTest {
         int perMac = 50;
         sw.setThresholds(high, 10, perMac, 200);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
@@ -348,8 +341,7 @@ public class OFSwitchBaseTest {
     @Test
     public void testPacketInBlockPort() {
         floodlightProvider.addSwitchEvent(anyLong(),
-                (EvAction) anyObject(),
-                (String)anyObject());
+                (String)anyObject(), anyBoolean());
         expectLastCall().times(2);
         replay(floodlightProvider);
 
@@ -357,7 +349,7 @@ public class OFSwitchBaseTest {
         int perPort = 200;
         sw.setThresholds(high, 10, 50, perPort);
         // First, enable throttling
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             assertFalse(sw.inputThrottleEnabled());
             assertFalse(sw.inputThrottled(pi));
         }
@@ -1492,6 +1484,35 @@ public class OFSwitchBaseTest {
         anytime.add(portBar2Del);
         assertChangeEvents(early, late, anytime, actualChanges);
         assertCollectionEqualsNoOrder(ports, sw.getPorts());
+    }
+
+    @Test
+    public void testSubHandshake() {
+        OFMessage m = BasicFactory.getInstance().getMessage(OFType.VENDOR);
+        // test execptions before handshake is started
+        try {
+            sw.processDriverHandshakeMessage(m);
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeNotStarted e) { /* expected */ }
+        try {
+            sw.isDriverHandshakeComplete();
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeNotStarted e) { /* expected */ }
+
+        // start the handshake -- it should immediately complete
+        sw.startDriverHandshake();
+        assertTrue("Handshake should be complete",
+                   sw.isDriverHandshakeComplete());
+
+        // test exceptions after handshake is completed
+        try {
+            sw.processDriverHandshakeMessage(m);
+            fail("expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeCompleted e) { /* expected */ }
+        try {
+            sw.startDriverHandshake();
+            fail("Expected exception not thrown");
+        } catch (SwitchDriverSubHandshakeAlreadyStarted e) { /* expected */ }
     }
 
 }

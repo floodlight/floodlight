@@ -67,7 +67,8 @@ public interface IPacket {
      * @param length length of the data to deserialize
      * @return the deserialized data
      */
-    public IPacket deserialize(byte[] data, int offset, int length);
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException;
     
     /** Clone this packet and its payload packet but not its parent. 
      * 

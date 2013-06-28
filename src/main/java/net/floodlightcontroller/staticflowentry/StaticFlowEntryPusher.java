@@ -44,7 +44,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryWebRoutable;
 import net.floodlightcontroller.storage.IResultSet;
@@ -75,6 +74,9 @@ public class StaticFlowEntryPusher
     public static final String StaticFlowName = "staticflowentry";
 
     public static final int STATIC_FLOW_APP_ID = 10;
+    static {
+        AppCookie.registerApp(STATIC_FLOW_APP_ID, StaticFlowName);
+    }
 
     public static final String TABLE_NAME = "controller_staticflowtableentry";
     public static final String COLUMN_NAME = "name";
@@ -660,12 +662,6 @@ public class StaticFlowEntryPusher
         restApi =
             context.getServiceImpl(IRestApiService.class);
         haListener = new HAListenerDelegate();
-        try {
-            AppCookie.registerApp(STATIC_FLOW_APP_ID, StaticFlowName);
-        } catch (AppIDInUseException e) {
-            // This is not fatal, CLI will be confused
-            log.error("Failed register application ID", e);
-        }
     }
 
     @Override

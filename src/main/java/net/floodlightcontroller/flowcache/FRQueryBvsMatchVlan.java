@@ -57,4 +57,14 @@ public class FRQueryBvsMatchVlan extends FlowReconcileQuery {
         if (! vlans.equals(other.vlans)) return false;
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+        builder.append("Vlans: ");
+        builder.append(vlans);
+        builder.append("]");
+        return builder.toString();
+    }
 }

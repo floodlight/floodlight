@@ -1,14 +1,14 @@
 /**
  *    Copyright 2011, Big Switch Networks, Inc.
  *    Originally created by Amer Tahir
- *    
- *    Licensed under the Apache License, Version 2.0 (the "License"); you may 
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
  *    not use this file except in compliance with the License. You may obtain
  *    a copy of the License at
- *    
- *         http://www.apache.org/licenses/LICENSE-2.0 
- *    
- *    Unless required by applicable law or agreed to in writing, software 
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
  *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  *    License for the specific language governing permissions and limitations
@@ -31,10 +31,10 @@ import org.slf4j.LoggerFactory;
 
 public class FirewallResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(FirewallResource.class);
-    
+
     @Get("json")
     public Object handleRequest() {
-        IFirewallService firewall = 
+        IFirewallService firewall =
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
@@ -52,20 +52,20 @@ public class FirewallResource extends ServerResource {
         if (op.equalsIgnoreCase("enable")) {
             firewall.enableFirewall(true);
             return "{\"status\" : \"success\", \"details\" : \"firewall running\"}";
-        } 
-        
+        }
+
         // REST API disable firewall
         if (op.equalsIgnoreCase("disable")) {
             firewall.enableFirewall(false);
             return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
-        } 
-        
+        }
+
         // REST API retrieving rules from storage
         // currently equivalent to /wm/firewall/rules/json
         if (op.equalsIgnoreCase("storageRules")) {
             return firewall.getStorageRules();
-        } 
-        
+        }
+
         // REST API set local subnet mask -- this only makes sense for one subnet
         // will remove later
         if (op.equalsIgnoreCase("subnet-mask")) {
@@ -75,7 +75,7 @@ public class FirewallResource extends ServerResource {
         // no known options found
         return "{\"status\" : \"failure\", \"details\" : \"invalid operation\"}";
     }
-    
+
     /**
      * Allows setting of subnet mask
      * @param fmJson The Subnet Mask in JSON format.
@@ -83,7 +83,7 @@ public class FirewallResource extends ServerResource {
      */
     @Post
     public String handlePost(String fmJson) {
-        IFirewallService firewall = 
+        IFirewallService firewall =
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
@@ -92,13 +92,12 @@ public class FirewallResource extends ServerResource {
             newMask = jsonExtractSubnetMask(fmJson);
         } catch (IOException e) {
             log.error("Error parsing new subnet mask: " + fmJson, e);
-            e.printStackTrace();
             return "{\"status\" : \"Error! Could not parse new subnet mask, see log for details.\"}";
         }
         firewall.setSubnetMask(newMask);
         return ("{\"status\" : \"subnet mask set\"}");
     }
-    
+
     /**
      * Extracts subnet mask from a JSON string
      * @param fmJson The JSON formatted string
@@ -128,7 +127,7 @@ public class FirewallResource extends ServerResource {
 
             String n = jp.getCurrentName();
             jp.nextToken();
-            if (jp.getText().equals("")) 
+            if (jp.getText().equals(""))
                 continue;
 
             if (n == "subnet-mask") {
