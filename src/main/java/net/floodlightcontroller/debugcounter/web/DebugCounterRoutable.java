@@ -25,6 +25,7 @@ public class DebugCounterRoutable implements RestletRoutable {
         router.attach("/{param1}/", DebugCounterResource.class);
         router.attach("/{param1}", DebugCounterResource.class);
         router.attach("/", DebugCounterResource.class);
+        router.attach("", DebugCounterResource.class);
         return router;
     }
 }

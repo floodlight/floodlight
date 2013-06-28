@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -38,7 +38,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.core.util.AppIDInUseException;
 import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -68,11 +67,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                    explanation="An unsupported PacketIn decision has been " +
                    		"passed to the flow programming component",
                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, 
+    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision,
                                           FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, 
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
+
         // If a decision has been made we obey it
         // otherwise we just forward
         if (decision != null) {
@@ -81,7 +80,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                         decision.getRoutingAction().toString(),
                         pi);
             }
-            
+
             switch(decision.getRoutingAction()) {
                 case NONE:
                     // don't do anything
@@ -107,7 +106,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 log.trace("No decision was made for PacketIn={}, forwarding",
                         pi);
             }
-            
+
             if (eth.isBroadcast() || eth.isMulticast()) {
                 // For now we treat multicast as broadcast
                 doFlood(sw, pi, cntx);
@@ -115,10 +114,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 doForwardFlow(sw, pi, cntx, false);
             }
         }
-        
+
         return Command.CONTINUE;
     }
-    
+
     @LogMessageDoc(level="ERROR",
             message="Failure writing drop flow mod",
             explanation="An I/O error occured while trying to write a " +
@@ -131,7 +130,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         if (decision.getWildcards() != null) {
             match.setWildcards(decision.getWildcards());
         }
-        
+
         // Create flow-mod based on packet-in and src-switch
         OFFlowMod fm =
                 (OFFlowMod) floodlightProvider.getOFMessageFactory()
@@ -139,7 +138,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
                                                             // drop
         long cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-        
+
         fm.setCookie(cookie)
           .setHardTimeout((short) 0)
           .setIdleTimeout((short) 5)
@@ -158,30 +157,30 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             log.error("Failure writing drop flow mod", e);
         }
     }
-    
-    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, 
+
+    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi,
                                  FloodlightContext cntx,
-                                 boolean requestFlowRemovedNotifn) {    
+                                 boolean requestFlowRemovedNotifn) {
         OFMatch match = new OFMatch();
         match.loadFromPacket(pi.getPacketData(), pi.getInPort());
 
         // Check if we have the location of the destination
-        IDevice dstDevice = 
+        IDevice dstDevice =
                 IDeviceService.fcStore.
                     get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-        
+
         if (dstDevice != null) {
             IDevice srcDevice =
                     IDeviceService.fcStore.
                         get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
             Long srcIsland = topology.getL2DomainId(sw.getId());
-            
+
             if (srcDevice == null) {
                 log.debug("No device entry found for source device");
                 return;
             }
             if (srcIsland == null) {
-                log.debug("No openflow island found for source {}/{}", 
+                log.debug("No openflow island found for source {}/{}",
                           sw.getStringId(), pi.getInPort());
                 return;
             }
@@ -202,28 +201,28 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     break;
                 }
             }
-            
+
             if (!on_same_island) {
                 // Flood since we don't know the dst device
                 if (log.isTraceEnabled()) {
-                    log.trace("No first hop island found for destination " + 
+                    log.trace("No first hop island found for destination " +
                               "device {}, Action = flooding", dstDevice);
                 }
                 doFlood(sw, pi, cntx);
                 return;
-            }            
-            
+            }
+
             if (on_same_if) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Both source and destination are on the same " + 
-                              "switch/port {}/{}, Action = NOP", 
+                    log.trace("Both source and destination are on the same " +
+                              "switch/port {}/{}, Action = NOP",
                               sw.toString(), pi.getInPort());
                 }
                 return;
             }
 
             // Install all the routes where both src and dst have attachment
-            // points.  Since the lists are stored in sorted order we can 
+            // points.  Since the lists are stored in sorted order we can
             // traverse the attachment points in O(m+n) time
             SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
             Arrays.sort(srcDaps, clusterIdComparator);
@@ -238,30 +237,30 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
                 // srcCluster and dstCluster here cannot be null as
                 // every switch will be at least in its own L2 domain.
-                Long srcCluster = 
+                Long srcCluster =
                         topology.getL2DomainId(srcDap.getSwitchDPID());
-                Long dstCluster = 
+                Long dstCluster =
                         topology.getL2DomainId(dstDap.getSwitchDPID());
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
                 if (srcVsDest == 0) {
                     if (!srcDap.equals(dstDap)) {
-                        Route route = 
+                        Route route =
                                 routingEngine.getRoute(srcDap.getSwitchDPID(),
                                                        (short)srcDap.getPort(),
                                                        dstDap.getSwitchDPID(),
                                                        (short)dstDap.getPort(), 0); //cookie = 0, i.e., default route
                         if (route != null) {
                             if (log.isTraceEnabled()) {
-                                log.trace("pushRoute match={} route={} " + 
+                                log.trace("pushRoute match={} route={} " +
                                           "destination={}:{}",
-                                          new Object[] {match, route, 
+                                          new Object[] {match, route,
                                                         dstDap.getSwitchDPID(),
                                                         dstDap.getPort()});
                             }
-                            long cookie = 
+                            long cookie =
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-                            
+
                             // if there is prior routing decision use wildcard
                             Integer wildcard_hints = null;
                             IRoutingDecision decision = null;
@@ -285,7 +284,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                         & ~OFMatch.OFPFW_NW_DST_MASK;
                             }
 
-                            pushRoute(route, match, wildcard_hints, pi, sw.getId(), cookie, 
+                            pushRoute(route, match, wildcard_hints, pi, sw.getId(), cookie,
                                       cntx, requestFlowRemovedNotifn, false,
                                       OFFlowMod.OFPFC_ADD);
                         }
@@ -305,7 +304,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     }
 
     /**
-     * Creates a OFPacketOut with the OFPacketIn data that is flooded on all ports unless 
+     * Creates a OFPacketOut with the OFPacketIn data that is flooded on all ports unless
      * the port is blocked, in which case the packet will be dropped.
      * @param sw The switch that receives the OFPacketIn
      * @param pi The OFPacketIn that came to the switch
@@ -322,7 +321,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         if (topology.isIncomingBroadcastAllowed(sw.getId(),
                                                 pi.getInPort()) == false) {
             if (log.isTraceEnabled()) {
-                log.trace("doFlood, drop broadcast packet, pi={}, " + 
+                log.trace("doFlood, drop broadcast packet, pi={}, " +
                           "from a blocked port, srcSwitch=[{},{}], linkInfo={}",
                           new Object[] {pi, sw.getId(),pi.getInPort()});
             }
@@ -330,14 +329,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         }
 
         // Set Action to flood
-        OFPacketOut po = 
+        OFPacketOut po =
             (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
         List<OFAction> actions = new ArrayList<OFAction>();
         if (sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)) {
-            actions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(), 
+            actions.add(new OFActionOutput(OFPort.OFPP_FLOOD.getValue(),
                                            (short)0xFFFF));
         } else {
-            actions.add(new OFActionOutput(OFPort.OFPP_ALL.getValue(), 
+            actions.add(new OFActionOutput(OFPort.OFPP_ALL.getValue(),
                                            (short)0xFFFF));
         }
         po.setActions(actions);
@@ -351,7 +350,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         poLength += packetData.length;
         po.setPacketData(packetData);
         po.setLength(poLength);
-        
+
         try {
             if (log.isTraceEnabled()) {
                 log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
@@ -361,13 +360,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         } catch (IOException e) {
             log.error("Failure writing PacketOut switch={} packet-in={} packet-out={}",
                     new Object[] {sw, pi, po}, e);
-        }            
+        }
 
         return;
     }
-    
+
     // IFloodlightModule methods
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         // We don't export any services
@@ -383,7 +382,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l = 
+        Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IDeviceService.class);
@@ -417,14 +416,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);
         this.counterStore = context.getServiceImpl(ICounterStoreService.class);
-
-        try {
-            AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
-        } catch (AppIDInUseException e) {
-            // This is not fatal, CLI will be confused
-            log.error("Failed register application ID", e);
-        }
-
     }
 
     @Override

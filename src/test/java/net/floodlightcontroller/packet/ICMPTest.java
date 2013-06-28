@@ -58,7 +58,7 @@ public class ICMPTest {
     }
     
     @Test
-    public void testDeserialize() {
+    public void testDeserialize() throws Exception {
         IPacket packet = new IPv4();
         packet.deserialize(pktSerialized, 0, pktSerialized.length);
         byte[] pktSerialized1 = packet.serialize();

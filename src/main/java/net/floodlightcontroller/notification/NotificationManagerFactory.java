@@ -37,7 +37,7 @@ public class NotificationManagerFactory {
             notificationfactoryClassName =
                     System.getProperty(NOTIFICATION_FACTORY_NAME);
         } catch (SecurityException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         if (notificationfactoryClassName != null) {
             Class<?> nfc;
@@ -45,11 +45,11 @@ public class NotificationManagerFactory {
                 nfc = Class.forName(notificationfactoryClassName);
                 factory = (INotificationManagerFactory) nfc.newInstance();
             } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             } catch (InstantiationException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             } catch (IllegalAccessException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
          }
     }

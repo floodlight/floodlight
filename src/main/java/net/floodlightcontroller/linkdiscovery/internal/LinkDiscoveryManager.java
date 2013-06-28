@@ -18,13 +18,14 @@
 package net.floodlightcontroller.linkdiscovery.internal;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -82,7 +83,6 @@ import net.floodlightcontroller.notification.INotificationManager;
 import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -94,8 +94,6 @@ import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.util.EventHistory;
-import net.floodlightcontroller.util.EventHistory.EvAction;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -1339,12 +1337,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                     log.info("Inter-switch link detected: {}", lt);
                     evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-                         lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-added"));
+                         lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "direct-link-added::rcvd LLDP"));
                 }
-                evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(),
-                               linkType,
-                               EvAction.LINK_ADDED, "LLDP Recvd");
                 notifier.postNotification("Link added: " + lt.toString());
             } else {
                 linkChanged = updateLink(lt, oldInfo, newInfo);
@@ -1354,14 +1348,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                     if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
                         log.info("Inter-switch link updated: {}", lt);
                         evDirectLink.updateEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-                            lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-updated"));
+                            lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
+                            "link-port-state-updated::rcvd LLDP"));
                     }
-                    // Add to event history
-                    evHistTopoLink(lt.getSrc(), lt.getDst(),
-                                   lt.getSrcPort(), lt.getDstPort(),
-                                   linkType,
-                                   EvAction.LINK_PORT_STATE_UPDATED,
-                                   "LLDP Recvd");
                     notifier.postNotification("Link updated: " + lt.toString());
                 }
             }
@@ -1461,15 +1450,11 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                                 linkType,
                                                 UpdateOperation.LINK_REMOVED));
 
-                // Update Event History
-                evHistTopoLink(lt.getSrc(), lt.getDst(), lt.getSrcPort(),
-                               lt.getDstPort(),
-                               ILinkDiscovery.LinkType.INVALID_LINK,
-                               EvAction.LINK_DELETED, reason);
-                // link type shows up as invalid now -- thus not checking if
+                // FIXME: link type shows up as invalid now -- thus not checking if
                 // link type is a direct link
                 evDirectLink.updateEventWithFlush(new DirectLinkEvent(lt.getSrc(),
-                      lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "link-removed"));
+                      lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
+                      "link-deleted::" + reason));
                 // remove link from storage.
                 removeLinkFromStorage(lt);
 
@@ -1571,36 +1556,39 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     //******************
     // Internal Helper Methods
     //******************
-
+    @LogMessageDoc(level="WARN",
+            message="Could not get list of interfaces of local machine to " +
+                     "encode in TLV: {detail-msg}",
+            explanation="Outgoing LLDP packets encode a unique hash to " +
+                     "identify the local machine. The list of network " +
+                     "interfaces is used as input and the controller failed " +
+                     "to query this list",
+            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void setControllerTLV() {
         // Setting the controllerTLVValue based on current nano time,
         // controller's IP address, and the network interface object hash
         // the corresponding IP address.
 
         final int prime = 7867;
-        InetAddress localIPAddress = null;
-        NetworkInterface localInterface = null;
 
         byte[] controllerTLVValue = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 }; // 8
                                                                            // byte
                                                                            // value.
         ByteBuffer bb = ByteBuffer.allocate(10);
 
-        try {
-            localIPAddress = java.net.InetAddress.getLocalHost();
-            localInterface = NetworkInterface.getByInetAddress(localIPAddress);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         long result = System.nanoTime();
-        if (localIPAddress != null)
-                                   result = result
-                                            * prime
-                                            + IPv4.toIPv4Address(localIPAddress.getHostAddress());
-        if (localInterface != null)
-                                   result = result * prime
-                                            + localInterface.hashCode();
+        try{
+            // Use some data specific to the machine this controller is
+            // running on. In this case: the list of network interfaces
+            Enumeration<NetworkInterface> ifaces =
+                    NetworkInterface.getNetworkInterfaces();
+            if (ifaces != null) {
+                result = result * prime + ifaces.hashCode();
+            }
+        } catch (SocketException e) {
+            log.warn("Could not get list of interfaces of local machine to " +
+                     "encode in TLV: {}", e.toString());
+        }
         // set the first 4 bits to 0.
         result = result & (0x0fffffffffffffffL);
 
@@ -1994,8 +1982,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
         this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
-        this.evHistTopologyLink = new EventHistory<EventHistoryTopologyLink>(EVENT_HISTORY_SIZE);
-        this.evHistTopologyCluster = new EventHistory<EventHistoryTopologyCluster>(EVENT_HISTORY_SIZE);
         this.ignoreMACSet = Collections.newSetFromMap(
                                 new ConcurrentHashMap<MACRange,Boolean>());
         this.haListener = new HAListenerDelegate();
@@ -2141,13 +2127,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 "End of Life for LLDP packets", CounterType.COUNT_ON_DEMAND);
             ctrLinkLocalDrops = debugCounters.registerCounter(PACKAGE, "linklocal-drops",
                 "All link local packets dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT);
             ctrIgnoreSrcMacDrops = debugCounters.registerCounter(PACKAGE, "ignore-srcmac-drops",
                 "All packets whose srcmac is configured to be dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT);
             ctrQuarantineDrops = debugCounters.registerCounter(PACKAGE, "quarantine-drops",
                 "All packets arriving on quarantined ports dropped by this module",
-                CounterType.COUNT_ON_DEMAND);
+                CounterType.ALWAYS_COUNT, IDebugCounterService.CTR_MDATA_WARN);
         } catch (CounterException e) {
             throw new FloodlightModuleException(e.getMessage());
         }
@@ -2161,7 +2147,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         try {
             evDirectLink = debugEvents.registerEvent(
-                               getName(), "linkevent",
+                               PACKAGE, "linkevent",
                                "Direct OpenFlow links discovered or timed-out",
                                EventType.ALWAYS_LOG, DirectLinkEvent.class, 100);
         } catch (MaxEventsRegistered e) {
@@ -2196,60 +2182,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         }
     }
 
-    // ****************************************************
-    // Topology Manager's Event History members and methods
-    // ****************************************************
-
-    /**
-     *  Topology Manager event history
-     */
-    public EventHistory<EventHistoryTopologyLink> evHistTopologyLink;
-    public EventHistory<EventHistoryTopologyCluster> evHistTopologyCluster;
-    public EventHistoryTopologyLink evTopoLink;
-    public EventHistoryTopologyCluster evTopoCluster;
-
-    private void evHistTopoLink(long srcDpid, long dstDpid, short srcPort,
-                                short dstPort,
-                                ILinkDiscovery.LinkType linkType,
-                                EvAction actn, String reason) {
-        if (evTopoLink == null) {
-            evTopoLink = new EventHistoryTopologyLink();
-        }
-        evTopoLink.srcSwDpid = srcDpid;
-        evTopoLink.dstSwDpid = dstDpid;
-        evTopoLink.srcSwport = srcPort & 0xffff;
-        evTopoLink.dstSwport = dstPort & 0xffff;
-        evTopoLink.reason = reason;
-        switch (linkType) {
-            case DIRECT_LINK:
-                evTopoLink.linkType = "DIRECT_LINK";
-                break;
-            case MULTIHOP_LINK:
-                evTopoLink.linkType = "MULTIHOP_LINK";
-                break;
-            case TUNNEL:
-                evTopoLink.linkType = "TUNNEL";
-                break;
-            case INVALID_LINK:
-            default:
-                evTopoLink.linkType = "Unknown";
-                break;
-        }
-        evTopoLink = evHistTopologyLink.put(evTopoLink, actn);
-    }
-
-    public void evHistTopoCluster(long dpid, long clusterIdOld,
-                                  long clusterIdNew, EvAction action,
-                                  String reason) {
-        if (evTopoCluster == null) {
-            evTopoCluster = new EventHistoryTopologyCluster();
-        }
-        evTopoCluster.dpid = dpid;
-        evTopoCluster.clusterIdOld = clusterIdOld;
-        evTopoCluster.clusterIdNew = clusterIdNew;
-        evTopoCluster.reason = reason;
-        evTopoCluster = evHistTopologyCluster.put(evTopoCluster, action);
-    }
 
     //*********************
     //  IInfoProvider
@@ -2261,10 +2193,17 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         Map<String, Object> info = new HashMap<String, Object>();
 
-        int num_links = 0;
-        for (Set<Link> links : switchLinks.values())
-            num_links += links.size();
-        info.put("# inter-switch links", num_links / 2);
+        int numDirectLinks = 0;
+        for (Set<Link> links : switchLinks.values()) {
+            for (Link link : links) {
+                LinkInfo linkInfo = this.getLinkInfo(link);
+                if (linkInfo != null &&
+                    linkInfo.getLinkType() == LinkType.DIRECT_LINK) {
+                    numDirectLinks++;
+                }
+            }
+        }
+        info.put("# inter-switch links", numDirectLinks / 2);
         info.put("# quarantine ports", quarantineQueue.size());
         return info;
     }

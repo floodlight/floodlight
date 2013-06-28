@@ -386,12 +386,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public List<Short> getUplinkPorts() {
-        fail("Unexpected method call");
-        return null;
-    }
-
-    @Override
     public boolean attributeEquals(String name, Object other) {
         fail("Unexpected method call");
         return false;
@@ -479,5 +473,21 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public short getCoreFlowPriority() {
         fail("Unexpected method call");
         return 0;
+    }
+
+    @Override
+    public void startDriverHandshake() {
+        fail("Unexpected method call");
+    }
+
+    @Override
+    public boolean isDriverHandshakeComplete() {
+        fail("Unexpected method call");
+        return false;
+    }
+
+    @Override
+    public void processDriverHandshakeMessage(OFMessage m) {
+        fail("Unexpected method call");
     }
 }

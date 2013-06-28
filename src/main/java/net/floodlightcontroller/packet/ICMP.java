@@ -184,7 +184,8 @@ public class ICMP extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         this.icmpType = bb.get();
         this.icmpCode = bb.get();

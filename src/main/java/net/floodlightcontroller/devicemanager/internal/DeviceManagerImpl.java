@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -58,6 +59,13 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.IEventUpdater;
+import net.floodlightcontroller.debugevent.NullDebugEvent;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
@@ -162,6 +170,12 @@ IFlowReconcileListener, IInfoProvider {
     public IDebugCounter cntConsolidateStoreRuns;
     public IDebugCounter cntConsolidateStoreDevicesRemoved;
     public IDebugCounter cntTransitionToMaster;
+
+    /**
+     * Debug Events
+     */
+    private IDebugEventService debugEvents;
+    private IEventUpdater<DeviceEvent> evDevice;
 
     private boolean isMaster = false;
 
@@ -655,6 +669,69 @@ IFlowReconcileListener, IInfoProvider {
         }
     }
 
+    // ***************
+    // IDeviceListener
+    // ***************
+    private class DeviceDebugEventLogger implements IDeviceListener {
+        @Override
+        public String getName() {
+            return "deviceDebugEventLogger";
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(String type, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(String type, String name) {
+            return false;
+        }
+
+        @Override
+        public void deviceAdded(IDevice device) {
+            generateDeviceEvent(device, "host-added");
+        }
+
+        @Override
+        public void deviceRemoved(IDevice device) {
+            generateDeviceEvent(device, "host-removed");
+        }
+
+        @Override
+        public void deviceMoved(IDevice device) {
+            generateDeviceEvent(device, "host-moved");
+        }
+
+        @Override
+        public void deviceIPV4AddrChanged(IDevice device) {
+            generateDeviceEvent(device, "host-ipv4-addr-changed");
+        }
+
+        @Override
+        public void deviceVlanChanged(IDevice device) {
+            generateDeviceEvent(device, "host-vlan-changed");
+        }
+
+        private void generateDeviceEvent(IDevice device, String reason) {
+            List<Integer> ipv4Addresses =
+                new ArrayList<Integer>(Arrays.asList(device.getIPv4Addresses()));
+            List<SwitchPort> oldAps =
+                new ArrayList<SwitchPort>(Arrays.asList(device.getOldAP()));
+            List<SwitchPort> currentAps =
+                    new ArrayList<SwitchPort>(Arrays.asList(device.getAttachmentPoints()));
+            List<Short> vlanIds =
+                    new ArrayList<Short>(Arrays.asList(device.getVlanId()));
+
+            evDevice.updateEventNoFlush(
+                    new DeviceEvent(device.getMACAddress(),
+                                    ipv4Addresses,
+                                    oldAps,
+                                    currentAps,
+                                    vlanIds, reason));
+        }
+    }
+
     // *************
     // IInfoProvider
     // *************
@@ -828,10 +905,27 @@ IFlowReconcileListener, IInfoProvider {
         this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
         this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
         this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
+        this.debugEvents = fmc.getServiceImpl(IDebugEventService.class);
         this.syncService = fmc.getServiceImpl(ISyncService.class);
         this.deviceSyncManager = new DeviceSyncManager();
         this.haListenerDelegate = new HAListenerDelegate();
         registerDeviceManagerDebugCounters();
+        registerDeviceManagerDebugEvents();
+        this.addListener(new DeviceDebugEventLogger());
+    }
+
+    private void registerDeviceManagerDebugEvents() throws FloodlightModuleException {
+        if (debugEvents == null) {
+            debugEvents = new NullDebugEvent();
+        }
+        try {
+            evDevice =
+                debugEvents.registerEvent(PACKAGE, "hostevent",
+                                          "Host added, removed, updated, or moved",
+                                          EventType.ALWAYS_LOG, DeviceEvent.class, 500);
+        } catch (MaxEventsRegistered e) {
+            throw new FloodlightModuleException("Max events registered", e);
+        }
     }
 
     @Override
@@ -895,6 +989,7 @@ IFlowReconcileListener, IInfoProvider {
         } catch (SyncException e) {
             throw new FloodlightModuleException("Error while setting up sync service", e);
         }
+        floodlightProvider.addInfoProvider("summary", this);
     }
 
     private void registerDeviceManagerDebugCounters() throws FloodlightModuleException {
@@ -1980,6 +2075,9 @@ IFlowReconcileListener, IInfoProvider {
                 break;
             }
         }
+        // Since cleanupEntities() is not called in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
     }
 
     protected void removeEntity(Entity removed,
@@ -2133,6 +2231,9 @@ IFlowReconcileListener, IInfoProvider {
                 sendDeviceMovedNotification(d);
             }
         }
+        // Since topologyChanged() does not occur in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
     }
 
     /**
@@ -2211,6 +2312,9 @@ IFlowReconcileListener, IInfoProvider {
         for (Entity entity: device.entities ) {
             this.learnDeviceByEntity(entity);
         }
+        // Since reclassifyDevices() is not called in the packet-in pipeline,
+        // debugEvents need to be flushed explicitly
+        debugEvents.flushEvents();
         return true;
     }
 
@@ -2485,5 +2589,38 @@ IFlowReconcileListener, IInfoProvider {
      */
     IHAListener getHAListener() {
         return this.haListenerDelegate;
+    }
+
+    /**
+     * Device Event Class used to log Device related events
+     */
+    private class DeviceEvent {
+        @EventColumn(name = "MAC", description = EventFieldType.MAC)
+        private final long macAddress;
+        @EventColumn(name = "IPs", description = EventFieldType.LIST_IPV4)
+        private final List<Integer> ipv4Addresses;
+        @EventColumn(name = "Old Attachment Points",
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
+        private final List<SwitchPort> oldAttachmentPoints;
+        @EventColumn(name = "Current Attachment Points",
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
+        private final List<SwitchPort> currentAttachmentPoints;
+        @EventColumn(name = "VLAN IDs", description = EventFieldType.LIST_OBJECT)
+        private final List<Short> vlanIds;
+        @EventColumn(name = "Reason", description = EventFieldType.STRING)
+        private final String reason;
+
+        public DeviceEvent(long macAddress, List<Integer> ipv4Addresses,
+                List<SwitchPort> oldAttachmentPoints,
+                List<SwitchPort> currentAttachmentPoints,
+                List<Short> vlanIds, String reason) {
+            super();
+            this.macAddress = macAddress;
+            this.ipv4Addresses = ipv4Addresses;
+            this.oldAttachmentPoints = oldAttachmentPoints;
+            this.currentAttachmentPoints = currentAttachmentPoints;
+            this.vlanIds = vlanIds;
+            this.reason = reason;
+        }
     }
 }

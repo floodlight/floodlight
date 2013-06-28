@@ -85,4 +85,14 @@ public abstract class OFActionTransportLayer extends OFAction {
         }
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(type);
+        builder.append("[");
+        builder.append(transportPort);
+        builder.append("]");
+        return builder.toString();
+    }
 }

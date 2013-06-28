@@ -464,14 +464,11 @@ public class Device implements IDevice {
         } else  if (oldAPFlag) {
             // retain oldAP  as is.  Put the newAP in oldAPs for flagging
             // possible duplicates.
-            oldAPList = new ArrayList<AttachmentPoint>();
-            if (oldAPs != null) oldAPList.addAll(oldAPs);
-            // Add to oldAPList only if it was picked up from the oldAPList
-            oldAPList.add(newAP);
-            this.oldAPs = oldAPList;
-            if (!topology.isInSameBroadcastDomain(oldAP.getSw(), oldAP.getPort(),
-                                                  newAP.getSw(), newAP.getPort()))
-                return true; // attachment point changed.
+                oldAPList = new ArrayList<AttachmentPoint>();
+                if (oldAPs != null) oldAPList.addAll(oldAPs);
+                // Add ot oldAPList only if it was picked up from the oldAPList
+                oldAPList.add(newAP);
+                this.oldAPs = oldAPList;
         }
         return false;
     }
