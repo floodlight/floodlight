@@ -1,0 +1,18 @@
+<configuration scan="true">
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %level [%logger{20}:%thread] %msg%n</pattern>
+    </encoder>
+  </appender>
+  <appender name="EV_WARN_ERR" class="net.floodlightcontroller.debugevent.DebugEventAppender">
+  </appender>
+  <root level="INFO">
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="EV_WARN_ERR" />
+  </root>
+  <logger name="org" level="WARN"/>
+  <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
+  <logger name="net.bigdb" level="INFO"/>
+  <logger name="net.floodlightcontroller" level="INFO"/>
+  <logger name="org.sdnplatform" level="INFO"/>
+</configuration>
