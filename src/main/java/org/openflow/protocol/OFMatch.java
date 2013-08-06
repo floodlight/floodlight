@@ -739,6 +739,62 @@ public class OFMatch implements Cloneable, Serializable {
     }
 
     /**
+     * matching two OFMatch
+     * @param toCompare
+     * @return
+     */
+    public boolean match(OFMatch toCompare) {
+        if ((wildcards & OFPFW_IN_PORT) == 0 &&
+                this.inputPort != toCompare.getInputPort())
+            return false;
+        if ((wildcards & OFPFW_DL_DST) == 0 &&
+                !Arrays.equals(this.dataLayerDestination, toCompare.getDataLayerDestination()))
+            return false;
+        if ((wildcards & OFPFW_DL_SRC) == 0 &&
+                !Arrays.equals(this.dataLayerSource, toCompare.getDataLayerSource()))
+            return false;
+        if ((wildcards & OFPFW_DL_TYPE) == 0
+                && this.dataLayerType != toCompare.getDataLayerType())
+            return false;
+        if ((wildcards & OFPFW_DL_VLAN) == 0 &&
+                this.dataLayerVirtualLan != toCompare.getDataLayerVirtualLan())
+            return false;
+        if ((wildcards & OFPFW_DL_VLAN_PCP) == 0 &&
+                this.dataLayerVirtualLanPriorityCodePoint != toCompare.getDataLayerVirtualLanPriorityCodePoint())
+            return false;
+        if ((wildcards & OFPFW_NW_PROTO) == 0 &&
+                this.networkProtocol != toCompare.getNetworkProtocol())
+            return false;
+        if ((wildcards & OFPFW_NW_TOS) == 0 &&
+                this.networkTypeOfService != toCompare.getNetworkTypeOfService())
+            return false;
+        //compare network layer src/dst
+
+        int dstmasklen = getNetworkDestinationMaskLen();
+        int srcmasklen = getNetworkSourceMaskLen();
+        if (dstmasklen >= 32 && networkDestination != toCompare.getNetworkDestination())
+            return false;
+        if (srcmasklen >= 32 && networkSource != toCompare.getNetworkSource())
+            return false;
+        int dstmask = ~((1 << (32 - dstmasklen)) - 1);
+        int srcmask = ~((1 << (32 - srcmasklen)) - 1);
+        if (dstmasklen < 32 &&
+                (networkDestination & dstmask) != (toCompare.getNetworkDestination() & dstmask))
+            return false;
+        if (srcmasklen < 32 &&
+                (networkSource & srcmask) != (toCompare.getNetworkSource() & srcmask))
+            return false;
+        //layer 4
+        if ((wildcards & OFPFW_TP_DST) == 0 &&
+                this.transportDestination != toCompare.getTransportDestination())
+            return false;
+        if ((wildcards & OFPFW_TP_SRC) == 0 &&
+                this.transportSource != toCompare.getTransportSource())
+            return false;
+        return true;
+    }
+
+    /**
      * Output a dpctl-styled string, i.e., only list the elements that are not
      * wildcarded A match-everything OFMatch outputs "OFMatch[]"
      *
