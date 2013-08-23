@@ -19,6 +19,7 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.text.DecimalFormat;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
@@ -28,12 +29,41 @@ import org.restlet.resource.ServerResource;
  * @author readams
  */
 public class ControllerMemoryResource extends ServerResource {
+    private static double GIG = 1073741824;
+    private static double MEG = 1048576;
+    private static double KILO = 1024;
+
     @Get("json")
     public Map<String, Object> retrieve() {
         HashMap<String, Object> model = new HashMap<String, Object>();
         Runtime runtime = Runtime.getRuntime();
-        model.put("total", new Long(runtime.totalMemory()));
-        model.put("free", new Long(runtime.freeMemory()));
+	double total = runtime.totalMemory();
+	double free = runtime.freeMemory();
+	
+	String suffix = "B";
+	if (free > GIG)
+	{
+	    total = total / GIG;
+	    free = free / GIG;
+	    suffix = "GB";
+	}
+	else if (free > MEG)
+	{
+	    total = total / MEG;
+	    free = free / MEG;
+	    suffix = "MB";
+	}
+	else if (free > KILO)
+	{
+	    total = total / KILO;
+	    free = free / KILO;
+	    suffix = "kB";
+	}
+
+	DecimalFormat d = new DecimalFormat("#,##0.0# " + suffix);
+	
+        model.put("total",d.format(total));
+        model.put("free", d.format(free));
         return model;
     }
 }
