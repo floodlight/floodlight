@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -29,41 +29,38 @@ import org.restlet.resource.ServerResource;
  * @author readams
  */
 public class ControllerMemoryResource extends ServerResource {
-    private static double GIG = 1073741824;
-    private static double MEG = 1048576;
-    private static double KILO = 1024;
+    private static final double GIG = 1073741824;
+    private static final double MEG = 1048576;
+    private static final double KILO = 1024;
 
     @Get("json")
     public Map<String, Object> retrieve() {
         HashMap<String, Object> model = new HashMap<String, Object>();
         Runtime runtime = Runtime.getRuntime();
-	double total = runtime.totalMemory();
-	double free = runtime.freeMemory();
-	
-	String suffix = "B";
-	if (free > GIG)
-	{
-	    total = total / GIG;
-	    free = free / GIG;
-	    suffix = "GB";
-	}
-	else if (free > MEG)
-	{
-	    total = total / MEG;
-	    free = free / MEG;
-	    suffix = "MB";
-	}
-	else if (free > KILO)
-	{
-	    total = total / KILO;
-	    free = free / KILO;
-	    suffix = "kB";
-	}
 
-	DecimalFormat d = new DecimalFormat("#,##0.0# " + suffix);
-	
-        model.put("total",d.format(total));
-        model.put("free", d.format(free));
+        model.put("total",formatNumber(runtime.totalMemory()));
+        model.put("free", formatNumber(runtime.freeMemory()));
         return model;
+    }
+
+    private String formatNumber(long n)
+    {
+    	String suffix = "B";
+    	double res = n;
+        if (n > GIG){
+        	res = n / GIG;
+        	suffix = "GB";
+        }
+        else if (n > MEG){
+        	res = n / MEG;
+        	suffix = "MB";
+        }
+        else if (n > KILO){
+        	res = n / KILO;
+        	suffix = "kB";
+        }
+        DecimalFormat d = new DecimalFormat("#,##0.0# " + suffix);
+        return d.format(res);
+
     }
 }
