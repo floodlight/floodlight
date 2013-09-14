@@ -12,3 +12,5 @@ target
 findbugs-results
 *.launch
 /thrift
+*.idea/*
+*.iml
