@@ -24,7 +24,7 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 
 public class PacketTraceResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(PacketTraceResource.class);
@@ -95,10 +95,10 @@ public class PacketTraceResource extends ServerResource {
         ConcurrentHashMap <String,String> filter = new ConcurrentHashMap<String,String> ();
         String sid = null;
         PacketTraceOutput output = new PacketTraceOutput();
-        OFMessageFilterManager manager = 
-                (OFMessageFilterManager)getContext()
+        IOFMessageFilterManagerService manager = 
+                (IOFMessageFilterManagerService)getContext()
                     .getAttributes().
-                        get(OFMessageFilterManager.class.getCanonicalName());
+                        get(IOFMessageFilterManagerService.class.getCanonicalName());
 
         if (manager == null) {
             sid = null;
