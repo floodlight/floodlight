@@ -82,14 +82,12 @@ public class StaticFlowEntries {
      */
     public static long computeEntryCookie(OFFlowMod fm, int userCookie, String name) {
         // flow-specific hash is next 20 bits LOOK! who knows if this 
-        /*
         int prime = 211;
         int flowHash = 2311;
         for (int i=0; i < name.length(); i++)
             flowHash = flowHash * prime + (int)name.charAt(i);
-        */
-        // For now we use 0 so we can do a mass delete by cookie
-        return AppCookie.makeCookie(StaticFlowEntryPusher.STATIC_FLOW_APP_ID, 0);
+
+        return AppCookie.makeCookie(StaticFlowEntryPusher.STATIC_FLOW_APP_ID, flowHash);
     }
     
     /**
