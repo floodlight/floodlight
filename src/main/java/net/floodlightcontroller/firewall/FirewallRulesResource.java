@@ -1,13 +1,30 @@
+/**
+ *    Copyright 2011, Big Switch Networks, Inc.
+ *    Originally created by Amer Tahir
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.firewall;
 
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonToken;
-import org.codehaus.jackson.map.MappingJsonFactory;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.MappingJsonFactory;
 import org.openflow.util.HexString;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
@@ -23,8 +40,8 @@ public class FirewallRulesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(FirewallRulesResource.class);
 
     @Get("json")
-    public Object handleRequest() {
-        IFirewallService firewall = 
+    public List<FirewallRule> retrieve() {
+        IFirewallService firewall =
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
@@ -39,7 +56,7 @@ public class FirewallRulesResource extends ServerResource {
      */
     @Post
     public String store(String fmJson) {
-        IFirewallService firewall = 
+        IFirewallService firewall =
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
@@ -48,7 +65,6 @@ public class FirewallRulesResource extends ServerResource {
             rule = jsonToFirewallRule(fmJson);
         } catch (IOException e) {
             log.error("Error parsing firewall rule: " + fmJson, e);
-            e.printStackTrace();
             return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
         }
         String status = null;
@@ -69,10 +85,10 @@ public class FirewallRulesResource extends ServerResource {
      * @param fmJson The Firewall rule entry in JSON format.
      * @return A string status message
      */
-    
+
     @Delete
     public String remove(String fmJson) {
-        IFirewallService firewall = 
+        IFirewallService firewall =
                 (IFirewallService)getContext().getAttributes().
                 get(IFirewallService.class.getCanonicalName());
 
@@ -81,7 +97,6 @@ public class FirewallRulesResource extends ServerResource {
             rule = jsonToFirewallRule(fmJson);
         } catch (IOException e) {
             log.error("Error parsing firewall rule: " + fmJson, e);
-            e.printStackTrace();
             return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
         }
         String status = null;
@@ -111,7 +126,7 @@ public class FirewallRulesResource extends ServerResource {
      * @return The FirewallRule instance
      * @throws IOException If there was an error parsing the JSON
      */
-     
+
     public static FirewallRule jsonToFirewallRule(String fmJson) throws IOException {
         FirewallRule rule = new FirewallRule();
         MappingJsonFactory f = new MappingJsonFactory();
@@ -135,55 +150,59 @@ public class FirewallRulesResource extends ServerResource {
 
             String n = jp.getCurrentName();
             jp.nextToken();
-            if (jp.getText().equals("")) 
+            if (jp.getText().equals(""))
                 continue;
 
             String tmp;
-            
+
             // This is currently only applicable for remove().  In store(), ruleid takes a random number
             if (n == "ruleid") {
-                rule.ruleid = Integer.parseInt((String)jp.getText());
+                rule.ruleid = Integer.parseInt(jp.getText());
             }
-            
+
             // This assumes user having dpid info for involved switches
             else if (n == "switchid") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("-1") == false) {
-                    // user inputs hex format dpid 
-                    rule.dpid = HexString.toLong(tmp);                    
+                    // user inputs hex format dpid
+                    rule.dpid = HexString.toLong(tmp);
                     rule.wildcard_dpid = false;
                 }
-            } 
-            
+            }
+
             else if (n == "src-inport") {
                 rule.in_port = Short.parseShort(jp.getText());
                 rule.wildcard_in_port = false;
-            } 
-            
+            }
+
             else if (n == "src-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_dl_src = false;
                     rule.dl_src = Ethernet.toLong(Ethernet.toMACAddress(tmp));
                 }
-            } 
-            
+            }
+
             else if (n == "dst-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_dl_dst = false;
                     rule.dl_dst = Ethernet.toLong(Ethernet.toMACAddress(tmp));
                 }
-            } 
-            
+            }
+
             else if (n == "dl-type") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ARP")) {
                     rule.wildcard_dl_type = false;
                     rule.dl_type = Ethernet.TYPE_ARP;
                 }
-            } 
-            
+                if (tmp.equalsIgnoreCase("IPv4")) {
+                    rule.wildcard_dl_type = false;
+                    rule.dl_type = Ethernet.TYPE_IPv4;
+                }
+            }
+
             else if (n == "src-ip") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
@@ -194,8 +213,8 @@ public class FirewallRulesResource extends ServerResource {
                     rule.nw_src_prefix = cidr[0];
                     rule.nw_src_maskbits = cidr[1];
                 }
-            } 
-            
+            }
+
             else if (n == "dst-ip") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
@@ -206,8 +225,8 @@ public class FirewallRulesResource extends ServerResource {
                     rule.nw_dst_prefix = cidr[0];
                     rule.nw_dst_maskbits = cidr[1];
                 }
-            } 
-            
+            }
+
             else if (n == "nw-proto") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("TCP")) {
@@ -225,23 +244,23 @@ public class FirewallRulesResource extends ServerResource {
                     rule.nw_proto = IPv4.PROTOCOL_ICMP;
                     rule.wildcard_dl_type = false;
                     rule.dl_type = Ethernet.TYPE_IPv4;
-                } 
-            } 
-            
+                }
+            }
+
             else if (n == "tp-src") {
                 rule.wildcard_tp_src = false;
                 rule.tp_src = Short.parseShort(jp.getText());
-            } 
-            
+            }
+
             else if (n == "tp-dst") {
                 rule.wildcard_tp_dst = false;
                 rule.tp_dst = Short.parseShort(jp.getText());
-            } 
-            
+            }
+
             else if (n == "priority") {
                 rule.priority = Integer.parseInt(jp.getText());
-            } 
-            
+            }
+
             else if (n == "action") {
                 if (jp.getText().equalsIgnoreCase("allow") == true) {
                     rule.action = FirewallRule.FirewallAction.ALLOW;

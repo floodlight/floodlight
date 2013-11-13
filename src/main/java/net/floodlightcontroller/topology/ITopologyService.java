@@ -1,11 +1,25 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.topology;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 
 public interface ITopologyService extends IFloodlightService  {
 
@@ -38,8 +52,12 @@ public interface ITopologyService extends IFloodlightService  {
      * @return true if the switches are in the same cluster
      */
     public boolean inSameOpenflowDomain(long switch1, long switch2);
-    public boolean inSameOpenflowDomain(long switch1, long switch2, 
+    public boolean inSameOpenflowDomain(long switch1, long switch2,
                                         boolean tunnelEnabled);
+
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID);
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID,
+                                                 boolean tunnelEnabled);
 
     /**
      * Queries whether two switches are in the same island.
@@ -50,11 +68,11 @@ public interface ITopologyService extends IFloodlightService  {
      * @return True of they are in the same island, false otherwise
      */
     public boolean inSameL2Domain(long switch1, long switch2);
-    public boolean inSameL2Domain(long switch1, long switch2, 
+    public boolean inSameL2Domain(long switch1, long switch2,
                                   boolean tunnelEnabled);
 
     public boolean isBroadcastDomainPort(long sw, short port);
-    public boolean isBroadcastDomainPort(long sw, short port, 
+    public boolean isBroadcastDomainPort(long sw, short port,
                                          boolean tunnelEnabled);
 
 
@@ -80,7 +98,7 @@ public interface ITopologyService extends IFloodlightService  {
      * @param p2
      * @return
      */
-    public boolean isInSameBroadcastDomain(long s1, short p1, 
+    public boolean isInSameBroadcastDomain(long s1, short p1,
                                            long s2, short p2);
     public boolean isInSameBroadcastDomain(long s1, short p1,
                                            long s2, short p2,
@@ -103,7 +121,7 @@ public interface ITopologyService extends IFloodlightService  {
                                         boolean tunnelEnabled);
 
     /**
-     * 
+     *
      */
     public boolean isIncomingBroadcastAllowed(long sw, short portId);
     public boolean isIncomingBroadcastAllowed(long sw, short portId,
@@ -135,13 +153,13 @@ public interface ITopologyService extends IFloodlightService  {
      * @param dst
      * @return the allowed broadcast port
      */
-    public NodePortTuple 
+    public NodePortTuple
     getAllowedOutgoingBroadcastPort(long src,
                                     short srcPort,
                                     long dst,
                                     short dstPort);
 
-    public NodePortTuple 
+    public NodePortTuple
     getAllowedOutgoingBroadcastPort(long src,
                                     short srcPort,
                                     long dst,
@@ -152,7 +170,7 @@ public interface ITopologyService extends IFloodlightService  {
      * If the src broadcast domain port is not allowed for incoming
      * broadcast, this method provides the topologically equivalent
      * incoming broadcast-allowed
-     * src port.  
+     * src port.
      * @param src
      * @param dst
      * @return the allowed broadcast port
@@ -184,15 +202,9 @@ public interface ITopologyService extends IFloodlightService  {
     public Set<NodePortTuple> getBlockedPorts();
 
     /**
-     * ITopologyListener provides topologyChanged notification, 
-     * but not *what* the changes were.  
-     * This method returns the delta in the linkUpdates between the current and the previous topology instance.
-     * @return
-     */
-    public List<LDUpdate> getLastLinkUpdates();
-
-    /**
-     * Switch methods
+     * Returns the enabled, non quarantined ports of the given switch. Returns
+     * an empty set if switch doesn't exists, doesn't have any enabled port, or
+     * has only quarantined ports. Will never return null.
      */
     public Set<Short> getPorts(long sw);
 }

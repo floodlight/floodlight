@@ -17,12 +17,16 @@
 
 package net.floodlightcontroller.packet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
 *
 * @author David Erickson (daviderickson@cs.stanford.edu)
 */
 public abstract class BasePacket implements IPacket {
+    public static final Logger log = LoggerFactory.getLogger(BasePacket.class);
     protected IPacket parent;
     protected IPacket payload;
 
@@ -109,7 +113,12 @@ public abstract class BasePacket implements IPacket {
         // cloning. Not the most efficient way but simple. We can revisit
         // if we hit performance problems.
         byte[] data = this.serialize();
-        pkt.deserialize(this.serialize(), 0, data.length);
+        try {
+            pkt.deserialize(this.serialize(), 0, data.length);
+        } catch (PacketParsingException e) {
+            // This shouldn't happen here, since we already deserialized it once
+            return new Data(data);
+        }
         pkt.setParent(this.parent);
         return pkt;
     }

@@ -56,7 +56,7 @@ class DebugServer(TCPServer):
         _log.debug('Closing connection to DebugServer from %s:%d' % client_address)
         request.close()
 
-def run_server(port=6655, host='0.0.0.0', locals=locals()):
+def run_server(port=6655, host='', locals=locals()):
     currentThread()._thread.setName("debugserver-main")
 
     global _locals
@@ -65,8 +65,8 @@ def run_server(port=6655, host='0.0.0.0', locals=locals()):
         global _log
         _log = locals["log"]
 
-    _log.info("Starting DebugServer on port %d" % port)
-    server = DebugServer(('', port), DebugServerHandler)
+    _log.info("Starting DebugServer on %s:%d" % (host, port))
+    server = DebugServer((host, port), DebugServerHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

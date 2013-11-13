@@ -1,3 +1,20 @@
+/**
+ *    Copyright 2011, Big Switch Networks, Inc.
+ *    Originally created by Amer Tahir
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.firewall;
 
 import java.util.Collection;
@@ -342,9 +359,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // storage, create table and read rules
         storageSource.createTable(TABLE_NAME, null);
         storageSource.setTablePrimaryKeyName(TABLE_NAME, COLUMN_RULEID);
-        synchronized (rules) {
-            this.rules = readRulesFromStorage();
-        }
+        this.rules = readRulesFromStorage();
     }
 
     @Override
@@ -580,7 +595,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
             // the case to determine if we have L2 broadcast + L3 unicast
             // don't allow this broadcast packet if such is the case (malformed
             // packet)
-            if (eth.getEtherType() == Ethernet.TYPE_IPv4
+            if ((eth.getPayload() instanceof IPv4)
                     && this.IPIsBroadcast(((IPv4) eth.getPayload())
                             .getDestinationAddress()) == false) {
                 allowBroadcast = false;

@@ -1,10 +1,26 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openflow.util.HexString;
 
 /**
@@ -13,7 +29,8 @@ import org.openflow.util.HexString;
  * to the actual objects.
  * @author srini
  */
-public class NodePortTuple {
+
+public class NodePortTuple implements Comparable<NodePortTuple> {
     protected long nodeId; // switch DPID
     protected short portId; // switch port id
 
@@ -77,7 +94,7 @@ public class NodePortTuple {
             return false;
         return true;
     }
-    
+
     /**
      * API to return a String value formed wtih NodeID and PortID
      * The portID is a 16-bit field, so mask it as an integer to get full
@@ -86,5 +103,24 @@ public class NodePortTuple {
      */
     public String toKeyString() {
         return (HexString.toHexString(nodeId)+ "|" + (portId & 0xffff));
+    }
+
+    @Override
+    public int compareTo(NodePortTuple obj) {
+        final int BEFORE = -1;
+        final int EQUAL = 0;
+        final int AFTER = 1;
+
+        if (this.getNodeId() < obj.getNodeId())
+            return BEFORE;
+        if (this.getNodeId() > obj.getNodeId())
+            return AFTER;
+
+        if (this.getPortId() < obj.getPortId())
+            return BEFORE;
+        if (this.getPortId() > obj.getPortId())
+            return AFTER;
+
+        return EQUAL;
     }
 }

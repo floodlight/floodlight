@@ -18,7 +18,7 @@
 package org.openflow.protocol.statistics;
 
 
-import org.codehaus.jackson.annotate.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**

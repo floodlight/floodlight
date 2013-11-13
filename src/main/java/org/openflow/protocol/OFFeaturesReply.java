@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -21,9 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.protocol.serializers.OFFeaturesReplyJSONSerializer;
+import org.openflow.protocol.serializers.StringDpidToLongJSONDeserializer;
 import org.openflow.util.U16;
 
 
@@ -86,6 +88,7 @@ public class OFFeaturesReply extends OFMessage {
     /**
      * @param datapathId the datapathId to set
      */
+    @JsonDeserialize(using=StringDpidToLongJSONDeserializer.class)
     public void setDatapathId(long datapathId) {
         this.datapathId = datapathId;
     }

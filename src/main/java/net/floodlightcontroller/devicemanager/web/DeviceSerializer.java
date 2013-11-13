@@ -23,10 +23,10 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.IPv4;
 
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.SerializerProvider;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import org.openflow.util.HexString;
 
 /**
@@ -64,6 +64,11 @@ public class DeviceSerializer extends JsonSerializer<Device> {
 
         jGen.writeNumberField("lastSeen", device.getLastSeen().getTime());
         
+        String dhcpClientName = device.getDHCPClientName();
+        if (dhcpClientName != null) {
+            jGen.writeStringField("dhcpClientName", dhcpClientName);
+        }
+
         jGen.writeEndObject();
     }
 

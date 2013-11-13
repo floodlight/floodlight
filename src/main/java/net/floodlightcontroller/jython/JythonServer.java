@@ -1,3 +1,19 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.jython;
 
 import java.net.URL;
@@ -18,15 +34,18 @@ import org.slf4j.LoggerFactory;
 public class JythonServer extends Thread {
     protected static Logger log = LoggerFactory.getLogger(JythonServer.class);
 
+    String host;
 	int port;
 	Map<String, Object> locals;
 	
 	/**
+	 * @param host_ Host to use for jython server
 	 * @param port_ Port to use for jython server
 	 * @param locals_ Locals to add to the interpreters top level name space
 	 */
-	public JythonServer(int port_, Map<String, Object> locals_) {
-		this.port = port_ ;
+	public JythonServer(String host_, int port_, Map<String, Object> locals_) {
+		this.host = host_;
+		this.port = port_;
 		this.locals = locals_;
 		if (this.locals == null) {
 			this.locals = new HashMap<String, Object>();
@@ -57,7 +76,10 @@ public class JythonServer extends Thread {
         p.exec("import sys");
         p.exec("sys.path.append('" + jarPath + "')");
         p.exec("from debugserver import run_server");
-        p.exec("run_server(" + this.port + ", '0.0.0.0', locals())");
+        if (this.host == null) {
+        	p.exec("run_server(port=" + this.port + ", locals=locals())");
+        } else {
+        	p.exec("run_server(port=" + this.port + ", host='" + this.host + "', locals=locals())");
+        }
     }
-
 }

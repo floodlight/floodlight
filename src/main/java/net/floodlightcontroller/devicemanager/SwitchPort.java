@@ -1,7 +1,7 @@
 /**
-*    Copyright 2012 Big Switch Networks, Inc. 
+*    Copyright 2012 Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -17,13 +17,16 @@
 
 package net.floodlightcontroller.devicemanager;
 
+import org.openflow.util.HexString;
+
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.ser.ToStringSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * A simple switch DPID/port pair
+ * This class is immutable
  * @author readams
  *
  */
@@ -31,12 +34,12 @@ public class SwitchPort {
     @JsonSerialize(using=ToStringSerializer.class)
     public enum ErrorStatus {
         DUPLICATE_DEVICE("duplicate-device");
-        
+
         private String value;
         ErrorStatus(String v) {
             value = v;
         }
-        
+
         @Override
         public String toString() {
             return value;
@@ -51,10 +54,10 @@ public class SwitchPort {
             return null;
         }
     }
-    
-    protected long switchDPID;
-    protected int port;
-    ErrorStatus errorStatus;
+
+    private final long switchDPID;
+    private final int port;
+    private final ErrorStatus errorStatus;
 
     /**
      * Simple constructor
@@ -80,7 +83,7 @@ public class SwitchPort {
         this.port = port;
         this.errorStatus = null;
     }
-    
+
     // ***************
     // Getters/Setters
     // ***************
@@ -89,11 +92,11 @@ public class SwitchPort {
     public long getSwitchDPID() {
         return switchDPID;
     }
-    
+
     public int getPort() {
         return port;
     }
-    
+
     public ErrorStatus getErrorStatus() {
         return errorStatus;
     }
@@ -101,7 +104,7 @@ public class SwitchPort {
     // ******
     // Object
     // ******
-    
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -129,8 +132,8 @@ public class SwitchPort {
 
     @Override
     public String toString() {
-        return "SwitchPort [switchDPID=" + switchDPID + ", port=" + port
-                + ", errorStatus=" + errorStatus + "]";
+        return "SwitchPort [switchDPID=" + HexString.toHexString(switchDPID) +
+               ", port=" + port + ", errorStatus=" + errorStatus + "]";
     }
 
 }

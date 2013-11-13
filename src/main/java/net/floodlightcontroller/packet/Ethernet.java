@@ -230,7 +230,7 @@ public class Ethernet extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
-        if (length <= 0)
+        if (length <= 16)  // Ethernet packet minium should be 60, this is reasonable
             return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
@@ -261,13 +261,38 @@ public class Ethernet extends BasePacket {
             Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get(this.etherType);
             try {
                 payload = clazz.newInstance();
-            } catch (Exception e) {
-                throw new RuntimeException("Error parsing payload for Ethernet packet", e);
+                this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+            } catch (PacketParsingException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Failed to parse ethernet packet {}->{}" +
+                            " payload as {}, treat as plain ethernet packet",
+                            new Object[] {this.sourceMACAddress,
+                                          this.destinationMACAddress,
+                                          clazz.getClass().getName()});
+                    log.trace("Exception from parsing {}", e);
+                }
+                this.payload = new Data(data);
+            } catch (InstantiationException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Fail to instantiate class {}, {}",
+                              clazz.getClass().getName(), e);
+                }
+                this.payload = new Data(data);
+            } catch (IllegalAccessException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Fail to access class for instantiation {}, {}",
+                              clazz.getClass().getName(), e);
+                }
+                this.payload = new Data(data);
+            } catch (RuntimeException e) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Runtime exception during packet parsing {}", e);
+                }
+                this.payload = new Data(data);
             }
         } else {
-            payload = new Data();
+            this.payload = new Data(data);
         }
-        this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
         this.payload.setParent(this);
         return this;
     }
@@ -425,28 +450,6 @@ public class Ethernet extends BasePacket {
             sb.append(p.getDiffServ());
             sb.append("\nnw_proto: ");
             sb.append(p.getProtocol());
-
-            if (pkt instanceof TCP) {
-                sb.append("\ntp_src: ");
-                sb.append(((TCP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((TCP) pkt).getDestinationPort());
-
-            } else if (pkt instanceof UDP) {
-                sb.append("\ntp_src: ");
-                sb.append(((UDP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((UDP) pkt).getDestinationPort());
-            }
-
-            if (pkt instanceof ICMP) {
-                ICMP icmp = (ICMP) pkt;
-                sb.append("\nicmp_type: ");
-                sb.append(icmp.getIcmpType());
-                sb.append("\nicmp_code: ");
-                sb.append(icmp.getIcmpCode());
-            }
-
         }
         else if (pkt instanceof DHCP) {
             sb.append("\ndhcp packet");

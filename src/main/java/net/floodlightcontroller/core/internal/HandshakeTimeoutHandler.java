@@ -19,13 +19,10 @@ package net.floodlightcontroller.core.internal;
 
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.internal.OFChannelState.HandshakeState;
-
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
-import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
@@ -34,20 +31,20 @@ import org.jboss.netty.util.TimerTask;
  * Trigger a timeout if a switch fails to complete handshake soon enough
  */
 public class HandshakeTimeoutHandler 
-    extends SimpleChannelUpstreamHandler
-    implements ExternalResourceReleasable {
+    extends SimpleChannelUpstreamHandler {
     static final HandshakeTimeoutException EXCEPTION = 
             new HandshakeTimeoutException();
     
-    final OFChannelState state;
+    final OFChannelHandler channelHandler;
     final Timer timer;
     final long timeoutNanos;
     volatile Timeout timeout;
     
-    public HandshakeTimeoutHandler(OFChannelState state, Timer timer,
+    public HandshakeTimeoutHandler(OFChannelHandler channelHandler,
+                                   Timer timer,
                                    long timeoutSeconds) {
         super();
-        this.state = state;
+        this.channelHandler = channelHandler;
         this.timer = timer;
         this.timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
 
@@ -71,11 +68,6 @@ public class HandshakeTimeoutHandler
             timeout = null;
         }
     }
-
-    @Override
-    public void releaseExternalResources() {
-        timer.stop();
-    }
     
     private final class HandshakeTimeoutTask implements TimerTask {
 
@@ -94,7 +86,7 @@ public class HandshakeTimeoutHandler
             if (!ctx.getChannel().isOpen()) {
                 return;
             }
-            if (!state.hsState.equals(HandshakeState.READY))
+            if (!channelHandler.isHandshakeComplete())
                 Channels.fireExceptionCaught(ctx, EXCEPTION);
         }
     }

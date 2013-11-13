@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -38,7 +38,10 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     protected OFStatisticsFactory statisticsFactory;
     protected OFStatisticsType statisticType;
     protected short flags;
-    protected List<OFStatistics> statistics;
+
+    // TODO: this should be List<? extends OFStatistics>, to
+    // allow for type safe assignments of lists of specific message
+    protected List<? extends OFStatistics> statistics;
 
     /**
      * @return the statisticType
@@ -71,14 +74,34 @@ public abstract class OFStatisticsMessageBase extends OFMessage implements
     /**
      * @return the statistics
      */
-    public List<OFStatistics> getStatistics() {
+    public List<? extends OFStatistics> getStatistics() {
         return statistics;
+    }
+
+    /**
+     * return the first statistics request in the list of statistics, for
+     * statistics messages that expect exactly one message in their body (e.g.,
+     * flow stats request, port statsrequest)
+     *
+     * @return the first and only element in the list of statistics
+     * @throw IllegalArgumentException if the list does not contain exactly one
+     *        element
+     */
+    public OFStatistics getFirstStatistics() {
+        if (statistics == null ) {
+            throw new IllegalArgumentException("Invariant violation: statistics message of type "+statisticType+" is null");
+        }
+        if (statistics.size() != 1) {
+            throw new IllegalArgumentException("Invariant violation: statistics message of type "+statisticType+" contains "+statistics.size() +" statreq/reply messages in its body (should be 1)");
+        }
+
+        return statistics.get(0);
     }
 
     /**
      * @param statistics the statistics to set
      */
-    public void setStatistics(List<OFStatistics> statistics) {
+    public void setStatistics(List<? extends OFStatistics> statistics) {
         this.statistics = statistics;
     }
 

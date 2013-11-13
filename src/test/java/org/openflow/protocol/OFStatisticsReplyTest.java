@@ -64,7 +64,7 @@ public class OFStatisticsReplyTest extends OFTestCase {
                 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xc4, 0x00, 0x00, 0x00,
                 0x08, 0x00, 0x02, 0x00, 0x00 };
 
-        OFMessageFactory factory = new BasicFactory();
+        OFMessageFactory factory = BasicFactory.getInstance();
         ChannelBuffer packetBuf = ChannelBuffers.wrappedBuffer(packet);
         List<OFMessage> msg = factory.parseMessage(packetBuf);
         TestCase.assertNotNull(msg);

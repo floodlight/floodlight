@@ -1,5 +1,23 @@
+/**
+ *    Copyright 2011, Big Switch Networks, Inc.
+ *    Originally created by Amer Tahir
+ *    
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may 
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *    
+ *         http://www.apache.org/licenses/LICENSE-2.0 
+ *    
+ *    Unless required by applicable law or agreed to in writing, software 
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.firewall;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openflow.protocol.OFMatch;
 
 import net.floodlightcontroller.packet.Ethernet;
@@ -8,6 +26,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
+@JsonSerialize(using=FirewallRuleSerializer.class)
 public class FirewallRule implements Comparable<FirewallRule> {
     public int ruleid;
 
@@ -113,7 +132,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
     public boolean isSameAs(FirewallRule r) {
         if (this.action != r.action
                 || this.wildcard_dl_type != r.wildcard_dl_type
-                || (this.wildcard_dl_type == false && this.dl_type == r.dl_type)
+                || (this.wildcard_dl_type == false && this.dl_type != r.dl_type)
                 || this.wildcard_tp_src != r.wildcard_tp_src
                 || (this.wildcard_tp_src == false && this.tp_src != r.tp_src)
                 || this.wildcard_tp_dst != r.wildcard_tp_dst

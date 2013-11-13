@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -41,7 +41,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 @LogMessageCategory("Static Flow Pusher")
 public class StaticFlowEntryPusherResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusherResource.class);
-    
+
     /**
      * Checks to see if the user matches IP information without
      * checking for the correct ether-type (2048).
@@ -64,17 +64,17 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             }
             if (type == 2048) matchEther = true;
         }
-        
-        if ((rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) || 
+
+        if ((rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_SRC) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_PROTO) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_TOS)) &&
                 (matchEther == false))
             return false;
-        
+
         return true;
     }
-    
+
     /**
      * Takes a Static Flow Pusher string in JSON format and parses it into
      * our database schema then pushes it to the database.
@@ -90,7 +90,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
         IStorageSourceService storageSource =
                 (IStorageSourceService)getContext().getAttributes().
                     get(IStorageSourceService.class.getCanonicalName());
-        
+
         Map<String, Object> rowValues;
         try {
             rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
@@ -107,11 +107,10 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             return ("{\"status\" : \"" + status + "\"}");
         } catch (IOException e) {
             log.error("Error parsing push flow mod request: " + fmJson, e);
-            e.printStackTrace();
             return "{\"status\" : \"Error! Could not parse flod mod, see log for details.\"}";
         }
     }
-    
+
     @Delete
     @LogMessageDoc(level="ERROR",
         message="Error deleting flow mod request: {request}",
@@ -132,10 +131,9 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             }
         } catch (IOException e) {
             log.error("Error deleting flow mod request: " + fmJson, e);
-            e.printStackTrace();
             return "{\"status\" : \"Error deleting entry, see log for details\"}";
         }
-        
+
         storageSource.deleteRowAsync(StaticFlowEntryPusher.TABLE_NAME, fmName);
         return "{\"status\" : \"Entry " + fmName + " deleted\"}";
     }

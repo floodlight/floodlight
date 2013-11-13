@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -48,13 +48,6 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/counter/categories/{switchId}/{counterName}/{layer}/json", SwitchCounterCategoriesResource.class);
         router.attach("/memory/json", ControllerMemoryResource.class);
         router.attach("/packettrace/json", PacketTraceResource.class);
-        // Get the last {count} events from the event histories
-        router.attach("/event-history/topology-switch/{count}/json",
-                EventHistoryTopologySwitchResource.class);
-        router.attach("/event-history/topology-link/{count}/json",
-                EventHistoryTopologyLinkResource.class);
-        router.attach("/event-history/topology-cluster/{count}/json",
-                EventHistoryTopologyClusterResource.class);
         router.attach("/storage/tables/json", StorageSourceTablesResource.class);
         router.attach("/controller/summary/json", ControllerSummaryResource.class);
         router.attach("/role/json", ControllerRoleResource.class);

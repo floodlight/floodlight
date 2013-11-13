@@ -1,6 +1,25 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.packet;
 
 import static org.junit.Assert.*;
+
+import java.util.Arrays;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,7 +100,7 @@ public class PacketTest {
         this.packets = new IPacket[] { pkt1, pkt2, pkt3, pkt4 };
     }
     
-    protected void doTestClone(IPacket pkt) {
+    protected void doTestClone(IPacket pkt) throws Exception {
         if (pkt.getPayload() != null)
             doTestClone(pkt.getPayload());
         IPacket newPkt = (IPacket)pkt.clone();
@@ -105,19 +124,19 @@ public class PacketTest {
             ARP arp = (ARP)pkt;
             ARP newArp = (ARP)newPkt;
             newArp.setSenderProtocolAddress(new byte[] {1,2,3,4});
-            assertEquals(false, newArp.getSenderProtocolAddress()
-                                .equals(arp.getSenderProtocolAddress()));
+            assertEquals(false, Arrays.equals(newArp.getSenderProtocolAddress(),
+                                              arp.getSenderProtocolAddress()));
+            assertEquals(false, newPkt.equals(pkt));
+        } else {
+            byte[] dummyData = dummyPkt.serialize().clone();
+            newPkt = (IPacket)pkt.clone();
+            newPkt.deserialize(dummyData, 0, dummyData.length);
             assertEquals(false, newPkt.equals(pkt));
         }
-        
-        byte[] dummyData = dummyPkt.serialize().clone();
-        newPkt = (IPacket)pkt.clone();
-        newPkt.deserialize(dummyData, 0, dummyData.length);
-        assertEquals(false, newPkt.equals(pkt));
     }
     
     @Test
-    public void testClone() {
+    public void testClone() throws Exception {
         for (IPacket pkt: packets) {
             doTestClone(pkt);
         }

@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -16,7 +16,7 @@
 **/
 
 /**
- * 
+ *
  */
 package net.floodlightcontroller.packet;
 
@@ -43,6 +43,12 @@ public class IPv4 extends BasePacket {
         protocolClassMap.put(PROTOCOL_UDP, UDP.class);
     }
 
+    public static final byte IPV4_FLAGS_MOREFRAG = 0x1;
+    public static final byte IPV4_FLAGS_DONTFRAG = 0x2;
+    public static final byte IPV4_FLAGS_MASK = 0x7;
+    public static final byte IPV4_FLAGS_SHIFT = 13;
+    public static final short IPV4_OFFSET_MASK = (1 << IPV4_FLAGS_SHIFT) - 1;
+
     protected byte version;
     protected byte headerLength;
     protected byte diffServ;
@@ -58,6 +64,7 @@ public class IPv4 extends BasePacket {
     protected byte[] options;
 
     protected boolean isTruncated;
+    protected boolean isFragment;
 
     /**
      * Default constructor that sets the version to 4.
@@ -66,6 +73,7 @@ public class IPv4 extends BasePacket {
         super();
         this.version = 4;
         isTruncated = false;
+        isFragment = false;
     }
 
     /**
@@ -125,6 +133,14 @@ public class IPv4 extends BasePacket {
 
     public void setTruncated(boolean isTruncated) {
         this.isTruncated = isTruncated;
+    }
+
+    public boolean isFragment() {
+        return isFragment;
+    }
+
+    public void setFragment(boolean isFrag) {
+        this.isFragment = isFrag;
     }
 
     /**
@@ -286,6 +302,7 @@ public class IPv4 extends BasePacket {
      *      -headerLength : 0
      *      -totalLength : 0
      */
+    @Override
     public byte[] serialize() {
         byte[] payloadData = null;
         if (payload != null) {
@@ -308,7 +325,8 @@ public class IPv4 extends BasePacket {
         bb.put(this.diffServ);
         bb.putShort(this.totalLength);
         bb.putShort(this.identification);
-        bb.putShort((short) (((this.flags & 0x7) << 13) | (this.fragmentOffset & 0x1fff)));
+        bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
+                | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
         bb.put(this.protocol);
         bb.putShort(this.checksum);
@@ -335,19 +353,25 @@ public class IPv4 extends BasePacket {
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         short sscratch;
 
         this.version = bb.get();
         this.headerLength = (byte) (this.version & 0xf);
         this.version = (byte) ((this.version >> 4) & 0xf);
+        if (this.version != 4) {
+            throw new PacketParsingException(
+                    "Invalid version for IPv4 packet: " +
+                    this.version);
+        }
         this.diffServ = bb.get();
         this.totalLength = bb.getShort();
         this.identification = bb.getShort();
         sscratch = bb.getShort();
-        this.flags = (byte) ((sscratch >> 13) & 0x7);
-        this.fragmentOffset = (short) (sscratch & 0x1fff);
+        this.flags = (byte) ((sscratch >> IPV4_FLAGS_SHIFT) & IPV4_FLAGS_MASK);
+        this.fragmentOffset = (short) (sscratch & IPV4_OFFSET_MASK);
         this.ttl = bb.get();
         this.protocol = bb.get();
         this.checksum = bb.getShort();
@@ -361,7 +385,10 @@ public class IPv4 extends BasePacket {
         }
 
         IPacket payload;
-        if (IPv4.protocolClassMap.containsKey(this.protocol)) {
+        isFragment = ((this.flags & IPV4_FLAGS_DONTFRAG) == 0) &&
+                ((this.flags & IPV4_FLAGS_MOREFRAG) != 0 ||
+                this.fragmentOffset != 0);
+        if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
             Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
                 payload = clazz.newInstance();
@@ -369,12 +396,21 @@ public class IPv4 extends BasePacket {
                 throw new RuntimeException("Error parsing payload for IPv4 packet", e);
             }
         } else {
+            if (log.isTraceEnabled() && isFragment) {
+                log.trace("IPv4 fragment detected {}->{}, forward using IP header only",
+                        fromIPv4Address(this.sourceAddress),
+                        fromIPv4Address(this.destinationAddress));
+            }
             payload = new Data();
         }
-        this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+        int payloadLength = this.totalLength - this.headerLength * 4;
+        int remLength = bb.limit()-bb.position();
+        if (remLength < payloadLength)
+            payloadLength = bb.limit()-bb.position();
+        this.payload = payload.deserialize(data, bb.position(), payloadLength);
         this.payload.setParent(this);
 
-        if (this.totalLength != length)
+        if (this.totalLength > length)
             this.isTruncated = true;
         else
             this.isTruncated = false;
@@ -393,13 +429,17 @@ public class IPv4 extends BasePacket {
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
         String[] octets = ipAddress.split("\\.");
-        if (octets.length != 4) 
+        if (octets.length != 4)
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
 
         int result = 0;
         for (int i = 0; i < 4; ++i) {
-            result |= Integer.valueOf(octets[i]) << ((3-i)*8);
+            int oct = Integer.valueOf(octets[i]);
+            if (oct > 255 || oct < 0)
+                throw new IllegalArgumentException("Octet values in specified" +
+                        " IPv4 address must be 0 <= value <= 255");
+            result |=  oct << ((3-i)*8);
         }
         return result;
     }
@@ -422,7 +462,7 @@ public class IPv4 extends BasePacket {
     /**
      * Accepts an IPv4 address and returns of string of the form xxx.xxx.xxx.xxx
      * ie 192.168.0.1
-     * 
+     *
      * @param ipAddress
      * @return
      */
@@ -442,7 +482,7 @@ public class IPv4 extends BasePacket {
      * Accepts a collection of IPv4 addresses as integers and returns a single
      * String useful in toString method's containing collections of IP
      * addresses.
-     * 
+     *
      * @param ipAddresses collection
      * @return
      */
@@ -467,7 +507,7 @@ public class IPv4 extends BasePacket {
      */
     public static byte[] toIPv4AddressBytes(String ipAddress) {
         String[] octets = ipAddress.split("\\.");
-        if (octets.length != 4) 
+        if (octets.length != 4)
             throw new IllegalArgumentException("Specified IPv4 address must" +
                 "contain 4 sets of numerical digits separated by periods");
 
@@ -477,7 +517,7 @@ public class IPv4 extends BasePacket {
         }
         return result;
     }
-    
+
     /**
      * Accepts an IPv4 address in the form of an integer and
      * returns the corresponding byte array.
@@ -485,7 +525,7 @@ public class IPv4 extends BasePacket {
      * @return The IP address separated into bytes.
      */
     public static byte[] toIPv4AddressBytes(int ipAddress) {
-    	return new byte[] {
+        return new byte[] {
                 (byte)(ipAddress >>> 24),
                 (byte)(ipAddress >>> 16),
                 (byte)(ipAddress >>> 8),

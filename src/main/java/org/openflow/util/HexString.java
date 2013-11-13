@@ -26,6 +26,7 @@ public class HexString {
      * @return "0f:ca:fe:de:ad:be:ef"
      */
     public static String toHexString(byte[] bytes) {
+        if (bytes == null) return "";
         int i;
         String ret = "";
         String tmp;
@@ -47,12 +48,12 @@ public class HexString {
         int i = 0;
         for (; i < (padTo * 2 - arr.length); i++) {
             ret += "0";
-            if ((i % 2) == 1)
+            if ((i % 2) != 0)
                 ret += ":";
         }
         for (int j = 0; j < arr.length; j++) {
             ret += arr[j];
-            if ((((i + j) % 2) == 1) && (j < (arr.length - 1)))
+            if ((((i + j) % 2) != 0) && (j < (arr.length - 1)))
                 ret += ":";
         }
         return ret;        

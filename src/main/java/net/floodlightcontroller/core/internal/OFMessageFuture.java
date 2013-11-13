@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -52,7 +52,7 @@ public abstract class OFMessageFuture<V> implements Future<V> {
 
     public OFMessageFuture(IThreadPoolService tp,
             IOFSwitch sw, OFType responseType, int transactionId) {
-        this(tp, sw, responseType, transactionId, 
+        this(tp, sw, responseType, transactionId,
                  DEFAULT_TIMEOUT, DEFAULT_TIMEOUT_UNIT);
     }
 
@@ -80,7 +80,8 @@ public abstract class OFMessageFuture<V> implements Future<V> {
         this.timeoutTimer = null;
     }
 
-  
+
+    // TODO: msg should be generic!
     public void deliverFuture(IOFSwitch sw, OFMessage msg) {
         if (transactionId == msg.getXid()) {
             handleReply(sw, msg);

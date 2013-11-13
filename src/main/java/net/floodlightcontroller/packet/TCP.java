@@ -18,6 +18,7 @@
 package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  *
@@ -253,11 +254,12 @@ public class TCP extends BasePacket {
                (flags == other.flags) &&
                (windowSize == other.windowSize) &&
                (urgentPointer == other.urgentPointer) &&
-               (dataOffset == 5 || options.equals(other.options));
+               (dataOffset == 5 || Arrays.equals(options,other.options));
     }
 
     @Override
-    public IPacket deserialize(byte[] data, int offset, int length) {
+    public IPacket deserialize(byte[] data, int offset, int length)
+            throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         this.sourcePort = bb.getShort();
         this.destinationPort = bb.getShort();
@@ -265,6 +267,9 @@ public class TCP extends BasePacket {
         this.acknowledge = bb.getInt();
         this.flags = bb.getShort();
         this.dataOffset = (byte) ((this.flags >> 12) & 0xf);
+        if (this.dataOffset < 5) {
+            throw new PacketParsingException("Invalid tcp header length < 20");
+        }
         this.flags = (short) (this.flags & 0x1ff);
         this.windowSize = bb.getShort();
         this.checksum = bb.getShort();
@@ -281,9 +286,10 @@ public class TCP extends BasePacket {
                 this.options = null;
             }
         }
-        
+
         this.payload = new Data();
-        this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+        int remLength = bb.limit()-bb.position();
+        this.payload = payload.deserialize(data, bb.position(), remLength);
         this.payload.setParent(this);
         return this;
     }

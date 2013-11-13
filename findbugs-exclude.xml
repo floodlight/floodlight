@@ -1,0 +1,33 @@
+<FindBugsFilter>
+    <!--- Checks disabled on generated code -->
+
+    <Match>
+        <!-- don't complain about switch statements / external representation exposed
+             by generated parser files -->
+        <Class name="~net\.bigdb\.(query|yang)\.parser\..*(Lexer|Parser)" />
+        <Or>
+            <Bug pattern="SF_SWITCH_NO_DEFAULT,EI_EXPOSE_REP,SBSC_USE_STRINGBUFFER_CONCATENATION" />
+            <Bug category="PERFORMANCE,MALICIOUS_CODE" />
+        </Or>
+    </Match>
+
+    <Match>
+        <!-- Exclude warnings in generated thrift class files -->
+        <Class name="~net\.floodlightcontroller\.packetstreamer\.thrift\..*" />
+        <Bug pattern="CN_IDIOM,DLS_DEAD_LOCAL_STORE" />
+    </Match>
+
+    <!-- checks disabled because of too many false positives -->
+    <Match>
+            <!-- BC_UNFIRMED_CAST complains about too many pseudo violations, where
+             we know an object is of a specific type (e.g., by checking the type field
+             of an openflow message -->
+        <Bug pattern="BC_UNCONFIRMED_CAST" />
+    </Match>
+
+    <!-- checks disabled because they are just not important -->
+    <Match>
+        <!-- RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE is not an important check -->
+            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+    </Match>
+</FindBugsFilter>

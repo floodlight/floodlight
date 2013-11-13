@@ -1,3 +1,19 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.core.web;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +24,7 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.OFMessageFilterManager;
+import net.floodlightcontroller.core.IOFMessageFilterManagerService;
 
 public class PacketTraceResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(PacketTraceResource.class);
@@ -79,10 +95,10 @@ public class PacketTraceResource extends ServerResource {
         ConcurrentHashMap <String,String> filter = new ConcurrentHashMap<String,String> ();
         String sid = null;
         PacketTraceOutput output = new PacketTraceOutput();
-        OFMessageFilterManager manager = 
-                (OFMessageFilterManager)getContext()
+        IOFMessageFilterManagerService manager = 
+                (IOFMessageFilterManagerService)getContext()
                     .getAttributes().
-                        get(OFMessageFilterManager.class.getCanonicalName());
+                        get(IOFMessageFilterManagerService.class.getCanonicalName());
 
         if (manager == null) {
             sid = null;

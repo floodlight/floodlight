@@ -64,6 +64,11 @@ public interface IDevice {
      * @return an array containing all unique attachment points for the device
      */
     public SwitchPort[] getAttachmentPoints();
+    /**
+     * Get all old attachment points associated with the device.  this is used in host movement scenario.
+     * @return an array containing all unique old attachment points for the device
+     */
+    public SwitchPort[] getOldAP();
     
     /**
      * Get all unique attachment points associated with the device.

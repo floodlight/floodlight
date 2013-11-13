@@ -1,3 +1,19 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.topology.web;
 
 import java.util.ArrayList;
@@ -20,14 +36,14 @@ public class EnabledPortsResource extends ServerResource {
                 (IFloodlightProviderService)getContext().getAttributes().
                 get(IFloodlightProviderService.class.getCanonicalName());
 
-        ITopologyService topology= 
+        ITopologyService topology=
                 (ITopologyService)getContext().getAttributes().
                 get(ITopologyService.class.getCanonicalName());
 
         if (floodlightProvider == null || topology == null)
             return result;
 
-        Set<Long> switches = floodlightProvider.getSwitches().keySet();
+        Set<Long> switches = floodlightProvider.getAllSwitchDpids();
         if (switches == null) return result;
 
         for(long sw: switches) {

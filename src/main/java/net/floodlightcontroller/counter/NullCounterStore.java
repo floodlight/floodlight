@@ -1,3 +1,19 @@
+/**
+ *    Copyright 2013, Big Switch Networks, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.counter;
 
 import java.util.ArrayList;
@@ -31,14 +47,19 @@ public class NullCounterStore implements IFloodlightModule,
     private ICounter emptyCounter;
     private List<String> emptyList;
     private Map<String, ICounter> emptyMap;
-    
+
     @Override
-    public void updatePacketInCounters(IOFSwitch sw, OFMessage m, Ethernet eth) {
+    public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
         // no-op
     }
 
     @Override
-    public void updatePktOutFMCounterStore(IOFSwitch sw, OFMessage ofMsg) {
+    public void updatePktOutFMCounterStoreLocal(IOFSwitch sw, OFMessage ofMsg) {
+        // no-op
+    }
+
+    @Override
+    public void updateFlush() {
         // no-op
     }
 
@@ -75,7 +96,7 @@ public class NullCounterStore implements IFloodlightModule,
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m = 
+            IFloodlightService> m =
                 new HashMap<Class<? extends IFloodlightService>,
                         IFloodlightService>();
         m.put(ICounterStoreService.class, this);

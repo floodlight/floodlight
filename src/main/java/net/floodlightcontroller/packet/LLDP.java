@@ -105,7 +105,8 @@ public class LLDP extends BasePacket {
         int length = 2+this.chassisId.getLength() + 2+this.portId.getLength() +
             2+this.ttl.getLength() + 2;
         for (LLDPTLV tlv : this.optionalTLVList) {
-            length += 2 + tlv.getLength();
+            if (tlv != null)
+                length += 2 + tlv.getLength();
         }
 
         byte[] data = new byte[length];
@@ -114,7 +115,7 @@ public class LLDP extends BasePacket {
         bb.put(this.portId.serialize());
         bb.put(this.ttl.serialize());
         for (LLDPTLV tlv : this.optionalTLVList) {
-            bb.put(tlv.serialize());
+            if (tlv != null) bb.put(tlv.serialize());
         }
         bb.putShort((short) 0); // End of LLDPDU
 
@@ -200,5 +201,20 @@ public class LLDP extends BasePacket {
         } else if (!ttl.equals(other.ttl))
             return false;
         return true;
+    }
+    
+    @Override
+    public String toString() {
+        String str = "";
+        str += "chassisId=" + ((this.chassisId == null) ? "null" : this.chassisId.toString());
+        str += " portId=" + ((this.portId == null) ? "null" : this.portId.toString());
+        str += " ttl=" + ((this.ttl == null) ? "null" : this.ttl.toString());
+        str += " etherType=" + Integer.toString(this.ethType, 16).toUpperCase();
+        str += " optionalTlvList=[";
+        if (this.optionalTLVList != null) {
+            for (LLDPTLV l : optionalTLVList) str += l.toString() + ", ";
+        }
+        str += "]";
+        return str;
     }
 }

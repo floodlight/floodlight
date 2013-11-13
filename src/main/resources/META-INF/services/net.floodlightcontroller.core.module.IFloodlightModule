@@ -1,4 +1,5 @@
-net.floodlightcontroller.core.FloodlightProvider
+net.floodlightcontroller.core.module.ApplicationLoader
+net.floodlightcontroller.core.internal.FloodlightProvider
 net.floodlightcontroller.storage.memory.MemoryStorageSource
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
@@ -15,11 +16,13 @@ net.floodlightcontroller.hub.Hub
 net.floodlightcontroller.jython.JythonDebugInterface
 net.floodlightcontroller.counter.CounterStore
 net.floodlightcontroller.counter.NullCounterStore
+net.floodlightcontroller.debugcounter.DebugCounter
+net.floodlightcontroller.debugevent.DebugEvent
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.ui.web.StaticWebRoutable
 net.floodlightcontroller.virtualnetwork.VirtualNetworkFilter
-net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier
-net.floodlightcontroller.devicemanager.test.MockDeviceManager
-net.floodlightcontroller.core.test.MockFloodlightProvider
-net.floodlightcontroller.core.test.MockThreadPoolService
 net.floodlightcontroller.firewall.Firewall
+net.floodlightcontroller.loadbalancer.LoadBalancer
+org.sdnplatform.sync.internal.SyncManager
+org.sdnplatform.sync.internal.SyncTorture
+net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier

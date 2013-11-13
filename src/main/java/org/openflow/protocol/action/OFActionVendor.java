@@ -1,7 +1,7 @@
 /**
 *    Copyright (c) 2008 The Board of Trustees of The Leland Stanford Junior
 *    University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -24,7 +24,7 @@ import org.jboss.netty.buffer.ChannelBuffer;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class OFActionVendor extends OFAction {
+public abstract class OFActionVendor extends OFAction {
     public static int MINIMUM_LENGTH = 8;
 
     protected int vendor;
@@ -85,5 +85,10 @@ public class OFActionVendor extends OFAction {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + "; vendor=" + vendor;
     }
 }
