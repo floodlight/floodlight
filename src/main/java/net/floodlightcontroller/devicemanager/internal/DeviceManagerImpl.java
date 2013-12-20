@@ -2260,11 +2260,9 @@ IFlowReconcileListener, IInfoProvider {
         /* iterate through the devices, reclassify the devices that belong
          * to these entity class names
          */
-        Iterator<Device> diter = deviceMap.values().iterator();
-        while (diter.hasNext()) {
-            Device d = diter.next();
+        for (Device d : deviceMap.values()) {
             if (d.getEntityClass() == null ||
-                entityClassNames.contains(d.getEntityClass().getName()))
+                    entityClassNames.contains(d.getEntityClass().getName()))
                 reclassifyDevice(d);
         }
     }

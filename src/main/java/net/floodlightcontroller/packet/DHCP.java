@@ -313,9 +313,7 @@ public class DHCP extends BasePacket {
      * @return the packetType base on option 53
      */
     public DHCPPacketType getPacketType() {
-        ListIterator<DHCPOption> lit = options.listIterator();
-        while (lit.hasNext()) {
-            DHCPOption option = lit.next();
+        for (DHCPOption option : options) {
             // only care option 53
             if (option.getCode() == 53) {
                 return DHCPPacketType.getType(option.getData()[0]);

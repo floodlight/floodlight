@@ -462,9 +462,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     public Set<Short> getQuarantinedPorts(long sw) {
         Set<Short> qPorts = new HashSet<Short>();
 
-        Iterator<NodePortTuple> iter = quarantineQueue.iterator();
-        while (iter.hasNext()) {
-            NodePortTuple npt = iter.next();
+        for (NodePortTuple npt : quarantineQueue) {
             if (npt.getNodeId() == sw) {
                 qPorts.add(npt.getPortId());
             }
@@ -605,9 +603,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
     }
 
     private boolean ignorePacketInFromSource(long srcMAC) {
-        Iterator<MACRange> it = ignoreMACSet.iterator();
-        while (it.hasNext()) {
-            MACRange range = it.next();
+        for (MACRange range : ignoreMACSet) {
             long mask = ~0;
             if (range.ignoreBits >= 0 && range.ignoreBits <= 48) {
                 mask = mask << range.ignoreBits;
@@ -1146,9 +1142,8 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         List<OFAction> actions = getDiscoveryActions(iofSwitch, ofpPort);
         po.setActions(actions);
         short  actionLength = 0;
-        Iterator <OFAction> actionIter = actions.iterator();
-        while (actionIter.hasNext()) {
-            actionLength += actionIter.next().getLength();
+        for (OFAction action : actions) {
+            actionLength += action.getLength();
         }
         po.setActionsLength(actionLength);
 
@@ -1510,23 +1505,20 @@ public class LinkDiscoveryManager implements IOFMessageListener,
         // reentrant required here because deleteLink also write locks
         lock.writeLock().lock();
         try {
-            Iterator<Entry<Link, LinkInfo>> it = this.links.entrySet()
-                                                           .iterator();
-            while (it.hasNext()) {
-                Entry<Link, LinkInfo> entry = it.next();
+            for (Entry<Link, LinkInfo> entry : this.links.entrySet()) {
                 Link lt = entry.getKey();
                 LinkInfo info = entry.getValue();
 
                 // Timeout the unicast and multicast LLDP valid times
                 // independently.
                 if ((info.getUnicastValidTime() != null)
-                    && (info.getUnicastValidTime()
+                        && (info.getUnicastValidTime()
                         + (this.LINK_TIMEOUT * 1000) < curTime)) {
                     info.setUnicastValidTime(null);
                     linkChanged = true;
                 }
                 if ((info.getMulticastValidTime() != null)
-                    && (info.getMulticastValidTime()
+                        && (info.getMulticastValidTime()
                         + (this.LINK_TIMEOUT * 1000) < curTime)) {
                     info.setMulticastValidTime(null);
                     linkChanged = true;
@@ -1534,13 +1526,13 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                 // Add to the erase list only if the unicast
                 // time is null.
                 if (info.getUnicastValidTime() == null
-                    && info.getMulticastValidTime() == null) {
+                        && info.getMulticastValidTime() == null) {
                     eraseList.add(entry.getKey());
                 } else if (linkChanged) {
                     updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
-                                             lt.getDst(), lt.getDstPort(),
-                                             getLinkType(lt, info),
-                                             UpdateOperation.LINK_UPDATED));
+                            lt.getDst(), lt.getDstPort(),
+                            getLinkType(lt, info),
+                            UpdateOperation.LINK_UPDATED));
                 }
             }
 

@@ -100,17 +100,16 @@ public class FloodlightModuleLoader implements IModuleService {
             ServiceLoader<IFloodlightModule> moduleLoader
                 = ServiceLoader.load(IFloodlightModule.class, cl);
             // Iterate for each module, iterate through and add it's services
-            Iterator<IFloodlightModule> moduleIter = moduleLoader.iterator();
-            while (moduleIter.hasNext()) {
+            for (IFloodlightModule aModuleLoader : moduleLoader) {
                 IFloodlightModule m = null;
                 try {
-                    m = moduleIter.next();
+                    m = aModuleLoader;
                 } catch (ServiceConfigurationError sce) {
                     logger.error("Could not find module: {}", sce.getMessage());
                     continue;
                 }
-            //}
-            //for (IFloodlightModule m : moduleLoader) {
+                //}
+                //for (IFloodlightModule m : moduleLoader) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Found module " + m.getClass().getName());
                 }
@@ -124,7 +123,7 @@ public class FloodlightModuleLoader implements IModuleService {
                 if (servs != null) {
                     moduleServiceMap.put(m, servs);
                     for (Class<? extends IFloodlightService> s : servs) {
-                        Collection<IFloodlightModule> mods = 
+                        Collection<IFloodlightModule> mods =
                                 serviceMap.get(s);
                         if (mods == null) {
                             mods = new ArrayList<IFloodlightModule>();
@@ -137,7 +136,7 @@ public class FloodlightModuleLoader implements IModuleService {
                             if (mList.contains(cMod.getClass().getCanonicalName()))
                                 dupInConf += 1;
                         }
-                        
+
                         if (dupInConf > 1) {
                             String duplicateMods = "";
                             for (IFloodlightModule mod : mods) {
@@ -145,7 +144,7 @@ public class FloodlightModuleLoader implements IModuleService {
                             }
                             throw new FloodlightModuleException("ERROR! The configuraiton" +
                                     " file specifies more than one module that provides the service " +
-                                    s.getCanonicalName() +". Please specify only ONE of the " +
+                                    s.getCanonicalName() + ". Please specify only ONE of the " +
                                     "following modules in the config file: " + duplicateMods);
                         }
                     }

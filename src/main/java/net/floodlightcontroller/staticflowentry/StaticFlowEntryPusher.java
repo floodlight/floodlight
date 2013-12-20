@@ -377,9 +377,8 @@ public class StaticFlowEntryPusher
         // build up list of what was added
         for (Object key: rowKeys) {
             IResultSet resultSet = storageSource.getRow(tableName, key);
-            Iterator<IResultSet> it = resultSet.iterator();
-            while (it.hasNext()) {
-                Map<String, Object> row = it.next().getRow();
+            for (IResultSet aResultSet : resultSet) {
+                Map<String, Object> row = aResultSet.getRow();
                 parseRow(row, entriesToAdd);
             }
         }
