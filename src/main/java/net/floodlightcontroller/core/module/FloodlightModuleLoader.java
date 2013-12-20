@@ -294,8 +294,7 @@ public class FloodlightModuleLoader implements IModuleService {
                                          " because interface " +
                                          intsIgnore.getCanonicalName() +
                                          " is in the ignore list.");
-                            
-                            continue;
+
                         }
                         //}
                     }

@@ -105,8 +105,8 @@ public class MonitorsResource extends ServerResource {
             
             String n = jp.getCurrentName();
             jp.nextToken();
-            if (jp.getText().equals("")) 
-                continue;
+            if (jp.getText().equals("")) {
+            }
             else if (n.equals("monitor")) {
                 while (jp.nextToken() != JsonToken.END_OBJECT) {
                     String field = jp.getCurrentName();
