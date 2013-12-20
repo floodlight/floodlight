@@ -234,8 +234,8 @@ public class StaticFlowEntryPusher
             // null1=no predicate, null2=no ordering
             IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
                     ColumnNames, null, null);
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                row = it.next().getRow();
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                row = aResultSet.getRow();
                 parseRow(row, entries);
             }
         } catch (StorageException e) {

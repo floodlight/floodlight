@@ -170,8 +170,8 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     ColumnNames, null, null);
 
             // put retrieved rows into FirewallRules
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                row = it.next().getRow();
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                row = aResultSet.getRow();
                 // now, parse row
                 FirewallRule r = new FirewallRule();
                 if (!row.containsKey(COLUMN_RULEID)
@@ -193,116 +193,74 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                                 || key.equals(COLUMN_DPID)
                                 || key.equals("id")) {
                             continue; // already handled
-                        } 
-                        
-                        else if (key.equals(COLUMN_IN_PORT)) {
+                        } else if (key.equals(COLUMN_IN_PORT)) {
                             r.in_port = Short.parseShort((String) row
                                     .get(COLUMN_IN_PORT));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_SRC)) {
+                        } else if (key.equals(COLUMN_DL_SRC)) {
                             r.dl_src = Long.parseLong((String) row
                                     .get(COLUMN_DL_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_DST)) {
+                        } else if (key.equals(COLUMN_DL_DST)) {
                             r.dl_dst = Long.parseLong((String) row
                                     .get(COLUMN_DL_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_TYPE)) {
+                        } else if (key.equals(COLUMN_DL_TYPE)) {
                             r.dl_type = Short.parseShort((String) row
                                     .get(COLUMN_DL_TYPE));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
+                        } else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
                             r.nw_src_prefix = Integer.parseInt((String) row
                                     .get(COLUMN_NW_SRC_PREFIX));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
+                        } else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
                             r.nw_src_maskbits = Integer.parseInt((String) row
                                     .get(COLUMN_NW_SRC_MASKBITS));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_DST_PREFIX)) {
+                        } else if (key.equals(COLUMN_NW_DST_PREFIX)) {
                             r.nw_dst_prefix = Integer.parseInt((String) row
                                     .get(COLUMN_NW_DST_PREFIX));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
+                        } else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
                             r.nw_dst_maskbits = Integer.parseInt((String) row
                                     .get(COLUMN_NW_DST_MASKBITS));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_PROTO)) {
+                        } else if (key.equals(COLUMN_NW_PROTO)) {
                             r.nw_proto = Short.parseShort((String) row
                                     .get(COLUMN_NW_PROTO));
-                        } 
-                        
-                        else if (key.equals(COLUMN_TP_SRC)) {
+                        } else if (key.equals(COLUMN_TP_SRC)) {
                             r.tp_src = Short.parseShort((String) row
                                     .get(COLUMN_TP_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_TP_DST)) {
+                        } else if (key.equals(COLUMN_TP_DST)) {
                             r.tp_dst = Short.parseShort((String) row
                                     .get(COLUMN_TP_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DPID)) {
+                        } else if (key.equals(COLUMN_WILDCARD_DPID)) {
                             r.wildcard_dpid = Boolean.parseBoolean((String) row
                                     .get(COLUMN_WILDCARD_DPID));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_IN_PORT)) {
+                        } else if (key.equals(COLUMN_WILDCARD_IN_PORT)) {
                             r.wildcard_in_port = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_IN_PORT));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_SRC)) {
+                        } else if (key.equals(COLUMN_WILDCARD_DL_SRC)) {
                             r.wildcard_dl_src = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_DST)) {
+                        } else if (key.equals(COLUMN_WILDCARD_DL_DST)) {
                             r.wildcard_dl_dst = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_TYPE)) {
+                        } else if (key.equals(COLUMN_WILDCARD_DL_TYPE)) {
                             r.wildcard_dl_type = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_TYPE));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_SRC)) {
+                        } else if (key.equals(COLUMN_WILDCARD_NW_SRC)) {
                             r.wildcard_nw_src = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_DST)) {
+                        } else if (key.equals(COLUMN_WILDCARD_NW_DST)) {
                             r.wildcard_nw_dst = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_PROTO)) {
+                        } else if (key.equals(COLUMN_WILDCARD_NW_PROTO)) {
                             r.wildcard_nw_proto = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_PROTO));
-                        } 
-                        
-                        else if (key.equals(COLUMN_PRIORITY)) {
+                        } else if (key.equals(COLUMN_PRIORITY)) {
                             r.priority = Integer.parseInt((String) row
                                     .get(COLUMN_PRIORITY));
-                        } 
-                        
-                        else if (key.equals(COLUMN_ACTION)) {
+                        } else if (key.equals(COLUMN_ACTION)) {
                             int tmp = Integer.parseInt((String) row.get(COLUMN_ACTION));
                             if (tmp == FirewallRule.FirewallAction.DENY.ordinal())
                                 r.action = FirewallRule.FirewallAction.DENY;
@@ -406,8 +364,8 @@ public class Firewall implements IFirewallService, IOFMessageListener,
             // null1=no predicate, null2=no ordering
             IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
                     ColumnNames, null, null);
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                l.add(it.next().getRow());
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                l.add(aResultSet.getRow());
             }
         } catch (StorageException e) {
             logger.error("failed to access storage: {}", e.getMessage());

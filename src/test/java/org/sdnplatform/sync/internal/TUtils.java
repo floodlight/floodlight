@@ -181,8 +181,7 @@ public class TUtils {
      */
     public static int[] shuffle(int[] input) {
         List<Integer> vals = new ArrayList<Integer>(input.length);
-        for(int i = 0; i < input.length; i++)
-            vals.add(input[i]);
+        for (int anInput : input) vals.add(anInput);
         Collections.shuffle(vals, SEEDED_RANDOM);
         int[] copy = new int[input.length];
         for(int i = 0; i < input.length; i++)
@@ -219,8 +218,7 @@ public class TUtils {
      */
     public static double mean(long[] values) {
         double total = 0.0;
-        for(int i = 0; i < values.length; i++)
-            total += values[i];
+        for (long value : values) total += value;
         return total / values.length;
     }
 

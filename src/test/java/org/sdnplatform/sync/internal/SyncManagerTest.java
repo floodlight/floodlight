@@ -123,9 +123,9 @@ public class SyncManagerTest {
         tp = null;
 
         if (syncManagers != null) {
-            for(int i = 0; i < syncManagers.length; i++) {
-                if (null != syncManagers[i])
-                    syncManagers[i].shutdown();
+            for (org.sdnplatform.sync.internal.SyncManager syncManager : syncManagers) {
+                if (null != syncManager)
+                    syncManager.shutdown();
             }
         }
         syncManagers = null;
@@ -232,8 +232,8 @@ public class SyncManagerTest {
 
         while (true) {
             boolean full = true;
-            for(int i = 0; i < syncManagers.length; i++) {
-                if (!syncManagers[i].rpcService.isFullyConnected())
+            for (org.sdnplatform.sync.internal.SyncManager syncManager : syncManagers) {
+                if (!syncManager.rpcService.isFullyConnected())
                     full = false;
             }
             if (full) break;

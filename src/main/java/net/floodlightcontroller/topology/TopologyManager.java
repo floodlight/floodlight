@@ -1321,8 +1321,7 @@ public class TopologyManager implements
         if (role != null && role != Role.MASTER)
             return;
 
-        for(int i=0; i<topologyAware.size(); ++i) {
-            ITopologyListener listener = topologyAware.get(i);
+        for (ITopologyListener listener : topologyAware) {
             listener.topologyChanged(linkUpdates);
         }
     }

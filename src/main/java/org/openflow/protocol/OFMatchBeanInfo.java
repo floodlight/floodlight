@@ -45,14 +45,14 @@ public class OFMatchBeanInfo extends SimpleBeanInfo {
         List<PropertyDescriptor> descs = new LinkedList<PropertyDescriptor>();
         Field[] fields = OFMatch.class.getDeclaredFields();
         String name;
-        for (int i=0; i< fields.length; i++) {
-            int mod = fields[i].getModifiers();
-            if(Modifier.isFinal(mod) ||     // don't expose static or final fields
+        for (Field field : fields) {
+            int mod = field.getModifiers();
+            if (Modifier.isFinal(mod) ||     // don't expose static or final fields
                     Modifier.isStatic(mod))
                 continue;
 
-            name = fields[i].getName();
-            Class<?> type = fields[i].getType();
+            name = field.getName();
+            Class<?> type = field.getType();
 
             try {
                 descs.add(new PropertyDescriptor(name,

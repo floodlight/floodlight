@@ -1738,9 +1738,9 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
                 try {
                     resultSet = storageSource.getRow(tableName, key);
-                    for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                    for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
                         // In case of multiple rows, use the status in last row?
-                        Map<String, Object> row = it.next().getRow();
+                        Map<String, Object> row = aResultSet.getRow();
                         if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
                             new_status = ((String) row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
                         }

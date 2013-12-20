@@ -702,8 +702,7 @@ public class LoadBalancer implements IFloodlightModule,
         
         if(pools.containsKey(poolId)) {
             ArrayList<String> memberIds = pools.get(poolId).members;
-            for (int i=0; i<memberIds.size(); i++)
-                result.add(members.get(memberIds.get(i)));
+            for (String memberId : memberIds) result.add(members.get(memberId));
         }
         return result;
     }

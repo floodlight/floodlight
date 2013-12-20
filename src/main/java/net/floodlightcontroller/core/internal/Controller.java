@@ -2361,14 +2361,14 @@ public class Controller implements IFloodlightProviderService,
             if (resultSet == null)
                 return;
 
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                row = it.next().getRow();
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                row = aResultSet.getRow();
                 if (row.containsKey(FLOW_COLUMN_PRIMARY_KEY)) {
                     String primary_key = (String) row.get(FLOW_COLUMN_PRIMARY_KEY);
                     if (primary_key.equals(FLOW_VALUE_PRIMARY_KEY)) {
                         if (row.containsKey(FLOW_COLUMN_ACCESS_PRIORITY)) {
                             accessPriority =
-                                Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
+                                    Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
                         }
                         if (row.containsKey(FLOW_COLUMN_CORE_PRIORITY)) {
                             corePriority =
