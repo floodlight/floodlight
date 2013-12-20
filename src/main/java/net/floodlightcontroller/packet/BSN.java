@@ -160,7 +160,7 @@ public class BSN extends BasePacket {
     }
 
     public String toString() {
-        StringBuffer sb = new StringBuffer("\n");
+        StringBuilder sb = new StringBuilder("\n");
         sb.append("BSN packet");
         if (typeClassMap.containsKey(this.type))
             sb.append(" type: " + typeClassMap.get(this.type).getCanonicalName());

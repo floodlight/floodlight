@@ -142,7 +142,7 @@ public class RestApiServer
     @Override
     public void run() {
         if (logger.isDebugEnabled()) {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append("REST API routables: ");
             for (RestletRoutable routable : restlets) {
                 sb.append(routable.getClass().getSimpleName());

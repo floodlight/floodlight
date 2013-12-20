@@ -259,7 +259,7 @@ public class StaticFlowEntryPusher
         String switchName = null;
         String entryName = null;
 
-        StringBuffer matchString = new StringBuffer();
+        StringBuilder matchString = new StringBuilder();
 
         OFFlowMod flowMod = (OFFlowMod) floodlightProvider.getOFMessageFactory()
                 .getMessage(OFType.FLOW_MOD);

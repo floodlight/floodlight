@@ -177,7 +177,7 @@ public class BSNPROBE extends BasePacket {
 
 
     public String toString() {
-    	StringBuffer sb = new StringBuffer("\n");
+    	StringBuilder sb = new StringBuilder("\n");
     	sb.append("BSN Probe packet");
     	sb.append("\nSource Mac: ");
     	sb.append(HexString.toHexString(srcMac));

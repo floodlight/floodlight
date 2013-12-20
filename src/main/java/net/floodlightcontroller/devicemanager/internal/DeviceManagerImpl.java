@@ -659,7 +659,7 @@ IFlowReconcileListener, IInfoProvider {
     private void logListeners() {
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append("DeviceListeners: ");
             for (IDeviceListener l : listeners) {
                 sb.append(l.getName());
