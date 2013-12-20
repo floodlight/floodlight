@@ -1729,7 +1729,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
         for (Object key : rowKeys) {
-            Long swId = new Long(HexString.toLong((String) key));
+            Long swId = HexString.toLong((String) key);
             IOFSwitch sw = floodlightProvider.getSwitch(swId);
             if (sw != null) {
                 boolean curr_status = sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
@@ -1774,7 +1774,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
                                          UpdateOperation.SWITCH_UPDATED));
             } else {
                 sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH,
-                                new Boolean(true));
+                        true);
                 if (log.isTraceEnabled()) {
                     log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
                 }

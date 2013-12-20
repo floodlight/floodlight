@@ -221,7 +221,7 @@ public class Device implements IDevice {
             if (entities[0].getVlan() != null) {
                 return new Short[]{ entities[0].getVlan() };
             } else {
-                return new Short[] { Short.valueOf((short)-1) };
+                return new Short[] {(short) -1};
             }
         }
 

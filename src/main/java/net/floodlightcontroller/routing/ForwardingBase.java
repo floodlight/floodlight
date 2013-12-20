@@ -562,7 +562,7 @@ public abstract class ForwardingBase
         if (sw == null) return false;
         int inputPort = sw_tup.getPort();
         log.debug("blockHost sw={} port={} mac={}",
-                  new Object[] { sw, sw_tup.getPort(), Long.valueOf(host_mac) });
+                  new Object[] { sw, sw_tup.getPort(), host_mac});
 
         // Create flow-mod based on packet-in and src-switch
         OFFlowMod fm =

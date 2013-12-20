@@ -67,6 +67,6 @@ public class MemoryTable {
     }
     
     Integer getNextId() {
-        return new Integer(++nextId);
+        return ++nextId;
     }
 }

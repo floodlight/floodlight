@@ -1769,7 +1769,7 @@ class OFChannelHandler
         }
         if (is_core_switch) {
             sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH,
-                            Boolean.valueOf(true));
+                    true);
         }
     }
 

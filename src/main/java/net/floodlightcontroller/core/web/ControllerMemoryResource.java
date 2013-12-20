@@ -32,8 +32,8 @@ public class ControllerMemoryResource extends ServerResource {
     public Map<String, Object> retrieve() {
         HashMap<String, Object> model = new HashMap<String, Object>();
         Runtime runtime = Runtime.getRuntime();
-        model.put("total", new Long(runtime.totalMemory()));
-        model.put("free", new Long(runtime.freeMemory()));
+        model.put("total", runtime.totalMemory());
+        model.put("free", runtime.freeMemory());
         return model;
     }
 }

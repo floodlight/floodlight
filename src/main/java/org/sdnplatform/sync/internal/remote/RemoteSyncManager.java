@@ -253,7 +253,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
         ensureConnected();
         RemoteSyncFuture future = new RemoteSyncFuture(xid, 
                                                        connectionGeneration);
-        futureMap.put(Integer.valueOf(xid), future);
+        futureMap.put(xid, future);
 
         if (futureMap.size() > MAX_PENDING_REQUESTS) {
             synchronized (futureNotify) {

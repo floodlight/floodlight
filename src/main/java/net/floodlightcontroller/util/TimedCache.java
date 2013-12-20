@@ -61,7 +61,7 @@ public class TimedCache<K> {
      */
     public boolean update(K key)
     {
-        Long curr = new Long(System.currentTimeMillis());
+        Long curr = System.currentTimeMillis();
         Long prev = cache.putIfAbsent(key, curr);
         
         if (prev == null) {
