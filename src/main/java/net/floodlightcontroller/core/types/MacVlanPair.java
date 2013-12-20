@@ -26,11 +26,11 @@ public class MacVlanPair {
     }
     
     public long getMac() {
-        return mac.longValue();
+        return mac;
     }
     
     public short getVlan() {
-        return vlan.shortValue();
+        return vlan;
     }
     
     public boolean equals(Object o) {

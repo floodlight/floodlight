@@ -226,7 +226,7 @@ public class Entity implements Comparable<Entity> {
         builder.append(HexString.toHexString(macAddress, 6));
         builder.append(", ipv4Address=");
         builder.append(IPv4.fromIPv4Address(ipv4Address==null ?
-                       0 : ipv4Address.intValue()));
+                       0 : ipv4Address));
         builder.append(", vlan=");
         builder.append(vlan);
         builder.append(", switchDPID=");

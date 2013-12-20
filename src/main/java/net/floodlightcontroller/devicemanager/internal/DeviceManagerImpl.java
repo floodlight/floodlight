@@ -457,7 +457,7 @@ IFlowReconcileListener, IInfoProvider {
                               Integer ipv4Address, Long switchDPID,
                               Integer switchPort)
                               throws IllegalArgumentException {
-        if (vlan != null && vlan.shortValue() <= 0)
+        if (vlan != null && vlan <= 0)
             vlan = null;
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
@@ -474,7 +474,7 @@ IFlowReconcileListener, IInfoProvider {
     public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
                                   Short vlan, Integer ipv4Address)
                                   throws IllegalArgumentException {
-        if (vlan != null && vlan.shortValue() <= 0)
+        if (vlan != null && vlan <= 0)
             vlan = null;
         if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
@@ -2183,7 +2183,7 @@ IFlowReconcileListener, IInfoProvider {
         for (Entity entity : entities) {
             if (entity.switchDPID != null && entity.switchPort != null) {
                 AttachmentPoint aP =
-                        new AttachmentPoint(entity.switchDPID.longValue(),
+                        new AttachmentPoint(entity.switchDPID,
                                     entity.switchPort.shortValue(), 0);
                 newPossibleAPs.add(aP);
             }

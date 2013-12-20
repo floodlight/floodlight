@@ -309,7 +309,7 @@ public abstract class ForwardingBase
     protected OFMatch wildcard(OFMatch match, IOFSwitch sw,
                                Integer wildcard_hints) {
         if (wildcard_hints != null) {
-            return match.clone().setWildcards(wildcard_hints.intValue());
+            return match.clone().setWildcards(wildcard_hints);
         }
         return match.clone();
     }

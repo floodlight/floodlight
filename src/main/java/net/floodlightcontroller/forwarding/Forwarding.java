@@ -273,9 +273,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                 wildcard_hints = decision.getWildcards();
                             } else {
                             	// L2 only wildcard if there is no prior route decision
-                                wildcard_hints = ((Integer) sw
-                                        .getAttribute(IOFSwitch.PROP_FASTWILDCARDS))
-                                        .intValue()
+                                wildcard_hints = (Integer) sw
+                                        .getAttribute(IOFSwitch.PROP_FASTWILDCARDS)
                                         & ~OFMatch.OFPFW_IN_PORT
                                         & ~OFMatch.OFPFW_DL_VLAN
                                         & ~OFMatch.OFPFW_DL_SRC

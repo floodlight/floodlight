@@ -438,7 +438,7 @@ public class LearningSwitch
             // its former location does not keep the stale entry alive forever.
             // FIXME: current HP switches ignore DL_SRC and DL_DST fields, so we have to match on
             // NW_SRC and NW_DST as well
-            match.setWildcards(((Integer)sw.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).intValue()
+            match.setWildcards((Integer) sw.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)
                     & ~OFMatch.OFPFW_IN_PORT
                     & ~OFMatch.OFPFW_DL_VLAN & ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST
                     & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK);
@@ -488,7 +488,7 @@ public class LearningSwitch
         // send the packets to the wrong port (the matching input port of the
         // expired flow entry), so we must delete the reverse entry explicitly.
         this.writeFlowMod(sw, OFFlowMod.OFPFC_DELETE, -1, match.clone()
-                .setWildcards(((Integer)sw.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)).intValue()
+                .setWildcards((Integer) sw.getAttribute(IOFSwitch.PROP_FASTWILDCARDS)
                         & ~OFMatch.OFPFW_DL_VLAN & ~OFMatch.OFPFW_DL_SRC & ~OFMatch.OFPFW_DL_DST
                         & ~OFMatch.OFPFW_NW_SRC_MASK & ~OFMatch.OFPFW_NW_DST_MASK)
                 .setDataLayerSource(match.getDataLayerDestination())

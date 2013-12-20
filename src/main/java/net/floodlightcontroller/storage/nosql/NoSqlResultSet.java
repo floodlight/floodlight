@@ -121,7 +121,7 @@ public class NoSqlResultSet implements IResultSet {
         Boolean b = getBooleanObject(columnName);
         if (b == null)
             throw new NullValueStorageException(columnName);
-        return b.booleanValue();
+        return b;
     }
 
     @Override
@@ -129,7 +129,7 @@ public class NoSqlResultSet implements IResultSet {
         Byte b = getByteObject(columnName);
         if (b == null)
             throw new NullValueStorageException(columnName);
-        return b.byteValue();
+        return b;
     }
 
     @Override
@@ -149,7 +149,7 @@ public class NoSqlResultSet implements IResultSet {
         Double d = getDoubleObject(columnName);
         if (d == null)
             throw new NullValueStorageException(columnName);
-        return d.doubleValue();
+        return d;
     }
 
     @Override
@@ -157,7 +157,7 @@ public class NoSqlResultSet implements IResultSet {
         Float f = getFloatObject(columnName);
         if (f == null)
             throw new NullValueStorageException(columnName);
-        return f.floatValue();
+        return f;
     }
 
     @Override
@@ -165,7 +165,7 @@ public class NoSqlResultSet implements IResultSet {
         Integer i = getIntegerObject(columnName);
         if (i == null)
             throw new NullValueStorageException(columnName);
-        return i.intValue();
+        return i;
     }
 
     @Override
@@ -173,7 +173,7 @@ public class NoSqlResultSet implements IResultSet {
         Long l = getLongObject(columnName);
         if (l == null)
             throw new NullValueStorageException(columnName);
-        return l.longValue();
+        return l;
     }
 
     @Override
@@ -181,7 +181,7 @@ public class NoSqlResultSet implements IResultSet {
         Short s = getShortObject(columnName);
         if (s == null)
             throw new NullValueStorageException(columnName);
-        return s.shortValue();
+        return s;
     }
 
     @Override
