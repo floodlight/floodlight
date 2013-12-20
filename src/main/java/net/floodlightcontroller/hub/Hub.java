@@ -73,7 +73,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
 
         // set actions
         OFActionOutput action = new OFActionOutput()
-            .setPort((short) OFPort.OFPP_FLOOD.getValue());
+            .setPort(OFPort.OFPP_FLOOD.getValue());
         po.setActions(Collections.singletonList((OFAction)action));
         po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
 
