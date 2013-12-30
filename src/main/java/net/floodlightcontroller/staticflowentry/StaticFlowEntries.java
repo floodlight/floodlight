@@ -438,7 +438,7 @@ public class StaticFlowEntries {
         n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(subaction);
         if (n.matches()) {
             OFActionOutput action = new OFActionOutput();
-            action.setMaxLength((short) Short.MAX_VALUE);
+            action.setMaxLength(Short.MAX_VALUE);
             short port = OFPort.OFPP_NONE.getValue();
             if (n.group(1) != null) {
                 try {
@@ -830,7 +830,7 @@ public class StaticFlowEntries {
     
     // Parse int as decimal, hex (start with 0x or #) or octal (starts with 0)
     private static int get_int(String str) {
-        return (int)Integer.decode(str);
+        return Integer.decode(str);
     }
    
     // Parse short as decimal, hex (start with 0x or #) or octal (starts with 0)

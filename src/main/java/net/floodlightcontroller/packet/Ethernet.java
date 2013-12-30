@@ -396,7 +396,7 @@ public class Ethernet extends BasePacket {
 
         StringBuffer sb = new StringBuffer("\n");
 
-        IPacket pkt = (IPacket) this.getPayload();
+        IPacket pkt = this.getPayload();
 
         if (pkt instanceof ARP)
             sb.append("arp");

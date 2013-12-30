@@ -194,7 +194,7 @@ public class OFFlowRemoved extends OFMessage {
         this.match.readFrom(data);
         this.cookie = data.readLong();
         this.priority = data.readShort();
-        int reasonIndex = (int)(0xff & data.readByte());
+        int reasonIndex = 0xff & data.readByte();
         if (reasonIndex >= OFFlowRemovedReason.values().length) {
             reasonIndex = OFFlowRemovedReason.values().length - 1;
         }

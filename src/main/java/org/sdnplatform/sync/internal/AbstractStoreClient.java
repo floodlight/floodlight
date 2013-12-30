@@ -73,7 +73,7 @@ public abstract class AbstractStoreClient<K,V> implements IStoreClient<K, V> {
 
     @Override
     public void delete(K key, IVersion version) throws SyncException {
-        put(key, new Versioned<V>((V)null, version));
+        put(key, new Versioned<V>(null, version));
     }
 
 }

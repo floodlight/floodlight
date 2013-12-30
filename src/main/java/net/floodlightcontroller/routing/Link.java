@@ -148,7 +148,7 @@ public class Link implements Comparable<Link> {
         if (this.getDst() != a.getDst())
             return (int) (this.getDst() - a.getDst());
         
-        return (int) (this.getDstPort() - a.getDstPort());
+        return this.getDstPort() - a.getDstPort();
     }
 }
 
