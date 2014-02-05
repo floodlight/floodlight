@@ -221,7 +221,7 @@ public class Device implements IDevice {
             if (entities[0].getVlan() != null) {
                 return new Short[]{ entities[0].getVlan() };
             } else {
-                return new Short[] { Short.valueOf((short)-1) };
+                return new Short[] {(short) -1};
             }
         }
 
@@ -265,11 +265,10 @@ public class Device implements IDevice {
         // Map of attachment point by L2 domain Id.
         Map<Long, AttachmentPoint> apMap = new HashMap<Long, AttachmentPoint>();
 
-        for(int i=0; i<oldAP.size(); ++i) {
-            AttachmentPoint ap = oldAP.get(i);
+        for (AttachmentPoint ap : oldAP) {
             // if this is not a valid attachment point, continue
             if (!deviceManager.isValidAttachmentPoint(ap.getSw(),
-                                                      ap.getPort()))
+                    ap.getPort()))
                 continue;
 
             long id = topology.getL2DomainId(ap.getSw());
@@ -710,10 +709,10 @@ public class Device implements IDevice {
     @Override
     public Date getLastSeen() {
         Date d = null;
-        for (int i = 0; i < entities.length; i++) {
+        for (Entity entity : entities) {
             if (d == null ||
-                    entities[i].getLastSeenTimestamp().compareTo(d) > 0)
-                d = entities[i].getLastSeenTimestamp();
+                    entity.getLastSeenTimestamp().compareTo(d) > 0)
+                d = entity.getLastSeenTimestamp();
         }
         return d;
     }

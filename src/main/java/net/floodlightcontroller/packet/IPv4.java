@@ -467,7 +467,7 @@ public class IPv4 extends BasePacket {
      * @return
      */
     public static String fromIPv4Address(int ipAddress) {
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         int result = 0;
         for (int i = 0; i < 4; ++i) {
             result = (ipAddress >> ((3-i)*8)) & 0xff;
@@ -489,7 +489,7 @@ public class IPv4 extends BasePacket {
     public static String fromIPv4AddressCollection(Collection<Integer> ipAddresses) {
         if (ipAddresses == null)
             return "null";
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (Integer ip : ipAddresses) {
             sb.append(fromIPv4Address(ip));

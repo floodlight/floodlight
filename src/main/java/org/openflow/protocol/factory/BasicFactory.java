@@ -334,7 +334,7 @@ public enum BasicFactory implements OFMessageFactory, OFActionFactory,
         // NOTE: Reads all the bytes in buffer from current read offset.
         // Set/Reset ReaderIndex if you want to read from a different location
         int len = data.readableBytes();
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         for (int i=0 ; i<len; i++) {
             if (i%32 == 0) sb.append("\n");
             if (i%4 == 0) sb.append(" ");

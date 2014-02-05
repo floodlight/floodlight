@@ -75,8 +75,7 @@ public class TopologyInstanceTest {
 
         // Make sure the expected cluster arrays are sorted so we can
         // use binarySearch to test for membership
-        for (int i = 0; i < clusters.length; i++)
-            Arrays.sort(clusters[i]);
+        for (int[] cluster2 : clusters) Arrays.sort(cluster2);
 
         TopologyInstance ti = 
                 topologyManager.getCurrentInstance(tunnelsEnabled);
@@ -87,9 +86,9 @@ public class TopologyInstanceTest {
 
                 int[] expectedCluster = null;
 
-                for (int j = 0; j < clusters.length; j++) {
-                    if (Arrays.binarySearch(clusters[j], (int) sw) >= 0) {
-                        expectedCluster = clusters[j];
+                for (int[] cluster1 : clusters) {
+                    if (Arrays.binarySearch(cluster1, (int) sw) >= 0) {
+                        expectedCluster = cluster1;
                         break;
                     }
                 }
@@ -115,11 +114,10 @@ public class TopologyInstanceTest {
                                            boolean tunnelsEnabled) {
         NodePortTuple npt = null;
         Set<NodePortTuple> expected = new HashSet<NodePortTuple>();
-        for(int i=0; i<ebp.length; ++i) {
-            int [][] nptList = ebp[i];
+        for (int[][] nptList : ebp) {
             expected.clear();
-            for(int j=0; j<nptList.length; ++j) {
-                npt = new NodePortTuple((long)nptList[j][0], (short)nptList[j][1]);
+            for (int[] aNptList : nptList) {
+                npt = new NodePortTuple((long) aNptList[0], (short) aNptList[1]);
                 expected.add(npt);
             }
             TopologyInstance ti = topologyManager.getCurrentInstance(tunnelsEnabled);
@@ -136,16 +134,15 @@ public class TopologyInstanceTest {
         ILinkDiscovery.LinkType type = ILinkDiscovery.LinkType.DIRECT_LINK;
 
         // Use topologymanager to write this test, it will make it a lot easier.
-        for (int i = 0; i < linkArray.length; i++) {
-            int [] r = linkArray[i];
+        for (int[] r : linkArray) {
             if (r[4] == DIRECT_LINK)
-                type= ILinkDiscovery.LinkType.DIRECT_LINK;
+                type = ILinkDiscovery.LinkType.DIRECT_LINK;
             else if (r[4] == MULTIHOP_LINK)
-                type= ILinkDiscovery.LinkType.MULTIHOP_LINK;
+                type = ILinkDiscovery.LinkType.MULTIHOP_LINK;
             else if (r[4] == TUNNEL_LINK)
                 type = ILinkDiscovery.LinkType.TUNNEL;
 
-            topologyManager.addOrUpdateLink((long)r[0], (short)r[1], (long)r[2], (short)r[3], type);
+            topologyManager.addOrUpdateLink((long) r[0], (short) r[1], (long) r[2], (short) r[3], type);
         }
         topologyManager.createNewInstance();
     }

@@ -104,7 +104,7 @@ public class VirtualNetworkFilter
      * @param ip The IP addresses of the gateway.
      */
     protected void addGateway(String guid, Integer ip) {
-        if (ip.intValue() != 0) {
+        if (ip != 0) {
             if (log.isDebugEnabled()) {
                 log.debug("Adding {} as gateway for GUID {}",
                     IPv4.fromIPv4Address(ip), guid);

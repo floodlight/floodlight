@@ -1753,9 +1753,8 @@ class OFChannelHandler
             String swid = sw.getStringId();
             resultSet = this.controller.getStorageSourceService()
                     .getRow(Controller.SWITCH_CONFIG_TABLE_NAME, swid);
-            for (Iterator<IResultSet> it =
-                    resultSet.iterator(); it.hasNext();) {
-                is_core_switch = it.next()
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                is_core_switch = aResultSet
                         .getBoolean(Controller.SWITCH_CONFIG_CORE_SWITCH);
                 if (log.isDebugEnabled()) {
                     log.debug("Reading SWITCH_IS_CORE_SWITCH " +
@@ -1770,7 +1769,7 @@ class OFChannelHandler
         }
         if (is_core_switch) {
             sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH,
-                            Boolean.valueOf(true));
+                    true);
         }
     }
 

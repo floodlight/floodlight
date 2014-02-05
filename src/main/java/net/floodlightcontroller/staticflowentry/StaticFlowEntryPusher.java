@@ -234,8 +234,8 @@ public class StaticFlowEntryPusher
             // null1=no predicate, null2=no ordering
             IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
                     ColumnNames, null, null);
-            for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                row = it.next().getRow();
+            for (net.floodlightcontroller.storage.IResultSet aResultSet : resultSet) {
+                row = aResultSet.getRow();
                 parseRow(row, entries);
             }
         } catch (StorageException e) {
@@ -259,7 +259,7 @@ public class StaticFlowEntryPusher
         String switchName = null;
         String entryName = null;
 
-        StringBuffer matchString = new StringBuffer();
+        StringBuilder matchString = new StringBuilder();
 
         OFFlowMod flowMod = (OFFlowMod) floodlightProvider.getOFMessageFactory()
                 .getMessage(OFType.FLOW_MOD);
@@ -377,9 +377,8 @@ public class StaticFlowEntryPusher
         // build up list of what was added
         for (Object key: rowKeys) {
             IResultSet resultSet = storageSource.getRow(tableName, key);
-            Iterator<IResultSet> it = resultSet.iterator();
-            while (it.hasNext()) {
-                Map<String, Object> row = it.next().getRow();
+            for (IResultSet aResultSet : resultSet) {
+                Map<String, Object> row = aResultSet.getRow();
                 parseRow(row, entriesToAdd);
             }
         }

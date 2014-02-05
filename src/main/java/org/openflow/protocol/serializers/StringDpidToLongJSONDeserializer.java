@@ -17,7 +17,7 @@ public class StringDpidToLongJSONDeserializer extends
                                        DeserializationContext cntx)
                                        throws IOException,
                                        JsonProcessingException {
-        return Long.valueOf(HexString.toLong(jsonParser.getText()));
+        return HexString.toLong(jsonParser.getText());
     }
 
 }

@@ -80,7 +80,7 @@ public class DeviceIterator extends FilterIterator<Device> {
             if (!match) return false;                
         }
         if (macAddress != null) {
-            if (macAddress.longValue() != value.getMACAddress())
+            if (macAddress != value.getMACAddress())
                 return false;
         }
         if (vlan != null) {
@@ -100,11 +100,11 @@ public class DeviceIterator extends FilterIterator<Device> {
             match = false;
             for (SwitchPort sp : sps) {
                 if (switchDPID != null) {
-                    if (switchDPID.longValue() != sp.getSwitchDPID())
+                    if (switchDPID != sp.getSwitchDPID())
                         return false;
                 }
                 if (switchPort != null) {
-                    if (switchPort.intValue() != sp.getPort())
+                    if (switchPort != sp.getPort())
                         return false;
                 }
                 match = true;

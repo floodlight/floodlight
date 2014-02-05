@@ -120,6 +120,6 @@ public class RoutingDecision implements IRoutingDecision {
     public String toString() {
         return "action " + action +
                " wildcard " +
-               ((wildcards == null) ? null : "0x"+Integer.toHexString(wildcards.intValue()));
+               ((wildcards == null) ? null : "0x"+Integer.toHexString(wildcards));
     }
 }

@@ -231,8 +231,7 @@ public abstract class AbstractStoreT<K, V> {
         List<IVersion> versions = store.getVersions(key);
         assertEquals(1, versioneds.size());
         assertTrue(versions.size() > 0);
-        for(int i = 0; i < versions.size(); i++)
-            assertEquals(versioneds.get(0).getVersion(), versions.get(i));
+        for (org.sdnplatform.sync.IVersion version : versions) assertEquals(versioneds.get(0).getVersion(), version);
 
         assertEquals(0, store.getVersions(keys.get(1)).size());
     }

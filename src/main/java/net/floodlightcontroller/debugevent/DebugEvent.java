@@ -217,7 +217,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
                                               String... metaData) throws MaxEventsRegistered {
         int eventId = -1;
         synchronized (eventIdLock) {
-             eventId = Integer.valueOf(eventIdCounter++);
+             eventId = eventIdCounter++;
         }
         if (eventId > MAX_EVENTS-1) {
             throw new MaxEventsRegistered();
@@ -228,7 +228,7 @@ public class DebugEvent implements IFloodlightModule, IDebugEventService {
             moduleEvents.put(moduleName, new ConcurrentHashMap<String, Integer>());
         }
         if (!moduleEvents.get(moduleName).containsKey(eventName)) {
-            moduleEvents.get(moduleName).put(eventName, new Integer(eventId));
+            moduleEvents.get(moduleName).put(eventName, eventId);
         } else {
             int existingEventId = moduleEvents.get(moduleName).get(eventName);
             log.error("Duplicate event registration for moduleName {} eventName {}",

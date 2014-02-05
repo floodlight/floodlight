@@ -34,7 +34,7 @@ public class UShortSerializer extends JsonSerializer<Short> {
                           SerializerProvider serializer) throws IOException,
                                                   JsonProcessingException {
         if (s == null) jGen.writeNull();
-        else jGen.writeNumber(s.shortValue() & 0xffff);
+        else jGen.writeNumber(s & 0xffff);
     }
 
 }

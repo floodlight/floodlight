@@ -236,7 +236,7 @@ public class OFMessage {
     public static String getDataAsString(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 
         Ethernet eth;
-        StringBuffer sb =  new StringBuffer("");
+        StringBuilder sb =  new StringBuilder("");
 
         DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss.SSS");
         Date date = new Date();

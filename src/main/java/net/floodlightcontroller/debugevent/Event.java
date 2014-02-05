@@ -131,7 +131,7 @@ public class Event {
                             ipv4AddressesStr.append("--");
                         } else {
                             for (Integer ipv4Addr : ipv4Addresses) {
-                                ipv4AddressesStr.append(IPv4.fromIPv4Address(ipv4Addr.intValue()));
+                                ipv4AddressesStr.append(IPv4.fromIPv4Address(ipv4Addr));
                                 ipv4AddressesStr.append(" ");
                             }
                         }

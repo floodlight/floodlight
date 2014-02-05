@@ -108,7 +108,7 @@ public class FlowReconcileManager
         flowReconcileListeners.addListener(OFType.FLOW_MOD, listener);
 
         if (logger.isTraceEnabled()) {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append("FlowMod listeners: ");
             for (IFlowReconcileListener l :
                 flowReconcileListeners.getOrderedListeners()) {

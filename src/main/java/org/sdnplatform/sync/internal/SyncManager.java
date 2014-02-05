@@ -392,7 +392,7 @@ public class SyncManager extends AbstractSyncManager {
      * @return the {@link Cursor}
      */
     public Cursor getCursor(int cursorId) {
-        return cursorMap.get(Integer.valueOf(cursorId));
+        return cursorMap.get(cursorId);
     }
 
     /**
@@ -405,7 +405,7 @@ public class SyncManager extends AbstractSyncManager {
         IStore<ByteArray, byte[]> store = getStore(storeName);
         int cursorId = rpcService.getTransactionId();
         Cursor cursor = new Cursor(cursorId, store.entries());
-        cursorMap.put(Integer.valueOf(cursorId), cursor);
+        cursorMap.put(cursorId, cursor);
         return cursor;
     }
 
@@ -415,7 +415,7 @@ public class SyncManager extends AbstractSyncManager {
      */
     public void closeCursor(Cursor cursor) {
         cursor.close();
-        cursorMap.remove(Integer.valueOf(cursor.getCursorId()));
+        cursorMap.remove(cursor.getCursorId());
     }
 
     // *******************

@@ -295,7 +295,7 @@ public class RPCService {
      */
     public void disconnectNode(short nodeId) {
         synchronized (connections) {
-            Short n = Short.valueOf(nodeId);
+            Short n = nodeId;
             MessageWindow mw = messageWindows.get(n);
             if (mw != null) {
                 mw.lock.lock();
@@ -381,7 +381,7 @@ public class RPCService {
 
         if (!isConnected(nodeId)) return null;
 
-        Short n = Short.valueOf(nodeId);
+        Short n = nodeId;
         MessageWindow mw = messageWindows.get(n);
         if (mw == null) {
             mw = new MessageWindow();

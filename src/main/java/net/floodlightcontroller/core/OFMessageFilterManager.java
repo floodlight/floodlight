@@ -236,17 +236,14 @@ public class OFMessageFilterManager
 
         if (eth == null) return null;
 
-        Iterator<String> filterIt = filterMap.keySet().iterator();
-        while (filterIt.hasNext()) {   // for every filter
+        for (String s : filterMap.keySet()) {   // for every filter
             boolean filterMatch = false;
-            String filterSessionId = filterIt.next();
-            Map<String,String> filter = filterMap.get(filterSessionId);
+            String filterSessionId = s;
+            Map<String, String> filter = filterMap.get(filterSessionId);
 
             // If the filter has empty fields, then it is not considered as a match.
-            if (filter == null || filter.isEmpty()) continue;                  
-            Iterator<String> fieldIt = filter.keySet().iterator();
-            while (fieldIt.hasNext()) {   
-                String filterFieldType = fieldIt.next();
+            if (filter == null || filter.isEmpty()) continue;
+            for (String filterFieldType : filter.keySet()) {
                 String filterFieldValue = filter.get(filterFieldType);
                 if (filterFieldType.equals("mac")) {
 
@@ -254,9 +251,9 @@ public class OFMessageFilterManager
                     String dstMac = HexString.toHexString(eth.getDestinationMACAddress());
                     log.debug("srcMac: {}, dstMac: {}", srcMac, dstMac);
 
-                    if (filterFieldValue.equals(srcMac) || 
-                            filterFieldValue.equals(dstMac)){
-                        filterMatch = true; 
+                    if (filterFieldValue.equals(srcMac) ||
+                            filterFieldValue.equals(dstMac)) {
+                        filterMatch = true;
                     } else {
                         filterMatch = false;
                         break;

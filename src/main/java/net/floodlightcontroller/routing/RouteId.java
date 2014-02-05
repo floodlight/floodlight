@@ -70,7 +70,7 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
     @Override
     public int hashCode() {
         final int prime = 2417;
-        Long result = new Long(1);
+        Long result = (long) 1;
         result = prime * result + ((dst == null) ? 0 : dst.hashCode());
         result = prime * result + ((src == null) ? 0 : src.hashCode());
         result = prime * result + cookie; 

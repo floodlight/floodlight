@@ -39,7 +39,7 @@ public class NodePair {
     }
 
     public String toString() {
-        return "[" + new Long(min) + ", " + new Long(max) + "]";
+        return "[" + min + ", " + max + "]";
     }
 
     @Override

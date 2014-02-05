@@ -37,10 +37,7 @@ public class CounterResource extends CounterResourceBase {
         if (counterTitle.equalsIgnoreCase("all")) {
             Map<String, ICounter> counters = this.counterStore.getAll();
             if (counters != null) {
-                Iterator<Map.Entry<String, ICounter>> it = 
-                    counters.entrySet().iterator();
-                while (it.hasNext()) {
-                    Entry<String, ICounter> entry = it.next();
+                for (Entry<String, ICounter> entry : counters.entrySet()) {
                     String counterName = entry.getKey();
                     v = entry.getValue().getCounterValue();
 
@@ -48,7 +45,7 @@ public class CounterResource extends CounterResourceBase {
                         model.put(counterName, v.getLong());
                     } else if (v.getType() == CounterValue.CounterType.DOUBLE) {
                         model.put(counterName, v.getDouble());
-                    }   
+                    }
                 }   
             }   
         } else {

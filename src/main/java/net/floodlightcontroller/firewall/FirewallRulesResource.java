@@ -101,9 +101,7 @@ public class FirewallRulesResource extends ServerResource {
         }
         String status = null;
         boolean exists = false;
-        Iterator<FirewallRule> iter = firewall.getRules().iterator();
-        while (iter.hasNext()) {
-            FirewallRule r = iter.next();
+        for (FirewallRule r : firewall.getRules()) {
             if (r.ruleid == rule.ruleid) {
                 exists = true;
                 break;
@@ -295,10 +293,7 @@ public class FirewallRulesResource extends ServerResource {
     }
 
     public static boolean checkRuleExists(FirewallRule rule, List<FirewallRule> rules) {
-        Iterator<FirewallRule> iter = rules.iterator();
-        while (iter.hasNext()) {
-            FirewallRule r = iter.next();
-
+        for (FirewallRule r : rules) {
             // check if we find a similar rule
             if (rule.isSameAs(r)) {
                 return true;
