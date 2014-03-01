@@ -71,12 +71,13 @@ public class FirewallRulesResource extends ServerResource {
         if (checkRuleExists(rule, firewall.getRules())) {
             status = "Error! A similar firewall rule already exists.";
             log.error(status);
+        	return ("{\"status\" : \"" + status + "\"}");
         } else {
             // add rule to firewall
             firewall.addRule(rule);
             status = "Rule added";
+        	return ("{\"status\" : \"" + status + "\", \"rule-id\" : \""+ Integer.toString(rule.ruleid) + "\"}");
         }
-        return ("{\"status\" : \"" + status + "\"}");
     }
 
     /**
