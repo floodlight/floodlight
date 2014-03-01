@@ -250,9 +250,10 @@ public class VirtualNetworkFilter
         if (mac == null && port == null) return;
         if (port != null) {
             MACAddress host = portToMac.remove(port);
-            if(vNetsByGuid.get(macToGuid.get(host)) != null)
+            if(host !=null && vNetsByGuid.get(macToGuid.get(host)) != null)
                 vNetsByGuid.get(macToGuid.get(host)).removeHost(host);
-            macToGuid.remove(host);
+			if(host !=null)
+	            macToGuid.remove(host);
         } else if (mac != null) {
             if (!portToMac.isEmpty()) {
                 for (Entry<String, MACAddress> entry : portToMac.entrySet()) {
