@@ -240,7 +240,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertTrue(vns.vNetsByGuid.get(guid1).name.equals(net1));
         assertTrue(vns.vNetsByGuid.get(guid1).guid.equals(guid1));
         assertTrue(vns.vNetsByGuid.get(guid1).gateway.equals(gw1));
-        assertTrue(vns.vNetsByGuid.get(guid1).hosts.size()==0);
+        assertTrue(vns.vNetsByGuid.get(guid1).portToMac.size()==0);
 
         // Test creating network without a gateway
         vns.createNetwork(guid2, net2, null);
@@ -250,7 +250,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertTrue(vns.vNetsByGuid.get(guid2).name.equals(net2));
         assertTrue(vns.vNetsByGuid.get(guid2).guid.equals(guid2));
         assertTrue(vns.vNetsByGuid.get(guid2).gateway == null);
-        assertTrue(vns.vNetsByGuid.get(guid2).hosts.size()==0);
+        assertTrue(vns.vNetsByGuid.get(guid2).portToMac.size()==0);
 
         // Test creating a network that shares the gateway with net1
         vns.createNetwork(guid3, net3, IPv4.toIPv4Address(gw1));
@@ -262,7 +262,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         assertTrue(vns.vNetsByGuid.get(guid3).name.equals(net3));
         assertTrue(vns.vNetsByGuid.get(guid3).guid.equals(guid3));
         assertTrue(vns.vNetsByGuid.get(guid3).gateway.equals(gw1));
-        assertTrue(vns.vNetsByGuid.get(guid3).hosts.size()==0);
+        assertTrue(vns.vNetsByGuid.get(guid3).portToMac.size()==0);
 
     }
 
@@ -310,14 +310,14 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         vns.addHost(mac1, guid1, hostPort1);
         assertTrue(vns.macToGuid.get(mac1).equals(guid1));
         assertTrue(vns.portToMac.get(hostPort1).equals(mac1));
-        assertTrue(vns.vNetsByGuid.get(guid1).hosts.contains(mac1));
+        assertTrue(vns.vNetsByGuid.get(guid1).portToMac.containsValue(mac1));
         vns.addHost(mac2, guid1, hostPort2);
         assertTrue(vns.macToGuid.get(mac2).equals(guid1));
         assertTrue(vns.portToMac.get(hostPort2).equals(mac2));
-        assertTrue(vns.vNetsByGuid.get(guid1).hosts.contains(mac2));
+        assertTrue(vns.vNetsByGuid.get(guid1).portToMac.containsValue(mac2));
         vns.addHost(mac3, guid3, hostPort3);
         vns.addHost(mac4, guid3, hostPort4);
-        assertTrue(vns.vNetsByGuid.get(guid3).hosts.contains(mac4));
+        assertTrue(vns.vNetsByGuid.get(guid3).portToMac.containsValue(mac4));
     }
 
     @Test
@@ -328,19 +328,19 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         vns.deleteHost(mac1, null);
         assertFalse(vns.macToGuid.containsKey(mac1));
         assertFalse(vns.portToMac.containsKey(hostPort1));
-        assertFalse(vns.vNetsByGuid.get(host1Guid).hosts.contains(mac1));
+        assertFalse(vns.vNetsByGuid.get(host1Guid).portToMac.containsValue(mac1));
 
         String host2Guid = vns.macToGuid.get(vns.portToMac.get(hostPort2));
         vns.deleteHost(null, hostPort2);
         assertFalse(vns.macToGuid.containsKey(mac2));
         assertFalse(vns.portToMac.containsKey(hostPort2));
-        assertFalse(vns.vNetsByGuid.get(host2Guid).hosts.contains(mac2));
+        assertFalse(vns.vNetsByGuid.get(host2Guid).portToMac.containsValue(mac2));
 
         String host3Guid = vns.macToGuid.get(mac3);
         vns.deleteHost(mac3, hostPort3);
         assertFalse(vns.macToGuid.containsKey(mac3));
         assertFalse(vns.portToMac.containsKey(hostPort3));
-        assertFalse(vns.vNetsByGuid.get(host3Guid).hosts.contains(mac3));
+        assertFalse(vns.vNetsByGuid.get(host3Guid).portToMac.containsValue(mac3));
 
     }
 

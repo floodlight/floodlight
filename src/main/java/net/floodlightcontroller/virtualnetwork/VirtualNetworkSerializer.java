@@ -18,6 +18,7 @@ package net.floodlightcontroller.virtualnetwork;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Map.Entry;
 
 import net.floodlightcontroller.util.MACAddress;
 
@@ -42,10 +43,15 @@ public class VirtualNetworkSerializer extends JsonSerializer<VirtualNetwork> {
         jGen.writeStringField("guid", vNet.guid);
         jGen.writeStringField("gateway", vNet.gateway);
 
-        jGen.writeArrayFieldStart("mac");
-        Iterator<MACAddress> hit = vNet.hosts.iterator();
-        while (hit.hasNext())
-            jGen.writeString(hit.next().toString());
+        jGen.writeArrayFieldStart("portMac");
+		Iterator entries = vNet.portToMac.entrySet().iterator();
+		while (entries.hasNext()){
+			jGen.writeStartObject();
+			Entry entry = (Entry)entries.next();
+			jGen.writeStringField("port",entry.getKey().toString());
+			jGen.writeStringField("mac",entry.getValue().toString());
+			jGen.writeEndObject();
+		}
         jGen.writeEndArray();
         
         jGen.writeEndObject();

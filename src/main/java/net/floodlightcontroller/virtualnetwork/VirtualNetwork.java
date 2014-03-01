@@ -16,9 +16,9 @@
 
 package net.floodlightcontroller.virtualnetwork;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import net.floodlightcontroller.util.MACAddress;
@@ -35,8 +35,7 @@ public class VirtualNetwork{
     protected String name; // network name
     protected String guid; // network id
     protected String gateway; // network gateway
-    protected Collection<MACAddress> hosts; // array of hosts explicitly added to this network
-
+	protected Map<String,MACAddress> portToMac; //port's logical namd and the host's mac address connected
     /**
      * Constructor requires network name and id
      * @param name: network name
@@ -46,7 +45,7 @@ public class VirtualNetwork{
         this.name = name;
         this.guid = guid;
         this.gateway = null;
-        this.hosts = new ArrayList<MACAddress>();
+		this.portToMac = new ConcurrentHashMap<String,MACAddress>();
         return;        
     }
 
@@ -72,8 +71,8 @@ public class VirtualNetwork{
      * Adds a host to this network record
      * @param host: MAC address as MACAddress
      */
-    public void addHost(MACAddress host){
-        this.hosts.add(host);
+    public void addHost(String port,MACAddress host){
+        this.portToMac.put(port,host); // ignore old mapping
         return;        
     }
     
@@ -83,22 +82,19 @@ public class VirtualNetwork{
      * @return boolean: true: removed, false: host not found
      */
     public boolean removeHost(MACAddress host){
-        Iterator<MACAddress> iter = this.hosts.iterator();
-        while(iter.hasNext()){
-            MACAddress element = iter.next();
-            if(element.equals(host) ){
-                //assuming MAC address for host is unique
-                iter.remove();
-                return true;
-            }                
-        }
-        return false;
+		for (Entry<String,MACAddress> entry : this.portToMac.entrySet()){
+			if(entry.getValue().equals(host)){
+				this.portToMac.remove(entry.getKey());
+				return true;
+			}
+		}
+		return false;
     }
     
     /**
      * Removes all hosts from this network record
      */
     public void clearHosts(){
-        this.hosts.clear();
+		this.portToMac.clear();
     }
 }
