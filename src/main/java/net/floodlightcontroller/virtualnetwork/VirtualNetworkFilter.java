@@ -235,7 +235,7 @@ public class VirtualNetworkFilter
             macToGuid.put(mac, guid);
             portToMac.put(port, mac);
             if(vNetsByGuid.get(guid)!=null)
-                vNetsByGuid.get(guid).addHost(new MACAddress(mac.toBytes()));
+                vNetsByGuid.get(guid).addHost(port,new MACAddress(mac.toBytes()));
         } else {
             log.warn("Could not add MAC {} to network ID {} on port {}, the network does not exist",
                      new Object[] {mac, guid, port});
@@ -250,9 +250,10 @@ public class VirtualNetworkFilter
         if (mac == null && port == null) return;
         if (port != null) {
             MACAddress host = portToMac.remove(port);
-            if(vNetsByGuid.get(macToGuid.get(host)) != null)
+            if(host !=null && vNetsByGuid.get(macToGuid.get(host)) != null)
                 vNetsByGuid.get(macToGuid.get(host)).removeHost(host);
-            macToGuid.remove(host);
+			if(host !=null)
+	            macToGuid.remove(host);
         } else if (mac != null) {
             if (!portToMac.isEmpty()) {
                 for (Entry<String, MACAddress> entry : portToMac.entrySet()) {
