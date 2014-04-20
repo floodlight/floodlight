@@ -58,16 +58,10 @@ public class Cluster {
     }
 
     void addLink(Link l) {
-        if (links.containsKey(l.getSrc()) == false) {
-            links.put(l.getSrc(), new HashSet<Link>());
-            if (l.getSrc() < id) id = l.getSrc();
-        }
+        add(l.getSrc());
         links.get(l.getSrc()).add(l);
 
-        if (links.containsKey(l.getDst()) == false) {
-            links.put(l.getDst(), new HashSet<Link>());
-            if (l.getDst() < id) id = l.getDst();
-        }
+        add(l.getDst());
         links.get(l.getDst()).add(l);
      }
 
