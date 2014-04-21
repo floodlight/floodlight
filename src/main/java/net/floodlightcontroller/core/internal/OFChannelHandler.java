@@ -887,9 +887,9 @@ class OFChannelHandler
                 h.dispatchMessage(m);
             }
             @Override
-			void processOFBarrierReply(OFChannelHandler h, OFBarrierReply m) throws IOException{
+            void processOFBarrierReply(OFChannelHandler h, OFBarrierReply m) throws IOException{
                 h.dispatchMessage(m);
- 			}
+            }
         },
 
         /**
