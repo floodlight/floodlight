@@ -886,6 +886,10 @@ class OFChannelHandler
                                       OFFlowRemoved m) throws IOException {
                 h.dispatchMessage(m);
             }
+            @Override
+            void processOFBarrierReply(OFChannelHandler h, OFBarrierReply m) throws IOException{
+                h.dispatchMessage(m);
+            }
         },
 
         /**
