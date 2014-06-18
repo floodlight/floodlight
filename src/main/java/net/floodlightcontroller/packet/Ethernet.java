@@ -22,8 +22,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.util.MACAddress;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.util.HexString;
 
 /**
  *
@@ -49,8 +49,8 @@ public class Ethernet extends BasePacket {
         etherTypeClassMap.put(TYPE_BSN, BSN.class);
     }
 
-    protected MACAddress destinationMACAddress;
-    protected MACAddress sourceMACAddress;
+    protected MacAddress destinationMACAddress;
+    protected MacAddress sourceMACAddress;
     protected byte priorityCode;
     protected short vlanID;
     protected short etherType;
@@ -68,13 +68,13 @@ public class Ethernet extends BasePacket {
      * @return the destination MAC as a byte array
      */
     public byte[] getDestinationMACAddress() {
-        return destinationMACAddress.toBytes();
+        return destinationMACAddress.getBytes();
     }
     
     /**
      * @return the destination MAC
      */
-    public MACAddress getDestinationMAC() {
+    public MacAddress getDestinationMAC() {
         return destinationMACAddress;
     }
 
@@ -82,7 +82,7 @@ public class Ethernet extends BasePacket {
      * @param destinationMACAddress the destination MAC to set
      */
     public Ethernet setDestinationMACAddress(byte[] destinationMACAddress) {
-        this.destinationMACAddress = MACAddress.valueOf(destinationMACAddress);
+        this.destinationMACAddress = MacAddress.of(destinationMACAddress);
         return this;
     }
 
@@ -90,7 +90,7 @@ public class Ethernet extends BasePacket {
      * @param destinationMACAddress the destination MAC to set
      */
     public Ethernet setDestinationMACAddress(String destinationMACAddress) {
-        this.destinationMACAddress = MACAddress.valueOf(destinationMACAddress);
+        this.destinationMACAddress = MacAddress.of(destinationMACAddress);
         return this;
     }
 
@@ -98,13 +98,13 @@ public class Ethernet extends BasePacket {
      * @return the source MACAddress as a byte array
      */
     public byte[] getSourceMACAddress() {
-        return sourceMACAddress.toBytes();
+        return sourceMACAddress.getBytes();
     }
     
     /**
      * @return the source MACAddress
      */
-    public MACAddress getSourceMAC() {
+    public MacAddress getSourceMAC() {
         return sourceMACAddress;
     }
 
@@ -112,7 +112,7 @@ public class Ethernet extends BasePacket {
      * @param sourceMACAddress the source MAC to set
      */
     public Ethernet setSourceMACAddress(byte[] sourceMACAddress) {
-        this.sourceMACAddress = MACAddress.valueOf(sourceMACAddress);
+        this.sourceMACAddress = MacAddress.of(sourceMACAddress);
         return this;
     }
 
@@ -120,7 +120,7 @@ public class Ethernet extends BasePacket {
      * @param sourceMACAddress the source MAC to set
      */
     public Ethernet setSourceMACAddress(String sourceMACAddress) {
-        this.sourceMACAddress = MACAddress.valueOf(sourceMACAddress);
+        this.sourceMACAddress = MacAddress.of(sourceMACAddress);
         return this;
     }
 
@@ -173,7 +173,7 @@ public class Ethernet extends BasePacket {
      * @return True if the Ethernet frame is broadcast, false otherwise
      */
     public boolean isBroadcast() {
-        assert(destinationMACAddress.length() == 6);
+        assert(destinationMACAddress.getLength() == 6);
         return destinationMACAddress.isBroadcast();
     }
     
@@ -213,8 +213,8 @@ public class Ethernet extends BasePacket {
         }
         byte[] data = new byte[length];
         ByteBuffer bb = ByteBuffer.wrap(data);
-        bb.put(destinationMACAddress.toBytes());
-        bb.put(sourceMACAddress.toBytes());
+        bb.put(destinationMACAddress.getBytes());
+        bb.put(sourceMACAddress.getBytes());
         if (vlanID != VLAN_UNTAGGED) {
             bb.putShort((short) 0x8100);
             bb.putShort((short) ((priorityCode << 13) | (vlanID & 0x0fff)));
@@ -234,16 +234,16 @@ public class Ethernet extends BasePacket {
             return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
-            this.destinationMACAddress = MACAddress.valueOf(new byte[6]);
-        byte[] dstAddr = new byte[MACAddress.MAC_ADDRESS_LENGTH];
+            this.destinationMACAddress = MacAddress.of(new byte[6]);
+        byte[] dstAddr = new byte[MacAddress.NONE.getLength()];
         bb.get(dstAddr);
-        this.destinationMACAddress = MACAddress.valueOf(dstAddr);
+        this.destinationMACAddress = MacAddress.of(dstAddr);
 
         if (this.sourceMACAddress == null)
-            this.sourceMACAddress = MACAddress.valueOf(new byte[6]);
-        byte[] srcAddr = new byte[MACAddress.MAC_ADDRESS_LENGTH];
+            this.sourceMACAddress = MacAddress.of(new byte[6]);
+        byte[] srcAddr = new byte[MacAddress.NONE.getLength()];
         bb.get(srcAddr);
-        this.sourceMACAddress = MACAddress.valueOf(srcAddr);
+        this.sourceMACAddress = MacAddress.of(srcAddr);
 
         short etherType = bb.getShort();
         if (etherType == (short) 0x8100) {
@@ -322,7 +322,7 @@ public class Ethernet extends BasePacket {
      * @return The macAddress as a byte array 
      */
     public static byte[] toMACAddress(String macAddress) {
-        return MACAddress.valueOf(macAddress).toBytes();
+        return MacAddress.of(macAddress).getBytes();
     }
 
 
@@ -333,7 +333,7 @@ public class Ethernet extends BasePacket {
      * @return a long containing the mac address bytes
      */
     public static long toLong(byte[] macAddress) {
-        return MACAddress.valueOf(macAddress).toLong();
+        return MacAddress.of(macAddress).getLong();
     }
 
     /**
@@ -342,7 +342,7 @@ public class Ethernet extends BasePacket {
      * @return the bytes of the mac address
      */
     public static byte[] toByteArray(long macAddress) {
-        return MACAddress.valueOf(macAddress).toBytes();
+        return MacAddress.of(macAddress).getBytes();
     }
     
     /* (non-Javadoc)

@@ -30,7 +30,7 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.ImmutablePort;
-import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.core.internal.OLD__Controller;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
@@ -357,7 +357,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void setFloodlightProvider(Controller controller) {
+    public void setFloodlightProvider(OLD__Controller controller) {
         fail("Unexpected method call");
         // TODO Auto-generated method stub
 

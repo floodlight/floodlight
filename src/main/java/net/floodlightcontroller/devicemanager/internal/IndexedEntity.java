@@ -89,8 +89,8 @@ public class IndexedEntity {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
-                        + (int) (entity.macAddress ^ 
-                                (entity.macAddress >>> 32));
+                        + (int) (entity.macAddress.getLong() ^ 
+                                (entity.macAddress.getLong() >>> 32));
                     break;
                 case IPV4:
                     hashCode = prime * hashCode

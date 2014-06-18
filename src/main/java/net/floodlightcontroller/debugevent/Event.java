@@ -11,8 +11,10 @@ import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.IPv4;
 
-import org.openflow.protocol.OFFlowMod;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
+import org.projectfloodlight.openflow.protocol.OFFlowModify;
+import org.projectfloodlight.openflow.util.HexString;
 
 public class Event {
     long timestamp;
@@ -110,8 +112,8 @@ public class Event {
                         if (flags == 0) {
                             builder.append("None");
                         }
-                        else {
-                            if ((flags & OFFlowMod.OFPFF_SEND_FLOW_REM) != 0) {
+                        else { //towirevalue
+                            if ((flags & OFFlowModFlags.SEND_FLOW_REM.) != 0) {
                                 builder.append("SEND_FLOW_REM ");
                             }
                             if ((flags & OFFlowMod.OFPFF_CHECK_OVERLAP) != 0) {

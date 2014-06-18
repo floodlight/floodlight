@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -28,15 +32,15 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 public class RoutingDecision implements IRoutingDecision {
 
     protected RoutingAction action;
-    protected Integer wildcards;
+    protected Match.Builder wildcards;
     protected short hardTimeout;
     protected SwitchPort srcPort;
     protected IDevice srcDevice;
     protected List<IDevice> destDevices;
     protected List<SwitchPort> broadcastIntertfaces;
 
-    public RoutingDecision(long swDipd,
-                                  short inPort,
+    public RoutingDecision(DatapathId swDipd,
+                                  OFPort inPort,
                                   IDevice srcDevice,
                                   RoutingAction action) {
         this.srcPort = new SwitchPort(swDipd, inPort);
@@ -93,12 +97,12 @@ public class RoutingDecision implements IRoutingDecision {
     }
     
     @Override
-    public Integer getWildcards() {
+    public Match.Builder getWildcards() {
         return this.wildcards;
     }
     
     @Override
-    public void setWildcards(Integer wildcards) {
+    public void setWildcards(Match.Builder wildcards) {
         this.wildcards = wildcards;
     }
    
@@ -120,6 +124,6 @@ public class RoutingDecision implements IRoutingDecision {
     public String toString() {
         return "action " + action +
                " wildcard " +
-               ((wildcards == null) ? null : "0x"+Integer.toHexString(wildcards.intValue()));
+               ((wildcards == null) ? null : wildcards.toString());
     }
 }

@@ -66,7 +66,7 @@ import static org.junit.Assert.*;
 public class OFChannelHandlerTest {
     private static final short CORE_PRIORITY = 4242;
     private static final short ACCESS_PRIORITY = 42;
-    private Controller controller;
+    private OLD__Controller controller;
     private IThreadPoolService threadPool;
     private IDebugCounterService debugCounterService;
     private OFChannelHandler handler;
@@ -110,7 +110,7 @@ public class OFChannelHandlerTest {
 
     @Before
     public void setUp() throws Exception {
-        controller = createMock(Controller.class);
+        controller = createMock(OLD__Controller.class);
         threadPool = createMock(IThreadPoolService.class);
         ctx = createMock(ChannelHandlerContext.class);
         channelStateEvent = createMock(ChannelStateEvent.class);
@@ -125,8 +125,8 @@ public class OFChannelHandlerTest {
         // TODO: should mock IDebugCounterService and make sure
         // the expected counters are updated.
         debugCounterService = new DebugCounter();
-        Controller.Counters counters =
-                new Controller.Counters();
+        OLD__Controller.Counters counters =
+                new OLD__Controller.Counters();
         counters.createCounters(debugCounterService);
         expect(controller.getCounters()).andReturn(counters).anyTimes();
         replay(controller);
@@ -442,7 +442,7 @@ public class OFChannelHandlerTest {
         Iterator<IResultSet> it = null;
 
         if (cfg.isPresent) {
-            storageResultSet.getBoolean(Controller.SWITCH_CONFIG_CORE_SWITCH);
+            storageResultSet.getBoolean(OLD__Controller.SWITCH_CONFIG_CORE_SWITCH);
             expectLastCall().andReturn(cfg.isCoreSwitch).atLeastOnce();
             it = Collections.singletonList(storageResultSet).iterator();
         } else {
@@ -452,7 +452,7 @@ public class OFChannelHandlerTest {
         storageResultSet.close();
         expectLastCall().atLeastOnce();
         expect(storageResultSet.iterator()).andReturn(it).atLeastOnce();
-        storageSource.getRow(Controller.SWITCH_CONFIG_TABLE_NAME, cfg.dpid);
+        storageSource.getRow(OLD__Controller.SWITCH_CONFIG_TABLE_NAME, cfg.dpid);
         expectLastCall().andReturn(storageResultSet).atLeastOnce();
         replay(storageResultSet, storageSource);
     }

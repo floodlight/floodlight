@@ -18,7 +18,9 @@ package net.floodlightcontroller.linkdiscovery;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import org.openflow.util.HexString;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 public interface ILinkDiscovery {
 
@@ -45,16 +47,16 @@ public interface ILinkDiscovery {
     }
 
     public class LDUpdate {
-        protected long src;
-        protected short srcPort;
-        protected long dst;
-        protected short dstPort;
+        protected DatapathId src;
+        protected OFPort srcPort;
+        protected DatapathId dst;
+        protected OFPort dstPort;
         protected SwitchType srcType;
         protected LinkType type;
         protected UpdateOperation operation;
 
-        public LDUpdate(long src, short srcPort,
-                      long dst, short dstPort,
+        public LDUpdate(DatapathId src, OFPort srcPort,
+        		DatapathId dst, OFPort dstPort,
                       ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
@@ -76,32 +78,32 @@ public interface ILinkDiscovery {
         }
 
         // For updtedSwitch(sw)
-        public LDUpdate(long switchId, SwitchType stype, UpdateOperation oper ){
+        public LDUpdate(DatapathId switchId, SwitchType stype, UpdateOperation oper ){
             this.operation = oper;
             this.src = switchId;
             this.srcType = stype;
         }
 
         // For port up or port down; and tunnel port added and removed.
-        public LDUpdate(long sw, short port, UpdateOperation operation) {
+        public LDUpdate(DatapathId sw, OFPort port, UpdateOperation operation) {
             this.src = sw;
             this.srcPort = port;
             this.operation = operation;
         }
 
-        public long getSrc() {
+        public DatapathId getSrc() {
             return src;
         }
 
-        public short getSrcPort() {
+        public OFPort getSrcPort() {
             return srcPort;
         }
 
-        public long getDst() {
+        public DatapathId getDst() {
             return dst;
         }
 
-        public short getDstPort() {
+        public OFPort getDstPort() {
             return dstPort;
         }
 
@@ -127,20 +129,20 @@ public interface ILinkDiscovery {
             case LINK_REMOVED:
             case LINK_UPDATED:
                 return "LDUpdate [operation=" + operation +
-                        ", src=" + HexString.toHexString(src)
-                        + ", srcPort=" + srcPort
-                        + ", dst=" + HexString.toHexString(dst) 
-                        + ", dstPort=" + dstPort
+                        ", src=" + src.toString()
+                        + ", srcPort=" + srcPort.toString()
+                        + ", dst=" + dst.toString()
+                        + ", dstPort=" + dstPort.toString()
                         + ", type=" + type + "]";
             case PORT_DOWN:
             case PORT_UP:
                 return "LDUpdate [operation=" + operation +
-                        ", src=" + HexString.toHexString(src)
-                        + ", srcPort=" + srcPort + "]";
+                        ", src=" + src.toString()
+                        + ", srcPort=" + srcPort.toString() + "]";
             case SWITCH_REMOVED:
             case SWITCH_UPDATED:
                 return "LDUpdate [operation=" + operation +
-                        ", src=" + HexString.toHexString(src) + "]";
+                        ", src=" + src.toString() + "]";
             default:
                 return "LDUpdate: Unknown update.";
             }

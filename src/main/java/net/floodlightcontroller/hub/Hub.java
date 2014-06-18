@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.hub;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,19 +26,20 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.action.OFAction;
-import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.U16;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,34 +64,24 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
         return Hub.class.getPackage().getName();
     }
 
+    //TODO @Ryan this is a good example (my first try) at using the builders. Might be good reference later.
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         OFPacketIn pi = (OFPacketIn) msg;
-        OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory()
-                .getMessage(OFType.PACKET_OUT);
-        po.setBufferId(pi.getBufferId())
-            .setInPort(pi.getInPort());
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        pob.setBufferId(pi.getBufferId()).setInPort(pi.getInPort());
 
         // set actions
-        OFActionOutput action = new OFActionOutput()
-            .setPort(OFPort.OFPP_FLOOD.getValue());
-        po.setActions(Collections.singletonList((OFAction)action));
-        po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
+            actionBuilder.setPort(OFPort.FLOOD);
+        pob.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
+        // pob.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH); @Ryan setting of lengths is taken care of now, I think
 
         // set data if is is included in the packetin
-        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
-            byte[] packetData = pi.getPacketData();
-            po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
-                    + po.getActionsLength() + packetData.length));
-            po.setPacketData(packetData);
-        } else {
-            po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
-                    + po.getActionsLength()));
+        if (pi.getBufferId() == OFBufferId.NO_BUFFER) {
+            byte[] packetData = pi.getData();
+            pob.setData(packetData);
         }
-        try {
-            sw.write(po, cntx);
-        } catch (IOException e) {
-            log.error("Failure writing PacketOut", e);
-        }
+        sw.write(pob.build(), LogicalOFMessageCategory.MAIN);
 
         return Command.CONTINUE;
     }

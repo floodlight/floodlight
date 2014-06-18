@@ -25,7 +25,14 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
-import org.openflow.util.HexString;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
 import org.restlet.resource.Get;
@@ -33,7 +40,6 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 
 public class FirewallRulesResource extends ServerResource {
@@ -166,13 +172,13 @@ public class FirewallRulesResource extends ServerResource {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("-1") == false) {
                     // user inputs hex format dpid
-                    rule.dpid = HexString.toLong(tmp);
+                    rule.dpid = DatapathId.of(tmp);
                     rule.wildcard_dpid = false;
                 }
             }
 
             else if (n == "src-inport") {
-                rule.in_port = Short.parseShort(jp.getText());
+                rule.in_port = OFPort.of(Integer.parseInt(jp.getText()));
                 rule.wildcard_in_port = false;
             }
 
@@ -180,7 +186,7 @@ public class FirewallRulesResource extends ServerResource {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_dl_src = false;
-                    rule.dl_src = Ethernet.toLong(Ethernet.toMACAddress(tmp));
+                    rule.dl_src = MacAddress.of(tmp);
                 }
             }
 
@@ -188,7 +194,7 @@ public class FirewallRulesResource extends ServerResource {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_dl_dst = false;
-                    rule.dl_dst = Ethernet.toLong(Ethernet.toMACAddress(tmp));
+                    rule.dl_dst = MacAddress.of(tmp);
                 }
             }
 
@@ -196,11 +202,11 @@ public class FirewallRulesResource extends ServerResource {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ARP")) {
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_ARP;
+                    rule.dl_type = EthType.ARP;
                 }
                 if (tmp.equalsIgnoreCase("IPv4")) {
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
+                    rule.dl_type = EthType.IPv4;
                 }
             }
 
@@ -209,10 +215,8 @@ public class FirewallRulesResource extends ServerResource {
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_nw_src = false;
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
-                    int[] cidr = IPCIDRToPrefixBits(tmp);
-                    rule.nw_src_prefix = cidr[0];
-                    rule.nw_src_maskbits = cidr[1];
+                    rule.dl_type = EthType.IPv4;
+                    rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of(tmp);
                 }
             }
 
@@ -221,10 +225,8 @@ public class FirewallRulesResource extends ServerResource {
                 if (tmp.equalsIgnoreCase("ANY") == false) {
                     rule.wildcard_nw_dst = false;
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
-                    int[] cidr = IPCIDRToPrefixBits(tmp);
-                    rule.nw_dst_prefix = cidr[0];
-                    rule.nw_dst_maskbits = cidr[1];
+                    rule.dl_type = EthType.IPv4;
+                    rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(tmp);
                 }
             }
 
@@ -232,30 +234,30 @@ public class FirewallRulesResource extends ServerResource {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("TCP")) {
                     rule.wildcard_nw_proto = false;
-                    rule.nw_proto = IPv4.PROTOCOL_TCP;
+                    rule.nw_proto = IpProtocol.TCP;
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
+                    rule.dl_type = EthType.IPv4;
                 } else if (tmp.equalsIgnoreCase("UDP")) {
                     rule.wildcard_nw_proto = false;
-                    rule.nw_proto = IPv4.PROTOCOL_UDP;
+                    rule.nw_proto = IpProtocol.UDP;
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
+                    rule.dl_type = EthType.IPv4;
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
                     rule.wildcard_nw_proto = false;
-                    rule.nw_proto = IPv4.PROTOCOL_ICMP;
+                    rule.nw_proto = IpProtocol.ICMP;
                     rule.wildcard_dl_type = false;
-                    rule.dl_type = Ethernet.TYPE_IPv4;
+                    rule.dl_type = EthType.IPv4;
                 }
             }
 
             else if (n == "tp-src") {
                 rule.wildcard_tp_src = false;
-                rule.tp_src = Short.parseShort(jp.getText());
+                rule.tp_src = TransportPort.of(Integer.parseInt(jp.getText()));
             }
 
             else if (n == "tp-dst") {
                 rule.wildcard_tp_dst = false;
-                rule.tp_dst = Short.parseShort(jp.getText());
+                rule.tp_dst = TransportPort.of(Integer.parseInt(jp.getText()));
             }
 
             else if (n == "priority") {

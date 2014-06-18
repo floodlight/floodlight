@@ -21,6 +21,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.Controller;
+import net.floodlightcontroller.core.module.Run;
+
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.sdnplatform.sync.ISyncService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -39,6 +44,10 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 public class FloodlightProvider implements IFloodlightModule {
     Controller controller;
 
+    public FloodlightProvider() {
+        controller = new Controller();
+    }
+    
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> services =
@@ -70,6 +79,7 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(ICounterStoreService.class);
         dependencies.add(IDebugCounterService.class);
         dependencies.add(IDebugEventService.class);
+        dependencies.add(IOFSwitchService.class);
         dependencies.add(IThreadPoolService.class);
         dependencies.add(ISyncService.class);
         return dependencies;
@@ -99,6 +109,23 @@ public class FloodlightProvider implements IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        controller.startupComponents();
+        controller.startupComponents(context.getModuleLoader());
     }
+    
+    @Run(mainLoop=true)
+    public void run() throws FloodlightModuleException {
+        controller.run();
+    }
+
+	@Override
+	public boolean isCallbackOrderingPrereq(OFType type, String name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isCallbackOrderingPostreq(OFType type, String name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

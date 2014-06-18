@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -30,36 +30,37 @@ import org.jboss.netty.util.TimerTask;
 /**
  * Trigger a timeout if a switch fails to complete handshake soon enough
  */
-public class HandshakeTimeoutHandler 
+public class HandshakeTimeoutHandler
     extends SimpleChannelUpstreamHandler {
-    static final HandshakeTimeoutException EXCEPTION = 
+
+    static final HandshakeTimeoutException EXCEPTION =
             new HandshakeTimeoutException();
-    
-    final OFChannelHandler channelHandler;
+
+    final OFChannelHandler handshakeHandler;
     final Timer timer;
     final long timeoutNanos;
     volatile Timeout timeout;
-    
-    public HandshakeTimeoutHandler(OFChannelHandler channelHandler,
+
+    public HandshakeTimeoutHandler(OFChannelHandler handshakeHandler,
                                    Timer timer,
                                    long timeoutSeconds) {
         super();
-        this.channelHandler = channelHandler;
+        this.handshakeHandler = handshakeHandler;
         this.timer = timer;
         this.timeoutNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
 
     }
-    
+
     @Override
     public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e)
             throws Exception {
         if (timeoutNanos > 0) {
-            timeout = timer.newTimeout(new HandshakeTimeoutTask(ctx), 
+            timeout = timer.newTimeout(new HandshakeTimeoutTask(ctx),
                                        timeoutNanos, TimeUnit.NANOSECONDS);
         }
         ctx.sendUpstream(e);
     }
-    
+
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
             throws Exception {
@@ -68,7 +69,7 @@ public class HandshakeTimeoutHandler
             timeout = null;
         }
     }
-    
+
     private final class HandshakeTimeoutTask implements TimerTask {
 
         private final ChannelHandlerContext ctx;
@@ -86,7 +87,7 @@ public class HandshakeTimeoutHandler
             if (!ctx.getChannel().isOpen()) {
                 return;
             }
-            if (!channelHandler.isHandshakeComplete())
+            if (!handshakeHandler.isSwitchHandshakeComplete())
                 Channels.fireExceptionCaught(ctx, EXCEPTION);
         }
     }

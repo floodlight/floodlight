@@ -20,7 +20,8 @@ package net.floodlightcontroller.core.web;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.openflow.protocol.statistics.OFStatisticsType;
+import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,17 +43,17 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         String statType = (String) getRequestAttributes().get("statType");
         
         if (statType.equals("port")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.PORT);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.PORT);
         } else if (statType.equals("queue")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.QUEUE);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.QUEUE);
         } else if (statType.equals("flow")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.FLOW);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.FLOW);
         } else if (statType.equals("aggregate")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.AGGREGATE);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.AGGREGATE);
         } else if (statType.equals("desc")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.DESC);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.DESC);
         } else if (statType.equals("table")) {
-            values = getSwitchStatistics(switchId, OFStatisticsType.TABLE);
+            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.TABLE);
         } else if (statType.equals("features")) {
             values = getSwitchFeaturesReply(switchId);
         }

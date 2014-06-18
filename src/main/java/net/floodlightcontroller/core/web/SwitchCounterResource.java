@@ -22,7 +22,7 @@ import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -46,8 +46,8 @@ public class SwitchCounterResource extends CounterResourceBase {
 
         if (switchID.equalsIgnoreCase("all")) {
             getOneSwitchCounterJson(model, ICounterStoreService.CONTROLLER_NAME, counterName);
-            for (Long dpid : floodlightProvider.getAllSwitchDpids()) {
-                switchID = HexString.toHexString(dpid);
+            for (DatapathId dpid : floodlightProvider.getAllSwitchDpids()) {
+                switchID = dpid.toString();
 
                 getOneSwitchCounterJson(model, switchID, counterName);
             }

@@ -22,9 +22,10 @@ import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFType;
 
 /**
  * Dampens OFMessages sent to an OF switch. A message is only written to 
@@ -134,7 +135,7 @@ public class OFMessageDamper {
                         FloodlightContext cntx, boolean flush) 
             throws IOException {
         if (! msgTypesToCache.contains(msg.getType())) {
-            sw.writeThrottled(msg, cntx);
+            sw.write(msg, LogicalOFMessageCategory.MAIN);
             if (flush) {
                 sw.flush();
             }
@@ -146,7 +147,7 @@ public class OFMessageDamper {
             // entry exists in cache. Dampening.
             return false; 
         } else {
-            sw.writeThrottled(msg, cntx);
+            sw.write(msg, LogicalOFMessageCategory.MAIN);
             if (flush) {
                 sw.flush();
             }

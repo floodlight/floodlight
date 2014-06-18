@@ -30,7 +30,11 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openflow.util.HexString;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +65,7 @@ public class Device implements IDevice {
 
     protected final String macAddressString;
     // the vlan Ids from the entities of this device
-    protected final Short[] vlanIds;
+    protected final VlanVid[] vlanIds;
     protected volatile String dhcpClientName;
 
     /**
@@ -103,7 +107,7 @@ public class Device implements IDevice {
 
         if (entity.getSwitchDPID() != null &&
                 entity.getSwitchPort() != null){
-            long sw = entity.getSwitchDPID();
+            DatapathId sw = entity.getSwitchDPID();
             short port = entity.getSwitchPort().shortValue();
 
             if (deviceManager.isValidAttachmentPoint(sw, port)) {
@@ -209,30 +213,29 @@ public class Device implements IDevice {
                     new ArrayList<AttachmentPoint>(device.attachmentPoints);
         }
 
-        this.macAddressString =
-                HexString.toHexString(this.entities[0].getMacAddress(), 6);
+        this.macAddressString = this.entities[0].getMacAddress().toString();
 
         this.entityClass = device.entityClass;
         vlanIds = computeVlandIds();
     }
 
-    private Short[]  computeVlandIds() {
+    private VlanVid[] computeVlandIds() {
         if (entities.length == 1) {
             if (entities[0].getVlan() != null) {
-                return new Short[]{ entities[0].getVlan() };
+                return new VlanVid[]{ entities[0].getVlan() };
             } else {
-                return new Short[] { Short.valueOf((short)-1) };
+                return new VlanVid[] { VlanVid.ofVlan(-1) };
             }
         }
 
-        TreeSet<Short> vals = new TreeSet<Short>();
+        TreeSet<VlanVid> vals = new TreeSet<VlanVid>();
         for (Entity e : entities) {
             if (e.getVlan() == null)
-                vals.add((short)-1);
+                vals.add(VlanVid.ofVlan(-1));
             else
                 vals.add(e.getVlan());
         }
-        return vals.toArray(new Short[vals.size()]);
+        return vals.toArray(new VlanVid[vals.size()]);
     }
 
     /**
@@ -293,7 +296,7 @@ public class Device implements IDevice {
         if (apList == null) return false;
 
         for(AttachmentPoint ap: apList) {
-            if (ap.getLastSeen() + AttachmentPoint.INACTIVITY_INTERVAL <
+            if (ap.getLastSeen().getTime() + AttachmentPoint.INACTIVITY_INTERVAL <
                     System.currentTimeMillis())
                 expiredAPs.add(ap);
         }
@@ -332,8 +335,8 @@ public class Device implements IDevice {
             if (trueAP == null) continue;
             boolean c = (topology.isConsistent(trueAP.getSw(), trueAP.getPort(),
                                               ap.getSw(), ap.getPort()));
-            boolean active = (ap.getActiveSince() > trueAP.getActiveSince());
-            boolean last = ap.getLastSeen() > timeThreshold;
+            boolean active = (ap.getActiveSince().after(trueAP.getActiveSince()));
+            boolean last = ap.getLastSeen().getTime() > timeThreshold;
             if (!c && active && last) {
                 dupAPs.add(ap);
             }
@@ -385,7 +388,7 @@ public class Device implements IDevice {
      * @param lastSeen
      * @return
      */
-    protected boolean updateAttachmentPoint(long sw, short port, long lastSeen){
+    protected boolean updateAttachmentPoint(DatapathId sw, OFPort port, Date lastSeen){
         ITopologyService topology = deviceManager.topology;
         List<AttachmentPoint> oldAPList;
         List<AttachmentPoint> apList;
