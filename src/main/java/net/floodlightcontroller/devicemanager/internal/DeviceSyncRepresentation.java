@@ -6,14 +6,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.VlanVid;
-
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
+
+
 import net.floodlightcontroller.devicemanager.SwitchPort;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,15 +16,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class DeviceSyncRepresentation {
     public static class SyncEntity implements Comparable<SyncEntity> {
         @JsonProperty
-        public MacAddress macAddress;
+        public long macAddress;
         @JsonProperty
-        public IPv4Address ipv4Address;
+        public Integer ipv4Address;
         @JsonProperty
-        public VlanVid vlan;
+        public Short vlan;
         @JsonProperty
-        public DatapathId switchDPID;
+        public Long switchDPID;
         @JsonProperty
-        public OFPort switchPort;
+        public Integer switchPort;
         @JsonProperty
         public Date lastSeenTimestamp;
         @JsonProperty

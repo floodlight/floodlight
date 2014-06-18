@@ -15,17 +15,15 @@
 
 package net.floodlightcontroller.linkdiscovery;
 
-import java.util.Date;
-
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class LinkInfo {
 
-    public LinkInfo(Date firstSeenTime,
-                    Date lastLldpReceivedTime,
-                    Date lastBddpReceivedTime) {
+    public LinkInfo(Long firstSeenTime,
+                    Long lastLldpReceivedTime,
+                    Long lastBddpReceivedTime) {
         super();
         this.firstSeenTime = firstSeenTime;
         this.lastLldpReceivedTime = lastLldpReceivedTime;
@@ -48,9 +46,9 @@ public class LinkInfo {
         this.lastBddpReceivedTime = fromLinkInfo.getMulticastValidTime();
     }
 
-    protected Date firstSeenTime;
-    protected Date lastLldpReceivedTime; /* Standard LLLDP received time */
-    protected Date lastBddpReceivedTime; /* Modified LLDP received time  */
+    protected Long firstSeenTime;
+    protected Long lastLldpReceivedTime; /* Standard LLLDP received time */
+    protected Long lastBddpReceivedTime; /* Modified LLDP received time  */
 
     /** The port states stored here are topology's last knowledge of
      * the state of the port. This mostly mirrors the state
@@ -62,27 +60,27 @@ public class LinkInfo {
      * requires the new state to be written to storage.
      */
 
-    public Date getFirstSeenTime() {
+    public Long getFirstSeenTime() {
         return firstSeenTime;
     }
 
-    public void setFirstSeenTime(Date firstSeenTime) {
+    public void setFirstSeenTime(Long firstSeenTime) {
         this.firstSeenTime = firstSeenTime;
     }
 
-    public Date getUnicastValidTime() {
+    public Long getUnicastValidTime() {
         return lastLldpReceivedTime;
     }
 
-    public void setUnicastValidTime(Date unicastValidTime) {
+    public void setUnicastValidTime(Long unicastValidTime) {
         this.lastLldpReceivedTime = unicastValidTime;
     }
 
-    public Date getMulticastValidTime() {
+    public Long getMulticastValidTime() {
         return lastBddpReceivedTime;
     }
 
-    public void setMulticastValidTime(Date multicastValidTime) {
+    public void setMulticastValidTime(Long multicastValidTime) {
         this.lastBddpReceivedTime = multicastValidTime;
     }
 
@@ -149,8 +147,8 @@ public class LinkInfo {
      */
     @Override
     public String toString() {
-        return "LinkInfo [unicastValidTime=" + ((lastLldpReceivedTime == null) ? "null" : lastLldpReceivedTime.getTime())
-                + ", multicastValidTime=" + ((lastBddpReceivedTime == null) ? "null" : lastBddpReceivedTime.getTime())
+        return "LinkInfo [unicastValidTime=" + ((lastLldpReceivedTime == null) ? "null" : lastLldpReceivedTime)
+                + ", multicastValidTime=" + ((lastBddpReceivedTime == null) ? "null" : lastBddpReceivedTime)
                 + "]";
     }
 }

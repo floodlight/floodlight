@@ -19,7 +19,7 @@ package net.floodlightcontroller.counter;
 import java.util.List;
 import java.util.Map;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFMessage;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;

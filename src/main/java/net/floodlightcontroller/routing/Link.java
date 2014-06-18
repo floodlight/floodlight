@@ -18,26 +18,32 @@
 package net.floodlightcontroller.routing;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openflow.util.HexString;
 
 public class Link implements Comparable<Link> {
     @JsonProperty("src-switch")
-    private DatapathId src;
+    private long src;
     @JsonProperty("src-port")
-    private OFPort srcPort;
+    private short srcPort;
     @JsonProperty("dst-switch")
-    private DatapathId dst;
+    private long dst;
     @JsonProperty("dst-port")
-    private OFPort dstPort;
+    private short dstPort;
 
 
-    public Link(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort) {
+    public Link(long srcId, short srcPort, long dstId, short dstPort) {
         this.src = srcId;
         this.srcPort = srcPort;
         this.dst = dstId;
         this.dstPort = dstPort;
+    }
+
+    // Convenience method
+    public Link(long srcId, int srcPort, long dstId, int dstPort) {
+        this.src = srcId;
+        this.srcPort = (short) srcPort;
+        this.dst = dstId;
+        this.dstPort = (short) dstPort;
     }
 
     /*
@@ -48,35 +54,35 @@ public class Link implements Comparable<Link> {
         super();
     }
 
-    public DatapathId getSrc() {
+    public long getSrc() {
         return src;
     }
 
-    public OFPort getSrcPort() {
+    public short getSrcPort() {
         return srcPort;
     }
 
-    public DatapathId getDst() {
+    public long getDst() {
         return dst;
     }
 
-    public OFPort getDstPort() {
+    public short getDstPort() {
         return dstPort;
     }
 
-    public void setSrc(DatapathId src) {
+    public void setSrc(long src) {
         this.src = src;
     }
 
-    public void setSrcPort(OFPort srcPort) {
+    public void setSrcPort(short srcPort) {
         this.srcPort = srcPort;
     }
 
-    public void setDst(DatapathId dst) {
+    public void setDst(long dst) {
         this.dst = dst;
     }
 
-    public void setDstPort(OFPort dstPort) {
+    public void setDstPort(short dstPort) {
         this.dstPort = dstPort;
     }
 
@@ -84,10 +90,10 @@ public class Link implements Comparable<Link> {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + (int) (dst.getLong() ^ (dst.getLong() >>> 32));
-        result = prime * result + dstPort.getPortNumber();
-        result = prime * result + (int) (src.getLong() ^ (src.getLong() >>> 32));
-        result = prime * result + srcPort.getPortNumber();
+        result = prime * result + (int) (dst ^ (dst >>> 32));
+        result = prime * result + dstPort;
+        result = prime * result + (int) (src ^ (src >>> 32));
+        result = prime * result + srcPort;
         return result;
     }
 
@@ -114,36 +120,35 @@ public class Link implements Comparable<Link> {
 
     @Override
     public String toString() {
-        return "Link [src=" + this.src.toString() 
+        return "Link [src=" + HexString.toHexString(this.src) 
                 + " outPort="
-                + srcPort.toString()
-                + ", dst=" + this.dst.toString()
+                + (srcPort & 0xffff)
+                + ", dst=" + HexString.toHexString(this.dst)
                 + ", inPort="
-                + dstPort.toString()
+                + (dstPort & 0xffff)
                 + "]";
     }
     
-    //TODO @Ryan there was some short 0xFFFF bitmasking here when ports were shorts. I don't get what that did other than just allow all bits of the short (16), so I just stringified the whole thing
     public String toKeyString() {
-    	return (this.src.toString() + "|" +
-    			this.srcPort.toString() + "|" +
-    			this.dst.toString() + "|" +
-    		    this.dstPort.toString());
+    	return (HexString.toHexString(this.src) + "|" +
+    			(this.srcPort & 0xffff) + "|" +
+    			HexString.toHexString(this.dst) + "|" +
+    		    (this.dstPort & 0xffff) );
     }
 
     @Override
     public int compareTo(Link a) {
         // compare link based on natural ordering - src id, src port, dst id, dst port
         if (this.getSrc() != a.getSrc())
-            return (int) (this.getSrc().getLong() - a.getSrc().getLong());
+            return (int) (this.getSrc() - a.getSrc());
         
         if (this.getSrcPort() != a.getSrcPort())
-            return (int) (this.getSrc().getLong() - a.getSrc().getLong());
+            return (int) (this.getSrc() - a.getSrc());
         
         if (this.getDst() != a.getDst())
-            return (int) (this.getDst().getLong() - a.getDst().getLong());
+            return (int) (this.getDst() - a.getDst());
         
-        return this.getDstPort().getPortNumber() - a.getDstPort().getPortNumber();
+        return this.getDstPort() - a.getDstPort();
     }
 }
 

@@ -2,20 +2,16 @@ package net.floodlightcontroller.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import net.floodlightcontroller.util.EnumBitmaps;
+import net.floodlightcontroller.util.MACAddress;
 
-import net.floodlightcontroller.core.SwitchDescription;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.util.HexString;
-import org.projectfloodlight.openflow.protocol.OFCapabilities;
-import org.projectfloodlight.openflow.protocol.OFActionType;
+import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.protocol.OFPhysicalPort.OFPortState;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
+import org.openflow.util.HexString;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -31,11 +27,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class SwitchSyncRepresentation {
     public static class SyncedPort {
         @JsonProperty
-        public OFPortDesc port;
+        public short portNumber;
+        @JsonProperty
+        public long hardwareAddress;
+        @JsonProperty
+        public String name;
+        @JsonProperty
+        public int config;
+        @JsonProperty
+        public int state;
+        @JsonProperty
+        public int currentFeatures;
+        @JsonProperty
+        public int advertisedFeatures;
+        @JsonProperty
+        public int supportedFeatures;
+        @JsonProperty
+        public int peerFeatures;
 
-        /*public static SyncedPort fromImmutablePort(OFPortDesc p) {
+        public static SyncedPort fromImmutablePort(ImmutablePort p) {
             SyncedPort rv = new SyncedPort();
-            rv.port = OFPortDesc.of(p.getPortNumber());
+            rv.portNumber = p.getPortNumber();
             if (p.getHardwareAddress() == null) {
                 rv.hardwareAddress = 0;
             } else {
@@ -54,38 +66,32 @@ public class SwitchSyncRepresentation {
                     EnumBitmaps.toBitmap(p.getSupportedFeatures());
             rv.peerFeatures = EnumBitmaps.toBitmap(p.getPeerFeatures());
             return rv;
-        }*/
+        }
 
-        public static SyncedPort fromOFPortDesc(OFPortDesc ofpd) {
-	            SyncedPort sp = new SyncedPort();
-	            sp.port = ofpd;
-	            return sp;
-        } 
-        
-        public OFPortDesc toOFPortDesc(OFFactory factory) {
-        	OFPortDesc.Builder builder = factory.buildPortDesc();
-            builder.setPortNo(port.getPortNo());
-            builder.setHwAddr(port.getHwAddr());
-            builder.setName(port.getName());
-            builder.setConfig(port.getConfig());
-            builder.setState(port.getState());
-            builder.setCurr(port.getCurr());
-            builder.setAdvertised(port.getAdvertised());
-            builder.setSupported(port.getSupported());
-            builder.setPeer(port.getPeer());
-            return builder.build();
+        public OFPhysicalPort toOFPhysicalPort() {
+            OFPhysicalPort p = new OFPhysicalPort();
+            p.setPortNumber(portNumber);
+            p.setHardwareAddress(MACAddress.valueOf(hardwareAddress).toBytes());
+            p.setName(name);
+            p.setConfig(config);
+            p.setState(state);
+            p.setCurrentFeatures(currentFeatures);
+            p.setAdvertisedFeatures(advertisedFeatures);
+            p.setSupportedFeatures(supportedFeatures);
+            p.setPeerFeatures(peerFeatures);
+            return p;
         }
     }
 
     // From FeaturesReply
-    private final DatapathId dpid;
-    private final long buffers;
-    private final short tables;
-    private final Set<OFCapabilities> capabilities;
-    private final Set<OFActionType> actions;
+    private final long dpid;
+    private final int buffers;
+    private final byte tables;
+    private final int capabilities;
+    private final int actions;
     private final List<SyncedPort> ports;
 
-    // From OFDescStatsReply
+    // From OFDescriptionStatistics
     private final String manufacturerDescription;
     private final String hardwareDescription;
     private final String softwareDescription;
@@ -109,11 +115,11 @@ public class SwitchSyncRepresentation {
      */
     @JsonCreator
     public SwitchSyncRepresentation(
-            @JsonProperty("dpid") DatapathId dpid,
+            @JsonProperty("dpid") long dpid,
             @JsonProperty("buffers") int buffers,
             @JsonProperty("tables") byte tables,
-            @JsonProperty("capabilities") Set<OFCapabilities> capabilities,
-            @JsonProperty("actions") Set<OFActionType> actions,
+            @JsonProperty("capabilities") int capabilities,
+            @JsonProperty("actions") int actions,
             @JsonProperty("ports") List<SyncedPort> ports,
             @JsonProperty("manufacturerDescription") String manufacturerDescription,
             @JsonProperty("hardwareDescription") String hardwareDescription,
@@ -141,7 +147,7 @@ public class SwitchSyncRepresentation {
         this.actions = sw.getActions();
         this.ports = toSyncedPortList(sw.getPorts());
 
-        SwitchDescription d = sw.getSwitchDescription();
+        OFDescriptionStatistics d = sw.getDescriptionStatistics();
         this.manufacturerDescription = d.getManufacturerDescription();
         this.hardwareDescription = d.getHardwareDescription();
         this.softwareDescription = d.getSoftwareDescription();
@@ -150,13 +156,14 @@ public class SwitchSyncRepresentation {
     }
 
     public SwitchSyncRepresentation(OFFeaturesReply fr,
-                                    SwitchDescription d) {
+                                    OFDescriptionStatistics d) {
         this.dpid = fr.getDatapathId();
-        this.buffers = fr.getNBuffers();
-        this.tables = fr.getNTables();
+        this.buffers = fr.getBuffers();
+        this.tables = fr.getTables();
         this.capabilities = fr.getCapabilities();
         this.actions = fr.getActions();
-        this.ports = toSyncedPortList(fr.getPorts());
+        this.ports = toSyncedPortList(
+                ImmutablePort.immutablePortListOf(fr.getPorts()));
 
         this.manufacturerDescription = d.getManufacturerDescription();
         this.hardwareDescription = d.getHardwareDescription();
@@ -165,73 +172,65 @@ public class SwitchSyncRepresentation {
         this.datapathDescription = d.getDatapathDescription();
     }
 
-    private static List<SyncedPort> toSyncedPortList(Collection<OFPortDesc> ports) {
+    private static List<SyncedPort> toSyncedPortList(Collection<ImmutablePort> ports) {
         List<SyncedPort> rv = new ArrayList<SyncedPort>(ports.size());
-        for (OFPortDesc p: ports) {
-            rv.add(SyncedPort.fromOFPortDesc(p));
+        for (ImmutablePort p: ports) {
+            rv.add(SyncedPort.fromImmutablePort(p));
         }
         return rv;
     }
 
-    private static List<OFPortDesc> toOFPortDescList(OFFactory factory, Collection<SyncedPort> ports) {
-        List<OFPortDesc> rv = new ArrayList<OFPortDesc>(ports.size());
+    private static List<OFPhysicalPort> toOFPhysicalPortList(Collection<SyncedPort> ports) {
+        List<OFPhysicalPort> rv = new ArrayList<OFPhysicalPort>(ports.size());
         for (SyncedPort p: ports) {
-            rv.add(p.toOFPortDesc(factory));
+            rv.add(p.toOFPhysicalPort());
         }
         return rv;
 
     }
 
     @JsonIgnore
-    public OFFeaturesReply getFeaturesReply(OFFactory factory) {
-    	/**
-         * FIXME Icky work around; if a null actions got written to storage
-         * then fake up an empty one so the builder() doesn't throw
-         * a NPE.  Need to root cause why someone would write a null actions.
-         * This code will all be removed shortly -- needed to unblock BVS team.
-         */
-        Set<OFActionType> workAroundActions;
-        if (actions != null)
-            workAroundActions = actions;
-        else
-            workAroundActions = Collections.<OFActionType> emptySet();
-
-        OFFeaturesReply featuresReply = factory.buildFeaturesReply()
-                .setXid(0)
-                .setDatapathId(dpid)
-                .setNBuffers(buffers)
-                .setNTables(tables)
-                .setCapabilities(capabilities)
-                .setActions(workAroundActions)
-                .setPorts(toOFPortDescList(factory, ports))
-                .build();
-        return featuresReply;
+    public OFFeaturesReply getFeaturesReply() {
+        OFFeaturesReply fr = new OFFeaturesReply();
+        fr.setDatapathId(dpid);
+        fr.setBuffers(buffers);
+        fr.setTables(tables);
+        fr.setCapabilities(capabilities);
+        fr.setActions(actions);
+        fr.setPorts(toOFPhysicalPortList(ports));
+        return fr;
     }
 
     @JsonIgnore
-    public SwitchDescription getDescription() {
-    	return new SwitchDescription(manufacturerDescription,
-                hardwareDescription, softwareDescription, softwareDescription,
-                datapathDescription);
+    public OFDescriptionStatistics getDescription() {
+        OFDescriptionStatistics desc = new OFDescriptionStatistics();
+        desc.setManufacturerDescription(manufacturerDescription);
+        desc.setHardwareDescription(hardwareDescription);
+        desc.setSoftwareDescription(softwareDescription);
+        desc.setSerialNumber(serialNumber);
+        desc.setDatapathDescription(datapathDescription);
+        return desc;
     }
 
-    public DatapathId getDpid() {
+
+
+    public long getDpid() {
         return dpid;
     }
 
-    public long getBuffers() {
+    public int getBuffers() {
         return buffers;
     }
 
-    public short getTables() {
+    public byte getTables() {
         return tables;
     }
 
-    public Set<OFCapabilities> getCapabilities() {
+    public int getCapabilities() {
         return capabilities;
     }
 
-    public Set<OFActionType> getActions() {
+    public int getActions() {
         return actions;
     }
 
@@ -262,7 +261,7 @@ public class SwitchSyncRepresentation {
     @Override
     public String toString() {
         String dpidString;
-        dpidString = HexString.toHexString(dpid.getLong());
+        dpidString = HexString.toHexString(dpid);
         return "SwitchSyncRepresentation [DPID=" + dpidString + "]";
     }
 }

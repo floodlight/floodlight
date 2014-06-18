@@ -19,9 +19,6 @@ package net.floodlightcontroller.routing;
 
 import java.util.ArrayList;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Route;
 
@@ -36,7 +33,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst Destination switch DPID.
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      */
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie);
+    public Route getRoute(long src, long dst, long cookie);
 
     /**
      * Provides a route between src and dst, with option to allow or
@@ -46,7 +43,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      * @param tunnelEnabled boolean option.
      */
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie, boolean tunnelEnabled);
+    public Route getRoute(long src, long dst, long cookie, boolean tunnelEnabled);
 
     /**
      * Provides a route between srcPort on src and dstPort on dst.
@@ -56,8 +53,8 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort dstPort on Destination switch.
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, long cookie);
+    public Route getRoute(long srcId, short srcPort,
+                             long dstId, short dstPort, long cookie);
 
     /**
      * Provides a route between srcPort on src and dstPort on dst.
@@ -68,21 +65,21 @@ public interface IRoutingService extends IFloodlightService {
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      * @param tunnelEnabled boolean option.
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, long cookie,
+    public Route getRoute(long srcId, short srcPort,
+                             long dstId, short dstPort, long cookie,
                              boolean tunnelEnabled);
 
     /** return all routes, if available */
-    public ArrayList<Route> getRoutes(DatapathId longSrcDpid, DatapathId longDstDpid, boolean tunnelEnabled);
+    public ArrayList<Route> getRoutes(long longSrcDpid, long longDstDpid, boolean tunnelEnabled);
 
     /** Check if a route exists between src and dst, including tunnel links
      *  in the path.
      */
-    public boolean routeExists(DatapathId src, DatapathId dst);
+    public boolean routeExists(long src, long dst);
 
     /** Check if a route exists between src and dst, with option to have
      *  or not have tunnels as part of the path.
      */
-    public boolean routeExists(DatapathId src, DatapathId dst, boolean tunnelEnabled);
+    public boolean routeExists(long src, long dst, boolean tunnelEnabled);
 
 }

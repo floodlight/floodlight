@@ -19,8 +19,6 @@ package net.floodlightcontroller.routing;
 
 import java.util.List;
 
-import org.projectfloodlight.openflow.protocol.match.Match;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -59,8 +57,8 @@ public interface IRoutingDecision {
     public void addDestinationDevice(IDevice d);
     public List<SwitchPort> getMulticastInterfaces();
     public void setMulticastInterfaces(List<SwitchPort> lspt);
-    public Match.Builder getWildcards();
-    public void setWildcards(Match.Builder wildcards);
+    public Integer getWildcards();
+    public void setWildcards(Integer wildcards);
     public short getHardTimeout();
     public void setHardTimeout(short hardTimeout);
 }

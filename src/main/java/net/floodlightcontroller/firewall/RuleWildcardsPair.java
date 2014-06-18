@@ -17,9 +17,9 @@
 
 package net.floodlightcontroller.firewall;
 
-import org.projectfloodlight.openflow.protocol.match.Match;
+import org.openflow.protocol.OFMatch;
 
 public class RuleWildcardsPair {
     public FirewallRule rule;
-    public Match.Builder wildcards;
+    public int wildcards = OFMatch.OFPFW_ALL;
 }

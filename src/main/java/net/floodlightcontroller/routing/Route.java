@@ -20,8 +20,6 @@ package net.floodlightcontroller.routing;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-
 import net.floodlightcontroller.topology.NodePortTuple;
 
 /**
@@ -41,7 +39,7 @@ public class Route implements Comparable<Route> {
         this.routeCount = 0; // useful if multipath routing available
     }
 
-    public Route(DatapathId src, DatapathId dst) {
+    public Route(Long src, Long dst) {
         super();
         this.id = new RouteId(src, dst);
         this.switchPorts = new ArrayList<NodePortTuple>();

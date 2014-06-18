@@ -26,23 +26,17 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
-import org.projectfloodlight.openflow.protocol.OFFactories;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMatch;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFAggregateStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFQueueStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFStatsType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.util.HexString;
-import org.projectfloodlight.openflow.protocol.OFStatsReply;
-import org.projectfloodlight.openflow.protocol.OFStatsRequest;
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openflow.protocol.OFFeaturesReply;
+import org.openflow.protocol.OFMatch;
+import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFStatisticsRequest;
+import org.openflow.protocol.statistics.OFAggregateStatisticsRequest;
+import org.openflow.protocol.statistics.OFFlowStatisticsRequest;
+import org.openflow.protocol.statistics.OFPortStatisticsRequest;
+import org.openflow.protocol.statistics.OFQueueStatisticsRequest;
+import org.openflow.protocol.statistics.OFStatistics;
+import org.openflow.protocol.statistics.OFStatisticsType;
+import org.openflow.util.HexString;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -73,34 +67,21 @@ public class SwitchResourceBase extends ServerResource {
                    		"from the switch",
                    recommendation=LogMessageDoc.CHECK_SWITCH + " " +
                    		LogMessageDoc.GENERIC_ACTION)
-    protected List<OFStatsReply> getSwitchStatistics(DatapathId switchId,
-                                                     OFStatsType statType) {
+    protected List<OFStatistics> getSwitchStatistics(long switchId,
+                                                     OFStatisticsType statType) {
         IFloodlightProviderService floodlightProvider =
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
 
         IOFSwitch sw = floodlightProvider.getSwitch(switchId);
-        
-        OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
-        OFFlowStatsRequest flowStatsRequest = factory.buildFlowStatsRequest()
-            .build();
-        
-        Future<List<OFFlowStatsReply>> future = sw.queryStatistics(flowStatsRequest);
-        return future.get();
-        
-        
-        sw.get
-        
-        Future<List<OFStatsReply>> future;
-        List<OFStatsReply> values = null;
-        if (sw != null) 
-        	{
-        	OFFactory
-            OFStatsRequest<> req = new OFFactory.
-            req.cre(statType);
+        Future<List<OFStatistics>> future;
+        List<OFStatistics> values = null;
+        if (sw != null) {
+            OFStatisticsRequest req = new OFStatisticsRequest();
+            req.setStatisticType(statType);
             int requestLength = req.getLengthU();
-            if (statType == OFStatsType.FLOW) {
-                OFStatsRequest specificReq = new OFFlowStatisticsRequest();
+            if (statType == OFStatisticsType.FLOW) {
+                OFFlowStatisticsRequest specificReq = new OFFlowStatisticsRequest();
                 OFMatch match = new OFMatch();
                 match.setWildcards(0xffffffff);
                 specificReq.setMatch(match);

@@ -20,10 +20,7 @@ package net.floodlightcontroller.linkdiscovery;
 import java.util.Map;
 import java.util.Set;
 
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openflow.protocol.OFPacketOut;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
@@ -35,7 +32,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
     /**
      * Returns if a given switchport is a tunnel endpoint or not
      */
-    public boolean isTunnelPort(DatapathId sw, OFPort port);
+    public boolean isTunnelPort(long sw, short port);
 
     /**
      * Retrieves a map of all known link connections between OpenFlow switches
@@ -62,7 +59,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * to switchport (sw, port). PacketOut does not contain actions.
      * PacketOut length includes the minimum length and data length.
      */
-    public OFPacketOut generateLLDPMessage(DatapathId sw, OFPort port,
+    public OFPacketOut generateLLDPMessage(long sw, short port,
                                            boolean isStandard,
                                            boolean isReverse);
 
@@ -70,7 +67,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * Returns an unmodifiable map from switch id to a set of all links with it
      * as an endpoint.
      */
-    public Map<DatapathId, Set<Link>> getSwitchLinks();
+    public Map<Long, Set<Link>> getSwitchLinks();
 
     /**
      * Adds a listener to listen for ILinkDiscoveryService messages
@@ -87,17 +84,17 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * Adds a switch port to suppress lldp set. LLDPs and BDDPs will not be sent
      * out, and if any are received on this port then they will be dropped.
      */
-    public void AddToSuppressLLDPs(DatapathId sw, OFPort port);
+    public void AddToSuppressLLDPs(long sw, short port);
 
     /**
      * Removes a switch port from suppress lldp set
      */
-    public void RemoveFromSuppressLLDPs(DatapathId sw, OFPort port);
+    public void RemoveFromSuppressLLDPs(long sw, short port);
 
     /**
      * Get the set of quarantined ports on a switch
      */
-    public Set<OFPort> getQuarantinedPorts(DatapathId sw);
+    public Set<Short> getQuarantinedPorts(long sw);
 
     /**
      * Get the status of auto port fast feature.
@@ -129,5 +126,5 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      *        ALL MAC addresses to the ignore list. This will cause a drop of
      *        ALL packet ins.
      */
-    public void addMACToIgnoreList(MacAddress mac, int ignoreBits);
+    public void addMACToIgnoreList(long mac, int ignoreBits);
 }

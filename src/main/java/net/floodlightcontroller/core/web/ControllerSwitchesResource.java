@@ -23,16 +23,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Collection;
-import java.util.Set;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.util.FilterIterator;
 
-import org.projectfloodlight.openflow.protocol.OFCapabilities;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.protocol.OFActionType;
+import org.openflow.protocol.OFPhysicalPort;
+import org.openflow.util.HexString;
 import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
@@ -54,7 +52,7 @@ public class ControllerSwitchesResource extends ServerResource {
             this.sw = sw;
         }
 
-        public Set<OFActionType> getActions() {
+        public int getActions() {
             return sw.getActions();
         }
 
@@ -85,11 +83,11 @@ public class ControllerSwitchesResource extends ServerResource {
             return rv;
         }
 
-        public long getBuffers() {
+        public int getBuffers() {
             return sw.getBuffers();
         }
 
-        public Set<OFCapabilities> getCapabilities() {
+        public int getCapabilities() {
             return sw.getCapabilities();
         }
 
@@ -116,8 +114,8 @@ public class ControllerSwitchesResource extends ServerResource {
             return addr.toString();
         }
 
-        public Collection<OFPortDesc> getPorts() {
-            return sw.getPorts();
+        public Collection<OFPhysicalPort> getPorts() {
+            return ImmutablePort.ofPhysicalPortListOf(sw.getPorts());
         }
     }
 
@@ -160,13 +158,13 @@ public class ControllerSwitchesResource extends ServerResource {
                 (IFloodlightProviderService)getContext().getAttributes().
                     get(IFloodlightProviderService.class.getCanonicalName());
 
-        DatapathId switchDPID = null;
+        Long switchDPID = null;
 
         Form form = getQuery();
         String dpid = form.getFirstValue("dpid", true);
         if (dpid != null) {
             try {
-                switchDPID = DatapathId.of(dpid);
+                switchDPID = HexString.toLong(dpid);
             } catch (Exception e) {
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, DPID_ERROR);
                 return null;

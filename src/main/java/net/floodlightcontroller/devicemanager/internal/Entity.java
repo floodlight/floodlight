@@ -22,15 +22,11 @@ import java.util.Date;
 import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
 import net.floodlightcontroller.core.web.serializers.MACSerializer;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.packet.IPv4;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.VlanVid;
+import org.openflow.util.HexString;
 
 /**
  * An entity on the network is a visible trace of a device that corresponds
@@ -56,30 +52,30 @@ public class Entity implements Comparable<Entity> {
     /**
      * The MAC address associated with this entity
      */
-    protected MacAddress macAddress;
+    protected long macAddress;
     
     /**
      * The IP address associated with this entity, or null if no IP learned
      * from the network observation associated with this entity
      */
-    protected IPv4Address ipv4Address;
+    protected Integer ipv4Address;
     
     /**
      * The VLAN tag on this entity, or null if untagged
      */
-    protected VlanVid vlan;
+    protected Short vlan;
     
     /**
      * The DPID of the switch for the ingress point for this entity,
      * or null if not present
      */
-    protected DatapathId switchDPID;
+    protected Long switchDPID;
     
     /**
      * The port number of the switch for the ingress point for this entity,
      * or null if not present
      */
-    protected OFPort switchPort;
+    protected Integer switchPort;
     
     /**
      * The last time we observed this entity on the network
@@ -112,8 +108,8 @@ public class Entity implements Comparable<Entity> {
      * @param switchPort
      * @param lastSeenTimestamp
      */
-    public Entity(MacAddress macAddress, VlanVid vlan, 
-                  IPv4Address ipv4Address, DatapathId switchDPID, OFPort switchPort, 
+    public Entity(long macAddress, Short vlan, 
+                  Integer ipv4Address, Long switchDPID, Integer switchPort, 
                   Date lastSeenTimestamp) {
         this.macAddress = macAddress;
         this.ipv4Address = ipv4Address;
@@ -129,25 +125,25 @@ public class Entity implements Comparable<Entity> {
     // ***************
 
     @JsonSerialize(using=MACSerializer.class)
-    public MacAddress getMacAddress() {
+    public long getMacAddress() {
         return macAddress;
     }
 
     @JsonSerialize(using=IPv4Serializer.class)
-    public IPv4Address getIpv4Address() {
+    public Integer getIpv4Address() {
         return ipv4Address;
     }
 
-    public VlanVid getVlan() {
+    public Short getVlan() {
         return vlan;
     }
 
     @JsonSerialize(using=DPIDSerializer.class)
-    public DatapathId getSwitchDPID() {
+    public Long getSwitchDPID() {
         return switchDPID;
     }
 
-    public OFPort getSwitchPort() {
+    public Integer getSwitchPort() {
         return switchPort;
     }
     
@@ -189,7 +185,7 @@ public class Entity implements Comparable<Entity> {
         hashCode = 1;
         hashCode = prime * hashCode
                  + ((ipv4Address == null) ? 0 : ipv4Address.hashCode());
-        hashCode = prime * hashCode + (int) (macAddress.getLong() ^ (macAddress.getLong() >>> 32));
+        hashCode = prime * hashCode + (int) (macAddress ^ (macAddress >>> 32));
         hashCode = prime * hashCode
                  + ((switchDPID == null) ? 0 : switchDPID.hashCode());
         hashCode = prime * hashCode
@@ -227,15 +223,16 @@ public class Entity implements Comparable<Entity> {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Entity [macAddress=");
-        builder.append(macAddress.toString());
+        builder.append(HexString.toHexString(macAddress, 6));
         builder.append(", ipv4Address=");
-        builder.append(ipv4Address.toString());
+        builder.append(IPv4.fromIPv4Address(ipv4Address==null ?
+                       0 : ipv4Address.intValue()));
         builder.append(", vlan=");
-        builder.append(vlan.getVlan());
+        builder.append(vlan);
         builder.append(", switchDPID=");
-        builder.append(switchDPID.toString());
+        builder.append(switchDPID);
         builder.append(", switchPort=");
-        builder.append(switchPort.getPortNumber());
+        builder.append(switchPort);
         builder.append(", lastSeenTimestamp=");
         builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
         builder.append(", activeSince=");
@@ -246,8 +243,8 @@ public class Entity implements Comparable<Entity> {
 
     @Override
     public int compareTo(Entity o) {
-        if (macAddress.getLong() < o.macAddress.getLong()) return -1;
-        if (macAddress.getLong() > o.macAddress.getLong()) return 1;
+        if (macAddress < o.macAddress) return -1;
+        if (macAddress > o.macAddress) return 1;
 
         int r;
         if (switchDPID == null)

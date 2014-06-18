@@ -95,7 +95,7 @@ import org.sdnplatform.sync.test.MockSyncService;
 
 public class ControllerTest extends FloodlightTestCase {
 
-    private OLD__Controller controller;
+    private Controller controller;
     private MockThreadPoolService tp;
     private MockSyncService syncService;
     private IStoreClient<Long, SwitchSyncRepresentation> storeClient;
@@ -115,7 +115,7 @@ public class ControllerTest extends FloodlightTestCase {
 
         FloodlightProvider cm = new FloodlightProvider();
         fmc.addConfigParam(cm, "role", role.toString());
-        controller = (OLD__Controller)cm.getServiceImpls().get(IFloodlightProviderService.class);
+        controller = (Controller)cm.getServiceImpls().get(IFloodlightProviderService.class);
         fmc.addService(IFloodlightProviderService.class, controller);
 
         MemoryStorageSource memstorage = new MemoryStorageSource();
@@ -165,7 +165,7 @@ public class ControllerTest extends FloodlightTestCase {
         cm.startUp(fmc);
 
         storeClient =
-                syncService.getStoreClient(OLD__Controller.SWITCH_SYNC_STORE_NAME,
+                syncService.getStoreClient(Controller.SWITCH_SYNC_STORE_NAME,
                                            Long.class,
                                            SwitchSyncRepresentation.class);
 
@@ -204,7 +204,7 @@ public class ControllerTest extends FloodlightTestCase {
                    controller.isUpdateQueueEmptyForTesting());
     }
 
-    public OLD__Controller getController() {
+    public Controller getController() {
         return controller;
     }
 
@@ -2048,11 +2048,11 @@ public class ControllerTest extends FloodlightTestCase {
     private Map<String,Object> getFakeControllerIPRow(String id, String controllerId,
             String type, int number, String discoveredIP ) {
         HashMap<String, Object> row = new HashMap<String,Object>();
-        row.put(OLD__Controller.CONTROLLER_INTERFACE_ID, id);
-        row.put(OLD__Controller.CONTROLLER_INTERFACE_CONTROLLER_ID, controllerId);
-        row.put(OLD__Controller.CONTROLLER_INTERFACE_TYPE, type);
-        row.put(OLD__Controller.CONTROLLER_INTERFACE_NUMBER, number);
-        row.put(OLD__Controller.CONTROLLER_INTERFACE_DISCOVERED_IP, discoveredIP);
+        row.put(Controller.CONTROLLER_INTERFACE_ID, id);
+        row.put(Controller.CONTROLLER_INTERFACE_CONTROLLER_ID, controllerId);
+        row.put(Controller.CONTROLLER_INTERFACE_TYPE, type);
+        row.put(Controller.CONTROLLER_INTERFACE_NUMBER, number);
+        row.put(Controller.CONTROLLER_INTERFACE_DISCOVERED_IP, discoveredIP);
         return row;
     }
 
@@ -2139,7 +2139,7 @@ public class ControllerTest extends FloodlightTestCase {
         synchronized(listener) {
             // Insert a first entry
             controller.getStorageSourceService()
-                .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                     getFakeControllerIPRow("row1", "c1", "Ethernet", 0, "1.1.1.1"));
             expectedCurMap.clear();
             expectedAddedMap.clear();
@@ -2151,7 +2151,7 @@ public class ControllerTest extends FloodlightTestCase {
 
             // Add an interface that we want to ignore.
             controller.getStorageSourceService()
-                .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                     getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
             // TODO: do a different check. This call will have to wait for the timeout
             controller.processUpdateQueueForTesting();
@@ -2160,7 +2160,7 @@ public class ControllerTest extends FloodlightTestCase {
 
             // Add another entry
             controller.getStorageSourceService()
-                .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                     getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.2"));
             expectedCurMap.clear();
             expectedAddedMap.clear();
@@ -2174,7 +2174,7 @@ public class ControllerTest extends FloodlightTestCase {
 
             // Update an entry
             controller.getStorageSourceService()
-                .updateRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+                .updateRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                     "row3", getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.3"));
             expectedCurMap.clear();
             expectedAddedMap.clear();
@@ -2188,7 +2188,7 @@ public class ControllerTest extends FloodlightTestCase {
 
             // Delete an entry
             controller.getStorageSourceService()
-                .deleteRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME, "row3");
+                .deleteRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME, "row3");
             expectedCurMap.clear();
             expectedAddedMap.clear();
             expectedRemovedMap.clear();
@@ -2204,13 +2204,13 @@ public class ControllerTest extends FloodlightTestCase {
         HashMap<String,String> expectedCurMap = new HashMap<String, String>();
 
         controller.getStorageSourceService()
-            .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+            .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                 getFakeControllerIPRow("row1", "c1", "Ethernet", 0, "1.1.1.1"));
         controller.getStorageSourceService()
-            .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+            .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                 getFakeControllerIPRow("row2", "c1", "Ethernet", 1, "1.1.1.2"));
         controller.getStorageSourceService()
-            .insertRow(OLD__Controller.CONTROLLER_INTERFACE_TABLE_NAME,
+            .insertRow(Controller.CONTROLLER_INTERFACE_TABLE_NAME,
                 getFakeControllerIPRow("row3", "c2", "Ethernet", 0, "2.2.2.2"));
         expectedCurMap.put("c1", "1.1.1.1");
         expectedCurMap.put("c2", "2.2.2.2");

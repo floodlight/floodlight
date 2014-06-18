@@ -16,10 +16,7 @@
 
 package net.floodlightcontroller.core;
 
-import net.floodlightcontroller.core.IOFSwitchBackend;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-
-import net.floodlightcontroller.core.SwitchDescription;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
 
 public interface IOFSwitchDriver {
     /**
@@ -29,5 +26,5 @@ public interface IOFSwitchDriver {
      * @return A IOFSwitch instance if the driver found an implementation
      * for the given description. Null otherwise
      */
-    public IOFSwitchBackend getOFSwitchImpl(SwitchDescription description, OFFactory factory);
+    public IOFSwitch getOFSwitchImpl(OFDescriptionStatistics description);
 }

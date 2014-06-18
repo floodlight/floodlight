@@ -33,15 +33,13 @@ import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
-import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -52,7 +50,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
-import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.debugevent.IEventUpdater;
 import net.floodlightcontroller.debugevent.NullDebugEvent;
@@ -72,16 +70,13 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPacketOut;
+import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFType;
+import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,12 +101,12 @@ public class TopologyManager implements
     /**
      * Role of the controller.
      */
-    private HARole role;
+    private Role role;
 
     /**
      * Set of ports for each switch
      */
-    protected Map<DatapathId, Set<OFPort>> switchPorts;
+    protected Map<Long, Set<Short>> switchPorts;
 
     /**
      * Set of links organized by node port tuple
@@ -136,7 +131,6 @@ public class TopologyManager implements
     protected ILinkDiscoveryService linkDiscovery;
     protected IThreadPoolService threadPool;
     protected IFloodlightProviderService floodlightProvider;
-    protected IOFSwitchService switchService;
     protected IRestApiService restApi;
     protected IDebugCounterService debugCounters;
 
@@ -194,11 +188,11 @@ public class TopologyManager implements
     protected class TopologyEventInfo {
         private final int numOpenflowClustersWithTunnels;
         private final int numOpenflowClustersWithoutTunnels;
-        private final Map<DatapathId, List<NodePortTuple>> externalPortsMap;
+        private final Map<Long, List<NodePortTuple>> externalPortsMap;
         private final int numTunnelPorts;
         public TopologyEventInfo(int numOpenflowClustersWithTunnels,
                                  int numOpenflowClustersWithoutTunnels,
-                                 Map<DatapathId, List<NodePortTuple>> externalPortsMap,
+                                 Map<Long, List<NodePortTuple>> externalPortsMap,
                                  int numTunnelPorts) {
             super();
             this.numOpenflowClustersWithTunnels = numOpenflowClustersWithTunnels;
@@ -221,7 +215,7 @@ public class TopologyManager implements
             if (numExternalClusters > 0) {
                 builder.append(" { ");
                 int count = 0;
-                for (DatapathId extCluster : externalPortsMap.keySet()) {
+                for (Long extCluster : externalPortsMap.keySet()) {
                     builder.append("#" + extCluster + ":Ext Ports: ");
                     builder.append(externalPortsMap.get(extCluster).size());
                     if (++count < numExternalClusters) {
@@ -293,7 +287,7 @@ public class TopologyManager implements
             catch (Exception e) {
                 log.error("Error in topology instance task thread", e);
             } finally {
-                if (floodlightProvider.getRole() != HARole.STANDBY)
+                if (floodlightProvider.getRole() != Role.SLAVE)
                     newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
                                            TimeUnit.MILLISECONDS);
             }
@@ -354,12 +348,12 @@ public class TopologyManager implements
     }
 
     @Override
-    public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
+    public boolean isAttachmentPointPort(long switchid, short port) {
         return isAttachmentPointPort(switchid, port, true);
     }
 
     @Override
-    public boolean isAttachmentPointPort(DatapathId switchid, OFPort port,
+    public boolean isAttachmentPointPort(long switchid, short port,
                                          boolean tunnelEnabled) {
 
         // If the switch port is 'tun-bsn' port, it is not
@@ -377,56 +371,55 @@ public class TopologyManager implements
 
         // Check whether the port is a physical port. We should not learn
         // attachment points on "special" ports.
-        //TODO @Ryan port numbers should be handled as ints now, not shorts. I suppose anything above 65280 up to 65533 is a "special" non-physical port.
-        if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
+        if ((port & 0xff00) == 0xff00 && port != (short)0xfffe) return false;
 
         // Make sure that the port is enabled.
-        IOFSwitch sw = switchService.getActiveSwitch(switchid);
+        IOFSwitch sw = floodlightProvider.getSwitch(switchid);
         if (sw == null) return false;
         return (sw.portEnabled(port));
     }
 
     @Override
-    public DatapathId getOpenflowDomainId(DatapathId switchId) {
+    public long getOpenflowDomainId(long switchId) {
         return getOpenflowDomainId(switchId, true);
     }
 
     @Override
-    public DatapathId getOpenflowDomainId(DatapathId switchId, boolean tunnelEnabled) {
+    public long getOpenflowDomainId(long switchId, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getOpenflowDomainId(switchId);
     }
 
     @Override
-    public DatapathId getL2DomainId(DatapathId switchId) {
+    public long getL2DomainId(long switchId) {
         return getL2DomainId(switchId, true);
     }
 
     @Override
-    public DatapathId getL2DomainId(DatapathId switchId, boolean tunnelEnabled) {
+    public long getL2DomainId(long switchId, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getL2DomainId(switchId);
     }
 
     @Override
-    public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2) {
+    public boolean inSameOpenflowDomain(long switch1, long switch2) {
         return inSameOpenflowDomain(switch1, switch2, true);
     }
 
     @Override
-    public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2,
+    public boolean inSameOpenflowDomain(long switch1, long switch2,
                                         boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.inSameOpenflowDomain(switch1, switch2);
     }
 
     @Override
-    public boolean isAllowed(DatapathId sw, OFPort portId) {
+    public boolean isAllowed(long sw, short portId) {
         return isAllowed(sw, portId, true);
     }
 
     @Override
-    public boolean isAllowed(DatapathId sw, OFPort portId, boolean tunnelEnabled) {
+    public boolean isAllowed(long sw, short portId, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.isAllowed(sw, portId);
     }
@@ -434,12 +427,12 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId) {
+    public boolean isIncomingBroadcastAllowed(long sw, short portId) {
         return isIncomingBroadcastAllowed(sw, portId, true);
     }
 
     @Override
-    public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId,
+    public boolean isIncomingBroadcastAllowed(long sw, short portId,
                                               boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
@@ -449,13 +442,13 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     /** Get all the ports connected to the switch */
     @Override
-    public Set<OFPort> getPortsWithLinks(DatapathId sw) {
+    public Set<Short> getPortsWithLinks(long sw) {
         return getPortsWithLinks(sw, true);
     }
 
     /** Get all the ports connected to the switch */
     @Override
-    public Set<OFPort> getPortsWithLinks(DatapathId sw, boolean tunnelEnabled) {
+    public Set<Short> getPortsWithLinks(long sw, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getPortsWithLinks(sw);
     }
@@ -467,8 +460,8 @@ public class TopologyManager implements
      * is on switch port (src, srcPort).
      */
     @Override
-    public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
-    		DatapathId src, OFPort srcPort) {
+    public Set<Short> getBroadcastPorts(long targetSw,
+                                        long src, short srcPort) {
         return getBroadcastPorts(targetSw, src, srcPort, true);
     }
 
@@ -477,8 +470,8 @@ public class TopologyManager implements
      * is on switch port (src, srcPort).
      */
     @Override
-    public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
-    		DatapathId src, OFPort srcPort,
+    public Set<Short> getBroadcastPorts(long targetSw,
+                                        long src, short srcPort,
                                         boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getBroadcastPorts(targetSw, src, srcPort);
@@ -487,15 +480,15 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort) {
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
         // Use this function to redirect traffic if needed.
         return getOutgoingSwitchPort(src, srcPort, dst, dstPort, true);
     }
 
     @Override
-    public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort,
+    public NodePortTuple getOutgoingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort,
                                                boolean tunnelEnabled) {
         // Use this function to redirect traffic if needed.
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
@@ -506,14 +499,14 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort) {
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort) {
         return getIncomingSwitchPort(src, srcPort, dst, dstPort, true);
     }
 
     @Override
-    public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort,
+    public NodePortTuple getIncomingSwitchPort(long src, short srcPort,
+                                               long dst, short dstPort,
                                                boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getIncomingSwitchPort(src, srcPort,
@@ -526,15 +519,15 @@ public class TopologyManager implements
      * Checks if the two switchports belong to the same broadcast domain.
      */
     @Override
-    public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1, DatapathId s2,
-    		OFPort p2) {
+    public boolean isInSameBroadcastDomain(long s1, short p1, long s2,
+                                           short p2) {
         return isInSameBroadcastDomain(s1, p1, s2, p2, true);
 
     }
 
     @Override
-    public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1,
-    		DatapathId s2, OFPort p2,
+    public boolean isInSameBroadcastDomain(long s1, short p1,
+                                           long s2, short p2,
                                            boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.inSameBroadcastDomain(s1, p1, s2, p2);
@@ -547,12 +540,12 @@ public class TopologyManager implements
      * Checks if the switchport is a broadcast domain port or not.
      */
     @Override
-    public boolean isBroadcastDomainPort(DatapathId sw, OFPort port) {
+    public boolean isBroadcastDomainPort(long sw, short port) {
         return isBroadcastDomainPort(sw, port, true);
     }
 
     @Override
-    public boolean isBroadcastDomainPort(DatapathId sw, OFPort port,
+    public boolean isBroadcastDomainPort(long sw, short port,
                                          boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
@@ -565,15 +558,15 @@ public class TopologyManager implements
      * old attachment point port.
      */
     @Override
-    public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
-    		DatapathId newSw, OFPort newPort) {
+    public boolean isConsistent(long oldSw, short oldPort,
+                                long newSw, short newPort) {
         return isConsistent(oldSw, oldPort,
                                             newSw, newPort, true);
     }
 
     @Override
-    public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
-    		DatapathId newSw, OFPort newPort,
+    public boolean isConsistent(long oldSw, short oldPort,
+                                long newSw, short newPort,
                                 boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.isConsistent(oldSw, oldPort, newSw, newPort);
@@ -585,12 +578,12 @@ public class TopologyManager implements
      * Checks if the two switches are in the same Layer 2 domain.
      */
     @Override
-    public boolean inSameL2Domain(DatapathId switch1, DatapathId switch2) {
+    public boolean inSameL2Domain(long switch1, long switch2) {
         return inSameL2Domain(switch1, switch2, true);
     }
 
     @Override
-    public boolean inSameL2Domain(DatapathId switch1, DatapathId switch2,
+    public boolean inSameL2Domain(long switch1, long switch2,
                                   boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.inSameL2Domain(switch1, switch2);
@@ -599,19 +592,19 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src,
-    		OFPort srcPort,
-                                                         DatapathId dst,
-                                                         OFPort dstPort) {
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort) {
         return getAllowedOutgoingBroadcastPort(src, srcPort,
                                                dst, dstPort, true);
     }
 
     @Override
-    public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src,
-    		OFPort srcPort,
-                                                         DatapathId dst,
-                                                         OFPort dstPort,
+    public NodePortTuple getAllowedOutgoingBroadcastPort(long src,
+                                                         short srcPort,
+                                                         long dst,
+                                                         short dstPort,
                                                          boolean tunnelEnabled){
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getAllowedOutgoingBroadcastPort(src, srcPort,
@@ -621,13 +614,13 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     @Override
     public NodePortTuple
-    getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort) {
+    getAllowedIncomingBroadcastPort(long src, short srcPort) {
         return getAllowedIncomingBroadcastPort(src,srcPort, true);
     }
 
     @Override
     public NodePortTuple
-    getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort,
+    getAllowedIncomingBroadcastPort(long src, short srcPort,
                                     boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getAllowedIncomingBroadcastPort(src,srcPort);
@@ -636,12 +629,12 @@ public class TopologyManager implements
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     @Override
-    public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID) {
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID) {
         return getSwitchesInOpenflowDomain(switchDPID, true);
     }
 
     @Override
-    public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID,
+    public Set<Long> getSwitchesInOpenflowDomain(long switchDPID,
                                                  boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getSwitchesInOpenflowDomain(switchDPID);
@@ -685,41 +678,41 @@ public class TopologyManager implements
     // ***************
 
     @Override
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie) {
+    public Route getRoute(long src, long dst, long cookie) {
         return getRoute(src, dst, cookie, true);
     }
 
     @Override
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie, boolean tunnelEnabled) {
+    public Route getRoute(long src, long dst, long cookie, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getRoute(src, dst, cookie);
     }
 
     @Override
-    public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, long cookie) {
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie) {
         return getRoute(src, srcPort, dst, dstPort, cookie, true);
     }
 
     @Override
-    public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, long cookie,
+    public Route getRoute(long src, short srcPort, long dst, short dstPort, long cookie,
                           boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.getRoute(null, src, srcPort, dst, dstPort, cookie);
     }
 
     @Override
-    public boolean routeExists(DatapathId src, DatapathId dst) {
+    public boolean routeExists(long src, long dst) {
         return routeExists(src, dst, true);
     }
 
     @Override
-    public boolean routeExists(DatapathId src, DatapathId dst, boolean tunnelEnabled) {
+    public boolean routeExists(long src, long dst, boolean tunnelEnabled) {
         TopologyInstance ti = getCurrentInstance(tunnelEnabled);
         return ti.routeExists(src, dst);
     }
 
     @Override
-    public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid,
+    public ArrayList<Route> getRoutes(long srcDpid, long dstDpid,
                                       boolean tunnelEnabled) {
         // Floodlight supports single path routing now
 
@@ -753,7 +746,7 @@ public class TopologyManager implements
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                ctrIncoming.increment();
+                ctrIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -769,10 +762,10 @@ public class TopologyManager implements
 
     private class HAListenerDelegate implements IHAListener {
         @Override
-        public void transitionToActive() {
-            role = HARole.ACTIVE;
+        public void transitionToMaster() {
+            role = Role.MASTER;
             log.debug("Re-computing topology due " +
-                    "to HA change from STANDBY->ACTIVE");
+                    "to HA change from SLAVE->MASTER");
             newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
                                        TimeUnit.MILLISECONDS);
         }
@@ -803,12 +796,6 @@ public class TopologyManager implements
             // TODO Auto-generated method stub
             return false;
         }
-
-		@Override
-		public void transitionToStandby() {
-			// TODO Auto-generated method stub
-			
-		}
     }
 
     // *****************
@@ -845,7 +832,6 @@ public class TopologyManager implements
         l.add(ILinkDiscoveryService.class);
         l.add(IThreadPoolService.class);
         l.add(IFloodlightProviderService.class);
-        l.add(IOFSwitchService.class);
         l.add(ICounterStoreService.class);
         l.add(IRestApiService.class);
         return l;
@@ -858,12 +844,11 @@ public class TopologyManager implements
         threadPool = context.getServiceImpl(IThreadPoolService.class);
         floodlightProvider =
                 context.getServiceImpl(IFloodlightProviderService.class);
-        switchService = context.getServiceImpl(IOFSwitchService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         debugCounters = context.getServiceImpl(IDebugCounterService.class);
         debugEvents = context.getServiceImpl(IDebugEventService.class);
 
-        switchPorts = new HashMap<DatapathId, Set<OFPort>>();
+        switchPorts = new HashMap<Long,Set<Short>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
         directLinks = new HashMap<NodePortTuple, Set<Link>>();
         portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -899,7 +884,7 @@ public class TopologyManager implements
         ScheduledExecutorService ses = threadPool.getScheduledExecutor();
         newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
-        if (role != HARole.STANDBY)
+        if (role != Role.SLAVE)
             newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
                                    TimeUnit.MILLISECONDS);
 
@@ -939,17 +924,17 @@ public class TopologyManager implements
      * @param cntx
      * @return
      */
-    protected Command dropFilter(DatapathId sw, OFPacketIn pi,
+    protected Command dropFilter(long sw, OFPacketIn pi,
                                              FloodlightContext cntx) {
         Command result = Command.CONTINUE;
-        OFPort port = pi.getInPort();
+        short port = pi.getInPort();
 
         // If the input port is not allowed for data traffic, drop everything.
         // BDDP packets will not reach this stage.
         if (isAllowed(sw, port) == false) {
             if (log.isTraceEnabled()) {
                 log.trace("Ignoring packet because of topology " +
-                        "restriction on switch={}, port={}", sw.getLong(), port.getPortNumber());
+                        "restriction on switch={}, port={}", sw, port);
                 result = Command.STOP;
             }
         }
@@ -970,45 +955,49 @@ public class TopologyManager implements
             		"topology discovery packet",
             recommendation=LogMessageDoc.CHECK_SWITCH)
     public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw,
-                                       Set<OFPort> ports,
+                                       Set<Short> ports,
                                        FloodlightContext cntx) {
 
         if (ports == null) return;
         if (packetData == null || packetData.length <= 0) return;
 
-        //OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
-        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        OFPacketOut po =
+                (OFPacketOut) floodlightProvider.getOFMessageFactory().
+                getMessage(OFType.PACKET_OUT);
+
         List<OFAction> actions = new ArrayList<OFAction>();
-        for(OFPort p: ports) {
-            //actions.add(new OFActionOutput(p, (short) 0));
-            actions.add(sw.getOFFactory().actions().output(p, 0));
+        for(short p: ports) {
+            actions.add(new OFActionOutput(p, (short) 0));
         }
 
         // set actions
-        pob.setActions(actions);
+        po.setActions(actions);
         // set action length
-        //po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * ports.size()));
+        po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH *
+                ports.size()));
         // set buffer-id to BUFFER_ID_NONE
-        pob.setBufferId(OFBufferId.NO_BUFFER);
+        po.setBufferId(OFPacketOut.BUFFER_ID_NONE);
         // set in-port to OFPP_NONE
-        pob.setInPort(OFPort.ZERO);
+        po.setInPort(OFPort.OFPP_NONE.getValue());
 
         // set packet data
-        pob.setData(packetData);
+        po.setPacketData(packetData);
 
         // compute and set packet length.
-        //short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength() + packetData.length);
+        short poLength = (short)(OFPacketOut.MINIMUM_LENGTH +
+                po.getActionsLength() +
+                packetData.length);
 
-        //po.setLength(poLength);
+        po.setLength(poLength);
 
         try {
             //counterStore.updatePktOutFMCounterStore(sw, po);
             if (log.isTraceEnabled()) {
                 log.trace("write broadcast packet on switch-id={} " +
                         "interaces={} packet-data={} packet-out={}",
-                        new Object[] {sw.getId(), ports, packetData, pob.build()});
+                        new Object[] {sw.getId(), ports, packetData, po});
             }
-            sw.write(pob.build(), LogicalOFMessageCategory.MAIN);
+            sw.write(po, cntx);
 
         } catch (IOException e) {
             log.error("Failure writing packet out", e);
@@ -1023,11 +1012,11 @@ public class TopologyManager implements
      * @param sid
      * @return
      */
-    protected Set<OFPort> getPortsToEliminateForBDDP(DatapathId sid) {
+    protected Set<Short> getPortsToEliminateForBDDP(long sid) {
         Set<NodePortTuple> suppressedNptList = linkDiscovery.getSuppressLLDPsInfo();
         if (suppressedNptList == null) return null;
 
-        Set<OFPort> resultPorts = new HashSet<OFPort>();
+        Set<Short> resultPorts = new HashSet<Short>();
         for(NodePortTuple npt: suppressedNptList) {
             if (npt.getNodeId() == sid) {
                 resultPorts.add(npt.getPortId());
@@ -1046,36 +1035,36 @@ public class TopologyManager implements
      * @param pi
      * @param cntx
      */
-    protected void doFloodBDDP(DatapathId pinSwitch, OFPacketIn pi,
+    protected void doFloodBDDP(long pinSwitch, OFPacketIn pi,
                                FloodlightContext cntx) {
 
         TopologyInstance ti = getCurrentInstance(false);
 
-        Set<DatapathId> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
+        Set<Long> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
 
         if (switches == null)
         {
             // indicates no links are connected to the switches
-            switches = new HashSet<DatapathId>();
+            switches = new HashSet<Long>();
             switches.add(pinSwitch);
         }
 
-        for(DatapathId sid: switches) {
-            IOFSwitch sw = switchService.getSwitch(sid);
+        for(long sid: switches) {
+            IOFSwitch sw = floodlightProvider.getSwitch(sid);
             if (sw == null) continue;
-            Collection<OFPort> enabledPorts = sw.getEnabledPortNumbers();
+            Collection<Short> enabledPorts = sw.getEnabledPortNumbers();
             if (enabledPorts == null)
                 continue;
-            Set<OFPort> ports = new HashSet<OFPort>();
+            Set<Short> ports = new HashSet<Short>();
             ports.addAll(enabledPorts);
 
             // all the ports known to topology // without tunnels.
             // out of these, we need to choose only those that are
             // broadcast port, otherwise, we should eliminate.
-            Set<OFPort> portsKnownToTopo = ti.getPortsWithLinks(sid);
+            Set<Short> portsKnownToTopo = ti.getPortsWithLinks(sid);
 
             if (portsKnownToTopo != null) {
-                for(OFPort p: portsKnownToTopo) {
+                for(short p: portsKnownToTopo) {
                     NodePortTuple npt =
                             new NodePortTuple(sid, p);
                     if (ti.isBroadcastDomainPort(npt) == false) {
@@ -1084,7 +1073,7 @@ public class TopologyManager implements
                 }
             }
 
-            Set<OFPort> portsToEliminate = getPortsToEliminateForBDDP(sid);
+            Set<Short> portsToEliminate = getPortsToEliminateForBDDP(sid);
             if (portsToEliminate != null) {
                 ports.removeAll(portsToEliminate);
             }
@@ -1095,7 +1084,7 @@ public class TopologyManager implements
             }
 
             // we have all the switch ports to which we need to broadcast.
-            doMultiActionPacketOut(pi.getData(), sw, ports, cntx);
+            doMultiActionPacketOut(pi.getPacketData(), sw, ports, cntx);
         }
 
     }
@@ -1179,18 +1168,18 @@ public class TopologyManager implements
         return (Collections.unmodifiableList(appliedUpdates));
     }
 
-    protected void addOrUpdateSwitch(DatapathId sw) {
+    protected void addOrUpdateSwitch(long sw) {
         // nothing to do here for the time being.
         return;
     }
 
-    public void addTunnelPort(DatapathId sw, OFPort port) {
+    public void addTunnelPort(long sw, short port) {
         NodePortTuple npt = new NodePortTuple(sw, port);
         tunnelPorts.add(npt);
         tunnelPortsUpdated = true;
     }
 
-    public void removeTunnelPort(DatapathId sw, OFPort port) {
+    public void removeTunnelPort(long sw, short port) {
         NodePortTuple npt = new NodePortTuple(sw, port);
         tunnelPorts.remove(npt);
         tunnelPortsUpdated = true;
@@ -1259,7 +1248,7 @@ public class TopologyManager implements
 
         TopologyEventInfo topologyInfo =
                 new TopologyEventInfo(0, nt.getClusters().size(),
-                                      new HashMap<DatapathId, List<NodePortTuple>>(),
+                                      new HashMap<Long, List<NodePortTuple>>(),
                                       0);
         evTopology.updateEventWithFlush(new TopologyEvent(reason,
                                                           topologyInfo));
@@ -1329,27 +1318,27 @@ public class TopologyManager implements
 
     public void informListeners(List<LDUpdate> linkUpdates) {
 
-        if (role != null && role != HARole.ACTIVE)
+        if (role != null && role != Role.MASTER)
             return;
 
-        for(int i=0; i < topologyAware.size(); ++i) {
+        for(int i=0; i<topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
             listener.topologyChanged(linkUpdates);
         }
     }
 
-    public void addSwitch(DatapathId sid) {
+    public void addSwitch(long sid) {
         if (switchPorts.containsKey(sid) == false) {
-            switchPorts.put(sid, new HashSet<OFPort>());
+            switchPorts.put(sid, new HashSet<Short>());
         }
     }
 
-    private void addPortToSwitch(DatapathId s, OFPort p) {
+    private void addPortToSwitch(long s, short p) {
         addSwitch(s);
         switchPorts.get(s).add(p);
     }
 
-    public void removeSwitch(DatapathId sid) {
+    public void removeSwitch(long sid) {
         // Delete all the links in the switch, switch and all
         // associated data should be deleted.
         if (switchPorts.containsKey(sid) == false) return;
@@ -1362,7 +1351,7 @@ public class TopologyManager implements
         }
 
         Set<Link> linksToRemove = new HashSet<Link>();
-        for(OFPort p: switchPorts.get(sid)) {
+        for(Short p: switchPorts.get(sid)) {
             NodePortTuple n1 = new NodePortTuple(sid, p);
             linksToRemove.addAll(switchPortLinks.get(n1));
         }
@@ -1425,13 +1414,13 @@ public class TopologyManager implements
         return result1 || result2;
     }
 
-    protected void addOrUpdateTunnelLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-                                    OFPort dstPort) {
+    protected void addOrUpdateTunnelLink(long srcId, short srcPort, long dstId,
+                                    short dstPort) {
         // If you need to handle tunnel links, this is a placeholder.
     }
 
-    public void addOrUpdateLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-                                OFPort dstPort, LinkType type) {
+    public void addOrUpdateLink(long srcId, short srcPort, long dstId,
+                                short dstPort, LinkType type) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
@@ -1488,8 +1477,8 @@ public class TopologyManager implements
         }
     }
 
-    public void removeLink(DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort) {
+    public void removeLink(long srcId, short srcPort,
+                           long dstId, short dstPort) {
         Link link = new Link(srcId, srcPort, dstId, dstPort);
         removeLink(link);
     }
@@ -1518,7 +1507,7 @@ public class TopologyManager implements
     /**
      * Getters.  No Setters.
      */
-    public Map<DatapathId, Set<OFPort>> getSwitchPorts() {
+    public Map<Long, Set<Short>> getSwitchPorts() {
         return switchPorts;
     }
 
@@ -1544,15 +1533,15 @@ public class TopologyManager implements
      *  Switch methods
      */
     @Override
-    public Set<OFPort> getPorts(DatapathId sw) {
-        IOFSwitch iofSwitch = switchService.getSwitch(sw);
+    public Set<Short> getPorts(long sw) {
+        IOFSwitch iofSwitch = floodlightProvider.getSwitch(sw);
         if (iofSwitch == null) return Collections.emptySet();
 
-        Collection<OFPort> ofpList = iofSwitch.getEnabledPortNumbers();
+        Collection<Short> ofpList = iofSwitch.getEnabledPortNumbers();
         if (ofpList == null) return Collections.emptySet();
 
-        Set<OFPort> ports = new HashSet<OFPort>(ofpList);
-        Set<OFPort> qPorts = linkDiscovery.getQuarantinedPorts(sw);
+        Set<Short> ports = new HashSet<Short>(ofpList);
+        Set<Short> qPorts = linkDiscovery.getQuarantinedPorts(sw);
         if (qPorts != null)
             ports.removeAll(qPorts);
 

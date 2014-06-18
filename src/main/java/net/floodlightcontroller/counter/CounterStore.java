@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -34,10 +33,8 @@ import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,12 +69,12 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         }
 
     protected class CounterKeyTuple {
-        OFType msgType;
-        DatapathId dpid;
+        byte msgType;
+        long dpid;
         short l3type;
         byte l4type;
 
-        public CounterKeyTuple(OFType msgType, DatapathId dpid, short l3type, byte l4type){
+        public CounterKeyTuple(byte msgType, long dpid, short l3type, byte l4type){
             this.msgType = msgType;
             this.dpid = dpid;
             this.l3type = l3type;
@@ -102,8 +99,8 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         public int hashCode() {
             final int prime = 283;
             int result = 1;
-            result = prime * result + msgType.hashCode();
-            result = prime * result + (int) (dpid.getLong() ^ (dpid.getLong() >>> 32));
+            result = prime * result + msgType;
+            result = prime * result + (int) (dpid ^ (dpid >>> 32));
             result = prime * result + l3type;
             result = prime * result + l4type;
             return result;
@@ -158,7 +155,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
 
     @Override
     public void updatePacketInCountersLocal(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        if (((OFPacketIn)m).getData().length <= 0) {
+        if (((OFPacketIn)m).getPacketData().length <= 0) {
             return;
         }
         CounterKeyTuple countersKey = this.getCountersKey(sw, m, eth);
@@ -294,7 +291,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
     //*******************************
 
     protected CounterKeyTuple getCountersKey(IOFSwitch sw, OFMessage m, Ethernet eth) {
-        OFType mtype = m.getType();
+        byte mtype = m.getType().getTypeValue();
         short l3type = 0;
         byte l4type = 0;
 
@@ -325,7 +322,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
         int l3type = eth.getEtherType() & 0xffff;
         String switchIdHex = sw.getStringId();
         String etherType = String.format("%04x", eth.getEtherType());
-        String packetName = m.getType().getClass().getName();
+        String packetName = m.getType().toClass().getName();
         packetName = packetName.substring(packetName.lastIndexOf('.')+1);
 
         // L2 Type
@@ -473,7 +470,7 @@ public class CounterStore implements IFloodlightModule, ICounterStoreService {
 
         /* String values for names */
         String switchIdHex = sw.getStringId();
-        String packetName = m.getType().getClass().getName();
+        String packetName = m.getType().toClass().getName();
         packetName = packetName.substring(packetName.lastIndexOf('.')+1);
 
         String controllerFMCounterName =

@@ -17,8 +17,7 @@
 
 package net.floodlightcontroller.devicemanager;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openflow.util.HexString;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 
@@ -56,8 +55,8 @@ public class SwitchPort {
         }
     }
 
-    private final DatapathId switchDPID;
-    private final OFPort port;
+    private final long switchDPID;
+    private final int port;
     private final ErrorStatus errorStatus;
 
     /**
@@ -66,7 +65,7 @@ public class SwitchPort {
      * @param port the port
      * @param errorStatus any error status for the switch port
      */
-    public SwitchPort(DatapathId switchDPID, OFPort port, ErrorStatus errorStatus) {
+    public SwitchPort(long switchDPID, int port, ErrorStatus errorStatus) {
         super();
         this.switchDPID = switchDPID;
         this.port = port;
@@ -78,7 +77,7 @@ public class SwitchPort {
      * @param switchDPID the dpid
      * @param port the port
      */
-    public SwitchPort(DatapathId switchDPID, OFPort port) {
+    public SwitchPort(long switchDPID, int port) {
         super();
         this.switchDPID = switchDPID;
         this.port = port;
@@ -90,11 +89,11 @@ public class SwitchPort {
     // ***************
 
     @JsonSerialize(using=DPIDSerializer.class)
-    public DatapathId getSwitchDPID() {
+    public long getSwitchDPID() {
         return switchDPID;
     }
 
-    public OFPort getPort() {
+    public int getPort() {
         return port;
     }
 
@@ -114,8 +113,8 @@ public class SwitchPort {
                         + ((errorStatus == null)
                                 ? 0
                                 : errorStatus.hashCode());
-        result = prime * result + port.getPortNumber();
-        result = prime * result + (int) (switchDPID.getLong() ^ (switchDPID.getLong() >>> 32));
+        result = prime * result + port;
+        result = prime * result + (int) (switchDPID ^ (switchDPID >>> 32));
         return result;
     }
 
@@ -133,7 +132,7 @@ public class SwitchPort {
 
     @Override
     public String toString() {
-        return "SwitchPort [switchDPID=" + switchDPID.toString() +
+        return "SwitchPort [switchDPID=" + HexString.toHexString(switchDPID) +
                ", port=" + port + ", errorStatus=" + errorStatus + "]";
     }
 

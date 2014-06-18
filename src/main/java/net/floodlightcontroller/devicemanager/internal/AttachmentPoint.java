@@ -21,16 +21,11 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.Date;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-
 public class AttachmentPoint {
-    DatapathId  sw;
-    OFPort port;
-    Date  activeSince;
-    Date  lastSeen;
+    long  sw;
+    short port;
+    long  activeSince;
+    long  lastSeen;
 
     // Timeout for moving attachment points from OF/broadcast
     // domain to another.
@@ -39,15 +34,15 @@ public class AttachmentPoint {
     public static final long OPENFLOW_TO_EXTERNAL_TIMEOUT = 30000; // 30 seconds
     public static final long CONSISTENT_TIMEOUT = 30000;           // 30 seconds
 
-    public AttachmentPoint(DatapathId sw, OFPort port, Date activeSince,
-                           Date lastSeen) {
+    public AttachmentPoint(long sw, short port, long activeSince,
+                           long lastSeen) {
         this.sw = sw;
         this.port = port;
         this.activeSince = activeSince;
         this.lastSeen = lastSeen;
     }
 
-    public AttachmentPoint(DatapathId sw, OFPort port, Date lastSeen) {
+    public AttachmentPoint(long sw, short port, long lastSeen) {
         this.sw = sw;
         this.port = port;
         this.lastSeen = lastSeen;
@@ -61,31 +56,31 @@ public class AttachmentPoint {
         this.lastSeen = ap.lastSeen;
     }
 
-    public DatapathId getSw() {
+    public long getSw() {
         return sw;
     }
-    public void setSw(DatapathId sw) {
+    public void setSw(long sw) {
         this.sw = sw;
     }
-    public OFPort getPort() {
+    public short getPort() {
         return port;
     }
-    public void setPort(OFPort port) {
+    public void setPort(short port) {
         this.port = port;
     }
-    public Date getActiveSince() {
+    public long getActiveSince() {
         return activeSince;
     }
-    public void setActiveSince(Date activeSince) {
+    public void setActiveSince(long activeSince) {
         this.activeSince = activeSince;
     }
-    public Date getLastSeen() {
+    public long getLastSeen() {
         return lastSeen;
     }
-    public void setLastSeen(Date lastSeen) {
-        if (this.lastSeen.getTime() + INACTIVITY_INTERVAL < lastSeen.getTime())
+    public void setLastSeen(long lastSeen) {
+        if (this.lastSeen + INACTIVITY_INTERVAL < lastSeen)
             this.activeSince = lastSeen;
-        if (this.lastSeen.before(lastSeen))
+        if (this.lastSeen < lastSeen)
             this.lastSeen = lastSeen;
     }
 
@@ -96,8 +91,8 @@ public class AttachmentPoint {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + port.getPortNumber();
-        result = prime * result + (int) (sw.getLong() ^ (sw.getLong() >>> 32));
+        result = prime * result + port;
+        result = prime * result + (int) (sw ^ (sw >>> 32));
         return result;
     }
 
@@ -123,7 +118,7 @@ public class AttachmentPoint {
     @Override
     public String toString() {
         return "AttachmentPoint [sw=" + sw + ", port=" + port
-               + ", activeSince=" + activeSince + ", lastSeen=" + lastSeen.toString()
+               + ", activeSince=" + activeSince + ", lastSeen=" + lastSeen
                + "]";
     }
 }

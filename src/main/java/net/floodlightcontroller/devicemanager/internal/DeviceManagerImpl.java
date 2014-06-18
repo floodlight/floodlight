@@ -47,7 +47,7 @@ import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.HARole;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -96,15 +96,11 @@ import net.floodlightcontroller.util.MultiIterator;
 import static net.floodlightcontroller.devicemanager.internal.
 DeviceManagerImpl.DeviceUpdate.Change.*;
 
-import org.projectfloodlight.openflow.protocol.OFMatchWithSwDpid;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.VlanVid;
-import org.projectfloodlight.openflow.protocol.OFType;
+import org.openflow.protocol.OFMatchWithSwDpid;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPort;
+import org.openflow.protocol.OFType;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
@@ -364,33 +360,33 @@ IFlowReconcileListener, IInfoProvider {
         public int compare(AttachmentPoint oldAP, AttachmentPoint newAP) {
             //First compare based on L2 domain ID;
 
-            DatapathId oldSw = oldAP.getSw();
-            OFPort oldPort = oldAP.getPort();
-            DatapathId oldDomain = topology.getL2DomainId(oldSw);
+            long oldSw = oldAP.getSw();
+            short oldPort = oldAP.getPort();
+            long oldDomain = topology.getL2DomainId(oldSw);
             boolean oldBD = topology.isBroadcastDomainPort(oldSw, oldPort);
 
-            DatapathId newSw = newAP.getSw();
-            OFPort newPort = newAP.getPort();
-            DatapathId newDomain = topology.getL2DomainId(newSw);
+            long newSw = newAP.getSw();
+            short newPort = newAP.getPort();
+            long newDomain = topology.getL2DomainId(newSw);
             boolean newBD = topology.isBroadcastDomainPort(newSw, newPort);
 
-            if (oldDomain.getLong() < newDomain.getLong()) return -1;
-            else if (oldDomain.getLong() > newDomain.getLong()) return 1;
+            if (oldDomain < newDomain) return -1;
+            else if (oldDomain > newDomain) return 1;
 
 
-            // Give preference to LOCAL always
-            if (oldPort != OFPort.LOCAL &&
-                    newPort == OFPort.LOCAL) {
+            // Give preference to OFPP_LOCAL always
+            if (oldPort != OFPort.OFPP_LOCAL.getValue() &&
+                    newPort == OFPort.OFPP_LOCAL.getValue()) {
                 return -1;
-            } else if (oldPort == OFPort.LOCAL &&
-                    newPort != OFPort.LOCAL) {
+            } else if (oldPort == OFPort.OFPP_LOCAL.getValue() &&
+                    newPort != OFPort.OFPP_LOCAL.getValue()) {
                 return 1;
             }
 
             // We expect that the last seen of the new AP is higher than
             // old AP, if it is not, just reverse and send the negative
             // of the result.
-            if (oldAP.getActiveSince().after(newAP.getActiveSince()))
+            if (oldAP.getActiveSince() > newAP.getActiveSince())
                 return -compare(newAP, oldAP);
 
             long activeOffset = 0;
@@ -411,8 +407,8 @@ IFlowReconcileListener, IInfoProvider {
             }
 
 
-            if ((newAP.getActiveSince().getTime() > oldAP.getLastSeen().getTime() + activeOffset) ||
-                    (newAP.getLastSeen().getTime() > oldAP.getLastSeen().getTime() +
+            if ((newAP.getActiveSince() > oldAP.getLastSeen() + activeOffset) ||
+                    (newAP.getLastSeen() > oldAP.getLastSeen() +
                             AttachmentPoint.INACTIVITY_INTERVAL)) {
                 return -1;
             }
@@ -457,13 +453,13 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public IDevice findDevice(MacAddress macAddress, VlanVid vlan,
-                              IPv4Address ipv4Address, DatapathId switchDPID,
-                              OFPort switchPort)
+    public IDevice findDevice(long macAddress, Short vlan,
+                              Integer ipv4Address, Long switchDPID,
+                              Integer switchPort)
                               throws IllegalArgumentException {
-        if (vlan != null && vlan.getVlan() <= 0)
+        if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
-        if (ipv4Address != null && ipv4Address.getInt() == 0)
+        if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address, switchDPID,
                               switchPort, null);
@@ -475,12 +471,12 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public IDevice findClassDevice(IEntityClass entityClass, MacAddress macAddress,
-                                  VlanVid vlan, IPv4Address ipv4Address)
+    public IDevice findClassDevice(IEntityClass entityClass, long macAddress,
+                                  Short vlan, Integer ipv4Address)
                                   throws IllegalArgumentException {
-        if (vlan != null && vlan.getVlan() <= 0)
+        if (vlan != null && vlan.shortValue() <= 0)
             vlan = null;
-        if (ipv4Address != null && ipv4Address.getInt() == 0)
+        if (ipv4Address != null && ipv4Address == 0)
             ipv4Address = null;
         Entity e = new Entity(macAddress, vlan, ipv4Address,
                               null, null, null);
@@ -510,11 +506,11 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public Iterator<? extends IDevice> queryDevices(MacAddress macAddress,
-                                                    VlanVid vlan,
-                                                    IPv4Address ipv4Address,
-                                                    DatapathId switchDPID,
-                                                    OFPort switchPort) {
+    public Iterator<? extends IDevice> queryDevices(Long macAddress,
+                                                    Short vlan,
+                                                    Integer ipv4Address,
+                                                    Long switchDPID,
+                                                    Integer switchPort) {
         DeviceIndex index = null;
         if (secondaryIndexMap.size() > 0) {
             EnumSet<DeviceField> keys =
@@ -529,7 +525,7 @@ IFlowReconcileListener, IInfoProvider {
             deviceIterator = deviceMap.values().iterator();
         } else {
             // index lookup
-            Entity entity = new Entity(macAddress,
+            Entity entity = new Entity((macAddress == null ? 0 : macAddress),
                                        vlan,
                                        ipv4Address,
                                        switchDPID,
@@ -552,11 +548,11 @@ IFlowReconcileListener, IInfoProvider {
 
     @Override
     public Iterator<? extends IDevice> queryClassDevices(IEntityClass entityClass,
-                                                         MacAddress macAddress,
-                                                         VlanVid vlan,
-                                                         IPv4Address ipv4Address,
-                                                         DatapathId switchDPID,
-                                                         OFPort switchPort) {
+                                                         Long macAddress,
+                                                         Short vlan,
+                                                         Integer ipv4Address,
+                                                         Long switchDPID,
+                                                         Integer switchPort) {
         ArrayList<Iterator<Device>> iterators =
                 new ArrayList<Iterator<Device>>();
         ClassState classState = getClassState(entityClass);
@@ -585,7 +581,7 @@ IFlowReconcileListener, IInfoProvider {
         } else {
             // index lookup
             Entity entity =
-                    new Entity(macAddress,
+                    new Entity((macAddress == null ? 0 : macAddress),
                                vlan,
                                ipv4Address,
                                switchDPID,
@@ -599,11 +595,11 @@ IFlowReconcileListener, IInfoProvider {
         return new MultiIterator<Device>(iterators.iterator());
     }
 
-    protected Iterator<Device> getDeviceIteratorForQuery(MacAddress macAddress,
-                                                        VlanVid vlan,
-                                                        IPv4Address ipv4Address,
-                                                        DatapathId switchDPID,
-                                                        OFPort switchPort) {
+    protected Iterator<Device> getDeviceIteratorForQuery(Long macAddress,
+                                                        Short vlan,
+                                                        Integer ipv4Address,
+                                                        Long switchDPID,
+                                                        Integer switchPort) {
         DeviceIndex index = null;
         if (secondaryIndexMap.size() > 0) {
             EnumSet<DeviceField> keys =
@@ -618,7 +614,7 @@ IFlowReconcileListener, IInfoProvider {
             deviceIterator = deviceMap.values().iterator();
         } else {
             // index lookup
-            Entity entity = new Entity(macAddress,
+            Entity entity = new Entity((macAddress == null ? 0 : macAddress),
                                 vlan,
                                 ipv4Address,
                                 switchDPID,
@@ -646,12 +642,12 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     @Override
-    public void addSuppressAPs(DatapathId swId, OFPort port) {
+    public void addSuppressAPs(long swId, short port) {
         suppressAPs.add(new SwitchPort(swId, port));
     }
 
     @Override
-    public void removeSuppressAPs(DatapathId swId, OFPort port) {
+    public void removeSuppressAPs(long swId, short port) {
         suppressAPs.remove(new SwitchPort(swId, port));
     }
 
@@ -718,14 +714,14 @@ IFlowReconcileListener, IInfoProvider {
         }
 
         private void generateDeviceEvent(IDevice device, String reason) {
-            List<IPv4Address> ipv4Addresses =
-                new ArrayList<IPv4Address>(Arrays.asList(device.getIPv4Addresses()));
+            List<Integer> ipv4Addresses =
+                new ArrayList<Integer>(Arrays.asList(device.getIPv4Addresses()));
             List<SwitchPort> oldAps =
                 new ArrayList<SwitchPort>(Arrays.asList(device.getOldAP()));
             List<SwitchPort> currentAps =
                     new ArrayList<SwitchPort>(Arrays.asList(device.getAttachmentPoints()));
-            List<VlanVid> vlanIds =
-                    new ArrayList<VlanVid>(Arrays.asList(device.getVlanId()));
+            List<Short> vlanIds =
+                    new ArrayList<Short>(Arrays.asList(device.getVlanId()));
 
             evDevice.updateEventNoFlush(
                     new DeviceEvent(device.getMACAddress(),
@@ -775,7 +771,7 @@ IFlowReconcileListener, IInfoProvider {
                            FloodlightContext cntx) {
         switch (msg.getType()) {
             case PACKET_IN:
-                cntIncoming.increment();
+                cntIncoming.updateCounterNoFlush();
                 return this.processPacketInMessage(sw,
                                                    (OFPacketIn) msg, cntx);
             default:
@@ -807,19 +803,19 @@ IFlowReconcileListener, IInfoProvider {
     }
 
     protected Command reconcileFlow(OFMatchReconcile ofm) {
-        cntReconcileRequest.increment();
+        cntReconcileRequest.updateCounterNoFlush();
         // Extract source entity information
         Entity srcEntity =
                 getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
         if (srcEntity == null) {
-            cntReconcileNoSource.increment();
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
        }
 
         // Find the device by source entity
         Device srcDevice = findDeviceByEntity(srcEntity);
         if (srcDevice == null)  {
-            cntReconcileNoSource.increment();
+            cntReconcileNoSource.updateCounterNoFlush();
             return Command.STOP;
         }
         // Store the source device in the context
@@ -834,9 +830,9 @@ IFlowReconcileListener, IInfoProvider {
             if (dstDevice != null)
                 fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
             else
-                cntReconcileNoDest.increment();
+                cntReconcileNoDest.updateCounterNoFlush();
         } else {
-            cntReconcileNoDest.increment();
+            cntReconcileNoDest.updateCounterNoFlush();
         }
         if (logger.isTraceEnabled()) {
             logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, "
@@ -1193,7 +1189,7 @@ IFlowReconcileListener, IInfoProvider {
         Entity srcEntity =
                 getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
         if (srcEntity == null) {
-            cntInvalidSource.increment();
+            cntInvalidSource.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -1208,7 +1204,7 @@ IFlowReconcileListener, IInfoProvider {
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
         if (srcDevice == null) {
-            cntNoSource.increment();
+            cntNoSource.updateCounterNoFlush();
             return Command.STOP;
         }
 
@@ -1218,7 +1214,7 @@ IFlowReconcileListener, IInfoProvider {
         // Find the device matching the destination from the entity
         // classes of the source.
         if (eth.getDestinationMAC().toLong() == 0) {
-            cntInvalidDest.increment();
+            cntInvalidDest.updateCounterNoFlush();
             return Command.STOP;
         }
         Entity dstEntity = getDestEntityFromPacket(eth);
@@ -1229,9 +1225,9 @@ IFlowReconcileListener, IInfoProvider {
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             else
-                cntNoDest.increment();
+                cntNoDest.updateCounterNoFlush();
         } else {
-            cntNoDest.increment();
+            cntNoDest.updateCounterNoFlush();
         }
 
        if (logger.isTraceEnabled()) {
@@ -1266,7 +1262,7 @@ IFlowReconcileListener, IInfoProvider {
             DHCPOption dhcpOption = dhcp.getOption(
                     DHCPOptionCode.OptionCode_Hostname);
             if (dhcpOption != null) {
-                cntDhcpClientNameSnooped.increment();
+                cntDhcpClientNameSnooped.updateCounterNoFlush();
                 srcDevice.dhcpClientName = new String(dhcpOption.getData());
             }
         }
@@ -1318,22 +1314,23 @@ IFlowReconcileListener, IInfoProvider {
      * @return the entity from the packet
      */
     protected Entity getSourceEntityFromPacket(Ethernet eth,
-                                             DatapathId swdpid,
-                                             OFPort port) {
-        MacAddress dlAddr = MacAddress.of(eth.getSourceMACAddress());
-        
+                                             long swdpid,
+                                             int port) {
+        byte[] dlAddrArr = eth.getSourceMACAddress();
+        long dlAddr = Ethernet.toLong(dlAddrArr);
+
         // Ignore broadcast/multicast source
-        if (dlAddr.isBroadcast() || dlAddr.isMulticast())
+        if ((dlAddrArr[0] & 0x1) != 0)
             return null;
         // Ignore 0 source mac
-        if (dlAddr.getLong() == 0)
+        if (dlAddr == 0)
             return null;
 
-        VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
-        IPv4Address nwSrc = getSrcNwAddr(eth, dlAddr);
+        short vlan = eth.getVlanID();
+        int nwSrc = getSrcNwAddr(eth, dlAddr);
         return new Entity(dlAddr,
-                          vlan,
-                          nwSrc,
+                          ((vlan >= 0) ? vlan : null),
+                          ((nwSrc != 0) ? nwSrc : null),
                           swdpid,
                           port,
                           new Date());
@@ -1345,8 +1342,8 @@ IFlowReconcileListener, IInfoProvider {
      * address in ARP data.
      */
     protected void learnDeviceFromArpResponseData(Ethernet eth,
-                                            DatapathId swdpid,
-                                            OFPort port) {
+                                            long swdpid,
+                                            int port) {
 
         if (!(eth.getPayload() instanceof ARP)) return;
         ARP arp = (ARP) eth.getPayload();
@@ -1615,8 +1612,8 @@ IFlowReconcileListener, IInfoProvider {
                 // attachment point port. Otherwise ignore.
                 if (entity.hasSwitchPort() &&
                         !topology.isAttachmentPointPort(entity.getSwitchDPID(),
-                                                 entity.getSwitchPort())) {
-                    cntDeviceOnInternalPortNotLearned.increment();
+                                                 entity.getSwitchPort().shortValue())) {
+                    cntDeviceOnInternalPortNotLearned.updateCounterNoFlush();
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
                                      + " link: {}", entity);
@@ -1627,7 +1624,7 @@ IFlowReconcileListener, IInfoProvider {
                 // Before we create the new device also check if
                 // the entity is allowed (e.g., for spoofing protection)
                 if (!isEntityAllowed(entity, entityClass)) {
-                    cntPacketNotAllowed.increment();
+                    cntPacketNotAllowed.updateCounterNoFlush();
                     if (logger.isDebugEnabled()) {
                         logger.debug("PacketIn is not allowed {} {}",
                                     entityClass.getName(), entity);
@@ -1655,7 +1652,7 @@ IFlowReconcileListener, IInfoProvider {
                 // We need to count and log here. If we log earlier we could
                 // hit a concurrent modification and restart the dev creation
                 // and potentially count the device twice.
-                cntNewDevice.increment();
+                cntNewDevice.updateCounterNoFlush();
                 if (logger.isDebugEnabled()) {
                     logger.debug("New device created: {} deviceKey={}, entity={}",
                                  new Object[]{device, deviceKey, entity});
@@ -1669,7 +1666,7 @@ IFlowReconcileListener, IInfoProvider {
             }
             // if it gets here, we have a pre-existing Device for this Entity
             if (!isEntityAllowed(entity, device.getEntityClass())) {
-                cntPacketNotAllowed.increment();
+                cntPacketNotAllowed.updateCounterNoFlush();
                 if (logger.isDebugEnabled()) {
                     logger.info("PacketIn is not allowed {} {}",
                                 device.getEntityClass().getName(), entity);
@@ -1681,8 +1678,8 @@ IFlowReconcileListener, IInfoProvider {
             // the chain.
             if (entity.hasSwitchPort() &&
                     !topology.isAttachmentPointPort(entity.getSwitchDPID(),
-                                                 entity.getSwitchPort())) {
-                cntPacketOnInternalPortForKnownDevice.increment();
+                                                 entity.getSwitchPort().shortValue())) {
+                cntPacketOnInternalPortForKnownDevice.updateCounterNoFlush();
                 break;
             }
             int entityindex = -1;
@@ -1726,9 +1723,9 @@ IFlowReconcileListener, IInfoProvider {
 
                 // We need to count here after all the possible "continue"
                 // statements in this branch
-                cntNewEntity.increment();
+                cntNewEntity.updateCounterNoFlush();
                 if (changedFields.size() > 0) {
-                    cntDeviceChanged.increment();
+                    cntDeviceChanged.updateCounterNoFlush();
                     deviceUpdates =
                     updateUpdates(deviceUpdates,
                                   new DeviceUpdate(newDevice, CHANGE,
@@ -1741,8 +1738,8 @@ IFlowReconcileListener, IInfoProvider {
             if (entity.hasSwitchPort()) {
                 boolean moved =
                         device.updateAttachmentPoint(entity.getSwitchDPID(),
-                                entity.getSwitchPort(),
-                                entity.getLastSeenTimestamp());
+                                entity.getSwitchPort().shortValue(),
+                                entity.getLastSeenTimestamp().getTime());
                 // TODO: use update mechanism instead of sending the
                 // notification directly
                 if (moved) {
@@ -1989,7 +1986,7 @@ IFlowReconcileListener, IInfoProvider {
      * Clean up expired entities/devices
      */
     protected void cleanupEntities () {
-        cntCleanupEntitiesRuns.increment();
+        cntCleanupEntitiesRuns.updateCounterWithFlush();
 
         Calendar c = Calendar.getInstance();
         c.add(Calendar.MILLISECOND, -ENTITY_TIMEOUT);
@@ -2022,7 +2019,7 @@ IFlowReconcileListener, IInfoProvider {
                     break;
                 }
 
-                cntEntityRemovedTimeout.increment();
+                cntEntityRemovedTimeout.updateCounterWithFlush();
                 for (Entity e : toRemove) {
                     removeEntity(e, d.getEntityClass(), d.getDeviceKey(), toKeep);
                 }
@@ -2058,7 +2055,7 @@ IFlowReconcileListener, IInfoProvider {
                     if (update != null) {
                         // need to count after all possibly continue stmts in
                         // this branch
-                        cntDeviceChanged.increment();
+                        cntDeviceChanged.updateCounterWithFlush();
                         deviceUpdates.add(update);
                     }
                 } else {
@@ -2070,7 +2067,7 @@ IFlowReconcileListener, IInfoProvider {
                         d = deviceMap.get(d.getDeviceKey());
                         if (null != d)
                             continue;
-                        cntDeviceDeleted.increment();
+                        cntDeviceDeleted.updateCounterWithFlush();
                     }
                     deviceUpdates.add(update);
                 }
@@ -2128,11 +2125,11 @@ IFlowReconcileListener, IInfoProvider {
         }
     }
 
-    private EnumSet<DeviceField> getEntityKeys(MacAddress macAddress,
-                                               VlanVid vlan,
-                                               IPv4Address ipv4Address,
-                                               DatapathId switchDPID,
-                                               OFPort switchPort) {
+    private EnumSet<DeviceField> getEntityKeys(Long macAddress,
+                                               Short vlan,
+                                               Integer ipv4Address,
+                                               Long switchDPID,
+                                               Integer switchPort) {
         // FIXME: vlan==null is a valid search. Need to handle this
         // case correctly. Note that the code will still work correctly.
         // But we might do a full device search instead of using an index.
@@ -2186,8 +2183,8 @@ IFlowReconcileListener, IInfoProvider {
         for (Entity entity : entities) {
             if (entity.switchDPID != null && entity.switchPort != null) {
                 AttachmentPoint aP =
-                        new AttachmentPoint(entity.switchDPID,
-                                    entity.switchPort, new Date(0));
+                        new AttachmentPoint(entity.switchDPID.longValue(),
+                                    entity.switchPort.shortValue(), 0);
                 newPossibleAPs.add(aP);
             }
         }
@@ -2244,7 +2241,7 @@ IFlowReconcileListener, IInfoProvider {
      * @param updates the updates to process.
      */
     protected void sendDeviceMovedNotification(Device d) {
-        cntDeviceMoved.increment();
+        cntDeviceMoved.updateCounterNoFlush();
         deviceSyncManager.storeDevice(d);
         List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
         if (listeners != null) {
@@ -2303,7 +2300,7 @@ IFlowReconcileListener, IInfoProvider {
             return false;
         }
 
-        cntDeviceReclassifyDelete.increment();
+        cntDeviceReclassifyDelete.updateCounterNoFlush();
         LinkedList<DeviceUpdate> deviceUpdates =
                 new LinkedList<DeviceUpdate>();
         // delete this device and then re-learn all the entities
@@ -2388,7 +2385,7 @@ IFlowReconcileListener, IInfoProvider {
                 writeUpdatedDeviceToStorage(d);
                 lastWriteTimes.put(d.getDeviceKey(), now);
             } else {
-                cntDeviceStoreThrottled.increment();
+                cntDeviceStoreThrottled.updateCounterWithFlush();
             }
         }
 
@@ -2409,12 +2406,12 @@ IFlowReconcileListener, IInfoProvider {
                 // TODO: should probably do versioned delete. OTOH, even
                 // if we accidentally delete, we'll write it again after
                 // the next entity ....
-                cntDeviceRemovedFromStore.increment();
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
                 storeClient.delete(DeviceSyncRepresentation.computeKey(d));
             } catch(ObsoleteVersionException e) {
                 // FIXME
             } catch (SyncException e) {
-                cntSyncException.increment();
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Could not remove device " + d + " from store", e);
             }
         }
@@ -2426,14 +2423,14 @@ IFlowReconcileListener, IInfoProvider {
          */
         private void removeDevice(Versioned<DeviceSyncRepresentation> dev) {
             try {
-                cntDeviceRemovedFromStore.increment();
+                cntDeviceRemovedFromStore.updateCounterWithFlush();
                 storeClient.delete(dev.getValue().getKey(),
                                    dev.getVersion());
             } catch(ObsoleteVersionException e) {
                 // Key was locally modified by another thread.
                 // Do not delete and ignore.
             } catch(SyncException e) {
-                cntSyncException.increment();
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to remove device entry for " +
                             dev.toString() + " from store.", e);
             }
@@ -2447,13 +2444,13 @@ IFlowReconcileListener, IInfoProvider {
             if (logger.isDebugEnabled()) {
                 logger.debug("Transitioning to MASTER role");
             }
-            cntTransitionToMaster.increment();
+            cntTransitionToMaster.updateCounterWithFlush();
             IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
                     iter = null;
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
-                cntSyncException.increment();
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to read devices from sync store", e);
                 return;
             }
@@ -2465,7 +2462,7 @@ IFlowReconcileListener, IInfoProvider {
                             versionedDevice.getValue();
                     if (storedDevice == null)
                         continue;
-                    cntDevicesFromStore.increment();
+                    cntDevicesFromStore.updateCounterWithFlush();
                     for(SyncEntity se: storedDevice.getEntities()) {
                         learnDeviceByEntity(se.asEntity());
                     }
@@ -2485,7 +2482,7 @@ IFlowReconcileListener, IInfoProvider {
          */
         private void writeUpdatedDeviceToStorage(Device device) {
             try {
-                cntDeviceStrored.increment();
+                cntDeviceStrored.updateCounterWithFlush();
                 // FIXME: use a versioned put
                 DeviceSyncRepresentation storeDevice =
                         new DeviceSyncRepresentation(device);
@@ -2494,7 +2491,7 @@ IFlowReconcileListener, IInfoProvider {
                 // FIXME: what's the right behavior here. Can the store client
                 // even throw this error?
             } catch (SyncException e) {
-                cntSyncException.increment();
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Could not write device " + device +
                           " to sync store:", e);
             }
@@ -2518,7 +2515,7 @@ IFlowReconcileListener, IInfoProvider {
         private void consolidateStore() {
             if (!isMaster)
                 return;
-            cntConsolidateStoreRuns.increment();
+            cntConsolidateStoreRuns.updateCounterWithFlush();
             if (logger.isDebugEnabled()) {
                 logger.debug("Running consolidateStore.");
             }
@@ -2527,7 +2524,7 @@ IFlowReconcileListener, IInfoProvider {
             try {
                 iter = storeClient.entries();
             } catch (SyncException e) {
-                cntSyncException.increment();
+                cntSyncException.updateCounterWithFlush();
                 logger.error("Failed to read devices from sync store", e);
                 return;
             }
@@ -2564,7 +2561,7 @@ IFlowReconcileListener, IInfoProvider {
                                          + "corresponding live device",
                                          storedDevice.getKey());
                         }
-                        cntConsolidateStoreDevicesRemoved.increment();
+                        cntConsolidateStoreDevicesRemoved.updateCounterWithFlush();
                         removeDevice(versionedDevice);
                     }
                 }
@@ -2599,24 +2596,24 @@ IFlowReconcileListener, IInfoProvider {
      */
     private class DeviceEvent {
         @EventColumn(name = "MAC", description = EventFieldType.MAC)
-        private final MacAddress macAddress;
-        @EventColumn(name = "IPs", description = EventFieldType.IPv4)
-        private final List<IPv4Address> ipv4Addresses;
+        private final long macAddress;
+        @EventColumn(name = "IPs", description = EventFieldType.LIST_IPV4)
+        private final List<Integer> ipv4Addresses;
         @EventColumn(name = "Old Attachment Points",
-                     description = EventFieldType.COLLECTION_ATTACHMENT_POINT)
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
         private final List<SwitchPort> oldAttachmentPoints;
         @EventColumn(name = "Current Attachment Points",
-                     description = EventFieldType.COLLECTION_ATTACHMENT_POINT)
+                     description = EventFieldType.LIST_ATTACHMENT_POINT)
         private final List<SwitchPort> currentAttachmentPoints;
-        @EventColumn(name = "VLAN IDs", description = EventFieldType.COLLECTION_OBJECT)
-        private final List<VlanVid> vlanIds;
+        @EventColumn(name = "VLAN IDs", description = EventFieldType.LIST_OBJECT)
+        private final List<Short> vlanIds;
         @EventColumn(name = "Reason", description = EventFieldType.STRING)
         private final String reason;
 
-        public DeviceEvent(MacAddress macAddress, List<IPv4Address> ipv4Addresses,
+        public DeviceEvent(long macAddress, List<Integer> ipv4Addresses,
                 List<SwitchPort> oldAttachmentPoints,
                 List<SwitchPort> currentAttachmentPoints,
-                List<VlanVid> vlanIds, String reason) {
+                List<Short> vlanIds, String reason) {
             super();
             this.macAddress = macAddress;
             this.ipv4Addresses = ipv4Addresses;

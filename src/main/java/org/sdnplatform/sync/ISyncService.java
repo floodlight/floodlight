@@ -40,8 +40,6 @@ public interface ISyncService extends IFloodlightService {
          */
         UNSYNCHRONIZED
     }
-    
-    public short getLocalNodeId();
 
     /**
      * Create a store with the given store name and scope

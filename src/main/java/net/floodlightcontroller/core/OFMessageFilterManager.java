@@ -29,12 +29,12 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.util.HexString;
+import org.openflow.protocol.OFFlowMod;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFPacketOut;
+import org.openflow.protocol.OFType;
+import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -226,9 +226,9 @@ public class OFMessageFilterManager
             OFPacketOut p = (OFPacketOut) m;
             
             // No MAC match if packetOut doesn't have the packet.
-            if (p.getData() == null) return null;
+            if (p.getPacketData() == null) return null;
             
-            eth.deserialize(p.getData(), 0, p.getData().length);
+            eth.deserialize(p.getPacketData(), 0, p.getPacketData().length);
         } else if (m.getType() == OFType.FLOW_MOD) {
             // flow-mod can't be matched by mac.
             return null;

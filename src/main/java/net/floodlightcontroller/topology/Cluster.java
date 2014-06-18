@@ -23,37 +23,37 @@ import java.util.Set;
 
 import net.floodlightcontroller.routing.Link;
 
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openflow.util.HexString;
 
 public class Cluster {
-    protected DatapathId id; // the lowest id of the nodes
-    protected Map<DatapathId, Set<Link>> links; // set of links connected to a node.
+    protected long id; // the lowest id of the nodes
+    protected Map<Long, Set<Link>> links; // set of links connected to a node.
 
     public Cluster() {
-        id = DatapathId.NONE;
-        links = new HashMap<DatapathId, Set<Link>>();
+        id = Long.MAX_VALUE;
+        links = new HashMap<Long, Set<Link>>();
     }
 
-    public DatapathId getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(DatapathId id) {
+    public void setId(long id) {
         this.id = id;
     }
 
-    public Map<DatapathId, Set<Link>> getLinks() {
+    public Map<Long, Set<Link>> getLinks() {
         return links;
     }
 
-    public Set<DatapathId> getNodes() {
+    public Set<Long> getNodes() {
         return links.keySet();
     }
 
-    void add(DatapathId n) {
+    void add(long n) {
         if (links.containsKey(n) == false) {
             links.put(n, new HashSet<Link>());
-            if (n.getLong() < id.getLong()) id = n;
+            if (n < id) id = n;
         }
     }
 
@@ -67,7 +67,7 @@ public class Cluster {
 
     @Override 
     public int hashCode() {
-        return (int) (id.getLong() + id.getLong() >>>32);
+        return (int) (id + id >>>32);
     }
 
     @Override
@@ -84,6 +84,6 @@ public class Cluster {
     }
     
     public String toString() {
-        return "[Cluster id=" + id.toString() + ", " + links.keySet() + "]";
+        return "[Cluster id=" + HexString.toHexString(id) + ", " + links.keySet() + "]";
     }
 }

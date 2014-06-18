@@ -21,10 +21,7 @@ import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.util.HexString;
+import org.openflow.util.HexString;
 
 /**
  * A NodePortTuple is similar to a SwitchPortTuple
@@ -34,46 +31,51 @@ import org.projectfloodlight.openflow.util.HexString;
  */
 
 public class NodePortTuple implements Comparable<NodePortTuple> {
-    protected DatapathId nodeId; // switch DPID
-    protected OFPort portId; // switch port id
+    protected long nodeId; // switch DPID
+    protected short portId; // switch port id
 
     /**
      * Creates a NodePortTuple
      * @param nodeId The DPID of the switch
      * @param portId The port of the switch
      */
-    public NodePortTuple(DatapathId nodeId, OFPort portId) {
+    public NodePortTuple(long nodeId, short portId) {
         this.nodeId = nodeId;
         this.portId = portId;
     }
 
+    public NodePortTuple(long nodeId, int portId) {
+        this.nodeId = nodeId;
+        this.portId = (short) portId;
+    }
+
     @JsonProperty("switch")
     @JsonSerialize(using=DPIDSerializer.class)
-    public DatapathId getNodeId() {
+    public long getNodeId() {
         return nodeId;
     }
-    public void setNodeId(DatapathId nodeId) {
+    public void setNodeId(long nodeId) {
         this.nodeId = nodeId;
     }
     @JsonProperty("port")
     @JsonSerialize(using=UShortSerializer.class)
-    public OFPort getPortId() {
+    public short getPortId() {
         return portId;
     }
-    public void setPortId(OFPort portId) {
+    public void setPortId(short portId) {
         this.portId = portId;
     }
     
     public String toString() {
-        return "[id=" + nodeId.toString() + ", port=" + portId.toString() + "]";
+        return "[id=" + HexString.toHexString(nodeId) + ", port=" + new Short(portId) + "]";
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + (int) (nodeId.getLong() ^ (nodeId.getLong() >>> 32));
-        result = prime * result + portId.getPortNumber();
+        result = prime * result + (int) (nodeId ^ (nodeId >>> 32));
+        result = prime * result + portId;
         return result;
     }
 
@@ -100,7 +102,7 @@ public class NodePortTuple implements Comparable<NodePortTuple> {
      * @return
      */
     public String toKeyString() {
-        return (nodeId.toString()+ "|" + portId.toString());
+        return (HexString.toHexString(nodeId)+ "|" + (portId & 0xffff));
     }
 
     @Override
@@ -109,14 +111,14 @@ public class NodePortTuple implements Comparable<NodePortTuple> {
         final int EQUAL = 0;
         final int AFTER = 1;
 
-        if (this.getNodeId().getLong() < obj.getNodeId().getLong())
+        if (this.getNodeId() < obj.getNodeId())
             return BEFORE;
-        if (this.getNodeId().getLong() > obj.getNodeId().getLong())
+        if (this.getNodeId() > obj.getNodeId())
             return AFTER;
 
-        if (this.getPortId().getPortNumber() < obj.getPortId().getPortNumber())
+        if (this.getPortId() < obj.getPortId())
             return BEFORE;
-        if (this.getPortId().getPortNumber() > obj.getPortId().getPortNumber())
+        if (this.getPortId() > obj.getPortId())
             return AFTER;
 
         return EQUAL;

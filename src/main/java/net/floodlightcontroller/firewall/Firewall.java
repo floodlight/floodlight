@@ -24,16 +24,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TransportPort;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPacketIn;
+import org.openflow.protocol.OFType;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -42,11 +35,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 
 import java.util.ArrayList;
-
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -191,7 +184,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 try {
                     r.ruleid = Integer
                             .parseInt((String) row.get(COLUMN_RULEID));
-                    r.dpid = DatapathId.of((String) row.get(COLUMN_DPID));
+                    r.dpid = Long.parseLong((String) row.get(COLUMN_DPID));
 
                     for (String key : row.keySet()) {
                         if (row.get(key) == null)
@@ -203,58 +196,58 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                         } 
                         
                         else if (key.equals(COLUMN_IN_PORT)) {
-                            r.in_port = OFPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_IN_PORT)));
+                            r.in_port = Short.parseShort((String) row
+                                    .get(COLUMN_IN_PORT));
                         } 
                         
                         else if (key.equals(COLUMN_DL_SRC)) {
-                            r.dl_src = MacAddress.of(Long.parseLong((String) row
-                                    .get(COLUMN_DL_SRC)));
+                            r.dl_src = Long.parseLong((String) row
+                                    .get(COLUMN_DL_SRC));
                         } 
                         
                         else if (key.equals(COLUMN_DL_DST)) {
-                            r.dl_dst = MacAddress.of(Long.parseLong((String) row
-                                    .get(COLUMN_DL_DST)));
+                            r.dl_dst = Long.parseLong((String) row
+                                    .get(COLUMN_DL_DST));
                         } 
                         
                         else if (key.equals(COLUMN_DL_TYPE)) {
-                            r.dl_type = EthType.of(Integer.parseInt((String) row
-                                    .get(COLUMN_DL_TYPE)));
+                            r.dl_type = Short.parseShort((String) row
+                                    .get(COLUMN_DL_TYPE));
                         } 
                         
                         else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row
-                                    .get(COLUMN_NW_SRC_PREFIX)), r.nw_src_prefix_and_mask.getMask().getInt());
+                            r.nw_src_prefix = Integer.parseInt((String) row
+                                    .get(COLUMN_NW_SRC_PREFIX));
                         } 
                         
                         else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row
-                                    .get(COLUMN_NW_SRC_MASKBITS)));
+                            r.nw_src_maskbits = Integer.parseInt((String) row
+                                    .get(COLUMN_NW_SRC_MASKBITS));
                         } 
                         
                         else if (key.equals(COLUMN_NW_DST_PREFIX)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row
-                                    .get(COLUMN_NW_DST_PREFIX)), r.nw_dst_prefix_and_mask.getMask().getInt());
+                            r.nw_dst_prefix = Integer.parseInt((String) row
+                                    .get(COLUMN_NW_DST_PREFIX));
                         } 
                         
                         else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row
-                                    .get(COLUMN_NW_DST_MASKBITS)));
+                            r.nw_dst_maskbits = Integer.parseInt((String) row
+                                    .get(COLUMN_NW_DST_MASKBITS));
                         } 
                         
                         else if (key.equals(COLUMN_NW_PROTO)) {
-                            r.nw_proto = IpProtocol.of(Short.parseShort((String) row
-                                    .get(COLUMN_NW_PROTO)));
+                            r.nw_proto = Short.parseShort((String) row
+                                    .get(COLUMN_NW_PROTO));
                         } 
                         
                         else if (key.equals(COLUMN_TP_SRC)) {
-                            r.tp_src = TransportPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_TP_SRC)));
+                            r.tp_src = Short.parseShort((String) row
+                                    .get(COLUMN_TP_SRC));
                         } 
                         
                         else if (key.equals(COLUMN_TP_DST)) {
-                            r.tp_dst = TransportPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_TP_DST)));
+                            r.tp_dst = Short.parseShort((String) row
+                                    .get(COLUMN_TP_DST));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_DPID)) {
@@ -459,18 +452,18 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // add rule to database
         Map<String, Object> entry = new HashMap<String, Object>();
         entry.put(COLUMN_RULEID, Integer.toString(rule.ruleid));
-        entry.put(COLUMN_DPID, Long.toString(rule.dpid.getLong()));
-        entry.put(COLUMN_IN_PORT, Integer.toString(rule.in_port.getPortNumber()));
-        entry.put(COLUMN_DL_SRC, Long.toString(rule.dl_src.getLong()));
-        entry.put(COLUMN_DL_DST, Long.toString(rule.dl_dst.getLong()));
-        entry.put(COLUMN_DL_TYPE, Integer.toString(rule.dl_type.getValue()));
-        entry.put(COLUMN_NW_SRC_PREFIX, Integer.toString(rule.nw_src_prefix_and_mask.getValue().getInt()));
-        entry.put(COLUMN_NW_SRC_MASKBITS, Integer.toString(rule.nw_src_prefix_and_mask.getMask().getInt()));
-        entry.put(COLUMN_NW_DST_PREFIX, Integer.toString(rule.nw_dst_prefix_and_mask.getValue().getInt()));
-        entry.put(COLUMN_NW_DST_MASKBITS, Integer.toString(rule.nw_dst_prefix_and_mask.getMask().getInt()));
-        entry.put(COLUMN_NW_PROTO, Short.toString(rule.nw_proto.getIpProtocolNumber()));
-        entry.put(COLUMN_TP_SRC, Integer.toString(rule.tp_src.getPort()));
-        entry.put(COLUMN_TP_DST, Integer.toString(rule.tp_dst.getPort()));
+        entry.put(COLUMN_DPID, Long.toString(rule.dpid));
+        entry.put(COLUMN_IN_PORT, Short.toString(rule.in_port));
+        entry.put(COLUMN_DL_SRC, Long.toString(rule.dl_src));
+        entry.put(COLUMN_DL_DST, Long.toString(rule.dl_dst));
+        entry.put(COLUMN_DL_TYPE, Short.toString(rule.dl_type));
+        entry.put(COLUMN_NW_SRC_PREFIX, Integer.toString(rule.nw_src_prefix));
+        entry.put(COLUMN_NW_SRC_MASKBITS, Integer.toString(rule.nw_src_maskbits));
+        entry.put(COLUMN_NW_DST_PREFIX, Integer.toString(rule.nw_dst_prefix));
+        entry.put(COLUMN_NW_DST_MASKBITS, Integer.toString(rule.nw_dst_maskbits));
+        entry.put(COLUMN_NW_PROTO, Short.toString(rule.nw_proto));
+        entry.put(COLUMN_TP_SRC, Integer.toString(rule.tp_src));
+        entry.put(COLUMN_TP_DST, Integer.toString(rule.tp_dst));
         entry.put(COLUMN_WILDCARD_DPID,
                 Boolean.toString(rule.wildcard_dpid));
         entry.put(COLUMN_WILDCARD_IN_PORT,

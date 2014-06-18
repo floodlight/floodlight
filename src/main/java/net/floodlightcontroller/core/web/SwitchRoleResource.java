@@ -18,7 +18,7 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openflow.util.HexString;
 import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -53,7 +53,7 @@ public class SwitchRoleResource extends ServerResource {
             return model;
         }
 
-        DatapathId dpid = DatapathId.of(switchId);
+        Long dpid = HexString.toLong(switchId);
         IOFSwitch sw = floodlightProvider.getSwitch(dpid);
         if (sw == null)
             return null;

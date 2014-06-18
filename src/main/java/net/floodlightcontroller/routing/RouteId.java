@@ -17,7 +17,7 @@
 
 package net.floodlightcontroller.routing;
 
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openflow.util.HexString;
 
 /**
  * Stores the endpoints of a route, in this case datapath ids
@@ -25,37 +25,37 @@ import org.projectfloodlight.openflow.types.DatapathId;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class RouteId implements Cloneable, Comparable<RouteId> {
-    protected DatapathId src;
-    protected DatapathId dst;
+    protected Long src;
+    protected Long dst;
     protected long cookie;
 
-    public RouteId(DatapathId src, DatapathId dst) {
+    public RouteId(Long src, Long dst) {
         super();
         this.src = src;
         this.dst = dst;
         this.cookie = 0;
     }
 
-    public RouteId(DatapathId src, DatapathId dst, long cookie) {
+    public RouteId(Long src, Long dst, long cookie) {
         super();
         this.src = src;
         this.dst = dst;
         this.cookie = cookie;
     }
 
-    public DatapathId getSrc() {
+    public Long getSrc() {
         return src;
     }
 
-    public void setSrc(DatapathId src) {
+    public void setSrc(Long src) {
         this.src = src;
     }
 
-    public DatapathId getDst() {
+    public Long getDst() {
         return dst;
     }
 
-    public void setDst(DatapathId dst) {
+    public void setDst(Long dst) {
         this.dst = dst;
     }
 
@@ -103,8 +103,8 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
 
     @Override
     public String toString() {
-        return "RouteId [src=" + this.src.toString() + " dst="
-                + this.dst.toString() + "]";
+        return "RouteId [src=" + HexString.toHexString(this.src) + " dst="
+                + HexString.toHexString(this.dst) + "]";
     }
 
     @Override
