@@ -14,12 +14,13 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.projectfloodlight.core.IShutdownListener;
-import org.projectfloodlight.core.IShutdownService;
-import org.projectfloodlight.core.module.FloodlightModuleContext;
-import org.projectfloodlight.core.module.IFloodlightModule;
-import org.projectfloodlight.core.module.IFloodlightService;
-import org.projectfloodlight.debugevent.DebugEventResource.EventInfoResource;
+import net.floodlightcontroller.core.IShutdownListener;
+import net.floodlightcontroller.core.IShutdownService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugevent.DebugEventResource.EventInfoResource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

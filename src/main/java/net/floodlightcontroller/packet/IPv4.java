@@ -26,6 +26,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
+
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
  *
@@ -57,10 +60,10 @@ public class IPv4 extends BasePacket {
     protected byte flags;
     protected short fragmentOffset;
     protected byte ttl;
-    protected byte protocol;
+    protected IpProtocol protocol;
     protected short checksum;
-    protected int sourceAddress;
-    protected int destinationAddress;
+    protected IPv4Address sourceAddress;
+    protected IPv4Address destinationAddress;
     protected byte[] options;
 
     protected boolean isTruncated;
@@ -199,14 +202,14 @@ public class IPv4 extends BasePacket {
     /**
      * @return the protocol
      */
-    public byte getProtocol() {
+    public IpProtocol getProtocol() {
         return protocol;
     }
 
     /**
      * @param protocol the protocol to set
      */
-    public IPv4 setProtocol(byte protocol) {
+    public IPv4 setProtocol(IpProtocol protocol) {
         this.protocol = protocol;
         return this;
     }
@@ -234,15 +237,23 @@ public class IPv4 extends BasePacket {
     /**
      * @return the sourceAddress
      */
-    public int getSourceAddress() {
+    public IPv4Address getSourceAddress() {
         return sourceAddress;
     }
 
     /**
      * @param sourceAddress the sourceAddress to set
      */
-    public IPv4 setSourceAddress(int sourceAddress) {
+    public IPv4 setSourceAddress(IPv4Address sourceAddress) {
         this.sourceAddress = sourceAddress;
+        return this;
+    }
+    
+    /**
+     * @param sourceAddress the sourceAddress to set
+     */
+    public IPv4 setSourceAddress(int sourceAddress) {
+        this.sourceAddress = IPv4Address.of(sourceAddress);
         return this;
     }
 
@@ -250,22 +261,30 @@ public class IPv4 extends BasePacket {
      * @param sourceAddress the sourceAddress to set
      */
     public IPv4 setSourceAddress(String sourceAddress) {
-        this.sourceAddress = IPv4.toIPv4Address(sourceAddress);
+        this.sourceAddress = IPv4Address.of(sourceAddress);
         return this;
     }
 
     /**
      * @return the destinationAddress
      */
-    public int getDestinationAddress() {
+    public IPv4Address getDestinationAddress() {
         return destinationAddress;
     }
 
     /**
      * @param destinationAddress the destinationAddress to set
      */
-    public IPv4 setDestinationAddress(int destinationAddress) {
+    public IPv4 setDestinationAddress(IPv4Address destinationAddress) {
         this.destinationAddress = destinationAddress;
+        return this;
+    }
+    
+    /**
+     * @param destinationAddress the destinationAddress to set
+     */
+    public IPv4 setDestinationAddress(int destinationAddress) {
+        this.destinationAddress = IPv4Address.of(destinationAddress);
         return this;
     }
 
@@ -273,7 +292,7 @@ public class IPv4 extends BasePacket {
      * @param destinationAddress the destinationAddress to set
      */
     public IPv4 setDestinationAddress(String destinationAddress) {
-        this.destinationAddress = IPv4.toIPv4Address(destinationAddress);
+        this.destinationAddress = IPv4Address.of(destinationAddress);
         return this;
     }
 
@@ -328,10 +347,10 @@ public class IPv4 extends BasePacket {
         bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
                 | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
-        bb.put(this.protocol);
+        bb.putShort(this.protocol.getIpProtocolNumber());
         bb.putShort(this.checksum);
-        bb.putInt(this.sourceAddress);
-        bb.putInt(this.destinationAddress);
+        bb.putInt(this.sourceAddress.getInt());
+        bb.putInt(this.destinationAddress.getInt());
         if (this.options != null)
             bb.put(this.options);
         if (payloadData != null)
@@ -373,10 +392,10 @@ public class IPv4 extends BasePacket {
         this.flags = (byte) ((sscratch >> IPV4_FLAGS_SHIFT) & IPV4_FLAGS_MASK);
         this.fragmentOffset = (short) (sscratch & IPV4_OFFSET_MASK);
         this.ttl = bb.get();
-        this.protocol = bb.get();
+        this.protocol = IpProtocol.of(bb.getShort());
         this.checksum = bb.getShort();
-        this.sourceAddress = bb.getInt();
-        this.destinationAddress = bb.getInt();
+        this.sourceAddress = IPv4Address.of(bb.getInt());
+        this.destinationAddress = IPv4Address.of(bb.getInt());
 
         if (this.headerLength > 5) {
             int optionsLength = (this.headerLength - 5) * 4;
@@ -398,8 +417,8 @@ public class IPv4 extends BasePacket {
         } else {
             if (log.isTraceEnabled() && isFragment) {
                 log.trace("IPv4 fragment detected {}->{}, forward using IP header only",
-                        fromIPv4Address(this.sourceAddress),
-                        fromIPv4Address(this.destinationAddress));
+                        this.sourceAddress.toString(),
+                        this.destinationAddress.toString());
             }
             payload = new Data();
         }
@@ -540,15 +559,15 @@ public class IPv4 extends BasePacket {
         final int prime = 2521;
         int result = super.hashCode();
         result = prime * result + checksum;
-        result = prime * result + destinationAddress;
+        result = prime * result + destinationAddress.getInt();
         result = prime * result + diffServ;
         result = prime * result + flags;
         result = prime * result + fragmentOffset;
         result = prime * result + headerLength;
         result = prime * result + identification;
         result = prime * result + Arrays.hashCode(options);
-        result = prime * result + protocol;
-        result = prime * result + sourceAddress;
+        result = prime * result + protocol.getIpProtocolNumber();
+        result = prime * result + sourceAddress.getInt();
         result = prime * result + totalLength;
         result = prime * result + ttl;
         result = prime * result + version;

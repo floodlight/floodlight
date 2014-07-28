@@ -21,9 +21,10 @@ import java.util.HashMap;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.ServerResource;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.RoleInfo;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
@@ -35,9 +36,9 @@ public class SwitchRoleResource extends ServerResource {
 
     @Get("json")
     public Object getRole() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+    	IOFSwitchService switchService =
+                (IOFSwitchService)getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
 
         String switchId = (String) getRequestAttributes().get("switchId");
 
@@ -45,19 +46,21 @@ public class SwitchRoleResource extends ServerResource {
 
         if (switchId.equalsIgnoreCase("all")) {
             HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
-            for (IOFSwitch sw: floodlightProvider.getAllSwitchMap().values()) {
+            for (IOFSwitch sw: switchService.getAllSwitchMap().values()) {
                 switchId = sw.getStringId();
-                roleInfo = new RoleInfo(sw.getHARole(), null);
+                //TODO @Ryan not sure what the changeDescription string should be here.
+                roleInfo = new RoleInfo(HARole.ofOFRole(sw.getControllerRole()), "", null);
                 model.put(switchId, roleInfo);
             }
             return model;
         }
 
         DatapathId dpid = DatapathId.of(switchId);
-        IOFSwitch sw = floodlightProvider.getSwitch(dpid);
+        IOFSwitch sw = switchService.getSwitch(dpid);
         if (sw == null)
             return null;
-        roleInfo = new RoleInfo(sw.getHARole(), null);
+        //TODO @Ryan not sure what the changeDescription string should be here.
+        roleInfo = new RoleInfo(HARole.ofOFRole(sw.getControllerRole()), "", null);
         return roleInfo;
     }
 }

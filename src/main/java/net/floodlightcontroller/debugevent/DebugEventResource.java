@@ -4,9 +4,8 @@ import java.util.List;
 
 import javax.annotation.concurrent.Immutable;
 
-import org.projectfloodlight.db.data.annotation.DBProperty;
-import org.projectfloodlight.debugevent.DebugEventService.EventInfo;
-import org.projectfloodlight.debugevent.IDebugEventService.EventType;
+import net.floodlightcontroller.debugevent.DebugEventService.EventInfo;
+import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,52 +60,42 @@ public class DebugEventResource {
             this.events = ImmutableList.copyOf(events);
         }
 
-        @DBProperty(value = "enabled")
         public boolean isEnabled() {
             return enabled;
         }
 
-        @DBProperty(value = "buffer-capacity")
         public int getBufferCapacity() {
             return bufferCapacity;
         }
 
-        @DBProperty(value = "etype")
         public EventType getEtype() {
             return etype;
         }
 
-        @DBProperty(value = "event-desc")
         public String getEventDesc() {
             return eventDesc;
         }
 
-        @DBProperty(value = "event-name")
         public String getEventName() {
             return eventName;
         }
 
-        @DBProperty(value = "module-name")
         public String getModuleName() {
             return moduleName;
         }
 
-        @DBProperty(value = "num-of-events")
         public int getNumOfEvents() {
             return numOfEvents;
         }
 
-        @DBProperty(value = "ackable")
         public boolean isAckable() {
             return ackable;
         }
 
-        @DBProperty(value = "event")
         public List<EventResource> getEvents() {
             return events;
         }
 
-        @DBProperty(value = "event-id")
         public int getEventId() {
             return eventId;
         }

@@ -7,10 +7,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.projectfloodlight.core.module.FloodlightModuleContext;
-import org.projectfloodlight.core.module.FloodlightModuleException;
-import org.projectfloodlight.core.module.IFloodlightModule;
-import org.projectfloodlight.core.module.IFloodlightService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 public class MockDebugCounterService implements IFloodlightModule, IDebugCounterService {
 

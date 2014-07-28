@@ -5,10 +5,12 @@ import java.util.Map;
 import java.util.Set;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.rest.SwitchRepresentation;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 
 public interface IOFSwitchService extends IFloodlightService {
@@ -57,6 +59,13 @@ public interface IOFSwitchService extends IFloodlightService {
      * @param listener The module that wants to listen for events
      */
     void addOFSwitchListener(IOFSwitchListener listener);
+    
+    /**
+     * Add a switch driver
+     * @param manufacturerDescriptionPrefix
+     * @param driver
+     */
+    void addOFSwitchDriver(String manufacturerDescriptionPrefix, IOFSwitchDriver driver);
 
     /**
      * Remove a switch listener

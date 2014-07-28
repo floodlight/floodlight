@@ -12,11 +12,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
 
-import org.projectfloodlight.core.IShutdownListener;
-import org.projectfloodlight.core.IShutdownService;
+import net.floodlightcontroller.core.IShutdownListener;
+import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +80,12 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
         verifyModuleNameSanity(moduleName);
         verifyStringSanity(counterHierarchy, "counterHierarchy");
         if (counterDescription == null) {
-            throw new Exception("counterDescription must not be null");
+            try {
+				throw new Exception("counterDescription must not be null");
+			} catch (Exception e) {
+				e.printStackTrace();
+				logger.error(e.getMessage());
+			}
         }
         if (metaData == null) {
             // somebody passing in a null array. sigh.
@@ -200,10 +206,9 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
         @Override
         public void floodlightIsShuttingDown() {
             for (DebugCounterResource counter: getAllCounterValues()) {
-                logger.info("Module {} counterHierarchy {} value {}",
+                logger.info("Module {} counterHierarchy {} value " + counter.getCounterValue(),
                             counter.getModuleName(),
-                            counter.getCounterHierarchy(),
-                            counter.getCounterValue());
+                            counter.getCounterHierarchy());
             }
         }
     }

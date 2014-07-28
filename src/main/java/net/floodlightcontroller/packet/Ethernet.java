@@ -85,6 +85,14 @@ public class Ethernet extends BasePacket {
         this.destinationMACAddress = MacAddress.of(destinationMACAddress);
         return this;
     }
+    
+    /**
+     * @param destinationMACAddress the destination MAC to set
+     */
+    public Ethernet setDestinationMACAddress(MacAddress destinationMACAddress) {
+        this.destinationMACAddress = destinationMACAddress;
+        return this;
+    }
 
     /**
      * @param destinationMACAddress the destination MAC to set
@@ -113,6 +121,14 @@ public class Ethernet extends BasePacket {
      */
     public Ethernet setSourceMACAddress(byte[] sourceMACAddress) {
         this.sourceMACAddress = MacAddress.of(sourceMACAddress);
+        return this;
+    }
+    
+    /**
+     * @param sourceMACAddress the source MAC to set
+     */
+    public Ethernet setSourceMACAddress(MacAddress sourceMACAddress) {
+        this.sourceMACAddress = sourceMACAddress;
         return this;
     }
 
@@ -443,9 +459,9 @@ public class Ethernet extends BasePacket {
         else if (pkt instanceof IPv4) {
             IPv4 p = (IPv4) pkt;
             sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(p.getSourceAddress()));
+            sb.append(p.getSourceAddress().toString());
             sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(p.getDestinationAddress()));
+            sb.append(p.getDestinationAddress().toString());
             sb.append("\nnw_tos: ");
             sb.append(p.getDiffServ());
             sb.append("\nnw_proto: ");

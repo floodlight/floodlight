@@ -49,6 +49,6 @@ public class PortChangeEvent {
      */
     @Override
     public String toString() {
-        return "[" + type + " " + String.format("%s (%d)", port.getName(), port.getPortNo()) + "]";
+        return "[" + type + " " + String.format("%s (%d)", port.getName(), port.getPortNo().getPortNumber()) + "]";
     }
 }

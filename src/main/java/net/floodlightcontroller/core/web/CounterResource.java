@@ -19,11 +19,12 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.counter.CounterValue;
-import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.debugcounter.DebugCounterResource;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 
 import org.restlet.resource.Get;
 
@@ -33,26 +34,20 @@ public class CounterResource extends CounterResourceBase {
         String counterTitle = 
             (String) getRequestAttributes().get("counterTitle");
         Map<String, Object> model = new HashMap<String,Object>();
-        CounterValue v;
+        long dc;
         if (counterTitle.equalsIgnoreCase("all")) {
-            Map<String, ICounter> counters = this.counterStore.getAll();
+            List<DebugCounterResource> counters = this.debugCounterService.getAllCounterValues();
             if (counters != null) {
-                Iterator<Map.Entry<String, ICounter>> it = 
-                    counters.entrySet().iterator();
+                Iterator<DebugCounterResource> it = counters.iterator();
                 while (it.hasNext()) {
-                    Entry<String, ICounter> entry = it.next();
-                    String counterName = entry.getKey();
-                    v = entry.getValue().getCounterValue();
-
-                    if (CounterValue.CounterType.LONG == v.getType()) {
-                        model.put(counterName, v.getLong());
-                    } else if (v.getType() == CounterValue.CounterType.DOUBLE) {
-                        model.put(counterName, v.getDouble());
-                    }   
+                    DebugCounterResource dcr = it.next();
+                    String counterName = dcr.getCounterHierarchy();
+                    dc = dcr.getCounterValue();
+                    model.put(counterName, dc);
                 }   
             }   
         } else {
-            ICounter counter = this.counterStore.getCounter(counterTitle);
+            List<DebugCounterResource> counter = this.debugCounterService.getCounterHierarchy(moduleName, counterTitle);
             if (counter != null) {
                 v = counter.getCounterValue();
             } else {

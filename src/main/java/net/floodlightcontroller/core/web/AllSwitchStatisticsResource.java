@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
@@ -79,10 +79,10 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             return model;
         }
 
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
-        Set<DatapathId> switchDpids = floodlightProvider.getAllSwitchDpids();
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
+        Set<DatapathId> switchDpids = switchService.getAllSwitchDpids();
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.size());
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
         GetConcurrentStatsThread t;

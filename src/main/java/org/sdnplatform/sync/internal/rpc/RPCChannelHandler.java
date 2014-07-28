@@ -596,7 +596,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // *****************
 
     protected void updateCounter(IDebugCounter counter, int incr) {
-        counter.updateCounterWithFlush(incr);
+        counter.add(incr);
     }
 
     protected void startAntientropy() {

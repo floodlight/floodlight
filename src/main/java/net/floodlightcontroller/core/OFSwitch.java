@@ -52,6 +52,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowWildcards;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortReason;
@@ -235,7 +236,8 @@ public class OFSwitch implements IOFSwitchBackend {
             for(OFPortDesc p: newPortsByNumber.values()) {
                 newPortList.add(p);
                 newPortsByName.put(p.getName().toLowerCase(), p);
-                if (p.getState().contains(OFPortState.LIVE)) {
+                if (!p.getState().contains(OFPortState.LINK_DOWN) 
+                		&& !p.getConfig().contains(OFPortConfig.PORT_DOWN)) {
                     newEnabledPortList.add(p);
                     newEnabledPortNumbers.add(p.getPortNo());
                 }
@@ -409,10 +411,16 @@ public class OFSwitch implements IOFSwitchBackend {
                     // A simple modify of a exiting port
                     // A previous port with this number exists and it's name
                     // also matches the new port. Find the differences
-                    if (prevPort.getState().contains(OFPortState.LIVE) && !newPort.getState().contains(OFPortState.LIVE)) {
+                    if ((!prevPort.getState().contains(OFPortState.LINK_DOWN) 
+                    		&& !prevPort.getConfig().contains(OFPortConfig.PORT_DOWN)) 
+                    		&& (newPort.getState().contains(OFPortState.LINK_DOWN) 
+                    		|| newPort.getConfig().contains(OFPortConfig.PORT_DOWN))) {
                         events.add(new PortChangeEvent(newPort,
                                                        PortChangeType.DOWN));
-                    } else if (!prevPort.getState().contains(OFPortState.LIVE) && newPort.getState().contains(OFPortState.LIVE)) {
+                    } else if ((prevPort.getState().contains(OFPortState.LINK_DOWN) 
+                    		|| prevPort.getConfig().contains(OFPortConfig.PORT_DOWN)) 
+                    		&& (!newPort.getState().contains(OFPortState.LINK_DOWN) 
+                    		&& !newPort.getConfig().contains(OFPortConfig.PORT_DOWN))) {
                         events.add(new PortChangeEvent(newPort,
                                                        PortChangeType.UP));
                     } else {
@@ -455,7 +463,7 @@ public class OFSwitch implements IOFSwitchBackend {
 
         /**
          * Compare the current ports of this switch to the newPorts list and
-         * return the changes that would be applied to transfort the current
+         * return the changes that would be applied to transform the current
          * ports to the new ports. No internal data structures are updated
          * see {@link #compareAndUpdatePorts(List, boolean)}
          *
@@ -553,7 +561,10 @@ public class OFSwitch implements IOFSwitchBackend {
                                 String.format("%s (%d)", duplicatePort.getName(), duplicatePort.getPortNo().getPortNumber()));
                         throw new IllegalArgumentException(msg);
                     }
-                    if (p.getState().contains(OFPortState.LIVE)) {
+                    //TODO @Ryan How to handle port state?
+                    // Enabled = not down admin (config) or phys (state)
+                    if (!p.getConfig().contains(OFPortConfig.PORT_DOWN)
+                    		&& !p.getState().contains(OFPortState.LINK_DOWN)) {
                         newEnabledPortList.add(p);
                         newEnabledPortNumbers.add(p.getPortNo());
                     }

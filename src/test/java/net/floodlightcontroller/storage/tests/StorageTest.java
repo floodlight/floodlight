@@ -30,6 +30,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+
+import static org.junit.Assert.*;
+import org.junit.Test;
+
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
@@ -44,7 +48,6 @@ import net.floodlightcontroller.storage.RowOrdering;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
-import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     

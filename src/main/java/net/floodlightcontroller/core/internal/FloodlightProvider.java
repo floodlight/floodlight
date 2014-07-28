@@ -25,7 +25,6 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.module.Run;
 
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.sdnplatform.sync.ISyncService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -33,7 +32,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -76,7 +74,6 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(IStorageSourceService.class);
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
-        dependencies.add(ICounterStoreService.class);
         dependencies.add(IDebugCounterService.class);
         dependencies.add(IDebugEventService.class);
         dependencies.add(IOFSwitchService.class);
@@ -91,8 +88,6 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IStorageSourceService.class));
        controller.setPktInProcessingService(
            context.getServiceImpl(IPktInProcessingTimeService.class));
-       controller.setCounterStore(
-           context.getServiceImpl(ICounterStoreService.class));
        controller.setDebugCounter(
            context.getServiceImpl(IDebugCounterService.class));
        controller.setDebugEvent(
@@ -103,6 +98,8 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IThreadPoolService.class));
        controller.setSyncService(
            context.getServiceImpl(ISyncService.class));
+       controller.setSwitchService(
+    	   context.getServiceImpl(IOFSwitchService.class));
        controller.init(context.getConfigParams(this));
     }
 
@@ -116,16 +113,4 @@ public class FloodlightProvider implements IFloodlightModule {
     public void run() throws FloodlightModuleException {
         controller.run();
     }
-
-	@Override
-	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
 }

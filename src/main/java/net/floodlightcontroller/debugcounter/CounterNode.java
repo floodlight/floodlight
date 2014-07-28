@@ -41,7 +41,7 @@ class CounterNode implements Iterable<DebugCounterImpl> {
      * root level and module level.
      */
     private final DebugCounterImpl counter;
-    private final TreeMap<String,CounterNode> children = new TreeMap<>();
+    private final TreeMap<String, CounterNode> children = new TreeMap<>();
 
     /**
      * convert module name and counter hierarchy into list of
@@ -50,22 +50,20 @@ class CounterNode implements Iterable<DebugCounterImpl> {
      * @param counterHierarchy
      * @return
      */
-    static List<String>
-    getHierarchyElements(String moduleName, String counterHierarchy) {
+    static List<String> getHierarchyElements(String moduleName, String counterHierarchy) {
         DebugCounterServiceImpl.verifyModuleNameSanity(moduleName);
         List<String> ret = new ArrayList<>();
         ret.add(moduleName);
         if (counterHierarchy == null || counterHierarchy.isEmpty()) {
             return ret;
         }
-        for (String element: counterHierarchy.split(QUOTED_SEP)) {
+        for (String element : counterHierarchy.split(QUOTED_SEP)) {
             ret.add(element);
         }
         return ret;
     }
 
-    private CounterNode(List<String> hierarchyElements,
-                        DebugCounterImpl counter) {
+    private CounterNode(List<String> hierarchyElements, DebugCounterImpl counter) {
         super();
         this.hierarchyElements = ImmutableList.copyOf(hierarchyElements);
         this.hierarchy = Joiner.on("/").join(hierarchyElements);
@@ -83,13 +81,11 @@ class CounterNode implements Iterable<DebugCounterImpl> {
     /** verify that this node is the root */
     private void verifyIsRoot() {
         if (hierarchyElements.size() != 0) {
-            throw new IllegalStateException("This not is not the root. Can "
+            throw new IllegalStateException("This is not the root. Can "
                     + "only call addCounter() on the root node. Current node: "
                     + hierarchy);
         }
     }
-
-
 
     /**
      *  return the full hierarchy as string, including module name

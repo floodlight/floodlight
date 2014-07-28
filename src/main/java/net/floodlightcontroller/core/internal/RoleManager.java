@@ -1,22 +1,17 @@
 package net.floodlightcontroller.core.internal;
 
-import java.util.Date;
 import java.util.Map.Entry;
 
 import javax.annotation.Nonnull;
 
+import java.util.Date;
 import net.floodlightcontroller.core.HARole;
-import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.core.internal.RoleManagerCounters;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler;
+import net.floodlightcontroller.core.IShutdownService;
+import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
-
-import net.floodlightcontroller.core.internal.RoleManager;
-import net.floodlightcontroller.core.internal.RoleManager.SwitchRoleUpdate;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -25,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import net.floodlightcontroller.core.RoleInfo;
 
 /**
  * A utility class to manage the <i>controller roles</i>.
@@ -49,8 +43,8 @@ import net.floodlightcontroller.core.RoleInfo;
 public class RoleManager {
     private volatile RoleInfo currentRoleInfo;
     private final Controller controller;
+    private final IShutdownService shutdownService;
     private final RoleManagerCounters counters;
-    private volatile boolean notifiedLeader;
 
     private static final Logger log =
             LoggerFactory.getLogger(RoleManager.class);
@@ -61,16 +55,19 @@ public class RoleManager {
      * @throws NullPointerException if role or roleChangeDescription is null
      */
     public RoleManager(@Nonnull Controller controller,
+            @Nonnull IShutdownService shutdownService,
             @Nonnull HARole role,
             @Nonnull String roleChangeDescription) {
         Preconditions.checkNotNull(controller, "controller must not be null");
         Preconditions.checkNotNull(role, "role must not be null");
         Preconditions.checkNotNull(roleChangeDescription, "roleChangeDescription must not be null");
+        Preconditions.checkNotNull(shutdownService, "shutdownService must not be null");
 
         this.currentRoleInfo = new RoleInfo(role,
                                        roleChangeDescription,
                                        new Date());
         this.controller = controller;
+        this.shutdownService = shutdownService;
         this.counters = new RoleManagerCounters(controller.getDebugCounter());
     }
 
@@ -160,7 +157,6 @@ public class RoleManager {
          if(!switchesHaveAnotherMaster()){
              // No valid cluster controller connections found, become ACTIVE!
              setRole(HARole.ACTIVE, "Leader election assigned ACTIVE role");
-             notifiedLeader = false;
          }
      }
 
@@ -182,7 +178,7 @@ public class RoleManager {
     }
 
     public void notifyControllerConnectionUpdate() {
-        if(notifiedLeader && currentRoleInfo.getRole() != HARole.ACTIVE) {
+        if(currentRoleInfo.getRole() != HARole.ACTIVE) {
             attemptActiveTransition();
         }
     }
@@ -228,7 +224,7 @@ public class RoleManager {
                String reason = String.format("Received role request to "
                        + "transition from ACTIVE to STANDBY (reason: %s)",
                        getRoleInfo().getRoleChangeDescription());
-               //TODO @Ryan shutdownService.terminate(reason, 0);
+               shutdownService.terminate(reason, 0);
            }
         }
     }

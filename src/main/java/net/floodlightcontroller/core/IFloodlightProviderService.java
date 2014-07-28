@@ -54,7 +54,7 @@ public interface IFloodlightProviderService extends
      * representation of the payload of a packet-in message.
      */
     public static final String CONTEXT_PI_PAYLOAD =
-            "org.projectfloodlight.core.IFloodlightProvider.piPayload";
+            "net.floodlightcontroller.core.IFloodlightProvider.piPayload";
 
     /**
      * A FloodlightContextStore object that can be used to retrieve the

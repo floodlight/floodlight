@@ -21,7 +21,7 @@ import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.RoleInfo;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 import org.restlet.resource.Get;
@@ -49,9 +49,9 @@ public class ControllerRoleResource extends ServerResource {
                    recommendation=LogMessageDoc.CHECK_CONTROLLER)
     public void setRole(RoleInfo roleInfo) {
         //Role role = Role.lookupRole(roleInfo.getRole());
-        Role role = null;
+        HARole role = null;
         try {
-            role = Role.valueOf(roleInfo.getRole().toUpperCase());
+            role = roleInfo.getRole();
         }
         catch (IllegalArgumentException e) {
             // The role value in the REST call didn't match a valid

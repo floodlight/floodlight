@@ -25,8 +25,9 @@ import java.util.Map;
 import java.util.Collection;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.util.FilterIterator;
 
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
@@ -64,7 +65,7 @@ public class ControllerSwitchesResource extends ServerResource {
 
         public Map<String,String> getDescription() {
             Map<String,String> rv = new HashMap<String, String>();
-            if (sw.getDescriptionStatistics() == null) {
+            if (sw.getSwitchDescription() == null) {
                 rv.put("manufacturer", "");
                 rv.put("hardware", "");
                 rv.put("software", "");
@@ -72,15 +73,15 @@ public class ControllerSwitchesResource extends ServerResource {
                 rv.put("datapath", "");
             } else {
                 rv.put("manufacturer",
-                       sw.getDescriptionStatistics().getManufacturerDescription());
+                       sw.getSwitchDescription().getManufacturerDescription());
                 rv.put("hardware",
-                       sw.getDescriptionStatistics().getHardwareDescription());
+                       sw.getSwitchDescription().getHardwareDescription());
                 rv.put("software",
-                       sw.getDescriptionStatistics().getSoftwareDescription());
+                       sw.getSwitchDescription().getSoftwareDescription());
                 rv.put("serialNum",
-                       sw.getDescriptionStatistics().getSerialNumber());
+                       sw.getSwitchDescription().getSerialNumber());
                 rv.put("datapath",
-                       sw.getDescriptionStatistics().getDatapathDescription());
+                       sw.getSwitchDescription().getDatapathDescription());
             }
             return rv;
         }
@@ -104,9 +105,9 @@ public class ControllerSwitchesResource extends ServerResource {
         }
 
         public String getHarole() {
-            if (sw.getHARole() == null)
+            if (sw.getControllerRole() == null)
                 return "null";
-            return sw.getHARole().toString();
+            return HARole.ofOFRole(sw.getControllerRole()).toString();
         }
 
         public String getInetAddress() {
@@ -156,9 +157,9 @@ public class ControllerSwitchesResource extends ServerResource {
 
     @Get("json")
     public Iterator<SwitchJsonSerializerWrapper> retrieve() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
 
         DatapathId switchDPID = null;
 
@@ -174,7 +175,7 @@ public class ControllerSwitchesResource extends ServerResource {
         }
         if (switchDPID != null) {
             IOFSwitch sw =
-                    floodlightProvider.getSwitch(switchDPID);
+                    switchService.getSwitch(switchDPID);
             if (sw != null) {
                 SwitchJsonSerializerWrapper wrappedSw =
                         new SwitchJsonSerializerWrapper(sw);
@@ -186,7 +187,7 @@ public class ControllerSwitchesResource extends ServerResource {
                 form.getFirstValue("dpid__startswith", true);
 
         Iterator<IOFSwitch> iofSwitchIter =
-                floodlightProvider.getAllSwitchMap().values().iterator();
+                switchService.getAllSwitchMap().values().iterator();
         Iterator<SwitchJsonSerializerWrapper> switer =
                 new SwitchJsonSerializerWrapperIterator(iofSwitchIter);
         if (dpidStartsWith != null) {
