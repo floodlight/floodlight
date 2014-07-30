@@ -128,16 +128,14 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
         if (oldSw == sw)  {
             // Note == for object equality, not .equals for value
-            counters.errorActivatedSwitchNotPresent
-                         .increment();
+            counters.errorActivatedSwitchNotPresent.increment();
             log.error("Switch {} added twice?", sw);
             return;
         } else if (oldSw != null) {
             // This happens either when we have switches with duplicate
             // DPIDs or when a switch reconnects before we saw the
             // disconnect
-            counters.switchWithSameDpidActivated
-                        .increment();
+            counters.switchWithSameDpidActivated.increment();
             log.warn("New switch added {} for already-added switch {}", sw, oldSw);
             // We need to disconnect and remove the old switch
             // TODO: we notify switch listeners that the switch has been
@@ -181,7 +179,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
             // Note == for object equality, not .equals for value
             counters.errorActivatedSwitchNotPresent
                          .increment();
-            log.warn("Switch {} status change but not present in sync manager", sw);
+            log.debug("Switch {} status change but not present in sync manager", sw);
             return;
         }
         evSwitch.newEventWithFlush(new SwitchEvent(dpid,
@@ -401,8 +399,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
             // Disconnect all the handler's connections
             if(oldHandler != null){
-                log.debug("{} is a new main connection, killing old handler connections",
-                          connection);
+                log.debug("{} is a new main connection, killing old handler connections", connection);
                 oldHandler.cleanup();
             }
 
@@ -458,7 +455,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
     }
 
     @Override
-    public IOFSwitchBackend  getOFSwitchInstance(IOFConnectionBackend connection,
+    public IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection,
                                 SwitchDescription description,
                                 OFFactory factory, DatapathId datapathId) {
         return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);

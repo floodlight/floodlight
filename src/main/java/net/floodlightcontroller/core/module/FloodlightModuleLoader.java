@@ -584,10 +584,12 @@ public class FloodlightModuleLoader {
 
             IFloodlightModule mod = moduleNameMap.get(moduleName);
             if (mod == null) {
-                logger.warn("Module {} not found or loaded. " +
+                logger.debug("Module {} not found or loaded. " +
                             "Not adding configuration option {} = {}",
                             new Object[]{moduleName, configKey, configValue});
             } else {
+            	logger.debug("Adding configuration option {} = {} for module {}",
+                        new Object[]{configKey, configValue, moduleName});
                 floodlightModuleContext.addConfigParam(mod, configKey, configValue);
             }
         }

@@ -1023,6 +1023,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
                 for (IOFConnectionBackend conn : auxConnections.values()) {
                     sw.registerConnection(conn);
                 }
+                //TODO @Ryan but we should still add the main connection as one, right?
+                //sw.registerConnection(mainConnection); // don't think so bc the connection is already associated 
+                // with the ofswitch
                 setState(new WaitGentableDescStatsReplyState());
             }
 
@@ -1275,6 +1278,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
             } else {
                 unhandledMessageReceived(m);
             }
+        }
+        
+        @Override
+        void processOFError(OFErrorMsg m) {
+        	// @Ryan Need to handle case where the switch is not a BSN switch
+            setState(new WaitInitialRoleState());
         }
 
         @Override
@@ -1565,14 +1574,15 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
         Preconditions.checkState(state instanceof InitState, "must be in InitState");
 
         if (this.featuresReply.getNTables() > 1) {
-            log.debug("Have {} table for switch {}", this.featuresReply.getNTables(),
+            log.debug("Have {} table(s) for switch {}", this.featuresReply.getNTables(),
                       getSwitchInfoString());
             // likely supports L2 table extensions. Send set
+            //TODO @Ryan is this needed?
             sendHandshakeL2TableSet();
             // TODO: no L2 SET reply yet, so fire and forget the set
         }
 
-        if(this.featuresReply.getVersion().compareTo(OFVersion.OF_13) < 0) {
+        if (this.featuresReply.getVersion().compareTo(OFVersion.OF_13) < 0) {
             setState(new WaitConfigReplyState());
         } else {
             // OF 1.3. Ask for Port Descriptions
@@ -1718,6 +1728,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
         mainConnection.write(descStatsRequest);
     }
 
+    //TODO @Ryan can we nuke this as well?
     /** send a BSN GenTable DescStats Request, querying for the tables
      *  available at the switch.
      * @return
@@ -1871,15 +1882,17 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
         if(sw != null) {
             SwitchStatus oldStatus = sw.getStatus();
             if(oldStatus != status) {
+            	log.debug("[{}] SwitchStatus change to {} requested, switch is in status " + oldStatus,
+                        mainConnection.getDatapathId(), status);
                 sw.setStatus(status);
                 switchManager.switchStatusChanged(sw, oldStatus, status);
             } else {
                 log.warn("[{}] SwitchStatus change to {} requested, switch is already in status",
-                        mainConnection.getDatapathId());
+                        mainConnection.getDatapathId(), status);
             }
         } else {
             log.warn("[{}] SwitchStatus change to {} requested, but switch is not allocated yet",
-                    mainConnection.getDatapathId());
+                    mainConnection.getDatapathId(), status);
         }
     }
 

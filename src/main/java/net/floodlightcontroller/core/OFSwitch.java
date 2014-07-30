@@ -774,7 +774,7 @@ public class OFSwitch implements IOFSwitchBackend {
             entry.getValue().disconnect();
             this.connections.remove(entry.getKey());
         }
-
+        log.debug("~~~~~~~SWITCH DISCONNECTED~~~~~~");
         connected = false;
     }
 
