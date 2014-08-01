@@ -113,7 +113,7 @@ public abstract class ForwardingBase
     static {
         AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
     }
-    public static final long appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    public static final U64 appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
     // Comparator for sorting by SwitchCluster
     public Comparator<SwitchPort> clusterIdComparator =

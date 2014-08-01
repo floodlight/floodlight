@@ -705,6 +705,8 @@ public class OFSwitch implements IOFSwitchBackend {
 
     @Override
     public void write(OFMessage m) {
+    	log.debug("Possible OFConnections to write to: {}", connections);
+    	log.debug("Channel info: {} {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
         connections.get(OFAuxId.MAIN).write(m);
     }
 

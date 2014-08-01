@@ -34,7 +34,7 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     }
 
     private void warn() {
-        logger.warn("Switch {} not connected -- cannot send message", getDatapathId());
+        logger.debug("Switch {} not connected -- cannot send message", getDatapathId());
     }
 
     @Override

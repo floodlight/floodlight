@@ -47,7 +47,8 @@ public class CounterResource extends CounterResourceBase {
                 }   
             }   
         } else {
-            List<DebugCounterResource> counter = this.debugCounterService.getCounterHierarchy(moduleName, counterTitle);
+            List<DebugCounterResource> counter = this.debugCounterService.getCounterHierarchy(???, counterTitle));
+            long v = 0;
             if (counter != null) {
                 v = counter.getCounterValue();
             } else {

@@ -13,12 +13,12 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 public class ControllerCounters {
 
     public final String prefix = ControllerCounters.class.getSimpleName();
-    public final String statsPrefix = IOFSwitchBackend.class.getPackage()
-                                                            .getName();
+    public final String statsPrefix = IOFSwitchBackend.class.getPackage().getName();
 
     public final IDebugCounter packetParsingError;
     public final IDebugCounter dispatchMessageWhileStandby;
     public final IDebugCounter dispatchMessage;
+    public final IDebugCounter packetIn;
 
     public ControllerCounters(IDebugCounterService debugCounters) {
         debugCounters.registerModule(prefix);
@@ -44,5 +44,7 @@ public class ControllerCounters {
                                                            "Number of times the packet parsing "
                                                                    + "encountered an error",
                                                            MetaData.ERROR);
+        
+        packetIn = debugCounters.registerCounter(prefix, "packet-in", "Number of packet_in's seen");
     }
 }

@@ -114,13 +114,14 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 
     @Override
     public void write(OFMessage m) {
+    	logger.debug("Got in write() of OFConnection!!!!!");
         if (!isConnected()) {
             if (logger.isDebugEnabled())
                 logger.debug("{}: not connected - dropping message {}", this, m);
             return;
         }
-        if (logger.isTraceEnabled())
-            logger.trace("{}: send {}", this, m);
+        if (logger.isDebugEnabled())
+            logger.debug("{}: send {}", this, m);
         List<OFMessage> msgBuffer = localMsgBuffer.get();
         if (msgBuffer == null) {
             msgBuffer = new ArrayList<OFMessage>();
@@ -130,8 +131,7 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
         counters.updateWriteStats(m);
         msgBuffer.add(m);
 
-        if ((msgBuffer.size() >= Controller.BATCH_MAX_SIZE)
-                || ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
+        if ((msgBuffer.size() >= Controller.BATCH_MAX_SIZE) || ((m.getType() != OFType.PACKET_OUT) && (m.getType() != OFType.FLOW_MOD))) {
             this.write(msgBuffer);
             localMsgBuffer.set(null);
         }
