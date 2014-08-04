@@ -113,8 +113,6 @@ public class OFSwitch implements IOFSwitchBackend {
 
     protected SwitchDescription description;
 
-    private GenTableMap genTableMap;
-
     private SwitchStatus status;
 
     public static final int OFSWITCH_APP_ID = ident(5);
@@ -142,7 +140,6 @@ public class OFSwitch implements IOFSwitchBackend {
         this.role = null;
         this.description = new SwitchDescription();
         this.portManager = new PortManager();
-        this.genTableMap = GenTableMap.empty();
         this.status = SwitchStatus.HANDSHAKE;
 
         // Connections
@@ -561,7 +558,6 @@ public class OFSwitch implements IOFSwitchBackend {
                                 String.format("%s (%d)", duplicatePort.getName(), duplicatePort.getPortNo().getPortNumber()));
                         throw new IllegalArgumentException(msg);
                     }
-                    //TODO @Ryan How to handle port state?
                     // Enabled = not down admin (config) or phys (state)
                     if (!p.getConfig().contains(OFPortConfig.PORT_DOWN)
                     		&& !p.getState().contains(OFPortState.LINK_DOWN)) {
@@ -1033,16 +1029,6 @@ public class OFSwitch implements IOFSwitchBackend {
             throw new SwitchDriverSubHandshakeCompleted(m);
         else
             throw new SwitchDriverSubHandshakeNotStarted();
-    }
-
-    @Override
-    public GenTableMap getGenTableMap() {
-        return genTableMap;
-    }
-
-    @Override
-    public void setGenTableMap(GenTableMap map) {
-        this.genTableMap = map;
     }
 
     @Override

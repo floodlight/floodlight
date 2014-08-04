@@ -50,12 +50,12 @@ import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchString;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModifyStrict;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFFlowRemovedReason;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -75,8 +75,7 @@ import org.slf4j.LoggerFactory;
  * is responsible for ensuring they make sense for the network.
  */
 public class StaticFlowEntryPusher
-implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService,
-IStorageSourceListener, IOFMessageListener {
+implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, IStorageSourceListener, IOFMessageListener {
 	protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusher.class);
 	public static final String StaticFlowName = "staticflowentry";
 
@@ -397,22 +396,21 @@ IStorageSourceListener, IOFMessageListener {
 
 			List<OFMessage> outQueue = new ArrayList<OFMessage>();
 			for (String entry : entriesToAdd.get(dpid).keySet()) {
-				OFFlowModifyStrict newFlowMod = (OFFlowModifyStrict) entriesToAdd.get(dpid).get(entry); //TODO @Ryan cast valid?
-				//OFFlowMod oldFlowMod = entriesFromStorage.get(dpid).get(entry);
-				OFFlowDeleteStrict oldFlowMod = null;
+				OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
+				OFFlowMod oldFlowMod = null;
 				String dpidOldFlowMod = entry2dpid.get(entry);
 				if (dpidOldFlowMod != null) {
-					oldFlowMod = (OFFlowDeleteStrict) entriesFromStorage.get(dpidOldFlowMod).remove(entry); //TODO @Ryan cast valid?
+					oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
 				}
 				if (oldFlowMod != null && newFlowMod != null) {
 					// set the new flow mod to modify a pre-existing rule if these fields match
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
 							&& oldFlowMod.getCookie() == newFlowMod.getCookie()
 							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
-						//newFlowMod = newFlowMod.createBuilder().setCommand(OFFlowModCommand.MODIFY_STRICT).build();
+						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
 						// if they don't match delete the old flow
 					} else {
-						//oldFlowMod.createBuilder().setCommand(OFFlowModCommand.DELETE_STRICT);
+						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
 						if (dpidOldFlowMod.equals(dpid)) {
 							outQueue.add(oldFlowMod);
 						} else {
@@ -468,15 +466,12 @@ IStorageSourceListener, IOFMessageListener {
 		}
 
 		// send flow_mod delete
-		OFFlowDeleteStrict flowMod = (OFFlowDeleteStrict) entriesFromStorage.get(dpid).get(entryName); //TODO @Ryan can this be cast?
-		//flowMod.createBuilder().setCommand(OFFlowModCommand.DELETE_STRICT); // can't find a way to set command
+		OFFlowDeleteStrict flowMod = FlowModUtils.toFlowDeleteStrict(entriesFromStorage.get(dpid).get(entryName));
 
-		if (entriesFromStorage.containsKey(dpid) &&
-				entriesFromStorage.get(dpid).containsKey(entryName)) {
+		if (entriesFromStorage.containsKey(dpid) && entriesFromStorage.get(dpid).containsKey(entryName)) {
 			entriesFromStorage.get(dpid).remove(entryName);
 		} else {
-			log.debug("Tried to delete non-existent entry {} for switch {}",
-					entryName, dpid);
+			log.debug("Tried to delete non-existent entry {} for switch {}", entryName, dpid);
 			return;
 		}
 
@@ -500,7 +495,7 @@ IStorageSourceListener, IOFMessageListener {
 			if (log.isDebugEnabled()) {
 				log.debug("Sending {} new entries to {}", messages.size(), dpid);
 			}
-			ofswitch.write(messages, null);
+			ofswitch.write(messages);
 			ofswitch.flush();
 		}
 	}
@@ -521,7 +516,7 @@ IStorageSourceListener, IOFMessageListener {
 			if (log.isDebugEnabled()) {
 				log.debug("Sending 1 new entries to {}", dpid.toString());
 			}
-			ofswitch.write(message, null);
+			ofswitch.write(message);
 			ofswitch.flush();
 		}
 	}
@@ -536,8 +531,7 @@ IStorageSourceListener, IOFMessageListener {
 		IOFSwitch ofSwitch = switchService.getSwitch(dpid);
 		if (ofSwitch == null) {
 			if (log.isDebugEnabled()) {
-				log.debug("Not deleting key {} :: switch {} not connected",
-						dpid.toString());
+				log.debug("Not deleting key {} :: switch {} not connected", dpid.toString());
 			}
 			return;
 		}
@@ -555,7 +549,7 @@ IStorageSourceListener, IOFMessageListener {
 					"static flow to a switch",
 					recommendation=LogMessageDoc.CHECK_SWITCH)
 	private void writeFlowModToSwitch(IOFSwitch sw, OFFlowMod flowMod) {
-		sw.write(flowMod, null);
+		sw.write(flowMod);
 		sw.flush();
 	}
 
@@ -678,8 +672,8 @@ IStorageSourceListener, IOFMessageListener {
 	// IStaticFlowEntryPusherService methods
 
 	@Override
-	public void addFlow(String name, OFFlowMod fm, String swDpid) {
-		Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid, name);
+	public void addFlow(String name, OFFlowMod fm, DatapathId swDpid) {
+		Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
 		storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
 	}
 
@@ -803,8 +797,8 @@ IStorageSourceListener, IOFMessageListener {
 	}
 
 	@Override
-	public Map<String, OFFlowMod> getFlows(String dpid) {
-		return entriesFromStorage.get(dpid);
+	public Map<String, OFFlowMod> getFlows(DatapathId dpid) {
+		return entriesFromStorage.get(dpid.toString());
 	}
 
 	// IHAListener
@@ -834,21 +828,19 @@ IStorageSourceListener, IOFMessageListener {
 		@Override
 		public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
 				String name) {
-			// TODO Auto-generated method stub
 			return false;
 		}
 
 		@Override
 		public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
 				String name) {
-			// TODO Auto-generated method stub
 			return false;
 		}
 
 		@Override
-		public void transitionToStandby() {
-			// TODO Auto-generated method stub
-			
+		public void transitionToStandby() {	
+			log.debug("Controller is now in STANDBY role. Clearing static flow entries from store.");
+			deleteAllFlows();
 		}
 	}
 }

@@ -61,9 +61,6 @@ public interface IOFSwitchBackend extends IOFSwitch {
      */
     void setFeaturesReply(OFFeaturesReply featuresReply);
 
-    /** set the gentable mapping for this switch */
-    void setGenTableMap(GenTableMap map);
-
     /**
      * Add or modify a switch port.
      * This is called by the core controller

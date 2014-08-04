@@ -165,49 +165,50 @@ public class StaticFlowEntries {
         if ((fm.getActions() != null) && (fm.getActions().size() > 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, StaticFlowEntries.flowModActionsToString(fm.getActions()));
         
-        if (match.get(MatchField.IN_PORT).getPortNumber() != 0)
+        if ((match.get(MatchField.IN_PORT) != null) && (match.get(MatchField.IN_PORT).getPortNumber() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Integer.toString(match.get(MatchField.IN_PORT).getPortNumber()));
         
-        if (!match.get(MatchField.ETH_SRC).equals(MacAddress.of(0)))
+        if ((match.get(MatchField.ETH_SRC) != null) && !match.get(MatchField.ETH_SRC).equals(MacAddress.of(0)))
         	entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, match.get(MatchField.ETH_SRC).toString());
 
-        if (!match.get(MatchField.ETH_DST).equals(MacAddress.of(0)))
+        if ((match.get(MatchField.ETH_DST) != null) && !match.get(MatchField.ETH_DST).equals(MacAddress.of(0)))
         	entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, match.get(MatchField.ETH_DST).toString());
         
-        if (match.get(MatchField.VLAN_VID).getVlan() != -1)
+        if ((match.get(MatchField.VLAN_VID) != null) && (match.get(MatchField.VLAN_VID).getVlan() != -1))
         	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.get(MatchField.VLAN_VID).toString());
         
-        if (match.get(MatchField.VLAN_PCP).getValue() != 0)
+        if ((match.get(MatchField.VLAN_PCP) != null) && (match.get(MatchField.VLAN_PCP).getValue() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Byte.toString(match.get(MatchField.VLAN_PCP).getValue()));
         
-        if (match.get(MatchField.ETH_TYPE).getValue() != 0)
+        if ((match.get(MatchField.ETH_TYPE) != null) && (match.get(MatchField.ETH_TYPE).getValue() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).toString());
         
-        if (match.get(MatchField.IP_ECN).getEcnValue() != 0 && match.get(MatchField.IP_DSCP).getDscpValue() != 0)
+        if ((match.get(MatchField.IP_ECN) != null) && (match.get(MatchField.IP_DSCP) != null) 
+        		&& (match.get(MatchField.IP_ECN).getEcnValue() != 0) && (match.get(MatchField.IP_DSCP).getDscpValue() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte
         			Byte.toString((byte) (match.get(MatchField.IP_ECN).getEcnValue() | match.get(MatchField.IP_DSCP).getDscpValue())));
         
-        if (match.get(MatchField.IP_PROTO).getIpProtocolNumber() != 0)
+        if ((match.get(MatchField.IP_PROTO) != null) && (match.get(MatchField.IP_PROTO).getIpProtocolNumber() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.get(MatchField.IP_PROTO).getIpProtocolNumber()));
         
-        if (match.get(MatchField.IPV4_SRC).getInt() != 0)
+        if ((match.get(MatchField.IPV4_SRC) != null) && (match.get(MatchField.IPV4_SRC).getInt() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, match.get(MatchField.IPV4_SRC).toString());
         
-        if (match.get(MatchField.IPV4_DST).getInt() != 0)
+        if ((match.get(MatchField.IPV4_DST) != null) && (match.get(MatchField.IPV4_DST).getInt() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.get(MatchField.IPV4_DST).toString());
         
-        if (match.get(MatchField.TCP_SRC).getPort() != 0)
+        if ((match.get(MatchField.TCP_SRC) != null) && (match.get(MatchField.TCP_SRC).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.TCP_SRC).toString());
-        else if (match.get(MatchField.UDP_SRC).getPort() != 0)
+        else if ((match.get(MatchField.UDP_SRC) != null) && (match.get(MatchField.UDP_SRC).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.UDP_SRC).toString());
-        else if (match.get(MatchField.SCTP_SRC).getPort() != 0)
+        else if ((match.get(MatchField.SCTP_SRC) != null) && (match.get(MatchField.SCTP_SRC).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.SCTP_SRC).toString());
         
-        if (match.get(MatchField.TCP_DST).getPort() != 0)
+        if ((match.get(MatchField.TCP_DST) != null) && (match.get(MatchField.TCP_DST).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, match.get(MatchField.TCP_DST).toString());
-        else if (match.get(MatchField.UDP_DST).getPort() != 0)
+        else if ((match.get(MatchField.UDP_DST) != null) && (match.get(MatchField.UDP_DST).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.UDP_DST).toString());
-        else if (match.get(MatchField.SCTP_DST).getPort() != 0)
+        else if ((match.get(MatchField.SCTP_DST) != null) && (match.get(MatchField.SCTP_DST).getPort() != 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.SCTP_DST).toString());
         
         return entry;

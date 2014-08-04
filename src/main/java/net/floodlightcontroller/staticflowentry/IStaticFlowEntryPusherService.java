@@ -30,7 +30,7 @@ public interface IStaticFlowEntryPusherService extends IFloodlightService {
      * @param fm The flow to push.
      * @param swDpid The switch DPID to push it to, in 00:00:00:00:00:00:00:01 notation.
      */
-    public void addFlow(String name, OFFlowMod fm, String swDpid);
+    public void addFlow(String name, OFFlowMod fm, DatapathId swDpid);
     
     /**
      * Deletes a static flow
@@ -57,6 +57,6 @@ public interface IStaticFlowEntryPusherService extends IFloodlightService {
     /**
      * Gets a list of flows by switch
      */
-    public Map<String, OFFlowMod> getFlows(String dpid);
+    public Map<String, OFFlowMod> getFlows(DatapathId dpid);
 
 }

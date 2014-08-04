@@ -17,3 +17,5 @@ net.floodlightcontroller.core.internal.ShutdownServiceImpl
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
 net.floodlightcontroller.hub.Hub
+net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
+net.floodlightcontroller.testmodule.TestModule

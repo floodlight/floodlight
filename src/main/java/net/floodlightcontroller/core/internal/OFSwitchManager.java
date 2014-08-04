@@ -381,8 +381,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	 * It is needed for the rest of the switch handshake.
 	 */
 	@Override
-	public void connectionOpened(IOFConnectionBackend connection,
-			OFFeaturesReply featuresReply) {
+	public void connectionOpened(IOFConnectionBackend connection, OFFeaturesReply featuresReply) {
 		DatapathId dpid = connection.getDatapathId();
 		OFAuxId auxId = connection.getAuxId();
 

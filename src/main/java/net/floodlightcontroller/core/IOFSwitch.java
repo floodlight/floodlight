@@ -111,8 +111,6 @@ public interface IOFSwitch extends IOFMessageWriter {
 
     Set<OFCapabilities> getCapabilities();
 
-    GenTableMap getGenTableMap();
-
     short getTables();
 
     /**

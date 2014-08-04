@@ -114,7 +114,6 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 
     @Override
     public void write(OFMessage m) {
-    	logger.debug("Got in write() of OFConnection!!!!!");
         if (!isConnected()) {
             if (logger.isDebugEnabled())
                 logger.debug("{}: not connected - dropping message {}", this, m);
