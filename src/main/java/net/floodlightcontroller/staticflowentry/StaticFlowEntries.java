@@ -98,8 +98,8 @@ public class StaticFlowEntries {
      * @param fm The OFFlowMod to set defaults for
      * @param entryName The name of the entry. Used to compute the cookie.
      */
-    public static void initDefaultFlowMod(OFFlowMod fm, String entryName) {
-        fm = fm.createBuilder().setIdleTimeout((short) 0)   // infinite
+    public static OFFlowMod initDefaultFlowMod(OFFlowMod fm, String entryName) {
+        return fm.createBuilder().setIdleTimeout((short) 0)   // infinite
         .setHardTimeout((short) 0)  // infinite
         .setBufferId(OFBufferId.NO_BUFFER)
         .setOutPort(OFPort.ANY) 
@@ -378,7 +378,7 @@ public class StaticFlowEntries {
             message="Unexpected action '{action}', '{subaction}'",
             explanation="A static flow entry contained an invalid action",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public static void parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
+    public static OFFlowMod parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
         List<OFAction> actions = new LinkedList<OFAction>();
         if (actionstr != null) {
             actionstr = actionstr.toLowerCase();
@@ -433,7 +433,7 @@ public class StaticFlowEntries {
         }
         log.debug("action {}", actions);
         
-        flowMod.createBuilder().setActions(actions).build();
+        return flowMod.createBuilder().setActions(actions).build();
     } 
     
     @LogMessageDoc(level="ERROR",

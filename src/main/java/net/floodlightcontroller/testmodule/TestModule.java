@@ -2,16 +2,15 @@ package net.floodlightcontroller.testmodule;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,16 +56,18 @@ public class TestModule implements IFloodlightModule {
 	@Override
 	public void startUp(FloodlightModuleContext context)
 			throws FloodlightModuleException {
-		OFFlowMod.Builder fmb = OFFactories.getFactory(OFVersion.OF_13).buildFlowModify();
-		OFActionOutput.Builder aob = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput();
-		List<OFAction> al = new ArrayList<OFAction>();
-		al.add(aob.setPort(OFPort.ALL).build());
-		fmb.setActions(al);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setIdleTimeout(10);
-		fmb.setHardTimeout(60);
-		fmb.setOutPort(OFPort.ALL); // let's try and mimic the hub module, but with a flow instead
-									// is this really necessary with the OFOutputAction explicitly set?
+		OFFlowAdd.Builder fmb = /*sw.getOFFactory()*/OFFactories.getFactory(OFVersion.OF_13).buildFlowAdd();
+        //Match.Builder mb = OFFactories.getFactory(OFVersion.OF_13).buildMatch();
+        
+        //fmb.setBufferId(OFBufferId.NO_BUFFER)
+        //fmb.setXid(pi.getXid());
+        /*.setMatch(pi.getMatch())*/
+
+        // set actions
+        OFActionOutput.Builder actionBuilder = /*sw.getOFFactory()*/OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput();
+        actionBuilder.setPort(OFPort.ALL);
+        fmb.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
+        fmb.setOutPort(OFPort.ALL);
 		
 		// we aren't matching anything specifically, so all should be wildcarded by default
 		// in on any port, with any header attributes, send out all ports = Hub module
@@ -76,6 +77,8 @@ public class TestModule implements IFloodlightModule {
 			e.printStackTrace();
 		}
 		sfps.addFlow("test-flow", fmb.build(), DatapathId.of(1)); // This should add the flow, regardless whether or not the switch is connected, I believe. If it connects in a second, it should be pushed.
+		//sfps.deleteFlow("test-flow");
+
 	}
 
 }

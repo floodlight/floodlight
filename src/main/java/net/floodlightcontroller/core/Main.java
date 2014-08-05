@@ -26,6 +26,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleConfigFileNotFoundEx
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.module.IFloodlightModuleContext;
+import net.floodlightcontroller.restserver.IRestApiService;
 
 /**
  * Host for the Floodlight main method
@@ -58,21 +59,17 @@ public class Main {
 			FloodlightModuleLoader fml = new FloodlightModuleLoader();
 			try {
 				IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
-				//TODO @Ryan I don't think we need this anymore... Run REST server
-				//IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
-				//restApi.run();
-				// Run the main floodlight module
-				//IFloodlightProviderService controller =
-				//        moduleContext.getServiceImpl(IFloodlightProviderService.class);
-				// This call blocks, it has to be the last line in the main
-				//controller.run();
+				// @Ryan TODO This should probably be implemented and run as a normal service for consistency;
+				// although, it does need all modules to be loaded and their prior to running.
+				IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
+				restApi.run(); 
 			} catch (FloodlightModuleConfigFileNotFoundException e) {
 				// we really want to log the message, not the stack trace
 				logger.error("Could not read config file: {}", e.getMessage());
 				System.exit(1);
 			}
 			try {
-                fml.runModules(); // this should run the controller module and all modules
+                fml.runModules(); // run the controller module and all modules
             } catch (FloodlightModuleException e) {
                 logger.error("Failed to run controller modules", e);
                 System.exit(1);

@@ -54,6 +54,7 @@ import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchString;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
@@ -269,6 +270,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		StringBuffer matchString = new StringBuffer();
 
 		OFFlowMod.Builder fmb = OFFactories.getFactory(OFVersion.OF_13).buildFlowModify();
+		OFFlowMod fm = fmb.build();
 
 		if (!row.containsKey(COLUMN_SWITCH) || !row.containsKey(COLUMN_NAME)) {
 			log.debug(
@@ -283,7 +285,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			entryName = (String) row.get(COLUMN_NAME);
 			if (!entries.containsKey(switchName))
 				entries.put(switchName, new HashMap<String, OFFlowMod>());
-			StaticFlowEntries.initDefaultFlowMod(fmb.build(), entryName);
+			fm = StaticFlowEntries.initDefaultFlowMod(fm, entryName);
 
 			for (String key : row.keySet()) {
 				if (row.get(key) == null)
@@ -303,14 +305,14 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						return;
 					}
 				} else if (key.equals(COLUMN_ACTIONS)){
-					StaticFlowEntries.parseActionString(fmb.build(), (String) row.get(COLUMN_ACTIONS), log);
+					fm = StaticFlowEntries.parseActionString(fm, (String) row.get(COLUMN_ACTIONS), log);
 				} else if (key.equals(COLUMN_COOKIE)) {
-					fmb.setCookie(
-							StaticFlowEntries.computeEntryCookie(fmb.build(),
+					fm = fm.createBuilder().setCookie(
+							StaticFlowEntries.computeEntryCookie(fm,
 									Integer.valueOf((String) row.get(COLUMN_COOKIE)),
-									entryName));
+									entryName)).build();
 				} else if (key.equals(COLUMN_PRIORITY)) {
-					fmb.setPriority(U16.t(Integer.valueOf((String) row.get(COLUMN_PRIORITY))));
+					fm = fm.createBuilder().setPriority(U16.t(Integer.valueOf((String) row.get(COLUMN_PRIORITY)))).build();
 				} else { // the rest of the keys are for OFMatch().fromString()
 					if (matchString.length() > 0)
 						matchString.append(",");
@@ -332,7 +334,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 
 		try {
 			//TODO @Ryan new fromString() method here. Should verify it especially
-			fmb.setMatch(MatchString.fromString(match, OFVersion.OF_13));
+			fm = fm.createBuilder().setMatch(MatchString.fromString(match, OFVersion.OF_13)).build();
 		} catch (IllegalArgumentException e) {
 			log.debug(
 					"ignoring flow entry {} on switch {} with illegal OFMatch() key: "
@@ -340,7 +342,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			return;
 		}
 
-		entries.get(switchName).put(entryName, fmb.build());
+		entries.get(switchName).put(entryName, fm);
 	}
 
 	@Override
@@ -402,6 +404,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				if (dpidOldFlowMod != null) {
 					oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
 				}
+				// pre-existing case. should modify or delete, but not add
 				if (oldFlowMod != null && newFlowMod != null) {
 					// set the new flow mod to modify a pre-existing rule if these fields match
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
@@ -418,10 +421,11 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						}
 					}
 				}
-				// write the new flow
+				// new case. should add a flow, not modify or delete
 				if (newFlowMod != null) {
-					entriesFromStorage.get(dpid).put(entry, newFlowMod);
-					outQueue.add(newFlowMod);
+					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
+					entriesFromStorage.get(dpid).put(entry, addTmp);
+					outQueue.add(addTmp);
 					entry2dpid.put(entry, dpid);
 				} else {
 					entriesFromStorage.get(dpid).remove(entry);

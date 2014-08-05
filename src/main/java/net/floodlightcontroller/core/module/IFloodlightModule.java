@@ -19,8 +19,6 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.Map;
 
-import org.projectfloodlight.openflow.protocol.OFType;
-
 /**
  * Defines an interface for loadable Floodlight modules.
  * 
