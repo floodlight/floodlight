@@ -1046,23 +1046,6 @@ public class OFSwitch implements IOFSwitchBackend {
         this.status = switchStatus;
     }
 
-    /**
-     * Can the port be turned on without forming a new loop?
-     * <p>
-     * <b>FIXME</b> - This API is deprecated and will be removed soon. The
-     * property is currently not implemented by the platform, so this method
-     * always returns false. Whether or not a port is safe to use is dependent
-     * on the application strategy for forwarding traffic.
-     *
-     * @param port_num the port number to be tested
-     * @return always false for now.
-     */
-    @Deprecated
-    @Override
-    public boolean isFastPort(OFPort port_num) {
-        return false;
-    }
-
     @Override
     public void updateControllerConnections(OFBsnControllerConnectionsReply controllerCxnsReply) {
 

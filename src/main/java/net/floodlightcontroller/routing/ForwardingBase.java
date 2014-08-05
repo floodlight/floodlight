@@ -317,8 +317,7 @@ public abstract class ForwardingBase
         return srcSwitchIncluded;
     }
 
-    protected Match wildcard(Match match, IOFSwitch sw,
-                               Match.Builder wildcard_hints) {
+    protected Match wildcard(Match match, IOFSwitch sw, Match.Builder wildcard_hints) {
         if (wildcard_hints != null) {
             //return match.clone().setWildcards(wildcard_hints.intValue());
         	Match.Builder mb = match.createBuilder();

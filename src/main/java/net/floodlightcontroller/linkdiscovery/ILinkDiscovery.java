@@ -150,7 +150,7 @@ public interface ILinkDiscovery {
     }
 
     public enum SwitchType {
-        BASIC_SWITCH, CORE_SWITCH, UNDEFFINED_SWITCH
+        BASIC_SWITCH, CORE_SWITCH
     };
 
     public enum LinkType {

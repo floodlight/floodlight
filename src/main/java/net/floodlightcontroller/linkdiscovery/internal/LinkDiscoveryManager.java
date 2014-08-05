@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.linkdiscovery.internal;
 
-import java.io.IOException;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
@@ -45,8 +44,8 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.PortChangeType;
-import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -105,7 +104,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,7 +146,6 @@ IFloodlightModule, IInfoProvider {
 	private static final String LINK_VALID_TIME = "valid_time";
 	private static final String LINK_TYPE = "link_type";
 	private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
-	private static final String SWITCH_CONFIG_CORE_SWITCH = "core_switch";
 
 	// Event updaters for debug events
 	protected IEventCategory<DirectLinkEvent> eventCategory;
@@ -160,6 +157,7 @@ IFloodlightModule, IInfoProvider {
 	protected IRestApiService restApiService;
 	protected IDebugCounterService debugCounterService;
 	protected IDebugEventService debugEventService;
+	protected IShutdownService shutdownService;
 
 	// Role
 	protected HARole role;
@@ -816,22 +814,13 @@ IFloodlightModule, IInfoProvider {
 		}
 
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
-		if (iofSwitch == null) return;
-
-		if (autoPortFastFeature && iofSwitch.isFastPort(p)) {
-			// Do nothing as the port is a fast port.
+		if (iofSwitch == null) {
 			return;
 		}
+
 		NodePortTuple npt = new NodePortTuple(sw, p);
 		discover(sw, p);
-		// if it is not a fast port, add it to quarantine.
-		if (!iofSwitch.isFastPort(p)) {
-			addToQuarantineQueue(npt);
-		} else {
-			// Add to maintenance queue to ensure that BDDP packets
-			// are sent out.
-			addToMaintenanceQueue(npt);
-		}
+		addToQuarantineQueue(npt);
 	}
 
 	//***********************************
@@ -930,8 +919,7 @@ IFloodlightModule, IInfoProvider {
 	 */
 	protected void removeFromQuarantineQueue(NodePortTuple npt) {
 		// Remove all occurrences of the node port tuple from the list.
-		while (quarantineQueue.remove(npt))
-			;
+		while (quarantineQueue.remove(npt));
 	}
 
 	/**
@@ -940,11 +928,9 @@ IFloodlightModule, IInfoProvider {
 	 * @param npt
 	 */
 	protected void addToMaintenanceQueue(NodePortTuple npt) {
-		// TODO We are not checking if the switch port tuple is already
-		// in the maintenance list or not. This will be an issue for
-		// really large number of switch ports in the network.
-		if (maintenanceQueue.contains(npt) == false)
+		if (maintenanceQueue.contains(npt) == false) {
 			maintenanceQueue.add(npt);
+		}
 	}
 
 	/**
@@ -954,8 +940,7 @@ IFloodlightModule, IInfoProvider {
 	 */
 	protected void removeFromMaintenanceQueue(NodePortTuple npt) {
 		// Remove all occurrences of the node port tuple from the queue.
-		while (maintenanceQueue.remove(npt))
-			;
+		while (maintenanceQueue.remove(npt));
 	}
 
 	/**
@@ -971,8 +956,7 @@ IFloodlightModule, IInfoProvider {
 		while (count < BDDP_TASK_SIZE && quarantineQueue.peek() != null) {
 			NodePortTuple npt;
 			npt = quarantineQueue.remove();
-			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
-					false);
+			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
 			nptList.add(npt);
 			count++;
 		}
@@ -981,8 +965,7 @@ IFloodlightModule, IInfoProvider {
 		while (count < BDDP_TASK_SIZE && maintenanceQueue.peek() != null) {
 			NodePortTuple npt;
 			npt = maintenanceQueue.remove();
-			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
-					false);
+			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
 			count++;
 		}
 
@@ -1001,14 +984,15 @@ IFloodlightModule, IInfoProvider {
 		if (ofp == null) return;
 
 		Set<OFPortState> srcPortState = ofp.getState();
-		boolean portUp = ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue())
-				!= OFPortState.OFPPS_STP_BLOCK.getValue());
+		//TODO @Ryan verify this is equivalent boolean portUp = ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue());
+		boolean portUp = !srcPortState.contains(OFPortState.STP_BLOCK);
 
-		if (portUp)
+		if (portUp) {
 			operation = UpdateOperation.PORT_UP;
-		else
+		} else {
 			operation = UpdateOperation.PORT_DOWN;
-
+		}
+		
 		updates.add(new LDUpdate(sw, port, operation));
 	}
 
@@ -1085,12 +1069,9 @@ IFloodlightModule, IInfoProvider {
 						sw.toString(), port.getPortNumber());
 			}
 			return false;
+		} else {
+			return true;
 		}
-
-		// For fast ports, do not send forward LLDPs or BDDPs.
-		if (!isReverse && autoPortFastFeature && iofSwitch.isFastPort(port))
-			return false;
-		return true;
 	}
 
 	/**
@@ -1168,10 +1149,10 @@ IFloodlightModule, IInfoProvider {
 			if (iofSwitch == null) continue;
 			if (iofSwitch.getEnabledPorts() != null) {
 				for (OFPortDesc ofp : iofSwitch.getEnabledPorts()) {
-					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) continue;
-					if (autoPortFastFeature && iofSwitch.isFastPort(ofp.getPortNumber())) continue;
+					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {
+						continue;
+					}
 
-					// sends forward LLDP only non-fastports.
 					sendDiscoveryMessage(sw, ofp.getPortNo(), true, false);
 
 					// If the switch port is not already in the maintenance
@@ -1183,24 +1164,28 @@ IFloodlightModule, IInfoProvider {
 		}
 	}
 
-	protected UpdateOperation getUpdateOperation(OFPortState srcPortState,
-			OFPortState dstPortState) {
-		boolean added = (((srcPortState & OFPortState.STP_MASK)
-				!= OFPortState.STP_BLOCK) &&
-				((dstPortState & OFPortState.STP_MASK)
-						!= OFPortState.STP_BLOCK));
+	protected UpdateOperation getUpdateOperation(OFPortState srcPortState, OFPortState dstPortState) {
+		//TODO @Ryan verify this is equivalent
+		//boolean added = (((srcPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK) && ((dstPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK));
+		boolean added = ((srcPortState != OFPortState.STP_BLOCK) && (dstPortState != OFPortState.STP_BLOCK));
 
-		if (added) return UpdateOperation.LINK_UPDATED;
-		return UpdateOperation.LINK_REMOVED;
+		if (added) {
+			return UpdateOperation.LINK_UPDATED;
+		} else {
+			return UpdateOperation.LINK_REMOVED;
+		}
 	}
 
 	protected UpdateOperation getUpdateOperation(OFPortState srcPortState) {
-		boolean portUp = ((srcPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK);
+		//TODO @Ryan verify this too
+		//boolean portUp = ((srcPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK);
+		boolean portUp = (srcPortState != OFPortState.STP_BLOCK);
 
-		if (portUp)
+		if (portUp) {
 			return UpdateOperation.PORT_UP;
-		else
+		} else {
 			return UpdateOperation.PORT_DOWN;
+		}
 	}
 
 	//************************************
@@ -1630,34 +1615,34 @@ IFloodlightModule, IInfoProvider {
 
 	@Override
 	public void switchRemoved(DatapathId sw) {
-		List<Link> eraseList = new ArrayList<Link>();
-		lock.writeLock().lock();
-		try {
-			if (switchLinks.containsKey(sw)) {
-				if (log.isTraceEnabled()) {
-					log.trace("Handle switchRemoved. Switch {}; removing links {}",
-							sw.toString(), switchLinks.get(sw));
-				}
+        List<Link> eraseList = new ArrayList<Link>();
+        lock.writeLock().lock();
+        try {
+            if (switchLinks.containsKey(sw)) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Handle switchRemoved. Switch {}; removing links {}", sw.toString(), switchLinks.get(sw));
+                }
 
-				List<LDUpdate> updateList = new ArrayList<LDUpdate>();
-				updateList.add(new LDUpdate(sw, SwitchType.UNDEFFINED_SWITCH, UpdateOperation.SWITCH_REMOVED));
-				// add all tuples with an endpoint on this switch to erase list
-				eraseList.addAll(switchLinks.get(sw));
+                List<LDUpdate> updateList = new ArrayList<LDUpdate>();
+                updateList.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
+                // add all tuples with an endpoint on this switch to erase list
+                eraseList.addAll(switchLinks.get(sw));
 
-				// Sending the updateList, will ensure the updates in this
-				// list will be added at the end of all the link updates.
-				// Thus, it is not necessary to explicitly add these updates
-				// to the queue.
-				deleteLinks(eraseList, "Switch Removed", updateList);
-			} else {
-				// Switch does not have any links.
-				updates.add(new LDUpdate(sw, SwitchType.UNDEFFINED_SWITCH, UpdateOperation.SWITCH_REMOVED));
-			}
-		} finally {
-			lock.writeLock().unlock();
-		}
+                // Sending the updateList, will ensure the updates in this
+                // list will be added at the end of all the link updates.
+                // Thus, it is not necessary to explicitly add these updates
+                // to the queue.
+                deleteLinks(eraseList, "Switch Removed", updateList);
+            } else {
+                // Switch does not have any links.
+                updates.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
 
-	}
+    }
+
 
 	@Override
 	public void switchActivated(DatapathId switchId) {
@@ -1667,7 +1652,7 @@ IFloodlightModule, IInfoProvider {
 				processNewPort(sw.getId(), p);
 			}
 		}
-		LDUpdate update = new LDUpdate(sw.getId(), SwitchType.UNDEFFINED_SWITCH, UpdateOperation.SWITCH_UPDATED);
+		LDUpdate update = new LDUpdate(sw.getId(), SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_UPDATED);
 		updates.add(update);
 	}
 
@@ -1702,67 +1687,65 @@ IFloodlightModule, IInfoProvider {
 	@Override
 	public void rowsModified(String tableName, Set<Object> rowKeys) {
 
-		if (tableName.equals(TOPOLOGY_TABLE_NAME)) {
-			readTopologyConfigFromStorage();
-			return;
-		}
+        if (tableName.equals(TOPOLOGY_TABLE_NAME)) {
+            readTopologyConfigFromStorage();
+            return;
+        }
+        /* TODO @Ryan can we nuke all this? core switch isn't used all that often (I don't think) and not at all anymore
 
-		ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
-		for (Object key : rowKeys) {
-			Long swId = new Long(HexString.toLong((String) key));
-			IOFSwitch sw = switchService.getSwitch(DatapathId.of(swId));
-			if (sw != null) {
-				boolean curr_status = sw.hasAttribute(IOFSwitch.SwitchStatus.MASTER.toString()); //TODO @Ryan assuming IS_CORE_SWITCH is MASTER now
-				boolean new_status = false;
-				IResultSet resultSet = null;
+        ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
+        for (Object key : rowKeys) {
+            DatapathId swId = DatapathId.of((String) key);
+            IOFSwitch sw = switchService.getSwitch(swId);
+            if (sw != null) {
+               boolean curr_status = sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
+                boolean new_status = false;
+                IResultSet resultSet = null;
 
-				try {
-					resultSet = storageSourceService.getRow(tableName, key);
-					for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-						// In case of multiple rows, use the status in last row?
-						Map<String, Object> row = it.next().getRow();
-						if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
-							new_status = ((String) row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
-						}
-					}
-				} finally {
-					if (resultSet != null) resultSet.close();
-				}
+                try {
+                    resultSet = storageSourceService.getRow(tableName, key);
+                    for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
+                        // In case of multiple rows, use the status in last row?
+                        Map<String, Object> row = it.next().getRow();
+                        if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
+                            new_status = ((String) row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
+                        }
+                    }
+                } finally {
+                    if (resultSet != null) {
+                    	resultSet.close();
+                    }
+                }
 
-				if (curr_status != new_status) {
-					updated_switches.add(sw);
-				}
-			} else {
-				if (log.isTraceEnabled()) {
-					log.trace("Update for switch which has no entry in switch "
-							+ "list (dpid={}), a delete action.",
-							key);
-				}
-			}
-		}
+                if (curr_status != new_status) {
+                    updated_switches.add(sw);
+                }
+            } else {
+                if (log.isTraceEnabled()) {
+                    log.trace("Update for switch which has no entry in switch " + "list (dpid={}), a delete action.", key);
+                }
+            }
+        }
 
-		for (IOFSwitch sw : updated_switches) {
-			// Set SWITCH_IS_CORE_SWITCH to it's inverse value
-			if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
-				sw.removeAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
-				if (log.isTraceEnabled()) {
-					log.trace("SWITCH_IS_CORE_SWITCH set to False for {}",
-							sw);
-				}
-				updates.add(new LDUpdate(sw.getId(),
-						SwitchType.BASIC_SWITCH,
-						UpdateOperation.SWITCH_UPDATED));
-			} else {
-				sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH,
-						new Boolean(true));
-				if (log.isTraceEnabled()) {
-					log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
-				}
-				updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH,
-						UpdateOperation.SWITCH_UPDATED));
-			}
-		}
-	}
+        for (IOFSwitch sw : updated_switches) {
+            // Set SWITCH_IS_CORE_SWITCH to it's inverse value
+            if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
+                sw.removeAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
+                if (log.isTraceEnabled()) {
+                    log.trace("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
+                } 
+                updates.add(new LDUpdate(sw.getId(),
+                                         SwitchType.BASIC_SWITCH,
+                                         UpdateOperation.SWITCH_UPDATED));
+            } else {
+                sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, new Boolean(true));
+                if (log.isTraceEnabled()) {
+                    log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
+                }
+                updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH, UpdateOperation.SWITCH_UPDATED));
+            } 
+        }*/
+    }
 
 	@Override
 	public void rowsDeleted(String tableName, Set<Object> rowKeys) {
@@ -1923,6 +1906,7 @@ IFloodlightModule, IInfoProvider {
 		l.add(IStorageSourceService.class);
 		l.add(IThreadPoolService.class);
 		l.add(IRestApiService.class);
+		l.add(IShutdownService.class);
 		return l;
 	}
 
@@ -1936,6 +1920,7 @@ IFloodlightModule, IInfoProvider {
 		restApiService = context.getServiceImpl(IRestApiService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
 		debugEventService = context.getServiceImpl(IDebugEventService.class);
+		shutdownService = context.getServiceImpl(IShutdownService.class);
 
 		// read our config options
 		Map<String, String> configOptions = context.getConfigParams(this);
@@ -2030,9 +2015,7 @@ IFloodlightModule, IInfoProvider {
 				try {
 					discoverLinks();
 				} catch (StorageException e) {
-					log.error("Storage exception in LLDP send timer; "
-							+ "terminating process", e);
-					floodlightProviderService.terminate();
+					shutdownService.terminate("Storage exception in LLDP send timer. Terminating process " + e, 0); // TODO @Ryan as there "standard" shutdown codes Floodlight uses?
 				} catch (Exception e) {
 					log.error("Exception in LLDP send timer.", e);
 				} finally {
@@ -2222,8 +2205,7 @@ IFloodlightModule, IInfoProvider {
 
 		@Override
 		public void transitionToStandby() {
-			// TODO Auto-generated method stub
-			
+			//no-op
 		}
 	}
 

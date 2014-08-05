@@ -91,7 +91,6 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.util.MACAddress;
 import net.floodlightcontroller.util.MatchString;
 import net.floodlightcontroller.util.OFMessageDamper;
 
@@ -129,7 +128,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected HashMap<String, LBPool> pools;
     protected HashMap<String, LBMember> members;
     protected HashMap<Integer, String> vipIpToId;
-    protected HashMap<Integer, MACAddress> vipIpToMac;
+    protected HashMap<Integer, MacAddress> vipIpToMac;
     protected HashMap<Integer, String> memberIpToId;
     protected HashMap<IPClient, LBMember> clientToMember;
     
@@ -284,7 +283,7 @@ public class LoadBalancer implements IFloodlightModule,
         ARP arpRequest = (ARP) eth.getPayload();
         
         // have to do proxy arp reply since at this point we cannot determine the requesting application type
-        byte[] vipProxyMacBytes = vips.get(vipId).proxyMac.toBytes();
+        byte[] vipProxyMacBytes = vips.get(vipId).proxyMac.getBytes();
         
         // generate proxy ARP reply
         IPacket arpReply = new Ethernet()
@@ -585,7 +584,7 @@ public class LoadBalancer implements IFloodlightModule,
                }
         
                fmb.setMatch(match);
-               sfpService.addFlow(entryName, fmb.build(), swString);
+               sfpService.addFlow(entryName, fmb.build(), sw);
 
            }
         }
@@ -746,31 +745,26 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public Collection<LBMonitor> listMonitors() {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public Collection<LBMonitor> listMonitor(String monitorId) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public LBMonitor createMonitor(LBMonitor monitor) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public LBMonitor updateMonitor(LBMonitor monitor) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public int removeMonitor(String monitorId) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
@@ -830,7 +824,7 @@ public class LoadBalancer implements IFloodlightModule,
         pools = new HashMap<String, LBPool>();
         members = new HashMap<String, LBMember>();
         vipIpToId = new HashMap<Integer, String>();
-        vipIpToMac = new HashMap<Integer, MACAddress>();
+        vipIpToMac = new HashMap<Integer, MacAddress>();
         memberIpToId = new HashMap<Integer, String>();
     }
 
