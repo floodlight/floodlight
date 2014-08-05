@@ -21,6 +21,7 @@ import java.util.ArrayList;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Route;
@@ -36,7 +37,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst Destination switch DPID.
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      */
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie);
+    public Route getRoute(DatapathId src, DatapathId dst, U64 cookie);
 
     /**
      * Provides a route between src and dst, with option to allow or
@@ -46,7 +47,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      * @param tunnelEnabled boolean option.
      */
-    public Route getRoute(DatapathId src, DatapathId dst, long cookie, boolean tunnelEnabled);
+    public Route getRoute(DatapathId src, DatapathId dst, U64 cookie, boolean tunnelEnabled);
 
     /**
      * Provides a route between srcPort on src and dstPort on dst.
@@ -56,8 +57,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort dstPort on Destination switch.
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, long cookie);
+    public Route getRoute(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, U64 cookie);
 
     /**
      * Provides a route between srcPort on src and dstPort on dst.
@@ -68,9 +68,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
      * @param tunnelEnabled boolean option.
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, long cookie,
-                             boolean tunnelEnabled);
+    public Route getRoute(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, U64 cookie, boolean tunnelEnabled);
 
     /** return all routes, if available */
     public ArrayList<Route> getRoutes(DatapathId longSrcDpid, DatapathId longDstDpid, boolean tunnelEnabled);

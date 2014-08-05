@@ -32,7 +32,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 public class RoutingDecision implements IRoutingDecision {
 
     protected RoutingAction action;
-    protected Match.Builder wildcards;
+    protected Match match;
     protected short hardTimeout;
     protected SwitchPort srcPort;
     protected IDevice srcDevice;
@@ -45,12 +45,10 @@ public class RoutingDecision implements IRoutingDecision {
                                   RoutingAction action) {
         this.srcPort = new SwitchPort(swDipd, inPort);
         this.srcDevice = srcDevice;
-        this.destDevices = 
-                Collections.synchronizedList(new ArrayList<IDevice>());
-        this.broadcastIntertfaces = 
-                Collections.synchronizedList(new ArrayList<SwitchPort>());
+        this.destDevices = Collections.synchronizedList(new ArrayList<IDevice>());
+        this.broadcastIntertfaces = Collections.synchronizedList(new ArrayList<SwitchPort>());
         this.action = action;
-        this.wildcards = null;
+        this.match = null;
         this.hardTimeout = ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT;
     }
     
@@ -97,13 +95,13 @@ public class RoutingDecision implements IRoutingDecision {
     }
     
     @Override
-    public Match.Builder getWildcards() {
-        return this.wildcards;
+    public Match getMatch() {
+        return this.match;
     }
     
     @Override
-    public void setWildcards(Match.Builder wildcards) {
-        this.wildcards = wildcards;
+    public void setMatch(Match match) {
+        this.match = match;
     }
    
     @Override
@@ -124,6 +122,6 @@ public class RoutingDecision implements IRoutingDecision {
     public String toString() {
         return "action " + action +
                " wildcard " +
-               ((wildcards == null) ? null : wildcards.toString());
+               ((match == null) ? null : match.toString());
     }
 }

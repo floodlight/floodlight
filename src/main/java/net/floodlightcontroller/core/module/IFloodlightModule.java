@@ -49,8 +49,7 @@ public interface IFloodlightModule {
      * same object or different objects for different exported services.
      * @return The map from service interface class to service implementation
      */
-    public Map<Class<? extends IFloodlightService>,
-               IFloodlightService> getServiceImpls();
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls();
     
     /**
      * Get a list of Modules that this module depends on.  The module system
@@ -86,6 +85,5 @@ public interface IFloodlightModule {
      * @throws FloodlightModuleException 
      */
     
-    void startUp(FloodlightModuleContext context) 
-            throws FloodlightModuleException;
+    void startUp(FloodlightModuleContext context) throws FloodlightModuleException;
 }

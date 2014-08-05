@@ -59,8 +59,8 @@ public interface IRoutingDecision {
     public void addDestinationDevice(IDevice d);
     public List<SwitchPort> getMulticastInterfaces();
     public void setMulticastInterfaces(List<SwitchPort> lspt);
-    public Match.Builder getWildcards();
-    public void setWildcards(Match.Builder wildcards);
+    public Match getMatch();
+    public void setMatch(Match wildcards);
     public short getHardTimeout();
     public void setHardTimeout(short hardTimeout);
 }

@@ -18,6 +18,7 @@
 package net.floodlightcontroller.routing;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
 
 /**
  * Stores the endpoints of a route, in this case datapath ids
@@ -27,16 +28,16 @@ import org.projectfloodlight.openflow.types.DatapathId;
 public class RouteId implements Cloneable, Comparable<RouteId> {
     protected DatapathId src;
     protected DatapathId dst;
-    protected long cookie;
+    protected U64 cookie;
 
     public RouteId(DatapathId src, DatapathId dst) {
         super();
         this.src = src;
         this.dst = dst;
-        this.cookie = 0;
+        this.cookie = U64.of(0);
     }
 
-    public RouteId(DatapathId src, DatapathId dst, long cookie) {
+    public RouteId(DatapathId src, DatapathId dst, U64 cookie) {
         super();
         this.src = src;
         this.dst = dst;
@@ -59,12 +60,12 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
         this.dst = dst;
     }
 
-    public long getCookie() {
+    public U64 getCookie() {
         return cookie;
     }
 
     public void setCookie(int cookie) {
-        this.cookie = cookie;
+        this.cookie = U64.of(cookie);
     }
 
     @Override
@@ -73,7 +74,7 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
         Long result = new Long(1);
         result = prime * result + ((dst == null) ? 0 : dst.hashCode());
         result = prime * result + ((src == null) ? 0 : src.hashCode());
-        result = prime * result + cookie; 
+        result = prime * result + cookie.getValue(); 
         // To cope with long cookie, use Long to compute hash then use Long's 
         // built-in hash to produce int hash code
         return result.hashCode(); 

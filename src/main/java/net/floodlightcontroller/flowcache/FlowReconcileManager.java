@@ -384,11 +384,10 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
             return minFlows;
         }
 
-        int pktInRate = getPktInRate(pktInCounter, new Date());
+        int pktInRate = getPktInRate(ctrPacketInRsrc, new Date());
 
         // Update the last packetInCounter
-        lastPacketInCounter = (SimpleCounter)
-        SimpleCounter.createCounter(pktInCounter);
+        lastPacketInCounter = new DebugCounterResource(counter);
         int capacity = minFlows;
         if ((pktInRate + MIN_FLOW_RECONCILE_PER_SECOND) <=
                                MAX_SYSTEM_LOAD_PER_SECOND) {
@@ -402,7 +401,7 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
         return capacity;
     }
 
-    protected int getPktInRate(ICounter newCnt, Date currentTime) {
+    protected int getPktInRate(DebugCounterResource newCnt, Date currentTime) {
         if (newCnt == null ||
             newCnt.getCounterDate() == null ||
             newCnt.getCounterValue() == null) {

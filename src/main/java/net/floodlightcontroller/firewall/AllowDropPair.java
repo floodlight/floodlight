@@ -19,7 +19,10 @@ package net.floodlightcontroller.firewall;
 
 import org.projectfloodlight.openflow.protocol.match.Match;
 
-public class RuleWildcardsPair {
-    public FirewallRule rule;
-    public Match.Builder wildcards;
+
+public class AllowDropPair {
+    //public int allow = OFMatch.OFPFW_ALL;
+    //public int drop = OFMatch.OFPFW_ALL;
+    public Match.Builder allow;
+    public Match.Builder drop;
 }

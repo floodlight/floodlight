@@ -33,15 +33,13 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -49,22 +47,13 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
+import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,18 +67,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                    explanation="An unsupported PacketIn decision has been " +
                    		"passed to the flow programming component",
                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision,
-                                          FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
-                                   IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         // If a decision has been made we obey it
         // otherwise we just forward
         if (decision != null) {
             if (log.isTraceEnabled()) {
-                log.trace("Forwaring decision={} was made for PacketIn={}",
-                        decision.getRoutingAction().toString(),
-                        pi);
+                log.trace("Forwaring decision={} was made for PacketIn={}", decision.getRoutingAction().toString(), pi);
             }
 
             switch(decision.getRoutingAction()) {
@@ -108,14 +93,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     doDropFlow(sw, pi, decision, cntx);
                     return Command.CONTINUE;
                 default:
-                    log.error("Unexpected decision made for this packet-in={}",
-                            pi, decision.getRoutingAction());
+                    log.error("Unexpected decision made for this packet-in={}", pi, decision.getRoutingAction());
                     return Command.CONTINUE;
             }
         } else {
             if (log.isTraceEnabled()) {
-                log.trace("No decision was made for PacketIn={}, forwarding",
-                        pi);
+                log.trace("No decision was made for PacketIn={}, forwarding", pi);
             }
 
             if (eth.isBroadcast() || eth.isMulticast()) {
@@ -135,11 +118,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             		"drop flow mod to a switch",
             recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        // initialize match structure and populate it using the packet
-        OFMatch match = new OFMatch();
-        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
-        if (decision.getWildcards() != null) {
-            match.setWildcards(decision.getWildcards());
+        // initialize match structure and populate it based on the packet in's match
+        Match.Builder mb = pi.getMatch().createBuilder();
+        Match m = null;
+        if (decision.getMatch() != null) {
+            m = decision.getMatch();
         }
 
         // Create flow-mod based on packet-in and src-switch
@@ -172,29 +155,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi,
                                  FloodlightContext cntx,
                                  boolean requestFlowRemovedNotifn) {
-        //OFMatch match = new OFMatch();
-        //match.loadFromPacket(pi.getData(), pi.getInPort());
-        //Match.Builder matchBuilder = sw.getOFFactory().buildMatch();
-        Match match = pi.getMatch();
+        OFMatch match = new OFMatch();
+        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+
         // Check if we have the location of the destination
         IDevice dstDevice =
                 IDeviceService.fcStore.
                     get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 
-        // DESTINATION DEVICE = KNOWN
         if (dstDevice != null) {
             IDevice srcDevice =
                     IDeviceService.fcStore.
                         get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-            DatapathId srcIsland = topology.getL2DomainId(sw.getId());
+            Long srcIsland = topology.getL2DomainId(sw.getId());
 
-            // If we can't find the source device, that's no good
             if (srcDevice == null) {
                 log.debug("No device entry found for source device");
                 return;
             }
-            
-            // If the source isn't connected to an OF island we control, then that's not good either
             if (srcIsland == null) {
                 log.debug("No openflow island found for source {}/{}",
                           sw.getStringId(), pi.getInPort());
@@ -202,24 +180,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
             }
 
             // Validate that we have a destination known on the same island
-            // Validate that the source and destination are not on the same switch port
+            // Validate that the source and destination are not on the same switchport
             boolean on_same_island = false;
             boolean on_same_if = false;
             for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-                DatapathId dstSwDpid = dstDap.getSwitchDPID();
-                DatapathId dstIsland = topology.getL2DomainId(dstSwDpid);
+                long dstSwDpid = dstDap.getSwitchDPID();
+                Long dstIsland = topology.getL2DomainId(dstSwDpid);
                 if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                     on_same_island = true;
-                    if ((sw.getId().equals(dstSwDpid)) &&
-                        (pi.getInPort().equals(dstDap.getPort()))) {
+                    if ((sw.getId() == dstSwDpid) &&
+                        (pi.getInPort() == dstDap.getPort())) {
                         on_same_if = true;
                     }
                     break;
                 }
             }
 
-            // If the two devices are not on the same L2 network, find out how to get to the destination via flooding
             if (!on_same_island) {
+                // Flood since we don't know the dst device
                 if (log.isTraceEnabled()) {
                     log.trace("No first hop island found for destination " +
                               "device {}, Action = flooding", dstDevice);
@@ -228,7 +206,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                 return;
             }
 
-            // If the two devices are on the same switch port number, they should be able to communicate w/o further flows
             if (on_same_if) {
                 if (log.isTraceEnabled()) {
                     log.trace("Both source and destination are on the same " +
@@ -254,9 +231,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
                 // srcCluster and dstCluster here cannot be null as
                 // every switch will be at least in its own L2 domain.
-                DatapathId srcCluster =
+                Long srcCluster =
                         topology.getL2DomainId(srcDap.getSwitchDPID());
-                DatapathId dstCluster =
+                Long dstCluster =
                         topology.getL2DomainId(dstDap.getSwitchDPID());
 
                 int srcVsDest = srcCluster.compareTo(dstCluster);
@@ -264,9 +241,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     if (!srcDap.equals(dstDap)) {
                         Route route =
                                 routingEngine.getRoute(srcDap.getSwitchDPID(),
-                                                       srcDap.getPort(),
+                                                       (short)srcDap.getPort(),
                                                        dstDap.getSwitchDPID(),
-                                                       dstDap.getPort(), 0); //cookie = 0, i.e., default route
+                                                       (short)dstDap.getPort(), 0); //cookie = 0, i.e., default route
                         if (route != null) {
                             if (log.isTraceEnabled()) {
                                 log.trace("pushRoute match={} route={} " +
@@ -279,7 +256,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                     AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
                             // if there is prior routing decision use wildcard
-                            Match.Builder wildcard_hints;
+                            Integer wildcard_hints = null;
                             IRoutingDecision decision = null;
                             if (cntx != null) {
                                 decision = IRoutingDecision.rtStore
@@ -290,7 +267,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                 wildcard_hints = decision.getWildcards();
                             } else {
                             	// L2 only wildcard if there is no prior route decision
-                                /*wildcard_hints = ((Integer) sw
+                                wildcard_hints = ((Integer) sw
                                         .getAttribute(IOFSwitch.PROP_FASTWILDCARDS))
                                         .intValue()
                                         & ~OFMatch.OFPFW_IN_PORT
@@ -298,21 +275,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                                         & ~OFMatch.OFPFW_DL_SRC
                                         & ~OFMatch.OFPFW_DL_DST
                                         & ~OFMatch.OFPFW_NW_SRC_MASK
-                                        & ~OFMatch.OFPFW_NW_DST_MASK;*/
-                            	//TODO @Ryan does the use of NO_MASK here automatically assume isFullyWildcarded is true?
-                            	// dummy values set to not trigger isFullyWildcarded
-                            	wildcard_hints = sw.getOFFactory().buildMatch();
-                                wildcard_hints.setExact(MatchField.IN_PORT, OFPort.of(1));
-                                wildcard_hints.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(1));
-                                wildcard_hints.setExact(MatchField.ETH_SRC, MacAddress.BROADCAST);
-                                wildcard_hints.setExact(MatchField.ETH_DST, MacAddress.BROADCAST);
-                                wildcard_hints.setExact(MatchField.IPV4_SRC, IPv4Address.FULL_MASK);
-                                wildcard_hints.setExact(MatchField.IPV4_DST, IPv4Address.FULL_MASK);
+                                        & ~OFMatch.OFPFW_NW_DST_MASK;
                             }
 
                             pushRoute(route, match, wildcard_hints, pi, sw.getId(), cookie,
                                       cntx, requestFlowRemovedNotifn, false,
-                                      OFFlowModCommand.ADD);
+                                      OFFlowMod.OFPFC_ADD);
                         }
                     }
                     iSrcDaps++;
@@ -323,9 +291,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                     iDstDaps++;
                 }
             }
-        // END DESTINATION DEVICE = KNOWN
         } else {
-        	// DESTINATION DEVICE = UNKNOWN, thus flood to hopefully/eventually find out where the destination is
+            // Flood since we don't know the dst device
             doFlood(sw, pi, cntx);
         }
     }
@@ -345,7 +312,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
                    		"out message to the switch",
                    recommendation=LogMessageDoc.CHECK_SWITCH)
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        if (topology.isIncomingBroadcastAllowed(sw.getId(),
+        if (topologyService.isIncomingBroadcastAllowed(sw.getId(),
                                                 pi.getInPort()) == false) {
             if (log.isTraceEnabled()) {
                 log.trace("doFlood, drop broadcast packet, pi={}, " +
@@ -412,7 +379,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
-        l.add(IOFSwitchService.class);
         l.add(IDeviceService.class);
         l.add(IRoutingService.class);
         l.add(ITopologyService.class);
@@ -440,7 +406,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         super.init();
         this.floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-        this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.deviceManager = context.getServiceImpl(IDeviceService.class);
         this.routingEngine = context.getServiceImpl(IRoutingService.class);
         this.topology = context.getServiceImpl(ITopologyService.class);

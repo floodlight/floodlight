@@ -173,19 +173,19 @@ public class FirewallRulesResource extends ServerResource {
                 if (tmp.equalsIgnoreCase("-1") == false) {
                     // user inputs hex format dpid
                     rule.dpid = DatapathId.of(tmp);
-                    rule.wildcard_dpid = false;
+                    rule.any_dpid = false;
                 }
             }
 
             else if (n == "src-inport") {
                 rule.in_port = OFPort.of(Integer.parseInt(jp.getText()));
-                rule.wildcard_in_port = false;
+                rule.any_in_port = false;
             }
 
             else if (n == "src-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_dl_src = false;
+                    rule.any_dl_src = false;
                     rule.dl_src = MacAddress.of(tmp);
                 }
             }
@@ -193,7 +193,7 @@ public class FirewallRulesResource extends ServerResource {
             else if (n == "dst-mac") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_dl_dst = false;
+                    rule.any_dl_dst = false;
                     rule.dl_dst = MacAddress.of(tmp);
                 }
             }
@@ -201,11 +201,11 @@ public class FirewallRulesResource extends ServerResource {
             else if (n == "dl-type") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ARP")) {
-                    rule.wildcard_dl_type = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.ARP;
                 }
                 if (tmp.equalsIgnoreCase("IPv4")) {
-                    rule.wildcard_dl_type = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                 }
             }
@@ -213,8 +213,8 @@ public class FirewallRulesResource extends ServerResource {
             else if (n == "src-ip") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_nw_src = false;
-                    rule.wildcard_dl_type = false;
+                    rule.any_nw_src = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                     rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of(tmp);
                 }
@@ -223,8 +223,8 @@ public class FirewallRulesResource extends ServerResource {
             else if (n == "dst-ip") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.wildcard_nw_dst = false;
-                    rule.wildcard_dl_type = false;
+                    rule.any_nw_dst = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                     rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(tmp);
                 }
@@ -233,30 +233,30 @@ public class FirewallRulesResource extends ServerResource {
             else if (n == "nw-proto") {
                 tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("TCP")) {
-                    rule.wildcard_nw_proto = false;
+                    rule.any_nw_proto = false;
                     rule.nw_proto = IpProtocol.TCP;
-                    rule.wildcard_dl_type = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                 } else if (tmp.equalsIgnoreCase("UDP")) {
-                    rule.wildcard_nw_proto = false;
+                    rule.any_nw_proto = false;
                     rule.nw_proto = IpProtocol.UDP;
-                    rule.wildcard_dl_type = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
-                    rule.wildcard_nw_proto = false;
+                    rule.any_nw_proto = false;
                     rule.nw_proto = IpProtocol.ICMP;
-                    rule.wildcard_dl_type = false;
+                    rule.any_dl_type = false;
                     rule.dl_type = EthType.IPv4;
                 }
             }
 
             else if (n == "tp-src") {
-                rule.wildcard_tp_src = false;
+                rule.any_tp_src = false;
                 rule.tp_src = TransportPort.of(Integer.parseInt(jp.getText()));
             }
 
             else if (n == "tp-dst") {
-                rule.wildcard_tp_dst = false;
+                rule.any_tp_dst = false;
                 rule.tp_dst = TransportPort.of(Integer.parseInt(jp.getText()));
             }
 

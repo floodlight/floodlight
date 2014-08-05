@@ -95,15 +95,15 @@ public class Firewall implements IFirewallService, IOFMessageListener,
     public static final String COLUMN_TP_SRC = "tp_src";
     public static final String COLUMN_TP_DST = "tp_dst";
     public static final String COLUMN_WILDCARD_DPID = "wildcard_dpid";
-    public static final String COLUMN_WILDCARD_IN_PORT = "wildcard_in_port";
-    public static final String COLUMN_WILDCARD_DL_SRC = "wildcard_dl_src";
-    public static final String COLUMN_WILDCARD_DL_DST = "wildcard_dl_dst";
-    public static final String COLUMN_WILDCARD_DL_TYPE = "wildcard_dl_type";
-    public static final String COLUMN_WILDCARD_NW_SRC = "wildcard_nw_src";
-    public static final String COLUMN_WILDCARD_NW_DST = "wildcard_nw_dst";
-    public static final String COLUMN_WILDCARD_NW_PROTO = "wildcard_nw_proto";
-    public static final String COLUMN_WILDCARD_TP_SRC = "wildcard_tp_src";
-    public static final String COLUMN_WILDCARD_TP_DST = "wildcard_tp_dst";
+    public static final String COLUMN_WILDCARD_IN_PORT = "any_in_port";
+    public static final String COLUMN_WILDCARD_DL_SRC = "any_dl_src";
+    public static final String COLUMN_WILDCARD_DL_DST = "any_dl_dst";
+    public static final String COLUMN_WILDCARD_DL_TYPE = "any_dl_type";
+    public static final String COLUMN_WILDCARD_NW_SRC = "any_nw_src";
+    public static final String COLUMN_WILDCARD_NW_DST = "any_nw_dst";
+    public static final String COLUMN_WILDCARD_NW_PROTO = "any_nw_proto";
+    public static final String COLUMN_WILDCARD_TP_SRC = "any_tp_src";
+    public static final String COLUMN_WILDCARD_TP_DST = "any_tp_dst";
     public static final String COLUMN_PRIORITY = "priority";
     public static final String COLUMN_ACTION = "action";
     public static String ColumnNames[] = { COLUMN_RULEID, COLUMN_DPID,
@@ -258,48 +258,48 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_DPID)) {
-                            r.wildcard_dpid = Boolean.parseBoolean((String) row
+                            r.any_dpid = Boolean.parseBoolean((String) row
                                     .get(COLUMN_WILDCARD_DPID));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_IN_PORT)) {
-                            r.wildcard_in_port = Boolean
+                            r.any_in_port = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_IN_PORT));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_DL_SRC)) {
-                            r.wildcard_dl_src = Boolean
+                            r.any_dl_src = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_SRC));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_DL_DST)) {
-                            r.wildcard_dl_dst = Boolean
+                            r.any_dl_dst = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_DST));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_DL_TYPE)) {
-                            r.wildcard_dl_type = Boolean
+                            r.any_dl_type = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_DL_TYPE));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_NW_SRC)) {
-                            r.wildcard_nw_src = Boolean
+                            r.any_nw_src = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_SRC));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_NW_DST)) {
-                            r.wildcard_nw_dst = Boolean
+                            r.any_nw_dst = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_DST));
                         } 
                         
                         else if (key.equals(COLUMN_WILDCARD_NW_PROTO)) {
-                            r.wildcard_nw_proto = Boolean
+                            r.any_nw_proto = Boolean
                                     .parseBoolean((String) row
                                             .get(COLUMN_WILDCARD_NW_PROTO));
                         } 
@@ -378,11 +378,9 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         case PACKET_IN:
             IRoutingDecision decision = null;
             if (cntx != null) {
-                decision = IRoutingDecision.rtStore.get(cntx,
-                        IRoutingDecision.CONTEXT_DECISION);
+                decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
 
-                return this.processPacketInMessage(sw, (OFPacketIn) msg,
-                        decision, cntx);
+                return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
             }
             break;
         default:
@@ -471,26 +469,16 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         entry.put(COLUMN_NW_PROTO, Short.toString(rule.nw_proto.getIpProtocolNumber()));
         entry.put(COLUMN_TP_SRC, Integer.toString(rule.tp_src.getPort()));
         entry.put(COLUMN_TP_DST, Integer.toString(rule.tp_dst.getPort()));
-        entry.put(COLUMN_WILDCARD_DPID,
-                Boolean.toString(rule.wildcard_dpid));
-        entry.put(COLUMN_WILDCARD_IN_PORT,
-                Boolean.toString(rule.wildcard_in_port));
-        entry.put(COLUMN_WILDCARD_DL_SRC,
-                Boolean.toString(rule.wildcard_dl_src));
-        entry.put(COLUMN_WILDCARD_DL_DST,
-                Boolean.toString(rule.wildcard_dl_dst));
-        entry.put(COLUMN_WILDCARD_DL_TYPE,
-                Boolean.toString(rule.wildcard_dl_type));
-        entry.put(COLUMN_WILDCARD_NW_SRC,
-                Boolean.toString(rule.wildcard_nw_src));
-        entry.put(COLUMN_WILDCARD_NW_DST,
-                Boolean.toString(rule.wildcard_nw_dst));
-        entry.put(COLUMN_WILDCARD_NW_PROTO,
-                Boolean.toString(rule.wildcard_nw_proto));
-        entry.put(COLUMN_WILDCARD_TP_SRC,
-                Boolean.toString(rule.wildcard_tp_src));
-        entry.put(COLUMN_WILDCARD_TP_DST,
-                Boolean.toString(rule.wildcard_tp_dst));
+        entry.put(COLUMN_WILDCARD_DPID, Boolean.toString(rule.any_dpid));
+        entry.put(COLUMN_WILDCARD_IN_PORT, Boolean.toString(rule.any_in_port));
+        entry.put(COLUMN_WILDCARD_DL_SRC, Boolean.toString(rule.any_dl_src));
+        entry.put(COLUMN_WILDCARD_DL_DST, Boolean.toString(rule.any_dl_dst));
+        entry.put(COLUMN_WILDCARD_DL_TYPE, Boolean.toString(rule.any_dl_type));
+        entry.put(COLUMN_WILDCARD_NW_SRC, Boolean.toString(rule.any_nw_src));
+        entry.put(COLUMN_WILDCARD_NW_DST, Boolean.toString(rule.any_nw_dst));
+        entry.put(COLUMN_WILDCARD_NW_PROTO, Boolean.toString(rule.any_nw_proto));
+        entry.put(COLUMN_WILDCARD_TP_SRC, Boolean.toString(rule.any_tp_src));
+        entry.put(COLUMN_WILDCARD_TP_DST, Boolean.toString(rule.any_tp_dst));
         entry.put(COLUMN_PRIORITY, Integer.toString(rule.priority));
         entry.put(COLUMN_ACTION, Integer.toString(rule.action.ordinal()));
         storageSource.insertRow(TABLE_NAME, entry);
@@ -542,12 +530,10 @@ public class Firewall implements IFirewallService, IOFMessageListener,
      * @return an instance of RuleWildcardsPair that specify rule that matches
      *         and the wildcards for the firewall decision
      */
-    protected RuleWildcardsPair matchWithRule(IOFSwitch sw, OFPacketIn pi,
-            FloodlightContext cntx) {
+    protected RuleMatchPair matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         FirewallRule matched_rule = null;
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        WildcardsPair wildcards = new WildcardsPair();
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        AllowDropPair adp = new AllowDropPair();
 
         synchronized (rules) {
             Iterator<FirewallRule> iter = this.rules.iterator();
@@ -558,7 +544,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 rule = iter.next();
 
                 // check if rule matches
-                if (rule.matchesFlow(sw.getId(), pi.getInPort(), eth, wildcards) == true) {
+                if (rule.matchesFlow(sw.getId(), pi.getInPort(), eth, adp) == true) {
                     matched_rule = rule;
                     break;
                 }
@@ -566,14 +552,14 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         }
 
         // make a pair of rule and wildcards, then return it
-        RuleWildcardsPair ret = new RuleWildcardsPair();
-        ret.rule = matched_rule;
+        RuleMatchPair rmp = new RuleMatchPair();
+        rmp.rule = matched_rule;
         if (matched_rule == null || matched_rule.action == FirewallRule.FirewallAction.DENY) {
-            ret.wildcards = wildcards.drop;
+            rmp.match = adp.drop.build();
         } else {
-            ret.wildcards = wildcards.allow;
+            rmp.match = adp.allow.build();
         }
-        return ret;
+        return rmp;
     }
 
     /**
@@ -590,8 +576,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         return ((IPAddress & inv_subnet_mask) == inv_subnet_mask);
     }
 
-    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
-            IRoutingDecision decision, FloodlightContext cntx) {
+    public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
@@ -602,30 +587,25 @@ public class Firewall implements IFirewallService, IOFMessageListener,
             // the case to determine if we have L2 broadcast + L3 unicast
             // don't allow this broadcast packet if such is the case (malformed
             // packet)
-            if ((eth.getPayload() instanceof IPv4)
-                    && this.IPIsBroadcast(((IPv4) eth.getPayload())
-                            .getDestinationAddress()) == false) {
+            if ((eth.getPayload() instanceof IPv4) && (((IPv4) eth.getPayload()).getDestinationAddress().isBroadcast() == false)) {
                 allowBroadcast = false;
             }
             if (allowBroadcast == true) {
-                if (logger.isTraceEnabled())
-                    logger.trace("Allowing broadcast traffic for PacketIn={}",
-                            pi);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Allowing broadcast traffic for PacketIn={}", pi);
+                }
                                         
-                decision = new RoutingDecision(sw.getId(), pi.getInPort()
-                		, IDeviceService.fcStore.
-                        get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
+                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.MULTICAST);
                 decision.addToContext(cntx);
             } else {
-                if (logger.isTraceEnabled())
-                    logger.trace(
-                            "Blocking malformed broadcast traffic for PacketIn={}",
-                            pi);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Blocking malformed broadcast traffic for PacketIn={}", pi);
+                }
 
-                decision = new RoutingDecision(sw.getId(), pi.getInPort()
-                		, IDeviceService.fcStore.
-                        get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
+                decision = new RoutingDecision(sw.getId(), pi.getInPort(),
+                		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.DROP);
                 decision.addToContext(cntx);
             }
@@ -645,32 +625,27 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // check if we have a matching rule for this packet/flow
         // and no decision is taken yet
         if (decision == null) {
-            RuleWildcardsPair match_ret = this.matchWithRule(sw, pi, cntx);
-            FirewallRule rule = match_ret.rule;
+            RuleMatchPair rmp = this.matchWithRule(sw, pi, cntx);
+            FirewallRule rule = rmp.rule;
 
             if (rule == null || rule.action == FirewallRule.FirewallAction.DENY) {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort()
-                		, IDeviceService.fcStore.
-                        get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
-                        IRoutingDecision.RoutingAction.DROP);
-                decision.setWildcards(match_ret.wildcards);
+                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE), 
+                		IRoutingDecision.RoutingAction.DROP);
+                decision.setMatch(rmp.match);
                 decision.addToContext(cntx);
                 if (logger.isTraceEnabled()) {
-                    if (rule == null)
-                        logger.trace(
-                                "No firewall rule found for PacketIn={}, blocking flow",
-                                pi);
-                    else if (rule.action == FirewallRule.FirewallAction.DENY) {
-                        logger.trace("Deny rule={} match for PacketIn={}",
-                                rule, pi);
+                    if (rule == null) {
+                        logger.trace("No firewall rule found for PacketIn={}, blocking flow", pi);
+                    } else if (rule.action == FirewallRule.FirewallAction.DENY) {
+                        logger.trace("Deny rule={} match for PacketIn={}", rule, pi);
                     }
                 }
             } else {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort()
-                		, IDeviceService.fcStore.
-                        get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
+                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
-                decision.setWildcards(match_ret.wildcards);
+                decision.setMatch(rmp.match);
                 decision.addToContext(cntx);
                 if (logger.isTraceEnabled())
                     logger.trace("Allow rule={} match for PacketIn={}", rule,

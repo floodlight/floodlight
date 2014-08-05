@@ -50,16 +50,16 @@ public class FirewallRuleSerializer extends JsonSerializer<FirewallRule> {
         jGen.writeNumberField("nw_proto", rule.nw_proto.getIpProtocolNumber());
         jGen.writeNumberField("tp_src", rule.tp_src.getPort());
         jGen.writeNumberField("tp_dst", rule.tp_dst.getPort());
-        jGen.writeBooleanField("wildcard_dpid", rule.wildcard_dpid);
-        jGen.writeBooleanField("wildcard_in_port", rule.wildcard_in_port);
-        jGen.writeBooleanField("wildcard_dl_src", rule.wildcard_dl_src);
-        jGen.writeBooleanField("wildcard_dl_dst", rule.wildcard_dl_dst);
-        jGen.writeBooleanField("wildcard_dl_type", rule.wildcard_dl_type);
-        jGen.writeBooleanField("wildcard_nw_src", rule.wildcard_nw_src);
-        jGen.writeBooleanField("wildcard_nw_dst", rule.wildcard_nw_dst);
-        jGen.writeBooleanField("wildcard_nw_proto", rule.wildcard_nw_proto);
-        jGen.writeBooleanField("wildcard_tp_src", rule.wildcard_tp_src);
-        jGen.writeBooleanField("wildcard_tp_dst", rule.wildcard_tp_dst);
+        jGen.writeBooleanField("any_dpid", rule.any_dpid);
+        jGen.writeBooleanField("any_in_port", rule.any_in_port);
+        jGen.writeBooleanField("any_dl_src", rule.any_dl_src);
+        jGen.writeBooleanField("any_dl_dst", rule.any_dl_dst);
+        jGen.writeBooleanField("any_dl_type", rule.any_dl_type);
+        jGen.writeBooleanField("any_nw_src", rule.any_nw_src);
+        jGen.writeBooleanField("any_nw_dst", rule.any_nw_dst);
+        jGen.writeBooleanField("any_nw_proto", rule.any_nw_proto);
+        jGen.writeBooleanField("any_tp_src", rule.any_tp_src);
+        jGen.writeBooleanField("any_tp_dst", rule.any_tp_dst);
         jGen.writeNumberField("priority", rule.priority);
         jGen.writeStringField("action", String.valueOf(rule.action));
         

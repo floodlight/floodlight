@@ -73,6 +73,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,10 +83,7 @@ import org.slf4j.LoggerFactory;
  * through the topology.
  */
 @LogMessageCategory("Network Topology")
-public class TopologyManager implements
-IFloodlightModule, ITopologyService,
-IRoutingService, ILinkDiscoveryListener,
-IOFMessageListener {
+public class TopologyManager implements IFloodlightModule, ITopologyService, IRoutingService, ILinkDiscoveryListener, IOFMessageListener {
 
 	protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 
@@ -676,23 +674,23 @@ IOFMessageListener {
 	// ***************
 
 	@Override
-	public Route getRoute(DatapathId src, DatapathId dst, long cookie) {
+	public Route getRoute(DatapathId src, DatapathId dst, U64 cookie) {
 		return getRoute(src, dst, cookie, true);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, DatapathId dst, long cookie, boolean tunnelEnabled) {
+	public Route getRoute(DatapathId src, DatapathId dst, U64 cookie, boolean tunnelEnabled) {
 		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 		return ti.getRoute(src, dst, cookie);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, long cookie) {
+	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, U64 cookie) {
 		return getRoute(src, srcPort, dst, dstPort, cookie, true);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, long cookie,
+	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, U64 cookie,
 			boolean tunnelEnabled) {
 		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 		return ti.getRoute(null, src, srcPort, dst, dstPort, cookie);
@@ -716,7 +714,7 @@ IOFMessageListener {
 
 		// return single path now
 		ArrayList<Route> result=new ArrayList<Route>();
-		result.add(getRoute(srcDpid, dstDpid, 0, tunnelEnabled));
+		result.add(getRoute(srcDpid, dstDpid, U64.of(0), tunnelEnabled));
 		return result;
 	}
 
@@ -740,13 +738,11 @@ IOFMessageListener {
 	}
 
 	@Override
-	public Command receive(IOFSwitch sw, OFMessage msg,
-			FloodlightContext cntx) {
+	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch (msg.getType()) {
 		case PACKET_IN:
 			ctrIncoming.increment();
-			return this.processPacketInMessage(sw,
-					(OFPacketIn) msg, cntx);
+			return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
 		default:
 			break;
 		}
@@ -1079,9 +1075,7 @@ IOFMessageListener {
 
 	}
 
-	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
-			FloodlightContext cntx) {
-
+	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		// get the packet-in switch.
 		Ethernet eth =
 				IFloodlightProviderService.bcStore.

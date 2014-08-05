@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -601,14 +602,12 @@ public class TopologyInstance {
         DatapathId srcId = id.getSrc();
         DatapathId dstId = id.getDst();
 
-        LinkedList<NodePortTuple> switchPorts =
-                new LinkedList<NodePortTuple>();
+        LinkedList<NodePortTuple> switchPorts = new LinkedList<NodePortTuple>();
 
         if (destinationRootedTrees == null) return null;
         if (destinationRootedTrees.get(dstId) == null) return null;
 
-        Map<DatapathId, Link> nexthoplinks =
-                destinationRootedTrees.get(dstId).getLinks();
+        Map<DatapathId, Link> nexthoplinks = destinationRootedTrees.get(dstId).getLinks();
 
         if (!switches.contains(srcId) || !switches.contains(dstId)) {
             // This is a switch that is not connected to any other switch
@@ -619,7 +618,7 @@ public class TopologyInstance {
             // The only possible non-null path for this case is
             // if srcId equals dstId --- and that too is an 'empty' path []
 
-        } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId)!=null)) {
+        } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId) != null)) {
             while (srcId != dstId) {
                 Link l = nexthoplinks.get(srcId);
 
@@ -633,8 +632,9 @@ public class TopologyInstance {
         // else, no path exists, and path equals null
 
         Route result = null;
-        if (switchPorts != null && !switchPorts.isEmpty())
+        if (switchPorts != null && !switchPorts.isEmpty()) {
             result = new Route(id, switchPorts);
+        }
         if (log.isTraceEnabled()) {
             log.trace("buildroute: {}", result);
         }
@@ -665,7 +665,7 @@ public class TopologyInstance {
     }
 
     protected Route getRoute(ServiceChain sc, DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, long cookie) {
+    		DatapathId dstId, OFPort dstPort, U64 cookie) {
 
 
         // Return null the route source and desitnation are the
@@ -675,7 +675,7 @@ public class TopologyInstance {
 
         List<NodePortTuple> nptList;
         NodePortTuple npt;
-        Route r = getRoute(srcId, dstId, 0);
+        Route r = getRoute(srcId, dstId, U64.of(0));
         if (r == null && !srcId.equals(dstId)) return null;
 
         if (r != null) {
@@ -696,7 +696,7 @@ public class TopologyInstance {
     // NOTE: Return a null route if srcId equals dstId.  The null route
     // need not be stored in the cache.  Moreover, the LoadingCache will
     // throw an exception if null route is returned.
-    protected Route getRoute(DatapathId srcId, DatapathId dstId, long cookie) {
+    protected Route getRoute(DatapathId srcId, DatapathId dstId, U64 cookie) {
         // Return null route if srcId equals dstId
         if (srcId.equals(dstId)) return null;
 

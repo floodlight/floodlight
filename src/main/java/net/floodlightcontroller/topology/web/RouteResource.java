@@ -24,6 +24,7 @@ import net.floodlightcontroller.topology.NodePortTuple;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -51,10 +52,10 @@ public class RouteResource extends ServerResource {
         DatapathId longDstDpid = DatapathId.of(dstDpid);
         OFPort shortDstPort = OFPort.of(Integer.parseInt(dstPort));
         
-        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0);
+        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, U64.of(0));
         
         if (result != null) {
-            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0).getPath();
+            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, U64.of(0)).getPath();
         }
         else {
             log.debug("ERROR! no route found");
