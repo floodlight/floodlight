@@ -202,14 +202,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 								"flow modification to a switch",
 								recommendation=LogMessageDoc.CHECK_SWITCH)
 	})
-	public boolean pushRoute(Route route, Match match,
-			Integer wildcard_hints,
-			OFPacketIn pi,
-			DatapathId pinSwitch,
-			U64 cookie,
-			FloodlightContext cntx,
-			boolean reqeustFlowRemovedNotifn,
-			boolean doFlush,
+	public boolean pushRoute(Route route, Match match, OFPacketIn pi,
+			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
+			boolean reqeustFlowRemovedNotifn, boolean doFlush,
 			OFFlowModCommand flowModCommand) {
 
 		boolean srcSwitchIncluded = false;
@@ -228,6 +223,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 				return srcSwitchIncluded;
 			}
 			
+			// need to build flow mod based on what type it is. Cannot set command later
 			OFFlowMod.Builder fmb;
 			switch (flowModCommand) {
 			case ADD:
@@ -246,14 +242,12 @@ public abstract class ForwardingBase implements IOFMessageListener {
 				log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
 			case MODIFY_STRICT:
 				fmb = sw.getOFFactory().buildFlowModifyStrict();
-				break;			}
+				break;			
+			}
 			
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
 			Match.Builder mb = match.createBuilder();
-
-			// set the match. TODO @Ryan look into setting Match's wildcards before hand, then pass in correctly
-			//fmb.setMatch(wildcard(match, sw, wildcard_hints));
 
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
@@ -302,15 +296,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		return srcSwitchIncluded;
 	}
 
-	/* TODO @Ryan get rid of this once wildcard/masked matches are set properly wherever they need to be 
-	 * protected Match wildcard(Match match, IOFSwitch sw, Integer wildcard_hints) {
-	 *
-		if (wildcard_hints != null) {
-			return match.clone().setWildcards(wildcard_hints.intValue());
-		}
-		return match.clone();
-	}*/
-
 	/**
 	 * Pushes a packet-out to a switch. If bufferId != BUFFER_ID_NONE we
 	 * assume that the packetOut switch is the same as the packetIn switch
@@ -352,8 +337,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 * @param outport   output port
 	 * @param cntx      context of the packet
 	 */
-	protected void pushPacket(IOFSwitch sw, OFPacketIn pi,
-			boolean useBufferId,
+	protected void pushPacket(IOFSwitch sw, OFPacketIn pi, boolean useBufferId,
 			OFPort outport, FloodlightContext cntx) {
 
 		if (pi == null) {
@@ -381,7 +365,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
 		// set actions
 		List<OFAction> actions = new ArrayList<OFAction>();
-		actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE)); //TODO @Ryan is MAX_VALUE == 0xffff previously?
+		actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE));
 		pob.setActions(actions);
 
 		if (useBufferId) {
@@ -415,11 +399,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 * @param ports
 	 * @param cntx
 	 */
-	public void packetOutMultiPort(byte[] packetData,
-			IOFSwitch sw,
-			OFPort inPort,
-			Set<OFPort> outPorts,
-			FloodlightContext cntx) {
+	public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
+			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
 		//setting actions
 		List<OFAction> actions = new ArrayList<OFAction>();
 
@@ -456,11 +437,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 * Accepts a PacketIn instead of raw packet data. Note that the inPort
 	 * and switch can be different than the packet in switch/port
 	 */
-	public void packetOutMultiPort(OFPacketIn pi,
-			IOFSwitch sw,
-			OFPort inPort,
-			Set<OFPort> outPorts,
-			FloodlightContext cntx) {
+	public void packetOutMultiPort(OFPacketIn pi, IOFSwitch sw,
+			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
 		packetOutMultiPort(pi.getData(), sw, inPort, outPorts, cntx);
 	}
 
@@ -469,51 +447,10 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 * Accepts an IPacket instead of raw packet data. Note that the inPort
 	 * and switch can be different than the packet in switch/port
 	 */
-	public void packetOutMultiPort(IPacket packet,
-			IOFSwitch sw,
-			OFPort inPort,
-			Set<OFPort> outPorts,
-			FloodlightContext cntx) {
+	public void packetOutMultiPort(IPacket packet, IOFSwitch sw,
+			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
 		packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
 	}
-
-	/*TODO @Ryan what are these? outdated? protected boolean isInBroadcastCache(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        // Get the cluster id of the switch.
-        // Get the hash of the Ethernet packet.
-        if (sw == null) return true;
-
-        // If the feature is disabled, always return false;
-        if (!broadcastCacheFeature) return false;
-
-        Ethernet eth =
-            IFloodlightProviderService.bcStore.get(cntx,
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
-        Long broadcastHash;
-        broadcastHash = topology.getL2DomainId(sw.getId()).getLong() * prime1 +
-                        pi.getInPort().getPortNumber() * prime2 + eth.hashCode();
-        if (broadcastCache.update(broadcastHash)) {
-            //TODO @Ryan isn't implemented anymore, nuke it? sw.updateBroadcastCache(broadcastHash, pi.getInPort());
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    protected boolean isInSwitchBroadcastCache(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        if (sw == null) return true;
-
-        // If the feature is disabled, always return false;
-        if (!broadcastCacheFeature) return false;
-
-        // Get the hash of the Ethernet packet.
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
-        long hash = pi.getInPort().getPortNumber() * prime2 + eth.hashCode();
-
-        // some FORWARD_OR_FLOOD packets are unicast with unknown destination mac
-        return sw.updateBroadcastCache(hash, pi.getInPort());
-    }*/
 
 	@LogMessageDocs({
 		@LogMessageDoc(level="ERROR",
@@ -523,8 +460,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 						recommendation=LogMessageDoc.CHECK_SWITCH)
 	})
 	public static boolean blockHost(IOFSwitchService switchService,
-			SwitchPort sw_tup, MacAddress host_mac,
-			short hardTimeout, U64 cookie) {
+			SwitchPort sw_tup, MacAddress host_mac, short hardTimeout, U64 cookie) {
 
 		if (sw_tup == null) {
 			return false;
@@ -566,9 +502,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
 	@Override
 	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		return (type.equals(OFType.PACKET_IN) &&
-				(name.equals("topology") ||
-						name.equals("devicemanager")));
+		return (type.equals(OFType.PACKET_IN) && (name.equals("topology") || name.equals("devicemanager")));
 	}
 
 	@Override

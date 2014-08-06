@@ -268,7 +268,7 @@ public class FirewallRulesResource extends ServerResource {
                 if (jp.getText().equalsIgnoreCase("allow") == true) {
                     rule.action = FirewallRule.FirewallAction.ALLOW;
                 } else if (jp.getText().equalsIgnoreCase("deny") == true) {
-                    rule.action = FirewallRule.FirewallAction.DENY;
+                    rule.action = FirewallRule.FirewallAction.DROP;
                 }
             }
         }

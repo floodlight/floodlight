@@ -116,8 +116,7 @@ public class OFMessageDamper {
      * the message was dampened. 
      * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx)
-                    throws IOException {
+    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) throws IOException {
         return write(sw, msg, cntx, false);
     }
     
@@ -131,9 +130,7 @@ public class OFMessageDamper {
      * the message was dampened. 
      * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg,
-                        FloodlightContext cntx, boolean flush) 
-            throws IOException {
+    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx, boolean flush) throws IOException {
         if (! msgTypesToCache.contains(msg.getType())) {
             sw.write(msg, LogicalOFMessageCategory.MAIN);
             if (flush) {

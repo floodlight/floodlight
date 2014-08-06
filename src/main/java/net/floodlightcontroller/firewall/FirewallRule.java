@@ -50,6 +50,10 @@ public class FirewallRule implements Comparable<FirewallRule> {
     public TransportPort tp_src;
     public TransportPort tp_dst;
 
+    /* Specify whether or not a match field is relevant.
+     * true = anything goes; don't care what it is
+     * false = field must match (w or w/o mask depending on field)
+     */
     public boolean any_dpid;
     public boolean any_in_port; 
     public boolean any_dl_src;
@@ -67,10 +71,10 @@ public class FirewallRule implements Comparable<FirewallRule> {
 
     public enum FirewallAction {
         /*
-         * DENY: Deny rule
+         * DROP: Drop rule
          * ALLOW: Allow rule
          */
-        DENY, ALLOW
+        DROP, ALLOW
     }
 
     /**
@@ -167,7 +171,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
     }
 
     /**
-     * Matches this rule to a given flow - incoming packet
+     * Checks if this rule is a match for the incoming packet's MatchFields
      * 
      * @param switchDpid
      *            the Id of the connected switch
@@ -176,12 +180,12 @@ public class FirewallRule implements Comparable<FirewallRule> {
      * @param packet
      *            the Ethernet packet that arrives at the switch
      * @param allow-drop-pair
-     *            the pair of matches (allow and deny) given by Firewall
+     *            the pair of matches (allow and drop) given by the Firewall
      *            module that is used by the Firewall module's matchWithRule
      *            method to derive the match object for the decision to be taken
      * @return true if the rule matches the given packet-in, false otherwise
      */
-    public boolean matchesFlow(DatapathId switchDpid, OFPort inPort, Ethernet packet, AllowDropPair adp) {
+    public boolean matchesThisPacket(DatapathId switchDpid, OFPort inPort, Ethernet packet, AllowDropPair adp) {
         IPacket pkt = packet.getPayload();
 
         // dl_type type
@@ -202,7 +206,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
         // in_port matches?
         if (any_in_port == false && !in_port.equals(inPort))
             return false;
-        if (action == FirewallRule.FirewallAction.DENY) {
+        if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_IN_PORT;
             adp.drop.setExact(MatchField.IN_PORT, this.in_port);
         } else {
@@ -213,7 +217,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
         // mac address (src and dst) match?
         if (any_dl_src == false && !dl_src.equals(packet.getSourceMAC()))
             return false;
-        if (action == FirewallRule.FirewallAction.DENY) {
+        if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_SRC;
             adp.drop.setExact(MatchField.ETH_SRC, this.dl_src);
         } else {
@@ -223,7 +227,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
 
         if (any_dl_dst == false && !dl_dst.equals(packet.getDestinationMAC()))
             return false;
-        if (action == FirewallRule.FirewallAction.DENY) {
+        if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_DST;
             adp.drop.setExact(MatchField.ETH_DST, this.dl_dst);
         } else {
@@ -240,7 +244,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 if (packet.getEtherType() != EthType.ARP.getValue())
                     return false;
                 else {
-                    if (action == FirewallRule.FirewallAction.DENY) {
+                    if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
                     	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
                     } else {
@@ -252,7 +256,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 if (packet.getEtherType() != EthType.IPv4.getValue())
                     return false;
                 else {
-                    if (action == FirewallRule.FirewallAction.DENY) {
+                    if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
                     	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
                     } else {
@@ -265,7 +269,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                     // IP addresses (src and dst) match?
                     if (any_nw_src == false && this.matchIPAddress(nw_src_prefix_and_mask.getValue().getInt(), nw_src_prefix_and_mask.getMask().getInt(), pkt_ip.getSourceAddress()) == false)
                         return false;
-                    if (action == FirewallRule.FirewallAction.DENY) {
+                    if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
                         //wildcards.drop |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
                     	adp.drop.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
@@ -277,7 +281,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
 
                     if (any_nw_dst == false && this.matchIPAddress(nw_dst_prefix_and_mask.getValue().getInt(), nw_dst_prefix_and_mask.getMask().getInt(), pkt_ip.getDestinationAddress()) == false)
                         return false;
-                    if (action == FirewallRule.FirewallAction.DENY) {
+                    if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_DST_ALL;
                         //wildcards.drop |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
                     	adp.drop.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
@@ -312,7 +316,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                                 // nothing more needed for ICMP
                             }
                         }
-                        if (action == FirewallRule.FirewallAction.DENY) {
+                        if (action == FirewallRule.FirewallAction.DROP) {
                             //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
                         	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
                         } else {
@@ -326,7 +330,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (tp_src.getPort() != 0 && tp_src.getPort() != pkt_tp_src.getPort()) {
                                 return false;
                             }
-                            if (action == FirewallRule.FirewallAction.DENY) {
+                            if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_SRC;
                                 if (pkt_tcp != null) {
                                 	adp.drop.setExact(MatchField.TCP_SRC, this.tp_src);
@@ -346,7 +350,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (tp_dst.getPort() != 0 && tp_dst.getPort() != pkt_tp_dst.getPort()) {
                                 return false;
                             }
-                            if (action == FirewallRule.FirewallAction.DENY) {
+                            if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_DST;
                                 if (pkt_tcp != null) {
                                 	adp.drop.setExact(MatchField.TCP_DST, this.tp_dst);
@@ -370,7 +374,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 return false;
             }
         }
-        if (action == FirewallRule.FirewallAction.DENY) {
+        if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
         	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
         } else {

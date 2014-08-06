@@ -25,20 +25,19 @@ import org.projectfloodlight.openflow.types.VlanPcp;
  * 
  */
 public class MatchString {
-	
     /* List of Strings for marshalling and unmarshalling to human readable forms */
-    final public static String STR_IN_PORT = "in_port";
-    final public static String STR_DL_DST = "dl_dst";
-    final public static String STR_DL_SRC = "dl_src";
-    final public static String STR_DL_TYPE = "dl_type";
-    final public static String STR_DL_VLAN = "dl_vlan";
-    final public static String STR_DL_VLAN_PCP = "dl_vpcp";
-    final public static String STR_NW_DST = "nw_dst";
-    final public static String STR_NW_SRC = "nw_src";
-    final public static String STR_NW_PROTO = "nw_proto";
-    final public static String STR_NW_TOS = "nw_tos";
-    final public static String STR_TP_DST = "tp_dst";
-    final public static String STR_TP_SRC = "tp_src";
+    final private static String STR_IN_PORT = "in_port";
+    final private static String STR_DL_DST = "dl_dst";
+    final private static String STR_DL_SRC = "dl_src";
+    final private static String STR_DL_TYPE = "dl_type";
+    final private static String STR_DL_VLAN = "dl_vlan";
+    final private static String STR_DL_VLAN_PCP = "dl_vpcp";
+    final private static String STR_NW_DST = "nw_dst";
+    final private static String STR_NW_SRC = "nw_src";
+    final private static String STR_NW_PROTO = "nw_proto";
+    final private static String STR_NW_TOS = "nw_tos";
+    final private static String STR_TP_DST = "tp_dst";
+    final private static String STR_TP_SRC = "tp_src";
 
     /**
      * Output a dpctl-styled string, i.e., only list the elements that are not

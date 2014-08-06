@@ -150,9 +150,11 @@ public class LearningSwitch
         if (vlan == VlanVid.FULL_MASK) {
             vlan = VlanVid.ofVlan(0);
         }
+        
         Map<MacVlanPair, OFPort> swMap = macVlanToSwitchPortMap.get(sw);
-        if (swMap != null)
+        if (swMap != null) {
             swMap.remove(new MacVlanPair(mac, vlan));
+        }
     }
 
     /**
@@ -167,8 +169,9 @@ public class LearningSwitch
             vlan = VlanVid.FULL_MASK;
         }
         Map<MacVlanPair, OFPort> swMap = macVlanToSwitchPortMap.get(sw);
-        if (swMap != null)
+        if (swMap != null) {
             return swMap.get(new MacVlanPair(mac, vlan));
+        }
 
         // if none found
         return null;
@@ -187,8 +190,9 @@ public class LearningSwitch
      */
     public void clearLearnedTable(IOFSwitch sw) {
         Map<MacVlanPair, OFPort> swMap = macVlanToSwitchPortMap.get(sw);
-        if (swMap != null)
+        if (swMap != null) {
             swMap.clear();
+        }
     }
 
     @Override
@@ -342,9 +346,7 @@ public class LearningSwitch
      * @param packetInMessage The corresponding PacketIn.
      * @param egressPort The switchport to output the PacketOut.
      */
-    private void writePacketOutForPacketIn(IOFSwitch sw,
-                                          OFPacketIn packetInMessage,
-                                          OFPort egressPort) {
+    private void writePacketOutForPacketIn(IOFSwitch sw, OFPacketIn packetInMessage, OFPort egressPort) {
         // from openflow 1.0 spec - need to set these on a struct ofp_packet_out:
         // uint32_t buffer_id; /* ID assigned by datapath (-1 if none). */
         // uint16_t in_port; /* Packet's input port (OFPP_NONE if none). */
@@ -543,19 +545,15 @@ public class LearningSwitch
     }
 
     @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService>
-            getServiceImpls() {
-        Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m =
-                new HashMap<Class<? extends IFloodlightService>,
-                    IFloodlightService>();
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,  IFloodlightService> m = 
+        		new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
         m.put(ILearningSwitchService.class, this);
         return m;
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>>
-            getModuleDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
@@ -565,16 +563,11 @@ public class LearningSwitch
     }
 
     @Override
-    public void init(FloodlightModuleContext context)
-            throws FloodlightModuleException {
-        macVlanToSwitchPortMap =
-                new ConcurrentHashMap<IOFSwitch, Map<MacVlanPair, OFPort>>();
-        floodlightProviderService =
-                context.getServiceImpl(IFloodlightProviderService.class);
-        debugCounterService =
-                context.getServiceImpl(IDebugCounterService.class);
-        restApiService =
-                context.getServiceImpl(IRestApiService.class);
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        macVlanToSwitchPortMap = new ConcurrentHashMap<IOFSwitch, Map<MacVlanPair, OFPort>>();
+        floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+        debugCounterService = context.getServiceImpl(IDebugCounterService.class);
+        restApiService = context.getServiceImpl(IRestApiService.class);
     }
 
     @Override
@@ -593,8 +586,7 @@ public class LearningSwitch
             }
         } catch (NumberFormatException e) {
             log.warn("Error parsing flow idle timeout, " +
-                     "using default of {} seconds",
-                     FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+                     "using default of {} seconds", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
         }
         try {
             String hardTimeout = configOptions.get("hardtimeout");
@@ -603,8 +595,7 @@ public class LearningSwitch
             }
         } catch (NumberFormatException e) {
             log.warn("Error parsing flow hard timeout, " +
-                     "using default of {} seconds",
-                     FLOWMOD_DEFAULT_HARD_TIMEOUT);
+                     "using default of {} seconds", FLOWMOD_DEFAULT_HARD_TIMEOUT);
         }
         try {
             String priority = configOptions.get("priority");
@@ -616,11 +607,8 @@ public class LearningSwitch
                      "using default of {}",
                      FLOWMOD_PRIORITY);
         }
-        log.debug("FlowMod idle timeout set to {} seconds",
-                  FLOWMOD_DEFAULT_IDLE_TIMEOUT);
-        log.debug("FlowMod hard timeout set to {} seconds",
-                  FLOWMOD_DEFAULT_HARD_TIMEOUT);
-        log.debug("FlowMod priority set to {}",
-                FLOWMOD_PRIORITY);
+        log.debug("FlowMod idle timeout set to {} seconds", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        log.debug("FlowMod hard timeout set to {} seconds", FLOWMOD_DEFAULT_HARD_TIMEOUT);
+        log.debug("FlowMod priority set to {}", FLOWMOD_PRIORITY);
     }
 }

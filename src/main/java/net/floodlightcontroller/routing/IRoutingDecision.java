@@ -60,7 +60,7 @@ public interface IRoutingDecision {
     public List<SwitchPort> getMulticastInterfaces();
     public void setMulticastInterfaces(List<SwitchPort> lspt);
     public Match getMatch();
-    public void setMatch(Match wildcards);
+    public void setMatch(Match match);
     public short getHardTimeout();
     public void setHardTimeout(short hardTimeout);
 }

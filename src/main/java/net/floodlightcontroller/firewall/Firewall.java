@@ -173,19 +173,15 @@ public class Firewall implements IFirewallService, IOFMessageListener,
             Map<String, Object> row;
 
             // (..., null, null) for no predicate, no ordering
-            IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
-                    ColumnNames, null, null);
+            IResultSet resultSet = storageSource.executeQuery(TABLE_NAME, ColumnNames, null, null);
 
             // put retrieved rows into FirewallRules
             for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
                 row = it.next().getRow();
                 // now, parse row
                 FirewallRule r = new FirewallRule();
-                if (!row.containsKey(COLUMN_RULEID)
-                        || !row.containsKey(COLUMN_DPID)) {
-                    logger.error(
-                            "skipping entry with missing required 'ruleid' or 'switchid' entry: {}",
-                            row);
+                if (!row.containsKey(COLUMN_RULEID) || !row.containsKey(COLUMN_DPID)) {
+                    logger.error( "skipping entry with missing required 'ruleid' or 'switchid' entry: {}", row);
                     return l;
                 }
                 try {
@@ -194,140 +190,69 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     r.dpid = DatapathId.of((String) row.get(COLUMN_DPID));
 
                     for (String key : row.keySet()) {
-                        if (row.get(key) == null)
+                        if (row.get(key) == null) {
                             continue;
-                        if (key.equals(COLUMN_RULEID)
-                                || key.equals(COLUMN_DPID)
-                                || key.equals("id")) {
+                        }
+                        if (key.equals(COLUMN_RULEID) || key.equals(COLUMN_DPID) || key.equals("id")) {
                             continue; // already handled
-                        } 
-                        
-                        else if (key.equals(COLUMN_IN_PORT)) {
-                            r.in_port = OFPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_IN_PORT)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_SRC)) {
-                            r.dl_src = MacAddress.of(Long.parseLong((String) row
-                                    .get(COLUMN_DL_SRC)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_DST)) {
-                            r.dl_dst = MacAddress.of(Long.parseLong((String) row
-                                    .get(COLUMN_DL_DST)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_DL_TYPE)) {
-                            r.dl_type = EthType.of(Integer.parseInt((String) row
-                                    .get(COLUMN_DL_TYPE)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row
-                                    .get(COLUMN_NW_SRC_PREFIX)), r.nw_src_prefix_and_mask.getMask().getInt());
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row
-                                    .get(COLUMN_NW_SRC_MASKBITS)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_DST_PREFIX)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row
-                                    .get(COLUMN_NW_DST_PREFIX)), r.nw_dst_prefix_and_mask.getMask().getInt());
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row
-                                    .get(COLUMN_NW_DST_MASKBITS)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_NW_PROTO)) {
-                            r.nw_proto = IpProtocol.of(Short.parseShort((String) row
-                                    .get(COLUMN_NW_PROTO)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_TP_SRC)) {
-                            r.tp_src = TransportPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_TP_SRC)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_TP_DST)) {
-                            r.tp_dst = TransportPort.of(Integer.parseInt((String) row
-                                    .get(COLUMN_TP_DST)));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DPID)) {
-                            r.any_dpid = Boolean.parseBoolean((String) row
-                                    .get(COLUMN_WILDCARD_DPID));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_IN_PORT)) {
-                            r.any_in_port = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_IN_PORT));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_SRC)) {
-                            r.any_dl_src = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_DL_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_DST)) {
-                            r.any_dl_dst = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_DL_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_DL_TYPE)) {
-                            r.any_dl_type = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_DL_TYPE));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_SRC)) {
-                            r.any_nw_src = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_NW_SRC));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_DST)) {
-                            r.any_nw_dst = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_NW_DST));
-                        } 
-                        
-                        else if (key.equals(COLUMN_WILDCARD_NW_PROTO)) {
-                            r.any_nw_proto = Boolean
-                                    .parseBoolean((String) row
-                                            .get(COLUMN_WILDCARD_NW_PROTO));
-                        } 
-                        
-                        else if (key.equals(COLUMN_PRIORITY)) {
-                            r.priority = Integer.parseInt((String) row
-                                    .get(COLUMN_PRIORITY));
-                        } 
-                        
-                        else if (key.equals(COLUMN_ACTION)) {
+                        } else if (key.equals(COLUMN_IN_PORT)) {
+                            r.in_port = OFPort.of(Integer.parseInt((String) row.get(COLUMN_IN_PORT)));
+                        } else if (key.equals(COLUMN_DL_SRC)) {
+                            r.dl_src = MacAddress.of(Long.parseLong((String) row.get(COLUMN_DL_SRC)));
+                        }  else if (key.equals(COLUMN_DL_DST)) {
+                            r.dl_dst = MacAddress.of(Long.parseLong((String) row.get(COLUMN_DL_DST)));
+                        } else if (key.equals(COLUMN_DL_TYPE)) {
+                            r.dl_type = EthType.of(Integer.parseInt((String) row.get(COLUMN_DL_TYPE)));
+                        } else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_PREFIX)), r.nw_src_prefix_and_mask.getMask().getInt());
+                        } else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_SRC_MASKBITS)));
+                        } else if (key.equals(COLUMN_NW_DST_PREFIX)) {
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_PREFIX)), r.nw_dst_prefix_and_mask.getMask().getInt());
+                        } else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_DST_MASKBITS)));
+                        } else if (key.equals(COLUMN_NW_PROTO)) {
+                            r.nw_proto = IpProtocol.of(Short.parseShort((String) row.get(COLUMN_NW_PROTO)));
+                        } else if (key.equals(COLUMN_TP_SRC)) {
+                            r.tp_src = TransportPort.of(Integer.parseInt((String) row.get(COLUMN_TP_SRC)));
+                        } else if (key.equals(COLUMN_TP_DST)) {
+                            r.tp_dst = TransportPort.of(Integer.parseInt((String) row.get(COLUMN_TP_DST)));
+                        } else if (key.equals(COLUMN_WILDCARD_DPID)) {
+                            r.any_dpid = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_DPID));
+                        } else if (key.equals(COLUMN_WILDCARD_IN_PORT)) {
+                            r.any_in_port = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_IN_PORT));
+                        } else if (key.equals(COLUMN_WILDCARD_DL_SRC)) {
+                            r.any_dl_src = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_DL_SRC));
+                        } else if (key.equals(COLUMN_WILDCARD_DL_DST)) {
+                            r.any_dl_dst = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_DL_DST));
+                        } else if (key.equals(COLUMN_WILDCARD_DL_TYPE)) {
+                            r.any_dl_type = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_DL_TYPE));
+                        } else if (key.equals(COLUMN_WILDCARD_NW_SRC)) {
+                            r.any_nw_src = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_NW_SRC));
+                        } else if (key.equals(COLUMN_WILDCARD_NW_DST)) {
+                            r.any_nw_dst = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_NW_DST));
+                        } else if (key.equals(COLUMN_WILDCARD_NW_PROTO)) {
+                            r.any_nw_proto = Boolean.parseBoolean((String) row.get(COLUMN_WILDCARD_NW_PROTO));
+                        } else if (key.equals(COLUMN_PRIORITY)) {
+                            r.priority = Integer.parseInt((String) row.get(COLUMN_PRIORITY));
+                        } else if (key.equals(COLUMN_ACTION)) {
                             int tmp = Integer.parseInt((String) row.get(COLUMN_ACTION));
-                            if (tmp == FirewallRule.FirewallAction.DENY.ordinal())
-                                r.action = FirewallRule.FirewallAction.DENY;
-                            else if (tmp == FirewallRule.FirewallAction.ALLOW.ordinal())
+                            if (tmp == FirewallRule.FirewallAction.DROP.ordinal()) {
+                                r.action = FirewallRule.FirewallAction.DROP;
+                            } else if (tmp == FirewallRule.FirewallAction.ALLOW.ordinal()) {
                                 r.action = FirewallRule.FirewallAction.ALLOW;
-                            else {
+                            } else {
                                 r.action = null;
                                 logger.error("action not recognized");
                             }
                         }
                     }
                 } catch (ClassCastException e) {
-                    logger.error(
-                            "skipping rule {} with bad data : "
-                                    + e.getMessage(), r.ruleid);
+                    logger.error("skipping rule {} with bad data : " + e.getMessage(), r.ruleid);
                 }
-                if (r.action != null)
+                if (r.action != null) {
                     l.add(r);
+                }
             }
         } catch (StorageException e) {
             logger.error("failed to access storage: {}", e.getMessage());
@@ -342,10 +267,8 @@ public class Firewall implements IFirewallService, IOFMessageListener,
     }
 
     @Override
-    public void init(FloodlightModuleContext context)
-            throws FloodlightModuleException {
-        floodlightProvider = context
-                .getServiceImpl(IFloodlightProviderService.class);
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         storageSource = context.getServiceImpl(IStorageSourceService.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         rules = new ArrayList<FirewallRule>();
@@ -371,15 +294,15 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        if (!this.enabled)
+        if (!this.enabled) {
             return Command.CONTINUE;
+        }
 
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;
             if (cntx != null) {
                 decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-
                 return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
             }
             break;
@@ -409,8 +332,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         ArrayList<Map<String, Object>> l = new ArrayList<Map<String, Object>>();
         try {
             // null1=no predicate, null2=no ordering
-            IResultSet resultSet = storageSource.executeQuery(TABLE_NAME,
-                    ColumnNames, null, null);
+            IResultSet resultSet = storageSource.executeQuery(TABLE_NAME, ColumnNames, null, null);
             for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
                 l.add(it.next().getRow());
             }
@@ -544,7 +466,9 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 rule = iter.next();
 
                 // check if rule matches
-                if (rule.matchesFlow(sw.getId(), pi.getInPort(), eth, adp) == true) {
+                // AllowDropPair adp's allow and drop matches will modified with what matches
+                // TODO @Ryan might need to re-init adp each time (look into later) 
+                if (rule.matchesThisPacket(sw.getId(), pi.getInPort(), eth, adp) == true) {
                     matched_rule = rule;
                     break;
                 }
@@ -554,7 +478,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // make a pair of rule and wildcards, then return it
         RuleMatchPair rmp = new RuleMatchPair();
         rmp.rule = matched_rule;
-        if (matched_rule == null || matched_rule.action == FirewallRule.FirewallAction.DENY) {
+        if (matched_rule == null || matched_rule.action == FirewallRule.FirewallAction.DROP) {
             rmp.match = adp.drop.build();
         } else {
             rmp.match = adp.allow.build();
@@ -577,16 +501,14 @@ public class Firewall implements IFirewallService, IOFMessageListener,
     }
 
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         // Allowing L2 broadcast + ARP broadcast request (also deny malformed
         // broadcasts -> L2 broadcast + L3 unicast)
         if (eth.isBroadcast() == true) {
             boolean allowBroadcast = true;
             // the case to determine if we have L2 broadcast + L3 unicast
-            // don't allow this broadcast packet if such is the case (malformed
-            // packet)
+            // don't allow this broadcast packet if such is the case (malformed packet)
             if ((eth.getPayload() instanceof IPv4) && (((IPv4) eth.getPayload()).getDestinationAddress().isBroadcast() == false)) {
                 allowBroadcast = false;
             }
@@ -622,13 +544,14 @@ public class Firewall implements IFirewallService, IOFMessageListener,
          * decision.addToContext(cntx); return Command.CONTINUE; }
          */
 
-        // check if we have a matching rule for this packet/flow
-        // and no decision is taken yet
+        // check if we have a matching rule for this packet/flow and no decision has been made yet
         if (decision == null) {
+        	// check if the packet we received matches an existing rule
             RuleMatchPair rmp = this.matchWithRule(sw, pi, cntx);
             FirewallRule rule = rmp.rule;
 
-            if (rule == null || rule.action == FirewallRule.FirewallAction.DENY) {
+            // Drop the packet if we don't have a rule allowing or dropping it or if we explicitly drop it
+            if (rule == null || rule.action == FirewallRule.FirewallAction.DROP) {
                 decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE), 
                 		IRoutingDecision.RoutingAction.DROP);
@@ -637,19 +560,20 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 if (logger.isTraceEnabled()) {
                     if (rule == null) {
                         logger.trace("No firewall rule found for PacketIn={}, blocking flow", pi);
-                    } else if (rule.action == FirewallRule.FirewallAction.DENY) {
+                    } else if (rule.action == FirewallRule.FirewallAction.DROP) {
                         logger.trace("Deny rule={} match for PacketIn={}", rule, pi);
                     }
                 }
+            // Found a rule and the rule is not a drop, so allow the packet
             } else {
                 decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
                 decision.setMatch(rmp.match);
                 decision.addToContext(cntx);
-                if (logger.isTraceEnabled())
-                    logger.trace("Allow rule={} match for PacketIn={}", rule,
-                            pi);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Allow rule={} match for PacketIn={}", rule, pi);
+                }
             }
         }
 

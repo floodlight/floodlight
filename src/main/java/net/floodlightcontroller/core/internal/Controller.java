@@ -101,13 +101,10 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 public class Controller implements IFloodlightProviderService, IStorageSourceListener, IInfoProvider {
 
     protected static final Logger log = LoggerFactory.getLogger(Controller.class);
-    protected static final INotificationManager notifier =
-            NotificationManagerFactory.getNotificationManager(Controller.class);
+    protected static final INotificationManager notifier = NotificationManagerFactory.getNotificationManager(Controller.class);
 
-    static final String ERROR_DATABASE =
-            "The controller could not communicate with the system database.";
-    static final String SWITCH_SYNC_STORE_NAME =
-            Controller.class.getCanonicalName() + ".stateStore";
+    static final String ERROR_DATABASE = "The controller could not communicate with the system database.";
+    static final String SWITCH_SYNC_STORE_NAME = Controller.class.getCanonicalName() + ".stateStore";
 
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
     
@@ -731,8 +728,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         }
     }
     
-    //TODO @Ryan createServerBootStrap() was here. Implemented how/where?
-
     private void setConfigParams(Map<String, String> configParams) throws FloodlightModuleException {
         String ofPort = configParams.get("openflowPort");
         if (!Strings.isNullOrEmpty(ofPort)) {
