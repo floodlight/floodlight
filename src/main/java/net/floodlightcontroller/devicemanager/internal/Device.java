@@ -95,7 +95,7 @@ public class Device implements IDevice {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = new Entity[] {entity};
-        this.macAddressString = entity.getMacAddress().toString(); //TODO @Ryan the toString() methods for of13-loxi appear to format use HexString already
+        this.macAddressString = entity.getMacAddress().toString();
         this.entityClass = entityClass;
         Arrays.sort(this.entities);
 
@@ -103,8 +103,7 @@ public class Device implements IDevice {
         this.oldAPs = null;
         this.attachmentPoints = null;
 
-        if (entity.getSwitchDPID() != null &&
-                entity.getSwitchPort() != null){
+        if (entity.getSwitchDPID() != null && entity.getSwitchPort() != null) {
             DatapathId sw = entity.getSwitchDPID();
             OFPort port = entity.getSwitchPort();
 

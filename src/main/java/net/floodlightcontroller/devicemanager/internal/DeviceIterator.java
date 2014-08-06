@@ -87,7 +87,7 @@ public class DeviceIterator extends FilterIterator<Device> {
             if (!match) return false;                
         }
         if (macAddress != null) {
-            if (macAddress.equals(value.getMACAddress()))
+            if (!macAddress.equals(value.getMACAddress()))
                 return false;
         }
         if (vlan != null) {

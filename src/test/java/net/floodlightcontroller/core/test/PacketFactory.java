@@ -20,11 +20,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.floodlightcontroller.core.IOFSwitch;
+
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.DHCPOption;
 import net.floodlightcontroller.packet.Ethernet;
@@ -132,7 +135,7 @@ public class PacketFactory {
                 .setFlags((byte)0)
                 .setFragmentOffset((short)0)
                 .setTtl((byte)250)
-                .setProtocol(IPv4.PROTOCOL_UDP)
+                .setProtocol(IpProtocol.UDP)
                 .setChecksum((short)0)
                 .setSourceAddress(0)
                 .setDestinationAddress(broadcastIp)

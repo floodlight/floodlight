@@ -104,6 +104,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -593,7 +594,7 @@ IFloodlightModule, IInfoProvider {
 		}
 
 		// If packet-in is from a quarantine port, stop processing.
-		NodePortTuple npt = new NodePortTuple(sw, pi.getInPort());
+		NodePortTuple npt = new NodePortTuple(sw, pi.getMatch().get(MatchField.IN_PORT));
 		if (quarantineQueue.contains(npt)) {
 			ctrQuarantineDrops.increment();
 			return Command.STOP;
@@ -2083,6 +2084,7 @@ IFloodlightModule, IInfoProvider {
 		if (debugCounterService == null) {
 			log.error("Debug Counter Service not found.");
 		}
+		debugCounterService.registerModule(PACKAGE);
 		ctrIncoming = debugCounterService.registerCounter(PACKAGE, "incoming",
 				"All incoming packets seen by this module");
 		ctrLldpEol  = debugCounterService.registerCounter(PACKAGE, "lldp-eol",

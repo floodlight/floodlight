@@ -49,6 +49,7 @@ import net.floodlightcontroller.util.MatchMaskUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -178,7 +179,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			}
 			if (srcIsland == null) {
 				log.debug("No openflow island found for source {}/{}",
-						sw.getStringId(), pi.getInPort());
+						sw.getStringId(), pi.getMatch().get(MatchField.IN_PORT));
 				return;
 			}
 
@@ -191,7 +192,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
 				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
 					on_same_island = true;
-					if ((sw.getId().equals(dstSwDpid)) && (pi.getInPort().equals(dstDap.getPort()))) {
+					if ((sw.getId().equals(dstSwDpid)) && (pi.getMatch().get(MatchField.IN_PORT).equals(dstDap.getPort()))) {
 						on_same_if = true;
 					}
 					break;
@@ -212,7 +213,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				if (log.isTraceEnabled()) {
 					log.trace("Both source and destination are on the same " +
 							"switch/port {}/{}, Action = NOP",
-							sw.toString(), pi.getInPort());
+							sw.toString(), pi.getMatch().get(MatchField.IN_PORT));
 				}
 				return;
 			}
@@ -304,12 +305,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 							"out message to the switch",
 							recommendation=LogMessageDoc.CHECK_SWITCH)
 	protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-		if (topologyService.isIncomingBroadcastAllowed(sw.getId(),
-				pi.getInPort()) == false) {
+		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), pi.getMatch().get(MatchField.IN_PORT)) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("doFlood, drop broadcast packet, pi={}, " +
 						"from a blocked port, srcSwitch=[{},{}], linkInfo={}",
-						new Object[] {pi, sw.getId(),pi.getInPort()});
+						new Object[] {pi, sw.getId(),pi.getMatch().get(MatchField.IN_PORT)});
 			}
 			return;
 		}
@@ -326,7 +326,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
 		// set buffer-id, in-port and packet-data based on packet-in
 		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(pi.getInPort());
+		pob.setInPort(pi.getMatch().get(MatchField.IN_PORT));
 		pob.setData(pi.getData());
 
 		try {

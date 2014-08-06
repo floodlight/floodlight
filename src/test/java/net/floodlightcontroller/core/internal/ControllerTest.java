@@ -20,6 +20,11 @@ package net.floodlightcontroller.core.internal;
 import static org.easymock.EasyMock.*;
 import static org.junit.Assert.*;
 
+import org.junit.Before;
+import org.junit.Test;
+
+import net.floodlightcontroller.test.FloodlightTestCase;
+
 import java.util.List;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -34,8 +39,6 @@ import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounterStoreService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugevent.DebugEventService;
@@ -48,17 +51,12 @@ import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.perfmon.PktInProcessingTime;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
-//import net.floodlightcontroller.restserver.IRestApiService;
-//import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
-import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import net.floodlightcontroller.core.IShutdownListener;
 import net.floodlightcontroller.core.IShutdownService;
@@ -125,9 +123,6 @@ public class ControllerTest extends FloodlightTestCase {
         
         MockSwitchManager switchService = new MockSwitchManager();
         fmc.addService(IOFSwitchService.class, switchService);
-
-        CounterStore cs = new CounterStore();
-        fmc.addService(ICounterStoreService.class, cs);
 
         PktInProcessingTime ppt = new PktInProcessingTime();
         fmc.addService(IPktInProcessingTimeService.class, ppt);
@@ -201,7 +196,6 @@ public class ControllerTest extends FloodlightTestCase {
 
     }
 
-    @Override
     @After
     public void tearDown() {
         tp.getScheduledExecutor().shutdownNow();

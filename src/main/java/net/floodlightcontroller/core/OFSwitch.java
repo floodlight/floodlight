@@ -867,14 +867,14 @@ public class OFSwitch implements IOFSwitchBackend {
     public boolean portEnabled(OFPort portNumber) {
         OFPortDesc p = portManager.getPort(portNumber);
         if (p == null) return false;
-        return p.getState().contains(OFPortState.LIVE);
+        return (!p.getState().contains(OFPortState.BLOCKED) && !p.getState().contains(OFPortState.LINK_DOWN) && !p.getState().contains(OFPortState.STP_BLOCK));
     }
 
     @Override
     public boolean portEnabled(String portName) {
         OFPortDesc p = portManager.getPort(portName);
         if (p == null) return false;
-        return p.getState().contains(OFPortState.LIVE);
+        return (!p.getState().contains(OFPortState.BLOCKED) && !p.getState().contains(OFPortState.LINK_DOWN) && !p.getState().contains(OFPortState.STP_BLOCK));
     }
 
     @Override

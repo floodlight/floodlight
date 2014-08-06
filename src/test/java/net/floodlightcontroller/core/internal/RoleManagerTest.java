@@ -18,6 +18,13 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.anyObject;
+import static org.junit.Assert.*;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import net.floodlightcontroller.test.FloodlightTestCase;
+
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
@@ -28,8 +35,7 @@ import static org.easymock.EasyMock.verify;
 import java.util.HashMap;
 
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchBackend;
@@ -39,7 +45,6 @@ import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import org.projectfloodlight.openflow.types.DatapathId;
-import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class RoleManagerTest extends FloodlightTestCase {
     private Controller controller;
@@ -142,12 +147,12 @@ public class RoleManagerTest extends FloodlightTestCase {
         replay(controller);
 
         // Test ACTIVE
-        roleManager.notifyFollower();
+        roleManager.notify();
 
         assertTrue(roleManager.getRole() == HARole.STANDBY);
 
         // Test STANDBY
-        roleManager.notifyFollower();
+        roleManager.notify();
 
         assertTrue(roleManager.getRole() == HARole.STANDBY);
 
@@ -160,7 +165,7 @@ public class RoleManagerTest extends FloodlightTestCase {
         // Another master does NOT exist
         setupSwitchesForNotifyLeader(false);
 
-        roleManager.notifyLeader();
+        roleManager.notify();
 
         assertTrue(roleManager.getRole() == HARole.ACTIVE);
     }
@@ -172,7 +177,7 @@ public class RoleManagerTest extends FloodlightTestCase {
         // Another master exists
         setupSwitchesForNotifyLeader(true);
 
-        roleManager.notifyLeader();
+        roleManager.notify();
 
         assertTrue(roleManager.getRole() == HARole.STANDBY);
     }
@@ -186,7 +191,7 @@ public class RoleManagerTest extends FloodlightTestCase {
          */
         setupSwitchesForNotifyLeader(true);
 
-        roleManager.notifyLeader();
+        roleManager.notify();
 
         assertTrue(roleManager.getRole() == HARole.STANDBY);
 

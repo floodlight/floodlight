@@ -119,14 +119,8 @@ import org.slf4j.LoggerFactory;
  * within the network.
  * @author readams
  */
-public class DeviceManagerImpl implements
-IDeviceService, IOFMessageListener, ITopologyListener,
-IFloodlightModule, IEntityClassListener,
-IFlowReconcileListener, IInfoProvider {
-    protected static Logger logger =
-            LoggerFactory.getLogger(DeviceManagerImpl.class);
-
-
+public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, ITopologyListener, IFloodlightModule, IEntityClassListener, IFlowReconcileListener, IInfoProvider {
+    protected static Logger logger = LoggerFactory.getLogger(DeviceManagerImpl.class);
     protected IFloodlightProviderService floodlightProvider;
     protected ITopologyService topology;
     protected IStorageSourceService storageSource;
@@ -136,7 +130,7 @@ IFlowReconcileListener, IInfoProvider {
     protected IFlowReconcileEngineService flowReconcileEngine;
     protected IDebugCounterService debugCounters;
     private ISyncService syncService;
-    private IStoreClient<String,DeviceSyncRepresentation> storeClient;
+    private IStoreClient<String, DeviceSyncRepresentation> storeClient;
     private DeviceSyncManager deviceSyncManager;
 
     /**
@@ -188,8 +182,7 @@ IFlowReconcileListener, IInfoProvider {
      * Time interval between writes of entries for the same device to
      * the sync store.
      */
-    static final int DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS =
-            5*60*1000; // 5 min
+    static final int DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS = 5*60*1000; // 5 min
     private int syncStoreWriteIntervalMs = DEFAULT_SYNC_STORE_WRITE_INTERVAL_MS;
 
     /**
@@ -773,8 +766,7 @@ IFlowReconcileListener, IInfoProvider {
         switch (msg.getType()) {
             case PACKET_IN:
                 cntIncoming.increment();
-                return this.processPacketInMessage(sw,
-                                                   (OFPacketIn) msg, cntx);
+                return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
             default:
                 break;
         }
@@ -997,6 +989,7 @@ IFlowReconcileListener, IInfoProvider {
     	if (debugCounters == null) {
     		logger.error("Debug Counter Service not found.");
     	}
+    	debugCounters.registerModule(PACKAGE);
     	cntIncoming = debugCounters.registerCounter(PACKAGE, "incoming",
     			"All incoming packets seen by this module");
     	cntReconcileRequest = debugCounters.registerCounter(PACKAGE,
@@ -1155,15 +1148,11 @@ IFlowReconcileListener, IInfoProvider {
     // Internal methods
     // ****************
 
-    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi,
-                                             FloodlightContext cntx) {
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.
-                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         // Extract source entity information
-        Entity srcEntity =
-                getSourceEntityFromPacket(eth, sw.getId(), pi.getInPort());
+        Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), pi.getMatch().get(MatchField.IN_PORT));
         if (srcEntity == null) {
             cntInvalidSource.increment();
             return Command.STOP;
@@ -1175,7 +1164,7 @@ IFlowReconcileListener, IInfoProvider {
         // the IP to MAC mapping of the VRRP IP address.  The source
         // entity will not have that information.  Hence, a separate call
         // to learn devices in such cases.
-        learnDeviceFromArpResponseData(eth, sw.getId(), pi.getInPort());
+        learnDeviceFromArpResponseData(eth, sw.getId(), pi.getMatch().get(MatchField.IN_PORT));
 
         // Learn/lookup device information
         Device srcDevice = learnDeviceByEntity(srcEntity);
@@ -1196,8 +1185,7 @@ IFlowReconcileListener, IInfoProvider {
         Entity dstEntity = getDestEntityFromPacket(eth);
         Device dstDevice = null;
         if (dstEntity != null) {
-            dstDevice =
-                    findDestByEntity(srcDevice.getEntityClass(), dstEntity);
+            dstDevice = findDestByEntity(srcDevice.getEntityClass(), dstEntity);
             if (dstDevice != null)
                 fcStore.put(cntx, CONTEXT_DST_DEVICE, dstDevice);
             else
@@ -1209,7 +1197,7 @@ IFlowReconcileListener, IInfoProvider {
        if (logger.isTraceEnabled()) {
            logger.trace("Received PI: {} on switch {}, port {} *** eth={}" +
                         " *** srcDev={} *** dstDev={} *** ",
-                        new Object[] { pi, sw.getStringId(), pi.getInPort(), eth,
+                        new Object[] { pi, sw.getStringId(), pi.getMatch().get(MatchField.IN_PORT), eth,
                         srcDevice, dstDevice });
        }
 
@@ -1273,8 +1261,7 @@ IFlowReconcileListener, IInfoProvider {
     private IPv4Address getSrcNwAddr(Ethernet eth, MacAddress dlAddr) {
         if (eth.getPayload() instanceof ARP) {
             ARP arp = (ARP) eth.getPayload();
-            if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP) &&
-                    (MacAddress.of(arp.getSenderHardwareAddress()).equals(dlAddr))) {
+            if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP) && (MacAddress.of(arp.getSenderHardwareAddress()).equals(dlAddr))) {
                 return IPv4Address.of(arp.getSenderProtocolAddress());
             }
         }
@@ -1288,9 +1275,7 @@ IFlowReconcileListener, IInfoProvider {
      * @param pi the original packetin
      * @return the entity from the packet
      */
-    protected Entity getSourceEntityFromPacket(Ethernet eth,
-                                             DatapathId swdpid,
-                                             OFPort port) {
+    protected Entity getSourceEntityFromPacket(Ethernet eth, DatapathId swdpid, OFPort port) {
         MacAddress dlAddr = MacAddress.of(eth.getSourceMACAddress());
         
         // Ignore broadcast/multicast source
@@ -1326,7 +1311,7 @@ IFlowReconcileListener, IInfoProvider {
 
         MacAddress senderAddr = MacAddress.of(arp.getSenderHardwareAddress());
 
-        if (dlAddr.equals(senderAddr)) return;
+        if (dlAddr.equals(senderAddr)) return; // arp request
 
         // Ignore broadcast/multicast source
         if (senderAddr.isBroadcast() || senderAddr.isMulticast())
@@ -1457,8 +1442,7 @@ IFlowReconcileListener, IInfoProvider {
             ClassState classState = getClassState(entityClass);
 
             if (classState.classIndex != null) {
-                deviceKey =
-                        classState.classIndex.findByEntity(entity);
+                deviceKey = classState.classIndex.findByEntity(entity);
             }
         }
         if (deviceKey == null) return null;
@@ -1554,8 +1538,7 @@ IFlowReconcileListener, IInfoProvider {
                 ClassState classState = getClassState(entityClass);
 
                 if (classState.classIndex != null) {
-                    deviceKey =
-                            classState.classIndex.findByEntity(entity);
+                    deviceKey = classState.classIndex.findByEntity(entity);
                 }
             }
             if (deviceKey != null) {
@@ -1579,9 +1562,7 @@ IFlowReconcileListener, IInfoProvider {
                 // create a new Device object containing the entity, and
                 // generate a new device ID if the the entity is on an
                 // attachment point port. Otherwise ignore.
-                if (entity.hasSwitchPort() &&
-                        !topology.isAttachmentPointPort(entity.getSwitchDPID(),
-                                                 entity.getSwitchPort())) {
+                if (entity.hasSwitchPort() && !topology.isAttachmentPointPort(entity.getSwitchDPID(), entity.getSwitchPort())) {
                     cntDeviceOnInternalPortNotLearned.increment();
                     if (logger.isDebugEnabled()) {
                         logger.debug("Not learning new device on internal"
@@ -1607,7 +1588,6 @@ IFlowReconcileListener, IInfoProvider {
 
                 // Add the new device to the primary map with a simple put
                 deviceMap.put(deviceKey, device);
-
                 // update indices
                 if (!updateIndices(device, deviceKey)) {
                     if (deleteQueue == null)
@@ -1627,9 +1607,7 @@ IFlowReconcileListener, IInfoProvider {
                                  new Object[]{device, deviceKey, entity});
                 }
                 // generate new device update
-                deviceUpdates =
-                        updateUpdates(deviceUpdates,
-                                      new DeviceUpdate(device, ADD, null));
+                deviceUpdates = updateUpdates(deviceUpdates, new DeviceUpdate(device, ADD, null));
 
                 break;
             }
@@ -1645,9 +1623,7 @@ IFlowReconcileListener, IInfoProvider {
             // If this is not an attachment point port we don't learn the new entity
             // and don't update indexes. But we do allow the device to continue up
             // the chain.
-            if (entity.hasSwitchPort() &&
-                    !topology.isAttachmentPointPort(entity.getSwitchDPID(),
-                                                 entity.getSwitchPort())) {
+            if (entity.hasSwitchPort() && !topology.isAttachmentPointPort(entity.getSwitchDPID(), entity.getSwitchPort())) {
                 cntPacketOnInternalPortForKnownDevice.increment();
                 break;
             }
@@ -1670,8 +1646,7 @@ IFlowReconcileListener, IInfoProvider {
                 Device newDevice = allocateDevice(device, entity, entityindex);
 
                 // generate updates
-                EnumSet<DeviceField> changedFields =
-                        findChangedFields(device, entity);
+                EnumSet<DeviceField> changedFields = findChangedFields(device, entity);
 
                 // update the device map with a replace call
                 boolean res = deviceMap.replace(deviceKey, device, newDevice);
@@ -1705,8 +1680,7 @@ IFlowReconcileListener, IInfoProvider {
             // Update attachment point (will only be hit if the device
             // already existed and no concurrent modification)
             if (entity.hasSwitchPort()) {
-                boolean moved =
-                        device.updateAttachmentPoint(entity.getSwitchDPID(),
+                boolean moved = device.updateAttachmentPoint(entity.getSwitchDPID(),
                                 entity.getSwitchPort(),
                                 entity.getLastSeenTimestamp());
                 // TODO: use update mechanism instead of sending the
@@ -1737,7 +1711,6 @@ IFlowReconcileListener, IInfoProvider {
                 this.deleteDevice(dev);
             }
         }
-
         processUpdates(deviceUpdates);
         deviceSyncManager.storeDeviceThrottled(device);
 
@@ -1801,10 +1774,11 @@ IFlowReconcileListener, IInfoProvider {
             if (logger.isTraceEnabled()) {
                 logger.trace("Dispatching device update: {}", update);
             }
-            if (update.change == DeviceUpdate.Change.DELETE)
+            if (update.change == DeviceUpdate.Change.DELETE) {
                 deviceSyncManager.removeDevice(update.device);
-            else
+            } else {
                 deviceSyncManager.storeDevice(update.device);
+            }
             List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
             notifyListeners(listeners, update);
         }
@@ -1881,8 +1855,7 @@ IFlowReconcileListener, IInfoProvider {
         return true;
     }
 
-    private LinkedList<DeviceUpdate>
-    updateUpdates(LinkedList<DeviceUpdate> list, DeviceUpdate update) {
+    private LinkedList<DeviceUpdate> updateUpdates(LinkedList<DeviceUpdate> list, DeviceUpdate update) {
         if (update == null) return list;
         if (list == null)
             list = new LinkedList<DeviceUpdate>();
@@ -2315,8 +2288,7 @@ IFlowReconcileListener, IInfoProvider {
     private class DeviceSyncManager  {
         // maps (opaque) deviceKey to the time in System.nanoTime() when we
         // last wrote the device to the sync store
-        private final ConcurrentMap<Long, Long> lastWriteTimes =
-                new ConcurrentHashMap<Long, Long>();
+        private final ConcurrentMap<Long, Long> lastWriteTimes = new ConcurrentHashMap<Long, Long>();
 
         /**
          * Write the given device to storage if we are MASTER.
@@ -2349,8 +2321,7 @@ IFlowReconcileListener, IInfoProvider {
                 return;
             long now = System.nanoTime();
             Long last = lastWriteTimes.get(d.getDeviceKey());
-            if (last == null ||
-                    now - last > intervalNs) {
+            if (last == null || (now - last) > intervalNs) {
                 writeUpdatedDeviceToStorage(d);
                 lastWriteTimes.put(d.getDeviceKey(), now);
             } else {
@@ -2453,8 +2424,7 @@ IFlowReconcileListener, IInfoProvider {
             try {
                 cntDeviceStrored.increment();
                 // FIXME: use a versioned put
-                DeviceSyncRepresentation storeDevice =
-                        new DeviceSyncRepresentation(device);
+                DeviceSyncRepresentation storeDevice = new DeviceSyncRepresentation(device);
                 storeClient.put(storeDevice.getKey(), storeDevice);
             } catch (ObsoleteVersionException e) {
                 // FIXME: what's the right behavior here. Can the store client
@@ -2463,6 +2433,8 @@ IFlowReconcileListener, IInfoProvider {
                 cntSyncException.increment();
                 logger.error("Could not write device " + device +
                           " to sync store:", e);
+            } catch (Exception e) {
+            	logger.error("Count not write device to sync storage " + e.getMessage());
             }
         }
 

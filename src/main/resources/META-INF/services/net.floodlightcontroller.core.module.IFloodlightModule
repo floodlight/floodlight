@@ -19,3 +19,8 @@ org.sdnplatform.sync.internal.SyncTorture
 net.floodlightcontroller.hub.Hub
 net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
 net.floodlightcontroller.testmodule.TestModule
+net.floodlightcontroller.topology.TopologyManager
+net.floodlightcontroller.forwarding.Forwarding
+net.floodlightcontroller.loadbalancer.LoadBalancer
+net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
+net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl

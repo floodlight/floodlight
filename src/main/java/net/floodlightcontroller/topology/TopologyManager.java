@@ -70,6 +70,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -348,8 +349,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	@Override
-	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port,
-			boolean tunnelEnabled) {
+	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port, boolean tunnelEnabled) {
 
 		// If the switch port is 'tun-bsn' port, it is not
 		// an attachment point port, irrespective of whether
@@ -898,6 +898,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		if (debugCounterService == null) {
 			log.error("debugCounterService should not be null. Has IDebugEventService been loaded previously?");
 		}
+		debugCounterService.registerModule(PACKAGE);
 		ctrIncoming = debugCounterService.registerCounter(
 				PACKAGE, "incoming",
 				"All incoming packets seen by this module");
@@ -922,7 +923,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected Command dropFilter(DatapathId sw, OFPacketIn pi,
 			FloodlightContext cntx) {
 		Command result = Command.CONTINUE;
-		OFPort port = pi.getInPort();
+		OFPort port = pi.getMatch().get(MatchField.IN_PORT);
 
 		// If the input port is not allowed for data traffic, drop everything.
 		// BDDP packets will not reach this stage.

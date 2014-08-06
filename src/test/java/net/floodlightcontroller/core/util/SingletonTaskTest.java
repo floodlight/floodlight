@@ -17,12 +17,15 @@
 
 package net.floodlightcontroller.core.util;
 
+import static org.junit.Assert.*;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class SingletonTaskTest extends FloodlightTestCase {
