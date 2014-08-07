@@ -39,8 +39,7 @@ public class AttachmentPoint {
     public static final long OPENFLOW_TO_EXTERNAL_TIMEOUT = 30000; // 30 seconds
     public static final long CONSISTENT_TIMEOUT = 30000;           // 30 seconds
 
-    public AttachmentPoint(DatapathId sw, OFPort port, Date activeSince,
-                           Date lastSeen) {
+    public AttachmentPoint(DatapathId sw, OFPort port, Date activeSince, Date lastSeen) {
         this.sw = sw;
         this.port = port;
         this.activeSince = activeSince;
@@ -55,7 +54,7 @@ public class AttachmentPoint {
     }
 
     public AttachmentPoint(AttachmentPoint ap) {
-        this.sw = ap.sw;
+        this.sw = ap.getSw();
         this.port = ap.port;
         this.activeSince = ap.activeSince;
         this.lastSeen = ap.lastSeen;
@@ -113,9 +112,9 @@ public class AttachmentPoint {
         if (getClass() != obj.getClass())
             return false;
         AttachmentPoint other = (AttachmentPoint) obj;
-        if (port != other.port)
+        if (port.getPortNumber() != other.port.getPortNumber())
             return false;
-        if (sw != other.sw)
+        if (sw.getLong() != other.sw.getLong())
             return false;
         return true;
     }

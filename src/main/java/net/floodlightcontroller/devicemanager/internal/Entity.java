@@ -167,9 +167,7 @@ public class Entity implements Comparable<Entity> {
      * @see {@link Entity#activeSince}
      */
     public void setLastSeenTimestamp(Date lastSeenTimestamp) {
-        if (activeSince == null ||
-            (activeSince.getTime() +  ACTIVITY_TIMEOUT) <
-                lastSeenTimestamp.getTime())
+        if (activeSince == null || (activeSince.getTime() + ACTIVITY_TIMEOUT) < lastSeenTimestamp.getTime())
             this.activeSince = lastSeenTimestamp;
         this.lastSeenTimestamp = lastSeenTimestamp;
     }
@@ -208,7 +206,7 @@ public class Entity implements Comparable<Entity> {
         if (ipv4Address == null) {
             if (other.ipv4Address != null) return false;
         } else if (!ipv4Address.equals(other.ipv4Address)) return false;
-        if (macAddress != other.macAddress) return false;
+        if (!macAddress.equals(other.macAddress)) return false;
         if (switchDPID == null) {
             if (other.switchDPID != null) return false;
         } else if (!switchDPID.equals(other.switchDPID)) return false;

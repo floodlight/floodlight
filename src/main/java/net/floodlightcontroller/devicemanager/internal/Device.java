@@ -53,8 +53,7 @@ import net.floodlightcontroller.topology.ITopologyService;
  */
 @JsonSerialize(using=DeviceSerializer.class)
 public class Device implements IDevice {
-    protected static Logger log =
-            LoggerFactory.getLogger(Device.class);
+    protected static Logger log = LoggerFactory.getLogger(Device.class);
 
     private final Long deviceKey;
     protected final DeviceManagerImpl deviceManager;
@@ -88,10 +87,8 @@ public class Device implements IDevice {
      * @param entity the initial entity for the device
      * @param entityClass the entity classes associated with the entity
      */
-    public Device(DeviceManagerImpl deviceManager,
-                  Long deviceKey,
-                  Entity entity,
-                  IEntityClass entityClass) {
+    public Device(DeviceManagerImpl deviceManager, Long deviceKey,
+                  Entity entity, IEntityClass entityClass) {
         this.deviceManager = deviceManager;
         this.deviceKey = deviceKey;
         this.entities = new Entity[] {entity};
@@ -138,12 +135,10 @@ public class Device implements IDevice {
         this.oldAPs = null;
         this.attachmentPoints = null;
         if (oldAPs != null) {
-            this.oldAPs =
-                    new ArrayList<AttachmentPoint>(oldAPs);
+            this.oldAPs = new ArrayList<AttachmentPoint>(oldAPs);
         }
         if (attachmentPoints != null) {
-            this.attachmentPoints =
-                    new ArrayList<AttachmentPoint>(attachmentPoints);
+            this.attachmentPoints = new ArrayList<AttachmentPoint>(attachmentPoints);
         }
         this.macAddressString = this.entities[0].getMacAddress().toString();
         this.entityClass = entityClass;
@@ -163,31 +158,26 @@ public class Device implements IDevice {
      *        new entity should be inserted. If negative we will compute the
      *        correct insertion point
      */
-    public Device(Device device,
-                  Entity newEntity,
-                  int insertionpoint) {
+    public Device(Device device, Entity newEntity, int insertionpoint) {
         this.deviceManager = device.deviceManager;
         this.deviceKey = device.deviceKey;
         this.dhcpClientName = device.dhcpClientName;
 
         this.entities = new Entity[device.entities.length + 1];
         if (insertionpoint < 0) {
-            insertionpoint = -(Arrays.binarySearch(device.entities,
-                                                   newEntity)+1);
+            insertionpoint = -(Arrays.binarySearch(device.entities, newEntity) + 1);
         }
         if (insertionpoint > 0) {
             // insertion point is not the beginning:
             // copy up to insertion point
-            System.arraycopy(device.entities, 0,
-                             this.entities, 0,
-                             insertionpoint);
+            System.arraycopy(device.entities, 0, this.entities, 0, insertionpoint);
         }
         if (insertionpoint < device.entities.length) {
             // insertion point is not the end
             // copy from insertion point
             System.arraycopy(device.entities, insertionpoint,
-                             this.entities, insertionpoint+1,
-                             device.entities.length-insertionpoint);
+                             this.entities, insertionpoint + 1,
+                             device.entities.length - insertionpoint);
         }
         this.entities[insertionpoint] = newEntity;
         /*
@@ -198,13 +188,11 @@ public class Device implements IDevice {
         */
         this.oldAPs = null;
         if (device.oldAPs != null) {
-            this.oldAPs =
-                    new ArrayList<AttachmentPoint>(device.oldAPs);
+            this.oldAPs = new ArrayList<AttachmentPoint>(device.oldAPs);
         }
         this.attachmentPoints = null;
         if (device.attachmentPoints != null) {
-            this.attachmentPoints =
-                    new ArrayList<AttachmentPoint>(device.attachmentPoints);
+            this.attachmentPoints = new ArrayList<AttachmentPoint>(device.attachmentPoints);
         }
 
         this.macAddressString = this.entities[0].getMacAddress().toString();
@@ -251,7 +239,7 @@ public class Device implements IDevice {
         List<AttachmentPoint>tempAP =
                 new ArrayList<AttachmentPoint>();
         for(AttachmentPoint ap: oldAP) {
-            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort())){
+            if (deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort())) {
                 tempAP.add(ap);
             }
         }
@@ -265,8 +253,7 @@ public class Device implements IDevice {
         for(int i=0; i<oldAP.size(); ++i) {
             AttachmentPoint ap = oldAP.get(i);
             // if this is not a valid attachment point, continue
-            if (!deviceManager.isValidAttachmentPoint(ap.getSw(),
-                                                      ap.getPort()))
+            if (!deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort()))
                 continue;
 
             DatapathId id = topology.getL2DomainId(ap.getSw());
@@ -290,9 +277,9 @@ public class Device implements IDevice {
         if (apList == null) return false;
 
         for(AttachmentPoint ap: apList) {
-            if (ap.getLastSeen().getTime() + AttachmentPoint.INACTIVITY_INTERVAL <
-                    System.currentTimeMillis())
+            if (ap.getLastSeen().getTime() + AttachmentPoint.INACTIVITY_INTERVAL < System.currentTimeMillis()) {
                 expiredAPs.add(ap);
+            }
         }
         if (expiredAPs.size() > 0) {
             apList.removeAll(expiredAPs);
@@ -312,17 +299,15 @@ public class Device implements IDevice {
      * @param apMap
      * @return
      */
-    List<AttachmentPoint> getDuplicateAttachmentPoints(List<AttachmentPoint>oldAPList,
-                                                       Map<DatapathId, AttachmentPoint>apMap) {
+    List<AttachmentPoint> getDuplicateAttachmentPoints(List<AttachmentPoint>oldAPList, Map<DatapathId, AttachmentPoint>apMap) {
         ITopologyService topology = deviceManager.topology;
         List<AttachmentPoint> dupAPs = new ArrayList<AttachmentPoint>();
-        long timeThreshold = System.currentTimeMillis() -
-                AttachmentPoint.INACTIVITY_INTERVAL;
+        long timeThreshold = System.currentTimeMillis() - AttachmentPoint.INACTIVITY_INTERVAL;
 
         if (oldAPList == null || apMap == null)
             return dupAPs;
 
-        for(AttachmentPoint ap: oldAPList) {
+        for(AttachmentPoint ap : oldAPList) {
             DatapathId id = topology.getL2DomainId(ap.getSw());
             AttachmentPoint trueAP = apMap.get(id);
 
@@ -362,8 +347,7 @@ public class Device implements IDevice {
         // Prepare the new attachment point list.
         if (moved) {
             log.info("updateAttachmentPoint: ap {}  newmap {} ", attachmentPoints, newMap);
-            List<AttachmentPoint> newAPList =
-                    new ArrayList<AttachmentPoint>();
+            List<AttachmentPoint> newAPList = new ArrayList<AttachmentPoint>();
             if (newMap != null) newAPList.addAll(newMap.values());
             this.attachmentPoints = newAPList;
         }
@@ -695,7 +679,7 @@ public class Device implements IDevice {
             if (e.switchDPID == swp.getSwitchDPID()
                     && e.switchPort == swp.getPort()) {
                 if (e.getVlan() == null)
-                    vals.add(VlanVid.ZERO); //TODO @Ryan is this the correct way to represent an untagged vlan?
+                    vals.add(VlanVid.ofVlan(-1)); //TODO @Ryan is this the correct way to represent an untagged vlan?
                 else
                     vals.add(e.getVlan());
             }
