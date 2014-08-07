@@ -303,7 +303,7 @@ public class LoadBalancer implements IFloodlightModule,
                 .setSenderProtocolAddress(
                         arpRequest.getTargetProtocolAddress())
                 .setTargetHardwareAddress(
-                        eth.getSourceMACAddress())
+                        eth.getSourceMACAddress().getBytes())
                 .setTargetProtocolAddress(
                         arpRequest.getSenderProtocolAddress()));
                 

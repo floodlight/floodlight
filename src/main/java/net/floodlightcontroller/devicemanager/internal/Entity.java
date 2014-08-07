@@ -225,19 +225,47 @@ public class Entity implements Comparable<Entity> {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Entity [macAddress=");
-        builder.append(macAddress.toString());
+        if (macAddress != null) {
+        	builder.append(macAddress.toString());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", ipv4Address=");
-        builder.append(ipv4Address.toString());
+        if (ipv4Address != null) {
+        	builder.append(ipv4Address.toString());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", vlan=");
-        builder.append(vlan.getVlan());
+        if (vlan != null) {
+        	builder.append(vlan.getVlan());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", switchDPID=");
-        builder.append(switchDPID.toString());
+        if (switchDPID != null) {
+        	builder.append(switchDPID.toString());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", switchPort=");
-        builder.append(switchPort.getPortNumber());
+        if (switchPort != null) {
+        	builder.append(switchPort.getPortNumber());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", lastSeenTimestamp=");
-        builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
+        if (lastSeenTimestamp != null) {
+        	builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
+        } else {
+        	builder.append("null");
+        }
         builder.append(", activeSince=");
-        builder.append(activeSince == null? "null" : activeSince.getTime());
+        if (activeSince != null) {
+        	builder.append(activeSince == null? "null" : activeSince.getTime());
+        } else {
+        	builder.append("null");
+        }
         builder.append("]");
         return builder.toString();
     }

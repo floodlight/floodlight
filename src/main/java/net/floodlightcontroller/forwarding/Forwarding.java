@@ -33,6 +33,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -394,6 +395,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		this.routingEngineService = context.getServiceImpl(IRoutingService.class);
 		this.topologyService = context.getServiceImpl(ITopologyService.class);
 		this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
+		this.switchService = context.getServiceImpl(IOFSwitchService.class);
 
 		Map<String, String> configParameters = context.getConfigParams(this);
 		String tmp = configParameters.get("hard-timeout");

@@ -12,7 +12,10 @@
   </root>
   <logger name="org" level="DEBUG"/>
   <logger name="LogService" level="DEBUG"/> <!-- Restlet access logging -->
-  <logger name="net.bigdb" level="INFO"/>
   <logger name="net.floodlightcontroller" level="DEBUG"/>
   <logger name="org.sdnplatform" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.devicemanager" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.packet" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.forwarding" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.routing" level="TRACE"></logger>
 </configuration>

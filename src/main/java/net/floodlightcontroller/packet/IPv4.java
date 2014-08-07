@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.U8;
 
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -392,7 +393,7 @@ public class IPv4 extends BasePacket {
         this.flags = (byte) ((sscratch >> IPV4_FLAGS_SHIFT) & IPV4_FLAGS_MASK);
         this.fragmentOffset = (short) (sscratch & IPV4_OFFSET_MASK);
         this.ttl = bb.get();
-        this.protocol = IpProtocol.of(bb.getShort());
+        this.protocol = IpProtocol.of(U8.f(bb.get()));
         this.checksum = bb.getShort();
         this.sourceAddress = IPv4Address.of(bb.getInt());
         this.destinationAddress = IPv4Address.of(bb.getInt());
@@ -588,7 +589,7 @@ public class IPv4 extends BasePacket {
         IPv4 other = (IPv4) obj;
         if (checksum != other.checksum)
             return false;
-        if (destinationAddress != other.destinationAddress)
+        if (!destinationAddress.equals(other.destinationAddress))
             return false;
         if (diffServ != other.diffServ)
             return false;
@@ -602,9 +603,9 @@ public class IPv4 extends BasePacket {
             return false;
         if (!Arrays.equals(options, other.options))
             return false;
-        if (protocol != other.protocol)
+        if (!protocol.equals(other.protocol))
             return false;
-        if (sourceAddress != other.sourceAddress)
+        if (!sourceAddress.equals(other.sourceAddress))
             return false;
         if (totalLength != other.totalLength)
             return false;

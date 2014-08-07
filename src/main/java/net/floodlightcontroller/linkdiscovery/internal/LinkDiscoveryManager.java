@@ -577,7 +577,7 @@ IFloodlightModule, IInfoProvider {
 		} else if (eth.getPayload() instanceof LLDP) {
 			return handleLldp((LLDP) eth.getPayload(), sw, pi.getInPort(), true, cntx);
 		} else if (eth.getEtherType() < 1500) {
-			long destMac = eth.getDestinationMAC().getLong();
+			long destMac = eth.getDestinationMACAddress().getLong();
 			if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
 				ctrLinkLocalDrops.increment();
 				if (log.isTraceEnabled()) {
@@ -588,7 +588,7 @@ IFloodlightModule, IInfoProvider {
 			}
 		}
 
-		if (ignorePacketInFromSource(eth.getSourceMAC())) {
+		if (ignorePacketInFromSource(eth.getSourceMACAddress())) {
 			ctrIgnoreSrcMacDrops.increment();
 			return Command.STOP;
 		}

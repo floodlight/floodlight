@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.util.HexString;
 
 /**
  *
@@ -65,16 +64,9 @@ public class Ethernet extends BasePacket {
     }
     
     /**
-     * @return the destination MAC as a byte array
-     */
-    public byte[] getDestinationMACAddress() {
-        return destinationMACAddress.getBytes();
-    }
-    
-    /**
      * @return the destination MAC
      */
-    public MacAddress getDestinationMAC() {
+    public MacAddress getDestinationMACAddress() {
         return destinationMACAddress;
     }
 
@@ -103,16 +95,9 @@ public class Ethernet extends BasePacket {
     }
 
     /**
-     * @return the source MACAddress as a byte array
-     */
-    public byte[] getSourceMACAddress() {
-        return sourceMACAddress.getBytes();
-    }
-    
-    /**
      * @return the source MACAddress
      */
-    public MacAddress getSourceMAC() {
+    public MacAddress getSourceMACAddress() {
         return sourceMACAddress;
     }
 
@@ -434,9 +419,9 @@ public class Ethernet extends BasePacket {
         sb.append("\ndl_vlan_pcp: ");
         sb.append(this.getPriorityCode());
         sb.append("\ndl_src: ");
-        sb.append(HexString.toHexString(this.getSourceMACAddress()));
+        sb.append(this.getSourceMACAddress().toString());
         sb.append("\ndl_dst: ");
-        sb.append(HexString.toHexString(this.getDestinationMACAddress()));
+        sb.append(this.getDestinationMACAddress().toString());
 
 
         if (pkt instanceof ARP) {

@@ -36,7 +36,6 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -359,12 +358,12 @@ implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener {
 	 * @return True if it is to/from a gateway, false otherwise.
 	 */
 	protected boolean isDefaultGateway(Ethernet frame) {
-		if (macToGateway.containsKey(frame.getSourceMAC()))
+		if (macToGateway.containsKey(frame.getSourceMACAddress()))
 			return true;
 
-		IPv4Address gwIp = macToGateway.get(frame.getDestinationMAC());
+		IPv4Address gwIp = macToGateway.get(frame.getDestinationMACAddress());
 		if (gwIp != null) {
-			MacAddress host = frame.getSourceMAC();
+			MacAddress host = frame.getSourceMACAddress();
 			String srcNet = macToGuid.get(host);
 			if (srcNet != null) {
 				IPv4Address gwIpSrcNet = guidToGateway.get(srcNet);
@@ -418,23 +417,23 @@ implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
 				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		Command ret = Command.STOP;
-		String srcNetwork = macToGuid.get(eth.getSourceMAC());
+		String srcNetwork = macToGuid.get(eth.getSourceMACAddress());
 		// If the host is on an unknown network we deny it.
 		// We make exceptions for ARP and DHCP.
 		if (eth.isBroadcast() || eth.isMulticast() || isDefaultGateway(eth) || isDhcpPacket(eth)) {
 			ret = Command.CONTINUE;
 		} else if (srcNetwork == null) {
 			log.trace("Blocking traffic from host {} because it is not attached to any network.",
-					HexString.toHexString(eth.getSourceMACAddress()));
+					eth.getSourceMACAddress().toString());
 			ret = Command.STOP;
-		} else if (oneSameNetwork(eth.getSourceMAC(), eth.getDestinationMAC())) {
+		} else if (oneSameNetwork(eth.getSourceMACAddress(), eth.getDestinationMACAddress())) {
 			// if they are on the same network continue
 			ret = Command.CONTINUE;
 		}
 
 		if (log.isTraceEnabled())
 			log.trace("Results for flow between {} and {} is {}",
-					new Object[] {eth.getSourceMAC(), eth.getDestinationMAC(), ret});
+					new Object[] {eth.getSourceMACAddress(), eth.getDestinationMACAddress(), ret});
 		/*
 		 * TODO - figure out how to still detect gateways while using
 		 * drop mods
