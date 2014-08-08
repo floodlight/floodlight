@@ -45,7 +45,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IShutdownService;
-import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -79,7 +78,6 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
-import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
@@ -104,7 +102,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     protected static final INotificationManager notifier = NotificationManagerFactory.getNotificationManager(Controller.class);
 
     static final String ERROR_DATABASE = "The controller could not communicate with the system database.";
-    static final String SWITCH_SYNC_STORE_NAME = Controller.class.getCanonicalName() + ".stateStore";
 
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
     
@@ -134,7 +131,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     private IThreadPoolService threadPoolService;
     private ISyncService syncService;
     private IShutdownService shutdownService;
-    private IStoreClient<DatapathId, SwitchSyncRepresentation> storeClient;
 
     // Configuration options
     protected int openFlowPort = 6653; // new registered OF port number
@@ -183,11 +179,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_CORE_PRIORITY
     };
 
-    private static final short DEFAULT_ACCESS_PRIORITY = 10;
-    private static final short DEFAULT_CORE_PRIORITY = 1000;
-    private short accessPriority = DEFAULT_ACCESS_PRIORITY;
-    private short corePriority = DEFAULT_CORE_PRIORITY;
-
+    private static short DEFAULT_ACCESS_PRIORITY = 10;
+    private static short DEFAULT_CORE_PRIORITY = 1000;
     
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 128 * 1024;
@@ -797,13 +790,11 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         storageSourceService.createTable(CONTROLLER_TABLE_NAME, null);
         storageSourceService.createTable(CONTROLLER_INTERFACE_TABLE_NAME, null);
         storageSourceService.createTable(SWITCH_CONFIG_TABLE_NAME, null);
-        storageSourceService.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME,
-                                             CONTROLLER_ID);
+        storageSourceService.setTablePrimaryKeyName(CONTROLLER_TABLE_NAME, CONTROLLER_ID);
         storageSourceService.addListener(CONTROLLER_INTERFACE_TABLE_NAME, this);
 
         storageSourceService.createTable(FLOW_PRIORITY_TABLE_NAME, null);
-        storageSourceService.setTablePrimaryKeyName(FLOW_PRIORITY_TABLE_NAME,
-                                             FLOW_COLUMN_PRIMARY_KEY);
+        storageSourceService.setTablePrimaryKeyName(FLOW_PRIORITY_TABLE_NAME, FLOW_COLUMN_PRIMARY_KEY);
         storageSourceService.addListener(FLOW_PRIORITY_TABLE_NAME, this);
         readFlowPriorityConfigurationFromStorage();
         
@@ -816,12 +807,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         restApiService.addRestletRoutable(new CoreWebRoutable());
                 
         try {
-            this.syncService.registerStore(SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
-            this.storeClient = this.syncService.getStoreClient(
-            		SWITCH_SYNC_STORE_NAME,
-                    DatapathId.class,
-                    SwitchSyncRepresentation.class);
-            //TODO @Ryan this.storeClient.addStoreListener(this.switchService);
+            this.syncService.registerStore(OFSwitchManager.SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
         } catch (SyncException e) {
             throw new FloodlightModuleException("Error while setting up sync service", e);
         }
@@ -847,10 +833,10 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     String primary_key = (String) row.get(FLOW_COLUMN_PRIMARY_KEY);
                     if (primary_key.equals(FLOW_VALUE_PRIMARY_KEY)) {
                         if (row.containsKey(FLOW_COLUMN_ACCESS_PRIORITY)) {
-                            accessPriority = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
+                            DEFAULT_ACCESS_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
                         }
                         if (row.containsKey(FLOW_COLUMN_CORE_PRIORITY)) {
-                            corePriority = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
+                            DEFAULT_CORE_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
                         }
                     }
                 }

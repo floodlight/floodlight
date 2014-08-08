@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,7 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.SwitchSyncRepresentation;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
@@ -55,6 +57,12 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.Versioned;
+import org.sdnplatform.sync.error.SyncException;
+import org.sdnplatform.sync.error.UnknownStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,14 +81,21 @@ import com.google.common.collect.ImmutableSet;
  * @author gregor, capveg, sovietaced
  *
  */
-public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListener, IHAListener, IFloodlightModule, IOFSwitchService {
+public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListener, IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	private static final Logger log = LoggerFactory.getLogger(OFSwitchManager.class);
 
 	private volatile OFControllerRole role;
 	private SwitchManagerCounters counters;
 
+	private ISyncService syncService;
+	private IStoreClient<DatapathId, SwitchSyncRepresentation> storeClient;
+	public static final String SWITCH_SYNC_STORE_NAME = OFSwitchManager.class.getCanonicalName() + ".stateStore";
+
+
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
+    private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
+
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -602,6 +617,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		l.add(IFloodlightProviderService.class);
 		l.add(IDebugEventService.class);
 		l.add(IDebugCounterService.class);
+		l.add(ISyncService.class);
 
 		return l;
 	}
@@ -612,10 +628,12 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		debugEventService = context.getServiceImpl(IDebugEventService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
+		syncService = context.getServiceImpl(ISyncService.class);
 
 		// Module variables
 		switchHandlers = new ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler>();
 		switches = new ConcurrentHashMap<DatapathId, IOFSwitchBackend>();
+        syncedSwitches = new ConcurrentHashMap<DatapathId, IOFSwitch>();
 		floodlightProvider.getTimer();
 		counters = new SwitchManagerCounters(debugCounterService);
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
@@ -623,6 +641,16 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
 
 		this.counters = new SwitchManagerCounters(debugCounterService);
+		/* TODO @Ryan
+		try {
+			this.storeClient = this.syncService.getStoreClient(
+					SWITCH_SYNC_STORE_NAME,
+					DatapathId.class,
+					SwitchSyncRepresentation.class);
+			this.storeClient.addStoreListener(this);
+		} catch (UnknownStoreException e) {
+			throw new FloodlightModuleException("Error while setting up sync store client", e);
+		} */
 
 	}
 
@@ -741,4 +769,99 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			Map<String, String> addedControllerNodeIPs,
 			Map<String, String> removedControllerNodeIPs) {		
 	}
+
+	@Override
+	public void keysModified(Iterator<DatapathId> keys, UpdateType type) {
+		if (type == UpdateType.LOCAL) {
+			// We only care for remote updates
+			return;
+		}
+		while(keys.hasNext()) {
+			DatapathId key = keys.next();
+			Versioned<SwitchSyncRepresentation> versionedSwitch = null;
+			try {
+				versionedSwitch = storeClient.get(key);
+			} catch (SyncException e) {
+				log.error("Exception while retrieving switch " + key.toString() +
+						" from sync store. Skipping", e);
+				continue;
+			}
+			if (log.isTraceEnabled()) {
+				log.trace("Reveiced switch store notification: key={}, " +
+						"entry={}", key, versionedSwitch.getValue());
+			}
+			// versionedSwtich won't be null. storeClient.get() always
+			// returns a non-null or throws an exception
+			if (versionedSwitch.getValue() == null) {
+				switchRemovedFromStore(key);
+				continue;
+			}
+			SwitchSyncRepresentation storedSwitch = versionedSwitch.getValue();
+			IOFSwitch sw = getSwitch(storedSwitch.getDpid());
+			//TODO @Ryan need to get IOFSwitchBackend setFeaturesReply(storedSwitch.getFeaturesReply(sw.getOFFactory()));
+			if (!key.equals(storedSwitch.getFeaturesReply(sw.getOFFactory()).getDatapathId())) {
+				log.error("Inconsistent DPIDs from switch sync store: " +
+						"key is {} but sw.getId() says {}. Ignoring",
+						key.toString(), sw.getId());
+				continue;
+			}
+			switchAddedToStore(sw);
+		}
+	}
+	
+	/**
+     * Called when we receive a store notification about a switch that
+     * has been removed from the sync store
+     * @param dpid
+     */
+    private synchronized void switchRemovedFromStore(DatapathId dpid) {
+        if (floodlightProvider.getRole() != HARole.STANDBY) {
+            return; // only read from store if slave
+        }
+        IOFSwitch oldSw = syncedSwitches.remove(dpid);
+        if (oldSw != null) {
+            addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
+        } else {
+            // TODO: the switch was deleted (tombstone) before we ever
+            // knew about it (or was deleted repeatedly). Can this
+            // happen? When/how?
+        }
+    }
+    
+    /**
+     * Called when we receive a store notification about a new or updated
+     * switch.
+     * @param sw
+     */
+    private synchronized void switchAddedToStore(IOFSwitch sw) {
+        if (floodlightProvider.getRole() != HARole.STANDBY) {
+            return; // only read from store if slave
+        }
+        DatapathId dpid = sw.getId();
+
+        IOFSwitch oldSw = syncedSwitches.put(dpid, sw);
+        if (oldSw == null)  {
+            addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.ADDED));
+        } else {
+            // The switch already exists in storage, see if anything
+            // has changed
+            sendNotificationsIfSwitchDiffers(oldSw, sw);
+        }
+    }
+
+    /**
+     * Check if the two switches differ in their ports or in other
+     * fields and if they differ enqueue a switch update
+     * @param oldSw
+     * @param newSw
+     */
+    private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch oldSw, IOFSwitch newSw) {
+        /*TODO @Ryan Collection<PortChangeEvent> portDiffs = oldSw.comparePorts(newSw.getPorts());
+        for (PortChangeEvent ev: portDiffs) {
+            SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+                                     SwitchUpdateType.PORTCHANGED,
+                                     ev.port, ev.type);
+            addUpdateToQueue(update);
+        }*/
+    }
 }

@@ -884,12 +884,6 @@ public class OFSwitch implements IOFSwitchBackend {
         return datapathId;
     }
 
-    @Override
-    public String getStringId() {
-        // FIXME: Should get rid of this
-        return getId().toString();
-    }
-
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */

@@ -186,7 +186,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			}
 			if (srcIsland == null) {
 				log.debug("No openflow island found for source {}/{}",
-						sw.getStringId(), pi.getMatch().get(MatchField.IN_PORT));
+						sw.getId().toString(), pi.getMatch().get(MatchField.IN_PORT));
 				return;
 			}
 
@@ -282,8 +282,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
 												Match.Builder mb = MatchUtils.createRetentiveBuilder(m);
 												mb.setExact(MatchField.ETH_SRC, srcMac)
-												.setExact(MatchField.ETH_DST, dstMac)
-												.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+												.setExact(MatchField.ETH_DST, dstMac);
+												
+												if (!vlan.equals(VlanVid.ZERO)) {
+													mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+												}
 												
 												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
 													IPv4 ip = (IPv4) eth.getPayload();

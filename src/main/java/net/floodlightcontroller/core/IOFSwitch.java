@@ -1,5 +1,4 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
 *
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -213,14 +212,6 @@ public interface IOFSwitch extends IOFMessageWriter {
      * @return
      */
     DatapathId getId();
-
-    /**
-     * Get a string version of the ID for this switch
-     * FIXME: Should get rid of this and just use getId and use the
-     * DatapathID serializer for getId.
-     * @return
-     */
-    String getStringId();
 
     /**
      * Retrieves attributes of this switch

@@ -697,7 +697,7 @@ IFloodlightModule, IInfoProvider {
 		if (!remoteSwitch.portEnabled(remotePort)) {
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring link with disabled source port: switch {} port {} {}",
-						new Object[] { remoteSwitch.getStringId(),
+						new Object[] { remoteSwitch.getId().toString(),
 						remotePort,
 						remoteSwitch.getPort(remotePort)});
 			}
@@ -708,7 +708,7 @@ IFloodlightModule, IInfoProvider {
 				remotePort))) {
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring link with suppressed src port: switch {} port {} {}",
-						new Object[] { remoteSwitch.getStringId(),
+						new Object[] { remoteSwitch.getId().toString(),
 						remotePort,
 						remoteSwitch.getPort(remotePort)});
 			}

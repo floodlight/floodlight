@@ -215,7 +215,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
         }
 
         // mac address (src and dst) match?
-        if (any_dl_src == false && !dl_src.equals(packet.getSourceMAC()))
+        if (any_dl_src == false && !dl_src.equals(packet.getSourceMACAddress()))
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_SRC;
@@ -225,7 +225,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
             adp.allow.setExact(MatchField.ETH_SRC, this.dl_src);
         }
 
-        if (any_dl_dst == false && !dl_dst.equals(packet.getDestinationMAC()))
+        if (any_dl_dst == false && !dl_dst.equals(packet.getDestinationMACAddress()))
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_DST;

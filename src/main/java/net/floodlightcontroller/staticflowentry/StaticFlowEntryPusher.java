@@ -189,7 +189,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		IOFSwitch sw = switchService.getSwitch(switchId);
 		if (sw == null)
 			return;
-		String stringId = sw.getStringId();
+		String stringId = sw.getId().toString();
 
 		if ((entriesFromStorage != null) && (entriesFromStorage.containsKey(stringId))) {
 			Map<String, OFFlowMod> entries = entriesFromStorage.get(stringId);

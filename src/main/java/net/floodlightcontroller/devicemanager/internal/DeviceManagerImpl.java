@@ -1197,7 +1197,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		if (logger.isTraceEnabled()) {
 			logger.trace("Received PI: {} on switch {}, port {} *** eth={}" +
 					" *** srcDev={} *** dstDev={} *** ",
-					new Object[] { pi, sw.getStringId(), pi.getMatch().get(MatchField.IN_PORT), eth,
+					new Object[] { pi, sw.getId().toString(), pi.getMatch().get(MatchField.IN_PORT), eth,
 					srcDevice, dstDevice });
 		}
 

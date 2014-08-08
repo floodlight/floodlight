@@ -409,7 +409,7 @@ public class LoadBalancer implements IFloodlightModule,
 
         if (srcIsland == null) {
             log.debug("No openflow island found for source {}/{}", 
-                      sw.getStringId(), pi.getInPort());
+                      sw.getId().toString(), pi.getInPort());
             return;
         }
         
