@@ -53,8 +53,8 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.ImmutablePort;
+import net.floodlightcontroller.core.internal.RoleManager;
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -90,11 +90,12 @@ import net.floodlightcontroller.topology.ITopologyService;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFType;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.ISyncService;
@@ -121,14 +122,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     MemoryStorageSource storageSource;
     FlowReconcileManager flowReconcileMgr;
 
-    private IOFSwitch makeSwitchMock(long id) {
+    private IOFSwitch makeSwitchMock(DatapathId id) {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        ImmutablePort port = ImmutablePort.create("p1", (short)1);
+        OFPort port = OFPort.of(1);
         expect(mockSwitch.getId()).andReturn(id).anyTimes();
-        expect(mockSwitch.getStringId())
-                .andReturn(HexString.toHexString(id, 6)).anyTimes();
-        expect(mockSwitch.getPort(anyShort()))
-                .andReturn(port).anyTimes();
+        expect(mockSwitch.getStringId()).andReturn(id.toString()).anyTimes();
+        expect(mockSwitch.getPort(OFPort.of(anyShort())).getPortNo()).andReturn(port).anyTimes();
         return mockSwitch;
     }
 
@@ -141,16 +140,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
      */
     private ITopologyService makeMockTopologyAllPortsAp() {
         ITopologyService mockTopology = createMock(ITopologyService.class);
-        mockTopology.isAttachmentPointPort(anyLong(), anyShort());
+        mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
         expectLastCall().andReturn(true).anyTimes();
-        mockTopology.getL2DomainId(anyLong());
+        mockTopology.getL2DomainId(DatapathId.of(anyLong()));
         expectLastCall().andReturn(1L).anyTimes();
-        mockTopology.isBroadcastDomainPort(anyLong(), anyShort());
+        mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
         expectLastCall().andReturn(false).anyTimes();
-        mockTopology.isConsistent(anyLong(), anyShort(), anyLong(), anyShort());
+        mockTopology.isConsistent(DatapathId.of(anyLong()), OFPort.of(anyShort()), DatapathId.of(anyLong()), OFPort.of(anyShort()));
         expectLastCall().andReturn(false).anyTimes();
-        mockTopology.isInSameBroadcastDomain(anyLong(), anyShort(),
-                                             anyLong(), anyShort());
+        mockTopology.isInSameBroadcastDomain(DatapathId.of(anyLong()), OFPort.of(anyShort()), DatapathId.of(anyLong()), OFPort.of(anyShort()));
         expectLastCall().andReturn(false).anyTimes();
         return mockTopology;
     }
@@ -158,10 +156,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
     @Override
     @Before
     public void setUp() throws Exception {
-        doSetUp(Role.MASTER);
+        doSetUp(HARole.ACTIVE);
     }
 
-    public void doSetUp(Role initialRole) throws Exception {
+    public void doSetUp(HARole initialRole) throws Exception {
         super.setUp();
 
         this.syncService = new MockSyncService();
@@ -173,6 +171,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         fmc.addService(IThreadPoolService.class, tp);
         mockFloodlightProvider = getMockFloodlightProvider();
         mockFloodlightProvider.setRole(initialRole, "");
+        
 
         deviceManager = new DeviceManagerImpl();
         flowReconcileMgr = new FlowReconcileManager();
@@ -209,15 +208,15 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         expectLastCall().anyTimes();
         replay(topology);
 
-        IOFSwitch mockSwitch1 = makeSwitchMock(1L);
-        IOFSwitch mockSwitch10 = makeSwitchMock(10L);
-        IOFSwitch mockSwitch5 = makeSwitchMock(5L);
-        IOFSwitch mockSwitch50 = makeSwitchMock(50L);
-        Map<Long, IOFSwitch> switches = new HashMap<Long,IOFSwitch>();
-        switches.put(1L, mockSwitch1);
-        switches.put(10L, mockSwitch10);
-        switches.put(5L, mockSwitch5);
-        switches.put(50L, mockSwitch50);
+        IOFSwitch mockSwitch1 = makeSwitchMock(DatapathId.of(1L));
+        IOFSwitch mockSwitch10 = makeSwitchMock(DatapathId.of(10L));
+        IOFSwitch mockSwitch5 = makeSwitchMock(DatapathId.of(5L));
+        IOFSwitch mockSwitch50 = makeSwitchMock(DatapathId.of(50L));
+        Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
+        switches.put(DatapathId.of(1L), mockSwitch1);
+        switches.put(DatapathId.of(10L), mockSwitch10);
+        switches.put(DatapathId.of(5L), mockSwitch5);
+        switches.put(DatapathId.of(50L), mockSwitch50);
         mockFloodlightProvider.setSwitches(switches);
 
         replay(mockSwitch1, mockSwitch5, mockSwitch10, mockSwitch50);

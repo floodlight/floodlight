@@ -21,6 +21,9 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.TransportPort;
+
 /**
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -40,38 +43,54 @@ public class UDP extends BasePacket {
         
     }
 
-    protected short sourcePort;
-    protected short destinationPort;
+    protected TransportPort sourcePort;
+    protected TransportPort destinationPort;
     protected short length;
     protected short checksum;
 
     /**
      * @return the sourcePort
      */
-    public short getSourcePort() {
+    public TransportPort getSourcePort() {
         return sourcePort;
     }
 
     /**
      * @param sourcePort the sourcePort to set
      */
-    public UDP setSourcePort(short sourcePort) {
+    public UDP setSourcePort(TransportPort sourcePort) {
         this.sourcePort = sourcePort;
+        return this;
+    }
+    
+    /**
+     * @param sourcePort the sourcePort to set
+     */
+    public UDP setSourcePort(short sourcePort) {
+        this.sourcePort = TransportPort.of(sourcePort);
         return this;
     }
 
     /**
      * @return the destinationPort
      */
-    public short getDestinationPort() {
+    public TransportPort getDestinationPort() {
         return destinationPort;
     }
 
     /**
      * @param destinationPort the destinationPort to set
      */
-    public UDP setDestinationPort(short destinationPort) {
+    public UDP setDestinationPort(TransportPort destinationPort) {
         this.destinationPort = destinationPort;
+        return this;
+    }
+    
+    /**
+     * @param destinationPort the destinationPort to set
+     */
+    public UDP setDestinationPort(short destinationPort) {
+        this.destinationPort = TransportPort.of(destinationPort);
         return this;
     }
 
@@ -122,15 +141,15 @@ public class UDP extends BasePacket {
         byte[] data = new byte[this.length];
         ByteBuffer bb = ByteBuffer.wrap(data);
 
-        bb.putShort(this.sourcePort);
-        bb.putShort(this.destinationPort);
+        bb.putShort((short)this.sourcePort.getPort()); // UDP packet port numbers are 16 bit
+        bb.putShort((short)this.destinationPort.getPort());
         bb.putShort(this.length);
         bb.putShort(this.checksum);
         if (payloadData != null)
             bb.put(payloadData);
 
         if (this.parent != null && this.parent instanceof IPv4)
-            ((IPv4)this.parent).setProtocol(IPv4.PROTOCOL_UDP);
+            ((IPv4)this.parent).setProtocol(IpProtocol.UDP);
 
         // compute checksum if needed
         if (this.checksum == 0) {
@@ -140,11 +159,11 @@ public class UDP extends BasePacket {
             // compute pseudo header mac
             if (this.parent != null && this.parent instanceof IPv4) {
                 IPv4 ipv4 = (IPv4) this.parent;
-                accumulation += ((ipv4.getSourceAddress() >> 16) & 0xffff)
-                        + (ipv4.getSourceAddress() & 0xffff);
-                accumulation += ((ipv4.getDestinationAddress() >> 16) & 0xffff)
-                        + (ipv4.getDestinationAddress() & 0xffff);
-                accumulation += ipv4.getProtocol() & 0xff;
+                accumulation += ((ipv4.getSourceAddress().getInt() >> 16) & 0xffff)
+                        + (ipv4.getSourceAddress().getInt() & 0xffff);
+                accumulation += ((ipv4.getDestinationAddress().getInt() >> 16) & 0xffff)
+                        + (ipv4.getDestinationAddress().getInt() & 0xffff);
+                accumulation += ipv4.getProtocol().getIpProtocolNumber() & 0xff;
                 accumulation += this.length & 0xffff;
             }
 
@@ -172,9 +191,9 @@ public class UDP extends BasePacket {
         final int prime = 5807;
         int result = super.hashCode();
         result = prime * result + checksum;
-        result = prime * result + destinationPort;
+        result = prime * result + destinationPort.getPort();
         result = prime * result + length;
-        result = prime * result + sourcePort;
+        result = prime * result + sourcePort.getPort();
         return result;
     }
 
@@ -205,8 +224,8 @@ public class UDP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.sourcePort = bb.getShort();
-        this.destinationPort = bb.getShort();
+        this.sourcePort = TransportPort.of(bb.getShort());
+        this.destinationPort = TransportPort.of(bb.getShort());
         this.length = bb.getShort();
         this.checksum = bb.getShort();
 

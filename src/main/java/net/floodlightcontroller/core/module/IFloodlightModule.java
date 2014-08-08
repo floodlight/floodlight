@@ -19,7 +19,6 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.Map;
 
-
 /**
  * Defines an interface for loadable Floodlight modules.
  * 
@@ -27,7 +26,7 @@ import java.util.Map;
  * <ol>
  * <li> getServices() : what services does this module provide
  * <li> getDependencies() : list the dependencies
- * <li> init() : internal initializations (don't touch other modules)
+ * <li> init() : internal initializations (<em>don't</em> touch other modules)
  * <li> startUp() : external initializations (<em>do</em> touch other modules)
  * </ol>
  * 
@@ -50,8 +49,7 @@ public interface IFloodlightModule {
      * same object or different objects for different exported services.
      * @return The map from service interface class to service implementation
      */
-    public Map<Class<? extends IFloodlightService>,
-               IFloodlightService> getServiceImpls();
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls();
     
     /**
      * Get a list of Modules that this module depends on.  The module system
@@ -87,6 +85,5 @@ public interface IFloodlightModule {
      * @throws FloodlightModuleException 
      */
     
-    void startUp(FloodlightModuleContext context) 
-            throws FloodlightModuleException; 
+    void startUp(FloodlightModuleContext context) throws FloodlightModuleException;
 }

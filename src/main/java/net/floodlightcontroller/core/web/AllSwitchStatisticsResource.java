@@ -24,11 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.statistics.OFStatistics;
-import org.openflow.protocol.statistics.OFStatisticsType;
-import org.openflow.util.HexString;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.util.HexString;
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,26 +52,26 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
     public Map<String, Object> retrieveInternal(String statType) {
         HashMap<String, Object> model = new HashMap<String, Object>();
 
-        OFStatisticsType type = null;
+        OFStatsType type = null;
         REQUESTTYPE rType = null;
 
         if (statType.equals("port")) {
-            type = OFStatisticsType.PORT;
+            type = OFStatsType.PORT;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("queue")) {
-            type = OFStatisticsType.QUEUE;
+            type = OFStatsType.QUEUE;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("flow")) {
-            type = OFStatisticsType.FLOW;
+            type = OFStatsType.FLOW;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("aggregate")) {
-            type = OFStatisticsType.AGGREGATE;
+            type = OFStatsType.AGGREGATE;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("desc")) {
-            type = OFStatisticsType.DESC;
+            type = OFStatsType.DESC;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("table")) {
-            type = OFStatisticsType.TABLE;
+            type = OFStatsType.TABLE;
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("features")) {
             rType = REQUESTTYPE.OFFEATURES;
@@ -77,14 +79,14 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             return model;
         }
 
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
-        Set<Long> switchDpids = floodlightProvider.getAllSwitchDpids();
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
+        Set<DatapathId> switchDpids = switchService.getAllSwitchDpids();
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.size());
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
         GetConcurrentStatsThread t;
-        for (Long l : switchDpids) {
+        for (DatapathId l : switchDpids) {
             t = new GetConcurrentStatsThread(l, rType, type);
             activeThreads.add(t);
             t.start();
@@ -98,9 +100,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             for (GetConcurrentStatsThread curThread : activeThreads) {
                 if (curThread.getState() == State.TERMINATED) {
                     if (rType == REQUESTTYPE.OFSTATS) {
-                        model.put(HexString.toHexString(curThread.getSwitchId()), curThread.getStatisticsReply());
+                        model.put(HexString.toHexString(curThread.getSwitchId().getLong()), curThread.getStatisticsReply());
                     } else if (rType == REQUESTTYPE.OFFEATURES) {
-                        model.put(HexString.toHexString(curThread.getSwitchId()), curThread.getFeaturesReply());
+                        model.put(HexString.toHexString(curThread.getSwitchId().getLong()), curThread.getFeaturesReply());
                     }
                     pendingRemovalThreads.add(curThread);
                 }
@@ -130,13 +132,13 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
     }
 
     protected class GetConcurrentStatsThread extends Thread {
-        private List<OFStatistics> switchReply;
-        private long switchId;
-        private OFStatisticsType statType;
+        private List<OFStatsReply> switchReply;
+        private DatapathId switchId;
+        private OFStatsType statType;
         private REQUESTTYPE requestType;
         private OFFeaturesReply featuresReply;
 
-        public GetConcurrentStatsThread(long switchId, REQUESTTYPE requestType, OFStatisticsType statType) {
+        public GetConcurrentStatsThread(DatapathId switchId, REQUESTTYPE requestType, OFStatsType statType) {
             this.switchId = switchId;
             this.requestType = requestType;
             this.statType = statType;
@@ -144,7 +146,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             this.featuresReply = null;
         }
 
-        public List<OFStatistics> getStatisticsReply() {
+        public List<OFStatsReply> getStatisticsReply() {
             return switchReply;
         }
 
@@ -152,7 +154,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             return featuresReply;
         }
 
-        public long getSwitchId() {
+        public DatapathId getSwitchId() {
             return switchId;
         }
 

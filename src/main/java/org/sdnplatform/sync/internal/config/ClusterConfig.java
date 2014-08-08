@@ -15,6 +15,7 @@ import org.sdnplatform.sync.error.SyncException;
  * @author readams
  */
 public class ClusterConfig {
+    public static final short NODE_ID_UNCONFIGURED = Short.MAX_VALUE;
 
     private HashMap<Short, Node> allNodes =
             new HashMap<Short, Node>();

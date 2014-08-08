@@ -78,10 +78,11 @@ public class DeviceUniqueIndex extends DeviceIndex {
     }
 
     @Override
-    public void updateIndex(Entity entity, Long deviceKey) {
+    public boolean updateIndex(Entity entity, Long deviceKey) {
         IndexedEntity ie = new IndexedEntity(keyFields, entity);
-        if (!ie.hasNonNullKeys()) return;
+        if (!ie.hasNonNullKeys()) return false;
         index.put(ie, deviceKey);
+        return true;
     }
 
     @Override

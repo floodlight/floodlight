@@ -16,7 +16,6 @@
 
 package net.floodlightcontroller.core.module;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,31 +27,33 @@ import java.util.Map;
 public class FloodlightModuleContext implements IFloodlightModuleContext {
     protected Map<Class<? extends IFloodlightService>, IFloodlightService> serviceMap;
     protected Map<Class<? extends IFloodlightModule>, Map<String, String>> configParams;
-    protected Collection<IFloodlightModule> moduleSet;
+    private final FloodlightModuleLoader moduleLoader;
     
     /**
      * Creates the ModuleContext for use with this IFloodlightProvider.
      * This will be used as a module registry for all IFloodlightModule(s).
      */
-    public FloodlightModuleContext() {
+    public FloodlightModuleContext(FloodlightModuleLoader moduleLoader) {
         serviceMap = 
                 new HashMap<Class<? extends IFloodlightService>,
                                       IFloodlightService>();
         configParams =
                 new HashMap<Class<? extends IFloodlightModule>,
                                 Map<String, String>>();
+        this.moduleLoader = moduleLoader;
     }
-    
+
     /**
-     * Adds a IFloodlightModule for this Context.
-     * @param clazz the service class
-     * @param service The IFloodlightService to add to the registry
+     * Allocate a module context without a module loader; useful for testing
      */
-    public void addService(Class<? extends IFloodlightService> clazz, 
-                           IFloodlightService service) {
-        serviceMap.put(clazz, service);
+    public FloodlightModuleContext() {
+        this(null);
     }
-    
+
+    // ************************
+    // IFloodlightModuleContext
+    // ************************
+
     @SuppressWarnings("unchecked")
     @Override
     public <T extends IFloodlightService> T getServiceImpl(Class<T> service) {
@@ -63,17 +64,6 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
     @Override
     public Collection<Class<? extends IFloodlightService>> getAllServices() {
         return serviceMap.keySet();
-    }
-    
-    @Override
-    public Collection<IFloodlightModule> getAllModules() {
-        return moduleSet;
-    }
-    
-    public void addModules(Collection<IFloodlightModule> modSet) {
-        if (this.moduleSet == null) 
-            this.moduleSet = new ArrayList<IFloodlightModule>();
-        this.moduleSet.addAll(modSet);
     }
 
     @Override
@@ -106,7 +96,11 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
 
         return retMap;
     }
-    
+
+    // ***********************
+    // FloodlightModuleContext
+    // ***********************
+
     /**
      * Adds a configuration parameter for a module
      * @param mod The fully qualified module name to add the parameter to
@@ -120,5 +114,23 @@ public class FloodlightModuleContext implements IFloodlightModuleContext {
             configParams.put(mod.getClass(), moduleParams);
         }
         moduleParams.put(key, value);
+    }
+
+    /**
+     * Get the module loader associated with this context
+     * @return the {@link FloodlightModuleLoader} object
+     */
+    public FloodlightModuleLoader getModuleLoader() {
+        return moduleLoader;
+    }
+    
+    /**
+     * Adds a IFloodlightModule for this Context.
+     * @param clazz the service class
+     * @param service The IFloodlightService to add to the registry
+     */
+    public void addService(Class<? extends IFloodlightService> clazz, 
+                           IFloodlightService service) {
+        serviceMap.put(clazz, service);
     }
  }

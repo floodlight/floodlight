@@ -17,7 +17,9 @@
 package net.floodlightcontroller.flowcache;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import org.openflow.protocol.OFMatchWithSwDpid;
+import net.floodlightcontroller.util.OFMatchWithSwDpid;
+
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  * OFMatchReconcile class to indicate result of a flow-reconciliation.
@@ -66,7 +68,7 @@ public class OFMatchReconcile  {
     /** The reconcile action. */
     public ReconcileAction rcAction;
     /** Outport in the event of UPDATE_PATH action**/
-    public short outPort;
+    public OFPort outPort;
 
     // The context for the reconcile action
     public FloodlightContext cntx;
@@ -79,15 +81,15 @@ public class OFMatchReconcile  {
      * Instantiates a new oF match reconcile object.
      */
     public OFMatchReconcile() {
-        ofmWithSwDpid      = new OFMatchWithSwDpid();
+        ofmWithSwDpid = new OFMatchWithSwDpid();
         rcAction = ReconcileAction.NO_CHANGE;
         cntx = new FloodlightContext();
     }
     
     public OFMatchReconcile(OFMatchReconcile copy) {
         ofmWithSwDpid =
-            new OFMatchWithSwDpid(copy.ofmWithSwDpid.getOfMatch(),
-                    copy.ofmWithSwDpid.getSwitchDataPathId());
+            new OFMatchWithSwDpid(copy.ofmWithSwDpid.getMatch(),
+                    copy.ofmWithSwDpid.getDpid());
         priority = copy.priority;
         action = copy.action;
         cookie = copy.cookie;
@@ -119,7 +121,7 @@ public class OFMatchReconcile  {
                  + ((newAppInstName == null) ? 0 : newAppInstName.hashCode());
         result = prime * result
                  + ((ofmWithSwDpid == null) ? 0 : ofmWithSwDpid.hashCode());
-        result = prime * result + outPort;
+        result = prime * result + outPort.getPortNumber();
         result = prime * result + priority;
         result = prime * result
                  + ((rcAction == null) ? 0 : rcAction.hashCode());

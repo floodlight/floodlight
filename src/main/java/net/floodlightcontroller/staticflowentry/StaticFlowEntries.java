@@ -17,7 +17,6 @@
 package net.floodlightcontroller.staticflowentry;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,34 +27,41 @@ import java.util.regex.Pattern;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.packet.IPv4;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
-import org.openflow.protocol.OFFlowMod;
-import org.openflow.protocol.OFMatch;
-import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.action.OFAction;
-import org.openflow.protocol.action.OFActionDataLayerDestination;
-import org.openflow.protocol.action.OFActionDataLayerSource;
-import org.openflow.protocol.action.OFActionEnqueue;
-import org.openflow.protocol.action.OFActionNetworkLayerDestination;
-import org.openflow.protocol.action.OFActionNetworkLayerSource;
-import org.openflow.protocol.action.OFActionNetworkTypeOfService;
-import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.protocol.action.OFActionStripVirtualLan;
-import org.openflow.protocol.action.OFActionTransportLayerDestination;
-import org.openflow.protocol.action.OFActionTransportLayerSource;
-import org.openflow.protocol.action.OFActionVirtualLanIdentifier;
-import org.openflow.protocol.action.OFActionVirtualLanPriorityCodePoint;
-import org.openflow.util.HexString;
+
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.VlanPcp;
+import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetDlDst;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetDlSrc;
+import org.projectfloodlight.openflow.protocol.action.OFActionEnqueue;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetNwDst;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetNwSrc;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetNwTos;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionStripVlan;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetTpDst;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetTpSrc;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanVid;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanPcp;
 
 /**
  * Represents static flow entries to be maintained by the controller on the 
@@ -67,11 +73,8 @@ public class StaticFlowEntries {
     
     private static class SubActionStruct {
         OFAction action;
-        int      len;
     }
-    
-    private static byte[] zeroMac = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
-    
+        
     /**
      * This function generates a random hash for the bottom half of the cookie
      * 
@@ -80,7 +83,7 @@ public class StaticFlowEntries {
      * @param name
      * @return A cookie that encodes the application ID and a hash
      */
-    public static long computeEntryCookie(OFFlowMod fm, int userCookie, String name) {
+    public static U64 computeEntryCookie(OFFlowMod fm, int userCookie, String name) {
         // flow-specific hash is next 20 bits LOOK! who knows if this 
         int prime = 211;
         int flowHash = 2311;
@@ -95,15 +98,14 @@ public class StaticFlowEntries {
      * @param fm The OFFlowMod to set defaults for
      * @param entryName The name of the entry. Used to compute the cookie.
      */
-    public static void initDefaultFlowMod(OFFlowMod fm, String entryName) {
-        fm.setIdleTimeout((short) 0);   // infinite
-        fm.setHardTimeout((short) 0);   // infinite
-        fm.setBufferId(OFPacketOut.BUFFER_ID_NONE);
-        fm.setCommand((short) 0);
-        fm.setFlags((short) 0);
-        fm.setOutPort(OFPort.OFPP_NONE.getValue());
-        fm.setCookie(computeEntryCookie(fm, 0, entryName));  
-        fm.setPriority(Short.MAX_VALUE);
+    public static OFFlowMod initDefaultFlowMod(OFFlowMod fm, String entryName) {
+        return fm.createBuilder().setIdleTimeout((short) 0)   // infinite
+        .setHardTimeout((short) 0)  // infinite
+        .setBufferId(OFBufferId.NO_BUFFER)
+        .setOutPort(OFPort.ANY) 
+        .setCookie(computeEntryCookie(fm, 0, entryName))
+        .setPriority(Integer.MAX_VALUE)
+        .build();
     }
     
     /**
@@ -153,51 +155,61 @@ public class StaticFlowEntries {
      */
     public static Map<String, Object> flowModToStorageEntry(OFFlowMod fm, String sw, String name) {
         Map<String, Object> entry = new HashMap<String, Object>();
-        OFMatch match = fm.getMatch();
+        Match match = fm.getMatch();
         entry.put(StaticFlowEntryPusher.COLUMN_NAME, name);
         entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
         entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
-        entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Short.toString(fm.getPriority()));
-        entry.put(StaticFlowEntryPusher.COLUMN_WILDCARD, Integer.toString(match.getWildcards()));
+        entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));
+        //entry.put(StaticFlowEntryPusher.COLUMN_WILDCARD, Integer.toString(match.getWildcards())); TODO @Ryan what to do about wildcards?
         
         if ((fm.getActions() != null) && (fm.getActions().size() > 0))
         	entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, StaticFlowEntries.flowModActionsToString(fm.getActions()));
         
-        if (match.getInputPort() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Short.toString(match.getInputPort()));
+        if ((match.get(MatchField.IN_PORT) != null) && (match.get(MatchField.IN_PORT).getPortNumber() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Integer.toString(match.get(MatchField.IN_PORT).getPortNumber()));
         
-        if (!Arrays.equals(match.getDataLayerSource(), zeroMac))
-        	entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, HexString.toHexString(match.getDataLayerSource()));
+        if ((match.get(MatchField.ETH_SRC) != null) && !match.get(MatchField.ETH_SRC).equals(MacAddress.of(0)))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, match.get(MatchField.ETH_SRC).toString());
 
-        if (!Arrays.equals(match.getDataLayerDestination(), zeroMac))
-        	entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, HexString.toHexString(match.getDataLayerDestination()));
+        if ((match.get(MatchField.ETH_DST) != null) && !match.get(MatchField.ETH_DST).equals(MacAddress.of(0)))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, match.get(MatchField.ETH_DST).toString());
         
-        if (match.getDataLayerVirtualLan() != -1)
-        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, Short.toString(match.getDataLayerVirtualLan()));
+        if ((match.get(MatchField.VLAN_VID) != null) && (match.get(MatchField.VLAN_VID).getVlan() != -1))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.get(MatchField.VLAN_VID).toString());
         
-        if (match.getDataLayerVirtualLanPriorityCodePoint() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Short.toString(match.getDataLayerVirtualLanPriorityCodePoint()));
+        if ((match.get(MatchField.VLAN_PCP) != null) && (match.get(MatchField.VLAN_PCP).getValue() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Byte.toString(match.get(MatchField.VLAN_PCP).getValue()));
         
-        if (match.getDataLayerType() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, Short.toString(match.getDataLayerType()));
+        if ((match.get(MatchField.ETH_TYPE) != null) && (match.get(MatchField.ETH_TYPE).getValue() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).toString());
         
-        if (match.getNetworkTypeOfService() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Short.toString(match.getNetworkTypeOfService()));
+        if ((match.get(MatchField.IP_ECN) != null) && (match.get(MatchField.IP_DSCP) != null) 
+        		&& (match.get(MatchField.IP_ECN).getEcnValue() != 0) && (match.get(MatchField.IP_DSCP).getDscpValue() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte
+        			Byte.toString((byte) (match.get(MatchField.IP_ECN).getEcnValue() | match.get(MatchField.IP_DSCP).getDscpValue())));
         
-        if (match.getNetworkProtocol() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.getNetworkProtocol()));
+        if ((match.get(MatchField.IP_PROTO) != null) && (match.get(MatchField.IP_PROTO).getIpProtocolNumber() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.get(MatchField.IP_PROTO).getIpProtocolNumber()));
         
-        if (match.getNetworkSource() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, IPv4.fromIPv4Address(match.getNetworkSource()));
+        if ((match.get(MatchField.IPV4_SRC) != null) && (match.get(MatchField.IPV4_SRC).getInt() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, match.get(MatchField.IPV4_SRC).toString());
         
-        if (match.getNetworkDestination() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, IPv4.fromIPv4Address(match.getNetworkDestination()));
+        if ((match.get(MatchField.IPV4_DST) != null) && (match.get(MatchField.IPV4_DST).getInt() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.get(MatchField.IPV4_DST).toString());
         
-        if (match.getTransportSource() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, Short.toString(match.getTransportSource()));
+        if ((match.get(MatchField.TCP_SRC) != null) && (match.get(MatchField.TCP_SRC).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.TCP_SRC).toString());
+        else if ((match.get(MatchField.UDP_SRC) != null) && (match.get(MatchField.UDP_SRC).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.UDP_SRC).toString());
+        else if ((match.get(MatchField.SCTP_SRC) != null) && (match.get(MatchField.SCTP_SRC).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.SCTP_SRC).toString());
         
-        if (match.getTransportDestination() != 0)
-        	entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, Short.toString(match.getTransportDestination()));
+        if ((match.get(MatchField.TCP_DST) != null) && (match.get(MatchField.TCP_DST).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, match.get(MatchField.TCP_DST).toString());
+        else if ((match.get(MatchField.UDP_DST) != null) && (match.get(MatchField.UDP_DST).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.UDP_DST).toString());
+        else if ((match.get(MatchField.SCTP_DST) != null) && (match.get(MatchField.SCTP_DST).getPort() != 0))
+        	entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.SCTP_DST).toString());
         
         return entry;
     }
@@ -219,51 +231,51 @@ public class StaticFlowEntries {
             }
             switch(a.getType()) {
                 case OUTPUT:
-                    sb.append("output=" + Short.toString(((OFActionOutput)a).getPort()));
+                    sb.append("output=" + ((OFActionOutput)a).getPort().toString());
                     break;
-                case OPAQUE_ENQUEUE:
-                    int queue = ((OFActionEnqueue)a).getQueueId();
-                    short port = ((OFActionEnqueue)a).getPort();
-                    sb.append("enqueue=" + Short.toString(port) + ":0x" + String.format("%02x", queue));
+                case ENQUEUE:
+                    long queue = ((OFActionEnqueue)a).getQueueId();
+                    OFPort port = ((OFActionEnqueue)a).getPort();
+                    sb.append("enqueue=" + Integer.toString(port.getPortNumber()) + ":0x" + String.format("%02x", queue));
                     break;
                 case STRIP_VLAN:
                     sb.append("strip-vlan");
                     break;
-                case SET_VLAN_ID:
+                case SET_VLAN_VID:
                     sb.append("set-vlan-id=" + 
-                        Short.toString(((OFActionVirtualLanIdentifier)a).getVirtualLanIdentifier()));
+                        ((OFActionSetVlanVid)a).getVlanVid().toString());
                     break;
                 case SET_VLAN_PCP:
                     sb.append("set-vlan-priority=" +
-                        Byte.toString(((OFActionVirtualLanPriorityCodePoint)a).getVirtualLanPriorityCodePoint()));
+                        Byte.toString(((OFActionSetVlanPcp)a).getVlanPcp().getValue()));
                     break;
                 case SET_DL_SRC:
                     sb.append("set-src-mac=" + 
-                        HexString.toHexString(((OFActionDataLayerSource)a).getDataLayerAddress()));
+                        ((OFActionSetDlSrc)a).getDlAddr().toString());
                     break;
                 case SET_DL_DST:
                     sb.append("set-dst-mac=" + 
-                        HexString.toHexString(((OFActionDataLayerDestination)a).getDataLayerAddress()));
+                        ((OFActionSetDlDst)a).getDlAddr().toString());
                     break;
                 case SET_NW_TOS:
                     sb.append("set-tos-bits=" +
-                        Byte.toString(((OFActionNetworkTypeOfService)a).getNetworkTypeOfService()));
+                        Short.toString(((OFActionSetNwTos)a).getNwTos()));
                     break;
                 case SET_NW_SRC:
                     sb.append("set-src-ip=" +
-                        IPv4.fromIPv4Address(((OFActionNetworkLayerSource)a).getNetworkAddress()));
+                        ((OFActionSetNwSrc)a).getNwAddr().toString());
                     break;
                 case SET_NW_DST:
                     sb.append("set-dst-ip=" +
-                        IPv4.fromIPv4Address(((OFActionNetworkLayerDestination)a).getNetworkAddress()));
+                        ((OFActionSetNwDst)a).getNwAddr().toString());
                     break;
                 case SET_TP_SRC:
                     sb.append("set-src-port=" +
-                        Short.toString(((OFActionTransportLayerSource)a).getTransportPort()));
+                        ((OFActionSetTpSrc)a).getTpPort().toString());
                     break;
                 case SET_TP_DST:
                     sb.append("set-dst-port=" +
-                        Short.toString(((OFActionTransportLayerDestination)a).getTransportPort()));
+                        ((OFActionSetTpDst)a).getTpPort().toString());
                     break;
                 default:
                     log.error("Could not decode action: {}", a);
@@ -366,9 +378,8 @@ public class StaticFlowEntries {
             message="Unexpected action '{action}', '{subaction}'",
             explanation="A static flow entry contained an invalid action",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public static void parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
+    public static OFFlowMod parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
         List<OFAction> actions = new LinkedList<OFAction>();
-        int actionsLength = 0;
         if (actionstr != null) {
             actionstr = actionstr.toLowerCase();
             for (String subaction : actionstr.split(",")) {
@@ -417,14 +428,12 @@ public class StaticFlowEntries {
                 
                 if (subaction_struct != null) {
                     actions.add(subaction_struct.action);
-                    actionsLength += subaction_struct.len;
                 }
             }
         }
         log.debug("action {}", actions);
         
-        flowMod.setActions(actions);
-        flowMod.setLengthU(OFFlowMod.MINIMUM_LENGTH + actionsLength);
+        return flowMod.createBuilder().setActions(actions).build();
     } 
     
     @LogMessageDoc(level="ERROR",
@@ -437,12 +446,11 @@ public class StaticFlowEntries {
         
         n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(subaction);
         if (n.matches()) {
-            OFActionOutput action = new OFActionOutput();
-            action.setMaxLength(Short.MAX_VALUE);
-            short port = OFPort.OFPP_NONE.getValue();
+            OFActionOutput.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput();
+            OFPort port = OFPort.ANY;
             if (n.group(1) != null) {
                 try {
-                    port = get_short(n.group(1));
+                    port = OFPort.of(get_short(n.group(1)));
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid port in: '{}' (error ignored)", subaction);
@@ -450,23 +458,22 @@ public class StaticFlowEntries {
                 }
             }
             else if (n.group(2) != null)
-                port = OFPort.OFPP_ALL.getValue();
+                port = OFPort.ALL;
             else if (n.group(3) != null)
-                port = OFPort.OFPP_CONTROLLER.getValue();
+                port = OFPort.CONTROLLER;
             else if (n.group(4) != null)
-                port = OFPort.OFPP_LOCAL.getValue();
+                port = OFPort.LOCAL;
             else if (n.group(5) != null)
-                port = OFPort.OFPP_IN_PORT.getValue();
+                port = OFPort.IN_PORT;
             else if (n.group(6) != null)
-                port = OFPort.OFPP_NORMAL.getValue();
+                port = OFPort.NORMAL;
             else if (n.group(7) != null)
-                port = OFPort.OFPP_FLOOD.getValue();
-            action.setPort(port);
-            log.debug("action {}", action);
+                port = OFPort.FLOOD;
+            ab.setPort(port);
+            log.debug("action {}", ab.build());
             
             sa = new SubActionStruct();
-            sa.action = action;
-            sa.len = OFActionOutput.MINIMUM_LENGTH;
+            sa.action = ab.build();
         }
         else {
             log.error("Invalid subaction: '{}'", subaction);
@@ -482,10 +489,10 @@ public class StaticFlowEntries {
         
         n = Pattern.compile("enqueue=(?:((?:0x)?\\d+)\\:((?:0x)?\\d+))").matcher(subaction);
         if (n.matches()) {
-            short portnum = 0;
+            OFPort port = OFPort.of(0);
             if (n.group(1) != null) {
                 try {
-                    portnum = get_short(n.group(1));
+                    port = OFPort.of(get_short(n.group(1)));
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid port-num in: '{}' (error ignored)", subaction);
@@ -504,14 +511,13 @@ public class StaticFlowEntries {
                }
             }
             
-            OFActionEnqueue action = new OFActionEnqueue();
-            action.setPort(portnum);
-            action.setQueueId(queueid);
-            log.debug("action {}", action);
+            OFActionEnqueue.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildEnqueue();
+            ab.setPort(port);
+            ab.setQueueId(queueid);
+            log.debug("action {}", ab.build());
             
             sa = new SubActionStruct();
-            sa.action = action;
-            sa.len = OFActionEnqueue.MINIMUM_LENGTH;
+            sa.action = ab.build();
         }
         else {
             log.debug("Invalid action: '{}'", subaction);
@@ -526,12 +532,11 @@ public class StaticFlowEntries {
         Matcher n = Pattern.compile("strip-vlan").matcher(subaction);
         
         if (n.matches()) {
-            OFActionStripVirtualLan action = new OFActionStripVirtualLan();
-            log.debug("action {}", action);
+            OFActionStripVlan a = OFFactories.getFactory(OFVersion.OF_13).actions().stripVlan();
+            log.debug("action {}", a);
             
             sa = new SubActionStruct();
-            sa.action = action;
-            sa.len = OFActionStripVirtualLan.MINIMUM_LENGTH;
+            sa.action = a;
         }
         else {
             log.debug("Invalid action: '{}'", subaction);
@@ -548,14 +553,13 @@ public class StaticFlowEntries {
         if (n.matches()) {            
             if (n.group(1) != null) {
                 try {
-                    short vlanid = get_short(n.group(1));
-                    OFActionVirtualLanIdentifier action = new OFActionVirtualLanIdentifier();
-                    action.setVirtualLanIdentifier(vlanid);
-                    log.debug("  action {}", action);
+                    VlanVid vlanid = VlanVid.ofVlan(get_short(n.group(1)));
+                    OFActionSetVlanVid.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetVlanVid();
+                    ab.setVlanVid(vlanid);
+                    log.debug("  action {}", ab.build());
 
                     sa = new SubActionStruct();
-                    sa.action = action;
-                    sa.len = OFActionVirtualLanIdentifier.MINIMUM_LENGTH;
+                    sa.action = ab.build();
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid VLAN in: {} (error ignored)", subaction);
@@ -578,14 +582,13 @@ public class StaticFlowEntries {
         if (n.matches()) {            
             if (n.group(1) != null) {
                 try {
-                    byte prior = get_byte(n.group(1));
-                    OFActionVirtualLanPriorityCodePoint action = new OFActionVirtualLanPriorityCodePoint();
-                    action.setVirtualLanPriorityCodePoint(prior);
-                    log.debug("  action {}", action);
+                    VlanPcp prior = VlanPcp.of(get_byte(n.group(1)));
+                    OFActionSetVlanPcp.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetVlanPcp();
+                    ab.setVlanPcp(prior);
+                    log.debug("  action {}", ab.build());
                     
                     sa = new SubActionStruct();
-                    sa.action = action;
-                    sa.len = OFActionVirtualLanPriorityCodePoint.MINIMUM_LENGTH;
+                    sa.action = ab.build();
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid VLAN priority in: {} (error ignored)", subaction);
@@ -606,15 +609,14 @@ public class StaticFlowEntries {
         Matcher n = Pattern.compile("set-src-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction); 
 
         if (n.matches()) {
-            byte[] macaddr = get_mac_addr(n, subaction, log);
+            MacAddress macaddr = MacAddress.of(get_mac_addr(n, subaction, log));
             if (macaddr != null) {
-                OFActionDataLayerSource action = new OFActionDataLayerSource();
-                action.setDataLayerAddress(macaddr);
-                log.debug("action {}", action);
+                OFActionSetDlSrc.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetDlSrc();
+                ab.setDlAddr(macaddr);
+                log.debug("action {}", ab.build());
 
                 sa = new SubActionStruct();
-                sa.action = action;
-                sa.len = OFActionDataLayerSource.MINIMUM_LENGTH;
+                sa.action = ab.build();
             }            
         }
         else {
@@ -630,15 +632,14 @@ public class StaticFlowEntries {
         Matcher n = Pattern.compile("set-dst-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
         
         if (n.matches()) {
-            byte[] macaddr = get_mac_addr(n, subaction, log);            
+            MacAddress macaddr = MacAddress.of(get_mac_addr(n, subaction, log));            
             if (macaddr != null) {
-                OFActionDataLayerDestination action = new OFActionDataLayerDestination();
-                action.setDataLayerAddress(macaddr);
-                log.debug("  action {}", action);
+                OFActionSetDlDst.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetDlDst();
+                ab.setDlAddr(macaddr);
+                log.debug("  action {}", ab.build());
                 
                 sa = new SubActionStruct();
-                sa.action = action;
-                sa.len = OFActionDataLayerDestination.MINIMUM_LENGTH;
+                sa.action = ab.build();
             }
         }
         else {
@@ -657,13 +658,12 @@ public class StaticFlowEntries {
             if (n.group(1) != null) {
                 try {
                     byte tosbits = get_byte(n.group(1));
-                    OFActionNetworkTypeOfService action = new OFActionNetworkTypeOfService();
-                    action.setNetworkTypeOfService(tosbits);
-                    log.debug("  action {}", action);
+                    OFActionSetNwTos.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetNwTos();
+                    ab.setNwTos(tosbits);
+                    log.debug("  action {}", ab.build());
                     
                     sa = new SubActionStruct();
-                    sa.action = action;
-                    sa.len = OFActionNetworkTypeOfService.MINIMUM_LENGTH;
+                    sa.action = ab.build();
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid dst-port in: {} (error ignored)", subaction);
@@ -684,14 +684,13 @@ public class StaticFlowEntries {
         Matcher n = Pattern.compile("set-src-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
 
         if (n.matches()) {
-            int ipaddr = get_ip_addr(n, subaction, log);
-            OFActionNetworkLayerSource action = new OFActionNetworkLayerSource();
-            action.setNetworkAddress(ipaddr);
-            log.debug("  action {}", action);
+            IPv4Address ipaddr = IPv4Address.of(get_ip_addr(n, subaction, log));
+            OFActionSetNwSrc.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetNwSrc();
+            ab.setNwAddr(ipaddr);
+            log.debug("  action {}", ab.build());
 
             sa = new SubActionStruct();
-            sa.action = action;
-            sa.len = OFActionNetworkLayerSource.MINIMUM_LENGTH;
+            sa.action = ab.build();
         }
         else {
             log.debug("Invalid action: '{}'", subaction);
@@ -706,14 +705,13 @@ public class StaticFlowEntries {
         Matcher n = Pattern.compile("set-dst-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
 
         if (n.matches()) {
-            int ipaddr = get_ip_addr(n, subaction, log);
-            OFActionNetworkLayerDestination action = new OFActionNetworkLayerDestination();
-            action.setNetworkAddress(ipaddr);
-            log.debug("action {}", action);
+            IPv4Address ipaddr = IPv4Address.of(get_ip_addr(n, subaction, log));
+            OFActionSetNwDst.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetNwDst();
+            ab.setNwAddr(ipaddr);
+            log.debug("action {}", ab.build());
  
             sa = new SubActionStruct();
-            sa.action = action;
-            sa.len = OFActionNetworkLayerDestination.MINIMUM_LENGTH;
+            sa.action = ab.build();
         }
         else {
             log.debug("Invalid action: '{}'", subaction);
@@ -730,14 +728,13 @@ public class StaticFlowEntries {
         if (n.matches()) {
             if (n.group(1) != null) {
                 try {
-                    short portnum = get_short(n.group(1));
-                    OFActionTransportLayerSource action = new OFActionTransportLayerSource();
-                    action.setTransportPort(portnum);
-                    log.debug("action {}", action);
+                    TransportPort portnum = TransportPort.of(get_short(n.group(1)));
+                    OFActionSetTpSrc.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetTpSrc();
+                    ab.setTpPort(portnum);
+                    log.debug("action {}", ab.build());
                     
                     sa = new SubActionStruct();
-                    sa.action = action;
-                    sa.len = OFActionTransportLayerSource.MINIMUM_LENGTH;;
+                    sa.action = ab.build();
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid src-port in: {} (error ignored)", subaction);
@@ -760,14 +757,13 @@ public class StaticFlowEntries {
         if (n.matches()) {
             if (n.group(1) != null) {
                 try {
-                    short portnum = get_short(n.group(1));
-                    OFActionTransportLayerDestination action = new OFActionTransportLayerDestination();
-                    action.setTransportPort(portnum);
-                    log.debug("action {}", action);
+                    TransportPort portnum = TransportPort.of(get_short(n.group(1)));
+                    OFActionSetTpDst.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetTpDst();
+                    ab.setTpPort(portnum);
+                    log.debug("action {}", ab.build());
                     
                     sa = new SubActionStruct();
-                    sa.action = action;
-                    sa.len = OFActionTransportLayerDestination.MINIMUM_LENGTH;;
+                    sa.action = ab.build();
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid dst-port in: {} (error ignored)", subaction);

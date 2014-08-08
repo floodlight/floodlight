@@ -36,10 +36,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.counter.ICounter;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.counter.CounterValue.CounterType;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.web.StorageWebRoutable;
 
@@ -67,7 +65,7 @@ public abstract class AbstractStorageSource
     protected final static String STORAGE_DELETE_COUNTER_NAME = "StorageDelete";
     
     protected Set<String> allTableNames = new CopyOnWriteArraySet<String>();
-    protected ICounterStoreService counterStore;
+    protected IDebugCounterService debugCounterService;
     protected ExecutorService executorService = defaultExecutorService;
     protected IStorageExceptionHandler exceptionHandler;
 
@@ -146,25 +144,26 @@ public abstract class AbstractStorageSource
         return allTableNames;
     }
     
-    public void setCounterStore(CounterStore counterStore) {
-        this.counterStore = counterStore;
+    public void setDebugCounterService(IDebugCounterService dcs) {
+        debugCounterService = dcs;
     }
     
     protected void updateCounters(String baseName, String tableName) {
-        if (counterStore != null) {
+        /*if (debugCounterService != null) {
             String counterName;
             if (tableName != null) {
                 updateCounters(baseName, null);
-                counterName = baseName + CounterStore.TitleDelimitor + tableName;
+                counterName = baseName + "__" + tableName; //TODO @Ryan __ was CounterStore.Title
             } else {
                 counterName = baseName;
             }
-            ICounter counter = counterStore.getCounter(counterName);
+            TODO @Ryan not sure what to do about this counter. It seems different than debug counters.
+             * IDebugCounter counter = debugCounterService.getCounter(counterName);
             if (counter == null) {
                 counter = counterStore.createCounter(counterName, CounterType.LONG);
             }
             counter.increment();
-        }
+        }*/
     }
     
     @Override
@@ -518,7 +517,7 @@ public abstract class AbstractStorageSource
         Collection<Class<? extends IFloodlightService>> l = 
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IRestApiService.class);
-        l.add(ICounterStoreService.class);
+        l.add(IDebugCounterService.class);
         return l;
     }
 
@@ -527,8 +526,8 @@ public abstract class AbstractStorageSource
             throws FloodlightModuleException {
         restApi =
            context.getServiceImpl(IRestApiService.class);
-        counterStore =
-            context.getServiceImpl(ICounterStoreService.class);
+        debugCounterService =
+            context.getServiceImpl(IDebugCounterService.class);
     }
 
     @Override

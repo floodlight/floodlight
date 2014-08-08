@@ -25,6 +25,7 @@ public class FallbackCCProvider implements IClusterConfigProvider {
     AuthScheme authScheme;
     String keyStorePath;
     String keyStorePassword;
+    int syncPort = 6642;
     
     public FallbackCCProvider() throws SyncException {
         
@@ -43,7 +44,7 @@ public class FallbackCCProvider implements IClusterConfigProvider {
         }
         return new ClusterConfig(Collections.
                                  singletonList(new Node("localhost",
-                                                        6642,
+                                                        syncPort,
                                                         Short.MAX_VALUE,
                                                         Short.MAX_VALUE)),
                                                         Short.MAX_VALUE,
@@ -61,6 +62,7 @@ public class FallbackCCProvider implements IClusterConfigProvider {
         authScheme = AuthScheme.NO_AUTH;
         try {
             authScheme = AuthScheme.valueOf(config.get("authScheme"));
+            syncPort = Integer.parseInt(config.get("port"));
         } catch (Exception e) {}
     }
 }

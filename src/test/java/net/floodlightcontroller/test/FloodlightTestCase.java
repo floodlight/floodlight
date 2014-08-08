@@ -17,19 +17,19 @@
 
 package net.floodlightcontroller.test;
 
-import junit.framework.TestCase;
+import org.junit.Before;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.core.test.MockSwitchManager;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
 import net.floodlightcontroller.packet.Ethernet;
-
-import org.junit.Test;
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFType;
 
 /**
  * This class gets a handle on the application context which is used to
@@ -37,68 +37,51 @@ import org.openflow.protocol.OFType;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class FloodlightTestCase extends TestCase {
+public class FloodlightTestCase {
     protected MockFloodlightProvider mockFloodlightProvider;
+    protected MockSwitchManager mockSwitchManager;
 
     public MockFloodlightProvider getMockFloodlightProvider() {
         return mockFloodlightProvider;
+    }
+
+    public MockSwitchManager getMockSwitchService() {
+        return mockSwitchManager;
     }
 
     public void setMockFloodlightProvider(MockFloodlightProvider mockFloodlightProvider) {
         this.mockFloodlightProvider = mockFloodlightProvider;
     }
 
-    public FloodlightContext parseAndAnnotate(OFMessage m,
-                                              IDevice srcDevice,
-                                              IDevice dstDevice) {
-        FloodlightContext bc = new FloodlightContext();
-        return parseAndAnnotate(bc, m, srcDevice, dstDevice);
-    }
-
     public FloodlightContext parseAndAnnotate(OFMessage m) {
-        return parseAndAnnotate(m, null, null);
+        FloodlightContext bc = new FloodlightContext();
+        return parseAndAnnotate(bc, m);
     }
 
-    public FloodlightContext parseAndAnnotate(FloodlightContext bc,
-                                              OFMessage m,
-                                              IDevice srcDevice,
-                                              IDevice dstDevice) {
+    public static FloodlightContext parseAndAnnotate(FloodlightContext bc, OFMessage m) {
         if (OFType.PACKET_IN.equals(m.getType())) {
             OFPacketIn pi = (OFPacketIn)m;
             Ethernet eth = new Ethernet();
-            eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+            eth.deserialize(pi.getData(), 0, pi.getData().length);
             IFloodlightProviderService.bcStore.put(bc,
                     IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                     eth);
         }
-        if (srcDevice != null) {
-            IDeviceService.fcStore.put(bc,
-                    IDeviceService.CONTEXT_SRC_DEVICE,
-                    srcDevice);
-        }
-        if (dstDevice != null) {
-            IDeviceService.fcStore.put(bc,
-                    IDeviceService.CONTEXT_DST_DEVICE,
-                    dstDevice);
-        }
         return bc;
     }
 
-    @Override
+    @Before
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
+        mockSwitchManager = new MockSwitchManager();
     }
 
-    @Test
-    public void testSanity() throws Exception {
-    	assertTrue(true);
-    }
-
-    public static OFPhysicalPort createOFPhysicalPort(String name, int number) {
-        OFPhysicalPort p = new OFPhysicalPort();
-        p.setHardwareAddress(new byte [] { 0, 0, 0, 0, 0, 0 });
-        p.setPortNumber((short)number);
-        p.setName(name);
-        return p;
+    public static OFPortDesc createOFPortDesc(IOFSwitch sw, String name, int number) {
+        OFPortDesc portDesc = sw.getOFFactory().buildPortDesc()
+                .setHwAddr(MacAddress.NONE)
+                .setPortNo(OFPort.of(number))
+                .setName(name)
+                .build();
+        return portDesc;
     }
 }

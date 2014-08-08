@@ -20,13 +20,16 @@ package net.floodlightcontroller.packet;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.TransportPort;
+
 /**
  *
  * @author shudong.zhou@bigswitch.com
  */
 public class TCP extends BasePacket {
-    protected short sourcePort;
-    protected short destinationPort;
+    protected TransportPort sourcePort;
+    protected TransportPort destinationPort;
     protected int sequence;
     protected int acknowledge;
     protected byte dataOffset;
@@ -39,30 +42,46 @@ public class TCP extends BasePacket {
     /**
      * @return the sourcePort
      */
-    public short getSourcePort() {
+    public TransportPort getSourcePort() {
         return sourcePort;
     }
 
     /**
      * @param sourcePort the sourcePort to set
      */
-    public TCP setSourcePort(short sourcePort) {
+    public TCP setSourcePort(TransportPort sourcePort) {
         this.sourcePort = sourcePort;
+        return this;
+    }
+    
+    /**
+     * @param sourcePort the sourcePort to set
+     */
+    public TCP setSourcePort(int sourcePort) {
+        this.sourcePort = TransportPort.of(sourcePort);
         return this;
     }
 
     /**
      * @return the destinationPort
      */
-    public short getDestinationPort() {
+    public TransportPort getDestinationPort() {
         return destinationPort;
     }
 
     /**
      * @param destinationPort the destinationPort to set
      */
-    public TCP setDestinationPort(short destinationPort) {
+    public TCP setDestinationPort(TransportPort destinationPort) {
         this.destinationPort = destinationPort;
+        return this;
+    }
+    
+    /**
+     * @param destinationPort the destinationPort to set
+     */
+    public TCP setDestinationPort(short destinationPort) {
+        this.destinationPort = TransportPort.of(destinationPort);
         return this;
     }
 
@@ -166,8 +185,8 @@ public class TCP extends BasePacket {
         byte[] data = new byte[length];
         ByteBuffer bb = ByteBuffer.wrap(data);
 
-        bb.putShort(this.sourcePort);
-        bb.putShort(this.destinationPort);
+        bb.putShort((short)this.sourcePort.getPort()); //TCP ports are defined to be 16 bits
+        bb.putShort((short)this.destinationPort.getPort());
         bb.putInt(this.sequence);
         bb.putInt(this.acknowledge);
         bb.putShort((short) (this.flags | (dataOffset << 12)));
@@ -185,7 +204,7 @@ public class TCP extends BasePacket {
             bb.put(payloadData);
 
         if (this.parent != null && this.parent instanceof IPv4)
-            ((IPv4)this.parent).setProtocol(IPv4.PROTOCOL_TCP);
+            ((IPv4)this.parent).setProtocol(IpProtocol.TCP);
 
         // compute checksum if needed
         if (this.checksum == 0) {
@@ -195,11 +214,11 @@ public class TCP extends BasePacket {
             // compute pseudo header mac
             if (this.parent != null && this.parent instanceof IPv4) {
                 IPv4 ipv4 = (IPv4) this.parent;
-                accumulation += ((ipv4.getSourceAddress() >> 16) & 0xffff)
-                        + (ipv4.getSourceAddress() & 0xffff);
-                accumulation += ((ipv4.getDestinationAddress() >> 16) & 0xffff)
-                        + (ipv4.getDestinationAddress() & 0xffff);
-                accumulation += ipv4.getProtocol() & 0xff;
+                accumulation += ((ipv4.getSourceAddress().getInt() >> 16) & 0xffff)
+                        + (ipv4.getSourceAddress().getInt() & 0xffff);
+                accumulation += ((ipv4.getDestinationAddress().getInt() >> 16) & 0xffff)
+                        + (ipv4.getDestinationAddress().getInt() & 0xffff);
+                accumulation += ipv4.getProtocol().getIpProtocolNumber() & 0xff;
                 accumulation += length & 0xffff;
             }
 
@@ -227,8 +246,8 @@ public class TCP extends BasePacket {
         final int prime = 5807;
         int result = super.hashCode();
         result = prime * result + checksum;
-        result = prime * result + destinationPort;
-        result = prime * result + sourcePort;
+        result = prime * result + destinationPort.getPort();
+        result = prime * result + sourcePort.getPort();
         return result;
     }
 
@@ -261,8 +280,8 @@ public class TCP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.sourcePort = bb.getShort();
-        this.destinationPort = bb.getShort();
+        this.sourcePort = TransportPort.of(bb.getShort());
+        this.destinationPort = TransportPort.of(bb.getShort());
         this.sequence = bb.getInt();
         this.acknowledge = bb.getInt();
         this.flags = bb.getShort();

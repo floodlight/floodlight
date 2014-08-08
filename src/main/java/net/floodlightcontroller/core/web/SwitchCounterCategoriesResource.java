@@ -23,12 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.counter.CounterStore.NetworkLayer;
-import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 /**
  * Get the counter categories for a particular switch
@@ -37,9 +35,9 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 public class SwitchCounterCategoriesResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+        IOFSwitchService switchService =
+                (IOFSwitchService)getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
 
         String switchID = (String) getRequestAttributes().get("switchId");
@@ -47,8 +45,8 @@ public class SwitchCounterCategoriesResource extends CounterResourceBase {
         String layer = (String) getRequestAttributes().get("layer");
 
         if (switchID.equalsIgnoreCase("all")) {
-            for (Long dpid : floodlightProvider.getAllSwitchDpids()) {
-                switchID = HexString.toHexString(dpid);
+            for (DatapathId dpid : switchService.getAllSwitchDpids()) {
+                switchID = dpid.toString();
 
                 getOneSwitchCounterCategoriesJson(model, switchID, counterName, layer);
             }
