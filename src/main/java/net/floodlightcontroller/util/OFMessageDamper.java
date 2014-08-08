@@ -144,7 +144,7 @@ public class OFMessageDamper {
             // entry exists in cache. Dampening.
             return false; 
         } else {
-            sw.write(msg, LogicalOFMessageCategory.MAIN);
+            sw.write(msg);
             if (flush) {
                 sw.flush();
             }

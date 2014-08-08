@@ -41,6 +41,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -55,9 +56,14 @@ import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -265,11 +271,35 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 											if (decision != null) {
 												routeMatch = decision.getMatch();
 											} else {
+												// The packet in match will only contain the port number.
+												// We need to add in specifics for the hosts we're routing between.
+												Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+												VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
+												MacAddress srcMac = eth.getSourceMACAddress();
+												MacAddress dstMac = eth.getDestinationMACAddress();
+												
+												Match.Builder mb = m.createBuilder(); // TODO @Ryan based on packet in's match, m; ingress port should be included already, but it's not....
+												mb.setExact(MatchField.IN_PORT, m.get(MatchField.IN_PORT))
+												.setExact(MatchField.ETH_SRC, srcMac)
+												.setExact(MatchField.ETH_DST, dstMac);
+												//.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+												
+												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
+													IPv4 ip = (IPv4) eth.getPayload();
+													IPv4Address srcIp = ip.getSourceAddress();
+													IPv4Address dstIp = ip.getDestinationAddress();
+													mb.setExact(MatchField.IPV4_SRC, srcIp)
+													.setExact(MatchField.IPV4_DST, dstIp)
+													.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+												} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+												} //TODO @Ryan should probably include other ethertypes
+												
 												// A Match will contain only what you want to match on.
 												// Absence of a MatchField --> it can be anything (wildcarded).
 												// Remove all matches except for L2 and L3 addresses & VLAN
 												// to allow forwarding on a (V)LAN
-												routeMatch = MatchMaskUtils.maskL4AndUp(m);
+												routeMatch = /*MatchMaskUtils.maskL4AndUp(*/mb.build()/*)*/;
 											}
 
 											pushRoute(route, routeMatch, pi, sw.getId(), cookie,

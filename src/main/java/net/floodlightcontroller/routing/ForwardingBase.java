@@ -247,23 +247,24 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
-			Match.Builder mb = match.createBuilder();
+			//Match.Builder mb = match.createBuilder();
 
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
-			OFPort inPort = switchPortList.get(indx - 1).getPortId();
-			mb.setExact(MatchField.IN_PORT, inPort);
+			//OFPort inPort = switchPortList.get(indx - 1).getPortId();
+			//mb.setExact(MatchField.IN_PORT, inPort);
 			aob.setPort(outPort);
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
 			
 			// compile
-			fmb.setMatch(mb.build())
+			fmb.setMatch(match) //mb.build()
 			.setActions(actions)
 			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 			.setBufferId(OFBufferId.NO_BUFFER)
-			.setCookie(cookie);
+			.setCookie(cookie)
+			.setOutPort(outPort); // TODO @Ryan why does this need to be set in addition to the action???
 
 			try {
 				//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, fm);

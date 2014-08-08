@@ -28,13 +28,17 @@ public class MatchMaskUtils {
 	public static Match maskL4AndUp(Match m) {
 		// cannot create builder from existing match; will retain all MatchFields set
 		Match.Builder mb = OFFactories.getFactory(m.getVersion()).buildMatch(); 
-		return mb.setExact(MatchField.IN_PORT, m.get(MatchField.IN_PORT))
+		mb.setExact(MatchField.IN_PORT, m.get(MatchField.IN_PORT))
 		.setExact(MatchField.VLAN_VID, m.get(MatchField.VLAN_VID))
 		.setExact(MatchField.ETH_SRC, m.get(MatchField.ETH_SRC))
-		.setExact(MatchField.ETH_DST, m.get(MatchField.ETH_DST))
-		.setExact(MatchField.IPV4_SRC, m.get(MatchField.IPV4_SRC))
-		.setExact(MatchField.IPV4_DST, m.get(MatchField.IPV4_DST))
-		.build();
+		.setExact(MatchField.ETH_DST, m.get(MatchField.ETH_DST));
+		if (m.get(MatchField.IPV4_SRC) != null) {
+			mb.setExact(MatchField.IPV4_SRC, m.get(MatchField.IPV4_SRC));
+		}
+		if (m.get(MatchField.IPV4_DST) != null) {
+			mb.setExact(MatchField.IPV4_DST, m.get(MatchField.IPV4_DST));
+		}
+		return mb.build();
 	}
 	
 	
