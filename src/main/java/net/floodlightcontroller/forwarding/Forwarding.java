@@ -47,7 +47,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.util.MatchMaskUtils;
+import net.floodlightcontroller.util.MatchUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -278,11 +278,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 												MacAddress srcMac = eth.getSourceMACAddress();
 												MacAddress dstMac = eth.getDestinationMACAddress();
 												
-												Match.Builder mb = m.createBuilder(); // TODO @Ryan based on packet in's match, m; ingress port should be included already, but it's not....
-												mb.setExact(MatchField.IN_PORT, m.get(MatchField.IN_PORT))
-												.setExact(MatchField.ETH_SRC, srcMac)
-												.setExact(MatchField.ETH_DST, dstMac);
-												//.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+												// A retentive builder will remember all MatchFields of the parent the builder was generated from
+												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
+												Match.Builder mb = MatchUtils.createRetentiveBuilder(m);
+												mb.setExact(MatchField.ETH_SRC, srcMac)
+												.setExact(MatchField.ETH_DST, dstMac)
+												.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 												
 												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
 													IPv4 ip = (IPv4) eth.getPayload();
@@ -295,11 +296,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
 												} //TODO @Ryan should probably include other ethertypes
 												
-												// A Match will contain only what you want to match on.
-												// Absence of a MatchField --> it can be anything (wildcarded).
-												// Remove all matches except for L2 and L3 addresses & VLAN
-												// to allow forwarding on a (V)LAN
-												routeMatch = /*MatchMaskUtils.maskL4AndUp(*/mb.build()/*)*/;
+												routeMatch = mb.build();
 											}
 
 											pushRoute(route, routeMatch, pi, sw.getId(), cookie,

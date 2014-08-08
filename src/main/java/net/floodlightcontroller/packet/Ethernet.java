@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.VlanVid;
 
 /**
  *
@@ -35,7 +36,7 @@ public class Ethernet extends BasePacket {
     public static final short TYPE_IPv4 = 0x0800;
     public static final short TYPE_LLDP = (short) 0x88cc;
     public static final short TYPE_BSN = (short) 0x8942;
-    public static final short VLAN_UNTAGGED = (short)0xffff;
+    public static final short VLAN_UNTAGGED = VlanVid.ZERO.getVlan(); // untagged vlan must be 0x0000 for loxi. We can use the convenient ZERO field
     public static final short DATALAYER_ADDRESS_LENGTH = 6; // bytes
     public static Map<Short, Class<? extends IPacket>> etherTypeClassMap;
 
