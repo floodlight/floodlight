@@ -179,8 +179,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_CORE_PRIORITY
     };
 
-    private static short DEFAULT_ACCESS_PRIORITY = 10;
-    private static short DEFAULT_CORE_PRIORITY = 1000;
+    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_ACCESS_PRIORITY = 10;
+    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_CORE_PRIORITY = 1000;
     
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 128 * 1024;
@@ -833,10 +833,10 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     String primary_key = (String) row.get(FLOW_COLUMN_PRIMARY_KEY);
                     if (primary_key.equals(FLOW_VALUE_PRIMARY_KEY)) {
                         if (row.containsKey(FLOW_COLUMN_ACCESS_PRIORITY)) {
-                            DEFAULT_ACCESS_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
+                            //TODO @Ryan delete? Not referenced anywhere DEFAULT_ACCESS_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
                         }
                         if (row.containsKey(FLOW_COLUMN_CORE_PRIORITY)) {
-                            DEFAULT_CORE_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
+                            //TODO @Ryan delete? Not referenced anywhere DEFAULT_CORE_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
                         }
                     }
                 }
