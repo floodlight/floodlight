@@ -54,6 +54,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -348,7 +349,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		// The assumption here is (sw) is the switch that generated the
 		// packet-in. If the input port is the same as output port, then
 		// the packet-out should be ignored.
-		if (pi.getMatch().get(MatchField.IN_PORT).equals(outport)) {
+		if ((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
 			if (log.isDebugEnabled()) {
 				log.debug("Attempting to do packet-out to the same " +
 						"interface as packet-in. Dropping packet. " +
@@ -380,7 +381,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			pob.setData(packetData);
 		}
 
-		pob.setInPort(pi.getMatch().get(MatchField.IN_PORT));
+		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
 		try {
 			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);

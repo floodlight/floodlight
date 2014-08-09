@@ -97,6 +97,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortState;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -594,7 +595,7 @@ IFloodlightModule, IInfoProvider {
 		}
 
 		// If packet-in is from a quarantine port, stop processing.
-		NodePortTuple npt = new NodePortTuple(sw, pi.getMatch().get(MatchField.IN_PORT));
+		NodePortTuple npt = new NodePortTuple(sw, (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 		if (quarantineQueue.contains(npt)) {
 			ctrQuarantineDrops.increment();
 			return Command.STOP;

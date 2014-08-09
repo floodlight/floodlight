@@ -69,6 +69,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -923,7 +924,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected Command dropFilter(DatapathId sw, OFPacketIn pi,
 			FloodlightContext cntx) {
 		Command result = Command.CONTINUE;
-		OFPort port = pi.getMatch().get(MatchField.IN_PORT);
+		OFPort port = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
 		// If the input port is not allowed for data traffic, drop everything.
 		// BDDP packets will not reach this stage.

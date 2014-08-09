@@ -47,7 +47,6 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.util.MatchUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -55,6 +54,7 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -171,8 +171,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 	}
 
 	protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
-		Match m = pi.getMatch();
-
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		// Check if we have the location of the destination
 		IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 
@@ -186,7 +185,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			}
 			if (srcIsland == null) {
 				log.debug("No openflow island found for source {}/{}",
-						sw.getId().toString(), pi.getMatch().get(MatchField.IN_PORT));
+						sw.getId().toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 				return;
 			}
 
@@ -199,7 +198,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
 				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
 					on_same_island = true;
-					if ((sw.getId().equals(dstSwDpid)) && (pi.getMatch().get(MatchField.IN_PORT).equals(dstDap.getPort()))) {
+					if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
 						on_same_if = true;
 					}
 					break;
@@ -220,7 +219,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				if (log.isTraceEnabled()) {
 					log.trace("Both source and destination are on the same " +
 							"switch/port {}/{}, Action = NOP",
-							sw.toString(), pi.getMatch().get(MatchField.IN_PORT));
+							sw.toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 				}
 				return;
 			}
@@ -254,9 +253,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 										dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
 										if (route != null) {
 											if (log.isTraceEnabled()) {
-												log.trace("pushRoute match={} route={} " +
+												log.trace("pushRoute inPort={} route={} " +
 														"destination={}:{}",
-														new Object[] { m, route,
+														new Object[] { inPort, route,
 														dstDap.getSwitchDPID(),
 														dstDap.getPort()});
 											}
@@ -280,8 +279,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 												
 												// A retentive builder will remember all MatchFields of the parent the builder was generated from
 												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
-												Match.Builder mb = MatchUtils.createRetentiveBuilder(m);
-												mb.setExact(MatchField.ETH_SRC, srcMac)
+												Match.Builder mb = sw.getOFFactory().buildMatch();
+												mb.setExact(MatchField.IN_PORT, inPort)
+												.setExact(MatchField.ETH_SRC, srcMac)
 												.setExact(MatchField.ETH_DST, dstMac);
 												
 												if (!vlan.equals(VlanVid.ZERO)) {
@@ -336,11 +336,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 							"out message to the switch",
 							recommendation=LogMessageDoc.CHECK_SWITCH)
 	protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), pi.getMatch().get(MatchField.IN_PORT)) == false) {
+		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT))) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("doFlood, drop broadcast packet, pi={}, " +
 						"from a blocked port, srcSwitch=[{},{}], linkInfo={}",
-						new Object[] {pi, sw.getId(),pi.getMatch().get(MatchField.IN_PORT)});
+						new Object[] {pi, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT))});
 			}
 			return;
 		}
@@ -357,7 +357,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
 		// set buffer-id, in-port and packet-data based on packet-in
 		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(pi.getMatch().get(MatchField.IN_PORT));
+		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 		pob.setData(pi.getData());
 
 		try {

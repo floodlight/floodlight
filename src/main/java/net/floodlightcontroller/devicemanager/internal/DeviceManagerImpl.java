@@ -95,6 +95,7 @@ DeviceManagerImpl.DeviceUpdate.Change.*;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -1152,7 +1153,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
 		// Extract source entity information
-		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), pi.getMatch().get(MatchField.IN_PORT));
+		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 		if (srcEntity == null) {
 			cntInvalidSource.increment();
 			return Command.STOP;
@@ -1164,7 +1165,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		// the IP to MAC mapping of the VRRP IP address.  The source
 		// entity will not have that information.  Hence, a separate call
 		// to learn devices in such cases.
-		learnDeviceFromArpResponseData(eth, sw.getId(), pi.getMatch().get(MatchField.IN_PORT));
+		learnDeviceFromArpResponseData(eth, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
 		// Learn/lookup device information
 		Device srcDevice = learnDeviceByEntity(srcEntity);
@@ -1197,7 +1198,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		if (logger.isTraceEnabled()) {
 			logger.trace("Received PI: {} on switch {}, port {} *** eth={}" +
 					" *** srcDev={} *** dstDev={} *** ",
-					new Object[] { pi, sw.getId().toString(), pi.getMatch().get(MatchField.IN_PORT), eth,
+					new Object[] { pi, sw.getId().toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), eth,
 					srcDevice, dstDevice });
 		}
 
