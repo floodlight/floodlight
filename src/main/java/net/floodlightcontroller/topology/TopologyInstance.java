@@ -583,19 +583,17 @@ public class TopologyInstance {
             //log.info("Broadcast Tree {}", tree);
 
             Set<NodePortTuple> nptSet = new HashSet<NodePortTuple>();
-            if( tree != null){
-                Map<DatapathId, Link> links = tree.getLinks();
-                if (links == null) continue;
-                for(DatapathId nodeId: links.keySet()) {
-                    Link l = links.get(nodeId);
-                    if (l == null) continue;
-                    NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-                    NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
-                    nptSet.add(npt1);
-                    nptSet.add(npt2);
-                }
-                clusterBroadcastNodePorts.put(c.id, nptSet);
+            Map<DatapathId, Link> links = tree.getLinks();
+            if (links == null) continue;
+            for(DatapathId nodeId: links.keySet()) {
+                Link l = links.get(nodeId);
+                if (l == null) continue;
+                NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
+                NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
+                nptSet.add(npt1);
+                nptSet.add(npt2);
             }
+            clusterBroadcastNodePorts.put(c.id, nptSet);
         }
     }
 
