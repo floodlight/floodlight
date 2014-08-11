@@ -28,20 +28,19 @@ import java.util.concurrent.Future;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
-import net.floodlightcontroller.core.ImmutablePort;
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.jboss.netty.channel.Channel;
-import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPortStatus;
-import org.openflow.protocol.OFStatisticsReply;
-import org.openflow.protocol.OFStatisticsRequest;
-import org.openflow.protocol.statistics.OFDescriptionStatistics;
-import org.openflow.protocol.statistics.OFStatistics;
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPortStatus;
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFDescStatsRequest;
 
 
 /**
@@ -357,7 +356,7 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void setFloodlightProvider(Controller controller) {
+    public void setFloodlightProvider(OLD__Controller controller) {
         fail("Unexpected method call");
         // TODO Auto-generated method stub
 

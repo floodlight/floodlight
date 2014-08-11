@@ -94,14 +94,26 @@ if args.action=='add':
     result = os.popen(command).read()
     parsedResult = json.loads(result)
     print command+"\n"
-    sourceSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
+    
+    try:
+    	sourceSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
+    except IndexError:
+	print "ERROR : the specified end point (%s) must already been known to the controller (i.e., already have sent packets on the network, easy way to assure this is to do a ping (to any target) from the two hosts." % (args.srcAddress)
+	sys.exit()
+
     sourcePort = parsedResult[0]['attachmentPoint'][0]['port']
     
     command = "curl -s http://%s/wm/device/?ipv4=%s" % (args.controllerRestIp, args.dstAddress)
     result = os.popen(command).read()
     parsedResult = json.loads(result)
     print command+"\n"
-    destSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
+
+    try:
+        destSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
+    except IndexError:
+        print "ERROR : the specified end point (%s) must already been known to the controller (i.e., already have sent packets on the network, easy way to assure this is to do a ping (to any target) from the two hosts." % (args.dstAddress) 
+        sys.exit()
+ 
     destPort = parsedResult[0]['attachmentPoint'][0]['port']
     
     print "Creating circuit:"

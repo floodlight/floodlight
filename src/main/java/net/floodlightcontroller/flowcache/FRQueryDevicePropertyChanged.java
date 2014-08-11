@@ -17,7 +17,6 @@
 package net.floodlightcontroller.flowcache;
 
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.util.MACAddress;
 
 /**
  * The Class for FlowReconcileQuery for device property changed event.
@@ -62,7 +61,7 @@ public class FRQueryDevicePropertyChanged extends FlowReconcileQuery {
         StringBuilder builder = new StringBuilder();
         builder.append("[");
         builder.append("Device: ");
-        builder.append(MACAddress.valueOf(device.getMACAddress()));
+        builder.append(device.getMACAddress().toString());
         builder.append("]");
         return builder.toString();
     }

@@ -22,12 +22,10 @@ import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.counter.ICounter;
-import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 /**
  * Get counters for a particular switch
@@ -36,9 +34,9 @@ import net.floodlightcontroller.counter.ICounterStoreService;
 public class SwitchCounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+        /*TODO @Ryan IOFSwitchService switchService =
+                (IOFSwitchService)getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
 
         String switchID = (String) getRequestAttributes().get("switchId");
@@ -46,20 +44,20 @@ public class SwitchCounterResource extends CounterResourceBase {
 
         if (switchID.equalsIgnoreCase("all")) {
             getOneSwitchCounterJson(model, ICounterStoreService.CONTROLLER_NAME, counterName);
-            for (Long dpid : floodlightProvider.getAllSwitchDpids()) {
-                switchID = HexString.toHexString(dpid);
+            for (DatapathId dpid : switchService.getAllSwitchDpids()) {
+                switchID = dpid.toString();
 
                 getOneSwitchCounterJson(model, switchID, counterName);
             }
         } else {
             getOneSwitchCounterJson(model, switchID, counterName);
         }
-        return model;
+        return model;*/ return null;
     }
 
     protected void getOneSwitchCounterJson(Map<String, Object> model,
                                            String switchID, String counterName) {
-        String fullCounterName = "";
+        /*TODO @Ryan String fullCounterName = "";
 
         try {
             counterName = URLDecoder.decode(counterName, "UTF-8");
@@ -75,7 +73,7 @@ public class SwitchCounterResource extends CounterResourceBase {
             sample.put(counter.getCounterDate().toString(),
                        counter.getCounterValue().getLong());
             model.put(switchID, sample);
-        }
+        } */
     }
 
 }

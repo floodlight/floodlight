@@ -68,8 +68,7 @@ public class DefaultEntityClassifier implements
     static {
         keyFields = EnumSet.of(DeviceField.MAC, DeviceField.VLAN);
     }
-    protected static DefaultEntityClass entityClass =
-        new DefaultEntityClass("DefaultEntityClass");
+    protected static DefaultEntityClass entityClass = new DefaultEntityClass("DefaultEntityClass");
 
     @Override
     public IEntityClass classifyEntity(Entity entity) {
@@ -77,14 +76,12 @@ public class DefaultEntityClassifier implements
     }
 
     @Override
-    public IEntityClass reclassifyEntity(IDevice curDevice,
-                                                     Entity entity) {
+    public IEntityClass reclassifyEntity(IDevice curDevice, Entity entity) {
         return entityClass;
     }
 
     @Override
-    public void deviceUpdate(IDevice oldDevice, 
-                             Collection<? extends IDevice> newDevices) {
+    public void deviceUpdate(IDevice oldDevice, Collection<? extends IDevice> newDevices) {
         // no-op
     }
 
@@ -95,8 +92,7 @@ public class DefaultEntityClassifier implements
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> l = 
-                new ArrayList<Class<? extends IFloodlightService>>();
+        Collection<Class<? extends IFloodlightService>> l =  new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IEntityClassifierService.class);
         return l;
     }
@@ -104,24 +100,20 @@ public class DefaultEntityClassifier implements
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m = 
-        new HashMap<Class<? extends IFloodlightService>,
-                    IFloodlightService>();
+        IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
         // We are the class that implements the service
         m.put(IEntityClassifierService.class, this);
         return m;
     }
 
     @Override
-    public Collection<Class<? extends IFloodlightService>>
-            getModuleDependencies() {
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         // No dependencies
         return null;
     }
 
     @Override
-    public void init(FloodlightModuleContext context)
-                                                 throws FloodlightModuleException {
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         // no-op
     }
 

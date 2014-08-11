@@ -25,22 +25,32 @@ import java.util.concurrent.TimeUnit;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
-import org.openflow.protocol.OFFeaturesReply;
-import org.openflow.protocol.OFMatch;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFStatisticsRequest;
-import org.openflow.protocol.statistics.OFAggregateStatisticsRequest;
-import org.openflow.protocol.statistics.OFFlowStatisticsRequest;
-import org.openflow.protocol.statistics.OFPortStatisticsRequest;
-import org.openflow.protocol.statistics.OFQueueStatisticsRequest;
-import org.openflow.protocol.statistics.OFStatistics;
-import org.openflow.protocol.statistics.OFStatisticsType;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.queueprop.OFQueueProp;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.protocol.OFFeaturesRequest;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFQueueProperties;
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFAggregateStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFQueueStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.util.HexString;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.primitives.UnsignedLong;
+import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Base class for server resources related to switches
@@ -67,58 +77,52 @@ public class SwitchResourceBase extends ServerResource {
                    		"from the switch",
                    recommendation=LogMessageDoc.CHECK_SWITCH + " " +
                    		LogMessageDoc.GENERIC_ACTION)
-    protected List<OFStatistics> getSwitchStatistics(long switchId,
-                                                     OFStatisticsType statType) {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+    protected List<OFStatsReply> getSwitchStatistics(DatapathId switchId,
+                                                     OFStatsType statType) {
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
 
-        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
-        Future<List<OFStatistics>> future;
-        List<OFStatistics> values = null;
+        IOFSwitch sw = switchService.getSwitch(switchId);
+        ListenableFuture<?> future;
+        List<OFStatsReply> values = null;
         if (sw != null) {
-            OFStatisticsRequest req = new OFStatisticsRequest();
-            req.setStatisticType(statType);
-            int requestLength = req.getLengthU();
-            if (statType == OFStatisticsType.FLOW) {
-                OFFlowStatisticsRequest specificReq = new OFFlowStatisticsRequest();
-                OFMatch match = new OFMatch();
-                match.setWildcards(0xffffffff);
-                specificReq.setMatch(match);
-                specificReq.setOutPort(OFPort.OFPP_NONE.getValue());
-                specificReq.setTableId((byte) 0xff);
-                req.setStatistics(Collections.singletonList((OFStatistics)specificReq));
-                requestLength += specificReq.getLength();
-            } else if (statType == OFStatisticsType.AGGREGATE) {
-                OFAggregateStatisticsRequest specificReq = new OFAggregateStatisticsRequest();
-                OFMatch match = new OFMatch();
-                match.setWildcards(0xffffffff);
-                specificReq.setMatch(match);
-                specificReq.setOutPort(OFPort.OFPP_NONE.getValue());
-                specificReq.setTableId((byte) 0xff);
-                req.setStatistics(Collections.singletonList((OFStatistics)specificReq));
-                requestLength += specificReq.getLength();
-            } else if (statType == OFStatisticsType.PORT) {
-                OFPortStatisticsRequest specificReq = new OFPortStatisticsRequest();
-                specificReq.setPortNumber(OFPort.OFPP_NONE.getValue());
-                req.setStatistics(Collections.singletonList((OFStatistics)specificReq));
-                requestLength += specificReq.getLength();
-            } else if (statType == OFStatisticsType.QUEUE) {
-                OFQueueStatisticsRequest specificReq = new OFQueueStatisticsRequest();
-                specificReq.setPortNumber(OFPort.OFPP_ALL.getValue());
-                // LOOK! openflowj does not define OFPQ_ALL! pulled this from openflow.h
-                // note that I haven't seen this work yet though...
-                specificReq.setQueueId(0xffffffff);
-                req.setStatistics(Collections.singletonList((OFStatistics)specificReq));
-                requestLength += specificReq.getLength();
-            } else if (statType == OFStatisticsType.DESC ||
-                       statType == OFStatisticsType.TABLE) {
+        	OFStatsRequest<?> req;
+            if (statType == OFStatsType.FLOW) {
+            	Match match = sw.getOFFactory().buildMatch().build();
+                req = sw.getOFFactory().buildFlowStatsRequest()
+                		.setMatch(match)
+                		.setOutPort(OFPort.ANY)
+                		.setTableId(TableId.ALL)
+                		.build();
+            } else if (statType == OFStatsType.AGGREGATE) {
+            	Match match = sw.getOFFactory().buildMatch().build();
+                req = sw.getOFFactory().buildAggregateStatsRequest()
+                		.setMatch(match)
+                		.setOutPort(OFPort.ANY)
+                		.setTableId(TableId.ALL)
+                		.build();
+            } else if (statType == OFStatsType.PORT) {
+                req = sw.getOFFactory().buildPortStatsRequest()
+                		.setPortNo(OFPort.ANY)
+                		.build();
+            } else if (statType == OFStatsType.QUEUE) {
+            	req = sw.getOFFactory().buildQueueStatsRequest()
+                		.setPortNo(OFPort.ANY)
+                		.setQueueId(UnsignedLong.MAX_VALUE.longValue())
+                		.build();
+            } else if (statType == OFStatsType.DESC ||
+                       statType == OFStatsType.TABLE) {
                 // pass - nothing todo besides set the type above
+            	req = sw.getOFFactory().buildDescStatsRequest()
+            			.build();
+            } else {
+            	//TODO @Ryan what to do about no matches in the if...elseif statements?
+            	req = sw.getOFFactory().buildDescStatsRequest().build();
             }
-            req.setLengthU(requestLength);
             try {
-                future = sw.queryStatistics(req);
-                values = future.get(10, TimeUnit.SECONDS);
+                future = sw.writeStatsRequest(req);
+                values = (List<OFStatsReply>) future.get(10, TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.error("Failure retrieving statistics from switch " + sw, e);
             }
@@ -126,21 +130,24 @@ public class SwitchResourceBase extends ServerResource {
         return values;
     }
 
-    protected List<OFStatistics> getSwitchStatistics(String switchId, OFStatisticsType statType) {
-        return getSwitchStatistics(HexString.toLong(switchId), statType);
+    protected List<OFStatsReply> getSwitchStatistics(String switchId, OFStatsType statType) {
+        return getSwitchStatistics(DatapathId.of(switchId), statType);
     }
 
-    protected OFFeaturesReply getSwitchFeaturesReply(long switchId) {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                get(IFloodlightProviderService.class.getCanonicalName());
+    protected OFFeaturesReply getSwitchFeaturesReply(DatapathId switchId) {
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                get(IOFSwitchService.class.getCanonicalName());
 
-        IOFSwitch sw = floodlightProvider.getSwitch(switchId);
+        IOFSwitch sw = switchService.getSwitch(switchId);
         Future<OFFeaturesReply> future;
         OFFeaturesReply featuresReply = null;
+        //TODO @Ryan The only thing to set in an OFFeaturesRequest is the XID. I'm not sure
+        // if it matters what I set it to. Will it have a default value of the next available?
+        OFFeaturesRequest featuresRequest = sw.getOFFactory().buildFeaturesRequest().build();
         if (sw != null) {
             try {
-                future = sw.querySwitchFeaturesReply();
+                future = sw.writeRequest(featuresRequest);
                 featuresReply = future.get(10, TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.error("Failure getting features reply from switch" + sw, e);
@@ -151,7 +158,7 @@ public class SwitchResourceBase extends ServerResource {
     }
 
     protected OFFeaturesReply getSwitchFeaturesReply(String switchId) {
-        return getSwitchFeaturesReply(HexString.toLong(switchId));
+        return getSwitchFeaturesReply(DatapathId.of(switchId));
     }
 
 }

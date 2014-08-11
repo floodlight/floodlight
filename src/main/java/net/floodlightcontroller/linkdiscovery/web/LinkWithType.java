@@ -18,12 +18,14 @@ package net.floodlightcontroller.linkdiscovery.web;
 
 import java.io.IOException;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openflow.util.HexString;
 
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkDirection;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
@@ -36,10 +38,10 @@ import net.floodlightcontroller.routing.Link;
  */
 @JsonSerialize(using=LinkWithType.class)
 public class LinkWithType extends JsonSerializer<LinkWithType> {
-    public long srcSwDpid;
-    public short srcPort;
-    public long dstSwDpid;
-    public short dstPort;
+    public DatapathId srcSwDpid;
+    public OFPort srcPort;
+    public DatapathId dstSwDpid;
+    public OFPort dstPort;
     public LinkType type;
     public LinkDirection direction;
 
@@ -62,10 +64,10 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
             throws IOException, JsonProcessingException {
         // You ****MUST*** use lwt for the fields as it's actually a different object.
         jgen.writeStartObject();
-        jgen.writeStringField("src-switch", HexString.toHexString(lwt.srcSwDpid));
-        jgen.writeNumberField("src-port", lwt.srcPort);
-        jgen.writeStringField("dst-switch", HexString.toHexString(lwt.dstSwDpid));
-        jgen.writeNumberField("dst-port", lwt.dstPort);
+        jgen.writeStringField("src-switch", lwt.srcSwDpid.toString());
+        jgen.writeNumberField("src-port", lwt.srcPort.getPortNumber());
+        jgen.writeStringField("dst-switch", lwt.dstSwDpid.toString());
+        jgen.writeNumberField("dst-port", lwt.dstPort.getPortNumber());
         jgen.writeStringField("type", lwt.type.toString());
         jgen.writeStringField("direction", lwt.direction.toString());
         jgen.writeEndObject();

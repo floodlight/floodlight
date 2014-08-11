@@ -18,10 +18,11 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.util.ArrayList;
 
+import org.projectfloodlight.openflow.types.MacAddress;
+
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import net.floodlightcontroller.loadbalancer.LoadBalancer.IPClient;
-import net.floodlightcontroller.util.MACAddress;
 
 /**
  * Data structure for Load Balancer based on
@@ -46,7 +47,7 @@ public class LBVip {
     protected short adminState;
     protected short status;
     
-    protected MACAddress proxyMac;
+    protected MacAddress proxyMac;
     
     public static String LB_PROXY_MAC= "12:34:56:78:90:12";
     
@@ -65,7 +66,7 @@ public class LBVip {
         this.address = 0;
         this.status = 0;
         
-        this.proxyMac = MACAddress.valueOf(LB_PROXY_MAC);
+        this.proxyMac = MacAddress.of(LB_PROXY_MAC);
     }
     
     public String pickPool(IPClient client) {

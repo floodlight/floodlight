@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.util.HexString;
 
 /**
  * A byte array container that provides an equals and hashCode pair based on the

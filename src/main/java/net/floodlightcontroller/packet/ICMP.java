@@ -21,6 +21,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.projectfloodlight.openflow.types.IpProtocol;
+
 /**
  * Implements ICMP packet format
  * @author shudong.zhou@bigswitch.com
@@ -126,7 +128,7 @@ public class ICMP extends BasePacket {
             bb.put(payloadData);
 
         if (this.parent != null && this.parent instanceof IPv4)
-            ((IPv4)this.parent).setProtocol(IPv4.PROTOCOL_ICMP);
+            ((IPv4)this.parent).setProtocol(IpProtocol.ICMP);
 
         // compute checksum if needed
         if (this.checksum == 0) {

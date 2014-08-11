@@ -17,7 +17,8 @@
 
 package net.floodlightcontroller.routing;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
 
 /**
  * Stores the endpoints of a route, in this case datapath ids
@@ -25,46 +26,46 @@ import org.openflow.util.HexString;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class RouteId implements Cloneable, Comparable<RouteId> {
-    protected Long src;
-    protected Long dst;
-    protected long cookie;
+    protected DatapathId src;
+    protected DatapathId dst;
+    protected U64 cookie;
 
-    public RouteId(Long src, Long dst) {
+    public RouteId(DatapathId src, DatapathId dst) {
         super();
         this.src = src;
         this.dst = dst;
-        this.cookie = 0;
+        this.cookie = U64.of(0);
     }
 
-    public RouteId(Long src, Long dst, long cookie) {
+    public RouteId(DatapathId src, DatapathId dst, U64 cookie) {
         super();
         this.src = src;
         this.dst = dst;
         this.cookie = cookie;
     }
 
-    public Long getSrc() {
+    public DatapathId getSrc() {
         return src;
     }
 
-    public void setSrc(Long src) {
+    public void setSrc(DatapathId src) {
         this.src = src;
     }
 
-    public Long getDst() {
+    public DatapathId getDst() {
         return dst;
     }
 
-    public void setDst(Long dst) {
+    public void setDst(DatapathId dst) {
         this.dst = dst;
     }
 
-    public long getCookie() {
+    public U64 getCookie() {
         return cookie;
     }
 
     public void setCookie(int cookie) {
-        this.cookie = cookie;
+        this.cookie = U64.of(cookie);
     }
 
     @Override
@@ -73,7 +74,7 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
         Long result = new Long(1);
         result = prime * result + ((dst == null) ? 0 : dst.hashCode());
         result = prime * result + ((src == null) ? 0 : src.hashCode());
-        result = prime * result + cookie; 
+        result = prime * result + cookie.getValue(); 
         // To cope with long cookie, use Long to compute hash then use Long's 
         // built-in hash to produce int hash code
         return result.hashCode(); 
@@ -103,8 +104,8 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
 
     @Override
     public String toString() {
-        return "RouteId [src=" + HexString.toHexString(this.src) + " dst="
-                + HexString.toHexString(this.dst) + "]";
+        return "RouteId [src=" + this.src.toString() + " dst="
+                + this.dst.toString() + "]";
     }
 
     @Override

@@ -20,6 +20,11 @@ package net.floodlightcontroller.core.util;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.AppIDInUseException;
+import net.floodlightcontroller.core.util.AppIDNotRegisteredException;
+import net.floodlightcontroller.core.util.InvalidAppIDValueException;
+import org.projectfloodlight.openflow.types.U64;
 
 
 public class AppCookieTest {
@@ -38,10 +43,10 @@ public class AppCookieTest {
     public void testAppCookie(){
         int user = 0xF123F123; // MSB set
         int user2 = 0x42;      // MSB cleared
-        long expectedCookie11 =  0xF4200000F123F123L; // app1, user1
-        long expectedCookie21 =  0x74300000F123F123L; // app2, user1
-        long expectedCookie12 =  0xF420000000000042L; // app1, user2
-        long expectedCookie22 =  0x7430000000000042L; // app2, user2
+        U64 expectedCookie11 =  U64.of(0xF4200000F123F123L); // app1, user1
+        U64 expectedCookie21 =  U64.of(0x74300000F123F123L); // app2, user1
+        U64 expectedCookie12 =  U64.of(0xF420000000000042L); // app1, user2
+        U64 expectedCookie22 =  U64.of(0x7430000000000042L); // app2, user2
         String name = "FooBar";
         String name2 = "FooFooFoo";
 
@@ -54,7 +59,7 @@ public class AppCookieTest {
 
         AppCookie.registerApp(appId, name);
 
-        long cookie = AppCookie.makeCookie(appId, user);
+        U64 cookie = AppCookie.makeCookie(appId, user);
         assertEquals(expectedCookie11, cookie);
         assertEquals(appId, AppCookie.extractApp(cookie));
         assertEquals(user, AppCookie.extractUser(cookie));

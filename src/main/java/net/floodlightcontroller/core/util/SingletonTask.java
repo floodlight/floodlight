@@ -21,7 +21,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,8 @@ import org.slf4j.LoggerFactory;
  * * If the task has begun, set a bit to restart it after the current task finishes
  */
 public class SingletonTask {
-    protected static Logger logger = LoggerFactory.getLogger(SingletonTask.class);
+    protected static final Logger logger = 
+            LoggerFactory.getLogger(SingletonTask.class);
             
     protected static class SingletonTaskContext  {
         protected boolean taskShouldRun = false;
@@ -73,6 +73,10 @@ public class SingletonTask {
                 parent.task.run();
             } catch (Exception e) {
                 logger.error("Exception while executing task", e);
+            }
+            catch (Error e) {
+                logger.error("Error while executing task", e);
+                throw e;
             }
 
             synchronized (parent.context) {
@@ -134,6 +138,7 @@ public class SingletonTask {
                         long then = 
                             now + TimeUnit.NANOSECONDS.convert(delay, unit);
                         context.waitingTask.nextschedule = then;
+//                        logger.debug("rescheduled task " + this + " for " + TimeUnit.SECONDS.convert(then, TimeUnit.NANOSECONDS) + "s. A bunch of these messages -may- indicate you have a blocked task.");
                     } else {
                         context.waitingTask.nextschedule = 0;
                     }
@@ -153,7 +158,7 @@ public class SingletonTask {
         }
 
         if (needQueue) {
-            if (delay <= 0)
+            if (delay <= 0) 
                 ses.execute(stw);
             else
                 ses.schedule(stw, delay, unit);

@@ -23,10 +23,13 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.Device;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.util.FilterIterator;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
 import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.resource.ServerResource;
@@ -54,11 +57,11 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 (IDeviceService)getContext().getAttributes().
                     get(IDeviceService.class.getCanonicalName());  
                 
-        Long macAddress = null;
-        Short vlan = null;
-        Integer ipv4Address = null;
-        Long switchDPID = null;
-        Integer switchPort = null;
+        MacAddress macAddress = null;
+        VlanVid vlan = null;
+        IPv4Address ipv4Address = null;
+        DatapathId switchDPID = null;
+        OFPort switchPort = null;
         
         Form form = getQuery();
         String macAddrStr = form.getFirstValue("mac", true);
@@ -69,7 +72,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
         
         if (macAddrStr != null) {
             try {
-                macAddress = HexString.toLong(macAddrStr);
+                macAddress = MacAddress.of(macAddrStr);
             } catch (Exception e) {
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, MAC_ERROR);
                 return null;
@@ -77,8 +80,8 @@ public abstract class AbstractDeviceResource extends ServerResource {
         }
         if (vlanStr != null) {
             try {
-                vlan = Short.parseShort(vlanStr);
-                if (vlan > 4095 || vlan < 0) {
+                vlan = VlanVid.ofVlan(Integer.parseInt(vlanStr));
+                if (vlan.getVlan() > 4095 || vlan.getVlan() < 0) {
                     setStatus(Status.CLIENT_ERROR_BAD_REQUEST, VLAN_ERROR);
                     return null;
                 }
@@ -89,7 +92,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
         }
         if (ipv4Str != null) {
             try {
-                ipv4Address = IPv4.toIPv4Address(ipv4Str);
+                ipv4Address = IPv4Address.of(ipv4Str);
             } catch (Exception e) {
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, IPV4_ERROR);
                 return null;
@@ -97,7 +100,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
         }
         if (dpid != null) {
             try {
-                switchDPID = HexString.toLong(dpid);
+                switchDPID = DatapathId.of(dpid);
             } catch (Exception e) {
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, DPID_ERROR);
                 return null;
@@ -105,8 +108,8 @@ public abstract class AbstractDeviceResource extends ServerResource {
         }
         if (port != null) {
             try {
-                switchPort = Integer.parseInt(port);
-                if (switchPort < 0) {
+                switchPort = OFPort.of(Integer.parseInt(port));
+                if (switchPort.getPortNumber() < 0) {
                     setStatus(Status.CLIENT_ERROR_BAD_REQUEST, PORT_ERROR);
                     return null;
                 }
@@ -144,7 +147,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 }
                 if (vlanStartsWith != null) {
                     boolean match = false;
-                    for (Short v : value.getVlanId()) {
+                    for (VlanVid v : value.getVlanId()) {
                         if (v != null && 
                             v.toString().startsWith(vlanStartsWith)) {
                             match = true;
@@ -155,10 +158,10 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 }
                 if (ipv4StartsWith != null) {
                     boolean match = false;
-                    for (Integer v : value.getIPv4Addresses()) {
+                    for (IPv4Address v : value.getIPv4Addresses()) {
                         String str;
                         if (v != null && 
-                            (str = IPv4.fromIPv4Address(v)) != null &&
+                            (str = v.toString()) != null &&
                             str.startsWith(ipv4StartsWith)) {
                             match = true;
                             break;
@@ -171,8 +174,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
                     for (SwitchPort v : value.getAttachmentPoints(true)) {
                         String str;
                         if (v != null && 
-                            (str = HexString.toHexString(v.getSwitchDPID(), 
-                                                         8)) != null &&
+                            (str = v.getSwitchDPID().toString()) != null &&
                             str.startsWith(dpidStartsWith)) {
                             match = true;
                             break;
@@ -185,7 +187,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
                     for (SwitchPort v : value.getAttachmentPoints(true)) {
                         String str;
                         if (v != null && 
-                            (str = Integer.toString(v.getPort())) != null &&
+                            (str = v.getPort().toString()) != null &&
                             str.startsWith(portStartsWith)) {
                             match = true;
                             break;

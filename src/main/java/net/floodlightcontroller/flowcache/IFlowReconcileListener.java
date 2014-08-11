@@ -19,7 +19,7 @@ package net.floodlightcontroller.flowcache;
 import java.util.ArrayList;
 
 import net.floodlightcontroller.core.IListener;
-import org.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFType;
 
 /**
  * The Interface IFlowReconciler.

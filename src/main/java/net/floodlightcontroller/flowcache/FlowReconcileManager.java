@@ -26,50 +26,44 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
-import net.floodlightcontroller.counter.CounterStore;
-import net.floodlightcontroller.counter.ICounter;
-import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.counter.SimpleCounter;
+import net.floodlightcontroller.debugcounter.DebugCounterResource;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.flowcache.FlowReconcileQuery.FlowReconcileQueryDebugEvent;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
-import org.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FlowReconcileManager
-        implements IFloodlightModule, IFlowReconcileService {
+import com.sun.j3d.utils.scenegraph.io.retained.Controller;
 
+public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileService {
     /** The logger. */
-    private static Logger logger =
-                        LoggerFactory.getLogger(FlowReconcileManager.class);
+    private static Logger logger =  LoggerFactory.getLogger(FlowReconcileManager.class);
 
     /** Reference to dependent modules */
-    protected IThreadPoolService threadPool;
-    protected ICounterStoreService counterStore;
-    protected IDebugCounterService debugCounters;
+    protected IThreadPoolService threadPoolService;
+    protected IDebugCounterService debugCounterService;
+    protected IFloodlightProviderService floodlightProviderService;
+    
     /**
      * The list of flow reconcile listeners that have registered to get
      * flow reconcile callbacks. Such callbacks are invoked, for example, when
      * a switch with existing flow-mods joins this controller and those flows
      * need to be reconciled with the current configuration of the controller.
      */
-    protected ListenerDispatcher<OFType, IFlowReconcileListener>
-                                               flowReconcileListeners;
+    protected ListenerDispatcher<OFType, IFlowReconcileListener> flowReconcileListeners;
 
     /** A FIFO queue to keep all outstanding flows for reconciliation */
     PriorityPendingQueue <OFMatchReconcile> flowQueue;
@@ -77,8 +71,8 @@ public class FlowReconcileManager
     /** Asynchronous task to feed the flowReconcile pipeline */
     protected SingletonTask flowReconcileTask;
 
-    String controllerPktInCounterName;
-    protected SimpleCounter lastPacketInCounter;
+    protected DebugCounterResource ctrControllerPktIn;
+    protected IDebugCounter lastPacketInCounter;
 
     protected final static int MAX_SYSTEM_LOAD_PER_SECOND = 10000;
     /** a minimum flow reconcile rate so that it won't stave */
@@ -99,6 +93,7 @@ public class FlowReconcileManager
     private IDebugCounter ctrFlowReconcileRequest;
     private IDebugCounter ctrReconciledFlows;
     protected boolean flowReconcileEnabled;
+    private DebugCounterResource ctrPacketInRsrc = null;
 
     public AtomicInteger flowReconcileThreadRunCount;
 
@@ -143,7 +138,7 @@ public class FlowReconcileManager
         OFMatchReconcile myOfmRc = new OFMatchReconcile(ofmRcIn);
 
         flowQueue.offer(myOfmRc, priority);
-        ctrFlowReconcileRequest.updateCounterWithFlush();
+        ctrFlowReconcileRequest.increment();
 
         Date currTime = new Date();
         long delay = 0;
@@ -192,19 +187,18 @@ public class FlowReconcileManager
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IThreadPoolService.class);
-        l.add(ICounterStoreService.class);
+        l.add(IDebugCounterService.class);
         return null;
     }
 
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        threadPool = context.getServiceImpl(IThreadPoolService.class);
-        counterStore = context.getServiceImpl(ICounterStoreService.class);
-        debugCounters = context.getServiceImpl(IDebugCounterService.class);
+    	floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+        threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         flowQueue = new PriorityPendingQueue<OFMatchReconcile>();
-        flowReconcileListeners =
-                new ListenerDispatcher<OFType, IFlowReconcileListener>();
+        flowReconcileListeners = new ListenerDispatcher<OFType, IFlowReconcileListener>();
 
         Map<String, String> configParam = context.getConfigParams(this);
         String enableValue = configParam.get(EnableConfigKey);
@@ -221,18 +215,16 @@ public class FlowReconcileManager
     }
 
     private void registerFlowReconcileManagerDebugCounters() throws FloodlightModuleException {
-        if (debugCounters == null) {
+        if (debugCounterService == null) {
             logger.error("Debug Counter Service not found.");
-            debugCounters = new NullDebugCounter();
         }
         try {
-            ctrFlowReconcileRequest = debugCounters.registerCounter(PACKAGE, "flow-reconcile-request",
-                "All flow reconcile request received by this module",
-                CounterType.ALWAYS_COUNT);
-            ctrReconciledFlows = debugCounters.registerCounter(PACKAGE, "reconciled-flows",
-                "All flows reconciled successfully by this module",
-                CounterType.ALWAYS_COUNT);
-        } catch (CounterException e) {
+        	debugCounterService.registerModule(PACKAGE);
+            ctrFlowReconcileRequest = debugCounterService.registerCounter(PACKAGE, "flow-reconcile-request",
+                "All flow reconcile request received by this module");
+            ctrReconciledFlows = debugCounterService.registerCounter(PACKAGE, "reconciled-flows",
+                "All flows reconciled successfully by this module");
+        } catch (Exception e) {
             throw new FloodlightModuleException(e.getMessage());
         }
     }
@@ -241,7 +233,7 @@ public class FlowReconcileManager
     @Override
     public void startUp(FloodlightModuleContext context) {
         // thread to do flow reconcile
-        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
         flowReconcileTask = new SingletonTask(ses, new Runnable() {
             @Override
             public void run() {
@@ -257,14 +249,8 @@ public class FlowReconcileManager
             }
         });
 
-        String packetInName = OFType.PACKET_IN.toClass().getName();
+        String packetInName = OFType.PACKET_IN.getClass().getName();
         packetInName = packetInName.substring(packetInName.lastIndexOf('.')+1);
-
-        // Construct controller counter for the packet_in
-        controllerPktInCounterName =
-            CounterStore.createCounterName(ICounterStoreService.CONTROLLER_NAME,
-                                           -1,
-                                           packetInName);
     }
 
     protected void updateFlush() {
@@ -296,7 +282,7 @@ public class FlowReconcileManager
             reconcileCapacity--;
             if (ofmRc != null) {
                 ofmRcList.add(ofmRc);
-                ctrReconciledFlows.updateCounterWithFlush();
+                ctrReconciledFlows.increment();
                 if (logger.isTraceEnabled()) {
                     logger.trace("Add flow {} to be the reconcileList", ofmRc.cookie);
                 }
@@ -332,7 +318,7 @@ public class FlowReconcileManager
             for (OFMatchReconcile ofmRc : ofmRcList) {
                 if (ofmRc.origReconcileQueryEvent != null) {
                     ofmRc.origReconcileQueryEvent.evType.getDebugEvent()
-                        .updateEventWithFlush(new FlowReconcileQueryDebugEvent(
+                    .newEventWithFlush(new FlowReconcileQueryDebugEvent(
                             ofmRc.origReconcileQueryEvent,
                             "Flow Reconciliation Complete",
                             ofmRc));
@@ -376,34 +362,32 @@ public class FlowReconcileManager
      * @return
      */
     protected int getCurrentCapacity() {
-        ICounter pktInCounter =
-            counterStore.getCounter(controllerPktInCounterName);
-        int minFlows = MIN_FLOW_RECONCILE_PER_SECOND *
-                        FLOW_RECONCILE_DELAY_MILLISEC / 1000;
-
+        /*int minFlows = MIN_FLOW_RECONCILE_PER_SECOND * FLOW_RECONCILE_DELAY_MILLISEC / 1000;
+        
+        List<DebugCounterResource> contCtrRsrcList = debugCounterService.getModuleCounterValues(Controller.class.getName());
+        for (DebugCounterResource dcr : contCtrRsrcList) {
+        	if (dcr.getCounterHierarchy().equals("packet-in")) {
+                ctrPacketInRsrc = dcr;
+                break;
+        	}
+        }
+        
         // If no packetInCounter, then there shouldn't be any flow.
-        if (pktInCounter == null ||
-            pktInCounter.getCounterDate() == null ||
-            pktInCounter.getCounterValue() == null) {
-            logger.debug("counter {} doesn't exist",
-                        controllerPktInCounterName);
+        if (ctrPacketInRsrc == null || ctrPacketInRsrc.getCounterValue() == null || ctrPacketInRsrc.getCounterValue() == 0) {
+            logger.debug("counter {} doesn't exist", ctrPacketInRsrc);
             return minFlows;
         }
 
-        // Haven't get any counter yet.
-        if (lastPacketInCounter == null) {
-            logger.debug("First time get the count for {}",
-                        controllerPktInCounterName);
-            lastPacketInCounter = (SimpleCounter)
-            SimpleCounter.createCounter(pktInCounter);
+        // We're the first packet_in
+        if (lastPacketInCounter.getCounterValue() == 0) {
+            logger.debug("First time get the count for {}", lastPacketInCounter);
             return minFlows;
         }
 
-        int pktInRate = getPktInRate(pktInCounter, new Date());
+        int pktInRate = getPktInRate(ctrPacketInRsrc, new Date());
 
         // Update the last packetInCounter
-        lastPacketInCounter = (SimpleCounter)
-        SimpleCounter.createCounter(pktInCounter);
+        lastPacketInCounter = new DebugCounterResource(counter);
         int capacity = minFlows;
         if ((pktInRate + MIN_FLOW_RECONCILE_PER_SECOND) <=
                                MAX_SYSTEM_LOAD_PER_SECOND) {
@@ -414,11 +398,11 @@ public class FlowReconcileManager
         if (logger.isTraceEnabled()) {
             logger.trace("Capacity is {}", capacity);
         }
-        return capacity;
+        return capacity; */ return 0;
     }
 
-    protected int getPktInRate(ICounter newCnt, Date currentTime) {
-        if (newCnt == null ||
+    protected int getPktInRate(DebugCounterResource newCnt, Date currentTime) {
+        /*if (newCnt == null ||
             newCnt.getCounterDate() == null ||
             newCnt.getCounterValue() == null) {
             return 0;
@@ -466,7 +450,7 @@ public class FlowReconcileManager
                 break;
         }
 
-        return (int)(diff/elapsedTimeInSecond);
+        return (int)(diff/elapsedTimeInSecond); */ return 0;
     }
 }
 

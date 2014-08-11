@@ -21,11 +21,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.floodlightcontroller.core.IListener;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Maintain lists of listeners ordered by dependency.
@@ -34,7 +33,8 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
  *
  */
 public class ListenerDispatcher<U, T extends IListener<U>> {
-    protected static Logger logger = LoggerFactory.getLogger(ListenerDispatcher.class);
+    protected static final Logger logger = 
+            LoggerFactory.getLogger(ListenerDispatcher.class);
     volatile List<T> listeners = new ArrayList<T>();
 
     private void visit(List<T> newlisteners, U type, HashSet<T> visited,
@@ -64,10 +64,10 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
                    message="No listener dependency solution: " +
                            "No listeners without incoming dependencies",
                    explanation="The set of listeners installed " +
-                   		"have dependencies with no solution",
+                           "have dependencies with no solution",
                    recommendation="Install a different set of listeners " +
-                   		"or install all dependencies.  This is a defect in " +
-                   		"the controller installation.")
+                           "or install all dependencies.  This is a defect in " +
+                           "the controller installation.")
     public void addListener(U type, T listener) {
         List<T> newlisteners = new ArrayList<T>();
         if (listeners != null)
@@ -91,7 +91,7 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
 
         if (terminals.size() == 0) {
             logger.error("No listener dependency solution: " +
-            		     "No listeners without incoming dependencies");
+                         "No listeners without incoming dependencies");
             listeners = newlisteners;
             return;
         }

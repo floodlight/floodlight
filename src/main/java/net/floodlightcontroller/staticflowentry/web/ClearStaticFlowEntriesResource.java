@@ -19,7 +19,7 @@ package net.floodlightcontroller.staticflowentry.web;
 import net.floodlightcontroller.core.web.ControllerSwitchesResource;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
@@ -43,7 +43,7 @@ public class ClearStaticFlowEntriesResource extends ServerResource {
             sfpService.deleteAllFlows();
         } else {
             try {
-                sfpService.deleteFlowsForSwitch(HexString.toLong(param));
+                sfpService.deleteFlowsForSwitch(DatapathId.of(param));
             } catch (NumberFormatException e){
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, 
                           ControllerSwitchesResource.DPID_ERROR);

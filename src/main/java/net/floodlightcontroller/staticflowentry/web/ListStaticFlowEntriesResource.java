@@ -22,7 +22,8 @@ import java.util.Map;
 import net.floodlightcontroller.core.web.ControllerSwitchesResource;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 
-import org.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
@@ -46,14 +47,12 @@ public class ListStaticFlowEntriesResource extends ServerResource {
             return sfpService.getFlows();
         } else {
             try {
-                Map<String, Map<String, OFFlowMod>> retMap = 
-                        new HashMap<String, Map<String, OFFlowMod>>();
-                retMap.put(param, sfpService.getFlows(param));
+                Map<String, Map<String, OFFlowMod>> retMap = new HashMap<String, Map<String, OFFlowMod>>();
+                retMap.put(param, sfpService.getFlows(DatapathId.of(param)));
                 return retMap;
                 
             } catch (NumberFormatException e){
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, 
-                          ControllerSwitchesResource.DPID_ERROR);
+                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, ControllerSwitchesResource.DPID_ERROR);
             }
         }
         return null;

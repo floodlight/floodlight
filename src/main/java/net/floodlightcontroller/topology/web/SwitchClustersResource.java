@@ -22,10 +22,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.topology.ITopologyService;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.data.Form;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
@@ -36,11 +36,11 @@ import org.restlet.resource.ServerResource;
 public class SwitchClustersResource extends ServerResource {
     @Get("json")
     public Map<String, List<String>> retrieve() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
-        ITopologyService topology =
-                (ITopologyService)getContext().getAttributes().
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
+        ITopologyService topologyService =
+                (ITopologyService) getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
 
         Form form = getQuery();
@@ -51,18 +51,18 @@ public class SwitchClustersResource extends ServerResource {
         }
 
         Map<String, List<String>> switchClusterMap = new HashMap<String, List<String>>();
-        for (Long dpid: floodlightProvider.getAllSwitchDpids()) {
-            Long clusterDpid =
+        for (DatapathId dpid: switchService.getAllSwitchDpids()) {
+            DatapathId clusterDpid =
                     (openflowDomain
-                     ? topology.getOpenflowDomainId(dpid)
-                     :topology.getL2DomainId(dpid));
-            List<String> switchesInCluster = switchClusterMap.get(HexString.toHexString(clusterDpid));
+                     ? topologyService.getOpenflowDomainId(dpid)
+                     :topologyService.getL2DomainId(dpid));
+            List<String> switchesInCluster = switchClusterMap.get(clusterDpid.toString());
             if (switchesInCluster != null) {
-                switchesInCluster.add(HexString.toHexString(dpid));
+                switchesInCluster.add(dpid.toString());
             } else {
                 List<String> l = new ArrayList<String>();
-                l.add(HexString.toHexString(dpid));
-                switchClusterMap.put(HexString.toHexString(clusterDpid), l);
+                l.add(dpid.toString());
+                switchClusterMap.put(clusterDpid.toString(), l);
             }
         }
         return switchClusterMap;

@@ -19,12 +19,12 @@ package net.floodlightcontroller.virtualnetwork;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.floodlightcontroller.packet.IPv4;
-
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
+
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
@@ -122,10 +122,10 @@ public class NetworkResource extends ServerResource {
                 (IVirtualNetworkService)getContext().getAttributes().
                     get(IVirtualNetworkService.class.getCanonicalName());
         
-        Integer gw = null;
+        IPv4Address gw = null;
         if (network.gateway != null) {
             try {
-                gw = IPv4.toIPv4Address(network.gateway);
+                gw = IPv4Address.of(network.gateway);
             } catch (IllegalArgumentException e) {
                 log.warn("Could not parse gateway {} as IP for network {}, setting as null",
                          network.gateway, network.name);

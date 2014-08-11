@@ -17,8 +17,8 @@
 
 package net.floodlightcontroller.core;
 
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFType;
 
 /**
  *
