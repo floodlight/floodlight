@@ -362,7 +362,7 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
      * @return
      */
     protected int getCurrentCapacity() {
-        int minFlows = MIN_FLOW_RECONCILE_PER_SECOND * FLOW_RECONCILE_DELAY_MILLISEC / 1000;
+        /*int minFlows = MIN_FLOW_RECONCILE_PER_SECOND * FLOW_RECONCILE_DELAY_MILLISEC / 1000;
         
         List<DebugCounterResource> contCtrRsrcList = debugCounterService.getModuleCounterValues(Controller.class.getName());
         for (DebugCounterResource dcr : contCtrRsrcList) {
@@ -398,11 +398,11 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
         if (logger.isTraceEnabled()) {
             logger.trace("Capacity is {}", capacity);
         }
-        return capacity;
+        return capacity; */ return 0;
     }
 
     protected int getPktInRate(DebugCounterResource newCnt, Date currentTime) {
-        if (newCnt == null ||
+        /*if (newCnt == null ||
             newCnt.getCounterDate() == null ||
             newCnt.getCounterValue() == null) {
             return 0;
@@ -450,7 +450,7 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
                 break;
         }
 
-        return (int)(diff/elapsedTimeInSecond);
+        return (int)(diff/elapsedTimeInSecond); */ return 0;
     }
 }
 

@@ -47,7 +47,7 @@ public class SwitchRoleResource extends ServerResource {
         if (switchId.equalsIgnoreCase("all")) {
             HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
             for (IOFSwitch sw: switchService.getAllSwitchMap().values()) {
-                switchId = sw.getStringId();
+                switchId = sw.getId().toString();
                 //TODO @Ryan not sure what the changeDescription string should be here.
                 roleInfo = new RoleInfo(HARole.ofOFRole(sw.getControllerRole()), "", null);
                 model.put(switchId, roleInfo);

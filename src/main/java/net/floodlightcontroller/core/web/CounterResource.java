@@ -31,7 +31,7 @@ import org.restlet.resource.Get;
 public class CounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        String counterTitle = 
+        /*TODO @Ryan String counterTitle = 
             (String) getRequestAttributes().get("counterTitle");
         Map<String, Object> model = new HashMap<String,Object>();
         long dc;
@@ -61,6 +61,6 @@ public class CounterResource extends CounterResourceBase {
                 model.put(counterTitle, v.getDouble());
             }   
         }
-        return model;
+        return model;*/ return null;
     }
 }

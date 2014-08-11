@@ -47,14 +47,12 @@ public class ListStaticFlowEntriesResource extends ServerResource {
             return sfpService.getFlows();
         } else {
             try {
-                Map<String, Map<String, OFFlowMod>> retMap = 
-                        new HashMap<String, Map<String, OFFlowMod>>();
+                Map<String, Map<String, OFFlowMod>> retMap = new HashMap<String, Map<String, OFFlowMod>>();
                 retMap.put(param, sfpService.getFlows(DatapathId.of(param)));
                 return retMap;
                 
             } catch (NumberFormatException e){
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, 
-                          ControllerSwitchesResource.DPID_ERROR);
+                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, ControllerSwitchesResource.DPID_ERROR);
             }
         }
         return null;

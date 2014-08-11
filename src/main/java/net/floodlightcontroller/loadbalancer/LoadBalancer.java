@@ -24,33 +24,16 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetDlSrc;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetDlDst;
-import org.projectfloodlight.openflow.protocol.action.OFActionEnqueue;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetNwSrc;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetNwDst;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetNwTos;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActionStripVlan;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetTpSrc;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetTpDst;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanVid;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanPcp; // PCP = Priority Code Point
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
@@ -60,8 +43,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.types.VlanPcp;
-import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +72,9 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.util.MatchString;
+import net.floodlightcontroller.util.ActionUtils;
+import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.MatchUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
 
 /**
@@ -143,10 +126,8 @@ public class LoadBalancer implements IFloodlightModule,
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    DatapathId d1ClusterId = 
-                            topologyService.getL2DomainId(d1.getSwitchDPID());
-                    DatapathId d2ClusterId = 
-                            topologyService.getL2DomainId(d2.getSwitchDPID());
+                    DatapathId d1ClusterId = topologyService.getL2DomainId(d1.getSwitchDPID());
+                    DatapathId d2ClusterId = topologyService.getL2DomainId(d2.getSwitchDPID());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -308,8 +289,7 @@ public class LoadBalancer implements IFloodlightModule,
                         arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
-        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO,
-                   pi.getInPort(), cntx, true); //TODO @Ryan is OFPort.ZERO == NONE (no port)?
+        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO, pi.getInPort(), cntx, true);
         log.debug("proxy ARP reply pushed as {}", IPv4.fromIPv4Address(vips.get(vipId).address));
         
         return;
@@ -391,7 +371,7 @@ public class LoadBalancer implements IFloodlightModule,
         
         for (IDevice d : allDevices) {
             for (int j = 0; j < d.getIPv4Addresses().length; j++) {
-                    if (srcDevice == null && client.ipAddress == d.getIPv4Addresses()[j])
+                    if (srcDevice == null && client.ipAddress.equals(d.getIPv4Addresses()[j]))
                         srcDevice = d;
                     if (dstDevice == null && member.address == d.getIPv4Addresses()[j].getInt()) {
                         dstDevice = d;
@@ -422,8 +402,8 @@ public class LoadBalancer implements IFloodlightModule,
             DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
-                if ((sw.getId() == dstSwDpid) &&
-                        (pi.getInPort() == dstDap.getPort())) {
+                if ((sw.getId().equals(dstSwDpid)) &&
+                        (pi.getInPort().equals(dstDap.getPort()))) {
                     on_same_if = true;
                 }
                 break;
@@ -518,7 +498,7 @@ public class LoadBalancer implements IFloodlightModule,
      */
     public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, DatapathId pinSwitch) {
         List<NodePortTuple> path = route.getPath();
-        if (path.size()>0) {
+        if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {
                
                DatapathId sw = path.get(i).getNodeId();
@@ -529,21 +509,21 @@ public class LoadBalancer implements IFloodlightModule,
                
                OFFlowMod.Builder fmb = switchService.getSwitch(pinSwitch).getOFFactory().buildFlowModify();
 
-               fmb.setIdleTimeout((short) 0);   // infinite
-               fmb.setHardTimeout((short) 0);   // infinite
+               fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
+               fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
                fmb.setBufferId(OFBufferId.NO_BUFFER);
-               fmb.setOutPort(OFPort.ANY); //TODO @Ryan is this the same as OFPort.NONE in the old openflowj?
+               fmb.setOutPort(OFPort.ZERO);
                fmb.setCookie(U64.of(0));  
                fmb.setPriority(Short.MAX_VALUE);
                
                if (inBound) {
                    entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   matchString = "nw_src="+client.ipAddress.toString()+","
-                               + "nw_proto="+String.valueOf(client.nw_proto)+","
-                               + "tp_src="+client.srcPort.toString()+","
-                               + "dl_type="+LB_ETHER_TYPE+","
-                               + "in_port="+path.get(i).getPortId().toString();
+                   matchString = MatchUtils.STR_NW_SRC + "="+client.ipAddress.toString()+","
+                               + MatchUtils.STR_NW_PROTO + "="+String.valueOf(client.nw_proto)+","
+                               + MatchUtils.STR_TP_SRC + "="+client.srcPort.toString()+","
+                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
+                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
 
                    if (sw == pinSwitch) {
                        actionString = "set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
@@ -556,29 +536,29 @@ public class LoadBalancer implements IFloodlightModule,
                } else {
                    entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   matchString = "nw_dst="+client.ipAddress.toString()+","
-                               + "nw_proto="+client.nw_proto.toString()+","
-                               + "tp_dst="+client.srcPort.toString()+","
-                               + "dl_type="+LB_ETHER_TYPE+","
-                               + "in_port="+path.get(i).getPortId().toString();
+                   matchString = MatchUtils.STR_NW_DST + "="+client.ipAddress.toString()+","
+                               + MatchUtils.STR_NW_PROTO + "="+client.nw_proto.toString()+","
+                               + MatchUtils.STR_TP_DST + "="+client.srcPort.toString()+","
+                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
+                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
 
                    if (sw == pinSwitch) {
-                       actionString = "set-src-ip="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
-                               + "set-src-mac="+vips.get(member.vipId).proxyMac.toString()+","
-                               + "output="+path.get(i+1).getPortId();
+                       actionString = ActionUtils.STR_NW_SRC_SET + "="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
+                               + ActionUtils.STR_DL_SRC_SET + "="+vips.get(member.vipId).proxyMac.toString()+","
+                               + ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
                    } else {
-                       actionString = "output="+path.get(i+1).getPortId();
+                       actionString = ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
                    }
                    
                }
                
-               parseActionString(fmb.build(), actionString, log);
+               ActionUtils.fromString(fmb, actionString, log);
 
                fmb.setPriority(U16.t(LB_PRIORITY));
 
                Match match = null;
                try {
-                   match = MatchString.fromString(matchString, switchService.getSwitch(sw).getOFFactory().getVersion());
+                   match = MatchUtils.fromString(matchString, switchService.getSwitch(sw).getOFFactory().getVersion());
                } catch (IllegalArgumentException e) {
                    log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + matchString, entryName, swString);
                }
@@ -646,7 +626,7 @@ public class LoadBalancer implements IFloodlightModule,
 
     @Override
     public LBPool createPool(LBPool pool) {
-        if (pool==null)
+        if (pool == null)
             pool = new LBPool();
         
         pools.put(pool.id, pool);
@@ -669,7 +649,7 @@ public class LoadBalancer implements IFloodlightModule,
     @Override
     public int removePool(String poolId) {
         LBPool pool;
-        if(pools!=null){
+        if (pools != null) {
             pool = pools.get(poolId);
             if (pool.vipId != null)
                 vips.get(pool.vipId).pools.remove(poolId);
@@ -698,7 +678,7 @@ public class LoadBalancer implements IFloodlightModule,
         
         if(pools.containsKey(poolId)) {
             ArrayList<String> memberIds = pools.get(poolId).members;
-            for (int i=0; i<memberIds.size(); i++)
+            for (int i = 0; i<memberIds.size(); i++)
                 result.add(members.get(memberIds.get(i)));
         }
         return result;
@@ -833,476 +813,4 @@ public class LoadBalancer implements IFloodlightModule,
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
         restApiService.addRestletRoutable(new LoadBalancerWebRoutable());
     }
-
-    // Utilities borrowed from StaticFlowEntries
-    
-    private static class SubActionStruct {
-        OFAction action;
-    }
-    
-    /**
-     * Parses OFFlowMod actions from strings.
-     * @param flowMod The OFFlowMod to set the actions for
-     * @param actionstr The string containing all the actions
-     * @param log A logger to log for errors.
-     */
-    public static void parseActionString(OFFlowMod flowMod, String actionstr, Logger log) {
-        List<OFAction> actions = new LinkedList<OFAction>();
-        OFVersion version = flowMod.getVersion();
-        if (actionstr != null) {
-            actionstr = actionstr.toLowerCase();
-            for (String subaction : actionstr.split(",")) {
-                String action = subaction.split("[=:]")[0];
-                SubActionStruct subaction_struct = null;
-                
-                if (action.equals("output")) {
-                    subaction_struct = decode_output(subaction, version, log);
-                }
-                else if (action.equals("enqueue")) {
-                    subaction_struct = decode_enqueue(subaction, version, log);
-                }
-                else if (action.equals("strip-vlan")) {
-                    subaction_struct = decode_strip_vlan(subaction, version, log);
-                }
-                else if (action.equals("set-vlan-id")) {
-                    subaction_struct = decode_set_vlan_id(subaction, version, log);
-                }
-                else if (action.equals("set-vlan-priority")) {
-                    subaction_struct = decode_set_vlan_priority(subaction, version, log);
-                }
-                else if (action.equals("set-src-mac")) {
-                    subaction_struct = decode_set_src_mac(subaction, version, log);
-                }
-                else if (action.equals("set-dst-mac")) {
-                    subaction_struct = decode_set_dst_mac(subaction, version, log);
-                }
-                else if (action.equals("set-tos-bits")) {
-                    subaction_struct = decode_set_tos_bits(subaction, version, log);
-                }
-                else if (action.equals("set-src-ip")) {
-                    subaction_struct = decode_set_src_ip(subaction, version, log);
-                }
-                else if (action.equals("set-dst-ip")) {
-                    subaction_struct = decode_set_dst_ip(subaction, version, log);
-                }
-                else if (action.equals("set-src-port")) {
-                    subaction_struct = decode_set_src_port(subaction, version, log);
-                }
-                else if (action.equals("set-dst-port")) {
-                    subaction_struct = decode_set_dst_port(subaction, version, log);
-                }
-                else {
-                    log.error("Unexpected action '{}', '{}'", action, subaction);
-                }
-                
-                if (subaction_struct != null) {
-                    actions.add(subaction_struct.action);
-                }
-            }
-        }
-        log.debug("action {}", actions);
-        
-        flowMod = flowMod.createBuilder().setActions(actions).build();
-    } 
-    
-    private static SubActionStruct decode_output(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n;
-        
-        n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(subaction);
-        if (n.matches()) {
-            OFActionOutput.Builder ab = OFFactories.getFactory(version).actions().buildOutput();
-            OFPort port = OFPort.ANY; //TODO @Ryan is ANY == NONE?
-            if (n.group(1) != null) {
-                try {
-                    port = OFPort.of(get_short(n.group(1)));
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid port in: '{}' (error ignored)", subaction);
-                    return null;
-                }
-            }
-            else if (n.group(2) != null)
-                port = OFPort.ALL;
-            else if (n.group(3) != null)
-                port = OFPort.CONTROLLER;
-            else if (n.group(4) != null)
-                port = OFPort.LOCAL;
-            else if (n.group(5) != null)
-                port = OFPort.IN_PORT;
-            else if (n.group(6) != null)
-                port = OFPort.NORMAL;
-            else if (n.group(7) != null)
-                port = OFPort.FLOOD;
-            ab.setPort(port);
-            log.debug("action {}", ab.build());
-            
-            sa = new SubActionStruct();
-            sa.action = ab.build();
-        }
-        else {
-            log.error("Invalid subaction: '{}'", subaction);
-            return null;
-        }
-        
-        return sa;
-    }
-    
-    private static SubActionStruct decode_enqueue(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n;
-        
-        n = Pattern.compile("enqueue=(?:((?:0x)?\\d+)\\:((?:0x)?\\d+))").matcher(subaction);
-        if (n.matches()) {
-            OFPort portnum = OFPort.of(0);
-            if (n.group(1) != null) {
-                try {
-                    portnum = OFPort.of(get_short(n.group(1)));
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid port-num in: '{}' (error ignored)", subaction);
-                    return null;
-                }
-            }
-
-            int queueid = 0;
-            if (n.group(2) != null) {
-                try {
-                    queueid = get_int(n.group(2));
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid queue-id in: '{}' (error ignored)", subaction);
-                    return null;
-               }
-            }
-            
-            OFActionEnqueue.Builder aeb = OFFactories.getFactory(version).actions().buildEnqueue();
-            aeb.setPort(portnum);
-            aeb.setQueueId(queueid);
-            log.debug("action {}", aeb.build());
-            
-            sa = new SubActionStruct();
-            sa.action = aeb.build();
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-        
-        return sa;
-    }
-    
-    private static SubActionStruct decode_strip_vlan(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("strip-vlan").matcher(subaction);
-        
-        if (n.matches()) {
-            OFActionStripVlan asvl = OFFactories.getFactory(version).actions().stripVlan();
-            log.debug("action {}", asvl);
-            
-            sa = new SubActionStruct();
-            sa.action = asvl;
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static SubActionStruct decode_set_vlan_id(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-vlan-id=((?:0x)?\\d+)").matcher(subaction);
-        
-        if (n.matches()) {            
-            if (n.group(1) != null) {
-                try {
-                    short vlanid = get_short(n.group(1));
-                    OFActionSetVlanVid.Builder avvid = OFFactories.getFactory(version).actions().buildSetVlanVid();
-                    avvid.setVlanVid(VlanVid.ofVlan(vlanid));
-                    log.debug("  action {}", avvid.build());
-
-                    sa = new SubActionStruct();
-                    sa.action = avvid.build();
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid VLAN in: {} (error ignored)", subaction);
-                    return null;
-                }
-            }          
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static SubActionStruct decode_set_vlan_priority(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-vlan-priority=((?:0x)?\\d+)").matcher(subaction); 
-        
-        if (n.matches()) {
-            if (n.group(1) != null) {
-                try {
-                    byte prior = get_byte(n.group(1));
-                    OFActionSetVlanPcp.Builder avpcp = OFFactories.getFactory(version).actions().buildSetVlanPcp();
-                    avpcp.setVlanPcp(VlanPcp.of(prior));
-                    log.debug("  action {}", avpcp.build());
-                    
-                    sa = new SubActionStruct();
-                    sa.action = avpcp.build();
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid VLAN priority in: {} (error ignored)", subaction);
-                    return null;
-                }
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static SubActionStruct decode_set_src_mac(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-src-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction); 
-
-        if (n.matches()) {
-            byte[] macaddr = get_mac_addr(n, subaction, log);
-            if (macaddr != null) {
-                OFActionSetDlSrc.Builder asdls = OFFactories.getFactory(version).actions().buildSetDlSrc();
-                asdls.setDlAddr(MacAddress.of(macaddr));
-                log.debug("action {}", asdls.build());
-
-                sa = new SubActionStruct();
-                sa.action = asdls.build();
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-
-    private static SubActionStruct decode_set_dst_mac(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-dst-mac=(?:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+)\\:(\\p{XDigit}+))").matcher(subaction);
-        
-        if (n.matches()) {
-            byte[] macaddr = get_mac_addr(n, subaction, log);
-            if (macaddr != null) {
-                OFActionSetDlDst.Builder asdld = OFFactories.getFactory(version).actions().buildSetDlDst();
-                asdld.setDlAddr(MacAddress.of(macaddr));
-                log.debug("  action {}", asdld.build());
-                
-                sa = new SubActionStruct();
-                sa.action = asdld.build();
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static SubActionStruct decode_set_tos_bits(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-tos-bits=((?:0x)?\\d+)").matcher(subaction); 
-
-        if (n.matches()) {
-            if (n.group(1) != null) {
-                try {
-                    byte tosbits = get_byte(n.group(1));
-                    OFActionSetNwTos.Builder snwtos = OFFactories.getFactory(version).actions().buildSetNwTos();
-                    snwtos.setNwTos(tosbits);
-                    log.debug("  action {}", snwtos.build());
-                    
-                    sa = new SubActionStruct();
-                    sa.action = snwtos.build();
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid dst-port in: {} (error ignored)", subaction);
-                    return null;
-                }
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static SubActionStruct decode_set_src_ip(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-src-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
-
-        if (n.matches()) {
-            int ipaddr = get_ip_addr(n, subaction, log);
-            OFActionSetNwSrc.Builder snws = OFFactories.getFactory(version).actions().buildSetNwSrc();
-            snws.setNwAddr(IPv4Address.of(ipaddr));
-            log.debug("  action {}", snws.build());
-
-            sa = new SubActionStruct();
-            sa.action = snws.build();
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-
-    private static SubActionStruct decode_set_dst_ip(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-dst-ip=(?:(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+))").matcher(subaction);
-
-        if (n.matches()) {
-            int ipaddr = get_ip_addr(n, subaction, log);
-            OFActionSetNwDst.Builder snwd = OFFactories.getFactory(version).actions().buildSetNwDst();
-            snwd.setNwAddr(IPv4Address.of(ipaddr));
-            log.debug("action {}", snwd.build());
- 
-            sa = new SubActionStruct();
-            sa.action = snwd.build();
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-
-    private static SubActionStruct decode_set_src_port(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-src-port=((?:0x)?\\d+)").matcher(subaction); 
-
-        if (n.matches()) {
-            if (n.group(1) != null) {
-                try {
-                    TransportPort portnum = TransportPort.of(get_short(n.group(1)));
-                    OFActionSetTpSrc.Builder stps = OFFactories.getFactory(version).actions().buildSetTpSrc();
-                    stps.setTpPort(portnum);
-                    log.debug("action {}", stps.build());
-                    
-                    sa = new SubActionStruct();
-                    sa.action = stps.build();
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid src-port in: {} (error ignored)", subaction);
-                    return null;
-                }
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-
-    private static SubActionStruct decode_set_dst_port(String subaction, OFVersion version, Logger log) {
-        SubActionStruct sa = null;
-        Matcher n = Pattern.compile("set-dst-port=((?:0x)?\\d+)").matcher(subaction);
-
-        if (n.matches()) {
-            if (n.group(1) != null) {
-                try {
-                    TransportPort portnum = TransportPort.of(get_short(n.group(1)));
-                    OFActionSetTpDst.Builder stpd = OFFactories.getFactory(version).actions().buildSetTpDst();
-                    stpd.setTpPort(portnum);
-                    log.debug("action {}", stpd);
-                    
-                    sa = new SubActionStruct();
-                    sa.action = stpd.build();
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid dst-port in: {} (error ignored)", subaction);
-                    return null;
-                }
-            }
-        }
-        else {
-            log.debug("Invalid action: '{}'", subaction);
-            return null;
-        }
-
-        return sa;
-    }
-    
-    private static byte[] get_mac_addr(Matcher n, String subaction, Logger log) {
-        byte[] macaddr = new byte[6];
-        
-        for (int i=0; i<6; i++) {
-            if (n.group(i+1) != null) {
-                try {
-                    macaddr[i] = get_byte("0x" + n.group(i+1));
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid src-mac in: '{}' (error ignored)", subaction);
-                    return null;
-                }
-            }
-            else { 
-                log.debug("Invalid src-mac in: '{}' (null, error ignored)", subaction);
-                return null;
-            }
-        }
-        
-        return macaddr;
-    }
-    
-    private static int get_ip_addr(Matcher n, String subaction, Logger log) {
-        int ipaddr = 0;
-
-        for (int i=0; i<4; i++) {
-            if (n.group(i+1) != null) {
-                try {
-                    ipaddr = ipaddr<<8;
-                    ipaddr = ipaddr | get_int(n.group(i+1));
-                }
-                catch (NumberFormatException e) {
-                    log.debug("Invalid src-ip in: '{}' (error ignored)", subaction);
-                    return 0;
-                }
-            }
-            else {
-                log.debug("Invalid src-ip in: '{}' (null, error ignored)", subaction);
-                return 0;
-            }
-        }
-        
-        return ipaddr;
-    }
-    
-    // Parse int as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static int get_int(String str) {
-        return Integer.decode(str);
-    }
-   
-    // Parse short as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static short get_short(String str) {
-        return (short)(int)Integer.decode(str);
-    }
-   
-    // Parse byte as decimal, hex (start with 0x or #) or octal (starts with 0)
-    private static byte get_byte(String str) {
-        return Integer.decode(str).byteValue();
-    }
-
-    
 }

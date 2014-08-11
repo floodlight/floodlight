@@ -101,7 +101,7 @@ public class ControllerSwitchesResource extends ServerResource {
         }
 
         public String getDpid() {
-            return sw.getStringId();
+            return sw.getId().toString();
         }
 
         public String getHarole() {
