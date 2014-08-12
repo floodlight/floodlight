@@ -94,12 +94,12 @@ if args.action=='add':
     result = os.popen(command).read()
     parsedResult = json.loads(result)
     print command+"\n"
-    
+
     try:
-    	sourceSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
+        sourceSwitch = parsedResult[0]['attachmentPoint'][0]['switchDPID']
     except IndexError:
-	print "ERROR : the specified end point (%s) must already been known to the controller (i.e., already have sent packets on the network, easy way to assure this is to do a ping (to any target) from the two hosts." % (args.srcAddress)
-	sys.exit()
+        print "ERROR : the specified end point (%s) must already been known to the controller (i.e., already have sent packets on the network, easy way to assure this is to do a ping (to any target) from the two hosts." % (args.srcAddress)
+        sys.exit()
 
     sourcePort = parsedResult[0]['attachmentPoint'][0]['port']
     
@@ -113,7 +113,7 @@ if args.action=='add':
     except IndexError:
         print "ERROR : the specified end point (%s) must already been known to the controller (i.e., already have sent packets on the network, easy way to assure this is to do a ping (to any target) from the two hosts." % (args.dstAddress) 
         sys.exit()
- 
+
     destPort = parsedResult[0]['attachmentPoint'][0]['port']
     
     print "Creating circuit:"
@@ -123,13 +123,11 @@ if args.action=='add':
     # retrieving route from source to destination
     # using Routing rest API
     
-    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort, destSwitch, destPort)
-    
+    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort['shortPortNumber'], destSwitch, destPort['shortPortNumber'])
     result = os.popen(command).read()
-    parsedResult = json.loads(result)
-
-    print command+"\n"
     print result+"\n"
+    print command+"\n"
+    parsedResult = json.loads(result)
 
     for i in range(len(parsedResult)):
         if i % 2 == 0:
@@ -151,26 +149,26 @@ if args.action=='add':
             # encode each flow entry's name with both switch dpid, user
             # specified name, and flow type (f: forward, r: reverse, farp/rarp: arp)
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"src-ip\":\"%s\", \"dst-ip\":\"%s\", \"ether-type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress-port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".f", args.srcAddress, args.dstAddress, "0x800", ap1Port, ap2Port, controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"nw_src\":\"%s\", \"nw_dst\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".f", args.srcAddress, args.dstAddress, "0x800", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"ether-type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress-port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".farp", "0x806", ap1Port, ap2Port, controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_dpa\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".farp", args.srcAddress, args.dstAddress, "0x806", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"src-ip\":\"%s\", \"dst-ip\":\"%s\", \"ether-type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress-port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".r", args.dstAddress, args.srcAddress, "0x800", ap2Port, ap1Port, controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"nw_src\":\"%s\", \"nw_dst\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".r", args.dstAddress, args.srcAddress, "0x800", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"ether-type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress-port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".rarp", "0x806", ap2Port, ap1Port, controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_dpa\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".rarp",args.dstAddress, args.srcAddress, "0x806", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
-            
+
             # store created circuit attributes in local ./circuits.json
             datetime = time.asctime()
-            circuitParams = {'name':args.circuitName, 'Dpid':ap1Dpid, 'inPort':ap1Port, 'outPort':ap2Port, 'datetime':datetime}
+            circuitParams = {'name':args.circuitName, 'Dpid':ap1Dpid, 'inPort':ap1Port['shortPortNumber'], 'outPort':ap2Port['shortPortNumber'], 'datetime':datetime}
             str = json.dumps(circuitParams)
             circuitDb.write(str+"\n")
 

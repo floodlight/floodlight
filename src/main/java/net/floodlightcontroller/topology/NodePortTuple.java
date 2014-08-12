@@ -55,7 +55,6 @@ public class NodePortTuple implements Comparable<NodePortTuple> {
         this.nodeId = nodeId;
     }
     @JsonProperty("port")
-    @JsonSerialize(using=UShortSerializer.class)
     public OFPort getPortId() {
         return portId;
     }

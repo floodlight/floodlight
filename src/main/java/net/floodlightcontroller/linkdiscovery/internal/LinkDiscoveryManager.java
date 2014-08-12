@@ -565,7 +565,7 @@ IFloodlightModule, IInfoProvider {
 			FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
 				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		if (eth.getPayload() instanceof BSN) {
 			BSN bsn = (BSN) eth.getPayload();
 			if (bsn == null) return Command.STOP;
@@ -574,9 +574,9 @@ IFloodlightModule, IInfoProvider {
 			// continue with the regular processing.
 			if (bsn.getPayload() instanceof LLDP == false)
 				return Command.CONTINUE;
-			return handleLldp((LLDP) bsn.getPayload(), sw, pi.getInPort(), false, cntx);
+			return handleLldp((LLDP) bsn.getPayload(), sw, inPort, false, cntx);
 		} else if (eth.getPayload() instanceof LLDP) {
-			return handleLldp((LLDP) eth.getPayload(), sw, pi.getInPort(), true, cntx);
+			return handleLldp((LLDP) eth.getPayload(), sw, inPort, true, cntx);
 		} else if (eth.getEtherType() < 1500) {
 			long destMac = eth.getDestinationMACAddress().getLong();
 			if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
@@ -1134,7 +1134,7 @@ IFloodlightModule, IInfoProvider {
 
 		// send
 		// no more try-catch. switch will silently fail
-		iofSwitch.write(po);
+		iofSwitch.write(pob.build());
 		iofSwitch.flush();
 	}
 
