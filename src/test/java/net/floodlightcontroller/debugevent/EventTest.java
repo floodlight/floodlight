@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class EventTest {
-    protected static Logger log = LoggerFactory.getLogger(EventTest.class);
+   /* protected static Logger log = LoggerFactory.getLogger(EventTest.class);
 
     @Test
     public void testFormat() {
@@ -145,5 +145,5 @@ public class EventTest {
         public LakeEvent2(int mac) {
             this.mac = mac;
         }
-    }
+    } */
 }

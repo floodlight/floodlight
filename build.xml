@@ -243,7 +243,7 @@
     </target>
     <target name="coverage" depends="instrument,test,coverage-report"/>
 
-    <target name="dist" depends="compile,compile-test">
+    <target name="dist" depends="compile">
         <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
@@ -254,7 +254,7 @@
             <fileset dir="${python-src}">
                 <include name="**/*.py"/>
             </fileset>
-            <zipgroupfileset dir="${lib}">
+            <zipgroupfileset dir="${lib}" excludes="META-INF/*.SF">
                 <patternset refid="lib"/>
             </zipgroupfileset>
         </jar>
@@ -324,7 +324,7 @@
             noindex="false"
             nonavbar="false"
             notree="false"
-            source="1.6"
+            source="1.7"
             sourcepath="${source}"
             splitindex="true"
             use="true"

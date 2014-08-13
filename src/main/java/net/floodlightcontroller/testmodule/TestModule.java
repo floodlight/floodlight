@@ -110,49 +110,67 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 		}*/
         
         //TODO @Ryan set a bunch of matches. Test for an OF1.0 and OF1.3 switch. See what happens if they are incorrectly applied.
-        /* L2 and ICMP TESTS mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        /* L2 and ICMP TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.ETH_SRC, MacAddress.BROADCAST);
         mb.setExact(MatchField.ETH_DST, MacAddress.BROADCAST);
         mb.setExact(MatchField.IPV4_SRC, IPv4Address.of("127.1.1.1"));
         mb.setExact(MatchField.IPV4_DST, IPv4Address.of("128.2.2.2"));
         mb.setExact(MatchField.IP_PROTO, IpProtocol.ICMP);
         mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of((short)1));
-        mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.ECHO); */
+        mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.ECHO); 
+        OFActionOutput.Builder actionBuilder = factory.actions().buildOutput();
+        actions.add(factory.actions().output(OFPort.of(1), Integer.MAX_VALUE));
+        //actions.add(factory.actions().setField(factory.oxms().icmpv4Code(ICMPv4Code.of((short)1)))); //TODO @Ryan is ICMP rewrite not supported? The message is okay leaving (loxi doens't complain), but the switch rejects both actions
+        //actions.add(factory.actions().setField(factory.oxms().icmpv4Type(ICMPv4Type.ALTERNATE_HOST_ADDRESS))); */
+ 
         
-        /* ARP TESTS mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+        /* ARP TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
         mb.setExact(MatchField.ARP_OP, ArpOpcode.REQUEST);
         mb.setExact(MatchField.ARP_SHA, MacAddress.BROADCAST);
         mb.setExact(MatchField.ARP_SPA, IPv4Address.of("130.127.39.241"));
         mb.setExact(MatchField.ARP_THA, MacAddress.BROADCAST);
-        mb.setExact(MatchField.ARP_TPA, IPv4Address.of("130.127.39.241")); */
+        mb.setExact(MatchField.ARP_TPA, IPv4Address.of("130.127.39.241")); 
+        OFActionOutput.Builder actionBuilder = factory.actions().buildOutput();
+        actions.add(factory.actions().output(OFPort.LOCAL, Integer.MAX_VALUE));
+        actions.add(factory.actions().setField(factory.oxms().arpOp(ArpOpcode.REPLY)));
+        actions.add(factory.actions().setField(factory.oxms().arpSha(MacAddress.BROADCAST)));
+        actions.add(factory.actions().setField(factory.oxms().arpTha(MacAddress.BROADCAST)));
+        actions.add(factory.actions().setField(factory.oxms().arpSpa(IPv4Address.of("255.255.255.255"))));
+        actions.add(factory.actions().setField(factory.oxms().arpTpa(IPv4Address.of("255.255.255.255")))); */
         
-        /* TP, IP OPT, VLAN TESTS */ mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        /* TP, IP OPT, VLAN TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.VLAN_PCP, VlanPcp.of((byte) 1)); // might as well test these now too
-        mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(512));
+        //mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(512));
         mb.setExact(MatchField.MPLS_LABEL, U32.of(32));
-        mb.setExact(MatchField.MPLS_TC, U8.of((short)64));
+        //mb.setExact(MatchField.MPLS_TC, U8.of((short)64));
         mb.setExact(MatchField.IP_ECN, IpEcn.ECN_10); // and these
         mb.setExact(MatchField.IP_DSCP, IpDscp.DSCP_16);
-        mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP); // with tcp, udp, sctp
-        mb.setExact(MatchField.UDP_SRC, TransportPort.of(22));
-        mb.setExact(MatchField.UDP_DST, TransportPort.of(80)); 
-        
-        /* MPLS TESTS mb.setExact(MatchField.ETH_TYPE, EthType.MPLS_MULTICAST);
-        mb.setExact(MatchField.MPLS_LABEL, U32.of(18));
-        mb.setExact(MatchField.MPLS_TC, U8.of((short)4));*/
-        
-        /* METADATA TEST 
-        mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(1)); */
-
-        
-        //TODO @Ryan set a bunch of actions. "" "" """ """"""
+        mb.setExact(MatchField.IP_PROTO, IpProtocol.SCTP); // with tcp, udp, sctp
+        mb.setExact(MatchField.SCTP_SRC, TransportPort.of(22));
+        mb.setExact(MatchField.SCTP_DST, TransportPort.of(80)); 
         OFActionOutput.Builder actionBuilder = factory.actions().buildOutput();
         actions.add(factory.actions().output(OFPort.of(1), Integer.MAX_VALUE));
         actions.add(factory.actions().setField(factory.oxms().ethSrc(MacAddress.BROADCAST)));
         actions.add(factory.actions().setField(factory.oxms().ethDst(MacAddress.BROADCAST)));
         actions.add(factory.actions().setField(factory.oxms().ipv4Src(IPv4Address.of("127.0.1.2"))));
-        actions.add(factory.actions().setField(factory.oxms().ipv4Src(IPv4Address.of("128.0.3.4"))));
-
+        actions.add(factory.actions().setField(factory.oxms().ipv4Dst(IPv4Address.of("128.0.3.4")))); 
+        actions.add(factory.actions().setField(factory.oxms().sctpSrc(TransportPort.of(22))));
+        actions.add(factory.actions().setField(factory.oxms().sctpDst(TransportPort.of(80))));
+        // these test non-set-field actions
+        //actions.add(factory.actions().copyTtlOut());
+        //actions.add(factory.actions().pushVlan(EthType.IPv4));
+        //actions.add(factory.actions().pushVlan(EthType.IPv4));
+        //actions.add(factory.actions().setField(factory.oxms().ipProto(IpProtocol.TCP))); // can't set protocol...makes sense */
+        
+        /* MPLS TESTS mb.setExact(MatchField.ETH_TYPE, EthType.MPLS_MULTICAST);
+        mb.setExact(MatchField.MPLS_LABEL, U32.of(18));
+        mb.setExact(MatchField.MPLS_TC, U8.of((short)4));
+        actions.add(factory.actions().output(OFPort.LOCAL, Integer.MAX_VALUE));
+        actions.add(factory.actions().setField(factory.oxms().mplsLabel(U32.ZERO)));
+        actions.add(factory.actions().setField(factory.oxms().mplsTc(U8.ZERO))); */
+        
+        /* METADATA TEST 
+        mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(1)); */
 
         fmb.setActions(actions);
         fmb.setMatch(mb.build());
@@ -165,26 +183,22 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 	@Override
 	public void switchRemoved(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
 	public void switchActivated(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
 	public void switchPortChanged(DatapathId switchId, OFPortDesc port,
 			PortChangeType type) {
 		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
 	public void switchChanged(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		
 	}
 
 }

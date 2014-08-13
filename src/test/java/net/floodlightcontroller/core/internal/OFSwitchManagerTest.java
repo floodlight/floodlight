@@ -194,7 +194,7 @@ public class OFSwitchManagerTest{
         expect(sw.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_10)).anyTimes();
         expect(sw.getStatus()).andReturn(SwitchStatus.MASTER).anyTimes();
         expect(sw.getId()).andReturn(datapathId).anyTimes();
-        expect(sw.getStringId()).andReturn(dpidString).anyTimes();
+        expect(sw.getId().toString()).andReturn(dpidString).anyTimes();
         expect(sw.getSwitchDescription()).andReturn(description).anyTimes();
         expect(sw.getBuffers())
                 .andReturn(featuresReply.getNBuffers()).anyTimes();
@@ -317,7 +317,7 @@ public class OFSwitchManagerTest{
     public void testNonexistingSwitchDisconnected() throws Exception {
         IOFSwitchBackend sw = createMock(IOFSwitchBackend.class);
         expect(sw.getId()).andReturn(DATAPATH_ID_1).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_1.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_1.toString()).anyTimes();
         IOFSwitchListener listener = createMock(IOFSwitchListener.class);
         switchManager.addOFSwitchListener(listener);
         replay(sw, listener);
@@ -338,7 +338,7 @@ public class OFSwitchManagerTest{
         // create a new mock switch
         IOFSwitchBackend sw = createMock(IOFSwitchBackend.class);
         expect(sw.getId()).andReturn(DATAPATH_ID_1).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_1.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_1.toString()).anyTimes();
         IOFSwitchListener listener = createMock(IOFSwitchListener.class);
         switchManager.addOFSwitchListener(listener);
         replay(sw, listener);

@@ -5,14 +5,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.debugevent.IDebugEventService.DebugEventInfo;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugEventTest extends FloodlightTestCase {
-    DebugEvent debugEvent;
+   /* DebugEvent debugEvent;
     protected static Logger log = LoggerFactory.getLogger(DebugEventTest.class);
 
     @Override
@@ -98,5 +97,5 @@ public class DebugEventTest extends FloodlightTestCase {
             this.dpid = dpid;
             this.mac = mac;
         }
-    }
+    } */
 }

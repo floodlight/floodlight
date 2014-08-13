@@ -52,6 +52,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.InstructionUtils;
 import net.floodlightcontroller.util.MatchUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
@@ -108,7 +109,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_NW_SRC = MatchUtils.STR_NW_SRC; // includes CIDR-style netmask, e.g. "128.8.128.0/24"
 	public static final String COLUMN_NW_DST = MatchUtils.STR_NW_DST;
 
-	public static final String COLUMN_TP_SRC = MatchUtils.STR_TP_SRC;
+	public static final String COLUMN_SCTP_SRC = MatchUtils.STR_SCTP_SRC;
+	public static final String COLUMN_SCTP_DST = MatchUtils.STR_SCTP_DST;
+	public static final String COLUMN_UDP_SRC = MatchUtils.STR_UDP_SRC;
+	public static final String COLUMN_UDP_DST = MatchUtils.STR_UDP_DST;
+	public static final String COLUMN_TCP_SRC = MatchUtils.STR_TCP_SRC;
+	public static final String COLUMN_TCP_DST = MatchUtils.STR_TCP_DST;
+	public static final String COLUMN_TP_SRC = MatchUtils.STR_TP_SRC; // support for OF1.0 generic transport ports (possibly sent from the rest api). Only use these to read them in, but store them as the type of port their IpProto is set to.
 	public static final String COLUMN_TP_DST = MatchUtils.STR_TP_DST;
 
 	/* newly added matches for OF1.3 port start here */
@@ -129,25 +136,41 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_TUNNEL_ID = MatchUtils.STR_TUNNEL_ID;
 
 	public static final String COLUMN_PBB_ISID = MatchUtils.STR_PBB_ISID;
-	/* end newly added matches TODO @Ryan should look into full IPv6 support*/
+	/* end newly added matches TODO @Ryan should look into full IPv6 support */
 
 	public static final String COLUMN_ACTIONS = "actions";
+	
+	public static final String COLUMN_INSTR_GOTO_TABLE = InstructionUtils.STR_GOTO_TABLE; // instructions are each getting their own column, due to write and apply actions, which themselves contain a variable list of actions
+	public static final String COLUMN_INSTR_WRITE_METADATA = InstructionUtils.STR_WRITE_METADATA;
+	public static final String COLUMN_INSTR_WRITE_ACTIONS = InstructionUtils.STR_WRITE_ACTIONS;
+	public static final String COLUMN_INSTR_APPLY_ACTIONS = InstructionUtils.STR_APPLY_ACTIONS;
+	public static final String COLUMN_INSTR_CLEAR_ACTIONS = InstructionUtils.STR_CLEAR_ACTIONS;
+	public static final String COLUMN_INSTR_GOTO_METER = InstructionUtils.STR_GOTO_METER;
+	public static final String COLUMN_INSTR_EXPERIMENTER = InstructionUtils.STR_EXPERIMENTER;
 
 	public static String ColumnNames[] = { COLUMN_NAME, COLUMN_SWITCH,
 		COLUMN_ACTIVE, COLUMN_IDLE_TIMEOUT, COLUMN_HARD_TIMEOUT,
 		COLUMN_PRIORITY, COLUMN_COOKIE, COLUMN_IN_PORT,
 		COLUMN_DL_SRC, COLUMN_DL_DST, COLUMN_DL_VLAN, COLUMN_DL_VLAN_PCP,
 		COLUMN_DL_TYPE, COLUMN_NW_TOS, COLUMN_NW_PROTO, COLUMN_NW_SRC,
-		COLUMN_NW_DST, COLUMN_TP_DST, COLUMN_TP_SRC, 
+		COLUMN_NW_DST, COLUMN_TP_SRC, COLUMN_TP_DST,
 		/* newly added matches for OF1.3 port start here */
+		COLUMN_SCTP_SRC, COLUMN_SCTP_DST, 
+		COLUMN_UDP_SRC, COLUMN_UDP_DST, COLUMN_TCP_SRC, COLUMN_TCP_DST,
 		COLUMN_ICMP_TYPE, COLUMN_ICMP_CODE, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
 		COLUMN_MPLS_LABEL, COLUMN_MPLS_TC, COLUMN_MPLS_BOS, 
 		COLUMN_METADATA, COLUMN_TUNNEL_ID, COLUMN_PBB_ISID,
 		/* end newly added matches */
-		COLUMN_ACTIONS };
-
+		COLUMN_ACTIONS,
+		/* newly added instructions for OF1.3 port start here */
+		COLUMN_INSTR_GOTO_TABLE, COLUMN_INSTR_WRITE_METADATA,
+		COLUMN_INSTR_WRITE_ACTIONS, COLUMN_INSTR_APPLY_ACTIONS,
+		COLUMN_INSTR_CLEAR_ACTIONS, COLUMN_INSTR_GOTO_METER,
+		COLUMN_INSTR_EXPERIMENTER
+		/* end newly added instructions */
+		};
 
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IOFSwitchService switchService;
@@ -321,26 +344,42 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
 
 			for (String key : row.keySet()) {
-				if (row.get(key) == null)
+				if (row.get(key) == null) {
 					continue;
-				if (key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME)
-						|| key.equals("id"))
+				}
+				if (key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME) || key.equals("id")) {
 					continue; // already handled
+				}
 				// explicitly ignore timeouts and wildcards
-				if (key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT))
+				if (key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT)) {
 					continue;
+				}
 				if (key.equals(COLUMN_ACTIVE)) {
 					if  (!Boolean.valueOf((String) row.get(COLUMN_ACTIVE))) {
 						log.debug("skipping inactive entry {} for switch {}", entryName, switchName);
 						entries.get(switchName).put(entryName, null);  // mark this an inactive
 						return;
 					}
-				} else if (key.equals(COLUMN_ACTIONS)){
+				} else if (key.equals(COLUMN_ACTIONS)) {
 					ActionUtils.fromString(fmb, (String) row.get(COLUMN_ACTIONS), log);
 				} else if (key.equals(COLUMN_COOKIE)) {
 					fmb.setCookie(StaticFlowEntries.computeEntryCookie(Integer.valueOf((String) row.get(COLUMN_COOKIE)), entryName));
 				} else if (key.equals(COLUMN_PRIORITY)) {
 					fmb.setPriority(U16.t(Integer.valueOf((String) row.get(COLUMN_PRIORITY))));
+				} else if (key.equals(COLUMN_INSTR_APPLY_ACTIONS)) {
+					InstructionUtils.applyActionsFromString(fmb, (String) row.get(COLUMN_INSTR_APPLY_ACTIONS), log);
+				} else if (key.equals(COLUMN_INSTR_CLEAR_ACTIONS)) {
+					InstructionUtils.clearActionsFromString(fmb, (String) row.get(COLUMN_INSTR_CLEAR_ACTIONS), log);
+				} else if (key.equals(COLUMN_INSTR_EXPERIMENTER)) {
+					InstructionUtils.experimenterFromString(fmb, (String) row.get(COLUMN_INSTR_EXPERIMENTER), log);
+				} else if (key.equals(COLUMN_INSTR_GOTO_METER)) {
+					InstructionUtils.meterFromString(fmb, (String) row.get(COLUMN_INSTR_GOTO_METER), log);
+				} else if (key.equals(COLUMN_INSTR_GOTO_TABLE)) {
+					InstructionUtils.gotoTableFromString(fmb, (String) row.get(COLUMN_INSTR_GOTO_TABLE), log);
+				} else if (key.equals(COLUMN_INSTR_WRITE_ACTIONS)) {
+					InstructionUtils.writeActionsFromString(fmb, (String) row.get(COLUMN_INSTR_WRITE_ACTIONS), log);
+				} else if (key.equals(COLUMN_INSTR_WRITE_METADATA)) {
+					InstructionUtils.writeMetadataFromString(fmb, (String) row.get(COLUMN_INSTR_WRITE_METADATA), log);
 				} else { // the rest of the keys are for Match().fromString()
 					if (matchString.length() > 0) {
 						matchString.append(",");

@@ -1,10 +1,7 @@
 package net.floodlightcontroller.util;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFVersion;
@@ -29,11 +26,17 @@ import org.projectfloodlight.openflow.types.U8;
 import org.projectfloodlight.openflow.types.VlanPcp;
 
 /**
- * Match helper functions. Use with any OpenFlowJ-Loxi Match.
+ * Utilities for working with Matches. Includes workarounds for
+ * current Loxi limitations/bugs. 
+ * 
+ * Convert OFInstructions to and from dpctl/ofctl-style strings.
+ * Used primarily by the static flow pusher to store and retreive
+ * flow entries.
+ * 
+ * @author Ryan Izard <ryan.izard@bigswitch.com, rizard@g.clemson.edu>
  * 
  * Includes string methods adopted from OpenFlowJ for OpenFlow 1.0.
- *
- * @author Ryan Izard <ryan.izard@bigswitch.com, rizard@g.clemson.edu>
+ * 
  * @author David Erickson (daviderickson@cs.stanford.edu)
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  */
@@ -41,7 +44,8 @@ public class MatchUtils {
 	/* List of Strings for marshalling and unmarshalling to human readable forms.
 	 * Classes that convert from Match and String should reference these fields for a
 	 * common string representation throughout the controller. The StaticFlowEntryPusher
-	 * is one such example that references these strings.
+	 * is one such example that references these strings. The REST API for the SFEP will
+	 * expect the JSON string to be formatted using these strings for the applicable fields.
 	 */
 	public static final String STR_IN_PORT = "ingress_port";
 
@@ -56,7 +60,13 @@ public class MatchUtils {
 	public static final String STR_NW_PROTO = "nw_proto";
 	public static final String STR_NW_TOS = "nw_tos";
 
-	public static final String STR_TP_DST = "tp_dst";
+	public static final String STR_SCTP_DST = "sctp_dst";
+	public static final String STR_SCTP_SRC = "sctp_src";
+	public static final String STR_UDP_DST = "udp_dst";
+	public static final String STR_UDP_SRC = "udp_src";
+	public static final String STR_TCP_DST = "tcp_dst";
+	public static final String STR_TCP_SRC = "tcp_src";
+	public static final String STR_TP_DST = "tp_dst"; // support for OF1.0 generic transport ports (possibly sent from the rest api). Only use these to read them in, but store them as the type of port their IpProto is set to.
 	public static final String STR_TP_SRC = "tp_src";
 
 	public static final String STR_ICMP_TYPE = "icmp_type";
@@ -76,6 +86,8 @@ public class MatchUtils {
 	public static final String STR_TUNNEL_ID = "tunnel_id";
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
+	
+	public static final String SET_FIELD_DELIM = "@";
 
 	/**
 	 * Create a point-to-point match for two devices at the IP layer.
@@ -122,6 +134,9 @@ public class MatchUtils {
 	}
 
 	/**
+	 * 
+	 * Workaround for bug in Loxi:
+	 * 
 	 * Create a builder from an existing Match object. Unlike Match's
 	 * createBuilder(), this utility function will preserve all of
 	 * Match m's MatchFields, even if new MatchFields are set or modified
@@ -255,7 +270,9 @@ public class MatchUtils {
 	/**
 	 * Based on the method from OFMatch in openflowj 1.0.
 	 * Set this Match's parameters based on a comma-separated key=value pair
-	 * dpctl-style string, e.g., from the output of OFMatch.toString() <br>
+	 * dpctl-style string, e.g., from the output of OFMatch.toString(). The
+	 * exact syntax for each key is defined by the string constants at the top
+	 * of MatchUtils.java. <br>
 	 * <p>
 	 * Supported keys/values include <br>
 	 * <p>
@@ -292,6 +309,7 @@ public class MatchUtils {
 	 * @param match
 	 *            a key=value comma separated string, e.g.
 	 *            "in_port=5,nw_dst=192.168.0.0/16,tp_src=80"
+	 * @param the OF version to construct this match for
 	 * @throws IllegalArgumentException
 	 *             on unexpected key or value
 	 */
@@ -307,7 +325,7 @@ public class MatchUtils {
 			initArg = 1;
 		}
 		
-		// Split up key=value pairs into [key, value], and insert into linked list
+		// Split up key=value pairs into [key, value], and insert into array-deque
 		int i;
 		String[] tmp;
 		ArrayDeque<String[]> llValues = new ArrayDeque<String[]>();
@@ -323,7 +341,7 @@ public class MatchUtils {
 		Match.Builder mb = OFFactories.getFactory(ofVersion).buildMatch();
 
 		while (!llValues.isEmpty()) {
-			IpProtocol ipProto; // used to prevent lots of match.get()'s for detecting transport protocol
+			IpProtocol ipProto = null;
 			String[] key_value = llValues.pollFirst(); // pop off the first element; this completely removes it from the queue.
 			switch (key_value[0]) {
 			case STR_IN_PORT:
@@ -365,26 +383,67 @@ public class MatchUtils {
 				mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
 				mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
 				break;
-			case STR_TP_DST:
-				// if we don't know the transport protocol yet, postpone parsing this [key, value] pair until we know. Put it at the back of the queue.
+			case STR_SCTP_DST: // for transport ports, if we don't know the transport protocol yet, postpone parsing this [key, value] pair until we know. Put it at the back of the queue.
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.SCTP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_SCTP_SRC:
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.SCTP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_UDP_DST:
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.UDP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_UDP_SRC:
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.UDP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_TCP_DST:
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.TCP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_TCP_SRC:
+				if (mb.get(MatchField.IP_PROTO) == null) {
+					llValues.add(key_value); // place it back if we can't proceed yet
+				} else {
+					mb.setExact(MatchField.TCP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
+				}
+				break;
+			case STR_TP_DST: // support for OF1.0 generic transport ports
 				if ((ipProto = mb.get(MatchField.IP_PROTO)) == null) {
 					llValues.add(key_value); // place it back if we can't proceed yet
-				} else if (ipProto.equals(IpProtocol.TCP)) {
+				} else if (ipProto == IpProtocol.TCP){
 					mb.setExact(MatchField.TCP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
-				} else if (ipProto.equals(IpProtocol.UDP)) {
+				} else if (ipProto == IpProtocol.UDP){
 					mb.setExact(MatchField.UDP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
-				} else if (ipProto.equals(IpProtocol.SCTP)) {
+				} else if (ipProto == IpProtocol.SCTP){
 					mb.setExact(MatchField.SCTP_DST, TransportPort.of(Integer.valueOf(key_value[1])));
 				}
 				break;
 			case STR_TP_SRC:
 				if ((ipProto = mb.get(MatchField.IP_PROTO)) == null) {
 					llValues.add(key_value); // place it back if we can't proceed yet
-				} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
+				}  else if (ipProto == IpProtocol.TCP){
 					mb.setExact(MatchField.TCP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
-				} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
+				} else if (ipProto == IpProtocol.UDP){
 					mb.setExact(MatchField.UDP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
-				} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.SCTP)) {
+				} else if (ipProto == IpProtocol.SCTP){
 					mb.setExact(MatchField.SCTP_SRC, TransportPort.of(Integer.valueOf(key_value[1])));
 				}
 				break;

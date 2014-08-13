@@ -239,7 +239,7 @@ public class ControllerTest extends FloodlightTestCase {
 
         expect(sw.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_10)).anyTimes();
         expect(sw.getId()).andReturn(datapathId).anyTimes();
-        expect(sw.getStringId()).andReturn(dpidString).anyTimes();
+        expect(sw.getId().toString()).andReturn(dpidString).anyTimes();
         expect(sw.getSwitchDescription()).andReturn(description).atLeastOnce();
         expect(sw.getBuffers())
                 .andReturn(featuresReply.getNBuffers()).atLeastOnce();
@@ -271,7 +271,7 @@ public class ControllerTest extends FloodlightTestCase {
     public void testHandleMessagesNoListeners() throws Exception {
     	IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(DatapathId.NONE).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
         replay(sw);
         controller.handleMessage(sw, pi, null);
         verify(sw);
@@ -292,7 +292,7 @@ public class ControllerTest extends FloodlightTestCase {
 
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(DatapathId.NONE).anyTimes();
-        expect(sw.getStringId()).andReturn("00:00:00:00:00:00:00").anyTimes();
+        expect(sw.getId().toString()).andReturn("00:00:00:00:00:00:00").anyTimes();
 
         // Setup listener orderings
         IOFMessageListener test1 = createMock(IOFMessageListener.class);
@@ -422,7 +422,7 @@ public class ControllerTest extends FloodlightTestCase {
         doSetUp(HARole.STANDBY);
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(DatapathId.NONE).anyTimes();
-        expect(sw.getStringId()).andReturn(DatapathId.NONE.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DatapathId.NONE.toString()).anyTimes();
 
         IOFMessageListener test1 = createMock(IOFMessageListener.class);
         expect(test1.getName()).andReturn("test1").atLeastOnce();
@@ -468,7 +468,7 @@ public class ControllerTest extends FloodlightTestCase {
     public void testHandleMessageWithContext() throws Exception {
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(DatapathId.NONE).anyTimes();
-        expect(sw.getStringId()).andReturn(DatapathId.NONE.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DatapathId.NONE.toString()).anyTimes();
 
         IOFMessageListener test1 = createMock(IOFMessageListener.class);
         expect(test1.getName()).andReturn("test1").anyTimes();
@@ -512,7 +512,7 @@ public class ControllerTest extends FloodlightTestCase {
         OFMessage m = factory.buildEchoRequest().build();
         IOFSwitchBackend sw = createMock(IOFSwitchBackend.class);
         expect(sw.getId()).andReturn(DATAPATH_ID_0).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
 
         // Add listeners
         IOFMessageListener test1 = createMock(IOFMessageListener.class);
@@ -564,7 +564,7 @@ public class ControllerTest extends FloodlightTestCase {
         // Test the handleOutgoingMessage
         reset(test1, test2, test3, sw);
         expect(sw.getId()).andReturn(DATAPATH_ID_0).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
         expect(test2.receive(same(sw), same(m) , isA(FloodlightContext.class)))
                 .andReturn(Command.STOP);
         expect(test3.receive(same(sw), same(m) , isA(FloodlightContext.class)))
@@ -580,7 +580,7 @@ public class ControllerTest extends FloodlightTestCase {
         // Test the handleOutgoingMessage with null context
         reset(test1, test2, test3, sw);
         expect(sw.getId()).andReturn(DATAPATH_ID_0).anyTimes();
-        expect(sw.getStringId()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
+        expect(sw.getId().toString()).andReturn(DATAPATH_ID_0.toString()).anyTimes();
         expect(test2.receive(same(sw), same(m) , isA(FloodlightContext.class)))
                 .andReturn(Command.STOP);
         expect(test3.receive(same(sw), same(m) , isA(FloodlightContext.class)))

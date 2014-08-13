@@ -507,14 +507,14 @@ public class LoadBalancer implements IFloodlightModule,
                String matchString = null;
                String actionString = null;
                
-               OFFlowMod.Builder fmb = switchService.getSwitch(pinSwitch).getOFFactory().buildFlowModify();
+               OFFlowMod.Builder fmb = switchService.getSwitch(pinSwitch).getOFFactory().buildFlowAdd();
 
                fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
                fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
                fmb.setBufferId(OFBufferId.NO_BUFFER);
-               fmb.setOutPort(OFPort.ZERO);
+               fmb.setOutPort(OFPort.ANY);
                fmb.setCookie(U64.of(0));  
-               fmb.setPriority(Short.MAX_VALUE);
+               fmb.setPriority(FlowModUtils.PRIORITY_MAX);
                
                if (inBound) {
                    entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort

@@ -19,11 +19,13 @@ package net.floodlightcontroller.staticflowentry;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.util.ActionUtils;
+import net.floodlightcontroller.util.InstructionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,14 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionClearActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionExperimenter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -134,11 +144,50 @@ public class StaticFlowEntries {
 		entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
 		entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));
 
-		if ((fm.getActions() != null) && (fm.getActions().size() > 0)) {
-			entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, ActionUtils.actionsToString(fm.getActions(), log));
-		}
+		switch (fm.getVersion()) {
+		case OF_10:
+			if (fm.getActions() != null) {
+				entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, ActionUtils.actionsToString(fm.getActions(), log));
+			}
+			break;
+		case OF_11:
+		case OF_12:
+		case OF_13:
+		default:
+			if (fm.getInstructions() != null) {
+				List<OFInstruction> instructions = fm.getInstructions();
+				for (OFInstruction inst : instructions) {
+					switch (inst.getType()) { //TODO @Ryan look into replacing with an instanceof construct
+					case GOTO_TABLE:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE, InstructionUtils.gotoTableToString(((OFInstructionGotoTable) inst), log));
+						break;
+					case WRITE_METADATA:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_METADATA, InstructionUtils.writeMetadataToString(((OFInstructionWriteMetadata) inst), log));
+						break;
+					case WRITE_ACTIONS:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS, InstructionUtils.writeActionsToString(((OFInstructionWriteActions) inst), log));
+						break;
+					case APPLY_ACTIONS:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS, InstructionUtils.applyActionsToString(((OFInstructionApplyActions) inst), log));
+						break;
+					case CLEAR_ACTIONS:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_CLEAR_ACTIONS, InstructionUtils.clearActionsToString(((OFInstructionClearActions) inst), log));
+						break;
+					case METER:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_METER, InstructionUtils.meterToString(((OFInstructionMeter) inst), log));
+						break;
+					case EXPERIMENTER:
+						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER, InstructionUtils.experimenterToString(((OFInstructionExperimenter) inst), log));
+						break;
+					default:
+						log.error("Could not decode OF1.3 instruction type {}", inst); 
+					}
+				}
+			}	
+		}		
 
 		Match match = fm.getMatch();
+		// it's a shame we can't use the MatchUtils for this. It's kind of the same thing but storing in a different place.
 		boolean setTOS = false;
 		Iterator<MatchField<?>> itr = match.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
 		while(itr.hasNext()) {
@@ -193,22 +242,22 @@ public class StaticFlowEntries {
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.get(MatchField.IPV4_DST).toString());
 				break;
 			case TCP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.TCP_SRC).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, match.get(MatchField.TCP_SRC).getPort());
 				break;
 			case UDP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.UDP_SRC).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, match.get(MatchField.UDP_SRC).getPort());
 				break;
 			case SCTP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, match.get(MatchField.SCTP_SRC).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, match.get(MatchField.SCTP_SRC).getPort());
 				break;
 			case TCP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, match.get(MatchField.TCP_DST).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, match.get(MatchField.TCP_DST).getPort());
 				break;
 			case UDP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, match.get(MatchField.UDP_DST).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, match.get(MatchField.UDP_DST).getPort());
 				break;
 			case SCTP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, match.get(MatchField.SCTP_DST).getPort());
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, match.get(MatchField.SCTP_DST).getPort());
 				break;
 			case ICMPV4_TYPE:
 				entry.put(StaticFlowEntryPusher.COLUMN_ICMP_TYPE, match.get(MatchField.ICMPV4_TYPE).getType());
@@ -270,6 +319,10 @@ public class StaticFlowEntries {
 		Map<String, Object> entry = new HashMap<String, Object>();
 		MappingJsonFactory f = new MappingJsonFactory();
 		JsonParser jp;
+		
+		String tpSrcPort = "";
+		String tpDstPort = "";
+		String ipProto = "";
 
 		try {
 			jp = f.createJsonParser(fmJson);
@@ -294,7 +347,8 @@ public class StaticFlowEntries {
 			}
 
 			// Java 7 switch-case on strings automatically checks for (deep) string equality.
-			// IMHO, this makes things easier on the eyes than if, else if, else's
+			// IMHO, this makes things easier on the eyes than if, else if, else's, and it
+			// seems to be more efficient than walking through a long list of if-else-ifs
 
 			// A simplification is to make the column names the same strings as those used to
 			// compose the JSON flow entry; keeps all names/keys centralized and reduces liklihood
@@ -344,6 +398,7 @@ public class StaticFlowEntries {
 				break;
 			case StaticFlowEntryPusher.COLUMN_NW_PROTO:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, jp.getText());
+				ipProto = jp.getText();
 				break;
 			case StaticFlowEntryPusher.COLUMN_NW_SRC:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, jp.getText());
@@ -351,11 +406,31 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_NW_DST:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_TP_SRC:
+			case StaticFlowEntryPusher.COLUMN_SCTP_SRC:
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_SCTP_DST:
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_UDP_SRC:
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_UDP_DST:
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_TCP_SRC:
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_TCP_DST:
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_TP_SRC: // support for OF1.0 generic transport ports
 				entry.put(StaticFlowEntryPusher.COLUMN_TP_SRC, jp.getText());
+				tpSrcPort = jp.getText();
 				break;
 			case StaticFlowEntryPusher.COLUMN_TP_DST:
 				entry.put(StaticFlowEntryPusher.COLUMN_TP_DST, jp.getText());
+				tpDstPort = jp.getText();
 				break;
 			case StaticFlowEntryPusher.COLUMN_ICMP_TYPE:
 				entry.put(StaticFlowEntryPusher.COLUMN_ICMP_TYPE, jp.getText());
@@ -402,7 +477,45 @@ public class StaticFlowEntries {
 			default:
 				log.error("Could not decode field from JSON string: {}", n);
 			}  
-		}       
+		} 
+		
+		// For OF1.0, transport ports are specified using generic tp_src, tp_dst type strings.
+		// Once the whole json string has been parsed, find out the IpProto to properly assign the ports.
+		// If IpProto not specified, print error, and make sure all TP columns are clear.
+		if (ipProto.equalsIgnoreCase("tcp")) {
+			if (!tpSrcPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, tpSrcPort);
+			}
+			if (!tpDstPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
+				entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, tpDstPort);
+			}
+		} else if (ipProto.equalsIgnoreCase("udp")) {
+			if (!tpSrcPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, tpSrcPort);
+			}
+			if (!tpDstPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
+				entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, tpDstPort);
+			}
+		} else if (ipProto.equalsIgnoreCase("sctp")) {
+			if (!tpSrcPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, tpSrcPort);
+			}
+			if (!tpDstPort.isEmpty()) {
+				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
+				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, tpDstPort);
+			}
+		} else {
+			log.debug("Got IP protocol of '{}' and tp-src of '{}' and tp-dst of '" + tpDstPort + "' via SFP REST API", ipProto, tpSrcPort);
+		}
+		
+		
+		
+		
 		return entry;
 	}   
 }

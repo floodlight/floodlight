@@ -3,8 +3,6 @@ package net.floodlightcontroller.debugcounter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.floodlightcontroller.debugcounter.DebugCounter.CounterIndexStore;
-import net.floodlightcontroller.debugcounter.DebugCounter.RetCtrInfo;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.junit.Before;
@@ -13,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CounterHierarchyGetTest extends FloodlightTestCase {
-    DebugCounter dc;
+    /*DebugCounter dc;
     protected static Logger log = LoggerFactory.getLogger(CounterHierarchyGetTest.class);
 
     ConcurrentHashMap<String, ConcurrentHashMap<String, CounterIndexStore>> mctr;
@@ -274,5 +272,5 @@ public class CounterHierarchyGetTest extends FloodlightTestCase {
                                rci.foundUptoLevel,
                                rci.ctrIds, rci.levels});
     }
-
+*/
 }
