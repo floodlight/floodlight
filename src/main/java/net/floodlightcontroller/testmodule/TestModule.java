@@ -36,6 +36,7 @@ import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFValueType;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U8;
@@ -124,7 +125,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         //actions.add(factory.actions().setField(factory.oxms().icmpv4Type(ICMPv4Type.ALTERNATE_HOST_ADDRESS))); */
  
         
-        /* ARP TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+        /* ARP TESTS */ mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
         mb.setExact(MatchField.ARP_OP, ArpOpcode.REQUEST);
         mb.setExact(MatchField.ARP_SHA, MacAddress.BROADCAST);
         mb.setExact(MatchField.ARP_SPA, IPv4Address.of("130.127.39.241"));
@@ -136,7 +137,8 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         actions.add(factory.actions().setField(factory.oxms().arpSha(MacAddress.BROADCAST)));
         actions.add(factory.actions().setField(factory.oxms().arpTha(MacAddress.BROADCAST)));
         actions.add(factory.actions().setField(factory.oxms().arpSpa(IPv4Address.of("255.255.255.255"))));
-        actions.add(factory.actions().setField(factory.oxms().arpTpa(IPv4Address.of("255.255.255.255")))); */
+        actions.add(factory.actions().setField(factory.oxms().arpTpa(IPv4Address.of("255.255.255.255")))); 
+        fmb.setTableId(TableId.of(16));
         
         /* TP, IP OPT, VLAN TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.VLAN_PCP, VlanPcp.of((byte) 1)); // might as well test these now too

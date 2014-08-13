@@ -65,6 +65,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
@@ -89,6 +90,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String TABLE_NAME = "controller_staticflowtableentry";
 	public static final String COLUMN_NAME = "name";
 	public static final String COLUMN_SWITCH = "switch";
+	public static final String COLUMN_TABLE_ID = "table_id";
 	public static final String COLUMN_ACTIVE = "active";
 	public static final String COLUMN_IDLE_TIMEOUT = "idle_timeout";
 	public static final String COLUMN_HARD_TIMEOUT = "hard_timeout";
@@ -149,7 +151,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_INSTR_EXPERIMENTER = InstructionUtils.STR_EXPERIMENTER;
 
 	public static String ColumnNames[] = { COLUMN_NAME, COLUMN_SWITCH,
-		COLUMN_ACTIVE, COLUMN_IDLE_TIMEOUT, COLUMN_HARD_TIMEOUT,
+		COLUMN_TABLE_ID, COLUMN_ACTIVE, COLUMN_IDLE_TIMEOUT, COLUMN_HARD_TIMEOUT, // table id is new for OF1.3 as well
 		COLUMN_PRIORITY, COLUMN_COOKIE, COLUMN_IN_PORT,
 		COLUMN_DL_SRC, COLUMN_DL_DST, COLUMN_DL_VLAN, COLUMN_DL_VLAN_PCP,
 		COLUMN_DL_TYPE, COLUMN_NW_TOS, COLUMN_NW_PROTO, COLUMN_NW_SRC,
@@ -360,6 +362,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						entries.get(switchName).put(entryName, null);  // mark this an inactive
 						return;
 					}
+				} else if (key.equals(COLUMN_TABLE_ID)) {
+					fmb.setTableId(TableId.of(Integer.parseInt((String) row.get(key)))); // support multiple flow tables for OF1.1+
 				} else if (key.equals(COLUMN_ACTIONS)) {
 					ActionUtils.fromString(fmb, (String) row.get(COLUMN_ACTIONS), log);
 				} else if (key.equals(COLUMN_COOKIE)) {

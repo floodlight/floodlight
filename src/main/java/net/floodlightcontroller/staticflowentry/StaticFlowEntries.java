@@ -154,6 +154,11 @@ public class StaticFlowEntries {
 		case OF_12:
 		case OF_13:
 		default:
+			// should have a table ID present
+			if (fm.getTableId() != null) { // if not set, then don't worry about it. Default will be set when built and sent to switch
+				entry.put(StaticFlowEntryPusher.COLUMN_TABLE_ID, Short.toString(fm.getTableId().getValue()));
+			}
+			// should have a list of instructions, of which apply and write actions could have sublists of actions
 			if (fm.getInstructions() != null) {
 				List<OFInstruction> instructions = fm.getInstructions();
 				for (OFInstruction inst : instructions) {
@@ -297,6 +302,7 @@ public class StaticFlowEntries {
 				break;
 			} // end switch-case
 		} // end while
+				
 		return entry;
 	}
 
@@ -360,10 +366,13 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_SWITCH:
 				entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, jp.getText());
 				break;
+			case StaticFlowEntryPusher.COLUMN_TABLE_ID:
+				entry.put(StaticFlowEntryPusher.COLUMN_TABLE_ID, jp.getText());
+				break;
 			case StaticFlowEntryPusher.COLUMN_ACTIVE:
 				entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT: // store TO's, but conditionally push them
+			case StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT: // TODO @Ryan always store TO's, but conditionally push them (the conditional push hasn't been done yet)
 				entry.put(StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_HARD_TIMEOUT:
@@ -512,10 +521,7 @@ public class StaticFlowEntries {
 		} else {
 			log.debug("Got IP protocol of '{}' and tp-src of '{}' and tp-dst of '" + tpDstPort + "' via SFP REST API", ipProto, tpSrcPort);
 		}
-		
-		
-		
-		
+
 		return entry;
 	}   
 }
