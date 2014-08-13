@@ -55,7 +55,7 @@ public class DeviceSerializer extends JsonSerializer<Device> {
         jGen.writeArrayFieldStart("vlan");
         for (VlanVid vlan : device.getVlanId())
             if (vlan.getVlan() >= 0)
-                jGen.writeNumber(vlan.toString());
+                jGen.writeString(vlan.toString());
         jGen.writeEndArray();
         jGen.writeArrayFieldStart("attachmentPoint");
         for (SwitchPort ap : device.getAttachmentPoints(true)) {
