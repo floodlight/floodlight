@@ -61,7 +61,7 @@ public class SwitchCounterCategoriesResource extends CounterResourceBase {
                                                      String switchID,
                                                      String counterName,
                                                      String layer) {
-        String fullCounterName = "";
+        /*TODO @Ryan String fullCounterName = "";
         NetworkLayer nl = NetworkLayer.L3;
 
         try {
@@ -78,6 +78,6 @@ public class SwitchCounterCategoriesResource extends CounterResourceBase {
         List<String> categories = this.counterStore.getAllCategories(fullCounterName, nl);
         if (categories != null) {
             model.put(fullCounterName + "." + layer, categories);
-        }
+        }*/
     }
 }

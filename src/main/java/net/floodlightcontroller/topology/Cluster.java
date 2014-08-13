@@ -53,7 +53,8 @@ public class Cluster {
     void add(DatapathId n) {
         if (links.containsKey(n) == false) {
             links.put(n, new HashSet<Link>());
-            if (n.getLong() < id.getLong()) id = n;
+			if (id == DatapathId.NONE || n.getLong() < id.getLong()) 
+				id = n ;
         }
     }
 

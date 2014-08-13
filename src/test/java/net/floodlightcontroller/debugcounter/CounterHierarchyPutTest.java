@@ -7,12 +7,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.debugcounter.DebugCounter.CounterIndexStore;
-import net.floodlightcontroller.debugcounter.DebugCounter.RetCtrInfo;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class CounterHierarchyPutTest extends FloodlightTestCase {
-    DebugCounter dc;
+    /*DebugCounter dc;
     protected static Logger log = LoggerFactory.getLogger(CounterHierarchyPutTest.class);
 
     ConcurrentHashMap<String, ConcurrentHashMap<String, CounterIndexStore>> mctr;
@@ -117,5 +115,5 @@ public class CounterHierarchyPutTest extends FloodlightTestCase {
                                rci.ctrIds, rci.levels});
 
     }
-
+*/
 }

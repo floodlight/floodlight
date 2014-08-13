@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class CircularBufferTest extends FloodlightTestCase {
-    CircularBuffer<String> cb;
+    /*CircularBuffer<String> cb;
     protected static Logger log = LoggerFactory.getLogger(CircularBufferTest.class);
 
     @Test
@@ -79,5 +79,5 @@ public class CircularBufferTest extends FloodlightTestCase {
         assertEquals(retlist3, retlist2);
 
     }
-
+*/
 }

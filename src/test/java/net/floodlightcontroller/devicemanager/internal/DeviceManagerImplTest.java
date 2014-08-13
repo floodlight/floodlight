@@ -126,7 +126,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         OFPort port = OFPort.of(1);
         expect(mockSwitch.getId()).andReturn(id).anyTimes();
-        expect(mockSwitch.getStringId()).andReturn(id.toString()).anyTimes();
+        expect(mockSwitch.getId().toString()).andReturn(id.toString()).anyTimes();
         expect(mockSwitch.getPort(OFPort.of(anyShort())).getPortNo()).andReturn(port).anyTimes();
         return mockSwitch;
     }

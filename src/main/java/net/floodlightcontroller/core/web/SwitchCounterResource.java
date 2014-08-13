@@ -34,7 +34,7 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 public class SwitchCounterResource extends CounterResourceBase {
     @Get("json")
     public Map<String, Object> retrieve() {
-        IOFSwitchService switchService =
+        /*TODO @Ryan IOFSwitchService switchService =
                 (IOFSwitchService)getContext().getAttributes().
                     get(IOFSwitchService.class.getCanonicalName());
         HashMap<String,Object> model = new HashMap<String,Object>();
@@ -52,12 +52,12 @@ public class SwitchCounterResource extends CounterResourceBase {
         } else {
             getOneSwitchCounterJson(model, switchID, counterName);
         }
-        return model;
+        return model;*/ return null;
     }
 
     protected void getOneSwitchCounterJson(Map<String, Object> model,
                                            String switchID, String counterName) {
-        String fullCounterName = "";
+        /*TODO @Ryan String fullCounterName = "";
 
         try {
             counterName = URLDecoder.decode(counterName, "UTF-8");
@@ -73,7 +73,7 @@ public class SwitchCounterResource extends CounterResourceBase {
             sample.put(counter.getCounterDate().toString(),
                        counter.getCounterValue().getLong());
             model.put(switchID, sample);
-        }
+        } */
     }
 
 }
