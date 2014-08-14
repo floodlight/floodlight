@@ -11,13 +11,13 @@ import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
 public class DebugEventTest extends FloodlightTestCase {
-   /* DebugEvent debugEvent;
+    Event debugEvent;
     protected static Logger log = LoggerFactory.getLogger(DebugEventTest.class);
 
     @Override
     @Before
     public void setUp() throws Exception {
-        debugEvent = new DebugEvent();
+        debugEvent = new Event(System.currentTimeMillis(), 0, "test", null, 0);
 
     }
 
@@ -25,8 +25,8 @@ public class DebugEventTest extends FloodlightTestCase {
     @Test
     public void testRegisterAndUpdateEvent() throws Exception {
         assertEquals(0, debugEvent.currentEvents.size());
-        IEventUpdater<SwitchyEvent> event1 = null;
-        IEventUpdater<PacketyEvent> event2 = null;
+        IEventCategory<SwitchyEvent> event1 = null;
+        IEventCategory<PacketyEvent> event2 = null;
         event1 = debugEvent.registerEvent("dbgevtest", "switchevent",
                                            "switchtest", EventType.ALWAYS_LOG,
                                            SwitchyEvent.class, 100);
@@ -97,5 +97,5 @@ public class DebugEventTest extends FloodlightTestCase {
             this.dpid = dpid;
             this.mac = mac;
         }
-    } */
+    } 
 }

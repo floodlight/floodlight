@@ -193,7 +193,6 @@ public class StaticFlowEntries {
 
 		Match match = fm.getMatch();
 		// it's a shame we can't use the MatchUtils for this. It's kind of the same thing but storing in a different place.
-		boolean setTOS = false;
 		Iterator<MatchField<?>> itr = match.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
 		while(itr.hasNext()) {
 			@SuppressWarnings("rawtypes") // this is okay here
@@ -217,25 +216,11 @@ public class StaticFlowEntries {
 			case ETH_TYPE:
 				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).getValue());
 				break;
-			case IP_ECN: // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte
-				if (setTOS) { //TODO @Ryan need to break TOS into ECN and DSCP columns
-					entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, 
-							Byte.toString((byte) (match.get(MatchField.IP_ECN).getEcnValue() 
-									| (Byte.parseByte(entry.get(StaticFlowEntryPusher.COLUMN_NW_TOS).toString())))));
-				} else {
-					entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Byte.toString((byte) (match.get(MatchField.IP_ECN).getEcnValue())));
-				}
-				setTOS = true;
+			case IP_ECN: // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte (have separate columns now though)
+				entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, Byte.toString(match.get(MatchField.IP_ECN).getEcnValue()));
 				break;
-			case IP_DSCP:
-				if (setTOS) {
-					entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, 
-							Byte.toString((byte) (match.get(MatchField.IP_DSCP).getDscpValue() 
-									| (Byte.parseByte(entry.get(StaticFlowEntryPusher.COLUMN_NW_TOS).toString())))));
-				} else {
-					entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, Byte.toString((byte) (match.get(MatchField.IP_ECN).getEcnValue())));
-				}
-				setTOS = true;
+			case IP_DSCP: // Even for OF1.0, loxi will break ECN and DSCP up from the API's POV. This method is only invoked by a SFP service push from another module
+				entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, Byte.toString((byte) (match.get(MatchField.IP_DSCP).getDscpValue())));
 				break;
 			case IP_PROTO:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.get(MatchField.IP_PROTO).getIpProtocolNumber()));
@@ -402,8 +387,14 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_DL_TYPE:
 				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_NW_TOS:
+			case StaticFlowEntryPusher.COLUMN_NW_TOS: // only valid for OF1.0; all other should specify specifics (ECN and/or DSCP bits)
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_NW_ECN:
+				entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_NW_DSCP:
+				entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_NW_PROTO:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, jp.getText());

@@ -8,8 +8,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -58,7 +56,6 @@ public class ClientTest {
         
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IThreadPoolService.class, tp);
-        fmc.addService(IDebugCounterService.class, new NullDebugCounter());
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+1);

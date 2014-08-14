@@ -17,7 +17,6 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
-import net.floodlightcontroller.core.web.serializers.UShortSerializer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;

@@ -3,8 +3,6 @@ package org.sdnplatform.sync.internal;
 import java.io.File;
 import java.util.ArrayList;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -61,7 +59,6 @@ public class BootstrapTest {
             syncManagers.add(syncManager);
 
             fmc.addService(IThreadPoolService.class, tp);
-            fmc.addService(IDebugCounterService.class, new NullDebugCounter());
             String dbPath = 
                     new File(dbFolder.getRoot(), 
                              "server" + i).getAbsolutePath();

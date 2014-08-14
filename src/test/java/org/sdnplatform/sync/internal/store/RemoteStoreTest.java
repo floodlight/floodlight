@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -35,7 +33,6 @@ public class RemoteStoreTest extends AbstractStoreT<ByteArray,byte[]> {
         remoteSyncManager = new RemoteSyncManager();
 
         fmc.addService(IThreadPoolService.class, tp);
-        fmc.addService(IDebugCounterService.class, new NullDebugCounter());
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         
         tp.init(fmc);

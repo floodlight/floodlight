@@ -17,6 +17,7 @@
 package net.floodlightcontroller.flowcache;
 
 import static org.easymock.EasyMock.*;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -25,29 +26,26 @@ import java.util.ListIterator;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
-import net.floodlightcontroller.counter.ICounterStoreService;
-import net.floodlightcontroller.counter.SimpleCounter;
-import net.floodlightcontroller.counter.CounterValue.CounterType;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFStatisticsRequest;
-import org.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFType;
 
 public class FlowReconcileMgrTest extends FloodlightTestCase {
 
     protected FlowReconcileManager flowReconcileMgr;
     protected MockThreadPoolService threadPool;
-    protected ICounterStoreService counterStore;
     protected FloodlightModuleContext fmc;
     
-    OFStatisticsRequest ofStatsRequest;
+    OFStatsRequest ofStatsRequest;
 
     protected int NUM_FLOWS_PER_THREAD = 100;
     protected int NUM_THREADS = 20;
@@ -59,9 +57,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
         fmc = new FloodlightModuleContext();
         flowReconcileMgr = new FlowReconcileManager();
         threadPool = new MockThreadPoolService();
-        counterStore = createMock(ICounterStoreService.class);
         
-        fmc.addService(ICounterStoreService.class, counterStore);
         fmc.addService(IThreadPoolService.class, threadPool);
         
         threadPool.init(fmc);
@@ -115,16 +111,6 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
                   andThrow(new RuntimeException("This is NOT an error! " +
                             "We are testing exception catching."));
         
-        SimpleCounter cnt = (SimpleCounter)SimpleCounter.createCounter(
-                            new Date(),
-                            CounterType.LONG);
-        cnt.increment();
-        expect(counterStore.getCounter(
-                flowReconcileMgr.controllerPktInCounterName))
-                .andReturn(cnt)
-                .anyTimes();
-        
-        replay(r1, r2, r3, counterStore);
         flowReconcileMgr.clearFlowReconcileListeners();
         flowReconcileMgr.addFlowReconcileListener(r1);
         flowReconcileMgr.addFlowReconcileListener(r2);
@@ -256,8 +242,7 @@ public class FlowReconcileMgrTest extends FloodlightTestCase {
     
     @Test
     public void testGetPktInRate() {
-        internalTestGetPktInRate(CounterType.LONG);
-        internalTestGetPktInRate(CounterType.DOUBLE);
+
     }
     
     protected void internalTestGetPktInRate(CounterType type) {

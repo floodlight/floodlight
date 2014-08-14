@@ -47,18 +47,18 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
-import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
-import org.projectfloodlight.openflow.util.HexString;
 
 /**
  * Unit test for stateless firewall implemented as a Google Summer of Code project.
@@ -84,6 +84,7 @@ public class FirewallTest extends FloodlightTestCase {
         super.setUp();
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
+        mockSwitchManager = getMockSwitchService();
         firewall = new Firewall();
         IStorageSourceService storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
@@ -95,9 +96,9 @@ public class FirewallTest extends FloodlightTestCase {
         expect(sw.getId().toString()).andReturn(TestSwitch1DPID).anyTimes();
         replay(sw);
         // Load the switch map
-        Map<Long, IOFSwitch> switches = new HashMap<Long, IOFSwitch>();
+        Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
         switches.put(dpid, sw);
-        mockFloodlightProvider.setSwitches(switches);
+        mockSwitchManager.setSwitches(switches);
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class,
@@ -216,13 +217,12 @@ public class FirewallTest extends FloodlightTestCase {
     protected void setPacketIn(IPacket packet) {
         byte[] serializedPacket = packet.serialize();
         // Build the PacketIn
-        /*this.packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-                .setBufferId(-1)
-                .setInPort((short) 1)
-                .setPacketData(serializedPacket)
+        this.packetIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setInPort(OFPort.of(1))
+                .setData(serializedPacket)
                 .setReason(OFPacketInReason.NO_MATCH)
-                .setTotalLength((short) serializedPacket.length);
-		*/
+                .build();
         // Add the packet to the context store
         IFloodlightProviderService.bcStore.
         put(cntx,

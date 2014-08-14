@@ -26,6 +26,12 @@ import java.util.Set;
 import java.util.Iterator;
 
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
+
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import junit.framework.TestCase;
 
@@ -46,8 +52,8 @@ public class DeviceUniqueIndexTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        e1a = new Entity(1L, (short)1, 1, 1L, 1, new Date());
-        e1b = new Entity(1L, (short)2, 1, 1L, 1, new Date());
+        e1a = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.of(1), DatapathId.of(1L), OFPort.of(1), new Date());
+        e1b = new Entity(MacAddress.of(1L), VlanVid.ofVlan(2), IPv4Address.of(1), DatapathId.of(1L), OFPort.of(1), new Date());
         List<Entity> d1Entities = new ArrayList<Entity>(2);
         d1Entities.add(e1a);
         d1Entities.add(e1b);
@@ -55,14 +61,14 @@ public class DeviceUniqueIndexTest extends TestCase {
                         d1Entities, null);
         
         // e2 and e2 alt match in MAC and VLAN
-        e2 = new Entity(2L, (short)2, 2, 2L, 2, new Date());
-        e2alt = new Entity(2, (short)2, null, null, null, null);
+        e2 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.of(2), DatapathId.of(2L), OFPort.of(2), new Date());
+        e2alt = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), null, null, null, null);
         
         // IP is null
-        e3 = new Entity(3L, (short)3, null, 3L, 3, new Date());
+        e3 = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), null, DatapathId.of(3L), OFPort.of(3), new Date());
         
         // IP and switch and port are null
-        e4 = new Entity(4L, (short)4, null, null, null, new Date());
+        e4 = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), null, null, null, new Date());
     }
     
     /*
@@ -141,7 +147,7 @@ public class DeviceUniqueIndexTest extends TestCase {
         // only one key field is null
         idx2.updateIndex(e3, 3L);
         assertEquals(Long.valueOf(3L), idx2.findByEntity(e3));
-        e3.ipv4Address = 3;
+        e3.ipv4Address = IPv4Address.of(3);
         assertEquals(null, idx2.findByEntity(e3));
         // all key fields are null
         idx2.updateIndex(e4, 4L);
