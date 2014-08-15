@@ -30,7 +30,6 @@ import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.util.HexString;
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,9 +99,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             for (GetConcurrentStatsThread curThread : activeThreads) {
                 if (curThread.getState() == State.TERMINATED) {
                     if (rType == REQUESTTYPE.OFSTATS) {
-                        model.put(HexString.toHexString(curThread.getSwitchId().getLong()), curThread.getStatisticsReply());
+                        model.put(curThread.getSwitchId().toString(), curThread.getStatisticsReply());
                     } else if (rType == REQUESTTYPE.OFFEATURES) {
-                        model.put(HexString.toHexString(curThread.getSwitchId().getLong()), curThread.getFeaturesReply());
+                        model.put(curThread.getSwitchId().toString(), curThread.getFeaturesReply());
                     }
                     pendingRemovalThreads.add(curThread);
                 }

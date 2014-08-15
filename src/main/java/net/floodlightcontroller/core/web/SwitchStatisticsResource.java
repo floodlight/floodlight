@@ -26,6 +26,10 @@ import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize.Typing;
+
 /**
  * Return switch statistics information for specific switches
  * @author readams
@@ -35,6 +39,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         LoggerFactory.getLogger(SwitchStatisticsResource.class);
 
     @Get("json")
+    @JsonSerialize(using = StatsReplySerializer.class)
     public Map<String, Object> retrieve() {
         HashMap<String,Object> result = new HashMap<String,Object>();
         Object values = null;
