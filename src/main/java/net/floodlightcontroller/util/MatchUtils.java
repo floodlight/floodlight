@@ -59,6 +59,8 @@ public class MatchUtils {
 	public static final String STR_NW_SRC = "nw_src";
 	public static final String STR_NW_PROTO = "nw_proto";
 	public static final String STR_NW_TOS = "nw_tos";
+	public static final String STR_NW_ECN = "nw_ecn";
+	public static final String STR_NW_DSCP = "nw_dscp";
 
 	public static final String STR_SCTP_DST = "sctp_dst";
 	public static final String STR_SCTP_SRC = "sctp_src";
@@ -381,6 +383,12 @@ public class MatchUtils {
 				break;
 			case STR_NW_TOS:
 				mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
+				mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
+				break;
+			case STR_NW_ECN:
+				mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
+				break;
+			case STR_NW_DSCP:
 				mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
 				break;
 			case STR_SCTP_DST: // for transport ports, if we don't know the transport protocol yet, postpone parsing this [key, value] pair until we know. Put it at the back of the queue.

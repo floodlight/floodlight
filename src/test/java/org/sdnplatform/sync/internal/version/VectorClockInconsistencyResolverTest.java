@@ -58,7 +58,6 @@ public class VectorClockInconsistencyResolverTest {
         assertEquals(0, resolver.resolveConflicts(new ArrayList<Versioned<String>>()).size());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testDuplicatesResolve() {
         assertEquals(2, resolver.resolveConflicts(Arrays.asList(concurrent,
@@ -68,7 +67,6 @@ public class VectorClockInconsistencyResolverTest {
                                                                 current)).size());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testResolveNormal() {
         assertEquals(later, resolver.resolveConflicts(Arrays.asList(current, prior, later)).get(0));
@@ -76,7 +74,6 @@ public class VectorClockInconsistencyResolverTest {
         assertEquals(later, resolver.resolveConflicts(Arrays.asList(later, current, prior)).get(0));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testResolveConcurrent() {
         List<Versioned<String>> resolved = resolver.resolveConflicts(Arrays.asList(current,
@@ -87,7 +84,6 @@ public class VectorClockInconsistencyResolverTest {
         assertTrue("Version not found", resolved.contains(concurrent));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testResolveLargerConcurrent() {
         assertEquals(3, resolver.resolveConflicts(Arrays.asList(concurrent,
@@ -99,7 +95,6 @@ public class VectorClockInconsistencyResolverTest {
                                                                 current)).size());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testResolveConcurrentPairWithLater() {
         Versioned<String> later2 = getVersioned(1, 2, 3, 3, 4, 4);

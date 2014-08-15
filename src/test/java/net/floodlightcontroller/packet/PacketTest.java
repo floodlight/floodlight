@@ -116,8 +116,8 @@ public class PacketTest {
             Ethernet eth = (Ethernet)pkt;
             Ethernet newEth = (Ethernet)newPkt;
             newEth.setDestinationMACAddress(new byte[] { 1,2,3,4,5,6});
-            assertEquals(false, newEth.getDestinationMAC()
-                                .equals(eth.getDestinationMAC()));
+            assertEquals(false, newEth.getDestinationMACAddress()
+                                .equals(eth.getDestinationMACAddress()));
             assertEquals(false, newPkt.equals(pkt));
         }
         if (pkt instanceof ARP) {

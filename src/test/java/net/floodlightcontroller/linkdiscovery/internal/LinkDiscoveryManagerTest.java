@@ -24,9 +24,11 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.ImmutablePort;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
@@ -64,13 +65,16 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.factory.BasicFactory;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +115,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
     private IOFSwitch createMockSwitch(Long id) {
         IOFSwitch mockSwitch = createNiceMock(IOFSwitch.class);
-        expect(mockSwitch.getId()).andReturn(id).anyTimes();
+        expect(mockSwitch.getId()).andReturn(DatapathId.of(id)).anyTimes();
         return mockSwitch;
     }
 
@@ -143,10 +147,10 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
-        Map<Long, IOFSwitch> switches = new HashMap<Long, IOFSwitch>();
-        switches.put(1L, sw1);
-        switches.put(2L, sw2);
-        getMockFloodlightProvider().setSwitches(switches);
+        Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
+        switches.put(DatapathId.of(1L), sw1);
+        switches.put(DatapathId.of(2L), sw2);
+        getMockSwitchService().setSwitches(switches);
         replay(sw1, sw2);
     }
 
@@ -154,14 +158,14 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testAddOrUpdateLink() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 2, 2L, 1);
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1));
+        LinkInfo info = new LinkInfo(new Date(),
+                                     new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
 
-        NodePortTuple srcNpt = new NodePortTuple(1L, 2);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 1);
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
 
         // check invariants hold
         assertNotNull(linkDiscovery.switchLinks.get(lt.getSrc()));
@@ -177,9 +181,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testDeleteLink() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 2, 2L, 1);
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1));
+        LinkInfo info = new LinkInfo(new Date(),
+        		new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.deleteLinks(Collections.singletonList(lt), "Test");
 
@@ -195,12 +199,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testAddOrUpdateLinkToSelf() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 2, 2L, 3);
-        NodePortTuple srcNpt = new NodePortTuple(1L, 2);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 3);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(3));
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(3));
 
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        LinkInfo info = new LinkInfo(new Date(),
+        		new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // check invariants hold
@@ -217,12 +221,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testDeleteLinkToSelf() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 2, 1L, 3);
-        NodePortTuple srcNpt = new NodePortTuple(1L, 2);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 3);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(3));
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(3));
 
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        LinkInfo info = new LinkInfo(new Date(),
+        		new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.deleteLinks(Collections.singletonList(lt), "Test to self");
 
@@ -238,15 +242,15 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testRemovedSwitch() {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 2, 2L, 1);
-        NodePortTuple srcNpt = new NodePortTuple(1L, 2);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 1);
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1));
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
+        LinkInfo info = new LinkInfo(new Date(),
+        		new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
-        IOFSwitch sw1 = getMockFloodlightProvider().getSwitch(1L);
-        IOFSwitch sw2 = getMockFloodlightProvider().getSwitch(2L);
+        IOFSwitch sw1 = getMockSwitchService().getSwitch(DatapathId.of(1L));
+        IOFSwitch sw2 = getMockSwitchService().getSwitch(DatapathId.of(2L));
         // Mock up our expected behavior
         linkDiscovery.switchRemoved(sw1.getId());
         verify(sw1, sw2);
@@ -264,9 +268,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
         IOFSwitch sw1 = createMockSwitch(1L);
         replay(sw1);
-        Link lt = new Link(1L, 2, 1L, 3);
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(3));
+        LinkInfo info = new LinkInfo(new Date(),
+                                     new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // Mock up our expected behavior
@@ -284,14 +288,14 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testAddUpdateLinks() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
 
-        Link lt = new Link(1L, 1, 2L, 1);
-        NodePortTuple srcNpt = new NodePortTuple(1L, 1);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 1);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(1));
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(1));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(2));
 
         LinkInfo info;
 
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            System.currentTimeMillis() - 40000, null);
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            new Date(System.currentTimeMillis() - 40000), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // check invariants hold
@@ -306,9 +310,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         linkDiscovery.timeoutLinks();
 
 
-        info = new LinkInfo(System.currentTimeMillis(),/* firstseen */
+        info = new LinkInfo(new Date(),/* firstseen */
                             null,/* unicast */
-                            System.currentTimeMillis());
+                            new Date());
         linkDiscovery.addOrUpdateLink(lt, info);
         assertTrue(linkDiscovery.links.get(lt).getUnicastValidTime() == null);
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
@@ -319,8 +323,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         // this to test timeout after this test.  Although the info is initialized
         // with LT_OPENFLOW_LINK, the link property should be changed to LT_NON_OPENFLOW
         // by the addOrUpdateLink method.
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            System.currentTimeMillis() - 40000, null);
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            new Date(System.currentTimeMillis() - 40000), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // Expect to timeout the unicast Valid Time, but not the multicast Valid time
@@ -330,15 +334,15 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
 
         // Set the multicastValidTime to be old and see if that also times out.
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.timeoutLinks();
         assertTrue(linkDiscovery.links.get(lt) == null);
 
         // Test again only with multicast LLDP
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
         assertTrue(linkDiscovery.links.get(lt).getUnicastValidTime() == null);
         assertTrue(linkDiscovery.links.get(lt).getMulticastValidTime() != null);
@@ -348,36 +352,36 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(linkDiscovery.links.get(lt) == null);
 
         // Start clean and see if loops are also added.
-        lt = new Link(1L, 1, 1L, 2);
-        srcNpt = new NodePortTuple(1L, 1);
-        dstNpt = new NodePortTuple(1L, 2);
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        lt = new Link(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(2));
+        srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(1));
+        dstNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
 
 
         // Start clean and see if loops are also added.
-        lt = new Link(1L, 1, 1L, 3);
-        srcNpt = new NodePortTuple(1L, 1);
-        dstNpt = new NodePortTuple(1L, 3);
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        lt = new Link(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3));
+        srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(1));
+        dstNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(3));
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // Start clean and see if loops are also added.
-        lt = new Link(1L, 4, 1L, 5);
-        srcNpt = new NodePortTuple(1L, 4);
-        dstNpt = new NodePortTuple(1L, 5);
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        lt = new Link(DatapathId.of(1L), OFPort.of(4), DatapathId.of(1L), OFPort.of(5));
+        srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(4));
+        dstNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(5));
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // Start clean and see if loops are also added.
-        lt = new Link(1L, 3, 1L, 5);
-        srcNpt = new NodePortTuple(1L, 3);
-        dstNpt = new NodePortTuple(1L, 5);
-        info = new LinkInfo(System.currentTimeMillis() - 40000,
-                            null, System.currentTimeMillis() - 40000);
+        lt = new Link(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(5));
+        srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(3));
+        dstNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(5));
+        info = new LinkInfo(new Date(System.currentTimeMillis() - 40000),
+                            null, new Date(System.currentTimeMillis() - 40000));
         linkDiscovery.addOrUpdateLink(lt, info);
     }
 
@@ -387,11 +391,11 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
         replay(sw1, sw2);
-        Link lt = new Link(1L, 2, 2L, 1);
-        NodePortTuple srcNpt = new NodePortTuple(1L, 2);
-        NodePortTuple dstNpt = new NodePortTuple(2L, 1);
-        LinkInfo info = new LinkInfo(System.currentTimeMillis(),
-                                     System.currentTimeMillis(), null);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1));
+        NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
+        LinkInfo info = new LinkInfo(new Date(),
+        		new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // check invariants hold
@@ -419,35 +423,34 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     public void testSwitchAdded() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
         Capture<OFMessage> wc;
-        Capture<FloodlightContext> fc;
-        Set<Short> qPorts;
-        OFPhysicalPort ofpp = new OFPhysicalPort();
-        ofpp.setName("eth4242");
-        ofpp.setPortNumber((short)4242);
-        ofpp.setHardwareAddress(HexString.fromHexString("5c:16:c7:00:00:01"));
-        ofpp.setCurrentFeatures(0);
-        ImmutablePort p1 = ImmutablePort.fromOFPhysicalPort(ofpp);
+        Set<OFPort> qPorts;
+        OFPortDesc ofpp = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc()
+        .setName("eth4242")
+        .setPortNo(OFPort.of(4242))
+        .setHwAddr(MacAddress.of("5c:16:c7:00:00:01"))
+        .setCurr(null)
+        .build();
+        OFPort p1 = ofpp.getPortNo();
         IOFSwitch sw1 = createMockSwitch(1L);
 
         // Set switch map in floodlightProvider.
-        Map<Long, IOFSwitch> switches = new HashMap<Long, IOFSwitch>();
-        switches.put(1L, sw1);
-        getMockFloodlightProvider().setSwitches(switches);
+        Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
+        switches.put(DatapathId.of(1L), sw1);
+        getMockSwitchService().setSwitches(switches);
 
         // Create the set of ports
-        List<Short> ports = new ArrayList<Short>();
+        List<OFPort> ports = new ArrayList<OFPort>();
         for(short p=1; p<=20; ++p) {
-            ports.add(p);
+            ports.add(OFPort.of(p));
         }
 
         // Set the captures.
         wc = new Capture<OFMessage>(CaptureType.ALL);
-        fc = new Capture<FloodlightContext>(CaptureType.ALL);
 
         // Expect switch to return those ports.
         expect(sw1.getEnabledPortNumbers()).andReturn(ports).anyTimes();
-        expect(sw1.getPort(EasyMock.anyShort())).andReturn(p1).anyTimes();
-        sw1.write(capture(wc), capture(fc));
+        expect(sw1.getPort(OFPort.of(EasyMock.anyShort())).getPortNo()).andReturn(p1).anyTimes();
+        sw1.write(capture(wc));
         expectLastCall().anyTimes();
         replay(sw1);
 
@@ -494,12 +497,12 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         byte[] testPacketSerialized = testPacket.serialize();
         OFPacketIn pi;
         // build out input packet
-        pi = ((OFPacketIn) BasicFactory.getInstance().getMessage(OFType.PACKET_IN))
-                .setBufferId(-1)
-                .setInPort((short) 1)
-                .setPacketData(testPacketSerialized)
+        pi = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setInPort(OFPort.of(1))
+                .setData(testPacketSerialized)
                 .setReason(OFPacketInReason.NO_MATCH)
-                .setTotalLength((short) testPacketSerialized.length);
+                .build();
         return pi;
     }
 
@@ -513,7 +516,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         short vlan = 42;
 
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        expect(mockSwitch.getId()).andReturn(1L).anyTimes();
+        expect(mockSwitch.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         replay(mockSwitch);
 
         /* TEST1: See basic packet flow */
@@ -521,7 +524,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         pi = createPacketIn(mac1, mac2, srcIp, dstIp, vlan);
         FloodlightContext cntx = new FloodlightContext();
         Ethernet eth = new Ethernet();
-        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        eth.deserialize(pi.getData(), 0, pi.getData().length);
         IFloodlightProviderService.bcStore.put(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 eth);
@@ -532,14 +535,14 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         /* TEST2: Add mac1 to the ignore MAC list and see that the packet is
          * dropped
          */
-        ldm.addMACToIgnoreList(HexString.toLong(mac1), 0);
+        ldm.addMACToIgnoreList(MacAddress.of(mac1), 0);
         ret = ldm.receive(mockSwitch, pi, cntx);
         assertEquals(Command.STOP, ret);
         /* Verify that if we send a packet with another MAC it still works */
         pi = createPacketIn(mac2, mac3, srcIp, dstIp, vlan);
         cntx = new FloodlightContext();
         eth = new Ethernet();
-        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        eth.deserialize(pi.getData(), 0, pi.getData().length);
         IFloodlightProviderService.bcStore.put(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 eth);
@@ -547,7 +550,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertEquals(Command.CONTINUE, ret);
 
         /* TEST3: Add a MAC range and see if that is ignored */
-        ldm.addMACToIgnoreList(HexString.toLong(mac2), 8);
+        ldm.addMACToIgnoreList(MacAddress.of(mac2), 8);
         ret = ldm.receive(mockSwitch, pi, cntx);
         assertEquals(Command.STOP, ret);
         /* Send a packet with source MAC as mac3 and see that that is ignored
@@ -556,7 +559,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         pi = createPacketIn(mac3, mac1, srcIp, dstIp, vlan);
         cntx = new FloodlightContext();
         eth = new Ethernet();
-        eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
+        eth.deserialize(pi.getData(), 0, pi.getData().length);
         IFloodlightProviderService.bcStore.put(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 eth);

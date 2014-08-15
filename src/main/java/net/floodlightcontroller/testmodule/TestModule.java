@@ -9,6 +9,10 @@ import java.util.Map;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
+import org.projectfloodlight.openflow.protocol.OFMeterBandType;
+import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFOxmClass;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
@@ -17,8 +21,17 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetNwSrc;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionClearActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionExperimenter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
+import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthSrc;
 import org.projectfloodlight.openflow.types.ArpOpcode;
@@ -39,6 +52,7 @@ import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U32;
+import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
 import org.projectfloodlight.openflow.types.VlanPcp;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -103,6 +117,18 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 		OFFlowAdd.Builder fmb = factory.buildFlowAdd();
 		List<OFAction> actions = new ArrayList<OFAction>();
         Match.Builder mb = factory.buildMatch();
+        List<OFInstruction> instructions = new ArrayList<OFInstruction>();
+        OFInstructionApplyActions.Builder applyActInstBldr = factory.instructions().buildApplyActions();
+        OFInstructionWriteActions.Builder writeActInstBldr = factory.instructions().buildWriteActions();
+        OFInstructionMeter.Builder mtrBldr = factory.instructions().buildMeter();
+        OFInstructionClearActions clrAct = factory.instructions().clearActions(); // no builder available (there's nothing to set anyway)
+        OFInstructionGotoTable.Builder gotoTblBldr = factory.instructions().buildGotoTable();
+        /*OFMeterBandDrop dropMeter = factory.meterBands().buildDrop().setBurstSize(100).setRate(200).build();
+        List<OFMeterBand> meterBandEntries = new ArrayList<OFMeterBand>();
+        OFMeterBandStats meterBandStats = factory.buildMeterBandStats().setPacketBandCount(U64.of(64)).setByteBandCount(U64.of(1024)).build();
+        meterBandEntries.add(meterBandStats);
+        OFMeterMod meterMod = factory.buildMeterMod().setCommand(OFMeterModCommand.ADD.ordinal()).setMeters(meterBandEntries).setMeterId(10).build();
+        factory.buildmeter*/
         
 		/*try {
 			Thread.sleep(3000);
@@ -158,6 +184,9 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         actions.add(factory.actions().setField(factory.oxms().ipv4Dst(IPv4Address.of("128.0.3.4")))); 
         actions.add(factory.actions().setField(factory.oxms().sctpSrc(TransportPort.of(22))));
         actions.add(factory.actions().setField(factory.oxms().sctpDst(TransportPort.of(80))));
+        actions.add(factory.actions().setField((factory.oxms().ipDscp(IpDscp.DSCP_11))));
+        actions.add(factory.actions().setField((factory.oxms().ipEcn(IpEcn.ECN_10))));
+
         fmb.setTableId(TableId.of(7));
         // these test non-set-field actions
         //actions.add(factory.actions().copyTtlOut());
@@ -174,8 +203,12 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         
         /* METADATA TEST 
         mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(1)); */
-
-        fmb.setActions(actions);
+        //fmb.setActions(actions); // this will automatically create the apply actions instruction
+        applyActInstBldr.setActions(actions);
+        //mtrBldr.setMeterId(1);
+        instructions.add(applyActInstBldr.build());
+        //instructions.add(mtrBldr.build());
+        fmb.setInstructions(instructions);
         fmb.setMatch(mb.build());
 		        
 		sfps.addFlow("test-flow", fmb.build(), switchId);

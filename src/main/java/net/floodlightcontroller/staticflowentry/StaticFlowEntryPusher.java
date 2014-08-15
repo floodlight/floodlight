@@ -107,6 +107,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_DL_TYPE = MatchUtils.STR_DL_TYPE;
 
 	public static final String COLUMN_NW_TOS = MatchUtils.STR_NW_TOS;
+	public static final String COLUMN_NW_ECN = MatchUtils.STR_NW_ECN;
+	public static final String COLUMN_NW_DSCP = MatchUtils.STR_NW_DSCP;
 	public static final String COLUMN_NW_PROTO = MatchUtils.STR_NW_PROTO;
 	public static final String COLUMN_NW_SRC = MatchUtils.STR_NW_SRC; // includes CIDR-style netmask, e.g. "128.8.128.0/24"
 	public static final String COLUMN_NW_DST = MatchUtils.STR_NW_DST;
@@ -340,7 +342,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			}
 
 			// get the correct builder for the OF version supported by the switch
-			// TODO @Ryan this should arguably be a FlowAdd, not a FlowModify
+			// TODO @Ryan this should arguably be a FlowAdd, not a FlowModify, but it really doesn't matter
 			fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);

@@ -49,7 +49,7 @@ public class MockEntityClassifier extends DefaultEntityClassifier {
     
     @Override
     public IEntityClass classifyEntity(Entity entity) {
-        if (entity.getSwitchDPID() >= 10L) {
+        if (entity.getSwitchDPID().getLong() >= 10L) {
             return testEC;
         }
         return DefaultEntityClassifier.entityClass;
