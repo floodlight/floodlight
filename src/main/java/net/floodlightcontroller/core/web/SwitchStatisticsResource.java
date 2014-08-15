@@ -38,9 +38,9 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         LoggerFactory.getLogger(SwitchStatisticsResource.class);
 
     @Get("json")
-	public StatsReply retrieve(){
-		StatsReply result = new StatsReply();
-		Object values = null;
+    public StatsReply retrieve(){
+        StatsReply result = new StatsReply();
+        Object values = null;
         String switchId = (String) getRequestAttributes().get("switchId");
         String statType = (String) getRequestAttributes().get("statType");
         
@@ -59,10 +59,10 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         } else if (statType.equals("features")) {
             values = getSwitchFeaturesReply(switchId);
         }
-		
-		result.setDatapathId(switchId);
-		result.setValues(values);
-		result.setStatType(statType);
+        
+        result.setDatapathId(switchId);
+        result.setValues(values);
+        result.setStatType(statType);
         return result;
     }
 }
