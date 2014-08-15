@@ -19,13 +19,16 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.List;
+import net.floodlightcontroller.core.web.serializers.StatsReplySerializer;
+import net.floodlightcontroller.core.web.StatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 /**
  * Return switch statistics information for specific switches
  * @author readams
@@ -35,10 +38,9 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         LoggerFactory.getLogger(SwitchStatisticsResource.class);
 
     @Get("json")
-    public Map<String, Object> retrieve() {
-        HashMap<String,Object> result = new HashMap<String,Object>();
-        Object values = null;
-        
+	public StatsReply retrieve(){
+		StatsReply result = new StatsReply();
+		Object values = null;
         String switchId = (String) getRequestAttributes().get("switchId");
         String statType = (String) getRequestAttributes().get("statType");
         
@@ -57,8 +59,10 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
         } else if (statType.equals("features")) {
             values = getSwitchFeaturesReply(switchId);
         }
-
-        result.put(switchId, values);
+		
+		result.setDatapathId(switchId);
+		result.setValues(values);
+		result.setStatType(statType);
         return result;
     }
 }
