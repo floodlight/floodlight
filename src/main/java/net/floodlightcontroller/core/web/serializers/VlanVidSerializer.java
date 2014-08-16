@@ -19,23 +19,22 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import net.floodlightcontroller.packet.IPv4;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.VlanVid;
 /**
- * Serialize an IPv4Address in dotted decimal format
+ * Serialize a VlanVid as short number
  */
-public class IPv4Serializer extends JsonSerializer<IPv4Address> {
+public class VlanVidSerializer extends JsonSerializer<VlanVid> {
 
     @Override
-    public void serialize(IPv4Address ipv4, JsonGenerator jGen,
+    public void serialize(VlanVid vlan, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(ipv4.toString());
+        jGen.writeString(vlan.toString());
     }
 
 }

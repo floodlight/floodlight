@@ -1,4 +1,4 @@
-/**
+/**::
  *    Copyright 2013, Big Switch Networks, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -315,7 +315,7 @@ public class TopologyInstance {
                 Set<Link> lset = switchPortLinks.get(new NodePortTuple(currSw, p));
                 if (lset == null) continue;
                 for(Link l:lset) {
-                	DatapathId dstSw = l.getDst();
+                    DatapathId dstSw = l.getDst();
 
                     // ignore incoming links.
                     if (dstSw.equals(currSw)) continue;
@@ -507,7 +507,7 @@ public class TopologyInstance {
             seen.put(cnode, true);
 
             for (Link link: c.links.get(cnode)) {
-            	DatapathId neighbor;
+                DatapathId neighbor;
 
                 if (isDstRooted == true) neighbor = link.getSrc();
                 else neighbor = link.getDst();
@@ -619,7 +619,7 @@ public class TopologyInstance {
             // if srcId equals dstId --- and that too is an 'empty' path []
 
         } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId) != null)) {
-            while (srcId != dstId) {
+            while (!srcId.equals(dstId)) {
                 Link l = nexthoplinks.get(srcId);
 
                 npt = new NodePortTuple(l.getSrc(), l.getSrcPort());
@@ -665,7 +665,7 @@ public class TopologyInstance {
     }
 
     protected Route getRoute(ServiceChain sc, DatapathId srcId, OFPort srcPort,
-    		DatapathId dstId, OFPort dstPort, U64 cookie) {
+            DatapathId dstId, OFPort dstPort, U64 cookie) {
 
 
         // Return null the route source and desitnation are the
@@ -773,7 +773,7 @@ public class TopologyInstance {
     protected boolean
     isIncomingBroadcastAllowedOnSwitchPort(DatapathId sw, OFPort portId) {
         if (isInternalToOpenflowDomain(sw, portId)) {
-        	DatapathId clusterId = getOpenflowDomainId(sw);
+            DatapathId clusterId = getOpenflowDomainId(sw);
             NodePortTuple npt = new NodePortTuple(sw, portId);
             if (clusterBroadcastNodePorts.get(clusterId).contains(npt))
                 return true;
@@ -790,7 +790,7 @@ public class TopologyInstance {
 
     protected Set<NodePortTuple>
     getBroadcastNodePortsInCluster(DatapathId sw) {
-    	DatapathId clusterId = getOpenflowDomainId(sw);
+        DatapathId clusterId = getOpenflowDomainId(sw);
         return clusterBroadcastNodePorts.get(clusterId);
     }
 
@@ -803,13 +803,13 @@ public class TopologyInstance {
     }
 
     public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort) {
+            DatapathId dst, OFPort dstPort) {
         // Use this function to redirect traffic if needed.
         return new NodePortTuple(dst, dstPort);
     }
 
     public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-    		DatapathId dst, OFPort dstPort) {
+            DatapathId dst, OFPort dstPort) {
         // Use this function to reinject traffic from a
         // different port if needed.
         return new NodePortTuple(src, srcPort);
