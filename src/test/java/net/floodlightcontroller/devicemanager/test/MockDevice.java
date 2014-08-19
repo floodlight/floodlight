@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.TreeSet;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.AttachmentPoint;
@@ -57,14 +59,14 @@ public class MockDevice extends Device {
     }
 
     @Override
-    public Integer[] getIPv4Addresses() {
-        TreeSet<Integer> vals = new TreeSet<Integer>();
+    public IPv4Address[] getIPv4Addresses() {
+        TreeSet<IPv4Address> vals = new TreeSet<IPv4Address>();
         for (Entity e : entities) {
             if (e.getIpv4Address() == null) continue;
             vals.add(e.getIpv4Address());
         }
         
-        return vals.toArray(new Integer[vals.size()]);
+        return vals.toArray(new IPv4Address[vals.size()]);
     }
 
     @Override

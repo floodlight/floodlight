@@ -46,8 +46,6 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.j3d.utils.scenegraph.io.retained.Controller;
-
 public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileService {
     /** The logger. */
     private static Logger logger =  LoggerFactory.getLogger(FlowReconcileManager.class);

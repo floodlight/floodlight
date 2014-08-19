@@ -1,7 +1,6 @@
 package net.floodlightcontroller.core.internal;
 
 import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
@@ -15,7 +14,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.easymock.Capture;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -29,10 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionState;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsReply;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsRequest;
-import org.projectfloodlight.openflow.protocol.OFBsnGentableDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFBsnGentableDescStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFBsnSetAuxCxnsReply;
-import org.projectfloodlight.openflow.protocol.OFBsnSetAuxCxnsRequest;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
@@ -47,7 +42,6 @@ import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.GenTableId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
 

@@ -67,6 +67,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.ICMPv4Code;
 import org.projectfloodlight.openflow.types.ICMPv4Type;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpDscp;
 import org.projectfloodlight.openflow.types.IpEcn;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -278,9 +279,9 @@ public class ActionUtils {
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_DST + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpEcn) { //TODO @Ryan ECN and DSCP need to have their own columns for OF1.3....
-                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_TOS + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue())); 
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_ECN + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue())); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpDscp) {
-                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_TOS + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmIpDscp) ((OFActionSetField) a).getField()).getValue().getDscpValue())); 
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_DSCP + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmIpDscp) ((OFActionSetField) a).getField()).getValue().getDscpValue())); 
                 	} 
                 	/* TRANSPORT LAYER, TCP, UDP, and SCTP */
                 	  else if (((OFActionSetField)a).getField() instanceof OFOxmTcpSrc) {
@@ -375,7 +376,7 @@ public class ActionUtils {
 				case STR_EXPERIMENTER:
 					//no-op. Not implemented
 					break;
-				case STR_FIELD_SET:
+				case STR_FIELD_SET: /* ONLY OF1.1+ should get in here. These should only be header fields valid within a set-field. */
 					String[] actionData = pair.split(MatchUtils.SET_FIELD_DELIM);
 					if (actionData.length != 2) {
 						throw new IllegalArgumentException("[Action, Data] " + keyPair + " does not have form 'action=data' parsing " + actionData);
@@ -456,9 +457,15 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv4Dst().setValue(IPv4Address.of(actionData[1])).build())
 						.build();						
 						break;
-					case MatchUtils.STR_NW_TOS:
-						//TODO @Ryan need to break this up into ECN and DSCP
-						
+					case MatchUtils.STR_NW_ECN:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1]))).build())
+						.build();
+						break;
+					case MatchUtils.STR_NW_DSCP:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_SCTP_SRC:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -544,7 +551,7 @@ public class ActionUtils {
 					.build();							
 					break;
 				case STR_NW_TOS_SET:
-					a = decode_set_tos_bits(pair, fmb.getVersion(), log);
+					a = decode_set_tos_bits(pair, fmb.getVersion(), log); // should only be used by OF1.0
 					break;
 				case STR_NW_SRC_SET:
 					a = decode_set_src_ip(pair, fmb.getVersion(), log);
@@ -552,7 +559,7 @@ public class ActionUtils {
 				case STR_NW_DST_SET:
 					a = decode_set_dst_ip(pair, fmb.getVersion(), log);
 					break;
-				case STR_NW_ECN_SET:
+				case STR_NW_ECN_SET: // loxi does not support DSCP set for OF1.3
 					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwEcn()
 					.setNwEcn(IpEcn.of(Byte.parseByte(pair)))
 					.build();							

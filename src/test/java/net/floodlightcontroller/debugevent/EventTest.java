@@ -14,14 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class EventTest {
-   /* protected static Logger log = LoggerFactory.getLogger(EventTest.class);
+    protected static Logger log = LoggerFactory.getLogger(EventTest.class);
 
     @Test
     public void testFormat() {
         River r = new River("ganges", 42);
 
-        Event e = new Event(1L, 32, "test",
-                      new RiverEvent(1L, (short)10, true, "big river", 5, 4L, r));
+        Event e = new Event(1, 32, "test", new RiverEvent(1L, (short)10, true, "big river", 5, 4L, r), 0);
 
         Map<String, String> expected = new HashMap<String, String>();
         expected.put("dpid", "00:00:00:00:00:00:00:01");
@@ -40,10 +39,6 @@ public class EventTest {
         // ensure timestamp comes in ISO8601 time
         assertEquals("1969-12-31T16:00:00.001-0800",
                      e.getFormattedEvent(RiverEvent.class, "test2").get("Timestamp")); //1L
-        // change the timestamp - the call should return cached value
-        e.setTimestamp(2L);
-        assertEquals("1969-12-31T16:00:00.001-0800",
-                     e.getFormattedEvent(RiverEvent.class, "test2").get("Timestamp")); //1L
 
         // ensure that cached value is not returned for incorrect class
         for (Entry<String, String> elem : expected.entrySet())
@@ -54,19 +49,6 @@ public class EventTest {
                      e.getFormattedEvent(River.class, "test").get("Error"));
         assertEquals("null event data or event-class does not match event-data",
                      e.getFormattedEvent(null, "test").get("Error"));
-    }
-
-    @Test
-    public void testIncorrectAnnotation() {
-        Event e = new Event(1L, 32, "test",
-                            new LakeEvent(199)); // dpid cannot be int
-        assertEquals("java.lang.Integer cannot be cast to java.lang.Long",
-                     e.getFormattedEvent(LakeEvent.class, "test").get("Error"));
-
-        Event e2 = new Event(1L, 32, "test",
-                            new LakeEvent2(199)); // mac cannot be int
-        assertEquals("java.lang.Integer cannot be cast to java.lang.Long",
-                     e2.getFormattedEvent(LakeEvent2.class, "test").get("Error"));
     }
 
     class RiverEvent  {
@@ -145,5 +127,5 @@ public class EventTest {
         public LakeEvent2(int mac) {
             this.mac = mac;
         }
-    } */
+    } 
 }
