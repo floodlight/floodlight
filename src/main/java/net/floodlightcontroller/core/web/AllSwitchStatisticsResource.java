@@ -54,28 +54,36 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         OFStatsType type = null;
         REQUESTTYPE rType = null;
 
-        if (statType.equals("port")) {
-            type = OFStatsType.PORT;
+        switch (statType) {
+        case OFStatsTypeStrings.PORT:
+        	type = OFStatsType.PORT;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("queue")) {
-            type = OFStatsType.QUEUE;
+            break;
+        case OFStatsTypeStrings.QUEUE:
+        	type = OFStatsType.QUEUE;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("flow")) {
-            type = OFStatsType.FLOW;
+            break;
+        case OFStatsTypeStrings.FLOW:
+        	type = OFStatsType.FLOW;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("aggregate")) {
-            type = OFStatsType.AGGREGATE;
+            break;
+        case OFStatsTypeStrings.AGGREGATE:
+        	type = OFStatsType.AGGREGATE;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("desc")) {
-            type = OFStatsType.DESC;
+            break;
+        case OFStatsTypeStrings.DESC:
+        	type = OFStatsType.DESC;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("table")) {
-            type = OFStatsType.TABLE;
+            break;
+        case OFStatsTypeStrings.TABLE:
+        	type = OFStatsType.TABLE;
             rType = REQUESTTYPE.OFSTATS;
-        } else if (statType.equals("features")) {
+            break;
+        case OFStatsTypeStrings.FEATURES:
             rType = REQUESTTYPE.OFFEATURES;
-        } else {
-            return model;
+            break;
+        default:
+        	return model;
         }
 
         IOFSwitchService switchService =

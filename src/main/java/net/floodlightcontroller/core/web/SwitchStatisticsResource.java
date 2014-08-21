@@ -1,24 +1,24 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
-*    Originally created by David Erickson, Stanford University
-* 
-*    Licensed under the Apache License, Version 2.0 (the "License"); you may
-*    not use this file except in compliance with the License. You may obtain
-*    a copy of the License at
-*
-*         http://www.apache.org/licenses/LICENSE-2.0
-*
-*    Unless required by applicable law or agreed to in writing, software
-*    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-*    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-*    License for the specific language governing permissions and limitations
-*    under the License.
-**/
+ *    Copyright 2011, Big Switch Networks, Inc. 
+ *    Originally created by David Erickson, Stanford University
+ * 
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
 
 package net.floodlightcontroller.core.web;
 
-import java.util.HashMap;
-import java.util.Map;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.web.StatsReply;
 
 import org.projectfloodlight.openflow.protocol.OFStatsType;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -26,44 +26,110 @@ import org.restlet.resource.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize.Typing;
-
 /**
  * Return switch statistics information for specific switches
  * @author readams
  */
 public class SwitchStatisticsResource extends SwitchResourceBase {
-    protected static Logger log = 
-        LoggerFactory.getLogger(SwitchStatisticsResource.class);
+	protected static Logger log = 
+			LoggerFactory.getLogger(SwitchStatisticsResource.class);
 
-    @Get("json")
-    @JsonSerialize(using = StatsReplySerializer.class)
-    public Map<String, Object> retrieve() {
-        HashMap<String,Object> result = new HashMap<String,Object>();
-        Object values = null;
-        
-        String switchId = (String) getRequestAttributes().get("switchId");
-        String statType = (String) getRequestAttributes().get("statType");
-        
-        if (statType.equals("port")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.PORT);
-        } else if (statType.equals("queue")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.QUEUE);
-        } else if (statType.equals("flow")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.FLOW);
-        } else if (statType.equals("aggregate")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.AGGREGATE);
-        } else if (statType.equals("desc")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.DESC);
-        } else if (statType.equals("table")) {
-            values = getSwitchStatistics(DatapathId.of(switchId), OFStatsType.TABLE);
-        } else if (statType.equals("features")) {
-            values = getSwitchFeaturesReply(switchId);
-        }
+	@Get("json")
+	public StatsReply retrieve(){
+		StatsReply result = new StatsReply();
+		Object values = null; // set for error detection in serializer
+		String switchIdStr = (String) getRequestAttributes().get(CoreWebRoutable.STR_SWITCH_ID);
+		DatapathId switchId;
+		String statType = (String) getRequestAttributes().get(CoreWebRoutable.STR_STAT_TYPE);
 
-        result.put(switchId, values);
-        return result;
-    }
+		IOFSwitchService switchService = (IOFSwitchService) getContext().getAttributes().
+				get(IOFSwitchService.class.getCanonicalName());
+		
+		// prevent input errors and give error to user if bad switch DPID
+		try {
+			switchId = DatapathId.of(switchIdStr);
+		} catch (NumberFormatException | NullPointerException e) { // new Java 7 shorthand...reduces duplicated code in each catch 
+			switchId = DatapathId.NONE; // set for error detection in serializer
+		}
+		
+		// stop if the DPID is invalid or is not presently connected
+		if (!switchId.equals(DatapathId.NONE) && switchService.getSwitch(switchId) != null) {
+			// TODO these strings should be defined someplace. StatsReply.java?
+			
+			// at this point, the switch DPID is valid AND exists; what about the OFStatsType?
+			switch (statType) {
+			case OFStatsTypeStrings.PORT:
+				values = getSwitchStatistics(switchId, OFStatsType.PORT);
+				result.setStatType(OFStatsType.PORT);
+				break;
+			case OFStatsTypeStrings.QUEUE:
+				values = getSwitchStatistics(switchId, OFStatsType.QUEUE);
+				result.setStatType(OFStatsType.QUEUE);
+				break;
+			case OFStatsTypeStrings.FLOW:
+				values = getSwitchStatistics(switchId, OFStatsType.FLOW);
+				result.setStatType(OFStatsType.FLOW);
+				break;
+			case OFStatsTypeStrings.AGGREGATE:
+				values = getSwitchStatistics(switchId, OFStatsType.AGGREGATE);
+				result.setStatType(OFStatsType.AGGREGATE);
+				break;
+			case OFStatsTypeStrings.DESC:
+				values = getSwitchStatistics(switchId, OFStatsType.DESC);
+				result.setStatType(OFStatsType.DESC);
+				break;
+			case OFStatsTypeStrings.TABLE:
+				values = getSwitchStatistics(switchId, OFStatsType.TABLE);
+				result.setStatType(OFStatsType.TABLE);
+				break;
+			case OFStatsTypeStrings.TABLE_FEATURES:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.TABLE_FEATURES);
+				break;
+			case OFStatsTypeStrings.EXPERIMENTER:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.EXPERIMENTER);
+				break;
+			case OFStatsTypeStrings.PORT_DESC:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.PORT_DESC);
+				break;
+			case OFStatsTypeStrings.GROUP:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.GROUP);
+				break;
+			case OFStatsTypeStrings.GROUP_DESC:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.GROUP_DESC);
+				break;
+			case OFStatsTypeStrings.GROUP_FEATURES:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.GROUP_FEATURES);
+				break;
+			case OFStatsTypeStrings.METER:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.METER);
+				break;
+			case OFStatsTypeStrings.METER_CONFIG:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.METER_CONFIG);
+				break;
+			case OFStatsTypeStrings.METER_FEATURES:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(OFStatsType.METER_FEATURES);
+				break;
+			default:
+				log.error("Invalid or unimplemented stat request type {}", statType);
+				break;
+			}
+		} else {
+			log.error("Invalid or disconnected switch {}", switchIdStr);
+			// if there was an error, the serializer will 
+		}
+		
+		result.setDatapathId(switchId);
+		result.setValues(values); // values can only be a List<OFStatsReply> or an OFFeaturesReply
+		// if values is set to null (the default), the serializer will kick back a response to the user via the REST API
+		return result;
+	}
 }

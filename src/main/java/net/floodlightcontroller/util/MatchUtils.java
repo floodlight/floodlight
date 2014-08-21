@@ -48,6 +48,7 @@ public class MatchUtils {
 	 * expect the JSON string to be formatted using these strings for the applicable fields.
 	 */
 	public static final String STR_IN_PORT = "ingress_port";
+	public static final String STR_IN_PHYS_PORT = "ingress_phys_port";
 
 	public static final String STR_DL_DST = "dl_dst";
 	public static final String STR_DL_SRC = "dl_src";
@@ -56,7 +57,13 @@ public class MatchUtils {
 	public static final String STR_DL_VLAN_PCP = "dl_vpcp";
 
 	public static final String STR_NW_DST = "nw_dst";
-	public static final String STR_NW_SRC = "nw_src";
+	public static final String STR_NW_SRC = "nw_src"; // should change these to IP, since they don't apply to anything else really
+	public static final String STR_IPV6_DST = "ipv6_dst";
+	public static final String STR_IPV6_SRC = "ipv6_src";
+	public static final String STR_IPV6_FLOW_LABEL = "ipv6_flow_label";
+	public static final String STR_IPV6_ND_SSL = "ipv6_nd_ssl";
+	public static final String STR_IPV6_ND_TARGET = "ipv6_nd_target";
+	public static final String STR_IPV6_ND_TTL = "ipv6_nd_ttl";
 	public static final String STR_NW_PROTO = "nw_proto";
 	public static final String STR_NW_TOS = "nw_tos";
 	public static final String STR_NW_ECN = "nw_ecn";
@@ -73,6 +80,8 @@ public class MatchUtils {
 
 	public static final String STR_ICMP_TYPE = "icmp_type";
 	public static final String STR_ICMP_CODE = "icmp_code";
+	public static final String STR_ICMPV6_TYPE = "icmpv6_type";
+	public static final String STR_ICMPV6_CODE = "icmpv6_code";
 
 	public static final String STR_ARP_OPCODE = "arp_opcode";
 	public static final String STR_ARP_SHA = "arp_sha";

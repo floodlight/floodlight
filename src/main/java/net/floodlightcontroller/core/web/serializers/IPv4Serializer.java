@@ -19,7 +19,7 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import net.floodlightcontroller.packet.IPv4;
+import org.projectfloodlight.openflow.types.IPv4Address;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,7 +35,7 @@ public class IPv4Serializer extends JsonSerializer<Integer> {
     public void serialize(Integer i, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(IPv4.fromIPv4Address(i));
+        jGen.writeString(IPv4Address.of(i).toString());
     }
 
 }

@@ -34,7 +34,7 @@ public class DPIDSerializer extends JsonSerializer<DatapathId> {
     public void serialize(DatapathId dpid, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(HexString.toHexString(dpid.getLong(), 8));
+        jGen.writeString(dpid.toString());
     }
 
 }

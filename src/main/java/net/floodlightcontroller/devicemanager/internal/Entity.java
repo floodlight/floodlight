@@ -20,8 +20,9 @@ package net.floodlightcontroller.devicemanager.internal;
 import java.util.Date;
 
 import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
-import net.floodlightcontroller.core.web.serializers.MACSerializer;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.MacSerializer;
+
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -128,7 +129,7 @@ public class Entity implements Comparable<Entity> {
     // Getters/Setters
     // ***************
 
-    @JsonSerialize(using=MACSerializer.class)
+    @JsonSerialize(using=MacSerializer.class)
     public MacAddress getMacAddress() {
         return macAddress;
     }
