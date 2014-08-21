@@ -21,8 +21,9 @@ import java.util.Date;
 
 import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.OFPortSerializer;
+import net.floodlightcontroller.core.web.serializers.VlanVidSerializer;
 import net.floodlightcontroller.core.web.serializers.MacSerializer;
-
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -139,6 +140,7 @@ public class Entity implements Comparable<Entity> {
         return ipv4Address;
     }
 
+    @JsonSerialize(using=VlanVidSerializer.class)
     public VlanVid getVlan() {
         return vlan;
     }
@@ -148,6 +150,7 @@ public class Entity implements Comparable<Entity> {
         return switchDPID;
     }
 
+    @JsonSerialize(using=OFPortSerializer.class)
     public OFPort getSwitchPort() {
         return switchPort;
     }
@@ -227,45 +230,45 @@ public class Entity implements Comparable<Entity> {
         StringBuilder builder = new StringBuilder();
         builder.append("Entity [macAddress=");
         if (macAddress != null) {
-        	builder.append(macAddress.toString());
+            builder.append(macAddress.toString());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", ipv4Address=");
         if (ipv4Address != null) {
-        	builder.append(ipv4Address.toString());
+            builder.append(ipv4Address.toString());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", vlan=");
         if (vlan != null) {
-        	builder.append(vlan.getVlan());
+            builder.append(vlan.getVlan());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", switchDPID=");
         if (switchDPID != null) {
-        	builder.append(switchDPID.toString());
+            builder.append(switchDPID.toString());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", switchPort=");
         if (switchPort != null) {
-        	builder.append(switchPort.getPortNumber());
+            builder.append(switchPort.getPortNumber());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", lastSeenTimestamp=");
         if (lastSeenTimestamp != null) {
-        	builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
+            builder.append(lastSeenTimestamp == null? "null" : lastSeenTimestamp.getTime());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append(", activeSince=");
         if (activeSince != null) {
-        	builder.append(activeSince == null? "null" : activeSince.getTime());
+            builder.append(activeSince == null? "null" : activeSince.getTime());
         } else {
-        	builder.append("null");
+            builder.append("null");
         }
         builder.append("]");
         return builder.toString();

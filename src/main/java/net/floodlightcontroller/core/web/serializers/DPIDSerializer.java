@@ -23,7 +23,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.types.DatapathId;
 /**
  * Serialize a DPID as colon-separated hexadecimal

@@ -19,22 +19,21 @@ package net.floodlightcontroller.core.web.serializers;
 
 import java.io.IOException;
 
-import org.projectfloodlight.openflow.types.MacAddress;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import org.projectfloodlight.openflow.types.VlanVid;
 /**
- * Serialize a MAC as colon-separated hexadecimal
+ * Serialize a VlanVid as short number
  */
-public class MacSerializer extends JsonSerializer<MacAddress> {
+public class VlanVidSerializer extends JsonSerializer<VlanVid> {
 
     @Override
-    public void serialize(MacAddress mac, JsonGenerator jGen,
+    public void serialize(VlanVid vlan, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(mac.toString());
+        jGen.writeString(vlan.toString());
     }
 
 }
