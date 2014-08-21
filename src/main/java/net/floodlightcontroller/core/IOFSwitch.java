@@ -37,12 +37,14 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
-
+import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 /**
  * An openflow switch connecting to the controller.  This interface offers
  * methods for interacting with switches using OpenFlow, and retrieving
  * information about the switches.
  */
+@JsonSerialize(using=IOFSwitchSerializer.class)
 public interface IOFSwitch extends IOFMessageWriter {
     // Attribute keys
     // These match our YANG schema, make sure they are in sync

@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 
@@ -29,7 +30,7 @@ import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.util.FilterIterator;
-
+import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -38,166 +39,52 @@ import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
-
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 /**
  * Get a list of switches connected to the controller
  * @author readams
  */
 public class ControllerSwitchesResource extends ServerResource {
-    /**
-     * A wrapper class around IOFSwitch that defines the REST serialization
-     * fields. Could have written a Jackson serializer but this is easier.
-     */
-    public static class SwitchJsonSerializerWrapper {
-        private final IOFSwitch sw;
-
-        public SwitchJsonSerializerWrapper(IOFSwitch sw) {
-            this.sw = sw;
-        }
-
-        public Set<OFActionType> getActions() {
-            return sw.getActions();
-        }
-
-        public Map<Object, Object> getAttributes() {
-            return sw.getAttributes();
-        }
-
-        public Map<String,String> getDescription() {
-            Map<String,String> rv = new HashMap<String, String>();
-            if (sw.getSwitchDescription() == null) {
-                rv.put("manufacturer", "");
-                rv.put("hardware", "");
-                rv.put("software", "");
-                rv.put("serialNum", "");
-                rv.put("datapath", "");
-            } else {
-                rv.put("manufacturer",
-                       sw.getSwitchDescription().getManufacturerDescription());
-                rv.put("hardware",
-                       sw.getSwitchDescription().getHardwareDescription());
-                rv.put("software",
-                       sw.getSwitchDescription().getSoftwareDescription());
-                rv.put("serialNum",
-                       sw.getSwitchDescription().getSerialNumber());
-                rv.put("datapath",
-                       sw.getSwitchDescription().getDatapathDescription());
-            }
-            return rv;
-        }
-
-        public long getBuffers() {
-            return sw.getBuffers();
-        }
-
-        public Set<OFCapabilities> getCapabilities() {
-            return sw.getCapabilities();
-        }
-
-        public long getConnectedSince() {
-            if (sw.getConnectedSince() == null)
-                return 0;
-            return sw.getConnectedSince().getTime();
-        }
-
-        public String getDpid() {
-            return sw.getId().toString();
-        }
-
-        public String getHarole() {
-            if (sw.getControllerRole() == null)
-                return "null";
-            return HARole.ofOFRole(sw.getControllerRole()).toString();
-        }
-
-        public String getInetAddress() {
-            SocketAddress addr = sw.getInetAddress();
-            if (addr == null)
-                return null;
-            return addr.toString();
-        }
-
-        public Collection<OFPortDesc> getPorts() {
-            return sw.getPorts();
-        }
-    }
-
-    /**
-     * Wraps an iterator of IOFSwitch into an iterator of
-     * SwitchJsonSerializerWrapper
-     * @author gregor
-     */
-    private static class SwitchJsonSerializerWrapperIterator
-            implements Iterator<SwitchJsonSerializerWrapper> {
-        private final Iterator<IOFSwitch> iter;
-
-        public SwitchJsonSerializerWrapperIterator(Iterator<IOFSwitch> iter) {
-            this.iter = iter;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return this.iter.hasNext();
-        }
-
-        @Override
-        public SwitchJsonSerializerWrapper next() {
-            return new SwitchJsonSerializerWrapper(iter.next());
-        }
-
-        @Override
-        public void remove() {
-            this.iter.remove();
-        }
-    }
-
+    
     public static final String DPID_ERROR =
             "Invalid Switch DPID: must be a 64-bit quantity, expressed in " +
             "hex as AA:BB:CC:DD:EE:FF:00:11";
 
     @Get("json")
-    public Iterator<SwitchJsonSerializerWrapper> retrieve() {
-        IOFSwitchService switchService =
-                (IOFSwitchService) getContext().getAttributes().
-                    get(IOFSwitchService.class.getCanonicalName());
-
+    public Collection<IOFSwitch> retrieve(){
+        IOFSwitchService switchService = 
+            (IOFSwitchService) getContext().getAttributes().
+                get(IOFSwitchService.class.getCanonicalName());
         DatapathId switchDPID = null;
-
+        ArrayList<IOFSwitch> result = new ArrayList<IOFSwitch>();
         Form form = getQuery();
         String dpid = form.getFirstValue("dpid", true);
-        if (dpid != null) {
-            try {
+        if( dpid != null){
+            try{
                 switchDPID = DatapathId.of(dpid);
-            } catch (Exception e) {
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, DPID_ERROR);
+            }catch(Exception e){
+                setStatus(Status.CLIENT_ERROR_BAD_REQUEST,DPID_ERROR);
                 return null;
             }
         }
-        if (switchDPID != null) {
-            IOFSwitch sw =
-                    switchService.getSwitch(switchDPID);
-            if (sw != null) {
-                SwitchJsonSerializerWrapper wrappedSw =
-                        new SwitchJsonSerializerWrapper(sw);
-                return Collections.singleton(wrappedSw).iterator();
+        if (switchDPID != null){
+            IOFSwitch sw = switchService.getSwitch(switchDPID);
+            if ( sw != null){
+                result.add(sw);
             }
-            return Collections.<SwitchJsonSerializerWrapper>emptySet().iterator();
+            return result;
         }
-        final String dpidStartsWith =
-                form.getFirstValue("dpid__startswith", true);
+        final String dpidStartsWith = 
+            form.getFirstValue("dpid__startswith",true);
+        if(dpidStartsWith != null){
+            for(IOFSwitch sw: switchService.getAllSwitchMap().values()){
+                if( sw.getId().toString().startsWith(dpidStartsWith))
+                        result.add(sw);
+            }
+            return result;
+        }
+        return switchService.getAllSwitchMap().values();
 
-        Iterator<IOFSwitch> iofSwitchIter =
-                switchService.getAllSwitchMap().values().iterator();
-        Iterator<SwitchJsonSerializerWrapper> switer =
-                new SwitchJsonSerializerWrapperIterator(iofSwitchIter);
-        if (dpidStartsWith != null) {
-            return new FilterIterator<SwitchJsonSerializerWrapper>(switer) {
-                @Override
-                protected boolean matches(SwitchJsonSerializerWrapper value) {
-                    return value.getDpid().startsWith(dpidStartsWith);
-                }
-            };
-        }
-        return switer;
+    
     }
 }
