@@ -17,29 +17,16 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.net.SocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
 
-import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.util.FilterIterator;
-import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
-import org.projectfloodlight.openflow.protocol.OFCapabilities;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 /**
  * Get a list of switches connected to the controller
  * @author readams
