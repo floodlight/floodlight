@@ -24,17 +24,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import org.projectfloodlight.openflow.util.HexString;
-
+import org.projectfloodlight.openflow.types.MacAddress;
 /**
  * Serialize a MAC as colon-separated hexadecimal
  */
-public class MACSerializer extends JsonSerializer<Long> {
+public class MACSerializer extends JsonSerializer<MacAddress> {
 
     @Override
-    public void serialize(Long dpid, JsonGenerator jGen,
+    public void serialize(MacAddress mac, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(HexString.toHexString(dpid, 6));
+        jGen.writeString(mac.toString());
     }
 
 }

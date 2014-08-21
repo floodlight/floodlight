@@ -21,6 +21,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.OFPortSerializer;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -94,6 +95,7 @@ public class SwitchPort {
         return switchDPID;
     }
 
+    @JsonSerialize(using=OFPortSerializer.class)
     public OFPort getPort() {
         return port;
     }
