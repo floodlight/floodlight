@@ -29,17 +29,16 @@ import org.projectfloodlight.openflow.types.TransportPort;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class UDP extends BasePacket {
-    public static Map<Short, Class<? extends IPacket>> decodeMap;
-    public static short DHCP_SERVER_PORT = (short)67;
-    public static short DHCP_CLIENT_PORT = (short)68;
-
+    public static Map<TransportPort, Class<? extends IPacket>> decodeMap;
+    public static final TransportPort DHCP_CLIENT_PORT = TransportPort.of(68);
+    public static final TransportPort DHCP_SERVER_PORT = TransportPort.of(67);
     static {
-        decodeMap = new HashMap<Short, Class<? extends IPacket>>();
+        decodeMap = new HashMap<TransportPort, Class<? extends IPacket>>();
         /*
          * Disable DHCP until the deserialize code is hardened to deal with garbage input
          */
-        UDP.decodeMap.put(DHCP_SERVER_PORT, DHCP.class);
         UDP.decodeMap.put(DHCP_CLIENT_PORT, DHCP.class);
+        UDP.decodeMap.put(DHCP_SERVER_PORT, DHCP.class);
         
     }
 
@@ -229,15 +228,15 @@ public class UDP extends BasePacket {
         this.length = bb.getShort();
         this.checksum = bb.getShort();
 
-        if (UDP.decodeMap.containsKey((short)this.destinationPort.getPort())) {
+        if (UDP.decodeMap.containsKey(this.destinationPort)) {
             try {
-                this.payload = UDP.decodeMap.get((short)this.destinationPort.getPort()).getConstructor().newInstance();
+                this.payload = UDP.decodeMap.get(this.destinationPort).getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }
-        } else if (UDP.decodeMap.containsKey((short)this.sourcePort.getPort())) {
+        } else if (UDP.decodeMap.containsKey(this.sourcePort)) {
             try {
-                this.payload = UDP.decodeMap.get((short)this.sourcePort.getPort()).getConstructor().newInstance();
+                this.payload = UDP.decodeMap.get(this.sourcePort).getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }

@@ -35,16 +35,13 @@ import org.projectfloodlight.openflow.types.U8;
  *
  */
 public class IPv4 extends BasePacket {
-    public static final byte PROTOCOL_ICMP = 0x1;
-    public static final byte PROTOCOL_TCP = 0x6;
-    public static final byte PROTOCOL_UDP = 0x11;
-    public static Map<Byte, Class<? extends IPacket>> protocolClassMap;
+    public static Map<IpProtocol, Class<? extends IPacket>> protocolClassMap;
 
     static {
-        protocolClassMap = new HashMap<Byte, Class<? extends IPacket>>();
-        protocolClassMap.put(PROTOCOL_ICMP, ICMP.class);
-        protocolClassMap.put(PROTOCOL_TCP, TCP.class);
-        protocolClassMap.put(PROTOCOL_UDP, UDP.class);
+        protocolClassMap = new HashMap<IpProtocol, Class<? extends IPacket>>();
+        protocolClassMap.put(IpProtocol.ICMP, ICMP.class);
+        protocolClassMap.put(IpProtocol.TCP, TCP.class);
+        protocolClassMap.put(IpProtocol.UDP, UDP.class);
     }
 
     public static final byte IPV4_FLAGS_MOREFRAG = 0x1;
@@ -411,8 +408,8 @@ public class IPv4 extends BasePacket {
         isFragment = ((this.flags & IPV4_FLAGS_DONTFRAG) == 0) &&
                 ((this.flags & IPV4_FLAGS_MOREFRAG) != 0 ||
                 this.fragmentOffset != 0);
-        if (!isFragment && IPv4.protocolClassMap.containsKey((byte)this.protocol.getIpProtocolNumber())) {
-            Class<? extends IPacket> clazz = IPv4.protocolClassMap.get((byte)this.protocol.getIpProtocolNumber());
+        if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
+            Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
             try {
                 payload = clazz.newInstance();
             } catch (Exception e) {
