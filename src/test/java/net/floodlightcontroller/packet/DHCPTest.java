@@ -586,8 +586,8 @@ public class DHCPTest extends TestCase {
         assertTrue(udp.getPayload() instanceof DHCP);
         DHCP dhcp = (DHCP) udp.getPayload();
 
-        assertEquals(UDP.DHCP_CLIENT_PORT, udp.getSourcePort());
-        assertEquals(UDP.DHCP_SERVER_PORT, udp.getDestinationPort());
+        assertEquals(UDP.DHCP_CLIENT_PORT, udp.getSourcePort().getPort());
+        assertEquals(UDP.DHCP_SERVER_PORT, udp.getDestinationPort().getPort());
         
         // should get invalid opCode of 0
         assertEquals(0, dhcp.getOpCode());

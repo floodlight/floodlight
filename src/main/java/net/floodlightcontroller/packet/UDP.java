@@ -211,11 +211,11 @@ public class UDP extends BasePacket {
         UDP other = (UDP) obj;
         if (checksum != other.checksum)
             return false;
-        if (destinationPort != other.destinationPort)
+        if (!destinationPort.equals(other.destinationPort))
             return false;
         if (length != other.length)
             return false;
-        if (sourcePort != other.sourcePort)
+        if (!sourcePort.equals(other.sourcePort))
             return false;
         return true;
     }
@@ -224,20 +224,20 @@ public class UDP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.sourcePort = TransportPort.of(bb.getShort());
-        this.destinationPort = TransportPort.of(bb.getShort());
+        this.sourcePort = TransportPort.of((int) (bb.getShort() & 0xffff)); // short will be signed, pos or neg
+        this.destinationPort = TransportPort.of((int) (bb.getShort() & 0xffff)); // convert range 0 to 65534, not -32768 to 32767
         this.length = bb.getShort();
         this.checksum = bb.getShort();
 
-        if (UDP.decodeMap.containsKey(this.destinationPort)) {
+        if (UDP.decodeMap.containsKey((short)this.destinationPort.getPort())) {
             try {
-                this.payload = UDP.decodeMap.get(this.destinationPort).getConstructor().newInstance();
+                this.payload = UDP.decodeMap.get((short)this.destinationPort.getPort()).getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }
-        } else if (UDP.decodeMap.containsKey(this.sourcePort)) {
+        } else if (UDP.decodeMap.containsKey((short)this.sourcePort.getPort())) {
             try {
-                this.payload = UDP.decodeMap.get(this.sourcePort).getConstructor().newInstance();
+                this.payload = UDP.decodeMap.get((short)this.sourcePort.getPort()).getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }

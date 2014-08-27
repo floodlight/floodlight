@@ -22,10 +22,12 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Collection;
 import java.util.EnumSet;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortConfig;
@@ -35,6 +37,7 @@ import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFlowWildcards;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -76,7 +79,8 @@ public class IOFSwitchSerializer extends JsonSerializer<IOFSwitch> {
         }
     }
 
-    public void serializeAttributes(Map<Object, Object> attributes, JsonGenerator jGen)
+    @SuppressWarnings("unchecked")
+	public void serializeAttributes(Map<Object, Object> attributes, JsonGenerator jGen)
             throws IOException, JsonProcessingException {
         if ( null == attributes)
             jGen.writeStringField("attributes","null");

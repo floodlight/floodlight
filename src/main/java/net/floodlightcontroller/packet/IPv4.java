@@ -78,6 +78,9 @@ public class IPv4 extends BasePacket {
         this.version = 4;
         isTruncated = false;
         isFragment = false;
+        protocol = IpProtocol.NONE;
+        sourceAddress = IPv4Address.NONE;
+        destinationAddress = IPv4Address.NONE;
     }
 
     /**
@@ -348,7 +351,7 @@ public class IPv4 extends BasePacket {
         bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
                 | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
-        bb.putShort(this.protocol.getIpProtocolNumber());
+        bb.put((byte)this.protocol.getIpProtocolNumber());
         bb.putShort(this.checksum);
         bb.putInt(this.sourceAddress.getInt());
         bb.putInt(this.destinationAddress.getInt());
@@ -408,8 +411,8 @@ public class IPv4 extends BasePacket {
         isFragment = ((this.flags & IPV4_FLAGS_DONTFRAG) == 0) &&
                 ((this.flags & IPV4_FLAGS_MOREFRAG) != 0 ||
                 this.fragmentOffset != 0);
-        if (!isFragment && IPv4.protocolClassMap.containsKey(this.protocol)) {
-            Class<? extends IPacket> clazz = IPv4.protocolClassMap.get(this.protocol);
+        if (!isFragment && IPv4.protocolClassMap.containsKey((byte)this.protocol.getIpProtocolNumber())) {
+            Class<? extends IPacket> clazz = IPv4.protocolClassMap.get((byte)this.protocol.getIpProtocolNumber());
             try {
                 payload = clazz.newInstance();
             } catch (Exception e) {
