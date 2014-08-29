@@ -35,16 +35,13 @@ import org.projectfloodlight.openflow.types.U8;
  *
  */
 public class IPv4 extends BasePacket {
-    public static final byte PROTOCOL_ICMP = 0x1;
-    public static final byte PROTOCOL_TCP = 0x6;
-    public static final byte PROTOCOL_UDP = 0x11;
-    public static Map<Byte, Class<? extends IPacket>> protocolClassMap;
+    public static Map<IpProtocol, Class<? extends IPacket>> protocolClassMap;
 
     static {
-        protocolClassMap = new HashMap<Byte, Class<? extends IPacket>>();
-        protocolClassMap.put(PROTOCOL_ICMP, ICMP.class);
-        protocolClassMap.put(PROTOCOL_TCP, TCP.class);
-        protocolClassMap.put(PROTOCOL_UDP, UDP.class);
+        protocolClassMap = new HashMap<IpProtocol, Class<? extends IPacket>>();
+        protocolClassMap.put(IpProtocol.ICMP, ICMP.class);
+        protocolClassMap.put(IpProtocol.TCP, TCP.class);
+        protocolClassMap.put(IpProtocol.UDP, UDP.class);
     }
 
     public static final byte IPV4_FLAGS_MOREFRAG = 0x1;
@@ -78,6 +75,9 @@ public class IPv4 extends BasePacket {
         this.version = 4;
         isTruncated = false;
         isFragment = false;
+        protocol = IpProtocol.NONE;
+        sourceAddress = IPv4Address.NONE;
+        destinationAddress = IPv4Address.NONE;
     }
 
     /**
@@ -348,7 +348,7 @@ public class IPv4 extends BasePacket {
         bb.putShort((short)(((this.flags & IPV4_FLAGS_MASK) << IPV4_FLAGS_SHIFT)
                 | (this.fragmentOffset & IPV4_OFFSET_MASK)));
         bb.put(this.ttl);
-        bb.putShort(this.protocol.getIpProtocolNumber());
+        bb.put((byte)this.protocol.getIpProtocolNumber());
         bb.putShort(this.checksum);
         bb.putInt(this.sourceAddress.getInt());
         bb.putInt(this.destinationAddress.getInt());

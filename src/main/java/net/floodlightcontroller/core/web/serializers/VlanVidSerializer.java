@@ -23,18 +23,17 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.projectfloodlight.openflow.util.HexString;
-
+import org.projectfloodlight.openflow.types.VlanVid;
 /**
- * Serialize a MAC as colon-separated hexadecimal
+ * Serialize a VlanVid as short number
  */
-public class MACSerializer extends JsonSerializer<Long> {
+public class VlanVidSerializer extends JsonSerializer<VlanVid> {
 
     @Override
-    public void serialize(Long dpid, JsonGenerator jGen,
+    public void serialize(VlanVid vlan, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(HexString.toHexString(dpid, 6));
+        jGen.writeString(vlan.toString());
     }
 
 }

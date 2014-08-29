@@ -29,17 +29,16 @@ import org.projectfloodlight.openflow.types.TransportPort;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class UDP extends BasePacket {
-    public static Map<Short, Class<? extends IPacket>> decodeMap;
-    public static short DHCP_SERVER_PORT = (short)67;
-    public static short DHCP_CLIENT_PORT = (short)68;
-
+    public static Map<TransportPort, Class<? extends IPacket>> decodeMap;
+    public static final TransportPort DHCP_CLIENT_PORT = TransportPort.of(68);
+    public static final TransportPort DHCP_SERVER_PORT = TransportPort.of(67);
     static {
-        decodeMap = new HashMap<Short, Class<? extends IPacket>>();
+        decodeMap = new HashMap<TransportPort, Class<? extends IPacket>>();
         /*
          * Disable DHCP until the deserialize code is hardened to deal with garbage input
          */
-        UDP.decodeMap.put(DHCP_SERVER_PORT, DHCP.class);
         UDP.decodeMap.put(DHCP_CLIENT_PORT, DHCP.class);
+        UDP.decodeMap.put(DHCP_SERVER_PORT, DHCP.class);
         
     }
 
@@ -211,11 +210,11 @@ public class UDP extends BasePacket {
         UDP other = (UDP) obj;
         if (checksum != other.checksum)
             return false;
-        if (destinationPort != other.destinationPort)
+        if (!destinationPort.equals(other.destinationPort))
             return false;
         if (length != other.length)
             return false;
-        if (sourcePort != other.sourcePort)
+        if (!sourcePort.equals(other.sourcePort))
             return false;
         return true;
     }
@@ -224,8 +223,8 @@ public class UDP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.sourcePort = TransportPort.of(bb.getShort());
-        this.destinationPort = TransportPort.of(bb.getShort());
+        this.sourcePort = TransportPort.of((int) (bb.getShort() & 0xffff)); // short will be signed, pos or neg
+        this.destinationPort = TransportPort.of((int) (bb.getShort() & 0xffff)); // convert range 0 to 65534, not -32768 to 32767
         this.length = bb.getShort();
         this.checksum = bb.getShort();
 

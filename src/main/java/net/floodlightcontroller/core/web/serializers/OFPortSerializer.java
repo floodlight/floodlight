@@ -23,19 +23,17 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-
-import org.projectfloodlight.openflow.types.MacAddress;
-
+import org.projectfloodlight.openflow.types.OFPort;
 /**
- * Serialize a MAC as colon-separated hexadecimal
+ * Serialize a OFPort as short number
  */
-public class ByteArrayMACSerializer extends JsonSerializer<byte[]> {
+public class OFPortSerializer extends JsonSerializer<OFPort> {
 
     @Override
-    public void serialize(byte[] mac, JsonGenerator jGen,
+    public void serialize(OFPort port, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(MacAddress.of(mac).toString());
+        jGen.writeNumber(port.getPortNumber());
     }
 
 }

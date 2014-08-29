@@ -19,12 +19,12 @@ package net.floodlightcontroller.loadbalancer;
 import java.io.IOException;
 import java.util.Collection;
 
-import net.floodlightcontroller.packet.IPv4;
-
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
+
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -134,11 +134,11 @@ public class PoolsResource extends ServerResource {
             if (n.equals("protocol")) {
                 String tmp = jp.getText();
                 if (tmp.equalsIgnoreCase("TCP")) {
-                    pool.protocol = IPv4.PROTOCOL_TCP;
+                    pool.protocol = (byte) IpProtocol.TCP.getIpProtocolNumber();
                 } else if (tmp.equalsIgnoreCase("UDP")) {
-                    pool.protocol = IPv4.PROTOCOL_UDP;
+                    pool.protocol = (byte) IpProtocol.UDP.getIpProtocolNumber();
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
-                    pool.protocol = IPv4.PROTOCOL_ICMP;
+                    pool.protocol = (byte) IpProtocol.ICMP.getIpProtocolNumber();
                 } 
                 continue;
             }                    

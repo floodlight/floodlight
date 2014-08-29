@@ -80,7 +80,7 @@ public class TCP extends BasePacket {
     /**
      * @param destinationPort the destinationPort to set
      */
-    public TCP setDestinationPort(short destinationPort) {
+    public TCP setDestinationPort(int destinationPort) {
         this.destinationPort = TransportPort.of(destinationPort);
         return this;
     }
@@ -265,8 +265,8 @@ public class TCP extends BasePacket {
         TCP other = (TCP) obj;
         // May want to compare fields based on the flags set
         return (checksum == other.checksum) &&
-               (destinationPort == other.destinationPort) &&
-               (sourcePort == other.sourcePort) &&
+               (destinationPort.equals(other.destinationPort)) &&
+               (sourcePort.equals(other.sourcePort)) &&
                (sequence == other.sequence) &&
                (acknowledge == other.acknowledge) &&
                (dataOffset == other.dataOffset) &&
@@ -280,8 +280,8 @@ public class TCP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.sourcePort = TransportPort.of(bb.getShort());
-        this.destinationPort = TransportPort.of(bb.getShort());
+        this.sourcePort = TransportPort.of((int) (bb.getShort() & 0xffff)); // short will be signed, pos or neg
+        this.destinationPort = TransportPort.of((int) (bb.getShort() & 0xffff)); // convert range 0 to 65534, not -32768 to 32767
         this.sequence = bb.getInt();
         this.acknowledge = bb.getInt();
         this.flags = bb.getShort();

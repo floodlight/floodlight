@@ -1,38 +1,42 @@
 package net.floodlightcontroller.core.web;
 
 
+import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.types.DatapathId;
+
 import net.floodlightcontroller.core.web.serializers.StatsReplySerializer;
+
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 @JsonSerialize(using=StatsReplySerializer.class)
 public class StatsReply {
-    private String datapath;
+    private DatapathId datapath;
     private Object values;
-    private String statType;
+    private OFStatsType statType;
 
     public StatsReply() {}
 
-    public StatsReply(String dpid,Object values,String type){
+    public StatsReply(DatapathId dpid, Object values, OFStatsType type){
         this.datapath = dpid;
         this.values = values;
         this.statType = type;
     }
-    public void setDatapathId(String dpid){
+    public void setDatapathId(DatapathId dpid){
         this.datapath = dpid;
     }
     public void setValues(Object values){
         this.values = values;
     }
-    public void setStatType(String type){
+    public void setStatType(OFStatsType type){
         this.statType = type;
     }
-    public String getDatapathId(){
+    public DatapathId getDatapathId(){
         return datapath;
     }
     public Object getValues(){
         return values;
     }
-    public String getStatType(){
+    public OFStatsType getStatType(){
         return statType;
     }
     
