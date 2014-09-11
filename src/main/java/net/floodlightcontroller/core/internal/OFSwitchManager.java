@@ -640,7 +640,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
 
-		this.counters = new SwitchManagerCounters(debugCounterService);
 		/* TODO @Ryan
 		try {
 			this.storeClient = this.syncService.getStoreClient(

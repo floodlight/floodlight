@@ -117,6 +117,16 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
         node.resetHierarchy();
         return true;
     }
+    
+    @GuardedBy("lock.readLock")
+    private boolean removeInternal(List<String> hierarchyElements) {
+        CounterNode node = root.lookup(hierarchyElements); // returns e.g. root/module-name/counter-node-to-remove
+        if (node == null) {
+            return false;
+        }
+        root.remove(hierarchyElements);
+        return true;
+    }
 
     @Override
     public boolean resetCounterHierarchy(String moduleName,
@@ -148,6 +158,19 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
         lock.readLock().lock();
         try {
             return resetInternal(Collections.singletonList(moduleName));
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    @Override
+    public boolean removeCounterHierarchy(String moduleName,
+                                         String counterHierarchy) {
+        verifyModuleNameSanity(moduleName);
+        verifyStringSanity(counterHierarchy, "counterHierarchy");
+        lock.readLock().lock();
+        try {
+            return removeInternal(CounterNode.getHierarchyElements(moduleName, counterHierarchy));
         } finally {
             lock.readLock().unlock();
         }

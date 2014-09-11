@@ -148,6 +148,44 @@ class CounterNode implements Iterable<DebugCounterImpl> {
         }
         return cur;
     }
+    
+    /**
+     * Remove the CounterNode identified by the hieraryElements if it exists.
+     * Returns null if no such CounterNode is found. Must only be called on
+     * the root of the tree.
+     * @param hierarchyElements
+     * @return
+     */
+    CounterNode remove(List<String> hierarchyElements) {
+        CounterNode cur = this;
+        /* The last element of the hierarchy is what we want to delete.
+         * remove(len - 1) will shorten the hierarchy list to the parent of the last
+         * descendant. This will be our stopping point. The parent of the last
+         * descendant will contain a TreeMap of all it's "children." The String
+         * key we removed can be used to remove the specific child from the parent's 
+         * "children" TreeMap.
+         * 
+         * We're directly reusing the shrunken hierarchyElements List and
+         * keyToRemove String, which IMHO is pretty cool how it works out.
+         */
+        String keyToRemove = hierarchyElements.remove(hierarchyElements.size() - 1); 
+        for (String element: hierarchyElements) {
+            cur = cur.children.get(element);
+            if (cur == null) {
+                break;
+            }
+        }
+        // At this point, if !null, cur will be the parent of the CounterNode we want to remove.
+        CounterNode removed = null;
+        if (cur != null) {
+        	removed = cur.children.remove(keyToRemove);
+        }
+        //TODO @Ryan this will remove the CounterNode from IDebugCounterService, but if any
+        // other modules still have a refernence to the IDebugCounter within the CounterNode
+        // we just removed, they might mistakenly query the "dead" counter.
+        
+        return removed;
+    }
 
     /**
      * Add the given moduleName to the tree. Can only be called on the root.
@@ -205,11 +243,10 @@ class CounterNode implements Iterable<DebugCounterImpl> {
         } else {
             CounterNode newNode = new CounterNode(path, counter);
             parent.children.put(newCounterName, newNode);
-            return counter;
+            return null; //TODO @Ryan this SHOULD technically return null. Hopefully this wont break anything....
         }
     }
-
-
+    
     /**
      * Iterator over the counters in the counter hierarchy.
      * Iteration order is a pre-order tree walk. Children of a node are

@@ -79,6 +79,18 @@ public interface IDebugCounterService extends IFloodlightService {
      * @return false if the given module name does not exists
      */
     public boolean resetAllModuleCounters(String moduleName);
+    
+    /**
+     * Removes/deletes the counter hierarchy AND ALL LEVELS BELOW it in the hierarchy.
+     * For example: If a hierarchy exists like "00:00:00:00:01:02:03:04/pktin/drops"
+     *              specifying a remove hierarchy: "00:00:00:00:01:02:03:04"
+     *              will remove all counters for the switch dpid specified;
+     *              while specifying a remove hierarchy: ""00:00:00:00:01:02:03:04/pktin"
+     *              will remove the pktin counter and all levels below it (like drops)
+     *              for the switch dpid specified.
+     * @return false if the given moduleName, counterHierarchy does not exist
+     */
+    public boolean removeCounterHierarchy(String moduleName, String counterHierarchy);
 
 
     /**
