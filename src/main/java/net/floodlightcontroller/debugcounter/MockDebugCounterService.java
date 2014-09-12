@@ -112,4 +112,10 @@ public class MockDebugCounterService implements IFloodlightModule, IDebugCounter
         }
     }
 
+	@Override
+	public boolean removeCounterHierarchy(String moduleName,
+			String counterHierarchy) {
+		return true;
+	}
+
 }
