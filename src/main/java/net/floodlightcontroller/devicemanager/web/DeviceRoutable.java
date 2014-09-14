@@ -36,7 +36,8 @@ public class DeviceRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/json", DeviceResource.class);
+        router.attach("/all/json", DeviceResource.class);
+        router.attach("/", DeviceResource.class);
         router.attach("/debug", DeviceEntityResource.class);
         return router;
     }
