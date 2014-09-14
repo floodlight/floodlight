@@ -831,8 +831,6 @@ public class OFSwitch implements IOFSwitchBackend {
 
     @Override
     public Collection<OFPortDesc> getSortedPorts() {
-        // FIXME: Hopefully BigDB will handle this automatically soon (or not
-        // have the sorting requirement), in which case we could get rid of this
         List<OFPortDesc> sortedPorts =
                 new ArrayList<OFPortDesc>(portManager.getPorts());
         Collections.sort(sortedPorts, new Comparator<OFPortDesc>() {
