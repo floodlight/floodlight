@@ -25,4 +25,14 @@ public interface IDebugCounter {
      * Retrieve the value of the counter.
      */
     long getCounterValue();
+    
+    /**
+     * Retrieve the last-modified date of the counter.
+     */
+    long getLastModified();
+
+    /**
+     * Reset the value of the counter to 0.
+     */
+	void reset();
 }
