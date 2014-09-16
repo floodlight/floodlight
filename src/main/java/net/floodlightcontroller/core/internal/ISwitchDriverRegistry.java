@@ -4,7 +4,6 @@ import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -64,5 +63,5 @@ public interface ISwitchDriverRegistry {
      * @throws NullPointerException If the SwitchDescription or any of its
      * members is null.
      */
-    IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection, SwitchDescription description, OFFactory factory, DatapathId datapathId, IDebugCounterService debugCounterService);
+    IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection, SwitchDescription description, OFFactory factory, DatapathId datapathId);
 }

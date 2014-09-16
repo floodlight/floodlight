@@ -470,7 +470,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection,
 			SwitchDescription description,
 			OFFactory factory, DatapathId datapathId) {
-		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId, debugCounterService);
+		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
 	}
 
 	@Override

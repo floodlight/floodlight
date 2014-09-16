@@ -41,7 +41,6 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.IOFSwitchManager;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.URIUtil;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
@@ -123,7 +122,7 @@ public class OFSwitch implements IOFSwitchBackend {
     }
 
     public OFSwitch(IOFConnectionBackend connection, @Nonnull OFFactory factory, @Nonnull IOFSwitchManager switchManager,
-            @Nonnull DatapathId datapathId, @Nonnull IDebugCounterService debugCounterService) {
+            @Nonnull DatapathId datapathId) {
         if(connection == null)
             throw new NullPointerException("connection must not be null");
         if(!connection.getAuxId().equals(OFAuxId.MAIN))
