@@ -28,7 +28,7 @@ public interface IOFSwitchManager {
 
     /**
      * Called when a switch disconnects
-     * @param sw the added switch
+     * @param sw the removed switch
      */
     void switchDisconnected(IOFSwitchBackend sw);
 

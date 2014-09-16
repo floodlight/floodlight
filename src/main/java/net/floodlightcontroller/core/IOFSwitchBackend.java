@@ -27,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 
+import net.floodlightcontroller.core.internal.SwitchCounters;
 import net.floodlightcontroller.util.OrderedCollection;
 
 /**
@@ -182,5 +183,13 @@ public interface IOFSwitchBackend extends IOFSwitch {
      * @return true if another viable master exists
      */
     boolean hasAnotherMaster();
+    
+    /**
+     * Retrieve the SwitchCounters from the switch.
+     * This is in IOFSwitchBackend as opposed to IOFSwitch to prevent 
+     * modules from easily getting and messing with the counters.
+     * @return SwitchCounters
+     */
+    SwitchCounters getCounters();
 
 }

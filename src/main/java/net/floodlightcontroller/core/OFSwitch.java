@@ -39,8 +39,10 @@ import javax.annotation.Nonnull;
 
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.IOFSwitchManager;
+import net.floodlightcontroller.core.internal.SwitchCounters;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.URIUtil;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
@@ -112,17 +114,19 @@ public class OFSwitch implements IOFSwitchBackend {
     private boolean flowTableFull = false;
 
     protected SwitchDescription description;
+    
+    protected SwitchCounters counters;
 
     private SwitchStatus status;
 
     public static final int OFSWITCH_APP_ID = ident(5);
-
+    
     static {
         AppCookie.registerApp(OFSwitch.OFSWITCH_APP_ID, "switch");
     }
 
     public OFSwitch(IOFConnectionBackend connection, @Nonnull OFFactory factory, @Nonnull IOFSwitchManager switchManager,
-            @Nonnull DatapathId datapathId) {
+            @Nonnull DatapathId datapathId, @Nonnull IDebugCounterService debugCounterService) {
         if(connection == null)
             throw new NullPointerException("connection must not be null");
         if(!connection.getAuxId().equals(OFAuxId.MAIN))
@@ -141,6 +145,7 @@ public class OFSwitch implements IOFSwitchBackend {
         this.description = new SwitchDescription();
         this.portManager = new PortManager();
         this.status = SwitchStatus.HANDSHAKE;
+        this.counters = new SwitchCounters(debugCounterService, datapathId);
 
         // Connections
         this.connections = new ConcurrentHashMap<OFAuxId, IOFConnectionBackend>();
@@ -772,7 +777,9 @@ public class OFSwitch implements IOFSwitchBackend {
             this.connections.remove(entry.getKey());
         }
         log.debug("~~~~~~~SWITCH DISCONNECTED~~~~~~");
+        // Remove all counters from the store
         connected = false;
+        switchManager.switchDisconnected(this); //TODO @Ryan Possible bug? I think this should be here to make sure the manager knows too if a module manually disconnects a switch...
     }
 
     @Override
@@ -1101,4 +1108,18 @@ public class OFSwitch implements IOFSwitchBackend {
         }
        return false;
     }
+
+	@Override
+	/**
+	 * Retrieve the counters for incrementing and clearing. User modules
+	 * should not have access to this method, nor should use it. The counters
+	 * will be kept by the controller core. This method should only be used
+	 * by "authorized" modules to perform bookkeeping. Unfortunately, this
+	 * needs to be exposed to allow the Controller access to counters.
+	 * If only there were a "friend" C++ equivalent in Java...
+	 * @return the counters to be incremented or cleared.
+	 */
+	public SwitchCounters getCounters() {
+		return counters;
+	}
 }

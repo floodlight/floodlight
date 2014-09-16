@@ -13,6 +13,8 @@ import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.OFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -69,7 +71,7 @@ class NaiveSwitchDriverRegistry implements ISwitchDriverRegistry {
     // but it's probably not worth it.
     public synchronized IOFSwitchBackend
             getOFSwitchInstance(@Nonnull IOFConnectionBackend connection, @Nonnull SwitchDescription description,
-                    @Nonnull OFFactory factory, @Nonnull DatapathId id) {
+                    @Nonnull OFFactory factory, @Nonnull DatapathId id, @Nonnull IDebugCounterService debugCounterService) {
         Preconditions.checkNotNull(connection, "connection");
         Preconditions.checkNotNull(description, "description");
         Preconditions.checkNotNull(factory, "factory");
@@ -94,7 +96,7 @@ class NaiveSwitchDriverRegistry implements ISwitchDriverRegistry {
             }
         }
         // no switch found
-        IOFSwitchBackend sw = new OFSwitch(connection, factory, switchManager, id);
+        IOFSwitchBackend sw = new OFSwitch(connection, factory, switchManager, id, debugCounterService);
         sw.setSwitchProperties(description);
         return sw;
     }
