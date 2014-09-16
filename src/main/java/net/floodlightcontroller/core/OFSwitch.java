@@ -774,7 +774,6 @@ public class OFSwitch implements IOFSwitchBackend {
         log.debug("~~~~~~~SWITCH DISCONNECTED~~~~~~");
         // Remove all counters from the store
         connected = false;
-        switchManager.switchDisconnected(this); //TODO @Ryan Possible bug? I think this should be here to make sure the manager knows too if a module manually disconnects a switch...
     }
 
     @Override
