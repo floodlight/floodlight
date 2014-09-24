@@ -44,7 +44,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 
     @Get("json")
     public Map<String, Object> retrieve() {
-        String statType = (String) getRequestAttributes().get("statType");
+        String statType = (String) getRequestAttributes().get(CoreWebRoutable.STR_STAT_TYPE);
         return retrieveInternal(statType);
     }
 

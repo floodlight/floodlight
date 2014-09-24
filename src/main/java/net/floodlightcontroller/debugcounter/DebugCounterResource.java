@@ -22,6 +22,7 @@ public class DebugCounterResource {
 
 
     private final Long counterValue;
+    private final Long lastModified;
     private final String counterDesc;
     private final String counterHierarchy;
     private final String moduleName;
@@ -35,10 +36,15 @@ public class DebugCounterResource {
         this.metadata = counter.getMetaData();
         this.counterValue = counter.getCounterValue();
         this.metadataString = joiner.join(metadata);
+        this.lastModified = counter.getLastModified();
     }
 
     public Long getCounterValue() {
         return counterValue;
+    }
+    
+    public Long getCounterLastModified() {
+        return lastModified;
     }
 
     public String getCounterDesc() {

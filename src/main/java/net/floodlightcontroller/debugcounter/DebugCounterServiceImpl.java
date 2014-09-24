@@ -97,15 +97,24 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
                                      Arrays.asList(metaData));
         lock.writeLock().lock();
         try {
+        	/* addCounter(counter) will return null if counter is accepted as a new counter
+        	 * or it will return a reference to the existing DebugCounterImpl if the counter
+        	 * is already present.
+        	 */
             DebugCounterImpl oldCounter = root.addCounter(counter);
             if (oldCounter != null && logger.isDebugEnabled()) {
                 logger.debug("Counter {} {} already registered. Resetting hierarchy",
                           moduleName, counterHierarchy);
             }
-            return oldCounter;
+            /* If addCounter(counter) returned null, counter is the new counter, else if
+             * addCounter(counter) returned a non-null reference, then the reference is 
+             * the existing counter, which has just been reset and should be reused.
+             */
+            counter = (oldCounter == null ? counter : oldCounter);
         } finally {
             lock.writeLock().unlock();
         }
+        return counter;
     }
 
     @GuardedBy("lock.readLock")

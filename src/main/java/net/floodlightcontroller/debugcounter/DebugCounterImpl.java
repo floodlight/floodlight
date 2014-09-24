@@ -1,6 +1,7 @@
 package net.floodlightcontroller.debugcounter;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.Nonnull;
@@ -19,6 +20,7 @@ class DebugCounterImpl implements IDebugCounter {
 
     private final AtomicLong value = new AtomicLong();
 
+    private final Date lastModified = new Date(); // should return long ms to ensure immutability
 
     DebugCounterImpl(@Nonnull String moduleName,
                      @Nonnull String counterHierarchy,
@@ -28,6 +30,7 @@ class DebugCounterImpl implements IDebugCounter {
         this.counterHierarchy = counterHierarchy;
         this.description = description;
         this.metaData = Sets.immutableEnumSet(metaData);
+        this.lastModified.setTime(System.currentTimeMillis());
     }
 
     @Nonnull
@@ -52,13 +55,16 @@ class DebugCounterImpl implements IDebugCounter {
         return metaData;
     }
 
+    @Override
     public void reset() {
         value.set(0);
+        lastModified.setTime(System.currentTimeMillis());
     }
 
     @Override
     public void increment() {
         value.incrementAndGet();
+        lastModified.setTime(System.currentTimeMillis());
     }
 
     @Override
@@ -68,12 +74,18 @@ class DebugCounterImpl implements IDebugCounter {
                     + increment);
         }
         value.addAndGet(increment);
+        lastModified.setTime(System.currentTimeMillis());
     }
 
     @Override
     public long getCounterValue() {
         return value.get();
     }
+    
+	@Override
+	public long getLastModified() {
+		return lastModified.getTime();
+	}
 
     @Override
     public int hashCode() {
@@ -134,8 +146,4 @@ class DebugCounterImpl implements IDebugCounter {
         builder.append("]");
         return builder.toString();
     }
-
-
-
-
 }

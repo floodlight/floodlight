@@ -62,7 +62,6 @@ import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.error.SyncException;
-import org.sdnplatform.sync.error.UnknownStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,8 +234,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 		if (presentSw != sw)  {
 			// Note == for object equality, not .equals for value
-			counters.errorActivatedSwitchNotPresent
-			.increment();
+			counters.errorActivatedSwitchNotPresent.increment();
 			log.warn("Switch {} disconnect but not present in sync manager", sw);
 			return;
 		}

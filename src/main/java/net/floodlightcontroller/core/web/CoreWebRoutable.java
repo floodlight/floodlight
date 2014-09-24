@@ -34,8 +34,9 @@ public class CoreWebRoutable implements RestletRoutable {
 	public static final String STR_SWITCH_ID = "switchId";
 	public static final String STR_STAT_TYPE = "statType";
 	public static final String STR_CTR_TITLE = "counterTitle";
-	public static final String STR_CTR_NAME = "counterName";
+	public static final String STR_CTR_MODULE = "counterModule";
 	public static final String STR_LAYER = "layer";
+	public static final String STR_ALL = "all";
 	
     @Override
     public String basePath() {
@@ -51,9 +52,7 @@ public class CoreWebRoutable implements RestletRoutable {
         router.attach("/switch/all/{" + STR_STAT_TYPE + "}/json", AllSwitchStatisticsResource.class);
         router.attach("/switch/{" + STR_SWITCH_ID + "}/{" + STR_STAT_TYPE + "}/json", SwitchStatisticsResource.class);
         router.attach("/controller/switches/json", ControllerSwitchesResource.class);
-        router.attach("/counter/{" + STR_CTR_TITLE + "}/json", CounterResource.class);
-        router.attach("/counter/{" + STR_SWITCH_ID + "}/{" + STR_CTR_NAME + "}/json", SwitchCounterResource.class);
-        router.attach("/counter/categories/{" + STR_SWITCH_ID + "}/{" + STR_CTR_NAME + "}/{" + STR_LAYER + "}/json", SwitchCounterCategoriesResource.class);
+        router.attach("/counter/{" + STR_CTR_MODULE + "}/{" + STR_CTR_TITLE + "}/json", CounterResource.class);
         router.attach("/memory/json", ControllerMemoryResource.class);
         router.attach("/packettrace/json", PacketTraceResource.class);
         router.attach("/storage/tables/json", StorageSourceTablesResource.class);

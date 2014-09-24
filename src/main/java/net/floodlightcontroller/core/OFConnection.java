@@ -186,6 +186,7 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
     @Override
     public void disconnect() {
         this.channel.disconnect();
+        this.counters.uninstallCounters();
     }
 
     @Override

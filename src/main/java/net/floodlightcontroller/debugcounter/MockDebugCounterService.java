@@ -110,6 +110,15 @@ public class MockDebugCounterService implements IFloodlightModule, IDebugCounter
         public long getCounterValue() {
             return -1;
         }
+
+		@Override
+		public long getLastModified() {
+			return -1;
+		}
+
+		@Override
+		public void reset() {			
+		}
     }
 
 	@Override

@@ -1,7 +1,9 @@
 package net.floodlightcontroller.core;
 
+import net.floodlightcontroller.core.internal.OFSwitchManager;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -16,8 +18,9 @@ import org.slf4j.LoggerFactory;
  * @author Alok Shankar <alok@bigswitch.com>
  */
 public class OFConnectionCounters {
-    public static final String COUNTER_MODULE = OFConnectionCounters.class.getPackage().getName();
-
+    public static final String COUNTER_MODULE = OFSwitchManager.class.getSimpleName();
+    private static String dpidAndConnIdString;
+    private static IDebugCounterService debugCounterService;
     /**
      * Counters for open flow message types
      */
@@ -118,7 +121,10 @@ public class OFConnectionCounters {
         Preconditions.checkNotNull(auxId, "auxid must not be null");
 
         String stringId = dpid.toString() +":" + auxId.toString();
+        dpidAndConnIdString = stringId;
         String hierarchy = "/write";
+        
+        debugCounterService = counters;
 
         // every level of the hierarchical counter has to be registered
         // even if they are not used
@@ -440,6 +446,16 @@ public class OFConnectionCounters {
                                      hierarchy,
                                      stringId,
                                      OFType.TABLE_MOD.toString());
+    }
+    
+    /**
+     * Remove all counters from the IDebugCounterService. Should be done
+     * if the switch connection disconnects from the controller, in which case all
+     * the counters will be invalid.
+     * @return true if successful; false if counter hierarchy was not found
+     */
+    public boolean uninstallCounters() {
+    	return debugCounterService.removeCounterHierarchy(COUNTER_MODULE, dpidAndConnIdString);
     }
 
    /**

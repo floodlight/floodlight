@@ -17,14 +17,11 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Set;
 
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.restlet.data.Form;
-import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 /**
@@ -32,46 +29,14 @@ import org.restlet.resource.ServerResource;
  * @author readams
  */
 public class ControllerSwitchesResource extends ServerResource {
-    
-    public static final String DPID_ERROR =
-            "Invalid Switch DPID: must be a 64-bit quantity, expressed in " +
-            "hex as AA:BB:CC:DD:EE:FF:00:11";
-
+	
+	public static final String DPID_ERROR = "Invalid switch DPID string. Must be a 64-bit value in the form 00:11:22:33:44:55:66:77.";
+	
     @Get("json")
-    public Collection<IOFSwitch> retrieve(){
+    public Set<DatapathId> retrieve(){
         IOFSwitchService switchService = 
             (IOFSwitchService) getContext().getAttributes().
                 get(IOFSwitchService.class.getCanonicalName());
-        DatapathId switchDPID = null;
-        ArrayList<IOFSwitch> result = new ArrayList<IOFSwitch>();
-        Form form = getQuery();
-        String dpid = form.getFirstValue("dpid", true);
-        if( dpid != null){
-            try{
-                switchDPID = DatapathId.of(dpid);
-            }catch(Exception e){
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST,DPID_ERROR);
-                return null;
-            }
-        }
-        if (switchDPID != null){
-            IOFSwitch sw = switchService.getSwitch(switchDPID);
-            if ( sw != null){
-                result.add(sw);
-            }
-            return result;
-        }
-        final String dpidStartsWith = 
-            form.getFirstValue("dpid__startswith",true);
-        if(dpidStartsWith != null){
-            for(IOFSwitch sw: switchService.getAllSwitchMap().values()){
-                if( sw.getId().toString().startsWith(dpidStartsWith))
-                        result.add(sw);
-            }
-            return result;
-        }
-        return switchService.getAllSwitchMap().values();
-
-    
+        return switchService.getAllSwitchDpids();
     }
 }

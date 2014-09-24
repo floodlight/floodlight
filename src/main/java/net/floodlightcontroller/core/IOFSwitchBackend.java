@@ -182,5 +182,4 @@ public interface IOFSwitchBackend extends IOFSwitch {
      * @return true if another viable master exists
      */
     boolean hasAnotherMaster();
-
 }

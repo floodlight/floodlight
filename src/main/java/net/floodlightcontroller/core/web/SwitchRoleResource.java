@@ -18,12 +18,11 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.ServerResource;
 
-import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.restlet.resource.Get;
@@ -40,17 +39,13 @@ public class SwitchRoleResource extends ServerResource {
                 (IOFSwitchService)getContext().getAttributes().
                     get(IOFSwitchService.class.getCanonicalName());
 
-        String switchId = (String) getRequestAttributes().get("switchId");
+        String switchId = (String) getRequestAttributes().get(CoreWebRoutable.STR_SWITCH_ID);
 
-        RoleInfo roleInfo;
-
-        if (switchId.equalsIgnoreCase("all")) {
-            HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
+        if (switchId.equalsIgnoreCase(CoreWebRoutable.STR_ALL)) {
+            HashMap<String, OFControllerRole> model = new HashMap<String, OFControllerRole>();
             for (IOFSwitch sw: switchService.getAllSwitchMap().values()) {
                 switchId = sw.getId().toString();
-                //TODO @Ryan not sure what the changeDescription string should be here.
-                roleInfo = new RoleInfo(HARole.ofOFRole(sw.getControllerRole()), "", null);
-                model.put(switchId, roleInfo);
+                model.put(switchId, sw.getControllerRole());
             }
             return model;
         }
@@ -59,8 +54,6 @@ public class SwitchRoleResource extends ServerResource {
         IOFSwitch sw = switchService.getSwitch(dpid);
         if (sw == null)
             return null;
-        //TODO @Ryan not sure what the changeDescription string should be here.
-        roleInfo = new RoleInfo(HARole.ofOFRole(sw.getControllerRole()), "", null);
-        return roleInfo;
+        return sw.getControllerRole();
     }
 }

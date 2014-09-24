@@ -4,6 +4,7 @@ import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.SwitchDescription;
+
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.types.DatapathId;
 
@@ -56,6 +57,7 @@ public interface ISwitchDriverRegistry {
      * IOFSwitch implementation
      * @param factory The factory to use to create OF messages.
      * @param datapathId
+     * @param debugCounterService; used to create a new switch if one does not exist
      * @return A IOFSwitch implementation matching the description or an
      * OFSwitchImpl if no driver returned a more concrete instance.
      * @throws NullPointerException If the SwitchDescription or any of its

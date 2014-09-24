@@ -112,11 +112,11 @@ public class OFSwitch implements IOFSwitchBackend {
     private boolean flowTableFull = false;
 
     protected SwitchDescription description;
-
+    
     private SwitchStatus status;
 
     public static final int OFSWITCH_APP_ID = ident(5);
-
+    
     static {
         AppCookie.registerApp(OFSwitch.OFSWITCH_APP_ID, "switch");
     }
@@ -772,6 +772,7 @@ public class OFSwitch implements IOFSwitchBackend {
             this.connections.remove(entry.getKey());
         }
         log.debug("~~~~~~~SWITCH DISCONNECTED~~~~~~");
+        // Remove all counters from the store
         connected = false;
     }
 
@@ -831,8 +832,6 @@ public class OFSwitch implements IOFSwitchBackend {
 
     @Override
     public Collection<OFPortDesc> getSortedPorts() {
-        // FIXME: Hopefully BigDB will handle this automatically soon (or not
-        // have the sorting requirement), in which case we could get rid of this
         List<OFPortDesc> sortedPorts =
                 new ArrayList<OFPortDesc>(portManager.getPorts());
         Collections.sort(sortedPorts, new Comparator<OFPortDesc>() {
