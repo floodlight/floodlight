@@ -1,0 +1,99 @@
+2014-09-25 15:15:53
+go!!
+=>Time of Entry_for_packet:437.0
+The size of table is : 3875
+The number of packets is:7750
+The speed is: 17734 packet/s
+The average speed is: 17734 packet/s
+end.
+2014-09-25 15:15:53
+**************************************
+2014-09-25 15:19:46
+go!!
+=>Time of Entry_for_packet:449.0
+The size of table is : 3875
+The number of packets is:7750
+The speed is: 17260 packet/s
+The average speed is: 17494 packet/s
+end.
+2014-09-25 15:19:47
+**************************************
+2014-09-25 15:21:54
+go!!
+=>Time of Entry_for_packet:438.0
+The size of table is : 3875
+The number of packets is:7750
+The speed is: 17694 packet/s
+The average speed is: 17560 packet/s
+end.
+2014-09-25 15:21:54
+**************************************2014-09-25 15:55:38
+go!!
+=>Time of Entry_for_packet:399.0
+The size of table is : 3875
+The number of packets is:7750
+The speed is: 19423 packet/s
+The average speed is: 17991 packet/s
+end.
+2014-09-25 15:55:38
+**************************************
+2014-09-25 15:56:03
+go!!
+=>Time of Entry_for_packet:589.0
+The size of table is : 3875
+The number of packets is:7750
+The speed is: 13157 packet/s
+The average speed is: 16760 packet/s
+end.
+2014-09-25 15:56:03
+**************************************换成512k数据,方案A
+2014-09-25 15:56:41
+go!!
+=>Time of Entry_for_packet:545953.0
+The size of table is : 523203
+The number of packets is:260000
+The speed is: 476 packet/s
+The average speed is: 544 packet/s
+end.
+2014-09-25 16:05:47
+**************************************方案B
+2014-09-25 16:17:15
+go!!
+=>Time of Entry_for_packet:615629.0
+The size of table is : 523203
+The number of packets is:260000
+The speed is: 422 packet/s
+The average speed is: 480 packet/s
+end.
+2014-09-25 16:27:31
+**************************************方案C
+2014-09-25 16:40:53
+go!!
+=>Time of Entry_for_packet:576789.0
+The size of table is : 523203
+The number of packets is:260000
+The speed is: 450 packet/s
+The average speed is: 470 packet/s
+end.
+2014-09-25 16:50:30
+**************************************方案D
+2014-09-25 17:02:02
+go!!
+=>Time of Entry_for_packet:613082.0
+The size of table is : 523203
+The number of packets is:260000
+The speed is: 424 packet/s
+The average speed is: 458 packet/s
+end.
+2014-09-25 17:12:15
+**************************************
+2014-09-25 17:16:13
+go!!
+=>Time of Entry_for_packet:594712.0
+The size of table is : 523203
+The number of packets is:260000
+The speed is: 437 packet/s
+The average speed is: 454 packet/s
+end.
+2014-09-25 17:26:07
+**************************************
