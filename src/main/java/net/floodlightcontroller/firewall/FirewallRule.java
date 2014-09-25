@@ -244,7 +244,6 @@ public class FirewallRule implements Comparable<FirewallRule> {
                     }
                     // IP packets, proceed with ip address check
                     pkt_ip = (IPv4) pkt;
-
                     // IP addresses (src and dst) match?
                     if (wildcard_nw_src == false
                             && this.matchIPAddress(nw_src_prefix,
@@ -355,7 +354,6 @@ public class FirewallRule implements Comparable<FirewallRule> {
     protected boolean matchIPAddress(int rulePrefix, int ruleBits,
             int packetAddress) {
         boolean matched = true;
-
         int rule_iprng = 32 - ruleBits;
         int rule_ipint = rulePrefix;
         int pkt_ipint = packetAddress;

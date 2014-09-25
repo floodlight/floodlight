@@ -1,15 +1,15 @@
 <configuration scan="true">
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
-    </encoder>
-  </appender>
-  <root level="INFO">
-    <appender-ref ref="STDOUT" />
-  </root>
-  <logger name="org" level="WARN"/>
-  <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
-  <logger name="net.floodlightcontroller" level="INFO"/>
-  <logger name="net.floodlightcontroller.logging" level="WARN"/>
-  <logger name="org.sdnplatform" level="INFO"/>
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
+		</encoder>
+	</appender>
+	<root level="INFO">
+		<appender-ref ref="STDOUT" />
+	</root>
+	<logger name="org" level="WARN" />
+	<logger name="LogService" level="WARN" /> <!-- Restlet access logging -->
+	<logger name="net.floodlightcontroller" level="INFO" />
+	<logger name="net.floodlightcontroller.logging" level="WARN" />
+	<logger name="org.sdnplatform" level="INFO" />
 </configuration>
