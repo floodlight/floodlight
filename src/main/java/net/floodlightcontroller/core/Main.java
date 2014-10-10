@@ -59,8 +59,6 @@ public class Main {
 			FloodlightModuleLoader fml = new FloodlightModuleLoader();
 			try {
 				IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
-				// @Ryan TODO This should probably be implemented and run as a normal service for consistency;
-				// although, it does need all modules to be loaded and their prior to running.
 				IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
 				restApi.run(); 
 			} catch (FloodlightModuleConfigFileNotFoundException e) {

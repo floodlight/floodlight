@@ -31,6 +31,10 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -146,6 +150,8 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
         fmc.addService(ISyncService.class, mockSyncService);
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
 
         topology.addListener(anyObject(ITopologyListener.class));
         expectLastCall().anyTimes();
@@ -170,14 +176,10 @@ public class ForwardingTest extends FloodlightTestCase {
         sw1 = EasyMock.createMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         expect(sw1.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
-        expect(sw1.getId().toString())
-                .andReturn(DatapathId.of(1L).toString()).anyTimes();
 
         sw2 = EasyMock.createMock(IOFSwitch.class);
         expect(sw2.getId()).andReturn(DatapathId.of(2L)).anyTimes();
         expect(sw2.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
-        expect(sw2.getId().toString())
-                .andReturn(DatapathId.of(2L).toString()).anyTimes();
 
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
@@ -212,7 +214,6 @@ public class ForwardingTest extends FloodlightTestCase {
         testPacketSerialized = testPacket.serialize();
         packetIn = factory.buildPacketIn()
                         .setBufferId(OFBufferId.NO_BUFFER)
-                        .setInPort(OFPort.of(1))
                         .setData(testPacketSerialized)
                         .setReason(OFPacketInReason.NO_MATCH)
                         .build();
@@ -222,7 +223,6 @@ public class ForwardingTest extends FloodlightTestCase {
         poactions.add(factory.actions().output(OFPort.of(3), Integer.MAX_VALUE));
         packetOut = factory.buildPacketOut()
         		.setBufferId(this.packetIn.getBufferId())
-        		.setInPort(this.packetIn.getInPort())
         		.setActions(poactions)
         		.setData(testPacketSerialized)
         		.build();
@@ -232,7 +232,6 @@ public class ForwardingTest extends FloodlightTestCase {
         poactions.add(factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE));
         packetOutFlooded = factory.buildPacketOut()
         		.setBufferId(this.packetIn.getBufferId())
-        		.setInPort(this.packetIn.getInPort())
         		.setActions(poactions)
         		.setData(testPacketSerialized)
         		.build();

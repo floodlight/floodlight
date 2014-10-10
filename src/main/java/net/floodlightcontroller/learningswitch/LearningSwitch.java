@@ -390,10 +390,10 @@ public class LearningSwitch
      */
     private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
-        Match.Builder mb = pi.getMatch().createBuilder();
-        MacAddress sourceMac = mb.get(MatchField.ETH_SRC);
-        MacAddress destMac = mb.get(MatchField.ETH_DST);
-        OFVlanVidMatch vlan = mb.get(MatchField.VLAN_VID);
+        Match m = pi.getMatch();
+        MacAddress sourceMac = m.get(MatchField.ETH_SRC);
+        MacAddress destMac = m.get(MatchField.ETH_DST);
+        OFVlanVidMatch vlan = m.get(MatchField.VLAN_VID);
         if ((destMac.getLong() & 0xfffffffffff0L) == 0x0180c2000000L) {
             if (log.isTraceEnabled()) {
                 log.trace("ignoring packet addressed to 802.1D/Q reserved addr: switch {} vlan {} dest MAC {}",
@@ -415,7 +415,7 @@ public class LearningSwitch
             //     from port map whenever a flow expires, so you would still see
             //     a lot of floods.
             this.writePacketOutForPacketIn(sw, pi, OFPort.FLOOD);
-        } else if (outPort.equals(mb.get(MatchField.IN_PORT))) {
+        } else if (outPort.equals(m.get(MatchField.IN_PORT))) {
             log.trace("ignoring packet that arrived on same port as learned destination:"
                     + " switch {} vlan {} dest MAC {} port {}",
                     new Object[]{ sw, vlan, destMac.toString(), outPort.getPortNumber() });
@@ -430,29 +430,29 @@ public class LearningSwitch
             // FIXME: current HP switches ignore DL_SRC and DL_DST fields, so we have to match on
             // NW_SRC and NW_DST as well
             // We write FlowMods with Buffer ID none then explicitly PacketOut the buffered packet
-            this.pushPacket(sw, mb.build(), pi, outPort);
-            this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, mb.build(), outPort);
+            this.pushPacket(sw, m, pi, outPort);
+            this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, m, outPort);
             if (LEARNING_SWITCH_REVERSE_FLOW) {
-            	Match.Builder mb2 = mb.build().createBuilder();
-            	mb2.setExact(MatchField.ETH_SRC, mb.get(MatchField.ETH_DST))                         
-            	.setExact(MatchField.ETH_DST, mb.get(MatchField.ETH_SRC))                         
-            	.setExact(MatchField.IPV4_SRC, mb.get(MatchField.IPV4_DST))                         
-            	.setExact(MatchField.IPV4_DST, mb.get(MatchField.IPV4_SRC));
-            	if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
-            		mb2.setExact(MatchField.TCP_SRC, mb.get(MatchField.TCP_DST))
-            		.setExact(MatchField.TCP_DST, mb.get(MatchField.TCP_SRC));
-            	} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
-            		mb2.setExact(MatchField.UDP_SRC, mb.get(MatchField.UDP_DST))
-            		.setExact(MatchField.UDP_DST, mb.get(MatchField.UDP_SRC));
-            	} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.SCTP)) {
-            		mb2.setExact(MatchField.SCTP_SRC, mb.get(MatchField.SCTP_DST))
-            		.setExact(MatchField.SCTP_DST, mb.get(MatchField.SCTP_SRC));
+            	Match.Builder mb2 = m.createBuilder();
+            	mb2.setExact(MatchField.ETH_SRC, m.get(MatchField.ETH_DST))                         
+            	.setExact(MatchField.ETH_DST, m.get(MatchField.ETH_SRC))                         
+            	.setExact(MatchField.IPV4_SRC, m.get(MatchField.IPV4_DST))                         
+            	.setExact(MatchField.IPV4_DST, m.get(MatchField.IPV4_SRC));
+            	if (m.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
+            		mb2.setExact(MatchField.TCP_SRC, m.get(MatchField.TCP_DST))
+            		.setExact(MatchField.TCP_DST, m.get(MatchField.TCP_SRC));
+            	} else if (m.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
+            		mb2.setExact(MatchField.UDP_SRC, m.get(MatchField.UDP_DST))
+            		.setExact(MatchField.UDP_DST, m.get(MatchField.UDP_SRC));
+            	} else if (m.get(MatchField.IP_PROTO).equals(IpProtocol.SCTP)) {
+            		mb2.setExact(MatchField.SCTP_SRC, m.get(MatchField.SCTP_DST))
+            		.setExact(MatchField.SCTP_DST, m.get(MatchField.SCTP_SRC));
             	} else {
-            		log.debug("In writing reverse LS flow, could not determine L4 proto (was int " + mb.get(MatchField.IP_PROTO).getIpProtocolNumber() + ")");
+            		log.debug("In writing reverse LS flow, could not determine L4 proto (was int " + m.get(MatchField.IP_PROTO).getIpProtocolNumber() + ")");
             	}
             	mb2.setExact(MatchField.IN_PORT, outPort);
 
-            	this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, mb2.build(), mb.get(MatchField.IN_PORT));
+            	this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, mb2.build(), m.get(MatchField.IN_PORT));
             }
         }
         return Command.CONTINUE;

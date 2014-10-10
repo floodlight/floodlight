@@ -41,14 +41,15 @@ import org.slf4j.LoggerFactory;
 public class AllSwitchStatisticsResource extends SwitchResourceBase {
     protected static Logger log =
         LoggerFactory.getLogger(AllSwitchStatisticsResource.class);
-
+    
     @Get("json")
     public Map<String, Object> retrieve() {
         String statType = (String) getRequestAttributes().get(CoreWebRoutable.STR_STAT_TYPE);
+        
         return retrieveInternal(statType);
     }
 
-    public Map<String, Object> retrieveInternal(String statType) {
+    private Map<String, Object> retrieveInternal(String statType) {
         HashMap<String, Object> model = new HashMap<String, Object>();
 
         OFStatsType type = null;
@@ -85,10 +86,10 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         default:
         	return model;
         }
-
-        IOFSwitchService switchService =
-                (IOFSwitchService) getContext().getAttributes().
-                    get(IOFSwitchService.class.getCanonicalName());
+                
+        IOFSwitchService switchService = (IOFSwitchService) getContext().getAttributes().
+                get(IOFSwitchService.class.getCanonicalName());
+        
         Set<DatapathId> switchDpids = switchService.getAllSwitchDpids();
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.size());
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();

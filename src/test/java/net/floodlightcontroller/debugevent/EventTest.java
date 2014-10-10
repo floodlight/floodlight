@@ -1,15 +1,20 @@
 package net.floodlightcontroller.debugevent;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import java.util.Date;
+import org.junit.Test;
+import net.floodlightcontroller.debugevent.Event;
+import net.floodlightcontroller.debugevent.EventResource;
+import net.floodlightcontroller.debugevent.EventResource.EventResourceBuilder;
+import net.floodlightcontroller.debugevent.EventResource.Metadata;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
-
-import org.junit.Test;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,40 +25,63 @@ public class EventTest {
     public void testFormat() {
         River r = new River("ganges", 42);
 
-        Event e = new Event(1, 32, "test", new RiverEvent(1L, (short)10, true, "big river", 5, 4L, r), 0);
+        Event e = new Event(1L, 32, "test",
+                      new RiverEvent(DatapathId.of(1L), (short)10, true, "big river", 5, 4L, r), 10L);
 
-        Map<String, String> expected = new HashMap<String, String>();
-        expected.put("dpid", "00:00:00:00:00:00:00:01");
-        expected.put("portId", "10");
-        expected.put("valid", "true");
-        expected.put("desc", "big river");
-        expected.put("ip", "0.0.0.5");
-        expected.put("mac", "00:00:00:00:00:04");
-        expected.put("obj", "ganges/42");
+        EventResourceBuilder edb = new EventResourceBuilder();
+        edb.dataFields.add(new Metadata("dpid", "00:00:00:00:00:00:00:01"));
+        edb.dataFields.add(new Metadata("portId", "10"));
+        edb.dataFields.add(new Metadata("valid", "true"));
+        edb.dataFields.add(new Metadata("desc", "big river"));
+        edb.dataFields.add(new Metadata("ip", "0.0.0.5"));
+        edb.dataFields.add(new Metadata("mac", "00:00:00:00:00:04"));
+        edb.dataFields.add(new Metadata("obj", "ganges/42"));
+        edb.setThreadId(e.getThreadId());
+        edb.setThreadName(e.getThreadName());
+        edb.setTimeStamp(e.getTimeMs());
+        edb.setModuleEventName("test");
+        EventResource ed = edb.build();
 
-        //log.info("{} \n expected {}", e.getFormattedEvent(RiverEvent.class, "test"), expected);
-        for (Entry<String, String> elem : expected.entrySet())
-            assertEquals(elem.getValue(),
-                         e.getFormattedEvent(RiverEvent.class, "test").get(elem.getKey()));
+        // check Event.getFormattedEvent()
+        assertTrue(ed.equals(e.getFormattedEvent(RiverEvent.class, "test")));
 
         // ensure timestamp comes in ISO8601 time
-        assertEquals("1969-12-31T16:00:00.001-0800",
-                     e.getFormattedEvent(RiverEvent.class, "test2").get("Timestamp")); //1L
+        // e.g.: 1969-12-31T16:00:00.001-08:00
+        Pattern pat =
+                Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{2}:\\d{2}");
+        Date t1 = e.getFormattedEvent(RiverEvent.class, "test2").getTimestamp();
+        Matcher m1 = pat.matcher(t1.toString());
+        assertTrue(m1.matches());
 
         // ensure that cached value is not returned for incorrect class
-        for (Entry<String, String> elem : expected.entrySet())
-            assertFalse(elem.getValue().equals(
-                            e.getFormattedEvent(River.class, "test").get(elem.getKey())));
+        assertFalse(ed.equals(e.getFormattedEvent(River.class, "test")));
 
-        assertEquals("null event data or event-class does not match event-data",
-                     e.getFormattedEvent(River.class, "test").get("Error"));
-        assertEquals("null event data or event-class does not match event-data",
-                     e.getFormattedEvent(null, "test").get("Error"));
+        assertTrue(e.getFormattedEvent(River.class, "test").getDataFields().
+                   contains(new Metadata("Error",
+                   "null event data or event-class does not match event-data")));
+        assertTrue(e.getFormattedEvent(null, "test").getDataFields().contains(
+          new Metadata("Error",
+                   "null event data or event-class does not match event-data")));
+    }
+
+    @Test
+    public void testIncorrectAnnotation() {
+        Event e = new Event(1L, 32, "test",
+                            new LakeEvent(199), 11L); // dpid cannot be int
+        assertTrue(e.getFormattedEvent(LakeEvent.class, "test").getDataFields()
+          .contains(new Metadata("Error",
+                             "java.lang.Integer cannot be cast to org.projectfloodlight.openflow.types.DatapathId")));
+
+        Event e2 = new Event(1L, 32, "test",
+                            new LakeEvent2(199), 12L); // mac cannot be int
+        assertTrue(e2.getFormattedEvent(LakeEvent2.class, "test").getDataFields()
+                   .contains(new Metadata("Error",
+                                      "java.lang.Integer cannot be cast to java.lang.Long")));
     }
 
     class RiverEvent  {
         @EventColumn(name = "dpid", description = EventFieldType.DPID)
-        long dpid;
+        DatapathId dpid;
 
         @EventColumn(name = "portId", description = EventFieldType.PRIMITIVE)
         short srcPort;
@@ -75,7 +103,7 @@ public class EventTest {
 
         // Instances of RiverEvent ensure that that any internal object
         // (eg. River instances) has been copied before it is given to DebugEvents.
-        public RiverEvent(long dpid, short srcPort, boolean isValid,
+        public RiverEvent(DatapathId dpid, short srcPort, boolean isValid,
                             String desc, int ip, long mac, River passedin) {
             this.dpid = dpid;
             this.srcPort = srcPort;
@@ -127,5 +155,5 @@ public class EventTest {
         public LakeEvent2(int mac) {
             this.mac = mac;
         }
-    } 
+    }
 }

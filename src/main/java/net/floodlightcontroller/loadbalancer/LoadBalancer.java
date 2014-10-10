@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -289,7 +290,7 @@ public class LoadBalancer implements IFloodlightModule,
                         arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
-        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO, pi.getInPort(), cntx, true);
+        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO, pi.getMatch().get(MatchField.IN_PORT), cntx, true);
         log.debug("proxy ARP reply pushed as {}", IPv4.fromIPv4Address(vips.get(vipId).address));
         
         return;

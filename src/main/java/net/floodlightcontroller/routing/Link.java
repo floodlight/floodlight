@@ -100,13 +100,13 @@ public class Link implements Comparable<Link> {
         if (getClass() != obj.getClass())
             return false;
         Link other = (Link) obj;
-        if (dst != other.dst)
+        if (!dst.equals(other.dst))
             return false;
-        if (dstPort != other.dstPort)
+        if (!dstPort.equals(other.dstPort))
             return false;
-        if (src != other.src)
+        if (!src.equals(other.src))
             return false;
-        if (srcPort != other.srcPort)
+        if (!srcPort.equals(other.srcPort))
             return false;
         return true;
     }

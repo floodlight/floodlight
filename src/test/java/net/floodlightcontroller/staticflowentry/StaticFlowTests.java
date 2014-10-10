@@ -39,11 +39,19 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.util.HexString;
 
+import com.sun.org.apache.bcel.internal.generic.GETSTATIC;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockSwitchManager;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
@@ -135,7 +143,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         Match match;
         TestRule3.put(COLUMN_DL_DST, "00:20:30:40:50:60");
         TestRule3.put(COLUMN_DL_VLAN, 4096);
-        match = MatchUtils.fromString("dl_dst=00:20:30:40:50:60,dl_vlan=4096", factory.getVersion());
+        match = MatchUtils.fromString("dl_dst=00:20:30:40:50:60,dl_vlan=96", factory.getVersion());
         // setup actions
         TestRule3.put(COLUMN_ACTIONS, "output=controller");
         List<OFAction> actions = new LinkedList<OFAction>();
@@ -200,6 +208,7 @@ public class StaticFlowTests extends FloodlightTestCase {
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IStorageSourceService.class, storage);
+        fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
         Map<DatapathId, IOFSwitch> switchMap = new HashMap<DatapathId, IOFSwitch>();

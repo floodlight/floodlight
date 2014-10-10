@@ -93,7 +93,6 @@ public class FirewallTest extends FloodlightTestCase {
         DatapathId dpid = DatapathId.of(TestSwitch1DPID);
         sw = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(dpid).anyTimes();
-        expect(sw.getId().toString()).andReturn(TestSwitch1DPID).anyTimes();
         replay(sw);
         // Load the switch map
         Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();

@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +39,13 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
@@ -70,6 +76,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortFeatures;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -127,6 +134,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         ldm = new TestLinkDiscoveryManager();
         TopologyManager routingEngine = new TopologyManager();
         ldm.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
+        IDebugCounterService debugCounterService = new MockDebugCounterService();
+        IDebugEventService debugEventService = new MockDebugEventService();
         MockThreadPoolService tp = new MockThreadPoolService();
         RestApiServer restApi = new RestApiServer();
         cntx.addService(IRestApiService.class, restApi);
@@ -136,6 +145,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         cntx.addService(ITopologyService.class, ldm);
         cntx.addService(IStorageSourceService.class, new MemoryStorageSource());
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        cntx.addService(IDebugCounterService.class, debugCounterService);
+        cntx.addService(IDebugEventService.class, debugEventService);
+        cntx.addService(IOFSwitchService.class, getMockSwitchService());
         restApi.init(cntx);
         tp.init(cntx);
         routingEngine.init(cntx);
@@ -170,8 +182,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         // check invariants hold
         assertNotNull(linkDiscovery.switchLinks.get(lt.getSrc()));
         assertTrue(linkDiscovery.switchLinks.get(lt.getSrc()).contains(lt));
-        assertNotNull(linkDiscovery.portLinks.get(srcNpt));
-        assertTrue(linkDiscovery.portLinks.get(srcNpt).contains(lt));
+        assertNotNull(linkDiscovery.getPortLinks().get(srcNpt));
+        assertTrue(linkDiscovery.getPortLinks().get(srcNpt).contains(lt));
         assertNotNull(linkDiscovery.portLinks.get(dstNpt));
         assertTrue(linkDiscovery.portLinks.get(dstNpt).contains(lt));
         assertTrue(linkDiscovery.links.containsKey(lt));
@@ -290,7 +302,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         Link lt = new Link(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(1));
         NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(1));
-        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(2));
+        NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
 
         LinkInfo info;
 
@@ -422,15 +434,15 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     @Test
     public void testSwitchAdded() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
+        linkDiscovery.switchService = getMockSwitchService();
         Capture<OFMessage> wc;
         Set<OFPort> qPorts;
         OFPortDesc ofpp = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc()
         .setName("eth4242")
         .setPortNo(OFPort.of(4242))
         .setHwAddr(MacAddress.of("5c:16:c7:00:00:01"))
-        .setCurr(null)
+        .setCurr(new HashSet<OFPortFeatures>()) // random
         .build();
-        OFPort p1 = ofpp.getPortNo();
         IOFSwitch sw1 = createMockSwitch(1L);
 
         // Set switch map in floodlightProvider.
@@ -449,7 +461,8 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         // Expect switch to return those ports.
         expect(sw1.getEnabledPortNumbers()).andReturn(ports).anyTimes();
-        expect(sw1.getPort(OFPort.of(EasyMock.anyShort())).getPortNo()).andReturn(p1).anyTimes();
+        expect(sw1.getPort(OFPort.of(EasyMock.anyInt()))).andReturn(ofpp).anyTimes();
+        expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         sw1.write(capture(wc));
         expectLastCall().anyTimes();
         replay(sw1);
@@ -499,7 +512,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         // build out input packet
         pi = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setInPort(OFPort.of(1))
                 .setData(testPacketSerialized)
                 .setReason(OFPacketInReason.NO_MATCH)
                 .build();

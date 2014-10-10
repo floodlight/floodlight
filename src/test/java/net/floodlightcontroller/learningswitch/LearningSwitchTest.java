@@ -124,10 +124,13 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Build the PacketIn
         this.packetIn = factory.buildPacketIn()
             .setBufferId(OFBufferId.NO_BUFFER)
-            .setInPort(OFPort.of(1))
             .setData(this.testPacketSerialized)
             .setReason(OFPacketInReason.NO_MATCH)
             .build();
+        
+        this.learningSwitch = new LearningSwitch();
+        this.mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
+
     }
 
     @Test
@@ -136,13 +139,12 @@ public class LearningSwitchTest extends FloodlightTestCase {
         OFPacketOut po = factory.buildPacketOut()
             .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE)))
             .setBufferId(OFBufferId.NO_BUFFER)
-            .setInPort(OFPort.of(1))
             .setData(this.testPacketSerialized)
 	        .build();
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        expect(mockSwitch.getId().toString()).andReturn("00:11:22:33:44:55:66:77").anyTimes();
+        expect(mockSwitch.getId()).andReturn(DatapathId.of("00:11:22:33:44:55:66:77")).anyTimes();
         mockSwitch.write(po, null);
 
         // Start recording the replay on the mocks

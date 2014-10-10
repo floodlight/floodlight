@@ -45,6 +45,10 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.test.PacketFactory;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -124,6 +128,8 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         fmc.addService(IEntityClassifierService.class, entityClassifier);
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(ISyncService.class, mockSyncService);
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         tps.init(fmc);
         frm.init(fmc);
         deviceService.init(fmc);
@@ -167,7 +173,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac2PacketIntestPacketSerialized = mac1ToMac2PacketIntestPacket.serialize();
         mac1ToMac2PacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                         .setBufferId(OFBufferId.NO_BUFFER)
-                        .setInPort(OFPort.of(1))
                         .setData(mac1ToMac2PacketIntestPacketSerialized)
                         .setReason(OFPacketInReason.NO_MATCH)
                         .build();
@@ -188,7 +193,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac4PacketIntestPacketSerialized = mac1ToMac4PacketIntestPacket.serialize(); 
         mac1ToMac4PacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                     .setBufferId(OFBufferId.NO_BUFFER)
-                    .setInPort(OFPort.of(1))
                     .setData(mac1ToMac4PacketIntestPacketSerialized)
                     .setReason(OFPacketInReason.NO_MATCH)
                     .build();
@@ -209,7 +213,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToGwPacketIntestPacketSerialized = mac1ToGwPacketIntestPacket.serialize();
         mac1ToGwPacketIn =  OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                     .setBufferId(OFBufferId.NO_BUFFER)
-                    .setInPort(OFPort.of(1))
                     .setData(mac1ToGwPacketIntestPacketSerialized)
                     .setReason(OFPacketInReason.NO_MATCH)
                     .build();

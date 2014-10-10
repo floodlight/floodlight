@@ -43,6 +43,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.MatchUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
 import net.floodlightcontroller.util.TimedCache;
 
@@ -248,18 +249,18 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
-			//Match.Builder mb = match.createBuilder();
+			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
 
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
-			//OFPort inPort = switchPortList.get(indx - 1).getPortId();
-			//mb.setExact(MatchField.IN_PORT, inPort);
+			OFPort inPort = switchPortList.get(indx - 1).getPortId();
+			mb.setExact(MatchField.IN_PORT, inPort);
 			aob.setPort(outPort);
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
 			
 			// compile
-			fmb.setMatch(match) //mb.build()
+			fmb.setMatch(mb.build()) // was match w/o modifying input port
 			.setActions(actions)
 			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)

@@ -51,6 +51,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.sdnplatform.sync.ISyncService;
@@ -59,8 +60,13 @@ import org.sdnplatform.sync.test.MockSyncService;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -103,7 +109,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected PoolsResource poolsResource;
 	protected MembersResource membersResource;
 	private MockSyncService mockSyncService;
-
+	protected IDebugCounterService debugCounterService;
+	protected IDebugEventService debugEventService;
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
 	protected LBMember member1, member2, member3, member4;
@@ -127,6 +134,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		sfp = new StaticFlowEntryPusher();
 		storage = new MemoryStorageSource(); //dependency for sfp
 		mockSyncService = new MockSyncService();
+		debugCounterService = new MockDebugCounterService();
+		debugEventService = new MockDebugEventService();
 
 		fmc.addService(IRestApiService.class, restApi);
 		fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
@@ -140,6 +149,9 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		fmc.addService(ILoadBalancerService.class, lb);
 		fmc.addService(IStorageSourceService.class, storage);
 		fmc.addService(ISyncService.class, mockSyncService);
+		fmc.addService(IDebugCounterService.class, debugCounterService);
+		fmc.addService(IDebugEventService.class, debugEventService);
+		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
 		lb.init(fmc);
 		getMockFloodlightProvider().init(fmc);
@@ -430,8 +442,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		sw1 = EasyMock.createNiceMock(IOFSwitch.class);
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(sw1.getId().toString()).andReturn("00:00:00:00:00:01").anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+		expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
 		sw1.write(capture(wc1));
 		expectLastCall().anyTimes();
 		sw1.flush();
@@ -464,7 +476,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		replay(topology);
 
 
-
 		// Build arp packets
 		arpRequest1 = new Ethernet()
 		.setSourceMACAddress("00:00:00:00:00:01")
@@ -487,8 +498,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		arpRequest1Serialized = arpRequest1.serialize();
 
 		arpRequestPacketIn1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(1))
 				.setData(arpRequest1Serialized)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
@@ -519,7 +530,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		arpReply1Serialized = arpReply1.serialize();
 
 		List<OFAction> poactions = new ArrayList<OFAction>();
-		poactions.add(OFFactories.getFactory(OFVersion.OF_13).actions().output(arpRequestPacketIn1.getInPort(), (short) 0xffff));
+		poactions.add(OFFactories.getFactory(OFVersion.OF_13).actions().output(arpRequestPacketIn1.getMatch().get(MatchField.IN_PORT), (short) 0xffff));
 		arpReplyPacketOut1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketOut()
 				.setBufferId(OFBufferId.NO_BUFFER)
 				.setInPort(OFPort.ANY)

@@ -61,6 +61,13 @@ public class SwitchResourceBase extends ServerResource {
 
 	}
 
+	/**
+	 * Use for requests that originate from the REST server that use their context to get a
+	 * reference to the switch service.
+	 * @param switchId
+	 * @param statType
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	@LogMessageDoc(level="ERROR",
 	message="Failure retrieving statistics from switch {switch}",
@@ -70,9 +77,7 @@ public class SwitchResourceBase extends ServerResource {
 					LogMessageDoc.GENERIC_ACTION)
 	protected List<OFStatsReply> getSwitchStatistics(DatapathId switchId,
 			OFStatsType statType) {
-		IOFSwitchService switchService =
-				(IOFSwitchService) getContext().getAttributes().
-				get(IOFSwitchService.class.getCanonicalName());
+		IOFSwitchService switchService = (IOFSwitchService) getContext().getAttributes().get(IOFSwitchService.class.getCanonicalName());
 
 		IOFSwitch sw = switchService.getSwitch(switchId);
 		ListenableFuture<?> future;
