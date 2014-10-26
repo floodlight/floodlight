@@ -97,7 +97,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketInReason;import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -134,10 +136,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 	private IOFSwitch makeSwitchMock(DatapathId id) {
 		IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+		OFPortDesc mockPortDesc = createMock(OFPortDesc.class);
 		OFPort port = OFPort.of(1);
 		expect(mockSwitch.getId()).andReturn(id).anyTimes();
-		expect(mockSwitch.getId().toString()).andReturn(id.toString()).anyTimes();
-		expect(mockSwitch.getPort(OFPort.of(anyShort())).getPortNo()).andReturn(port).anyTimes();
+		expect(mockSwitch.getPort(OFPort.of(1))).andReturn(mockPortDesc).anyTimes();
+		expect(mockPortDesc.getPortNo()).andReturn(port).anyTimes();
 		return mockSwitch;
 	}
 
@@ -153,7 +156,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
 		expectLastCall().andReturn(true).anyTimes();
 		mockTopology.getL2DomainId(DatapathId.of(anyLong()));
-		expectLastCall().andReturn(1L).anyTimes();
+		expectLastCall().andReturn(DatapathId.of(1L)).anyTimes();
 		mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
 		expectLastCall().andReturn(false).anyTimes();
 		mockTopology.isConsistent(DatapathId.of(anyLong()), OFPort.of(anyShort()), DatapathId.of(anyLong()), OFPort.of(anyShort()));
@@ -294,7 +297,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		// Build the PacketIn
 		this.testARPReplyPacketIn_1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(1))
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setData(this.testARPReplyPacket_1_Srld)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
@@ -302,7 +305,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		// Build the PacketIn
 		this.testARPReplyPacketIn_2 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(1))
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setData(this.testARPReplyPacket_2_Srld)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
@@ -317,7 +320,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		// Build the PacketIn
 		this.testUDPPacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(3))
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(3)).build())
 				.setData(this.testUDPPacketSrld)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
@@ -398,8 +401,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertSame(d1, deviceManager.findDeviceByEntity(entity1));
 		assertEquals(DefaultEntityClassifier.entityClass ,
 				d1.getEntityClass());
-		assertArrayEquals(new Short[] { -1 }, d1.getVlanId());
-		assertArrayEquals(new Integer[] { }, d1.getIPv4Addresses());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) }, d1.getVlanId());
+		assertArrayEquals(new IPv4Address[] { }, d1.getIPv4Addresses());
 
 		assertEquals(1, deviceManager.getAllDevices().size());
 		verify(mockListener);
@@ -413,7 +416,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertNotSame(d1, d2);
 		assertNotSame(d1.getDeviceKey(), d2.getDeviceKey());
 		assertEquals(MockEntityClassifier.testEC, d2.getEntityClass());
-		assertArrayEquals(new Short[] { -1 }, d2.getVlanId());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) }, d2.getVlanId());
 		assertArrayEquals(new Integer[] { }, d2.getIPv4Addresses());
 
 		assertEquals(2, deviceManager.getAllDevices().size());
@@ -427,13 +430,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertNotSame(d2, d3);
 		assertEquals(d2.getDeviceKey(), d3.getDeviceKey());
 		assertEquals(MockEntityClassifier.testEC, d3.getEntityClass());
-		assertArrayEquals(new Integer[] { 1 },
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) },
 				d3.getIPv4Addresses());
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(10L), OFPort.of(1)) },
 				d3.getAttachmentPoints());
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(10L), OFPort.of(1)) },
 				d3.getAttachmentPoints(true));
-		assertArrayEquals(new Short[] { -1 },
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) },
 				d3.getVlanId());
 
 		assertEquals(2, deviceManager.getAllDevices().size());
@@ -447,11 +450,11 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertNotSame(d1, d4);
 		assertEquals(d1.getDeviceKey(), d4.getDeviceKey());
 		assertEquals(DefaultEntityClassifier.entityClass, d4.getEntityClass());
-		assertArrayEquals(new Integer[] { 1 },
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) },
 				d4.getIPv4Addresses());
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(1L), OFPort.of(1)) },
 				d4.getAttachmentPoints());
-		assertArrayEquals(new Short[] { -1 },
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) },
 				d4.getVlanId());
 
 		assertEquals(2, deviceManager.getAllDevices().size());
@@ -464,9 +467,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		Device d5 = deviceManager.learnDeviceByEntity(entity5);
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(2)) },
 				d5.getAttachmentPoints());
-		assertArrayEquals(new Short[] { (short) 4 },
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
 				d5.getVlanId());
-		assertEquals(2L, d5.getMACAddress());
+		assertEquals(MacAddress.of(2L), d5.getMACAddress());
 		assertEquals("00:00:00:00:00:02", d5.getMACAddressString());
 		verify(mockListener);
 
@@ -477,7 +480,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		Device d6 = deviceManager.learnDeviceByEntity(entity6);
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(50L), OFPort.of(3)) },
 				d6.getAttachmentPoints());
-		assertArrayEquals(new Short[] { (short) 4 },
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
 				d6.getVlanId());
 
 		assertEquals(4, deviceManager.getAllDevices().size());
@@ -492,7 +495,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertEquals(d6.getDeviceKey(), d7.getDeviceKey());
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(50L), OFPort.of(3)) },
 				d7.getAttachmentPoints());
-		assertArrayEquals(new Short[] { (short) 4 },
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
 				d7.getVlanId());
 
 		assertEquals(4, deviceManager.getAllDevices().size());
@@ -627,7 +630,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		aps = d.getAttachmentPoints();
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(1L), OFPort.of(1)) }, aps);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -640,7 +643,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(1)) }, aps);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -652,7 +655,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		aps = d.getAttachmentPoints();
 		assertArrayEquals(new SwitchPort[] {new SwitchPort(DatapathId.of(5L), OFPort.of(1)), new SwitchPort(DatapathId.of(10L), OFPort.of(1))}, aps);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -665,7 +668,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(1)),
 				new SwitchPort(DatapathId.of(50L), OFPort.of(1)) }, aps);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 	}
 
@@ -851,7 +854,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(1L), OFPort.of(1)) }, aps);
 		verifyEntityArray(new Entity[] { entity1 } , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -864,7 +867,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(1L), OFPort.of(1)) }, aps);
 		verifyEntityArray(new Entity[] { entity1 } , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -880,7 +883,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		verifyEntityArray(new Entity[] { entity1, entity3 } , (Device)d);
 		ips = d.getIPv4Addresses();
 		Arrays.sort(ips);
-		assertArrayEquals(new Integer[] { 1, 3 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1), IPv4Address.of(3) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -894,7 +897,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		verifyEntityArray(new Entity[] { entity1, entity3 } , (Device)d);
 		ips = d.getIPv4Addresses();
 		Arrays.sort(ips);
-		assertArrayEquals(new Integer[] { 1, 3 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1), IPv4Address.of(3) }, ips);
 		verify(mockListener);
 	}
 
@@ -976,7 +979,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertEquals(aps.length, 0);
 		verifyEntityArray(new Entity[] { entity0, entity1} , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -989,7 +992,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(1)) }, aps);
 		verifyEntityArray(new Entity[] { entity0, entity1, entity2 } , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -1001,7 +1004,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(1)) }, aps);
 		verifyEntityArray(new Entity[] { entity0, entity1, entity2, entity3 } , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 
 		reset(mockListener);
@@ -1015,7 +1018,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				new SwitchPort(DatapathId.of(50L), OFPort.of(1)) }, aps);
 		verifyEntityArray(new Entity[] { entity0, entity1, entity2, entity3, entity4} , (Device)d);
 		ips = d.getIPv4Addresses();
-		assertArrayEquals(new Integer[] { 1 }, ips);
+		assertArrayEquals(new IPv4Address[] { IPv4Address.of(1) }, ips);
 		verify(mockListener);
 	}
 
@@ -1186,16 +1189,16 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	private static void verifyDevice(IDevice d, long mac, Short vlan, Integer ip,
 			long swId, int port) {
 		assertNotNull(d);
-		assertEquals(mac, d.getMACAddress());
+		assertEquals(MacAddress.of(mac), d.getMACAddress());
 		if (vlan == null)
-			assertArrayEquals(new Short[0], d.getVlanId());
+			assertArrayEquals(new VlanVid[0], d.getVlanId());
 		else
-			assertArrayEquals(new Short[] { vlan }, d.getVlanId());
+			assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(vlan) }, d.getVlanId());
 
 		if (ip == null)
-			assertArrayEquals(new Integer[0], d.getIPv4Addresses());
+			assertArrayEquals(new IPv4Address[0], d.getIPv4Addresses());
 		else
-			assertArrayEquals(new Integer[] { ip }, d.getIPv4Addresses());
+			assertArrayEquals(new IPv4Address[] { IPv4Address.of(ip) }, d.getIPv4Addresses());
 
 		SwitchPort expectedAp = new SwitchPort(DatapathId.of(swId), OFPort.of(port));
 		assertArrayEquals(new SwitchPort[] { expectedAp },
@@ -1253,7 +1256,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 		// trigger the packet in
 		cntx = new FloodlightContext();
-		packetIn = packetIn.createBuilder().setInPort(OFPort.of(2)).build();
+		packetIn = packetIn.createBuilder().setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(2)).build()).build();
 		cmd = dispatchPacketIn(5L, packetIn, cntx);
 		verify(mockTopology);
 		// Verify the replay matched our expectations
@@ -1292,7 +1295,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		IDevice srcDev =
 				deviceManager.findDevice(srcMac, VlanVid.ofVlan(5), null, null, null);
 		verifyDevice(srcDev, srcMac.getLong(), (short)5, null,
-				1L, testUDPPacketIn.getInPort().getShortPortNumber());
+				1L, testUDPPacketIn.getMatch().get(MatchField.IN_PORT).getShortPortNumber());
 
 		IDevice dstDev =
 				deviceManager.findDevice(dstMac, VlanVid.ofVlan(5), null, null, null);
@@ -1422,7 +1425,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		cntxSrcDev = IDeviceService.fcStore.get(cntx,
 				IDeviceService.CONTEXT_SRC_DEVICE);
 		verifyDevice(cntxSrcDev, 1L, (short)5, null,
-				1L, testUDPPacketIn.getInPort().getShortPortNumber());
+				1L, testUDPPacketIn.getMatch().get(MatchField.IN_PORT).getShortPortNumber());
 
 		cntxDstDev = IDeviceService.fcStore.get(cntx,
 				IDeviceService.CONTEXT_DST_DEVICE);
@@ -1449,7 +1452,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		IDevice cntxSrcDev = IDeviceService.fcStore.get(cntx,
 				IDeviceService.CONTEXT_SRC_DEVICE);
 		verifyDevice(cntxSrcDev, srcMac.getLong(), (short)5, null,
-				1L, testUDPPacketIn.getInPort().getShortPortNumber());
+				1L, testUDPPacketIn.getMatch().get(MatchField.IN_PORT).getShortPortNumber());
 		IDevice cntxDstDev = IDeviceService.fcStore.get(cntx,
 				IDeviceService.CONTEXT_DST_DEVICE);
 		assertNull(cntxDstDev);

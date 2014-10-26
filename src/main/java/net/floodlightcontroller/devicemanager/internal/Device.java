@@ -733,23 +733,33 @@ public class Device implements IDevice {
     // ******
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(entities);
-        return result;
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((deviceKey == null) ? 0 : deviceKey.hashCode());
+		result = prime * result + Arrays.hashCode(entities);
+		return result;
+	}
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null) return false;
-        if (getClass() != obj.getClass()) return false;
-        Device other = (Device) obj;
-        if (!deviceKey.equals(other.deviceKey)) return false;
-        if (!Arrays.equals(entities, other.entities)) return false;
-        return true;
-    }
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Device other = (Device) obj;
+		if (deviceKey == null) {
+			if (other.deviceKey != null)
+				return false;
+		} else if (!deviceKey.equals(other.deviceKey))
+			return false;
+		if (!Arrays.equals(entities, other.entities))
+			return false;
+		return true;
+	}
 
     @Override
     public String toString() {

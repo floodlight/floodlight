@@ -537,7 +537,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setActions(poactions)
 				.setData(arpReply1Serialized)
 				.build();
-
+		sw1.write(arpReplyPacketOut1);
+		
 		lb.receive(sw1, arpRequestPacketIn1, cntx);
 		verify(sw1, topology);
 
@@ -577,7 +578,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		icmpPacketIn1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(1))
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setData(icmpPacket1Serialized)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
@@ -600,7 +601,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		icmpPacketIn2 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setInPort(OFPort.of(2))
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(2)).build())
 				.setData(icmpPacket2Serialized)
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();

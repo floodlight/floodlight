@@ -88,36 +88,36 @@ public class AttachmentPoint {
             this.lastSeen = lastSeen;
     }
 
-    /**
-     *  Hash is generated using only switch and port
-     */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + port.getPortNumber();
-        result = prime * result + (int) (sw.getLong() ^ (sw.getLong() >>> 32));
-        return result;
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((port == null) ? 0 : port.hashCode());
+		result = prime * result + ((sw == null) ? 0 : sw.hashCode());
+		return result;
+	}
 
-    /**
-     * Compares only the switch and port
-     */
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        AttachmentPoint other = (AttachmentPoint) obj;
-        if (!port.equals(other.port))
-            return false;
-        if (!sw.equals(other.sw))
-            return false;
-        return true;
-    }
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AttachmentPoint other = (AttachmentPoint) obj;
+		if (port == null) {
+			if (other.port != null)
+				return false;
+		} else if (!port.equals(other.port))
+			return false;
+		if (sw == null) {
+			if (other.sw != null)
+				return false;
+		} else if (!sw.equals(other.sw))
+			return false;
+		return true;
+	}
 
     @Override
     public String toString() {
