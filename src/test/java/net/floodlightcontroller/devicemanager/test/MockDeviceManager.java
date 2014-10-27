@@ -78,14 +78,40 @@ public class MockDeviceManager extends DeviceManagerImpl {
 		if (!processUpdates) {
 			deviceListeners.clearListeners();
 		}
+		
+		VlanVid v;
+		IPv4Address i;
+		DatapathId d;
+		OFPort p;
 
 		if (vlan != null && vlan.shortValue() <= 0)
 			vlan = null;
 		if (ipv4Address != null && ipv4Address == 0)
 			ipv4Address = null;
-		IDevice res =  learnDeviceByEntity(new Entity(MacAddress.of(macAddress), VlanVid.ofVlan(vlan),
-				IPv4Address.of(ipv4Address), DatapathId.of(switchDPID),
-				OFPort.of(switchPort), new Date()));
+		
+		if (vlan == null) {
+			v = VlanVid.ofVlan(-1);
+		} else {
+			v = VlanVid.ofVlan(vlan);
+		}
+		if (ipv4Address == null) {
+			i = IPv4Address.NONE;
+		} else {
+			i = IPv4Address.of(ipv4Address);
+		}
+		if (switchDPID == null) {
+			d = DatapathId.of(0);
+		} else {
+			d = DatapathId.of(switchDPID.longValue());
+		}
+		if (switchPort == null) {
+			p = OFPort.ZERO;
+		} else {
+			p = OFPort.of(switchPort);
+		}
+		
+		IDevice res =  learnDeviceByEntity(new Entity(MacAddress.of(macAddress), 
+				v, i, d, p, new Date()));
 		// Restore listeners
 		if (listeners != null) {
 			for (IDeviceListener listener : listeners) {

@@ -1068,7 +1068,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 			// remove the incoming switch port
 			if (pinSwitch == sid) {
-				ports.remove(pi.getInPort());
+				ports.remove((pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 			}
 
 			// we have all the switch ports to which we need to broadcast.

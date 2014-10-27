@@ -34,6 +34,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -403,8 +404,7 @@ public class LoadBalancer implements IFloodlightModule,
             DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
-                if ((sw.getId().equals(dstSwDpid)) &&
-                        (pi.getInPort().equals(dstDap.getPort()))) {
+                if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
                     on_same_if = true;
                 }
                 break;
