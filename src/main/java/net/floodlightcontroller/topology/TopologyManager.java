@@ -1276,10 +1276,10 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				Link l2 = linkArray.get(1);
 
 				// check if these two are symmetric.
-				if (l1.getSrc() != l2.getDst() ||
-						l1.getSrcPort() != l2.getDstPort() ||
-						l1.getDst() != l2.getSrc() ||
-						l1.getDstPort() != l2.getSrcPort()) {
+				if (!l1.getSrc().equals(l2.getDst()) ||
+						!l1.getSrcPort().equals(l2.getDstPort()) ||
+						!l1.getDst().equals(l2.getSrc()) ||
+						!l1.getDstPort().equals(l2.getSrcPort())) {
 					bdPort = true;
 				}
 			}

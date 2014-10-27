@@ -61,6 +61,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -394,6 +395,17 @@ public class LearningSwitch
         MacAddress sourceMac = m.get(MatchField.ETH_SRC);
         MacAddress destMac = m.get(MatchField.ETH_DST);
         OFVlanVidMatch vlan = m.get(MatchField.VLAN_VID);
+        
+        if (sourceMac == null) {
+        	sourceMac = MacAddress.NONE;
+        }
+        if (destMac == null) {
+        	destMac = MacAddress.NONE;
+        }
+        if (vlan == null) {
+        	vlan = OFVlanVidMatch.UNTAGGED;
+        }
+        
         if ((destMac.getLong() & 0xfffffffffff0L) == 0x0180c2000000L) {
             if (log.isTraceEnabled()) {
                 log.trace("ignoring packet addressed to 802.1D/Q reserved addr: switch {} vlan {} dest MAC {}",
@@ -403,7 +415,8 @@ public class LearningSwitch
         }
         if ((sourceMac.getLong() & 0x010000000000L) == 0) {
             // If source MAC is a unicast address, learn the port for this MAC/VLAN
-            this.addToPortMap(sw, sourceMac, vlan.getVlanVid(), pi.getInPort());
+        	OFPort inPort = (pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+            this.addToPortMap(sw, sourceMac, vlan.getVlanVid(), inPort);
         }
 
         // Now output flow-mod and/or packet

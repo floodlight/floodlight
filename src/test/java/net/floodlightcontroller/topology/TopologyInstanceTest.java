@@ -153,7 +153,7 @@ public class TopologyInstanceTest {
             else if (r[4] == TUNNEL_LINK)
                 type = ILinkDiscovery.LinkType.TUNNEL;
 
-            topologyManager.addOrUpdateLink(DatapathId.of(r[0]), OFPort.of((short)r[1]), DatapathId.of(r[2]), OFPort.of((short)r[3]), type);
+            topologyManager.addOrUpdateLink(DatapathId.of(r[0]), OFPort.of(r[1]), DatapathId.of(r[2]), OFPort.of(r[3]), type);
         }
         topologyManager.createNewInstance();
     }

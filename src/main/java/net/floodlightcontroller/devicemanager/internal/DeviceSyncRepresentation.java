@@ -13,22 +13,33 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
 
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.IPv4Serializer;
+import net.floodlightcontroller.core.web.serializers.MacSerializer;
+import net.floodlightcontroller.core.web.serializers.OFPortSerializer;
+import net.floodlightcontroller.core.web.serializers.VlanVidSerializer;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 public class DeviceSyncRepresentation {
     public static class SyncEntity implements Comparable<SyncEntity> {
         @JsonProperty
+        @JsonSerialize(using = MacSerializer.class)
         public MacAddress macAddress;
         @JsonProperty
+        @JsonSerialize(using = IPv4Serializer.class)
         public IPv4Address ipv4Address;
         @JsonProperty
+        @JsonSerialize(using = VlanVidSerializer.class)
         public VlanVid vlan;
         @JsonProperty
+        @JsonSerialize(using = DPIDSerializer.class)
         public DatapathId switchDPID;
         @JsonProperty
+        @JsonSerialize(using = OFPortSerializer.class)
         public OFPort switchPort;
         @JsonProperty
         public Date lastSeenTimestamp;

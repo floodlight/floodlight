@@ -676,8 +676,8 @@ public class Device implements IDevice {
     public VlanVid[] getSwitchPortVlanIds(SwitchPort swp) {
         TreeSet<VlanVid> vals = new TreeSet<VlanVid>();
         for (Entity e : entities) {
-            if (e.switchDPID == swp.getSwitchDPID()
-                    && e.switchPort == swp.getPort()) {
+            if (e.switchDPID.equals(swp.getSwitchDPID())
+                    && e.switchPort.equals(swp.getPort())) {
                 if (e.getVlan() == null)
                     vals.add(VlanVid.ofVlan(-1)); //TODO @Ryan is this the correct way to represent an untagged vlan?
                 else
