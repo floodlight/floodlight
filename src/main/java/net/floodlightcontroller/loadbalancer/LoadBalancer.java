@@ -102,7 +102,6 @@ public class LoadBalancer implements IFloodlightModule,
     protected IRestApiService restApiService;
     
     protected IDebugCounterService debugCounterService;
-    protected OFMessageDamper messageDamper;
     protected IDeviceService deviceManagerService;
     protected IRoutingService routingEngineService;
     protected ITopologyService topologyService;
@@ -235,7 +234,7 @@ public class LoadBalancer implements IFloodlightModule,
                     pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
                    
                     // packet out based on table rule
-                    pushPacket(pkt, sw, pi.getBufferId(), pi.getInPort(), OFPort.TABLE,
+                    pushPacket(pkt, sw, pi.getBufferId(), pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
                                 cntx, true);
 
                     return Command.STOP;
@@ -291,7 +290,7 @@ public class LoadBalancer implements IFloodlightModule,
                         arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
-        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO, pi.getMatch().get(MatchField.IN_PORT), cntx, true);
+        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, pi.getMatch().get(MatchField.IN_PORT), cntx, true);
         log.debug("proxy ARP reply pushed as {}", IPv4.fromIPv4Address(vips.get(vipId).address));
         
         return;
@@ -324,7 +323,7 @@ public class LoadBalancer implements IFloodlightModule,
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).build());
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
 
         pob.setActions(actions);
         
@@ -345,12 +344,8 @@ public class LoadBalancer implements IFloodlightModule,
             pob.setData(packetData);
         }
 
-        try {
-            //TODO @Ryan debugCounterService.updatePktOutFMCounterStoreLocal(sw, pob.build());
-            messageDamper.write(sw, pob.build(), cntx, flush);
-        } catch (IOException e) {
-            log.error("Failure writing packet out", e);
-        }
+        //TODO @Ryan debugCounterService.updatePktOutFMCounterStoreLocal(sw, pob.build());
+        sw.write(pob.build());
     }
 
     /**
@@ -470,11 +465,11 @@ public class LoadBalancer implements IFloodlightModule,
                     // out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
                     
                     if (routeIn != null) {
-                        pushStaticVipRoute(true, routeIn, client, member, sw.getId());
+                        pushStaticVipRoute(true, routeIn, client, member, sw);
                     }
                     
                     if (routeOut != null) {
-                        pushStaticVipRoute(false, routeOut, client, member, sw.getId());
+                        pushStaticVipRoute(false, routeOut, client, member, sw);
                     }
 
                 }
@@ -497,7 +492,7 @@ public class LoadBalancer implements IFloodlightModule,
      * @param LBMember member
      * @param long pinSwitch
      */
-    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, DatapathId pinSwitch) {
+    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {
@@ -508,7 +503,7 @@ public class LoadBalancer implements IFloodlightModule,
                String matchString = null;
                String actionString = null;
                
-               OFFlowMod.Builder fmb = switchService.getSwitch(pinSwitch).getOFFactory().buildFlowAdd();
+               OFFlowMod.Builder fmb = pinSwitch.getOFFactory().buildFlowAdd();
 
                fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
                fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
@@ -526,7 +521,7 @@ public class LoadBalancer implements IFloodlightModule,
                                + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
                                + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
 
-                   if (sw == pinSwitch) {
+                   if (sw.equals(pinSwitch.getId())) {
                        actionString = "set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
                                 + "set-dst-mac="+member.macString+","
                                 + "output="+path.get(i+1).getPortId();
@@ -543,7 +538,7 @@ public class LoadBalancer implements IFloodlightModule,
                                + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
                                + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
 
-                   if (sw == pinSwitch) {
+                   if (sw.equals(pinSwitch.getId())) {
                        actionString = ActionUtils.STR_NW_SRC_SET + "="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
                                + ActionUtils.STR_DL_SRC_SET + "="+vips.get(member.vipId).proxyMac.toString()+","
                                + ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
@@ -559,7 +554,7 @@ public class LoadBalancer implements IFloodlightModule,
 
                Match match = null;
                try {
-                   match = MatchUtils.fromString(matchString, switchService.getSwitch(sw).getOFFactory().getVersion());
+                   match = MatchUtils.fromString(matchString, pinSwitch.getOFFactory().getVersion());
                } catch (IllegalArgumentException e) {
                    log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + matchString, entryName, swString);
                }
@@ -796,10 +791,6 @@ public class LoadBalancer implements IFloodlightModule,
         topologyService = context.getServiceImpl(ITopologyService.class);
         sfpService = context.getServiceImpl(IStaticFlowEntryPusherService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
-        
-        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY, 
-                                            EnumSet.of(OFType.FLOW_MOD),
-                                            OFMESSAGE_DAMPER_TIMEOUT);
         
         vips = new HashMap<String, LBVip>();
         pools = new HashMap<String, LBPool>();

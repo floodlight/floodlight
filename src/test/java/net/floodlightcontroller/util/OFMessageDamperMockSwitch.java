@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
@@ -59,7 +58,6 @@ import com.google.common.util.concurrent.ListenableFuture;
  */
 public class OFMessageDamperMockSwitch implements IOFSwitch {
     OFMessage writtenMessage;
-    FloodlightContext writtenContext;
 
     public OFMessageDamperMockSwitch() {
         reset();
@@ -68,19 +66,15 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     /* reset this mock. I.e., clear the stored message previously written */
     public void reset() {
         writtenMessage = null;
-        writtenContext = null;
     }
 
     /* assert that a message was written to this switch and that the
      * written message and context matches the expected values
      * @param expected
-     * @param expectedContext
      */
-    public void assertMessageWasWritten(OFMessage expected,
-                                        FloodlightContext expectedContext) {
+    public void assertMessageWasWritten(OFMessage expected) {
         assertNotNull("No OFMessage was written", writtenMessage);
         assertEquals(expected, writtenMessage);
-        assertEquals(expectedContext, writtenContext);
     }
 
     /*
@@ -89,8 +83,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     public void assertNoMessageWritten() {
         assertNull("OFMessage was written but didn't expect one",
                       writtenMessage);
-        assertNull("There was a context but didn't expect one",
-                      writtenContext);
     }
 
     /*
@@ -208,14 +200,13 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
 	@Override
 	public void write(OFMessage m) {
-		// TODO Auto-generated method stub
-		
+		writtenMessage = m;
+		// TODO Auto-generated method stub	
 	}
 
 	@Override
 	public void write(Iterable<OFMessage> msglist) {
 		// TODO Auto-generated method stub
-		
 	}
 
 	@Override

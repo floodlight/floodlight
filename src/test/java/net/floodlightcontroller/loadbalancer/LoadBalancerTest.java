@@ -115,12 +115,15 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
 	protected LBMember member1, member2, member3, member4;
+	private OFFactory factory;
 
 	@Override
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
 
+		factory = OFFactories.getFactory(OFVersion.OF_13);
+		
 		lb = new LoadBalancer();
 
 		cntx = new FloodlightContext();
@@ -155,7 +158,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
 		lb.init(fmc);
-		getMockFloodlightProvider().init(fmc);
+		//getMockFloodlightProvider().init(fmc);
 		entityClassifier.init(fmc);
 		frm.init(fmc);
 		tps.init(fmc);
@@ -170,7 +173,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		replay(topology);
 
 		lb.startUp(fmc);
-		getMockFloodlightProvider().startUp(fmc);
+		//getMockFloodlightProvider().startUp(fmc);
 		entityClassifier.startUp(fmc);
 		frm.startUp(fmc);
 		tps.startUp(fmc);
@@ -427,7 +430,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		testCreateMember();
 
 		IOFSwitch sw1;
-		OFFactory factory;
 
 		IPacket arpRequest1, arpReply1, icmpPacket1, icmpPacket2;
 
@@ -443,19 +445,14 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
 
 		sw1 = EasyMock.createNiceMock(IOFSwitch.class);
-		factory = EasyMock.createNiceMock(OFFactory.class);
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
-		expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
-		expect(factory.buildFlowAdd()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowAdd()).anyTimes();
-		expect(factory.buildFlowDelete()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowDelete()).anyTimes();
-		expect(factory.buildFlowModify()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowModify()).anyTimes();
+		expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
 		sw1.write(capture(wc1));
 		expectLastCall().anyTimes();
 		sw1.flush();
 		expectLastCall().anyTimes();
 		
-		replay(factory);
 		replay(sw1);
 		sfp.switchAdded(DatapathId.of(1L));
 		
@@ -482,20 +479,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(4))).andReturn(true).anyTimes();
 		replay(topology);
-		
-		
-		reset(sw1);
-		reset(factory);
-		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
-		expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
-		sw1.write(capture(wc1));
-		expect(factory.buildFlowAdd()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowAdd()).anyTimes();
-		expect(factory.buildFlowDelete()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowDelete()).anyTimes();
-		expect(factory.buildFlowModify()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowModify()).anyTimes();
-		replay(factory);
-		replay(sw1);
-
 
 		// Build arp packets
 		arpRequest1 = new Ethernet()
@@ -518,8 +501,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		arpRequest1Serialized = arpRequest1.serialize();
 
-		arpRequestPacketIn1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
-				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
+		arpRequestPacketIn1 = factory.buildPacketIn()
+				.setMatch(factory.buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setBufferId(OFBufferId.NO_BUFFER)
 				.setData(arpRequest1Serialized)
 				.setReason(OFPacketInReason.NO_MATCH)
@@ -551,12 +534,13 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		arpReply1Serialized = arpReply1.serialize();
 
 		List<OFAction> poactions = new ArrayList<OFAction>();
-		poactions.add(OFFactories.getFactory(OFVersion.OF_13).actions().output(arpRequestPacketIn1.getMatch().get(MatchField.IN_PORT), (short) 0xffff));
-		arpReplyPacketOut1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketOut()
+		poactions.add(factory.actions().output(arpRequestPacketIn1.getMatch().get(MatchField.IN_PORT), Integer.MAX_VALUE));
+		arpReplyPacketOut1 = factory.buildPacketOut()
 				.setBufferId(OFBufferId.NO_BUFFER)
 				.setInPort(OFPort.ANY)
 				.setActions(poactions)
 				.setData(arpReply1Serialized)
+				.setXid(3)
 				.build();
 		sw1.write(arpReplyPacketOut1);
 		

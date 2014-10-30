@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Set;
 
-import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.LogicalOFMessageCategory;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -108,31 +106,29 @@ public class OFMessageDamper {
     }        
     
     /**
-     * write the messag to the switch according to our dampening settings
+     * write the message to the switch according to our dampening settings
      * @param sw
      * @param msg
-     * @param cntx
      * @return true if the message was written to the switch, false if
      * the message was dampened. 
      * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) throws IOException {
-        return write(sw, msg, cntx, false);
+    public boolean write(IOFSwitch sw, OFMessage msg) throws IOException {
+        return write(sw, msg, false);
     }
     
     /**
-     * write the messag to the switch according to our dampening settings
+     * write the message to the switch according to our dampening settings
      * @param sw
      * @param msg
-     * @param cntx
-     * @param flush true to flush the packet immidiately
+     * @param flush true to flush the packet immediately
      * @return true if the message was written to the switch, false if
      * the message was dampened. 
      * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg, FloodlightContext cntx, boolean flush) throws IOException {
-        if (! msgTypesToCache.contains(msg.getType())) {
-            sw.write(msg, LogicalOFMessageCategory.MAIN);
+    public boolean write(IOFSwitch sw, OFMessage msg, boolean flush) throws IOException {
+        if (!msgTypesToCache.contains(msg.getType())) {
+            sw.write(msg);
             if (flush) {
                 sw.flush();
             }
