@@ -3,11 +3,6 @@ package net.floodlightcontroller.debugevent;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.text.DateFormat;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.Date;
-
 import org.junit.Test;
 
 import net.floodlightcontroller.debugevent.Event;
@@ -48,13 +43,15 @@ public class EventTest {
         // check Event.getFormattedEvent()
         assertTrue(ed.equals(e.getFormattedEvent(RiverEvent.class, "test")));
 
+        /* Why does it matter? Java's built-in Date does not format in ISO8601...
         // ensure timestamp comes in ISO8601 time
         // e.g.: 1969-12-31T16:00:00.001-08:00
         Pattern pat =
                 Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{2}:\\d{2}");
         Date t1 = e.getFormattedEvent(RiverEvent.class, "test2").getTimestamp();
         Matcher m1 = pat.matcher(t1.toString());
-        //TODO @Ryan does the date-time format really matter? assertTrue(m1.matches());
+        assertTrue(m1.matches());
+        */
 
         // ensure that cached value is not returned for incorrect class
         assertFalse(ed.equals(e.getFormattedEvent(River.class, "test")));
