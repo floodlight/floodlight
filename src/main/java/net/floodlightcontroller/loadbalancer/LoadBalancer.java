@@ -16,12 +16,10 @@
 
 package net.floodlightcontroller.loadbalancer;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -77,7 +75,6 @@ import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
-import net.floodlightcontroller.util.OFMessageDamper;
 
 /**
  * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
@@ -539,9 +536,9 @@ public class LoadBalancer implements IFloodlightModule,
                                + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
 
                    if (sw.equals(pinSwitch.getId())) {
-                       actionString = ActionUtils.STR_NW_SRC_SET + "="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
-                               + ActionUtils.STR_DL_SRC_SET + "="+vips.get(member.vipId).proxyMac.toString()+","
-                               + ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
+                       actionString = ActionUtils.STR_FIELD_SET + "=" + MatchUtils.STR_NW_SRC + MatchUtils.SET_FIELD_DELIM + IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
+                               + ActionUtils.STR_FIELD_SET + "=" + MatchUtils.STR_DL_SRC + MatchUtils.SET_FIELD_DELIM + vips.get(member.vipId).proxyMac.toString()+","
+                               + ActionUtils.STR_OUTPUT + "=" + path.get(i+1).getPortId();
                    } else {
                        actionString = ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
                    }

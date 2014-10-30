@@ -29,6 +29,7 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -562,6 +563,12 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		// Skip arpRequest2 test - in reality this will happen, but for unit test the same logic
 		// is already validated with arpRequest1 test above
 		//
+		
+		// Keep the StaticFlowEntryPusher happy with a switch in the switch service
+		Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>(1);
+		switches.put(DatapathId.of(1), sw1);
+		getMockSwitchService().setSwitches(switches);
+
 
 		// Build icmp packets
 		icmpPacket1 = new Ethernet()
