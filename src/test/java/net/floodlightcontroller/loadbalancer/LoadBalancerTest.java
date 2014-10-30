@@ -37,6 +37,7 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -426,6 +427,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		testCreateMember();
 
 		IOFSwitch sw1;
+		OFFactory factory;
 
 		IPacket arpRequest1, arpReply1, icmpPacket1, icmpPacket2;
 
@@ -441,16 +443,22 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
 
 		sw1 = EasyMock.createNiceMock(IOFSwitch.class);
+		factory = EasyMock.createNiceMock(OFFactory.class);
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 		expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
+		expect(factory.buildFlowAdd()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowAdd()).anyTimes();
+		expect(factory.buildFlowDelete()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowDelete()).anyTimes();
+		expect(factory.buildFlowModify()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowModify()).anyTimes();
 		sw1.write(capture(wc1));
 		expectLastCall().anyTimes();
 		sw1.flush();
 		expectLastCall().anyTimes();
-
+		
+		replay(factory);
 		replay(sw1);
 		sfp.switchAdded(DatapathId.of(1L));
+		
 		verify(sw1);
 
 		/* Test plan:
@@ -474,6 +482,19 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(4))).andReturn(true).anyTimes();
 		replay(topology);
+		
+		
+		reset(sw1);
+		reset(factory);
+		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+		expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
+		sw1.write(capture(wc1));
+		expect(factory.buildFlowAdd()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowAdd()).anyTimes();
+		expect(factory.buildFlowDelete()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowDelete()).anyTimes();
+		expect(factory.buildFlowModify()).andReturn(OFFactories.getFactory(OFVersion.OF_13).buildFlowModify()).anyTimes();
+		replay(factory);
+		replay(sw1);
 
 
 		// Build arp packets

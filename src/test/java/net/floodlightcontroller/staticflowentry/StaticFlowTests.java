@@ -39,7 +39,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.util.HexString;
 
-import com.sun.org.apache.bcel.internal.generic.GETSTATIC;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -47,11 +46,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
-import net.floodlightcontroller.core.test.MockSwitchManager;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
@@ -128,6 +122,7 @@ public class StaticFlowTests extends FloodlightTestCase {
     static Map<String,Object> TestRule3;
     static OFFlowMod FlowMod3;
     private StaticFlowEntryPusher staticFlowEntryPusher;
+    private IOFSwitchService switchService;
     private IOFSwitch mockSwitch;
     private Capture<OFMessage> writeCapture;
     private Capture<FloodlightContext> contextCapture;
@@ -190,6 +185,7 @@ public class StaticFlowTests extends FloodlightTestCase {
     public void setUp() throws Exception {
         super.setUp();
         staticFlowEntryPusher = new StaticFlowEntryPusher();
+        switchService = getMockSwitchService();
         storage = createStorageWithFlowEntries();
         dpid = HexString.toLong(TestSwitch1DPID);
 
@@ -218,6 +214,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         RestApiServer restApi = new RestApiServer();
         fmc.addService(IRestApiService.class, restApi);
+        fmc.addService(IOFSwitchService.class, switchService);
         restApi.init(fmc);
         staticFlowEntryPusher.init(fmc);
         staticFlowEntryPusher.startUp(fmc);    // again, to hack unittest

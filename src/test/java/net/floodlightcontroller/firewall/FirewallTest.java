@@ -51,6 +51,7 @@ import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
@@ -218,7 +219,7 @@ public class FirewallTest extends FloodlightTestCase {
         // Build the PacketIn
         this.packetIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setInPort(OFPort.of(1))
+                .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
                 .setData(serializedPacket)
                 .setReason(OFPacketInReason.NO_MATCH)
                 .build();

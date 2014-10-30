@@ -238,7 +238,7 @@ public class LearningSwitch
         if (command == OFFlowModCommand.DELETE) {
         	fmb = sw.getOFFactory().buildFlowDelete();
         } else {
-        	fmb = sw.getOFFactory().buildFlowModify();
+        	fmb = sw.getOFFactory().buildFlowAdd();
         }
         fmb.setMatch(match);
         fmb.setCookie((U64.of(LearningSwitch.LEARNING_SWITCH_COOKIE)));
@@ -246,7 +246,7 @@ public class LearningSwitch
         fmb.setHardTimeout(LearningSwitch.FLOWMOD_DEFAULT_HARD_TIMEOUT);
         fmb.setPriority(LearningSwitch.FLOWMOD_PRIORITY);
         fmb.setBufferId(bufferId);
-        fmb.setOutPort((command == OFFlowModCommand.DELETE) ? outPort : OFPort.ANY);
+        fmb.setOutPort((command == OFFlowModCommand.DELETE) ? OFPort.ANY : outPort);
         Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
         if (command != OFFlowModCommand.DELETE) {
         	sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
@@ -263,7 +263,7 @@ public class LearningSwitch
         // type/len are set because it is OFActionOutput,
         // and port, max_len are arguments to this constructor
         List<OFAction> al = new ArrayList<OFAction>();
-        al.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).build());
+        al.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
         fmb.setActions(al);
 
         if (log.isTraceEnabled()) {
@@ -295,7 +295,7 @@ public class LearningSwitch
         // The assumption here is (sw) is the switch that generated the
         // packet-in. If the input port is the same as output port, then
         // the packet-out should be ignored.
-        if (pi.getInPort().equals(outport)) {
+        if ((pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
             if (log.isDebugEnabled()) {
                 log.debug("Attempting to do packet-out to the same " +
                           "interface as packet-in. Dropping packet. " +
@@ -314,7 +314,7 @@ public class LearningSwitch
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outport).build());
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outport).setMaxLen(Integer.MAX_VALUE).build());
 
         pob.setActions(actions);
        
@@ -328,7 +328,7 @@ public class LearningSwitch
             pob.setBufferId(pi.getBufferId());
         }
 
-        pob.setInPort(pi.getInPort());
+        pob.setInPort(pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
         // If the buffer id is none or the switch doesn's support buffering
         // we send the data with the packet out
@@ -361,11 +361,11 @@ public class LearningSwitch
 
         // Set buffer_id, in_port, actions_len
         pob.setBufferId(packetInMessage.getBufferId());
-        pob.setInPort(packetInMessage.getInPort());
+        pob.setInPort(sw.getOFFactory().getVersion() == OFVersion.OF_10 ? packetInMessage.getInPort() : packetInMessage.getMatch().get(MatchField.IN_PORT));
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>(1);
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(egressPort).build());
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(egressPort).setMaxLen(Integer.MAX_VALUE).build());
         pob.setActions(actions);
 
         // set data - only if buffer_id == -1
@@ -448,17 +448,22 @@ public class LearningSwitch
             if (LEARNING_SWITCH_REVERSE_FLOW) {
             	Match.Builder mb2 = m.createBuilder();
             	mb2.setExact(MatchField.ETH_SRC, m.get(MatchField.ETH_DST))                         
-            	.setExact(MatchField.ETH_DST, m.get(MatchField.ETH_SRC))                         
+            	.setExact(MatchField.ETH_DST, m.get(MatchField.ETH_SRC))     
+            	.setExact(MatchField.VLAN_VID, m.get(MatchField.VLAN_VID))
+            	.setExact(MatchField.ETH_TYPE, m.get(MatchField.ETH_TYPE))
             	.setExact(MatchField.IPV4_SRC, m.get(MatchField.IPV4_DST))                         
             	.setExact(MatchField.IPV4_DST, m.get(MatchField.IPV4_SRC));
             	if (m.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
-            		mb2.setExact(MatchField.TCP_SRC, m.get(MatchField.TCP_DST))
+            		mb2.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+            		.setExact(MatchField.TCP_SRC, m.get(MatchField.TCP_DST))
             		.setExact(MatchField.TCP_DST, m.get(MatchField.TCP_SRC));
             	} else if (m.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
-            		mb2.setExact(MatchField.UDP_SRC, m.get(MatchField.UDP_DST))
+            		mb2.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+            		.setExact(MatchField.UDP_SRC, m.get(MatchField.UDP_DST))
             		.setExact(MatchField.UDP_DST, m.get(MatchField.UDP_SRC));
             	} else if (m.get(MatchField.IP_PROTO).equals(IpProtocol.SCTP)) {
-            		mb2.setExact(MatchField.SCTP_SRC, m.get(MatchField.SCTP_DST))
+            		mb2.setExact(MatchField.IP_PROTO, IpProtocol.SCTP)
+            		.setExact(MatchField.SCTP_SRC, m.get(MatchField.SCTP_DST))
             		.setExact(MatchField.SCTP_DST, m.get(MatchField.SCTP_SRC));
             	} else {
             		log.debug("In writing reverse LS flow, could not determine L4 proto (was int " + m.get(MatchField.IP_PROTO).getIpProtocolNumber() + ")");
@@ -503,13 +508,16 @@ public class LearningSwitch
     	.setExact(MatchField.IPV4_SRC, match.get(MatchField.IPV4_DST))                         
     	.setExact(MatchField.IPV4_DST, match.get(MatchField.IPV4_SRC));
     	if (match.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
-    		mb.setExact(MatchField.TCP_SRC, match.get(MatchField.TCP_DST))
+    		mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+    		.setExact(MatchField.TCP_SRC, match.get(MatchField.TCP_DST))
     		.setExact(MatchField.TCP_DST, match.get(MatchField.TCP_SRC));
     	} else if (match.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
-    		mb.setExact(MatchField.UDP_SRC, match.get(MatchField.UDP_DST))
+    		mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+    		.setExact(MatchField.UDP_SRC, match.get(MatchField.UDP_DST))
     		.setExact(MatchField.UDP_DST, match.get(MatchField.UDP_SRC));
     	} else if (match.get(MatchField.IP_PROTO).equals(IpProtocol.SCTP)) {
-    		mb.setExact(MatchField.SCTP_SRC, match.get(MatchField.SCTP_DST))
+    		mb.setExact(MatchField.IP_PROTO, IpProtocol.SCTP)
+    		.setExact(MatchField.SCTP_SRC, match.get(MatchField.SCTP_DST))
     		.setExact(MatchField.SCTP_DST, match.get(MatchField.SCTP_SRC));
     	} else {
     		log.debug("In writing reverse LS flow, could not determine L4 proto (was int " + mb.get(MatchField.IP_PROTO).getIpProtocolNumber() + ")");
