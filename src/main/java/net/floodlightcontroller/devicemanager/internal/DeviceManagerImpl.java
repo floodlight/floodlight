@@ -2482,10 +2482,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 					 for(SyncEntity se: storedDevice.getEntities()) {
 						 try {
 							 // Do we have a device for this entity??
-									 IDevice d = findDevice(se.macAddress, se.vlan,
-											 se.ipv4Address,
-											 se.switchDPID,
-											 se.switchPort);
+									 IDevice d = findDevice(MacAddress.of(se.macAddress), VlanVid.ofVlan(se.vlan),
+											 IPv4Address.of(se.ipv4Address),
+											 DatapathId.of(se.switchDPID),
+											 OFPort.of(se.switchPort));
 									 if (d != null) {
 										 found = true;
 										 break;

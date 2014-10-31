@@ -163,7 +163,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				log.debug("write drop flow-mod sw={} match={} flow-mod={}",
 						new Object[] { sw, mb.build(), fmb.build() });
 			}
-			boolean dampened = messageDamper.write(sw, fmb.build(), cntx);
+			boolean dampened = messageDamper.write(sw, fmb.build());
 			log.debug("OFMessage dampened: {}", dampened);
 		} catch (IOException e) {
 			log.error("Failure writing drop flow mod", e);
@@ -365,7 +365,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
 						new Object[] {sw, pi, pob.build()});
 			}
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 		} catch (IOException e) {
 			log.error("Failure writing PacketOut switch={} packet-in={} packet-out={}",
 					new Object[] {sw, pi, pob.build()}, e);

@@ -278,7 +278,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 							fmb.getMatch().get(MatchField.IN_PORT),
 							outPort });
 				}
-				messageDamper.write(sw, fmb.build(), cntx);
+				messageDamper.write(sw, fmb.build());
 				if (doFlush) {
 					sw.flush();
 					//TODO @Ryan counterStore.updateFlush();
@@ -386,7 +386,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
 		try {
 			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 		} catch (IOException e) {
 			log.error("Failure writing packet out", e);
 		}
@@ -428,7 +428,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 						"interfaces={} packet-out={}",
 						new Object[] {sw.getId(), outPorts, pob.build()});
 			}
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 
 		} catch (IOException e) {
 			log.error("Failure writing packet out", e);
