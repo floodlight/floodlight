@@ -24,6 +24,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -53,12 +55,19 @@ public class PacketFactory {
             MacAddress hostMac) {
         byte[] serializedPacket = DhcpDiscoveryRequestEthernet(hostMac).serialize();
         OFFactory factory = sw.getOFFactory();
-        OFPacketIn packetIn = factory.buildPacketIn()
-                .setInPort(OFPort.of(1))
+        OFPacketIn.Builder packetInBuilder = factory.buildPacketIn();
+        if (factory.getVersion() == OFVersion.OF_10) {
+        	packetInBuilder
+        		.setInPort(OFPort.of(1))
                 .setData(serializedPacket)
-                .setReason(OFPacketInReason.NO_MATCH)
-                .build();
-        return packetIn;
+                .setReason(OFPacketInReason.NO_MATCH);
+        } else {
+        	packetInBuilder
+        	.setMatch(factory.buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
+            .setData(serializedPacket)
+            .setReason(OFPacketInReason.NO_MATCH);
+        }
+        return packetInBuilder.build();
     }
 
     /**

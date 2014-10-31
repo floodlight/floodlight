@@ -98,8 +98,6 @@ public class Entity implements Comparable<Entity> {
      */
     protected Date activeSince;
     
-    private int hashCode = 0;
-
     // ************
     // Constructors
     // ************
@@ -157,7 +155,7 @@ public class Entity implements Comparable<Entity> {
     
     @JsonIgnore
     public boolean hasSwitchPort() {
-        return (switchDPID != null && switchPort != null);
+        return (switchDPID != null && !switchDPID.equals(DatapathId.NONE) && switchPort != null && !switchPort.equals(OFPort.ZERO));
     }
 
     public Date getLastSeenTimestamp() {

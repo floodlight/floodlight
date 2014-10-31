@@ -144,15 +144,17 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         getMockFloodlightProvider().startUp(fmc);
         vns.startUp(fmc);
         entityClassifier.startUp(fmc);
-
+        expect(topology.isAttachmentPointPort(DatapathId.of(0), OFPort.ZERO)).andReturn(anyBoolean()).anyTimes();
         topology.addListener(deviceService);
         expectLastCall().times(1);
         replay(topology);
+        
         // Mock switches
         //fastWilcards mocked as this constant
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+        expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         replay(sw1);
 
         // Mock packets
