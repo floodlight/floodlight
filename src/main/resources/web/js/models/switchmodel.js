@@ -38,8 +38,8 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " desc");
-                //console.log(data[self.id][0]);
-                self.set(data[self.id][0]);
+                //console.log(data['desc']);
+                self.set(data['desc']);
             }
         });
 
@@ -49,8 +49,8 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " aggregate");
-                //console.log(data[self.id][0]);
-                self.set(data[self.id][0]);
+                //console.log(data['aggregate']);
+                self.set(data['aggregate']);
             }
         });
         self.trigger('add');
@@ -278,8 +278,8 @@ window.SwitchCollection = Backbone.Collection.extend({
                 //console.log("old_ids" + old_ids);
                 
                 _.each(data, function(sw) {
-                    old_ids = _.without(old_ids, sw['dpid']);
-                    self.add({id: sw['dpid'], inetAddress: sw.inetAddress,
+                    old_ids = _.without(old_ids, sw['switchDPID']);
+                    self.add({id: sw['switchDPID'], inetAddress: sw.inetAddress,
                               connectedSince: new Date(sw.connectedSince).toLocaleString()})});
                 
                 // old_ids now holds switches that no longer exist; remove them
