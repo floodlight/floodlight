@@ -73,7 +73,6 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " ports");
-                console.log(data['port']);
                 var old_ids = self.ports.pluck('id');
                 //console.log("old_ids" + old_ids);
 
@@ -103,7 +102,6 @@ window.Switch = Backbone.Model.extend({
                     console.log("removing port " + p);
                     self.remove({id:p});
                 });
-		console.log(self.ports);
             }
         }),
         $.ajax({
@@ -111,7 +109,7 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " features");
-                console.log(data['portDesc']);
+                //console.log(data['portDesc']);
                 // update port models
                 _.each(data['portDesc'], function(p) {
                     p.id = self.id+'-'+p.portNumber;
@@ -168,7 +166,7 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " flows");
-                var flows = data[self.id];
+                var flows = data['flows'];
                 //console.log(flows);
 
                 // create flow models
@@ -178,81 +176,31 @@ window.Switch = Backbone.Model.extend({
 
                     // build human-readable match
                     f.matchHTML = '';
-                    if(!(f.match.wildcards & (1<<0))) { // input port
-                        f.matchHTML += "port=" + f.match.inputPort + ", ";
+                    if(f.hasOwnProperty('match')) {
+                        _.each(f.match, function(value , key) {
+                            f.matchHTML += key + "=" + value +" ";
+                        },f);
                     }
-                    if(!(f.match.wildcards & (1<<1))) { // VLAN ID
-                        f.matchHTML += "VLAN=" + f.match.dataLayerVirtualLan + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<20))) { // VLAN prio
-                        f.matchHTML += "prio=" + f.match.dataLayerVirtualLanPriorityCodePoint  + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<2))) { // src MAC
-                        f.matchHTML += "src=<a href='/host/" + f.match.dataLayerSource + "'>" +
-                        f.match.dataLayerSource + "</a>, ";
-                    }
-                    if(!(f.match.wildcards & (1<<3))) { // dest MAC
-                        f.matchHTML += "dest=<a href='/host/" + f.match.dataLayerDestination + "'>" +
-                        f.match.dataLayerDestination + "</a>, ";
-                    }
-                    if(!(f.match.wildcards & (1<<4))) { // Ethertype
-                        // TODO print a human-readable name instead of hex
-                        f.matchHTML += "ethertype=" + f.match.dataLayerType + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<5))) { // IP protocol
-                        // TODO print a human-readable name
-                        f.matchHTML += "proto=" + f.match.networkProtocol + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<6))) { // TCP/UDP source port
-                        f.matchHTML += "IP src port=" + f.match.transportSource + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<7))) { // TCP/UDP dest port
-                        f.matchHTML += "IP dest port=" + f.match.transportDestination  + ", ";
-                    }
-                    if(!(f.match.wildcards & (32<<8))) { // src IP
-                        f.matchHTML += "src=" + f.match.networkSource  + ", ";
-                    }
-                    if(!(f.match.wildcards & (32<<14))) { // dest IP
-                        f.matchHTML += "dest=" + f.match.networkDestination  + ", ";
-                    }
-                    if(!(f.match.wildcards & (1<<21))) { // IP TOS
-                        f.matchHTML += "TOS=" + f.match.networkTypeOfService  + ", ";
-                    }
-                    // remove trailing ", "
                     f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 2);
-
-                    // build human-readable action list
-                    f.actionText = _.reduce(f.actions, function (memo, a) {
-                        switch (a.type) {
-                            case "OUTPUT":
-                                return memo + "output " + a.port + ', ';
-                            case "OPAQUE_ENQUEUE":
-                                return memo + "enqueue " + a.port + ':' + a.queueId +  ', ';
-                            case "STRIP_VLAN":
-                                return memo + "strip VLAN, ";
-                            case "SET_VLAN_ID":
-                                return memo + "VLAN=" + a.virtualLanIdentifier + ', ';
-                            case "SET_VLAN_PCP":
-                                return memo + "prio=" + a.virtualLanPriorityCodePoint + ', ';
-                            case "SET_DL_SRC":
-                                return memo + "src=" + a.dataLayerAddress + ', ';
-                            case "SET_DL_DST":
-                                return memo + "dest=" + a.dataLayerAddress + ', ';
-                            case "SET_NW_TOS":
-                                return memo + "TOS=" + a.networkTypeOfService + ', ';
-                            case "SET_NW_SRC":
-                                return memo + "src=" + a.networkAddress + ', ';
-                            case "SET_NW_DST":
-                                return memo + "dest=" + a.networkAddress + ', ';
-                            case "SET_TP_SRC":
-                                return memo + "src port=" + a.transportPort + ', ';
-                            case "SET_TP_DST":
-                                return memo + "dest port=" + a.transportPort + ', ';
+                    
+                    f.applyActionText = '';
+                    f.writeActionText = '';
+                    if(f.hasOwnProperty('instructions')) {
+                        if(f.instructions.hasOwnProperty('apply_actions')) {
+                            _.each(f.instructions.apply_actions, function(value, key) {
+                                f.applyActionText  += key + ":" + value +" ";
+                            },f);
                         }
-                    }, "");
-                    // remove trailing ", "
-                    f.actionText = f.actionText.substr(0, f.actionText.length - 2);
+                        if(f.instructions.hasOwnProperty('write_actions')) {
+                            _.each(f.instructions.write_actions, function(value, key) {
+                                f.writeActionText  += key + ":" + value +" ";
+                            },f);
+                        }
 
+                    }
+                    // build human-readable action list
+                    f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 2);
+                    f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 2);
                     //console.log(f);
                     self.flows.add(f, {silent: true});
                 });

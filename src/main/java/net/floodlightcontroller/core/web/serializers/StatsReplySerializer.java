@@ -107,7 +107,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         switch (reply.getStatType()) {
         case PORT:
             // handle port
-			serializePortReply((List<OFPortStatsReply>) reply.getValues(), jGen);
+            serializePortReply((List<OFPortStatsReply>) reply.getValues(), jGen);
             break;
         case QUEUE:
             // handle queue
@@ -146,7 +146,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         case METER_FEATURES:
             break;
         case PORT_DESC:
-			serializePortDescReply((List<OFPortDescStatsReply>) reply.getValues(), jGen);
+            serializePortDescReply((List<OFPortDescStatsReply>) reply.getValues(), jGen);
             break;
         default:
              break;
@@ -155,49 +155,53 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
     }
 
     public void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-		OFPortStatsReply portReply = portReplies.get(0); // we will get only one PortReply and it will contains many OFPortStatsEntry ?
+        OFPortStatsReply portReply = portReplies.get(0); // we will get only one PortReply and it will contains many OFPortStatsEntry ?
         jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
-		jGen.writeFieldName("port");
-		jGen.writeStartArray();
-		for(OFPortStatsEntry entry : portReply.getEntries()) {
-			jGen.writeStartObject();
-			jGen.writeStringField("portNumber",entry.getPortNo().toString());
-			jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
-			jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
-			jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
-			jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
-			jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
-			jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
-			jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
-			jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
-			jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
-			jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
-			jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
-			jGen.writeNumberField("collisions", entry.getCollisions().getValue());
-			if (OFVersion.OF_13 == entry.getVersion()) {
-				jGen.writeNumberField("durationSec", entry.getDurationSec());
-				jGen.writeNumberField("durationNsec", entry.getDurationNsec());
-			}
-			jGen.writeEndObject();
-		}
-		jGen.writeEndArray();
-	}
+        jGen.writeFieldName("port");
+        jGen.writeStartArray();
+        for(OFPortStatsEntry entry : portReply.getEntries()) {
+            jGen.writeStartObject();
+            jGen.writeStringField("portNumber",entry.getPortNo().toString());
+            jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
+            jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
+            jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
+            jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
+            jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
+            jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
+            jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
+            jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
+            jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
+            jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
+            jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
+            jGen.writeNumberField("collisions", entry.getCollisions().getValue());
+            if (OFVersion.OF_13 == entry.getVersion()) {
+                jGen.writeNumberField("durationSec", entry.getDurationSec());
+                jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+            }
+            jGen.writeEndObject();
+        }
+        jGen.writeEndArray();
+    }
     public void serializeFlowReply(List<OFFlowStatsReply> flowReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
         int flowCount = 0;
         for (OFFlowStatsReply flowReply : flowReplies) { // for each flow stats reply
+            //Dose the switch will reply multiple OFFlowStatsReply ?
+            //Or we juse need to use the first item of the list.
             List<OFFlowStatsEntry> entries = flowReply.getEntries();
+            jGen.writeFieldName("flows");
+            jGen.writeStartArray();
             for (OFFlowStatsEntry entry : entries) { // for each flow
+                jGen.writeStartObject();
                 // list flow stats/info
-                jGen.writeObjectFieldStart("flow" + Integer.toString(flowCount++)); // need to have different object names or JSON parser might only show the last one
                 jGen.writeStringField("version", entry.getVersion().toString()); // return the enum name
                 jGen.writeNumberField("cookie", entry.getCookie().getValue());
-                jGen.writeNumberField("table_id", entry.getTableId().getValue());
-                jGen.writeNumberField("packet_count", entry.getPacketCount().getValue());
-                jGen.writeNumberField("byte_count", entry.getByteCount().getValue());
-                jGen.writeNumberField("duration_sec", entry.getDurationSec());
+                jGen.writeNumberField("tableId", entry.getTableId().getValue());
+                jGen.writeNumberField("packetCount", entry.getPacketCount().getValue());
+                jGen.writeNumberField("byteCount", entry.getByteCount().getValue());
+                jGen.writeNumberField("durationSeconds", entry.getDurationSec());
                 jGen.writeNumberField("priority", entry.getPriority());
-                jGen.writeNumberField("idle_timeout_sec", entry.getIdleTimeout());
-                jGen.writeNumberField("hard_timeout_sec", entry.getHardTimeout());
+                jGen.writeNumberField("idleTimeoutSec", entry.getIdleTimeout());
+                jGen.writeNumberField("hardTimeoutSec", entry.getHardTimeout());
                 jGen.writeNumberField("flags", entry.getFlags());
                 // list flow matches
                 jGen.writeObjectFieldStart("match");
@@ -372,6 +376,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
                 } // end not-empty instructions (else)
                 jGen.writeEndObject();
             } // end for each OFFlowStatsReply entry
+            jGen.writeEndArray();
         } // end for each OFStatsReply
     } // end method
 
@@ -577,55 +582,55 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
     }
 
     public void serializePortDescReply(List<OFPortDescStatsReply> portDescReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-		OFPortDescStatsReply portDescReply = portDescReplies.get(0); // we will get only one PortDescReply and it will contains many OFPortDescStatsEntry ?
+        OFPortDescStatsReply portDescReply = portDescReplies.get(0); // we will get only one PortDescReply and it will contains many OFPortDescStatsEntry ?
         jGen.writeStringField("version", portDescReply.getVersion().toString()); //return the enum name
-		jGen.writeFieldName("portDesc");
-		jGen.writeStartArray();
-		for(OFPortDesc entry : portDescReply.getEntries()) {
-			jGen.writeStartObject();
-			jGen.writeStringField("portNumber",entry.getPortNo().toString());
-			jGen.writeStringField("hardwareAddress", entry.getHwAddr().toString());
-			jGen.writeStringField("name", entry.getName());
-			switch(entry.getVersion()) {
-				case OF_10:
-					jGen.writeNumberField("config", OFPortConfigSerializerVer10.toWireValue(entry.getConfig()));
-					jGen.writeNumberField("state", OFPortStateSerializerVer10.toWireValue(entry.getState()));
-					jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getCurr()));
-					jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getAdvertised()));
-					jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getSupported()));
-					jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getPeer()));
-					break;
-				case OF_11:
-					jGen.writeNumberField("config", OFPortConfigSerializerVer11.toWireValue(entry.getConfig()));
-					jGen.writeNumberField("state", OFPortStateSerializerVer11.toWireValue(entry.getState()));
-					jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getCurr()));
-					jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getAdvertised()));
-					jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getSupported()));
-					jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getPeer()));
-					break;
-				case OF_12:
-					jGen.writeNumberField("config", OFPortConfigSerializerVer12.toWireValue(entry.getConfig()));
-					jGen.writeNumberField("state", OFPortStateSerializerVer12.toWireValue(entry.getState()));
-					jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getCurr()));
-					jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getAdvertised()));
-					jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getSupported()));
-					jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getPeer()));
-					break;
-				case OF_13:
-					jGen.writeNumberField("config", OFPortConfigSerializerVer13.toWireValue(entry.getConfig()));
-					jGen.writeNumberField("state", OFPortStateSerializerVer13.toWireValue(entry.getState()));
-					jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getCurr()));
-					jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getAdvertised()));
-					jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getSupported()));
-					jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getPeer()));
-					break;
-			}
-			if (OFVersion.OF_10 != entry.getVersion()) {
-				jGen.writeNumberField("currSpeed",entry.getCurrSpeed());
-				jGen.writeNumberField("maxSpeed",entry.getMaxSpeed());
-			}
-			jGen.writeEndObject();
-		}
-		jGen.writeEndArray();
-	}
+        jGen.writeFieldName("portDesc");
+        jGen.writeStartArray();
+        for(OFPortDesc entry : portDescReply.getEntries()) {
+            jGen.writeStartObject();
+            jGen.writeStringField("portNumber",entry.getPortNo().toString());
+            jGen.writeStringField("hardwareAddress", entry.getHwAddr().toString());
+            jGen.writeStringField("name", entry.getName());
+            switch(entry.getVersion()) {
+                case OF_10:
+                    jGen.writeNumberField("config", OFPortConfigSerializerVer10.toWireValue(entry.getConfig()));
+                    jGen.writeNumberField("state", OFPortStateSerializerVer10.toWireValue(entry.getState()));
+                    jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getCurr()));
+                    jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getAdvertised()));
+                    jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getSupported()));
+                    jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getPeer()));
+                    break;
+                case OF_11:
+                    jGen.writeNumberField("config", OFPortConfigSerializerVer11.toWireValue(entry.getConfig()));
+                    jGen.writeNumberField("state", OFPortStateSerializerVer11.toWireValue(entry.getState()));
+                    jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getCurr()));
+                    jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getAdvertised()));
+                    jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getSupported()));
+                    jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getPeer()));
+                    break;
+                case OF_12:
+                    jGen.writeNumberField("config", OFPortConfigSerializerVer12.toWireValue(entry.getConfig()));
+                    jGen.writeNumberField("state", OFPortStateSerializerVer12.toWireValue(entry.getState()));
+                    jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getCurr()));
+                    jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getAdvertised()));
+                    jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getSupported()));
+                    jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getPeer()));
+                    break;
+                case OF_13:
+                    jGen.writeNumberField("config", OFPortConfigSerializerVer13.toWireValue(entry.getConfig()));
+                    jGen.writeNumberField("state", OFPortStateSerializerVer13.toWireValue(entry.getState()));
+                    jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getCurr()));
+                    jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getAdvertised()));
+                    jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getSupported()));
+                    jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getPeer()));
+                    break;
+            }
+            if (OFVersion.OF_10 != entry.getVersion()) {
+                jGen.writeNumberField("currSpeed",entry.getCurrSpeed());
+                jGen.writeNumberField("maxSpeed",entry.getMaxSpeed());
+            }
+            jGen.writeEndObject();
+        }
+        jGen.writeEndArray();
+    }
 } 
