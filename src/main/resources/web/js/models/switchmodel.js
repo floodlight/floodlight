@@ -85,7 +85,7 @@ window.Switch = Backbone.Model.extend({
                     p.id = self.id+'-'+p.portNumber;
                     old_ids = _.without(old_ids, p.id);
                     p.dropped = p.receiveDropped + p.transmitDropped;
-                    p.errors = p.receiveCRCErrors + p.receiveErrors + p.receiveOverrunErrors +
+                    p.errors = p.receiveCRCErrors + p.receiveFrameErrors + p.receiveOverrunErrors +
                         p.receiveFrameErrors + p.transmitErrors;
                     // this is a knda kludgy way to merge models
                     var m = self.ports.get(p.id);
@@ -107,13 +107,13 @@ window.Switch = Backbone.Model.extend({
             }
         }),
         $.ajax({
-            url:hackBase + "/wm/core/switch/" + self.id + '/features/json',
+            url:hackBase + "/wm/core/switch/" + self.id + '/port-desc/json',
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " features");
-                //console.log(data[self.id]);
+                console.log(data['portDesc']);
                 // update port models
-                _.each(data[self.id].ports, function(p) {
+                _.each(data['portDesc'], function(p) {
                     p.id = self.id+'-'+p.portNumber;
                     if(p.name != p.portNumber) {
                         p.name = p.portNumber + ' (' + p.name + ')';

@@ -127,6 +127,8 @@ public class SwitchResourceBase extends ServerResource {
 			case METER_CONFIG:
 			case METER_FEATURES:
 			case PORT_DESC:
+				req = sw.getOFFactory().buildPortDescStatsRequest()
+				.build();
 			case TABLE_FEATURES:
 			default:
 				log.error("Stats Request Type {} not implemented yet", statType.name());
