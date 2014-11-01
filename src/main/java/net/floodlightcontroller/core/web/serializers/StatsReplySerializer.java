@@ -36,6 +36,8 @@ import net.floodlightcontroller.util.MatchUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.*;
@@ -87,6 +89,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         switch (reply.getStatType()) {
         case PORT:
             // handle port
+			serializePortReply((List<OFPortStatsReply>) reply.getValues(), jGen);
             break;
         case QUEUE:
             // handle queue
@@ -132,6 +135,43 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         jGen.writeEndObject();
     }
 
+    public void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
+		OFPortStatsReply portReply = portReplies.get(0); // we will get only one PortReply and it will contains many OFPortStatsEntry ?
+        jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
+		jGen.writeFieldName("port");
+		jGen.writeStartArray();
+		for(OFPortStatsEntry entry : portReply.getEntries()) {
+			jGen.writeStartObject();
+			jGen.writeStringField("portNumber",entry.getPortNo().toString());
+			jGen.writeNumberField("receive_packets", entry.getRxPackets().getValue());
+			jGen.writeNumberField("transmit_packets", entry.getTxPackets().getValue());
+			jGen.writeNumberField("receive_bytes", entry.getRxBytes().getValue());
+			jGen.writeNumberField("transmit_bytes", entry.getTxBytes().getValue());
+			jGen.writeNumberField("receive_dropped", entry.getRxDropped().getValue());
+			jGen.writeNumberField("transmit_dropped", entry.getTxDropped().getValue());
+			jGen.writeNumberField("receive_errors", entry.getRxErrors().getValue());
+			jGen.writeNumberField("transmit_errors", entry.getTxErrors().getValue());
+			jGen.writeNumberField("receive_frame_err", entry.getRxFrameErr().getValue());
+			jGen.writeNumberField("receive_over_err", entry.getRxOverErr().getValue());
+			jGen.writeNumberField("receive_crc_err", entry.getRxCrcErr().getValue());
+			jGen.writeNumberField("collisions", entry.getCollisions().getValue());
+			if (OFVersion.OF_10 == entry.getVersion()) {
+				jGen.writeNumberField("durationSec", entry.getDurationSec());
+				jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+			}
+			jGen.writeEndObject();
+		}
+		jGen.writeEndArray();
+//v10
+	//10,11,12 use same format
+    // OF message fields
+/*
+    private final OFPort portNo;
+//v13 has two additional fields
+    private final long durationSec;
+    private final long durationNsec;
+*/
+	}
     public void serializeFlowReply(List<OFFlowStatsReply> flowReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
         int flowCount = 0;
         for (OFFlowStatsReply flowReply : flowReplies) { // for each flow stats reply
@@ -507,7 +547,6 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 
     public void serializeDescReply(List<OFDescStatsReply> descReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
         OFDescStatsReply descReply = descReplies.get(0); // There are only one descReply from the switch
-        logger.error("reply = {}", descReply);
         jGen.writeObjectFieldStart("desc"); 
         jGen.writeStringField("version", descReply.getVersion().toString()); //return the enum name
         jGen.writeStringField("manufacturerDescription", descReply.getMfrDesc()); 
@@ -519,7 +558,6 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
     }
     public void serializeAggregateReply(List<OFAggregateStatsReply> aggregateReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
         OFAggregateStatsReply aggregateReply = aggregateReplies.get(0); // There are only one aggregateReply from the switch
-        logger.error("reply = {}", aggregateReply);
         jGen.writeObjectFieldStart("aggregate"); 
         jGen.writeStringField("version", aggregateReply.getVersion().toString()); //return the enum name
         jGen.writeNumberField("flowCount", aggregateReply.getFlowCount());

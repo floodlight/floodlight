@@ -73,12 +73,12 @@ window.Switch = Backbone.Model.extend({
             dataType:"json",
             success:function (data) {
                 //console.log("fetched  switch " + self.id + " ports");
-                //console.log(data[self.id]);
+                console.log(data['port']);
                 var old_ids = self.ports.pluck('id');
                 //console.log("old_ids" + old_ids);
 
                 // create port models
-                _.each(data[self.id], function(p) {
+                _.each(data['port'], function(p) {
                     // workaround for REST serialization signed/unsigned bug
                     if(p.portNumber < 0) {p.portNumber = 65536 + p.portNumber};
                     
@@ -103,6 +103,7 @@ window.Switch = Backbone.Model.extend({
                     console.log("removing port " + p);
                     self.remove({id:p});
                 });
+		console.log(self.ports);
             }
         }),
         $.ajax({
