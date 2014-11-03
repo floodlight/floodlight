@@ -91,7 +91,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 				result.setStatType(OFStatsType.EXPERIMENTER);
 				break;
 			case OFStatsTypeStrings.PORT_DESC:
-				values = getSwitchFeaturesReply(switchId);
+				values = getSwitchStatistics(switchId, OFStatsType.PORT_DESC);
 				result.setStatType(OFStatsType.PORT_DESC);
 				break;
 			case OFStatsTypeStrings.GROUP:
