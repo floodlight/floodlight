@@ -57,10 +57,8 @@ import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
-import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.DebugEventService;
 import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -2850,8 +2848,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	}
 
 
-	private void assertDeviceIps(Integer[] expected, IDevice d) {
-		List<Integer> expectedList = Arrays.asList(expected);
+	private void assertDeviceIps(IPv4Address[] expected, IDevice d) {
+		List<IPv4Address> expectedList = Arrays.asList(expected);
 		Collections.sort(expectedList);
 		List<IPv4Address> actualList = Arrays.asList(d.getIPv4Addresses());
 		Collections.sort(actualList);
@@ -2916,8 +2914,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 		// Query for the Device1. Make sure we have the two IPs we stored.
 		IDevice d = getSingleDeviceFromDeviceManager(1L);
-		//assertDeviceIps(new IPv4Address[] {IPv4Address.of(3), IPv4Address.of(33)}, d);
-		assertArrayEquals(new Short[] { Ethernet.VLAN_UNTAGGED }, d.getVlanId());
+		assertDeviceIps(new IPv4Address[] {IPv4Address.of(3), IPv4Address.of(33)}, d);
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) }, d.getVlanId());
 		swp = new SwitchPort(DatapathId.of(4L), OFPort.of(5));
 		assertArrayEquals(new SwitchPort[] { swp }, d.getAttachmentPoints());
 
@@ -2925,7 +2923,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		// Query for the Device1. Make sure we have the two IPs we stored.
 		d = getSingleDeviceFromDeviceManager(2L);
 		assertArrayEquals(new Integer[0], d.getIPv4Addresses());
-		assertArrayEquals(new Short[] { Ethernet.VLAN_UNTAGGED }, d.getVlanId());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(-1) }, d.getVlanId());
 		swp = new SwitchPort(DatapathId.of(4L), OFPort.of(5));
 		assertArrayEquals(new SwitchPort[] { swp }, d.getAttachmentPoints());
 
