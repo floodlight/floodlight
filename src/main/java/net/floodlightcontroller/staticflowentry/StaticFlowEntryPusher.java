@@ -466,41 +466,55 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				entriesFromStorage.put(dpid, new HashMap<String, OFFlowMod>());
 
 			List<OFMessage> outQueue = new ArrayList<OFMessage>();
+			
+			/* For every flow per dpid, decide how to "add" the flow. */
 			for (String entry : entriesToAdd.get(dpid).keySet()) {
 				OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
 				OFFlowMod oldFlowMod = null;
+				
 				String dpidOldFlowMod = entry2dpid.get(entry);
 				if (dpidOldFlowMod != null) {
 					oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
 				}
-				// pre-existing case. should modify or delete, but not add
-				if (oldFlowMod != null && newFlowMod != null) {
-					// set the new flow mod to modify a pre-existing rule if these fields match
+				
+				/* Modify, which can be either a Flow MODIFY_STRICT or a Flow DELETE_STRICT with a side of Flow ADD */
+				if (oldFlowMod != null && newFlowMod != null) { 
+					/* MODIFY_STRICT b/c the match is still the same */
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
-							&& oldFlowMod.getCookie() == newFlowMod.getCookie()
+							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
 							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
+						entriesFromStorage.get(dpid).put(entry, newFlowMod);
+						entry2dpid.put(entry, dpid);
 						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
-						// if they don't match delete the old flow
+						outQueue.add(newFlowMod);
+					/* DELETE_STRICT and then ADD b/c the match is now different */
 					} else {
 						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
+						OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
+						/* If the flow's dpid and the current switch we're looking at are the same, add to the queue. */
 						if (dpidOldFlowMod.equals(dpid)) {
 							outQueue.add(oldFlowMod);
+							outQueue.add(addTmp); 
+						/* Otherwise, go ahead and send the flows now (since queuing them will send to the wrong switch). */
 						} else {
 							writeOFMessageToSwitch(DatapathId.of(dpidOldFlowMod), oldFlowMod);
+							writeOFMessageToSwitch(DatapathId.of(dpid), FlowModUtils.toFlowAdd(newFlowMod)); 
 						}
+						entriesFromStorage.get(dpid).put(entry, addTmp);
+						entry2dpid.put(entry, dpid);			
 					}
-				}
-				// new case. should add a flow, not modify or delete
-				if (newFlowMod != null) {
+				/* Add a brand-new flow with ADD */
+				} else if (newFlowMod != null && oldFlowMod == null) {
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
 					outQueue.add(addTmp);
-					entry2dpid.put(entry, dpid);
-				} else {
+				/* Something strange happened, so remove the flow */
+				} else if (newFlowMod == null) { 
 					entriesFromStorage.get(dpid).remove(entry);
 					entry2dpid.remove(entry);
 				}
 			}
+			/* Batch-write all queued messages to the switch */
 			writeOFMessagesToSwitch(DatapathId.of(dpid), outQueue);
 		}
 	}

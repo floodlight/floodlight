@@ -32,10 +32,6 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -45,15 +41,12 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
-import org.easymock.EasyMock;
-import org.hamcrest.core.AnyOf;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
-import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -90,8 +83,6 @@ public class LearningSwitchTest extends FloodlightTestCase {
     private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
     private FloodlightModuleContext fmc;
     private RestApiServer restApiService;
-    private IDebugCounterService dcs;
-    private IDebugEventService des;
 
     @Override
     @Before
@@ -168,8 +159,6 @@ public class LearningSwitchTest extends FloodlightTestCase {
         
         this.learningSwitch = new LearningSwitch();
         this.restApiService = new RestApiServer();
-        this.dcs = new MockDebugCounterService();
-        this.des = new MockDebugEventService();
         
         this.fmc = new FloodlightModuleContext();
         fmc.addService(IOFSwitchService.class, getMockSwitchService());

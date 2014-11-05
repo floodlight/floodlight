@@ -645,32 +645,24 @@ public class ActionUtils {
 			explanation="A static flow entry contained an invalid subaction",
 			recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	private static OFActionOutput decode_output(String actionToDecode, OFVersion version, Logger log) {
-		Matcher n = Pattern.compile("((controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(actionToDecode);
+		Matcher n = Pattern.compile("((all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(actionToDecode);
 		OFActionOutput.Builder ab = OFFactories.getFactory(version).actions().buildOutput();
 		OFPort port = OFPort.ANY;
 		if (n.matches()) {
-			if (n.group(1) != null) {
-				try {
-					port = OFPort.of(Integer.parseInt(n.group(1)));
-				}
-				catch (NumberFormatException e) {
-					log.debug("Invalid port in: '{}' (error ignored)", actionToDecode);
-					return null;
-				}
-			}
-			else if (n.group(2) != null)
+			if (n.group(1) != null && n.group(1).equals("all")) 
 				port = OFPort.ALL;
-			else if (n.group(3) != null)
+			else if (n.group(1) != null && n.group(1).equals("controller"))
 				port = OFPort.CONTROLLER;
-			else if (n.group(4) != null)
+			else if (n.group(1) != null && n.group(1).equals("local"))
 				port = OFPort.LOCAL;
-			else if (n.group(5) != null)
+			else if (n.group(1) != null && n.group(1).equals("ingress-port"))
 				port = OFPort.IN_PORT;
-			else if (n.group(6) != null)
+			else if (n.group(1) != null && n.group(1).equals("normal"))
 				port = OFPort.NORMAL;
-			else if (n.group(7) != null)
+			else if (n.group(1) != null && n.group(1).equals("flood"))
 				port = OFPort.FLOOD;
 			ab.setPort(port);
+			ab.setMaxLen(Integer.MAX_VALUE);
 			log.debug("action {}", ab.build());
 			return ab.build();
 		}
@@ -678,6 +670,7 @@ public class ActionUtils {
 			try {
 				port = OFPort.of(Integer.parseInt(actionToDecode));
 				ab.setPort(port);
+				ab.setMaxLen(Integer.MAX_VALUE);
 				return ab.build();
 			} catch (NumberFormatException e) {
 				log.error("Could not parse Integer port: '{}'", actionToDecode);
