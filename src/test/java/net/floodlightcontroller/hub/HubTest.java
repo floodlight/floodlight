@@ -38,6 +38,7 @@ import net.floodlightcontroller.test.FloodlightTestCase;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
@@ -105,6 +106,7 @@ public class HubTest extends FloodlightTestCase {
     public void testFloodNoBufferId() throws Exception {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         
         // build our expected flooded packetOut
     	OFActionOutput ao = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput().setPort(OFPort.FLOOD).build();
@@ -160,6 +162,7 @@ public class HubTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         Capture<OFPacketOut> wc1 = new Capture<OFPacketOut>(CaptureType.ALL);
         mockSwitch.write(capture(wc1));
 
