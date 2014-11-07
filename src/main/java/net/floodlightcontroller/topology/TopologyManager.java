@@ -924,14 +924,14 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected Command dropFilter(DatapathId sw, OFPacketIn pi,
 			FloodlightContext cntx) {
 		Command result = Command.CONTINUE;
-		OFPort port = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
 		// If the input port is not allowed for data traffic, drop everything.
 		// BDDP packets will not reach this stage.
-		if (isAllowed(sw, port) == false) {
+		if (isAllowed(sw, inPort) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring packet because of topology " +
-						"restriction on switch={}, port={}", sw.getLong(), port.getPortNumber());
+						"restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
 				result = Command.STOP;
 			}
 		}
@@ -1068,7 +1068,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 			// remove the incoming switch port
 			if (pinSwitch == sid) {
-				ports.remove((pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+				ports.remove((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 			}
 
 			// we have all the switch ports to which we need to broadcast.

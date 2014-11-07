@@ -27,6 +27,8 @@ import java.util.Map;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
@@ -65,6 +67,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Amer Tahir
  * @edited KC Wang
+ * @edited Ryan Izard
  */
 public class Firewall implements IFirewallService, IOFMessageListener,
         IFloodlightModule {
@@ -455,7 +458,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
     protected RuleMatchPair matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         FirewallRule matched_rule = null;
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        AllowDropPair adp = new AllowDropPair();
+        AllowDropPair adp = new AllowDropPair(sw.getOFFactory());
 
         synchronized (rules) {
             Iterator<FirewallRule> iter = this.rules.iterator();
@@ -468,7 +471,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 // check if rule matches
                 // AllowDropPair adp's allow and drop matches will modified with what matches
                 // TODO @Ryan might need to re-init adp each time (look into later) 
-                if (rule.matchesThisPacket(sw.getId(), pi.getInPort(), eth, adp) == true) {
+                if (rule.matchesThisPacket(sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), eth, adp) == true) {
                     matched_rule = rule;
                     break;
                 }
@@ -502,7 +505,8 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
+        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        
         // Allowing L2 broadcast + ARP broadcast request (also deny malformed
         // broadcasts -> L2 broadcast + L3 unicast)
         if (eth.isBroadcast() == true) {
@@ -517,7 +521,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     logger.trace("Allowing broadcast traffic for PacketIn={}", pi);
                 }
                                         
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.MULTICAST);
                 decision.addToContext(cntx);
@@ -526,7 +530,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     logger.trace("Blocking malformed broadcast traffic for PacketIn={}", pi);
                 }
 
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(),
+                decision = new RoutingDecision(sw.getId(), inPort,
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.DROP);
                 decision.addToContext(cntx);
@@ -552,7 +556,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
             // Drop the packet if we don't have a rule allowing or dropping it or if we explicitly drop it
             if (rule == null || rule.action == FirewallRule.FirewallAction.DROP) {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE), 
                 		IRoutingDecision.RoutingAction.DROP);
                 decision.setMatch(rmp.match);
@@ -566,7 +570,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 }
             // Found a rule and the rule is not a drop, so allow the packet
             } else {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
                 decision.setMatch(rmp.match);

@@ -99,7 +99,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     private OFMessage createHubPacketOut(IOFSwitch sw, OFMessage msg) {
     	OFPacketIn pi = (OFPacketIn) msg;
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+        pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
         // set actions
         OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();

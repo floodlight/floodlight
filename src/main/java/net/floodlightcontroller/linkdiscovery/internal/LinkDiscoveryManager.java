@@ -565,7 +565,7 @@ IFloodlightModule, IInfoProvider {
 			FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
 				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		if (eth.getPayload() instanceof BSN) {
 			BSN bsn = (BSN) eth.getPayload();
 			if (bsn == null) return Command.STOP;
@@ -595,7 +595,7 @@ IFloodlightModule, IInfoProvider {
 		}
 
 		// If packet-in is from a quarantine port, stop processing.
-		NodePortTuple npt = new NodePortTuple(sw, (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+		NodePortTuple npt = new NodePortTuple(sw, inPort);
 		if (quarantineQueue.contains(npt)) {
 			ctrQuarantineDrops.increment();
 			return Command.STOP;

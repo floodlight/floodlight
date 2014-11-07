@@ -81,7 +81,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
      * The default rule is to match on anything.
      */
     public FirewallRule() {
-        this.in_port = OFPort.ZERO; 
+        this.in_port = OFPort.ANY; 
         this.dl_src = MacAddress.NONE;
         this.nw_src_prefix_and_mask = IPv4AddressWithMask.NONE;
         //this.nw_src_maskbits = 0; 

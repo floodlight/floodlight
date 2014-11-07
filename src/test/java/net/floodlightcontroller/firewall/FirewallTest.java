@@ -29,6 +29,7 @@ import java.util.Map;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
@@ -94,6 +95,7 @@ public class FirewallTest extends FloodlightTestCase {
         DatapathId dpid = DatapathId.of(TestSwitch1DPID);
         sw = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(dpid).anyTimes();
+        expect(sw.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         replay(sw);
         // Load the switch map
         Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
@@ -103,6 +105,7 @@ public class FirewallTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class,
                 mockFloodlightProvider);
+        fmc.addService(IOFSwitchService.class, mockSwitchManager);
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);

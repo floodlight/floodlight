@@ -291,11 +291,13 @@ public class LearningSwitch
         if (pi == null) {
             return;
         }
+        
+        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
         // The assumption here is (sw) is the switch that generated the
         // packet-in. If the input port is the same as output port, then
         // the packet-out should be ignored.
-        if ((pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
+        if (inPort.equals(outport)) {
             if (log.isDebugEnabled()) {
                 log.debug("Attempting to do packet-out to the same " +
                           "interface as packet-in. Dropping packet. " +
@@ -328,7 +330,7 @@ public class LearningSwitch
             pob.setBufferId(pi.getBufferId());
         }
 
-        pob.setInPort(pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        pob.setInPort(inPort);
 
         // If the buffer id is none or the switch doesn's support buffering
         // we send the data with the packet out
@@ -361,7 +363,7 @@ public class LearningSwitch
 
         // Set buffer_id, in_port, actions_len
         pob.setBufferId(packetInMessage.getBufferId());
-        pob.setInPort(sw.getOFFactory().getVersion() == OFVersion.OF_10 ? packetInMessage.getInPort() : packetInMessage.getMatch().get(MatchField.IN_PORT));
+        pob.setInPort(packetInMessage.getVersion().compareTo(OFVersion.OF_12) < 0 ? packetInMessage.getInPort() : packetInMessage.getMatch().get(MatchField.IN_PORT));
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>(1);
@@ -392,6 +394,7 @@ public class LearningSwitch
     private Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         // Read in packet data headers by using OFMatch
         Match m = pi.getMatch();
+        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
         MacAddress sourceMac = m.get(MatchField.ETH_SRC);
         MacAddress destMac = m.get(MatchField.ETH_DST);
         OFVlanVidMatch vlan = m.get(MatchField.VLAN_VID);
@@ -415,7 +418,6 @@ public class LearningSwitch
         }
         if ((sourceMac.getLong() & 0x010000000000L) == 0) {
             // If source MAC is a unicast address, learn the port for this MAC/VLAN
-        	OFPort inPort = (pi.getVersion() == OFVersion.OF_10 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
             this.addToPortMap(sw, sourceMac, vlan.getVlanVid(), inPort);
         }
 
@@ -428,7 +430,7 @@ public class LearningSwitch
             //     from port map whenever a flow expires, so you would still see
             //     a lot of floods.
             this.writePacketOutForPacketIn(sw, pi, OFPort.FLOOD);
-        } else if (outPort.equals(m.get(MatchField.IN_PORT))) {
+        } else if (outPort.equals(inPort)) {
             log.trace("ignoring packet that arrived on same port as learned destination:"
                     + " switch {} vlan {} dest MAC {} port {}",
                     new Object[]{ sw, vlan, destMac.toString(), outPort.getPortNumber() });
@@ -470,7 +472,7 @@ public class LearningSwitch
             	}
             	mb2.setExact(MatchField.IN_PORT, outPort);
 
-            	this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, mb2.build(), m.get(MatchField.IN_PORT));
+            	this.writeFlowMod(sw, OFFlowModCommand.ADD, OFBufferId.NO_BUFFER, mb2.build(), inPort);
             }
         }
         return Command.CONTINUE;
