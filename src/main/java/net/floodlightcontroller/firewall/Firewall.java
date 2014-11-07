@@ -31,6 +31,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -80,7 +81,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     protected List<FirewallRule> rules; // protected by synchronized
     protected boolean enabled;
-    protected int subnet_mask = IPv4.toIPv4Address("255.255.255.0");
+    protected IPv4Address subnet_mask = IPv4Address.of("255.255.255.0");
 
     // constant strings for storage/parsing
     public static final String TABLE_NAME = "controller_firewallrules";
@@ -349,14 +350,14 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     @Override
     public String getSubnetMask() {
-        return IPv4.fromIPv4Address(this.subnet_mask);
+        return this.subnet_mask.toString();
     }
 
     @Override
     public void setSubnetMask(String newMask) {
         if (newMask.trim().isEmpty())
             return;
-        this.subnet_mask = IPv4.toIPv4Address(newMask.trim());
+        this.subnet_mask = IPv4Address.of(newMask.trim());
     }
 
     @Override
@@ -497,10 +498,10 @@ public class Firewall implements IFirewallService, IOFMessageListener,
      *            the IP address to check
      * @return true if it is a broadcast address, false otherwise
      */
-    protected boolean IPIsBroadcast(int IPAddress) {
+    protected boolean isIPBroadcast(IPv4Address ip) {
         // inverted subnet mask
-        int inv_subnet_mask = ~this.subnet_mask;
-        return ((IPAddress & inv_subnet_mask) == inv_subnet_mask);
+        IPv4Address inv_subnet_mask = subnet_mask.not();
+        return ip.and(inv_subnet_mask).equals(inv_subnet_mask);
     }
 
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
@@ -511,9 +512,9 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // broadcasts -> L2 broadcast + L3 unicast)
         if (eth.isBroadcast() == true) {
             boolean allowBroadcast = true;
-            // the case to determine if we have L2 broadcast + L3 unicast
+            // the case to determine if we have L2 broadcast + L3 unicast (L3 broadcast default set to /24 or 255.255.255.0)
             // don't allow this broadcast packet if such is the case (malformed packet)
-            if ((eth.getPayload() instanceof IPv4) && (((IPv4) eth.getPayload()).getDestinationAddress().isBroadcast() == false)) {
+            if ((eth.getPayload() instanceof IPv4) && !isIPBroadcast(((IPv4) eth.getPayload()).getDestinationAddress())) {
                 allowBroadcast = false;
             }
             if (allowBroadcast == true) {
