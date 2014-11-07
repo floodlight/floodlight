@@ -29,6 +29,7 @@ import java.util.Map;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -62,7 +63,10 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -70,10 +74,13 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -152,9 +159,11 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(ISyncService.class, mockSyncService);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
+        fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
         topology.addListener(anyObject(ITopologyListener.class));
         expectLastCall().anyTimes();
+        expect(topology.isIncomingBroadcastAllowed(anyObject(DatapathId.class), anyObject(OFPort.class))).andReturn(true).anyTimes();
         replay(topology);
 
         threadPool.init(fmc);
@@ -175,10 +184,12 @@ public class ForwardingTest extends FloodlightTestCase {
         // Mock switches
         sw1 = EasyMock.createMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
+        expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
         expect(sw1.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
 
         sw2 = EasyMock.createMock(IOFSwitch.class);
         expect(sw2.getId()).andReturn(DatapathId.of(2L)).anyTimes();
+        expect(sw2.getOFFactory()).andReturn(factory).anyTimes();
         expect(sw2.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
 
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
@@ -213,10 +224,21 @@ public class ForwardingTest extends FloodlightTestCase {
         // Mock Packet-in
         testPacketSerialized = testPacket.serialize();
         packetIn = factory.buildPacketIn()
-                        .setBufferId(OFBufferId.NO_BUFFER)
-                        .setData(testPacketSerialized)
-                        .setReason(OFPacketInReason.NO_MATCH)
-                        .build();
+        		.setMatch(factory.buildMatch()
+        				.setExact(MatchField.IN_PORT, OFPort.of(1))
+        				.setExact(MatchField.ETH_SRC, MacAddress.of("00:44:33:22:11:00"))
+        				.setExact(MatchField.ETH_DST, MacAddress.of("00:11:22:33:44:55"))
+        				.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        				.setExact(MatchField.IPV4_SRC, IPv4Address.of("192.168.1.1"))
+        				.setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.1.2"))
+        				.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+        				.setExact(MatchField.UDP_SRC, TransportPort.of(5000))
+        				.setExact(MatchField.UDP_DST, TransportPort.of(5001))
+        				.build())
+        		.setBufferId(OFBufferId.NO_BUFFER)
+        		.setData(testPacketSerialized)
+        		.setReason(OFPacketInReason.NO_MATCH)
+                .build();
 
         // Mock Packet-out
         List<OFAction> poactions = new ArrayList<OFAction>();
@@ -224,6 +246,7 @@ public class ForwardingTest extends FloodlightTestCase {
         packetOut = factory.buildPacketOut()
         		.setBufferId(this.packetIn.getBufferId())
         		.setActions(poactions)
+        		.setInPort(OFPort.of(1))
         		.setData(testPacketSerialized)
         		.build();
 
@@ -232,6 +255,8 @@ public class ForwardingTest extends FloodlightTestCase {
         poactions.add(factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE));
         packetOutFlooded = factory.buildPacketOut()
         		.setBufferId(this.packetIn.getBufferId())
+        		.setInPort(packetIn.getMatch().get(MatchField.IN_PORT))
+        		.setXid(17)
         		.setActions(poactions)
         		.setData(testPacketSerialized)
         		.build();
@@ -312,7 +337,7 @@ public class ForwardingTest extends FloodlightTestCase {
         expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods
-        Match match = ((OFPacketIn)testPacket).getMatch();
+        Match match = packetIn.getMatch();
         OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
@@ -321,6 +346,8 @@ public class ForwardingTest extends FloodlightTestCase {
         		.setIdleTimeout((short)5)
         		.setMatch(match)
         		.setActions(actions)
+        		.setOutPort(action.getPort())
+        		.setXid(7)
         		.setBufferId(OFBufferId.NO_BUFFER)
         		.setCookie(U64.of(2L << 52))
         		.build();
@@ -370,7 +397,7 @@ public class ForwardingTest extends FloodlightTestCase {
         expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods
-        Match match = ((OFPacketIn) testPacket).getMatch();
+        Match match = packetIn.getMatch();
         OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);
@@ -416,7 +443,7 @@ public class ForwardingTest extends FloodlightTestCase {
         expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
 
         // Expected Flow-mods
-        Match match = ((OFPacketIn) testPacket).getMatch();
+        Match match = packetIn.getMatch();
         OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(action);

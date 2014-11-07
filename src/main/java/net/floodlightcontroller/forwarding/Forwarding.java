@@ -42,6 +42,8 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -58,6 +60,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -295,6 +298,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													mb.setExact(MatchField.IPV4_SRC, srcIp)
 													.setExact(MatchField.IPV4_DST, dstIp)
 													.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+													
+													if (ip.getProtocol().equals(IpProtocol.TCP)) {
+														TCP tcp = (TCP) ip.getPayload();
+														mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+														.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+														.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+													} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+														UDP udp = (UDP) ip.getPayload();
+														mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+														.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+														.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+													}	
 												} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
 													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
 												} //TODO @Ryan should probably include other ethertypes
