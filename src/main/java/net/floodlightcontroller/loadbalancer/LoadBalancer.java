@@ -87,6 +87,7 @@ import net.floodlightcontroller.util.FlowModUtils;
  * - health monitoring feature not implemented yet
  *  
  * @author kcwang
+ * @edited Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  */
 public class LoadBalancer implements IFloodlightModule,
     ILoadBalancerService, IOFMessageListener {
@@ -492,14 +493,10 @@ public class LoadBalancer implements IFloodlightModule,
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {
-               
                DatapathId sw = path.get(i).getNodeId();
-               //String swString = path.get(i).getNodeId().toString();
                String entryName;
-               //String matchString = null;
                Match.Builder mb = pinSwitch.getOFFactory().buildMatch();
                ArrayList<OFAction> actions = new ArrayList<OFAction>();
-               //String actionString = null;
                
                OFFlowMod.Builder fmb = pinSwitch.getOFFactory().buildFlowAdd();
 
@@ -513,11 +510,6 @@ public class LoadBalancer implements IFloodlightModule,
                if (inBound) {
                    entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   /*matchString = MatchUtils.STR_NW_SRC + "="+client.ipAddress.toString()+","
-                               + MatchUtils.STR_NW_PROTO + "="+String.valueOf(client.nw_proto)+","
-                               + MatchUtils.STR_TP_SRC + "="+client.srcPort.toString()+","
-                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
-                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString(); */
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
                    .setExact(MatchField.IPV4_SRC, client.ipAddress)
@@ -533,9 +525,6 @@ public class LoadBalancer implements IFloodlightModule,
                    }
 
                    if (sw.equals(pinSwitch.getId())) {
-                       /*actionString = "set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
-                                + "set-dst-mac="+member.macString+","
-                                + "output="+path.get(i+1).getPortId(); */
                        if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
                     	   actions.add(pinSwitch.getOFFactory().actions().setDlDst(MacAddress.of(member.macString)));
                     	   actions.add(pinSwitch.getOFFactory().actions().setNwDst(IPv4Address.of(member.address)));
@@ -547,17 +536,10 @@ public class LoadBalancer implements IFloodlightModule,
                        }
                    } else {
                 	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
-                       /*actionString =
-                               "output="+path.get(i+1).getPortId(); */
                    }
                } else {
                    entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   /*matchString = MatchUtils.STR_NW_DST + "="+client.ipAddress.toString()+","
-                               + MatchUtils.STR_NW_PROTO + "="+client.nw_proto.toString()+","
-                               + MatchUtils.STR_TP_DST + "="+client.srcPort.toString()+","
-                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
-                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();*/
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
                    .setExact(MatchField.IPV4_DST, client.ipAddress)
@@ -573,9 +555,6 @@ public class LoadBalancer implements IFloodlightModule,
                    }
                    
                    if (sw.equals(pinSwitch.getId())) {
-                       /*actionString = ActionUtils.STR_FIELD_SET + "=" + MatchUtils.STR_NW_SRC + MatchUtils.SET_FIELD_DELIM + IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
-                               + ActionUtils.STR_FIELD_SET + "=" + MatchUtils.STR_DL_SRC + MatchUtils.SET_FIELD_DELIM + vips.get(member.vipId).proxyMac.toString()+","
-                               + ActionUtils.STR_OUTPUT + "=" + path.get(i+1).getPortId(); */
                        if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
                     	   actions.add(pinSwitch.getOFFactory().actions().setDlSrc(vips.get(member.vipId).proxyMac));
                     	   actions.add(pinSwitch.getOFFactory().actions().setNwSrc(IPv4Address.of(vips.get(member.vipId).address)));
@@ -586,25 +565,13 @@ public class LoadBalancer implements IFloodlightModule,
                     	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                        }
                    } else {
-                       /* actionString = ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId(); */
                 	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                    }
                    
                }
                
-               /*ActionUtils.fromString(fmb, actionString, log);*/
                fmb.setActions(actions);
-
                fmb.setPriority(U16.t(LB_PRIORITY));
-
-               /* Match match = null; 
-               try {
-                   match = MatchUtils.fromString(matchString, pinSwitch.getOFFactory().getVersion());
-               } catch (IllegalArgumentException e) {
-                   log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + matchString, entryName, swString);
-               } 
-        
-               fmb.setMatch(match); */
                fmb.setMatch(mb.build());
                sfpService.addFlow(entryName, fmb.build(), sw);
            }
