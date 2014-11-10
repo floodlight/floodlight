@@ -443,7 +443,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     public void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext) {
         Ethernet eth = null;
-        log.debug("~~~~~~~~GOT PACKET IN MESSAGE FROM SWITCH~~~~~~~~~");
+        log.trace("Dispatching OFMessage to listeners.");
         if (this.notifiedRole == HARole.STANDBY) {
             counters.dispatchMessageWhileStandby.increment();
             // We are SLAVE. Do not dispatch messages to listeners.

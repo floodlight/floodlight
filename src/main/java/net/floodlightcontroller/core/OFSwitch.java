@@ -701,7 +701,7 @@ public class OFSwitch implements IOFSwitchBackend {
 
     @Override
     public void write(OFMessage m) {
-    	log.debug("Channel info: {} {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
+    	log.trace("Channel: {}, Connected: {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
         connections.get(OFAuxId.MAIN).write(m);
     }
 

@@ -40,7 +40,6 @@ import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFPortFeatures;
 
 //Use the loxigen's serializer
 import org.projectfloodlight.openflow.protocol.ver13.OFPortFeaturesSerializerVer13;
@@ -183,7 +182,6 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         jGen.writeEndArray();
     }
     public void serializeFlowReply(List<OFFlowStatsReply> flowReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-        int flowCount = 0;
         for (OFFlowStatsReply flowReply : flowReplies) { // for each flow stats reply
             //Dose the switch will reply multiple OFFlowStatsReply ?
             //Or we juse need to use the first item of the list.
