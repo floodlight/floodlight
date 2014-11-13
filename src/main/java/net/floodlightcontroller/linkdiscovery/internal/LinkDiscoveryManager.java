@@ -123,6 +123,8 @@ import org.slf4j.LoggerFactory;
  * LinkTuple will be indexed into switchLinks for both src.id and dst.id, and
  * portLinks for each src and dst -The updates queue is only added to from
  * within a held write lock
+ * 
+ * @edited Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  */
 @LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager implements IOFMessageListener,
@@ -250,6 +252,9 @@ IFloodlightModule, IInfoProvider {
 	 */
 	protected LinkedBlockingQueue<NodePortTuple> quarantineQueue;
 	protected LinkedBlockingQueue<NodePortTuple> maintenanceQueue;
+	protected LinkedBlockingQueue<NodePortTuple> toRemoveFromQuarantineQueue;
+	protected LinkedBlockingQueue<NodePortTuple> toRemoveFromMaintenanceQueue;
+	
 	/**
 	 * Quarantine task
 	 */
@@ -782,15 +787,16 @@ IFloodlightModule, IInfoProvider {
 			addOrUpdateLink(reverseLink, reverseInfo);
 		}
 
-		// Remove the node ports from the quarantine and maintenance queues.
+		// Queue removal of the node ports from the quarantine and maintenance queues.
 		NodePortTuple nptSrc = new NodePortTuple(lt.getSrc(),
 				lt.getSrcPort());
 		NodePortTuple nptDst = new NodePortTuple(lt.getDst(),
 				lt.getDstPort());
-		removeFromQuarantineQueue(nptSrc);
-		removeFromMaintenanceQueue(nptSrc);
-		removeFromQuarantineQueue(nptDst);
-		removeFromMaintenanceQueue(nptDst);
+		
+		flagToRemoveFromQuarantineQueue(nptSrc);
+		flagToRemoveFromMaintenanceQueue(nptSrc);
+		flagToRemoveFromQuarantineQueue(nptDst);
+		flagToRemoveFromMaintenanceQueue(nptDst);
 
 		// Consume this message
 		ctrLldpEol.increment();
@@ -912,16 +918,22 @@ IFloodlightModule, IInfoProvider {
 	 * @param npt
 	 */
 	protected void addToQuarantineQueue(NodePortTuple npt) {
-		if (quarantineQueue.contains(npt) == false)
+		if (quarantineQueue.contains(npt) == false) {
 			quarantineQueue.add(npt);
+		}
 	}
 
 	/**
 	 * Remove a switch port from the quarantine queue.
-	 */
+	 *
 	protected void removeFromQuarantineQueue(NodePortTuple npt) {
 		// Remove all occurrences of the node port tuple from the list.
 		while (quarantineQueue.remove(npt));
+	}*/
+	protected void flagToRemoveFromQuarantineQueue(NodePortTuple npt) {
+		if (toRemoveFromQuarantineQueue.contains(npt) == false) {
+			toRemoveFromQuarantineQueue.add(npt);
+		}
 	}
 
 	/**
@@ -939,10 +951,15 @@ IFloodlightModule, IInfoProvider {
 	 * Remove a switch port from maintenance queue.
 	 *
 	 * @param npt
-	 */
+	 *
 	protected void removeFromMaintenanceQueue(NodePortTuple npt) {
 		// Remove all occurrences of the node port tuple from the queue.
 		while (maintenanceQueue.remove(npt));
+	} */
+	protected void flagToRemoveFromMaintenanceQueue(NodePortTuple npt) {
+		if (toRemoveFromMaintenanceQueue.contains(npt) == false) {
+			toRemoveFromMaintenanceQueue.add(npt);
+		}
 	}
 
 	/**
@@ -958,7 +975,24 @@ IFloodlightModule, IInfoProvider {
 		while (count < BDDP_TASK_SIZE && quarantineQueue.peek() != null) {
 			NodePortTuple npt;
 			npt = quarantineQueue.remove();
-			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+			/*
+			 * Do not send a discovery message if we already have received one
+			 * from another switch on this same port. In other words, if
+			 * handleLldp() determines there is a new link between two ports of
+			 * two switches, then there is no need to re-discover the link again.
+			 * 
+			 * By flagging the item in handleLldp() and waiting to remove it 
+			 * from the queue when processBDDPLists() runs, we can guarantee a 
+			 * PORT_STATUS update is generated and dispatched below by
+			 * generateSwitchPortStatusUpdate().
+			 */
+			if (!toRemoveFromQuarantineQueue.remove(npt)) {
+				sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+			}
+			/*
+			 * Still add the item to the list though, so that the PORT_STATUS update
+			 * is generated below at the end of this function.
+			 */
 			nptList.add(npt);
 			count++;
 		}
@@ -967,7 +1001,13 @@ IFloodlightModule, IInfoProvider {
 		while (count < BDDP_TASK_SIZE && maintenanceQueue.peek() != null) {
 			NodePortTuple npt;
 			npt = maintenanceQueue.remove();
-			sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+			/*
+			 * Same as above, except we don't care about the PORT_STATUS message; 
+			 * we only want to avoid sending the discovery message again.
+			 */
+			if (!toRemoveFromMaintenanceQueue.remove(npt)) {
+				sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false, false);
+			}
 			count++;
 		}
 
@@ -986,7 +1026,6 @@ IFloodlightModule, IInfoProvider {
 		if (ofp == null) return;
 
 		Set<OFPortState> srcPortState = ofp.getState();
-		//TODO @Ryan verify this is equivalent boolean portUp = ((srcPortState & OFPortState.OFPPS_STP_MASK.getValue()) != OFPortState.OFPPS_STP_BLOCK.getValue());
 		boolean portUp = !srcPortState.contains(OFPortState.STP_BLOCK);
 
 		if (portUp) {
@@ -1167,8 +1206,6 @@ IFloodlightModule, IInfoProvider {
 	}
 
 	protected UpdateOperation getUpdateOperation(OFPortState srcPortState, OFPortState dstPortState) {
-		//TODO @Ryan verify this is equivalent
-		//boolean added = (((srcPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK) && ((dstPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK));
 		boolean added = ((srcPortState != OFPortState.STP_BLOCK) && (dstPortState != OFPortState.STP_BLOCK));
 
 		if (added) {
@@ -1179,8 +1216,6 @@ IFloodlightModule, IInfoProvider {
 	}
 
 	protected UpdateOperation getUpdateOperation(OFPortState srcPortState) {
-		//TODO @Ryan verify this too
-		//boolean portUp = ((srcPortState & OFPortState.STP_MASK) != OFPortState.STP_BLOCK);
 		boolean portUp = (srcPortState != OFPortState.STP_BLOCK);
 
 		if (portUp) {
@@ -1949,6 +1984,8 @@ IFloodlightModule, IInfoProvider {
 		this.switchLinks = new HashMap<DatapathId, Set<Link>>();
 		this.quarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
 		this.maintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
+		this.toRemoveFromQuarantineQueue = new LinkedBlockingQueue<NodePortTuple>();
+		this.toRemoveFromMaintenanceQueue = new LinkedBlockingQueue<NodePortTuple>();
 
 		this.ignoreMACSet = Collections.newSetFromMap(
 				new ConcurrentHashMap<MACRange,Boolean>());
@@ -2017,7 +2054,7 @@ IFloodlightModule, IInfoProvider {
 				try {
 					discoverLinks();
 				} catch (StorageException e) {
-					shutdownService.terminate("Storage exception in LLDP send timer. Terminating process " + e, 0); // TODO @Ryan as there "standard" shutdown codes Floodlight uses?
+					shutdownService.terminate("Storage exception in LLDP send timer. Terminating process " + e, 0);
 				} catch (Exception e) {
 					log.error("Exception in LLDP send timer.", e);
 				} finally {

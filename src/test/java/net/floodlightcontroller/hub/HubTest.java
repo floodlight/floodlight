@@ -35,6 +35,7 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
@@ -138,7 +139,7 @@ public class HubTest extends FloodlightTestCase {
         OFMessage m = wc1.getValue();
         //TODO @Ryan the wc1 message has inport=ANY and the next xid
         // Can this be asserted anymore with OF1.3?
-        assertEquals(po, m);
+        assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
     }
 
     @Test

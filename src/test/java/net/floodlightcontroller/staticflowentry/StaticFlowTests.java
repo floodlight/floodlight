@@ -39,7 +39,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.util.HexString;
 
-
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -48,6 +47,7 @@ import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
+import net.floodlightcontroller.util.OFMessageUtils;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
@@ -160,7 +160,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         // dont' bother testing the cookie; just copy it over
         goodFlowMod = goodFlowMod.createBuilder().setCookie(testFlowMod.getCookie()).build();
         // .. so we can continue to use .equals()
-        assertEquals(goodFlowMod, testFlowMod);
+        assertTrue(OFMessageUtils.equalsIgnoreXid(goodFlowMod, testFlowMod));
     }
 
 

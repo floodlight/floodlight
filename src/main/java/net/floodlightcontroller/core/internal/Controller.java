@@ -178,9 +178,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_ACCESS_PRIORITY,
             FLOW_COLUMN_CORE_PRIORITY
     };
-
-    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_ACCESS_PRIORITY = 10;
-    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_CORE_PRIORITY = 1000;
     
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 128 * 1024;

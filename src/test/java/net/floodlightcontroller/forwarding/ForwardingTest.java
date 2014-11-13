@@ -53,6 +53,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.OFMessageUtils;
 import net.floodlightcontroller.flowcache.FlowReconcileManager;
 import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.forwarding.Forwarding;
@@ -63,8 +64,6 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFactories;
@@ -248,6 +247,7 @@ public class ForwardingTest extends FloodlightTestCase {
         		.setActions(poactions)
         		.setInPort(OFPort.of(1))
         		.setData(testPacketSerialized)
+        		.setXid(15)
         		.build();
 
         // Mock Packet-out with OFPP_FLOOD action
@@ -347,7 +347,6 @@ public class ForwardingTest extends FloodlightTestCase {
         		.setMatch(match)
         		.setActions(actions)
         		.setOutPort(action.getPort())
-        		.setXid(7)
         		.setBufferId(OFBufferId.NO_BUFFER)
         		.setCookie(U64.of(2L << 52))
         		.build();
@@ -377,20 +376,24 @@ public class ForwardingTest extends FloodlightTestCase {
 
         for (OFMessage m: msglist) {
             if (m instanceof OFFlowMod)
-                assertEquals(fm1, m);
-            else if (m instanceof OFPacketOut)
-                assertEquals(packetOut, m);
+                assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+            else if (m instanceof OFPacketOut) {
+            	assertTrue(OFMessageUtils.equalsIgnoreXid(packetOut, m));
+            }
         }
 
         OFMessage m = wc2.getValue();
         assert (m instanceof OFFlowMod);
-        assertTrue(m.equals(fm2));
+        assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
     }
 
     @Test
     public void testForwardSingleSwitchPath() throws Exception {
         learnDevices(DestDeviceToLearn.DEVICE2);
 
+        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+        
         Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
         route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
         route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
@@ -406,14 +409,17 @@ public class ForwardingTest extends FloodlightTestCase {
         	.setIdleTimeout((short)5)
             .setMatch(match)
             .setActions(actions)
+            .setOutPort(OFPort.of(3))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setCookie(U64.of(2L<< 52))
             .build();
-
+                
         // Record expected packet-outs/flow-mods
-        sw1.write(fm1);
-        sw1.write(packetOut);
-
+        sw1.write(capture(wc1));
+        expectLastCall().once();
+        sw1.write(capture(wc2));
+        expectLastCall().once();
+        
         reset(topology);
         expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
         expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
@@ -424,6 +430,12 @@ public class ForwardingTest extends FloodlightTestCase {
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);
+        
+        assertTrue(wc1.hasCaptured());
+        assertTrue(wc2.hasCaptured());
+        
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
     }
 
     @Test
@@ -452,16 +464,19 @@ public class ForwardingTest extends FloodlightTestCase {
         		.setIdleTimeout((short)5)
         		.setMatch(match)
         		.setActions(actions)
+        		.setOutPort(OFPort.of(3))
         		.setBufferId(OFBufferId.NO_BUFFER)
         		.setCookie(U64.of(2L << 52))
+        		.setXid(anyLong())
         		.build();
-
+        
         // Record expected packet-outs/flow-mods
         // We will inject the packet_in 3 times and expect 1 flow mod and
         // 3 packet outs due to flow mod dampening
         sw1.write(fm1);
-        expectLastCall().once();
-        sw1.write(packetOut);
+        expectLastCall().times(1);
+        // Update new expected XID
+        sw1.write(packetOut.createBuilder().setXid(anyLong()).build());
         expectLastCall().times(3);
 
         reset(topology);
@@ -484,6 +499,8 @@ public class ForwardingTest extends FloodlightTestCase {
 
         // Set no destination attachment point or route
         // expect no Flow-mod but expect the packet to be flooded
+        
+        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
 
         // Reset mocks, trigger the packet in, and validate results
         reset(topology);
@@ -494,11 +511,15 @@ public class ForwardingTest extends FloodlightTestCase {
                                               .anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
                 .andReturn(true).anyTimes();
-        sw1.write(packetOutFlooded);
+        // Reset XID to expected (dependent on prior unit tests)
+        sw1.write(capture(wc1));
         expectLastCall().once();
         replay(sw1, sw2, routingEngine, topology);
         forwarding.receive(sw1, this.packetIn, cntx);
         verify(sw1, sw2, routingEngine);
+        
+        assertTrue(wc1.hasCaptured());
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFlooded));
     }
 
 }

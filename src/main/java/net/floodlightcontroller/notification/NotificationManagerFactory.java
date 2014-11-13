@@ -3,7 +3,7 @@ package net.floodlightcontroller.notification;
 import net.floodlightcontroller.notification.syslog.SyslogNotificationFactory;
 
 /**
- * This factory is a public untility to get NotificationManager
+ * This factory is a public utility to get NotificationManager
  * instance.
  *
  * @author kevinwang
@@ -15,8 +15,7 @@ public class NotificationManagerFactory {
             "floodlight.notification.factoryName";
 
     // default to SyslogNotificationFactory
-    private static INotificationManagerFactory
-        factory = new SyslogNotificationFactory();
+    private static INotificationManagerFactory factory; 
 
     /**
      * Dynamically bind to a factory if there is one specified.
@@ -44,13 +43,11 @@ public class NotificationManagerFactory {
             try {
                 nfc = Class.forName(notificationfactoryClassName);
                 factory = (INotificationManagerFactory) nfc.newInstance();
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (InstantiationException e) {
-                throw new RuntimeException(e);
-            } catch (IllegalAccessException e) {
+            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
+         } else {
+        	 factory = new SyslogNotificationFactory();
          }
     }
 
