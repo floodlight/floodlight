@@ -812,7 +812,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 *    - use the switch driver to bind the switch and get an IOFSwitch
 	 *      instance, setup the switch instance
 	 *    - setup the IOFSwitch instance
-	 *    - add switch to FloodlightProvider and send the intial role
+	 *    - add switch to FloodlightProvider and send the initial role
 	 *      request to the switch.
 	 *
 	 * Next state: WaitOFAuxCxnsReplyState (if OF1.3), else

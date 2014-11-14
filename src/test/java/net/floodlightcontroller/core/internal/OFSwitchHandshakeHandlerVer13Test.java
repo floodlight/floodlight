@@ -10,24 +10,17 @@ import static org.easymock.EasyMock.verify;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
-import net.floodlightcontroller.core.util.URIUtil;
-import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
-import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionState;
-import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsReply;
-import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsRequest;
-import org.projectfloodlight.openflow.protocol.OFBsnSetAuxCxnsReply;
+
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
@@ -100,7 +93,7 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         switchHandler.processOFMessage(getPortDescStatsReply());
     }
 
-    public void handleDescStatsAndCreateSwitch() throws Exception {
+    public void handleDescStatsAndCreateSwitch(boolean subHandShakeComplete) throws Exception {
         // build the stats reply
         OFDescStatsReply sr = createDescriptionStatsReply();
 
@@ -109,6 +102,9 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         setupSwitchForInstantiationWithReset();
         sw.setPortDescStats(anyObject(OFPortDescStatsReply.class));
         expectLastCall().once();
+        sw.startDriverHandshake();
+        expectLastCall().once();
+        expect(sw.isDriverHandshakeComplete()).andReturn(subHandShakeComplete).once();
         replay(sw);
 
         reset(switchManager);
@@ -118,7 +114,7 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
                                               eq(switchDescription),
                                               anyObject(OFFactory.class),
                                               anyObject(DatapathId.class))).andReturn(sw).once();
-        expect(switchManager.getNumRequiredConnections()).andReturn(0);
+        expect(switchManager.getNumRequiredConnections()).andReturn(1).anyTimes(); 
         switchManager.switchAdded(sw);
         expectLastCall().once();
         replay(switchManager);
@@ -129,28 +125,12 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         verify(sw, switchManager);
     }
 
-    /** This makes sure the correct behavior occurs for an illegal OF Aux Reply status
-     */
-    @Test
-    public void testOFAuxSwitchFail() throws Exception {
-        //moveToWaitOFAuxCxnsReply();
-
-        // Build and OF Aux reply - status of non zero denotes failure on switch end
-        OFBsnSetAuxCxnsReply auxReply = factory.buildBsnSetAuxCxnsReply()
-                .setNumAux(0)
-                .setStatus(-1)
-                .build();
-
-        verifyExceptionCaptured(auxReply, OFAuxException.class);
-    }
-
     @Test
     @Override
     public void moveToWaitAppHandshakeState() throws Exception {
-        //moveToWaitGenDescStatsReply();
-
-        //handleGenDescStatsReplay(true);
-
+    	moveToWaitDescriptionStatReply();
+    	handleDescStatsAndCreateSwitch(true);
+    	
         assertThat(switchHandler.getStateForTesting(),
                    CoreMatchers.instanceOf(WaitAppHandshakeState.class));
     }
@@ -176,62 +156,24 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         return roleReply;
     }
 
-    @Test
-    public void moveToWaitControllerCxnsReplyState() throws Exception {
-        moveToWaitAppHandshakeState();
-
-        assertThat(switchHandler.getStateForTesting(),
-                   CoreMatchers.instanceOf(WaitAppHandshakeState.class));
-
-
-        WaitAppHandshakeState state = (WaitAppHandshakeState) switchHandler.getStateForTesting();
-        PluginResult result = new PluginResult(PluginResultType.CONTINUE);
-        state.exitPlugin(result);
-
-        OFMessage msg = connection.retrieveMessage();
-        assertThat(msg, CoreMatchers.instanceOf(OFBsnControllerConnectionsRequest.class));
-        verifyUniqueXids(msg);
-
-        //assertThat(switchHandler.getStateForTesting(), CoreMatchers.instanceOf(OFSwitchHandshakeHandler.WaitControllerCxnsReplyState.class));
-    }
-
     @Override
     @Test
-    public void moveToWaitInitialRole()
-            throws Exception {
-        moveToWaitControllerCxnsReplyState();
-
-        //assertThat(switchHandler.getStateForTesting(), CoreMatchers.instanceOf(WaitControllerCxnsReplyState.class));
-
-        OFBsnControllerConnection cxn = factory.buildBsnControllerConnection()
-                .setAuxiliaryId(OFAuxId.MAIN)
-                .setRole(OFControllerRole.ROLE_MASTER)
-                .setState(OFBsnControllerConnectionState.BSN_CONTROLLER_CONNECTION_STATE_CONNECTED)
-                .setUri(URIUtil.createURI("1.2.3.4", 6653).toString())
-                .build();
-
-        List<OFBsnControllerConnection> cxns = new ArrayList<OFBsnControllerConnection>();
-        cxns.add(cxn);
-
-        // build the controller connections reply
-        OFBsnControllerConnectionsReply cxnsReply = factory.buildBsnControllerConnectionsReply()
-                .setConnections(cxns)
-                .build();
+    public void moveToWaitInitialRole() throws Exception {
+    	moveToWaitAppHandshakeState();
+        assertThat(switchHandler.getStateForTesting(), CoreMatchers.instanceOf(WaitAppHandshakeState.class));
 
         reset(sw);
-        sw.updateControllerConnections(cxnsReply);
-        expectLastCall().once();
         expect(sw.getAttribute(IOFSwitchBackend.SWITCH_SUPPORTS_NX_ROLE)).andReturn(true).anyTimes();
         replay(sw);
-
+        
         reset(roleManager);
         expect(roleManager.getOFControllerRole()).andReturn(OFControllerRole.ROLE_MASTER).anyTimes();
         roleManager.notifyControllerConnectionUpdate();
         expectLastCall().once();
         replay(roleManager);
-
-        // send the controller connections reply
-        switchHandler.processOFMessage(cxnsReply);
+        
+        WaitAppHandshakeState state = (WaitAppHandshakeState) switchHandler.getStateForTesting();
+        state.enterNextPlugin();
 
         // Expect wait initial role's enterState message to be written
         OFMessage msg = connection.retrieveMessage();
@@ -244,8 +186,8 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
     @Override
     @Test
     public void moveToWaitSwitchDriverSubHandshake() throws Exception {
-        //moveToWaitGenDescStatsReply();
-        //handleGenDescStatsReplay(false);
+        moveToWaitDescriptionStatReply();
+        handleDescStatsAndCreateSwitch(false);
 
         assertThat(switchHandler.getStateForTesting(), CoreMatchers.instanceOf(OFSwitchHandshakeHandler.WaitSwitchDriverSubHandshakeState.class));
         assertThat("Unexpected message captured", connection.getMessages(), Matchers.empty());
