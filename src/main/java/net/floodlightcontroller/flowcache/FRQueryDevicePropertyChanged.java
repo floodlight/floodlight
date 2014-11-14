@@ -21,6 +21,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 /**
  * The Class for FlowReconcileQuery for device property changed event.
  */
+@Deprecated
 public class FRQueryDevicePropertyChanged extends FlowReconcileQuery {
     public IDevice device;
     public FRQueryDevicePropertyChanged() {

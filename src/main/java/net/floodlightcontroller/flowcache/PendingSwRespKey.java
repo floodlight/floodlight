@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.flowcache;
 
+@Deprecated
 public class PendingSwRespKey {
     long swDpid;
     int  transId;

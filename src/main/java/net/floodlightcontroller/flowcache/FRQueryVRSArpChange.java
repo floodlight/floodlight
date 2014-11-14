@@ -18,6 +18,7 @@ package net.floodlightcontroller.flowcache;
 /**
  * The Class for FlowReconcileQuery for VRS routing rule change event .
  */
+@Deprecated
 public class FRQueryVRSArpChange extends FlowReconcileQuery {
     /* The list of impacted bvs names. */
     public String tenant;

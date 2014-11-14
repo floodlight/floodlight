@@ -67,6 +67,7 @@ import net.floodlightcontroller.util.OFMatchWithSwDpid;
  * @author Jason Parraga
  */
 
+@Deprecated
 public class PortDownReconciliation implements IFloodlightModule,
     ITopologyListener, IFlowReconcileListener {
     protected static Logger log = LoggerFactory.getLogger(PortDownReconciliation.class);
