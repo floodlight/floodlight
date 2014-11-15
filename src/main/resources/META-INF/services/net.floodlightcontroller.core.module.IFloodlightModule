@@ -26,3 +26,4 @@ net.floodlightcontroller.loadbalancer.LoadBalancer
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
 net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier
+net.floodlightcontroller.mactracker.MACTracker
