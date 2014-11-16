@@ -4,15 +4,19 @@
 package net.floodlightcontroller.mactracker;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
+
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.Set;
+
 import net.floodlightcontroller.packet.Ethernet;
+
 import org.openflow.util.HexString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.openflow.protocol.OFMessage;
@@ -25,6 +29,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.web.AllSwitchStatisticsResource;
 
 
 /**
@@ -115,6 +120,7 @@ public class MACTracker implements IOFMessageListener, IFloodlightModule {
 	/* (non-Javadoc)
 	 * @see net.floodlightcontroller.core.IOFMessageListener#receive(net.floodlightcontroller.core.IOFSwitch, org.openflow.protocol.OFMessage, net.floodlightcontroller.core.FloodlightContext)
 	 */
+	@SuppressWarnings("unchecked")
 	@Override
 	public net.floodlightcontroller.core.IListener.Command receive(
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
@@ -129,7 +135,21 @@ public class MACTracker implements IOFMessageListener, IFloodlightModule {
 					HexString.toHexString(sourceMACHash),
 					sw.getId());
 		}
+		HashMap<String, Object> model = new HashMap<String, Object>();
+		model = (HashMap<String, Object>) stat_data("AGGREGATE");
+		for (String key : model.keySet()) {
+	    
+		logger.info("AGGREGATE STATS->{} -> {}",key,model.get(key).toString());
+		}
 		return Command.CONTINUE;
+	}
+	
+	public Map<String, Object> stat_data(String stat_typ)
+	{
+		AllSwitchStatisticsResource switchstatres = new AllSwitchStatisticsResource();
+		HashMap<String, Object> model = new HashMap<String, Object>();
+		model = (HashMap<String, Object>) switchstatres.retrieveInternal(stat_typ);
+		return model;
 	}
 
 }
