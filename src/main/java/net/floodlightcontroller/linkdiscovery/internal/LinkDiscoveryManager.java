@@ -164,7 +164,7 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
     // LLDP and BDDP fields
     private static final byte[] LLDP_STANDARD_DST_MAC_STRING =
-            HexString.fromHexString("01:80:c2:00:00:0e");
+            HexString.fromHexString("01:80:c2:12:34:56");
     private static final long LINK_LOCAL_MASK = 0xfffffffffff0L;
     private static final long LINK_LOCAL_VALUE = 0x0180c2000000L;
     protected static int EVENT_HISTORY_SIZE = 1024; // in seconds
