@@ -435,7 +435,7 @@ public class StaticFlowEntries {
         SubActionStruct sa = null;
         Matcher n;
         
-        n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(subaction);
+        n = Pattern.compile("output=(?:((?:0x)?\\d+)|(all)|(controller)|(local)|(ingress-port)|(normal)|(flood)|(table))").matcher(subaction);
         if (n.matches()) {
             OFActionOutput action = new OFActionOutput();
             action.setMaxLength(Short.MAX_VALUE);
@@ -461,6 +461,8 @@ public class StaticFlowEntries {
                 port = OFPort.OFPP_NORMAL.getValue();
             else if (n.group(7) != null)
                 port = OFPort.OFPP_FLOOD.getValue();
+            else if (n.group(8) != null)
+                port = OFPort.OFPP_TABLE.getValue();
             action.setPort(port);
             log.debug("action {}", action);
             
