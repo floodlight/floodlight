@@ -40,275 +40,289 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.packet.IPv4;
 
 public class FirewallRulesResource extends ServerResource {
-    protected static Logger log = LoggerFactory.getLogger(FirewallRulesResource.class);
+	protected static Logger log = LoggerFactory.getLogger(FirewallRulesResource.class);
 
-    @Get("json")
-    public List<FirewallRule> retrieve() {
-        IFirewallService firewall =
-                (IFirewallService)getContext().getAttributes().
-                get(IFirewallService.class.getCanonicalName());
+	@Get("json")
+	public List<FirewallRule> retrieve() {
+		IFirewallService firewall =
+				(IFirewallService)getContext().getAttributes().
+				get(IFirewallService.class.getCanonicalName());
 
-        return firewall.getRules();
-    }
+		return firewall.getRules();
+	}
 
-    /**
-     * Takes a Firewall Rule string in JSON format and parses it into
-     * our firewall rule data structure, then adds it to the firewall.
-     * @param fmJson The Firewall rule entry in JSON format.
-     * @return A string status message
-     */
-    @Post
-    public String store(String fmJson) {
-        IFirewallService firewall =
-                (IFirewallService)getContext().getAttributes().
-                get(IFirewallService.class.getCanonicalName());
+	/**
+	 * Takes a Firewall Rule string in JSON format and parses it into
+	 * our firewall rule data structure, then adds it to the firewall.
+	 * @param fmJson The Firewall rule entry in JSON format.
+	 * @return A string status message
+	 */
+	@Post
+	public String store(String fmJson) {
+		IFirewallService firewall =
+				(IFirewallService)getContext().getAttributes().
+				get(IFirewallService.class.getCanonicalName());
 
-        FirewallRule rule;
-        try {
-            rule = jsonToFirewallRule(fmJson);
-        } catch (IOException e) {
-            log.error("Error parsing firewall rule: " + fmJson, e);
-            return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
-        }
-        String status = null;
-        if (checkRuleExists(rule, firewall.getRules())) {
-            status = "Error! A similar firewall rule already exists.";
-            log.error(status);
-        	return ("{\"status\" : \"" + status + "\"}");
-        } else {
-            // add rule to firewall
-            firewall.addRule(rule);
-            status = "Rule added";
-        	return ("{\"status\" : \"" + status + "\", \"rule-id\" : \""+ Integer.toString(rule.ruleid) + "\"}");
-        }
-    }
+		FirewallRule rule = jsonToFirewallRule(fmJson);
+		if (rule == null) {
+			return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
+		}
+		String status = null;
+		if (checkRuleExists(rule, firewall.getRules())) {
+			status = "Error! A similar firewall rule already exists.";
+			log.error(status);
+			return ("{\"status\" : \"" + status + "\"}");
+		} else {
+			// add rule to firewall
+			firewall.addRule(rule);
+			status = "Rule added";
+			return ("{\"status\" : \"" + status + "\", \"rule-id\" : \""+ Integer.toString(rule.ruleid) + "\"}");
+		}
+	}
 
-    /**
-     * Takes a Firewall Rule string in JSON format and parses it into
-     * our firewall rule data structure, then deletes it from the firewall.
-     * @param fmJson The Firewall rule entry in JSON format.
-     * @return A string status message
-     */
+	/**
+	 * Takes a Firewall Rule string in JSON format and parses it into
+	 * our firewall rule data structure, then deletes it from the firewall.
+	 * @param fmJson The Firewall rule entry in JSON format.
+	 * @return A string status message
+	 */
 
-    @Delete
-    public String remove(String fmJson) {
-        IFirewallService firewall =
-                (IFirewallService)getContext().getAttributes().
-                get(IFirewallService.class.getCanonicalName());
+	@Delete
+	public String remove(String fmJson) {
+		IFirewallService firewall =
+				(IFirewallService)getContext().getAttributes().
+				get(IFirewallService.class.getCanonicalName());
 
-        FirewallRule rule;
-        try {
-            rule = jsonToFirewallRule(fmJson);
-        } catch (IOException e) {
-            log.error("Error parsing firewall rule: " + fmJson, e);
-            return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
-        }
-        String status = null;
-        boolean exists = false;
-        Iterator<FirewallRule> iter = firewall.getRules().iterator();
-        while (iter.hasNext()) {
-            FirewallRule r = iter.next();
-            if (r.ruleid == rule.ruleid) {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists) {
-            status = "Error! Can't delete, a rule with this ID doesn't exist.";
-            log.error(status);
-        } else {
-            // delete rule from firewall
-            firewall.deleteRule(rule.ruleid);
-            status = "Rule deleted";
-        }
-        return ("{\"status\" : \"" + status + "\"}");
-    }
+		FirewallRule rule = jsonToFirewallRule(fmJson);
+		if (rule == null) {
+			//TODO compose the error with a json formatter
+			return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
+		}
+		
+		String status = null;
+		boolean exists = false;
+		Iterator<FirewallRule> iter = firewall.getRules().iterator();
+		while (iter.hasNext()) {
+			FirewallRule r = iter.next();
+			if (r.ruleid == rule.ruleid) {
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			status = "Error! Can't delete, a rule with this ID doesn't exist.";
+			log.error(status);
+		} else {
+			// delete rule from firewall
+			firewall.deleteRule(rule.ruleid);
+			status = "Rule deleted";
+		}
+		return ("{\"status\" : \"" + status + "\"}");
+	}
 
-    /**
-     * Turns a JSON formatted Firewall Rule string into a FirewallRule instance
-     * @param fmJson The JSON formatted static firewall rule
-     * @return The FirewallRule instance
-     * @throws IOException If there was an error parsing the JSON
-     */
+	/**
+	 * Turns a JSON formatted Firewall Rule string into a FirewallRule instance
+	 * @param fmJson The JSON formatted static firewall rule
+	 * @return The FirewallRule instance
+	 * @throws IOException If there was an error parsing the JSON
+	 */
 
-    public static FirewallRule jsonToFirewallRule(String fmJson) throws IOException {
-        FirewallRule rule = new FirewallRule();
-        MappingJsonFactory f = new MappingJsonFactory();
-        JsonParser jp;
+	public static FirewallRule jsonToFirewallRule(String fmJson) {
+		FirewallRule rule = new FirewallRule();
+		MappingJsonFactory f = new MappingJsonFactory();
+		JsonParser jp;
+		try {
+			try {
+				jp = f.createJsonParser(fmJson);
+			} catch (JsonParseException e) {
+				throw new IOException(e);
+			}
 
-        try {
-            jp = f.createJsonParser(fmJson);
-        } catch (JsonParseException e) {
-            throw new IOException(e);
-        }
+			jp.nextToken();
+			if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+				throw new IOException("Expected START_OBJECT");
+			}
 
-        jp.nextToken();
-        if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
-            throw new IOException("Expected START_OBJECT");
-        }
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
+					throw new IOException("Expected FIELD_NAME");
+				}
 
-        while (jp.nextToken() != JsonToken.END_OBJECT) {
-            if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
-                throw new IOException("Expected FIELD_NAME");
-            }
+				String n = jp.getCurrentName();
+				jp.nextToken();
+				if (jp.getText().equals("")) {
+					continue;
+				}
 
-            String n = jp.getCurrentName();
-            jp.nextToken();
-            if (jp.getText().equals(""))
-                continue;
+				// This is currently only applicable for remove().  In store(), ruleid takes a random number
+				if (n.equalsIgnoreCase("ruleid")) {
+					try {
+						rule.ruleid = Integer.parseInt(jp.getText());
+					} catch (IllegalArgumentException e) {
+						log.error("Unable to parse rule ID: {}", jp.getText());
+					}
+				}
 
-            String tmp;
+				// This assumes user having dpid info for involved switches
+				else if (n.equalsIgnoreCase("switchid")) {
+					rule.any_dpid = false;
+					try {
+						rule.dpid = DatapathId.of(jp.getText());
+					} catch (NumberFormatException e) {
+						log.error("Unable to parse switch DPID: {}", jp.getText());
+						//TODO should return some error message via HTTP message
+					}
+				}
 
-            // This is currently only applicable for remove().  In store(), ruleid takes a random number
-            if (n == "ruleid") {
-                rule.ruleid = Integer.parseInt(jp.getText());
-            }
+				else if (n.equalsIgnoreCase("src-inport")) {
+					rule.any_in_port = false;
+					try {
+						rule.in_port = OFPort.of(Integer.parseInt(jp.getText()));
+					} catch (NumberFormatException e) {
+						log.error("Unable to parse ingress port: {}", jp.getText());
+						//TODO should return some error message via HTTP message
+					}
+				}
 
-            // This assumes user having dpid info for involved switches
-            else if (n == "switchid") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("-1") == false) {
-                    // user inputs hex format dpid
-                    rule.dpid = DatapathId.of(tmp);
-                    rule.any_dpid = false;
-                }
-            }
+				else if (n.equalsIgnoreCase("src-mac")) {
+					if (!jp.getText().equalsIgnoreCase("ANY")) {
+						rule.any_dl_src = false;
+						try {
+							rule.dl_src = MacAddress.of(jp.getText());
+						} catch (IllegalArgumentException e) {
+							log.error("Unable to parse source MAC: {}", jp.getText());
+							//TODO should return some error message via HTTP message
+						}
+					}
+				}
 
-            else if (n == "src-inport") {
-                rule.in_port = OFPort.of(Integer.parseInt(jp.getText()));
-                rule.any_in_port = false;
-            }
+				else if (n.equalsIgnoreCase("dst-mac")) {
+					if (!jp.getText().equalsIgnoreCase("ANY")) {
+						rule.any_dl_dst = false;
+						try {
+							rule.dl_dst = MacAddress.of(jp.getText());
+						} catch (IllegalArgumentException e) {
+							log.error("Unable to parse destination MAC: {}", jp.getText());
+							//TODO should return some error message via HTTP message
+						}
+					}
+				}
 
-            else if (n == "src-mac") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.any_dl_src = false;
-                    rule.dl_src = MacAddress.of(tmp);
-                }
-            }
+				else if (n.equalsIgnoreCase("dl-type")) {
+					if (jp.getText().equalsIgnoreCase("ARP")) {
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.ARP;
+					} else if (jp.getText().equalsIgnoreCase("IPv4")) {
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+					}
+				}
 
-            else if (n == "dst-mac") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.any_dl_dst = false;
-                    rule.dl_dst = MacAddress.of(tmp);
-                }
-            }
+				else if (n.equalsIgnoreCase("src-ip")) {
+					if (!jp.getText().equalsIgnoreCase("ANY")) {
+						rule.any_nw_src = false;
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+						try {
+							rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of(jp.getText());
+						} catch (IllegalArgumentException e) {
+							log.error("Unable to parse source IP: {}", jp.getText());
+							//TODO should return some error message via HTTP message
+						}
+					}
+				}
 
-            else if (n == "dl-type") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ARP")) {
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.ARP;
-                }
-                if (tmp.equalsIgnoreCase("IPv4")) {
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                }
-            }
+				else if (n.equalsIgnoreCase("dst-ip")) {
+					if (!jp.getText().equalsIgnoreCase("ANY")) {
+						rule.any_nw_dst = false;
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+						try {
+							rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(jp.getText());
+						} catch (IllegalArgumentException e) {
+							log.error("Unable to parse destination IP: {}", jp.getText());
+							//TODO should return some error message via HTTP message
+						}
+					}
+				}
 
-            else if (n == "src-ip") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.any_nw_src = false;
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                    rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of(tmp);
-                }
-            }
+				else if (n.equalsIgnoreCase("nw-proto")) {
+					if (jp.getText().equalsIgnoreCase("TCP")) {
+						rule.any_nw_proto = false;
+						rule.nw_proto = IpProtocol.TCP;
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+					} else if (jp.getText().equalsIgnoreCase("UDP")) {
+						rule.any_nw_proto = false;
+						rule.nw_proto = IpProtocol.UDP;
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+					} else if (jp.getText().equalsIgnoreCase("ICMP")) {
+						rule.any_nw_proto = false;
+						rule.nw_proto = IpProtocol.ICMP;
+						rule.any_dl_type = false;
+						rule.dl_type = EthType.IPv4;
+					}
+				}
 
-            else if (n == "dst-ip") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("ANY") == false) {
-                    rule.any_nw_dst = false;
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                    rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(tmp);
-                }
-            }
+				else if (n.equalsIgnoreCase("tp-src")) {
+					rule.any_tp_src = false;
+					try {
+						rule.tp_src = TransportPort.of(Integer.parseInt(jp.getText()));
+					} catch (IllegalArgumentException e) {
+						log.error("Unable to parse source transport port: {}", jp.getText());
+						//TODO should return some error message via HTTP message
+					}
+				}
 
-            else if (n == "nw-proto") {
-                tmp = jp.getText();
-                if (tmp.equalsIgnoreCase("TCP")) {
-                    rule.any_nw_proto = false;
-                    rule.nw_proto = IpProtocol.TCP;
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                } else if (tmp.equalsIgnoreCase("UDP")) {
-                    rule.any_nw_proto = false;
-                    rule.nw_proto = IpProtocol.UDP;
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                } else if (tmp.equalsIgnoreCase("ICMP")) {
-                    rule.any_nw_proto = false;
-                    rule.nw_proto = IpProtocol.ICMP;
-                    rule.any_dl_type = false;
-                    rule.dl_type = EthType.IPv4;
-                }
-            }
+				else if (n.equalsIgnoreCase("tp-dst")) {
+					rule.any_tp_dst = false;
+					try {
+						rule.tp_dst = TransportPort.of(Integer.parseInt(jp.getText()));
+					} catch (IllegalArgumentException e) {
+						log.error("Unable to parse destination transport port: {}", jp.getText());
+						//TODO should return some error message via HTTP message
+					}
+				}
 
-            else if (n == "tp-src") {
-                rule.any_tp_src = false;
-                rule.tp_src = TransportPort.of(Integer.parseInt(jp.getText()));
-            }
+				else if (n.equalsIgnoreCase("priority")) {
+					try {
+						rule.priority = Integer.parseInt(jp.getText());
+					} catch (IllegalArgumentException e) {
+						log.error("Unable to parse priority: {}", jp.getText());
+						//TODO should return some error message via HTTP message
+					}
+				}
 
-            else if (n == "tp-dst") {
-                rule.any_tp_dst = false;
-                rule.tp_dst = TransportPort.of(Integer.parseInt(jp.getText()));
-            }
+				else if (n.equalsIgnoreCase("action")) {
+					if (jp.getText().equalsIgnoreCase("allow") || jp.getText().equalsIgnoreCase("accept")) {
+						rule.action = FirewallRule.FirewallAction.ALLOW;
+					} else if (jp.getText().equalsIgnoreCase("deny") || jp.getText().equalsIgnoreCase("drop")) {
+						rule.action = FirewallRule.FirewallAction.DROP;
+					}
+				}
+			}
+		} catch (IOException e) {
+			log.error("Unable to parse JSON string: {}", e);
+		}
 
-            else if (n == "priority") {
-                rule.priority = Integer.parseInt(jp.getText());
-            }
+		return rule;
+	}
 
-            else if (n == "action") {
-                if (jp.getText().equalsIgnoreCase("allow") == true) {
-                    rule.action = FirewallRule.FirewallAction.ALLOW;
-                } else if (jp.getText().equalsIgnoreCase("deny") == true) {
-                    rule.action = FirewallRule.FirewallAction.DROP;
-                }
-            }
-        }
+	public static boolean checkRuleExists(FirewallRule rule, List<FirewallRule> rules) {
+		Iterator<FirewallRule> iter = rules.iterator();
+		while (iter.hasNext()) {
+			FirewallRule r = iter.next();
 
-        return rule;
-    }
+			// check if we find a similar rule
+			if (rule.isSameAs(r)) {
+				return true;
+			}
+		}
 
-    public static int[] IPCIDRToPrefixBits(String cidr) {
-        int ret[] = new int[2];
-
-        // as IP can also be a prefix rather than an absolute address
-        // split it over "/" to get the bit range
-        String[] parts = cidr.split("/");
-        String cidr_prefix = parts[0].trim();
-        int cidr_bits = 0;
-        if (parts.length == 2) {
-            try {
-                cidr_bits = Integer.parseInt(parts[1].trim());
-            } catch (Exception exp) {
-                cidr_bits = 32;
-            }
-        }
-        ret[0] = IPv4.toIPv4Address(cidr_prefix);
-        ret[1] = cidr_bits;
-
-        return ret;
-    }
-
-    public static boolean checkRuleExists(FirewallRule rule, List<FirewallRule> rules) {
-        Iterator<FirewallRule> iter = rules.iterator();
-        while (iter.hasNext()) {
-            FirewallRule r = iter.next();
-
-            // check if we find a similar rule
-            if (rule.isSameAs(r)) {
-                return true;
-            }
-        }
-
-        // no rule matched, so it doesn't exist in the rules
-        return false;
-    }
+		// no rule matched, so it doesn't exist in the rules
+		return false;
+	}
 }
