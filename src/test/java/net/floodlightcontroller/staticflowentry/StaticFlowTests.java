@@ -44,6 +44,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
@@ -126,10 +128,11 @@ public class StaticFlowTests extends FloodlightTestCase {
     private StaticFlowEntryPusher staticFlowEntryPusher;
     private IOFSwitchService switchService;
     private IOFSwitch mockSwitch;
+    private MockDebugCounterService debugCounterService;
     private Capture<OFMessage> writeCapture;
     private Capture<List<OFMessage>> writeCaptureList;
     private long dpid;
-    private IStorageSourceService storage;
+    private MemoryStorageSource storage;
     static {
         FlowMod3 = factory.buildFlowModify().build();
         TestRule3 = new HashMap<String,Object>();
@@ -185,9 +188,10 @@ public class StaticFlowTests extends FloodlightTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        debugCounterService = new MockDebugCounterService();
         staticFlowEntryPusher = new StaticFlowEntryPusher();
         switchService = getMockSwitchService();
-        storage = createStorageWithFlowEntries();
+        storage = new MemoryStorageSource();
         dpid = HexString.toLong(TestSwitch1DPID);
 
         mockSwitch = createNiceMock(IOFSwitch.class);
@@ -206,6 +210,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IStorageSourceService.class, storage);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
+        fmc.addService(IDebugCounterService.class, debugCounterService);
 
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
         Map<DatapathId, IOFSwitch> switchMap = new HashMap<DatapathId, IOFSwitch>();
@@ -217,7 +222,14 @@ public class StaticFlowTests extends FloodlightTestCase {
         fmc.addService(IOFSwitchService.class, switchService);
                        
         restApi.init(fmc);
+        debugCounterService.init(fmc);
+        storage.init(fmc);
         staticFlowEntryPusher.init(fmc);
+        debugCounterService.init(fmc);
+        storage.startUp(fmc);
+        
+        createStorageWithFlowEntries();
+        
         staticFlowEntryPusher.startUp(fmc);    // again, to hack unittest
     }
 
@@ -328,10 +340,10 @@ public class StaticFlowTests extends FloodlightTestCase {
 
 
     IStorageSourceService createStorageWithFlowEntries() {
-        return populateStorageWithFlowEntries(new MemoryStorageSource());
+        return populateStorageWithFlowEntries();
     }
 
-    IStorageSourceService populateStorageWithFlowEntries(IStorageSourceService storage) {
+    IStorageSourceService populateStorageWithFlowEntries() {
         Set<String> indexedColumns = new HashSet<String>();
         indexedColumns.add(COLUMN_NAME);
         storage.createTable(StaticFlowEntryPusher.TABLE_NAME, indexedColumns);

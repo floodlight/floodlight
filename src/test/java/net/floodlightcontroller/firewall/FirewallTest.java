@@ -31,6 +31,8 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -78,6 +80,7 @@ public class FirewallTest extends FloodlightTestCase {
     protected IPacket tcpPacketReply;
     protected IPacket broadcastMalformedPacket;
     private Firewall firewall;
+    private MockDebugCounterService debugCounterService;
     public static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
 
     @Override
@@ -87,8 +90,9 @@ public class FirewallTest extends FloodlightTestCase {
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
         mockSwitchManager = getMockSwitchService();
+        debugCounterService = new MockDebugCounterService(); 
         firewall = new Firewall();
-        IStorageSourceService storageService = new MemoryStorageSource();
+        MemoryStorageSource storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
 
         // Mock switches
@@ -103,16 +107,19 @@ public class FirewallTest extends FloodlightTestCase {
         mockSwitchManager.setSwitches(switches);
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class,
-                mockFloodlightProvider);
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IDebugCounterService.class, debugCounterService);
         fmc.addService(IOFSwitchService.class, mockSwitchManager);
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);
 
+        debugCounterService.init(fmc);
+        storageService.init(fmc);
         restApi.init(fmc);
-
         firewall.init(fmc);
+        debugCounterService.startUp(fmc);
+        storageService.startUp(fmc);
         firewall.startUp(fmc);
 
         // Build our test packet

@@ -266,10 +266,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setCookie(cookie)
-			.setOutPort(outPort); // TODO @Ryan why does this need to be set in addition to the action???
+			.setOutPort(outPort);
 
 			try {
-				//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, fm);
 				if (log.isTraceEnabled()) {
 					log.trace("Pushing Route flowmod routeIndx={} " +
 							"sw={} inPort={} outPort={}",
@@ -281,7 +280,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 				messageDamper.write(sw, fmb.build());
 				if (doFlush) {
 					sw.flush();
-					//TODO @Ryan counterStore.updateFlush();
 				}
 
 				// Push the packet out the source switch
@@ -385,7 +383,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
 		try {
-			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);
 			messageDamper.write(sw, pob.build());
 		} catch (IOException e) {
 			log.error("Failure writing packet out", e);
@@ -422,7 +419,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		pob.setData(packetData);
 
 		try {
-			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);
 			if (log.isTraceEnabled()) {
 				log.trace("write broadcast packet on switch-id={} " +
 						"interfaces={} packet-out={}",

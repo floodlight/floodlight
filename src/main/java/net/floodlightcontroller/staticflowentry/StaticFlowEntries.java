@@ -162,7 +162,7 @@ public class StaticFlowEntries {
 			if (fm.getInstructions() != null) {
 				List<OFInstruction> instructions = fm.getInstructions();
 				for (OFInstruction inst : instructions) {
-					switch (inst.getType()) { //TODO @Ryan look into replacing with an instanceof construct
+					switch (inst.getType()) {
 					case GOTO_TABLE:
 						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE, InstructionUtils.gotoTableToString(((OFInstructionGotoTable) inst), log));
 						break;
@@ -357,7 +357,7 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_ACTIVE:
 				entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT: // TODO @Ryan always store TO's, but conditionally push them (the conditional push hasn't been done yet)
+			case StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT:
 				entry.put(StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_HARD_TIMEOUT:

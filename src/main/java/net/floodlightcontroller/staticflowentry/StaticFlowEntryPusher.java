@@ -342,7 +342,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			}
 
 			// get the correct builder for the OF version supported by the switch
-			// TODO @Ryan this should arguably be a FlowAdd, not a FlowModify, but it really doesn't matter
 			fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
@@ -404,7 +403,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		String match = matchString.toString();
 
 		try {
-			//TODO @Ryan new fromString() method here. Should verify it especially
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
 			log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);

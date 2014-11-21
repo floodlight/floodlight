@@ -32,6 +32,8 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -88,6 +90,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
     private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
     private FloodlightModuleContext fmc;
     private RestApiServer restApiService;
+    private MockDebugCounterService debugCounterService;
 
     @Override
     @Before
@@ -162,16 +165,20 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setReason(OFPacketInReason.NO_MATCH)
             .build();
         
+        this.debugCounterService = new MockDebugCounterService();
         this.learningSwitch = new LearningSwitch();
         this.restApiService = new RestApiServer();
         
         this.fmc = new FloodlightModuleContext();
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        fmc.addService(IDebugCounterService.class, debugCounterService);
         fmc.addService(IRestApiService.class, this.restApiService);
         
+        this.debugCounterService.init(fmc);
         this.restApiService.init(fmc);
         this.learningSwitch.init(fmc);
+        this.debugCounterService.startUp(fmc);
         this.restApiService.startUp(fmc);
         this.learningSwitch.startUp(fmc);
                 

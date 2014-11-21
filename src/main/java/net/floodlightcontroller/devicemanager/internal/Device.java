@@ -679,7 +679,7 @@ public class Device implements IDevice {
             if (e.switchDPID.equals(swp.getSwitchDPID())
                     && e.switchPort.equals(swp.getPort())) {
                 if (e.getVlan() == null)
-                    vals.add(VlanVid.ofVlan(-1)); //TODO @Ryan is this the correct way to represent an untagged vlan?
+                    vals.add(VlanVid.ofVlan(-1)); //TODO Update all -1 VLANs (untagged) to the new VlanVid.ZERO
                 else
                     vals.add(e.getVlan());
             }
