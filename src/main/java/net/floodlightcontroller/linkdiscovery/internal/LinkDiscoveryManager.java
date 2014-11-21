@@ -1728,60 +1728,6 @@ IFloodlightModule, IInfoProvider {
             readTopologyConfigFromStorage();
             return;
         }
-        /* TODO @Ryan can we nuke all this? core switch isn't used all that often (I don't think) and not at all anymore
-
-        ArrayList<IOFSwitch> updated_switches = new ArrayList<IOFSwitch>();
-        for (Object key : rowKeys) {
-            DatapathId swId = DatapathId.of((String) key);
-            IOFSwitch sw = switchService.getSwitch(swId);
-            if (sw != null) {
-               boolean curr_status = sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
-                boolean new_status = false;
-                IResultSet resultSet = null;
-
-                try {
-                    resultSet = storageSourceService.getRow(tableName, key);
-                    for (Iterator<IResultSet> it = resultSet.iterator(); it.hasNext();) {
-                        // In case of multiple rows, use the status in last row?
-                        Map<String, Object> row = it.next().getRow();
-                        if (row.containsKey(SWITCH_CONFIG_CORE_SWITCH)) {
-                            new_status = ((String) row.get(SWITCH_CONFIG_CORE_SWITCH)).equals("true");
-                        }
-                    }
-                } finally {
-                    if (resultSet != null) {
-                    	resultSet.close();
-                    }
-                }
-
-                if (curr_status != new_status) {
-                    updated_switches.add(sw);
-                }
-            } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("Update for switch which has no entry in switch " + "list (dpid={}), a delete action.", key);
-                }
-            }
-        }
-
-        for (IOFSwitch sw : updated_switches) {
-            // Set SWITCH_IS_CORE_SWITCH to it's inverse value
-            if (sw.hasAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH)) {
-                sw.removeAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH);
-                if (log.isTraceEnabled()) {
-                    log.trace("SWITCH_IS_CORE_SWITCH set to False for {}", sw);
-                } 
-                updates.add(new LDUpdate(sw.getId(),
-                                         SwitchType.BASIC_SWITCH,
-                                         UpdateOperation.SWITCH_UPDATED));
-            } else {
-                sw.setAttribute(IOFSwitch.SWITCH_IS_CORE_SWITCH, new Boolean(true));
-                if (log.isTraceEnabled()) {
-                    log.trace("SWITCH_IS_CORE_SWITCH set to True for {}", sw);
-                }
-                updates.add(new LDUpdate(sw.getId(), SwitchType.CORE_SWITCH, UpdateOperation.SWITCH_UPDATED));
-            } 
-        }*/
     }
 
 	@Override

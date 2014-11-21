@@ -394,7 +394,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
         }
         for (OFAction a : actions) {
             switch (a.getType()) {
-            case OUTPUT: //TODO @Ryan need to reference the predefined string constants for each of the actions/oxms
+            case OUTPUT:
                 jsonGenerator.writeNumberField(ActionUtils.STR_OUTPUT, ((OFActionOutput)a).getPort().getPortNumber());
                 break;
             /* begin OF1.0 ONLY actions */

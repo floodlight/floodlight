@@ -1062,8 +1062,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		@Override
 		public void transitionToStandby() {
 			DeviceManagerImpl.this.isMaster = false;
-			//TODO @Ryan is there a goToStandby()?
-			//DeviceManagerImpl.this.deviceSyncManager.goToSlave();
 		}
 	}
 

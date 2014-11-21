@@ -471,7 +471,6 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
                 // check if rule matches
                 // AllowDropPair adp's allow and drop matches will modified with what matches
-                // TODO @Ryan might need to re-init adp each time (look into later) 
                 if (rule.matchesThisPacket(sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), eth, adp) == true) {
                     matched_rule = rule;
                     break;

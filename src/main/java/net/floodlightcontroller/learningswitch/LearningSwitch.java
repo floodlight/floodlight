@@ -48,7 +48,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.MacVlanPair;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.restserver.IRestApiService;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -80,8 +82,12 @@ public class LearningSwitch
 
     // Module dependencies
     protected IFloodlightProviderService floodlightProviderService;
-    protected IDebugCounterService debugCounterService;
     protected IRestApiService restApiService;
+    
+    protected IDebugCounterService debugCounterService;
+    private IDebugCounter counterFlowMod;
+    private IDebugCounter counterPacketOut;
+
 
     // Stores the learned state for each switch
     protected Map<IOFSwitch, Map<MacVlanPair, OFPort>> macVlanToSwitchPortMap;
@@ -271,7 +277,7 @@ public class LearningSwitch
                       new Object[]{ sw, (command == OFFlowModCommand.DELETE) ? "deleting" : "adding", fmb.build() });
         }
 
-        //TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, fmb.build());
+        counterFlowMod.increment();
 
         // and write it out
         sw.write(fmb.build());
@@ -339,7 +345,7 @@ public class LearningSwitch
             pob.setData(packetData);
         }
 
-        //TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, pob.build());
+        counterPacketOut.increment();
         sw.write(pob.build());
     }
 
@@ -377,7 +383,7 @@ public class LearningSwitch
         }
 
         // and write it out
-        //TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, pob.build());
+        counterPacketOut.increment();
         sw.write(pob.build());
 
     }
@@ -633,5 +639,9 @@ public class LearningSwitch
         log.debug("FlowMod idle timeout set to {} seconds", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
         log.debug("FlowMod hard timeout set to {} seconds", FLOWMOD_DEFAULT_HARD_TIMEOUT);
         log.debug("FlowMod priority set to {}", FLOWMOD_PRIORITY);
+        
+        debugCounterService.registerModule(this.getName());
+        counterFlowMod = debugCounterService.registerCounter(this.getName(), "flow-mods-written", "Flow mods written to switches by LearningSwitch", MetaData.WARN);
+        counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written to switches by LearningSwitch", MetaData.WARN);
     }
 }

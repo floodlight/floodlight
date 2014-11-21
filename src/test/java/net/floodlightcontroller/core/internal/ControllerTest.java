@@ -185,7 +185,6 @@ public class ControllerTest extends FloodlightTestCase {
                 .setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
         byte[] testPacketSerialized = testPacket.serialize();
 
-        //TODO @Ryan should this be for any version? Should 1.0 and 1.3 be tested here?
         // The specific factory can be obtained from the switch, but we don't have one
         pi = (OFPacketIn) factory.buildPacketIn()
                 .setBufferId(OFBufferId.NO_BUFFER)

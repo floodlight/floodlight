@@ -56,7 +56,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -99,6 +101,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected IRestApiService restApiService;
     
     protected IDebugCounterService debugCounterService;
+    private IDebugCounter counterPacketOut;
     protected IDeviceService deviceManagerService;
     protected IRoutingService routingEngineService;
     protected ITopologyService topologyService;
@@ -341,7 +344,7 @@ public class LoadBalancer implements IFloodlightModule,
             pob.setData(packetData);
         }
 
-        //TODO @Ryan debugCounterService.updatePktOutFMCounterStoreLocal(sw, pob.build());
+        counterPacketOut.increment();
         sw.write(pob.build());
     }
 
@@ -816,5 +819,7 @@ public class LoadBalancer implements IFloodlightModule,
     public void startUp(FloodlightModuleContext context) {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
         restApiService.addRestletRoutable(new LoadBalancerWebRoutable());
+        debugCounterService.registerModule(this.getName());
+        counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written by the LoadBalancer", MetaData.WARN);
     }
 }

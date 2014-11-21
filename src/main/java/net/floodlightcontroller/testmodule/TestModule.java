@@ -136,7 +136,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 			e.printStackTrace();
 		}*/
         
-        //TODO @Ryan set a bunch of matches. Test for an OF1.0 and OF1.3 switch. See what happens if they are incorrectly applied.
+        // set a bunch of matches. Test for an OF1.0 and OF1.3 switch. See what happens if they are incorrectly applied.
         /* L2 and ICMP TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.ETH_SRC, MacAddress.BROADCAST);
         mb.setExact(MatchField.ETH_DST, MacAddress.BROADCAST);
@@ -147,7 +147,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.ECHO); 
         OFActionOutput.Builder actionBuilder = factory.actions().buildOutput();
         actions.add(factory.actions().output(OFPort.of(1), Integer.MAX_VALUE));
-        //actions.add(factory.actions().setField(factory.oxms().icmpv4Code(ICMPv4Code.of((short)1)))); //TODO @Ryan is ICMP rewrite not supported? The message is okay leaving (loxi doens't complain), but the switch rejects both actions
+        //actions.add(factory.actions().setField(factory.oxms().icmpv4Code(ICMPv4Code.of((short)1))));
         //actions.add(factory.actions().setField(factory.oxms().icmpv4Type(ICMPv4Type.ALTERNATE_HOST_ADDRESS))); */
  
         

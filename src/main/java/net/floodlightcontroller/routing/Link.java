@@ -123,7 +123,6 @@ public class Link implements Comparable<Link> {
                 + "]";
     }
     
-    //TODO @Ryan there was some short 0xFFFF bitmasking here when ports were shorts. I don't get what that did other than just allow all bits of the short (16), so I just stringified the whole thing
     public String toKeyString() {
     	return (this.src.toString() + "|" +
     			this.srcPort.toString() + "|" +

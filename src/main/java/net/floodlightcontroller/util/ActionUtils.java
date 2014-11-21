@@ -517,7 +517,7 @@ public class ActionUtils {
 						break;
 					}					
 					break;
-				case STR_GROUP: //TODO @Ryan need to better understand what this action does
+				case STR_GROUP:
 					a = OFFactories.getFactory(fmb.getVersion()).actions().buildGroup()
 					.setGroup(OFGroup.of(Integer.parseInt(pair)))
 					.build();					

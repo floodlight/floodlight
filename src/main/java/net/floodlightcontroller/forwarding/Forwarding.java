@@ -136,10 +136,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		// initialize match structure and populate it based on the packet in's match
 		Match.Builder mb = null;
 		if (decision.getMatch() != null) {
-			/* TODO @Ryan This routing decision should be a match object with all appropriate fields set,
+			/* This routing decision should be a match object with all appropriate fields set,
 			 * not just masked. If it's a decision that matches the packet we received, then simply setting
 			 * the masks to the new match will create the same match in the end. We can just use the routing
-			 * match object instead (right?).
+			 * match object instead.
 			 * 
 			 * The Firewall is currently the only module/service that sets routing decisions in the context 
 			 * store (or instantiates any for that matter). It's disabled by default, so as-is a decision's 
@@ -282,6 +282,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 												
 												// A retentive builder will remember all MatchFields of the parent the builder was generated from
 												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
+												// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
 												Match.Builder mb = sw.getOFFactory().buildMatch();
 												mb.setExact(MatchField.IN_PORT, inPort)
 												.setExact(MatchField.ETH_SRC, srcMac)
@@ -291,6 +292,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 												}
 												
+												// TODO Detect switch type and match to create hardware-implemented flow
+												// TODO Set option in config file to support specific or MAC-only matches
 												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
 													IPv4 ip = (IPv4) eth.getPayload();
 													IPv4Address srcIp = ip.getSourceAddress();
@@ -312,7 +315,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													}	
 												} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
 													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
-												} //TODO @Ryan should probably include other ethertypes
+												} 
 												
 												routeMatch = mb.build();
 											}

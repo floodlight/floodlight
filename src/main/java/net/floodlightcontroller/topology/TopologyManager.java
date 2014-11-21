@@ -367,7 +367,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		// Check whether the port is a physical port. We should not learn
 		// attachment points on "special" ports.
-		//TODO @Ryan port numbers should be handled as ints now, not shorts. I suppose anything above 65280 up to 65533 is a "special" non-physical port.
 		if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
 
 		// Make sure that the port is enabled.

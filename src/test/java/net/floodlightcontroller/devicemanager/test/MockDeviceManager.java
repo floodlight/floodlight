@@ -90,7 +90,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
 			ipv4Address = null;
 		
 		if (vlan == null) {
-			v = VlanVid.ofVlan(-1); // TODO @Ryan there is now a ZERO vlan for OF1.3 that should probably be used here.
+			v = VlanVid.ofVlan(-1);
 		} else {
 			v = VlanVid.ofVlan(vlan);
 		}

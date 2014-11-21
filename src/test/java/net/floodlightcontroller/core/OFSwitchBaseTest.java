@@ -201,7 +201,6 @@ public class OFSwitchBaseTest {
         portFeatures.add(OFPortFeatures.PF_100MB_HD);
         pdb.setCurr(portFeatures);
         p2b = pdb.build();
-        //TODO @Ryan does setting the config as PORT_DOWN undo a prior setting of state = LIVE? Answer: NO
         assertFalse("Sanity check portEnabled", p2a.getState().contains(OFPortState.LIVE));
         // p3 is enabled
         // p3 has mixed case

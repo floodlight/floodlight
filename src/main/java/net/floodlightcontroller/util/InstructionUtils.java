@@ -88,7 +88,7 @@ public class InstructionUtils {
 	 */
 	public static void gotoTableFromString(OFFlowMod.Builder fmb, String instStr, Logger log) {
 		if (instStr == null || instStr.equals("")) {
-			return; //TODO @Ryan fail silently?
+			return;
 		}
 		// Split into pairs of key=value
 		String[] keyValue = instStr.split("=");
@@ -111,7 +111,8 @@ public class InstructionUtils {
 	 * @return
 	 */
 	public static String writeMetadataToString(OFInstructionWriteMetadata inst, Logger log) {
-		/*TODO @Ryan U64.toString()'s look like they format with a leading 0x. getLong() will allow us to work with just the value
+		/* 
+		 * U64.toString() looks like it formats with a leading 0x. getLong() will allow us to work with just the value
 		 * For the rest api though, will the user provide a hex value or a long? I'd guess a hex value would be more useful.
 		 */
 		return STR_SUB_WRITE_METADATA_METADATA + "=" + Long.toString(inst.getMetadata().getValue()) + "," + STR_SUB_WRITE_METADATA_MASK + "=" + Long.toString(inst.getMetadataMask().getValue());
@@ -128,7 +129,7 @@ public class InstructionUtils {
 	 */
 	public static void writeMetadataFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
 		if (inst == null || inst.equals("")) {
-			return; // TODO @Ryan quietly fail?
+			return;
 		}
 		// Split into pairs of key=value
 		String[] tokens = inst.split(",");
@@ -277,8 +278,8 @@ public class InstructionUtils {
 	 * @param log
 	 */
 	public static void meterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
-		if (inst == null || inst.equals("")) {
-			return; // TODO @Ryan quietly fail?
+		if (inst == null || inst.isEmpty()) {
+			return;
 		}
 
 		OFInstructionMeter.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildMeter();

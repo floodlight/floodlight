@@ -215,13 +215,16 @@ public class MatchUtils {
 	}
 
 	/**
-	 * TODO @Ryan NOT IMPLEMENTED! Returns empty string right now.
+	 * TODO NOT IMPLEMENTED! (Marked as Deprecated for the time being.)
+	 * 
+	 * Returns empty string right now.
 	 * Output a dpctl-styled string, i.e., only list the elements that are not wildcarded.
 	 * 
 	 * A match-everything Match outputs "Match[]"
 	 * 
 	 * @return "Match[dl_src:00:20:01:11:22:33,nw_src:192.168.0.0/24,tp_dst:80]"
 	 */
+	@Deprecated
 	public static String toString(Match match) {
 		/*String str = "";
 

@@ -92,7 +92,6 @@ public class HubTest extends FloodlightTestCase {
         this.testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        //TODO @Ryan should this just be OF_13 or include OF_10 too?
         this.packetIn = (OFPacketIn) OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
             .setBufferId(OFBufferId.NO_BUFFER)
             .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch()
@@ -137,8 +136,6 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        //TODO @Ryan the wc1 message has inport=ANY and the next xid
-        // Can this be asserted anymore with OF1.3?
         assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
     }
 
@@ -179,9 +176,6 @@ public class HubTest extends FloodlightTestCase {
         verify(mockSwitch);
         
         assertTrue(wc1.hasCaptured());
-        //TODO @Ryan the wc1 message has inport=ANY,
-        // bufferid=NONE, and the next xid
-        // Can this be asserted anymore with OF1.3?
         OFMessage m = wc1.getValue();
         assertEquals(po, m);
     }
