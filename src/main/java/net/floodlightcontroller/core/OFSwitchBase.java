@@ -27,6 +27,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
@@ -158,7 +159,7 @@ public abstract class OFSwitchBase implements IOFSwitch {
             new ThreadLocal<Map<IOFSwitch,List<OFMessage>>>() {
         @Override
         protected Map<IOFSwitch,List<OFMessage>> initialValue() {
-            return new HashMap<IOFSwitch,List<OFMessage>>();
+            return new WeakHashMap<IOFSwitch,List<OFMessage>>();
         }
     };
 
