@@ -776,8 +776,8 @@ public class OFMatch implements Cloneable, Serializable {
             return false;
         if (srcmasklen >= 32 && networkSource != toCompare.getNetworkSource())
             return false;
-        int dstmask = ~((1 << (32 - dstmasklen)) - 1);
-        int srcmask = ~((1 << (32 - srcmasklen)) - 1);
+        int dstmask = dstmasklen == 0 ? 0 : ~((1 << (32 - dstmasklen)) - 1);
+        int srcmask = srcmasklen == 0 ? 0 : ~((1 << (32 - srcmasklen)) - 1);
         if (dstmasklen < 32 &&
                 (networkDestination & dstmask) != (toCompare.getNetworkDestination() & dstmask))
             return false;
