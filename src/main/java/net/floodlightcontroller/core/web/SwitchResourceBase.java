@@ -119,6 +119,9 @@ public class SwitchResourceBase extends ServerResource {
 				req = sw.getOFFactory().buildDescStatsRequest()
 				.build();
 				break;
+			case PORT_DESC:
+				req = sw.getOFFactory().buildPortDescStatsRequest()
+				.build();
 			case EXPERIMENTER: //TODO @Ryan support new OF1.1+ stats types
 			case GROUP:
 			case GROUP_DESC:
@@ -126,9 +129,6 @@ public class SwitchResourceBase extends ServerResource {
 			case METER:
 			case METER_CONFIG:
 			case METER_FEATURES:
-			case PORT_DESC:
-				req = sw.getOFFactory().buildPortDescStatsRequest()
-				.build();
 			case TABLE_FEATURES:
 			default:
 				log.error("Stats Request Type {} not implemented yet", statType.name());

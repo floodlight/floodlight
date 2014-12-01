@@ -208,13 +208,13 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                         } else if (key.equals(COLUMN_DL_TYPE)) {
                             r.dl_type = EthType.of(Integer.parseInt((String) row.get(COLUMN_DL_TYPE)));
                         } else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_PREFIX)), r.nw_src_prefix_and_mask.getMask().getInt());
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_PREFIX))), r.nw_src_prefix_and_mask.getMask());
                         } else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_SRC_MASKBITS)));
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue(), IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_MASKBITS))));
                         } else if (key.equals(COLUMN_NW_DST_PREFIX)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_PREFIX)), r.nw_dst_prefix_and_mask.getMask().getInt());
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_PREFIX))), r.nw_dst_prefix_and_mask.getMask());
                         } else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_DST_MASKBITS)));
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue(), IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_MASKBITS))));
                         } else if (key.equals(COLUMN_NW_PROTO)) {
                             r.nw_proto = IpProtocol.of(Short.parseShort((String) row.get(COLUMN_NW_PROTO)));
                         } else if (key.equals(COLUMN_TP_SRC)) {

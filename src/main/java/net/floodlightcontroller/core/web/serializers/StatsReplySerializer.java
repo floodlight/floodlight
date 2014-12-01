@@ -40,30 +40,33 @@ import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-
-//Use the loxigen's serializer
+import org.projectfloodlight.openflow.protocol.ver13.OFFlowModFlagsSerializerVer13;
+// Use Loxigen's serializer
 import org.projectfloodlight.openflow.protocol.ver13.OFPortFeaturesSerializerVer13;
+import org.projectfloodlight.openflow.protocol.ver12.OFFlowModFlagsSerializerVer12;
 import org.projectfloodlight.openflow.protocol.ver12.OFPortFeaturesSerializerVer12;
+import org.projectfloodlight.openflow.protocol.ver11.OFFlowModFlagsSerializerVer11;
 import org.projectfloodlight.openflow.protocol.ver11.OFPortFeaturesSerializerVer11;
+import org.projectfloodlight.openflow.protocol.ver10.OFFlowModFlagsSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver10.OFPortFeaturesSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver13.OFPortStateSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver12.OFPortStateSerializerVer12;
 import org.projectfloodlight.openflow.protocol.ver11.OFPortStateSerializerVer11;
 import org.projectfloodlight.openflow.protocol.ver10.OFPortStateSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver13.OFPortConfigSerializerVer13;
+import org.projectfloodlight.openflow.protocol.ver14.OFFlowModFlagsSerializerVer14;
 import org.projectfloodlight.openflow.protocol.ver12.OFPortConfigSerializerVer12;
 import org.projectfloodlight.openflow.protocol.ver11.OFPortConfigSerializerVer11;
 import org.projectfloodlight.openflow.protocol.ver10.OFPortConfigSerializerVer10;
-
 import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.*;
 import org.projectfloodlight.openflow.protocol.oxm.*;
 import org.projectfloodlight.openflow.protocol.instruction.*;
 import org.projectfloodlight.openflow.protocol.action.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Serialize a DPID as colon-separated hexadecimal
  */
@@ -200,7 +203,27 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
                 jGen.writeNumberField("priority", entry.getPriority());
                 jGen.writeNumberField("idleTimeoutSec", entry.getIdleTimeout());
                 jGen.writeNumberField("hardTimeoutSec", entry.getHardTimeout());
-                jGen.writeNumberField("flags", entry.getFlags());
+                switch (entry.getVersion()) {
+                	case OF_10:
+                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer10.toWireValue(entry.getFlags()));
+                		break;
+                	case OF_11:
+                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer11.toWireValue(entry.getFlags()));
+                		break;
+                	case OF_12:
+                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer12.toWireValue(entry.getFlags()));
+                		break;
+                	case OF_13:
+                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer13.toWireValue(entry.getFlags()));
+                		break;
+                	case OF_14:
+                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer14.toWireValue(entry.getFlags()));
+                		break;
+                	default:
+                		logger.error("Could not decode OFVersion {}", entry.getVersion());
+                		break;
+                }
+   
                 // list flow matches
                 jGen.writeObjectFieldStart("match");
                 Iterator<MatchField<?>> mi = entry.getMatch().getMatchFields().iterator(); // get iter to any match field type
@@ -622,6 +645,9 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
                     jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getSupported()));
                     jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getPeer()));
                     break;
+                case OF_14:
+                	// TODO
+                	logger.error("OF1.4 OFPortDesc serializer not implemented");
             }
             if (OFVersion.OF_10 != entry.getVersion()) {
                 jGen.writeNumberField("currSpeed",entry.getCurrSpeed());

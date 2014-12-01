@@ -37,8 +37,8 @@ public class OFConnectionCounters {
     private final IDebugCounter ctrWriteGetConfigReply;
     private final IDebugCounter ctrWriteSetConfig;
     private final IDebugCounter ctrWritePacketIn;
-    private final IDebugCounter ctrWritePacketOut;
     private final IDebugCounter ctrWriteFlowRemoved;
+    private final IDebugCounter ctrWritePacketOut;
     private final IDebugCounter ctrWritePortStatus;
     private final IDebugCounter ctrWriteFlowMod;
     private final IDebugCounter ctrWritePortMod;
@@ -46,16 +46,21 @@ public class OFConnectionCounters {
     private final IDebugCounter ctrWriteStatsReply;
     private final IDebugCounter ctrWriteBarrierRequest;
     private final IDebugCounter ctrWriteBarrierReply;
-    private final IDebugCounter ctrWriteGetAsyncReply;
-    private final IDebugCounter ctrWriteGetAsyncRequest;
-    private final IDebugCounter ctrWriteGroupMod;
-    private final IDebugCounter ctrWriteMeterMod;
-    private final IDebugCounter ctrWriteQueueGetConfigReply;
     private final IDebugCounter ctrWriteQueueGetConfigRequest;
+    private final IDebugCounter ctrWriteQueueGetConfigReply;
+    private final IDebugCounter ctrWriteGroupMod;
+    private final IDebugCounter ctrWriteTableMod;
     private final IDebugCounter ctrWriteRoleRequest;
     private final IDebugCounter ctrWriteRoleReply;
+    private final IDebugCounter ctrWriteGetAsyncRequest;
+    private final IDebugCounter ctrWriteGetAsyncReply;
     private final IDebugCounter ctrWriteSetAsync;
-    private final IDebugCounter ctrWriteTableMod;
+    private final IDebugCounter ctrWriteMeterMod;
+    private final IDebugCounter ctrWriteRoleStatus;
+    private final IDebugCounter ctrWriteTableStatus;   
+    private final IDebugCounter ctrWriteRequestForward;
+    private final IDebugCounter ctrWriteBundleControl;
+    private final IDebugCounter ctrWriteBundleAdd;
 
     // Read Counters
     //
@@ -89,6 +94,11 @@ public class OFConnectionCounters {
     private final IDebugCounter ctrReadRoleReply;
     private final IDebugCounter ctrReadSetAsync;
     private final IDebugCounter ctrReadTableMod;
+    private final IDebugCounter ctrReadRoleStatus;
+    private final IDebugCounter ctrReadTableStatus;   
+    private final IDebugCounter ctrReadBundleAdd;
+    private final IDebugCounter ctrReadBundleControl;
+    private final IDebugCounter ctrReadRequestForward;
 
     private static final Logger logger =
             LoggerFactory.getLogger(OFConnectionCounters.class);
@@ -287,6 +297,36 @@ public class OFConnectionCounters {
                                      hierarchy,
                                      stringId,
                                      OFType.TABLE_MOD.toString());
+        
+        ctrWriteBundleAdd =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.BUNDLE_ADD_MESSAGE.toString());
+        
+        ctrWriteBundleControl =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.BUNDLE_CONTROL.toString());
+        
+        ctrWriteRequestForward =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.REQUESTFORWARD.toString());
+        
+        ctrWriteRoleStatus =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.ROLE_STATUS.toString());
+        
+        ctrWriteTableStatus =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.TABLE_STATUS.toString());
 
         // Register Read Counters
         //
@@ -446,6 +486,36 @@ public class OFConnectionCounters {
                                      hierarchy,
                                      stringId,
                                      OFType.TABLE_MOD.toString());
+        
+        ctrReadBundleAdd =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.BUNDLE_ADD_MESSAGE.toString());
+        
+        ctrReadBundleControl =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.BUNDLE_CONTROL.toString());
+        
+        ctrReadRequestForward =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.REQUESTFORWARD.toString());
+        
+        ctrReadRoleStatus =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.ROLE_STATUS.toString());
+        
+        ctrReadTableStatus =
+                registerCounterLocal(counters,
+                                     hierarchy,
+                                     stringId,
+                                     OFType.TABLE_STATUS.toString());
     }
     
     /**
@@ -583,7 +653,27 @@ public class OFConnectionCounters {
             case TABLE_MOD:
                 ctrWriteTableMod.increment();
                 break;
-
+                
+            case BUNDLE_ADD_MESSAGE:
+                ctrWriteBundleAdd.increment();
+                break;
+                
+            case BUNDLE_CONTROL:
+                ctrWriteBundleControl.increment();
+                break;
+                
+            case REQUESTFORWARD:
+                ctrWriteRequestForward.increment();
+                break;
+                
+            case ROLE_STATUS:
+                ctrWriteRoleStatus.increment();
+                break;
+                
+            case TABLE_STATUS:
+                ctrWriteTableStatus.increment();
+                break;
+                
             default:
                 logger.warn(ofm.getType().toString() +
                             ": Invalid OpenFlow Messaqe!");
@@ -715,6 +805,26 @@ public class OFConnectionCounters {
 
            case TABLE_MOD:
                ctrReadTableMod.increment();
+               break;
+               
+           case BUNDLE_ADD_MESSAGE:
+               ctrReadBundleAdd.increment();
+               break;
+               
+           case BUNDLE_CONTROL:
+               ctrReadBundleControl.increment();
+               break;
+               
+           case REQUESTFORWARD:
+               ctrReadRequestForward.increment();
+               break;
+               
+           case ROLE_STATUS:
+               ctrReadRoleStatus.increment();
+               break;
+               
+           case TABLE_STATUS:
+               ctrReadTableStatus.increment();
                break;
 
            default:

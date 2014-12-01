@@ -2,16 +2,24 @@ package net.floodlightcontroller.debugcounter;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.ArrayList;
+
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.OFConnectionCounters;
+
 import org.projectfloodlight.openflow.protocol.OFAsyncGetReply;
 import org.projectfloodlight.openflow.protocol.OFAsyncGetRequest;
 import org.projectfloodlight.openflow.protocol.OFAsyncSet;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFBundleAddMsg;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlMsg;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlType;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.protocol.OFControllerRoleReason;
 import org.projectfloodlight.openflow.protocol.OFEchoReply;
 import org.projectfloodlight.openflow.protocol.OFEchoRequest;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
@@ -27,6 +35,7 @@ import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
 import org.projectfloodlight.openflow.protocol.OFGroupMod;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFHello;
+import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -38,19 +47,27 @@ import org.projectfloodlight.openflow.protocol.OFPortReason;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigRequest;
+import org.projectfloodlight.openflow.protocol.OFRequestforward;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
+import org.projectfloodlight.openflow.protocol.OFRoleStatus;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFTableMod;
+import org.projectfloodlight.openflow.protocol.OFTableReason;
+import org.projectfloodlight.openflow.protocol.OFTableStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.BundleId;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
+
 import net.floodlightcontroller.test.FloodlightTestCase;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,13 +149,13 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
         //Echo Reply
         //
-        OFEchoReply echorepMsg = factory.echoReply(null);
+        OFEchoReply echorepMsg = factory.echoReply(new byte[1]);
         updateAndTestCounter(echorepMsg,OFType.ECHO_REPLY.toString());
 
 
         // Echo Request
         //
-        OFEchoRequest echoreqMsg = factory.echoRequest(null);
+        OFEchoRequest echoreqMsg = factory.echoRequest(new byte[1]);
         updateAndTestCounter(echoreqMsg,OFType.ECHO_REQUEST.toString());
 
         // Error
@@ -209,7 +226,7 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
         // Hello
         //
-        OFHello helloMsg = factory.hello(null);
+        OFHello helloMsg = factory.hello(new ArrayList<OFHelloElem>());
         updateAndTestCounter(helloMsg,OFType.HELLO.toString());
 
         // meter mod
@@ -248,7 +265,7 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
         // Queue get config request
         //
-        OFQueueGetConfigRequest queueConfReq = factory.queueGetConfigRequest(null);
+        OFQueueGetConfigRequest queueConfReq = factory.queueGetConfigRequest(OFPort.ZERO);
         updateAndTestCounter(queueConfReq,OFType.QUEUE_GET_CONFIG_REQUEST.toString());
 
         // Role Reply
@@ -285,6 +302,44 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
         //
         OFTableMod tableMod = factory.buildTableMod().build();
         updateAndTestCounter(tableMod,OFType.TABLE_MOD.toString());
+        
+        factory = OFFactories.getFactory(OFVersion.OF_14);
+        
+        // Request Forward
+        //
+        OFRequestforward requestForward = factory.buildRequestforward().build();
+        updateAndTestCounter(requestForward,OFType.REQUESTFORWARD.toString());
+        
+        // Bundle Add
+        //
+        OFBundleAddMsg bundleAdd = factory.buildBundleAddMsg()
+        		.setBundleId(BundleId.NONE)
+        		.setData(factory.buildPacketIn().setReason(OFPacketInReason.NO_MATCH).build())
+        		.build();
+        updateAndTestCounter(bundleAdd,OFType.BUNDLE_ADD_MESSAGE.toString());
+        
+        // Bundle Control
+        //
+        OFBundleCtrlMsg bundleControl = factory.buildBundleCtrlMsg()
+        		.setBundleId(BundleId.NONE)
+        		.setBundleCtrlType(OFBundleCtrlType.OPEN_REQUEST)
+        		.build();
+        updateAndTestCounter(bundleControl,OFType.BUNDLE_CONTROL.toString());
+        
+        // Role Status
+        //
+        OFRoleStatus roleStatus = factory.buildRoleStatus()
+        		.setReason(OFControllerRoleReason.CONFIG)
+        		.build();
+        updateAndTestCounter(roleStatus,OFType.ROLE_STATUS.toString());
+        
+        // Table Status
+        //
+        OFTableStatus tableStatus = factory.buildTableStatus()
+        		.setReason(OFTableReason.VACANCY_DOWN)
+        		.setTable(factory.buildTableDesc().setTableId(TableId.ZERO).build())
+        		.build();
+        updateAndTestCounter(tableStatus,OFType.TABLE_STATUS.toString());
 
     }
 }
