@@ -28,13 +28,13 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  *
  */
 public class InstructionUtils {
-	public static final String STR_GOTO_TABLE = "goto_table";
-	public static final String STR_WRITE_METADATA = "write_metadata";
-	public static final String STR_WRITE_ACTIONS = "write_actions";
-	public static final String STR_APPLY_ACTIONS = "apply_actions";
-	public static final String STR_CLEAR_ACTIONS = "clear_actions";
-	public static final String STR_GOTO_METER = "goto_meter";
-	public static final String STR_EXPERIMENTER = "experimenter";
+	public static final String STR_GOTO_TABLE = "instruction_goto_table";
+	public static final String STR_WRITE_METADATA = "instruction_write_metadata";
+	public static final String STR_WRITE_ACTIONS = "instruction_write_actions";
+	public static final String STR_APPLY_ACTIONS = "instruction_apply_actions";
+	public static final String STR_CLEAR_ACTIONS = "instruction_clear_actions";
+	public static final String STR_GOTO_METER = "instruction_goto_meter";
+	public static final String STR_EXPERIMENTER = "instruction_experimenter";
 
 	private static final String STR_SUB_WRITE_METADATA_METADATA = "metadata";
 	private static final String STR_SUB_WRITE_METADATA_MASK = "mask";

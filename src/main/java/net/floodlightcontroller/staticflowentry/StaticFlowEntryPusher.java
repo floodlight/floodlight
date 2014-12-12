@@ -90,7 +90,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String TABLE_NAME = "controller_staticflowtableentry";
 	public static final String COLUMN_NAME = "name";
 	public static final String COLUMN_SWITCH = "switch";
-	public static final String COLUMN_TABLE_ID = "table_id";
+	public static final String COLUMN_TABLE_ID = "table";
 	public static final String COLUMN_ACTIVE = "active";
 	public static final String COLUMN_IDLE_TIMEOUT = "idle_timeout";
 	public static final String COLUMN_HARD_TIMEOUT = "hard_timeout";
@@ -505,6 +505,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				} else if (newFlowMod != null && oldFlowMod == null) {
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
+					entry2dpid.put(entry, dpid);
 					outQueue.add(addTmp);
 				/* Something strange happened, so remove the flow */
 				} else if (newFlowMod == null) { 

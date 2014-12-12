@@ -47,23 +47,23 @@ public class MatchUtils {
 	 * is one such example that references these strings. The REST API for the SFEP will
 	 * expect the JSON string to be formatted using these strings for the applicable fields.
 	 */
-	public static final String STR_IN_PORT = "ingress_port";
-	public static final String STR_IN_PHYS_PORT = "ingress_phys_port";
+	public static final String STR_IN_PORT = "in_port";
+	public static final String STR_IN_PHYS_PORT = "in_phys_port";
 
 	public static final String STR_DL_DST = "dl_dst";
 	public static final String STR_DL_SRC = "dl_src";
 	public static final String STR_DL_TYPE = "dl_type";
 	public static final String STR_DL_VLAN = "dl_vlan";
-	public static final String STR_DL_VLAN_PCP = "dl_vpcp";
+	public static final String STR_DL_VLAN_PCP = "dl_vlan_pcp";
 
 	public static final String STR_NW_DST = "nw_dst";
 	public static final String STR_NW_SRC = "nw_src"; // should change these to IP, since they don't apply to anything else really
 	public static final String STR_IPV6_DST = "ipv6_dst";
 	public static final String STR_IPV6_SRC = "ipv6_src";
-	public static final String STR_IPV6_FLOW_LABEL = "ipv6_flow_label";
-	public static final String STR_IPV6_ND_SSL = "ipv6_nd_ssl";
-	public static final String STR_IPV6_ND_TARGET = "ipv6_nd_target";
-	public static final String STR_IPV6_ND_TTL = "ipv6_nd_ttl";
+	public static final String STR_IPV6_FLOW_LABEL = "ipv6_label";
+	public static final String STR_IPV6_ND_SSL = "nd_ssl";
+	public static final String STR_IPV6_ND_TARGET = "nd_target";
+	public static final String STR_IPV6_ND_TTL = "nd_ttl";
 	public static final String STR_NW_PROTO = "nw_proto";
 	public static final String STR_NW_TOS = "nw_tos";
 	public static final String STR_NW_ECN = "nw_ecn";
@@ -85,9 +85,9 @@ public class MatchUtils {
 
 	public static final String STR_ARP_OPCODE = "arp_opcode";
 	public static final String STR_ARP_SHA = "arp_sha";
-	public static final String STR_ARP_DHA = "arp_dha";
+	public static final String STR_ARP_DHA = "arp_tha";
 	public static final String STR_ARP_SPA = "arp_spa";
-	public static final String STR_ARP_DPA = "arp_dpa";
+	public static final String STR_ARP_DPA = "arp_tpa";
 
 	public static final String STR_MPLS_LABEL = "mpls_label";
 	public static final String STR_MPLS_TC = "mpls_tc";
@@ -98,7 +98,7 @@ public class MatchUtils {
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
 	
-	public static final String SET_FIELD_DELIM = "@";
+	public static final String SET_FIELD_DELIM = "->";
 
 	/**
 	 * Create a point-to-point match for two devices at the IP layer.
@@ -138,7 +138,7 @@ public class MatchUtils {
 					// it's either exact, masked, or wildcarded
 					// itr only contains exact and masked MatchFields
 					// we should never get here
-				}
+				} 
 			}
 		}
 		return mb.build();

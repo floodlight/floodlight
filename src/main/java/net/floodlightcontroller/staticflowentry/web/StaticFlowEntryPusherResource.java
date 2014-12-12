@@ -96,9 +96,8 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
             String status = null;
             if (!checkMatchIp(rowValues)) {
-                status = "Warning! Pushing a static flow entry that matches IP " +
-                        "fields without matching for IP payload (ether-type 2048) will cause " +
-                        "the switch to wildcard higher level fields.";
+                status = "Warning! Must specify dl_type of IPv4/IPv6 to " +
+                        "match on IPv4/IPv6 fields! The flow has been discarded.";
                 log.error(status);
             } else {
                 status = "Entry pushed";

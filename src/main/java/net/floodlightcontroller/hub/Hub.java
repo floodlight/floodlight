@@ -84,7 +84,6 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     private OFMessage createHubFlowMod(IOFSwitch sw, OFMessage msg) {
     	OFPacketIn pi = (OFPacketIn) msg;
         OFFlowAdd.Builder fmb = sw.getOFFactory().buildFlowAdd();
-        
         fmb.setBufferId(pi.getBufferId())
         .setXid(pi.getXid());
 

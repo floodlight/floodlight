@@ -153,6 +153,7 @@ public class StaticFlowEntries {
 		case OF_11:
 		case OF_12:
 		case OF_13:
+		case OF_14:
 		default:
 			// should have a table ID present
 			if (fm.getTableId() != null) { // if not set, then don't worry about it. Default will be set when built and sent to switch
@@ -185,7 +186,7 @@ public class StaticFlowEntries {
 						entry.put(StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER, InstructionUtils.experimenterToString(((OFInstructionExperimenter) inst), log));
 						break;
 					default:
-						log.error("Could not decode OF1.3 instruction type {}", inst); 
+						log.error("Could not decode OF1.1+ instruction type {}", inst); 
 					}
 				}
 			}	
@@ -311,9 +312,9 @@ public class StaticFlowEntries {
 		MappingJsonFactory f = new MappingJsonFactory();
 		JsonParser jp;
 		
-		String tpSrcPort = "";
-		String tpDstPort = "";
-		String ipProto = "";
+		String tpSrcPort = "NOT_SPECIFIED";
+		String tpDstPort = "NOT_SPECIFIED";
+		String ipProto = "NOT_SPECIFIED";
 
 		try {
 			jp = f.createJsonParser(fmJson);
@@ -474,6 +475,31 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_ACTIONS:
 				entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, jp.getText());
 				break;
+				
+			/* 
+			 * All OF1.1+ instructions.
+			 */
+			case StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_CLEAR_ACTIONS:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_CLEAR_ACTIONS, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_GOTO_METER:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_METER, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_WRITE_METADATA:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_METADATA, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER:
+				entry.put(StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER, jp.getText());
+				break;
 			default:
 				log.error("Could not decode field from JSON string: {}", n);
 			}  
@@ -483,29 +509,29 @@ public class StaticFlowEntries {
 		// Once the whole json string has been parsed, find out the IpProto to properly assign the ports.
 		// If IpProto not specified, print error, and make sure all TP columns are clear.
 		if (ipProto.equalsIgnoreCase("tcp")) {
-			if (!tpSrcPort.isEmpty()) {
+			if (!tpSrcPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
 				entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, tpSrcPort);
 			}
-			if (!tpDstPort.isEmpty()) {
+			if (!tpDstPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
 				entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, tpDstPort);
 			}
 		} else if (ipProto.equalsIgnoreCase("udp")) {
-			if (!tpSrcPort.isEmpty()) {
+			if (!tpSrcPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
 				entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, tpSrcPort);
 			}
-			if (!tpDstPort.isEmpty()) {
+			if (!tpDstPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
 				entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, tpDstPort);
 			}
 		} else if (ipProto.equalsIgnoreCase("sctp")) {
-			if (!tpSrcPort.isEmpty()) {
+			if (!tpSrcPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_SRC);
 				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, tpSrcPort);
 			}
-			if (!tpDstPort.isEmpty()) {
+			if (!tpDstPort.equals("NOT_SPECIFIED")) {
 				entry.remove(StaticFlowEntryPusher.COLUMN_TP_DST);
 				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, tpDstPort);
 			}
