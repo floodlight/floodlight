@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.staticflowentry.HeaderFieldsException;
+import net.floodlightcontroller.staticflowentry.StaticFlowEntries;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -46,11 +48,19 @@ import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthSrc;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthType;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv4Code;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv4Type;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv6Code;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv6Type;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpDscp;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpEcn;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpProto;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv4Dst;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv4Src;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Dst;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Flabel;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdSll;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdTarget;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdTll;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Src;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMetadata;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMplsLabel;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMplsTc;
@@ -67,11 +77,11 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.ICMPv4Code;
 import org.projectfloodlight.openflow.types.ICMPv4Type;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6FlowLabel;
 import org.projectfloodlight.openflow.types.IpDscp;
 import org.projectfloodlight.openflow.types.IpEcn;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFBooleanValue;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -83,6 +93,7 @@ import org.projectfloodlight.openflow.types.U8;
 import org.projectfloodlight.openflow.types.VlanPcp;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
+import org.projectfloodlight.openflow.types.IPv6Address;
 
 /**
  * OFAction helper functions. Use with any OpenFlowJ-Loxi Action.
@@ -101,27 +112,27 @@ public class ActionUtils {
 	public static final String STR_VLAN_STRIP = "strip_vlan";
 	public static final String STR_VLAN_POP = "pop_vlan";
 	public static final String STR_VLAN_PUSH = "push_vlan";
-	public static final String STR_VLAN_SET_PCP = "set_vlan_pcp";
-	public static final String STR_VLAN_SET_VID = "set_vlan_vid";
+	public static final String STR_VLAN_SET_PCP = "set_vlan_priority";
+	public static final String STR_VLAN_SET_VID = "set_vlan_id";
 	public static final String STR_QUEUE_SET = "set_queue";
-	public static final String STR_DL_SRC_SET = "set_eth_src";
-	public static final String STR_DL_DST_SET = "set_eth_dst";
-	public static final String STR_NW_SRC_SET = "set_ipv4_src";
-	public static final String STR_NW_DST_SET = "set_ipv4_dst";
-	public static final String STR_NW_ECN_SET = "set_ip_ecn";
-	public static final String STR_NW_TOS_SET = "set_ip_tos";
+	public static final String STR_DL_SRC_SET = "set_src_mac";
+	public static final String STR_DL_DST_SET = "set_dst_mac";
+	public static final String STR_NW_SRC_SET = "set_src_ip";
+	public static final String STR_NW_DST_SET = "set_dst_ip";
+	public static final String STR_NW_ECN_SET = "set_nw_ecn";
+	public static final String STR_NW_TOS_SET = "set_tos_bits";
 	public static final String STR_NW_TTL_SET = "set_ip_ttl";
 	public static final String STR_NW_TTL_DEC = "dec_ip_ttl";
-	public static final String STR_TTL_IN_COPY = "copy_ip_ttl_in";
-	public static final String STR_TTL_OUT_COPY = "copy_ip_ttl_out";
 	public static final String STR_MPLS_LABEL_SET = "set_mpls_label";
 	public static final String STR_MPLS_TC_SET = "set_mpls_tc";
 	public static final String STR_MPLS_TTL_SET = "set_mpls_ttl";
 	public static final String STR_MPLS_TTL_DEC = "dec_mpls_ttl";
 	public static final String STR_MPLS_PUSH = "push_mpls";
 	public static final String STR_MPLS_POP = "pop_mpls";
-	public static final String STR_TP_SRC_SET = "set_tp_src";
-	public static final String STR_TP_DST_SET = "set_tp_dst";
+	public static final String STR_TP_SRC_SET = "set_src_port";
+	public static final String STR_TP_DST_SET = "set_dst_port";
+	public static final String STR_TTL_IN_COPY = "copy_ttl_in";
+	public static final String STR_TTL_OUT_COPY = "copy_ttl_out";
 	public static final String STR_PBB_PUSH = "push_pbb";
 	public static final String STR_PBB_POP = "pop_pbb";
 	public static final String STR_GROUP = "group";
@@ -142,7 +153,30 @@ public class ActionUtils {
             message="Could not decode action {action}",
             explanation="A static flow entry contained an invalid action",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public static String actionsToString(List<OFAction> actions, Logger log) {
+    public static String actionsToString(List<OFAction> actions, Logger log) throws HeaderFieldsException{
+
+//san
+    	boolean ip6 = false;
+    	boolean ip4 = false;
+    	
+    	//Determining the dl_type of the flow for which action is to be set
+    	if (StaticFlowEntries.dl_type == true) {
+    		if (StaticFlowEntries.eth_type.equalsIgnoreCase("0x86dd") || StaticFlowEntries.eth_type.equals("34525") ||
+    				StaticFlowEntries.eth_type.equalsIgnoreCase("ipv6")) {				
+    			ip6 = true;
+			}
+    		else if (StaticFlowEntries.eth_type.equals("0x800") || StaticFlowEntries.eth_type.equals("2048") ||
+    				StaticFlowEntries.eth_type.equalsIgnoreCase("ipv4") || 
+    				StaticFlowEntries.eth_type.equals("0x806") || StaticFlowEntries.eth_type.equals("2054") ||
+    				StaticFlowEntries.eth_type.equalsIgnoreCase("arp")) {				
+    			ip4 = true;
+			}
+    		else {
+    			throw new HeaderFieldsException("Unknown Ethernet Type!");
+    		}
+    	
+    	}
+//san    	    	
         StringBuilder sb = new StringBuilder();
         for (OFAction a : actions) {
             if (sb.length() > 0) {
@@ -211,9 +245,17 @@ public class ActionUtils {
                     sb.append(STR_MPLS_POP + "=" + Integer.toString(((OFActionPopMpls)a).getEthertype().getValue()));
                     break;
                 case SET_NW_SRC:
+                	if (ip6 == true) {
+                		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                	}
+                	ip4 = true;
                     sb.append(STR_NW_SRC_SET + "=" + ((OFActionSetNwSrc)a).getNwAddr().toString());
                     break;
                 case SET_NW_DST:
+                	if (ip6 == true) {
+                		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                	}
+                	ip4 = true;
                     sb.append(STR_NW_DST_SET + "=" + ((OFActionSetNwDst)a).getNwAddr().toString());
                     break;
                 case SET_TP_SRC:
@@ -244,16 +286,54 @@ public class ActionUtils {
                 	log.debug("Got Set-Field action. Setting " + ((OFActionSetField)a));
                 	/* ARP */
                 	if (((OFActionSetField)a).getField() instanceof OFOxmArpOp) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_OPCODE + MatchUtils.SET_FIELD_DELIM + Integer.toString(((OFOxmArpOp) ((OFActionSetField) a).getField()).getValue().getOpcode()));
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSha) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_SHA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpSha) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTha) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_DHA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpTha) ((OFActionSetField) a).getField()).getValue().toString());
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSpa) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_SPA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpSpa) ((OFActionSetField) a).getField()).getValue().toString()); // ipaddress formats string already
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTpa) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_DPA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
-                	} 
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_ND_SLL + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTll) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_ND_TLL + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6NdTll) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTarget) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_ND_TARGET + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	}
                 	/* DATA LAYER */
                 	  else if (((OFActionSetField)a).getField() instanceof OFOxmEthType) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_DL_TYPE + MatchUtils.SET_FIELD_DELIM + Integer.toString(((OFOxmEthType) ((OFActionSetField) a).getField()).getValue().getValue()));
@@ -268,17 +348,63 @@ public class ActionUtils {
                 	} 
                 	/* ICMP */
                 	  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Code) {
+                		if (ip6 == true) {
+                      		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                      	}
+                      	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMP_CODE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv4Code) ((OFActionSetField) a).getField()).getValue().getCode())); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Type) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMP_TYPE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType())); 
-                	} 
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMPV6_CODE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw())); 
+                	}  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Type) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMPV6_TYPE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv6Type) ((OFActionSetField) a).getField()).getValue().getRaw())); 
+                	}
                 	/* NETWORK LAYER */
                 	  else if (((OFActionSetField)a).getField() instanceof OFOxmIpProto) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_PROTO + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIpProto) ((OFActionSetField) a).getField()).getValue().getIpProtocolNumber())); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Src) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_SRC + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv4Src) ((OFActionSetField) a).getField()).getValue().toString()); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {
+                		if (ip6 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip4 = true;
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_DST + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_SRC + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Dst) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_DST + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Flabel) {
+                		if (ip4 == true) {
+                    		throw new HeaderFieldsException("IPv4 and IPv6 fields conflict");
+                    	}
+                    	ip6 = true;
+                    	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_FLOW_LABEL + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6Flabel) ((OFActionSetField) a).getField()).getValue().toString()); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpEcn) { //TODO @Ryan ECN and DSCP need to have their own columns for OF1.3....
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_ECN + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue())); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpDscp) {
@@ -376,7 +502,6 @@ public class ActionUtils {
 					break;
 				case STR_EXPERIMENTER:
 					//no-op. Not implemented
-					log.error("OFAction EXPERIMENTER not implemented.");
 					break;
 				case STR_FIELD_SET: /* ONLY OF1.1+ should get in here. These should only be header fields valid within a set-field. */
 					String[] actionData = pair.split(MatchUtils.SET_FIELD_DELIM);
@@ -385,15 +510,9 @@ public class ActionUtils {
 					}
 					switch (actionData[0]) {
 					case MatchUtils.STR_ARP_OPCODE:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildArpOp().setValue(ArpOpcode.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildArpOp().setValue(ArpOpcode.of(Integer.parseInt(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildArpOp().setValue(ArpOpcode.of(Integer.parseInt(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_ARP_SHA:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -415,16 +534,27 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildArpTpa().setValue(IPv4Address.of(actionData[1])).build())
 						.build();
 						break;
+//san						
+					case MatchUtils.STR_IPV6_ND_SLL:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdSll().setValue(MacAddress.of(actionData[1])).build())
+						.build();
+						break;
+					case MatchUtils.STR_IPV6_ND_TLL:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdTll().setValue(MacAddress.of(actionData[1])).build())
+						.build();
+						break;
+					case MatchUtils.STR_IPV6_ND_TARGET:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdTarget().setValue(IPv6Address.of(actionData[1])).build())
+						.build();
+						break;
+//san						
 					case MatchUtils.STR_DL_TYPE:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildEthType().setValue(EthType.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildEthType().setValue(EthType.of(Integer.parseInt(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildEthType().setValue(EthType.of(Integer.parseInt(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_DL_SRC:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -437,59 +567,41 @@ public class ActionUtils {
 						.build();
 						break;
 					case MatchUtils.STR_DL_VLAN:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanVid().setValue(OFVlanVidMatch.ofVlan(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanVid().setValue(OFVlanVidMatch.ofVlan(Integer.parseInt(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanVid().setValue(OFVlanVidMatch.ofVlan(Integer.parseInt(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_DL_VLAN_PCP:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanPcp().setValue(VlanPcp.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanPcp().setValue(VlanPcp.of(Byte.parseByte(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildVlanPcp().setValue(VlanPcp.of(Byte.parseByte(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_ICMP_CODE:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Code().setValue(ICMPv4Code.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Code().setValue(ICMPv4Code.of(Short.parseShort(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Code().setValue(ICMPv4Code.of(Short.parseShort(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_ICMP_TYPE:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Type().setValue(ICMPv4Type.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Type().setValue(ICMPv4Type.of(Short.parseShort(actionData[1]))).build())
-							.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv4Type().setValue(ICMPv4Type.of(Short.parseShort(actionData[1]))).build())
+						.build();
 						break;
+//san
+					case MatchUtils.STR_ICMPV6_CODE:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv6Code().setValue(U8.of(Short.parseShort(actionData[1]))).build())
+						.build();
+						break;
+					case MatchUtils.STR_ICMPV6_TYPE:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv6Type().setValue(U8.of(Short.parseShort(actionData[1]))).build())
+						.build();
+						break;
+//san						
 					case MatchUtils.STR_NW_PROTO:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpProto().setValue(IpProtocol.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpProto().setValue(IpProtocol.of(Short.parseShort(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpProto().setValue(IpProtocol.of(Short.parseShort(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_NW_SRC:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -501,27 +613,32 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv4Dst().setValue(IPv4Address.of(actionData[1])).build())
 						.build();						
 						break;
+//san						
+					case MatchUtils.STR_IPV6_SRC:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6Src().setValue(IPv6Address.of(actionData[1])).build())
+						.build();						
+						break;
+					case MatchUtils.STR_IPV6_DST:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6Dst().setValue(IPv6Address.of(actionData[1])).build())
+						.build();						
+						break;
+					case MatchUtils.STR_IPV6_FLOW_LABEL:
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6Flabel().setValue(IPv6FlowLabel.of(Integer.parseInt(actionData[1]))).build())
+						.build();						
+						break;
+//san						
 					case MatchUtils.STR_NW_ECN:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_NW_DSCP:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_SCTP_SRC:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -554,42 +671,19 @@ public class ActionUtils {
 						.build();	
 						break;
 					case MatchUtils.STR_MPLS_LABEL:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsLabel().setValue(U32.of(Long.parseLong(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsLabel().setValue(U32.of(Long.parseLong(actionData[1]))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsLabel().setValue(U32.of(Long.parseLong(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_MPLS_TC:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsTc().setValue(U8.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsTc().setValue(U8.of(Short.parseShort(actionData[1]))).build())
-									.build();
-						}
-						break;
-					case MatchUtils.STR_MPLS_BOS:
 						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-								.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsBos().setValue(OFBooleanValue.of(Boolean.parseBoolean(actionData[1]))).build()) // interprets anything other than "true" as false
-								.build();
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMplsTc().setValue(U8.of(Short.parseShort(actionData[1]))).build())
+						.build();
 						break;
 					case MatchUtils.STR_METADATA:
-						if (actionData[1].startsWith("0x")) {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMetadata().setValue(OFMetadata.of(U64.of(Long.parseLong(actionData[1].replaceFirst("0x", ""), 16)))).build())
-									.build();
-						} else {
-							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
-									.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMetadata().setValue(OFMetadata.of(U64.of(Long.parseLong(actionData[1])))).build())
-									.build();
-						}
+						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
+						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildMetadata().setValue(OFMetadata.of(U64.of(Long.parseLong(actionData[1])))).build())
+						.build();
 						break;
 					default:
 						log.error("UNEXPECTED OF1.3 SET-FIELD '{}'", actionData);
@@ -597,73 +691,37 @@ public class ActionUtils {
 					}					
 					break;
 				case STR_GROUP:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildGroup()
-								.setGroup(OFGroup.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-								.build();	
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildGroup()
-								.setGroup(OFGroup.of(Integer.parseInt(pair)))
-								.build();		
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildGroup()
+					.setGroup(OFGroup.of(Integer.parseInt(pair)))
+					.build();					
 					break;
 				case STR_MPLS_LABEL_SET:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsLabel()
-								.setMplsLabel(Long.parseLong(pair.replaceFirst("0x", ""), 16))
-								.build();			
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsLabel()
-								.setMplsLabel(Long.parseLong(pair))
-								.build();					
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsLabel()
+					.setMplsLabel(Long.parseLong(pair))
+					.build();					
 					break;
 				case STR_MPLS_POP:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPopMpls()
-								.setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-								.build();
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPopMpls()
-								.setEthertype(EthType.of(Integer.parseInt(pair)))
-								.build();	
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildPopMpls()
+					.setEthertype(EthType.of(Integer.parseInt(pair)))
+					.build();					
 					break;
 				case STR_MPLS_PUSH:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushMpls()
-								.setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-								.build();		
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushMpls()
-								.setEthertype(EthType.of(Integer.parseInt(pair)))
-								.build();			
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushMpls()
+					.setEthertype(EthType.of(Integer.parseInt(pair)))
+					.build();							
 					break;
 				case STR_MPLS_TC_SET:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTc()
-								.setMplsTc(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-								.build();	
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTc()
-								.setMplsTc(Short.parseShort(pair))
-								.build();			
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTc()
+					.setMplsTc(Short.parseShort(pair))
+					.build();							
 					break;
 				case STR_MPLS_TTL_DEC:
 					a = OFFactories.getFactory(fmb.getVersion()).actions().decMplsTtl();
 					break;
 				case STR_MPLS_TTL_SET:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTtl()
-								.setMplsTtl(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-								.build();	
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTtl()
-								.setMplsTtl(Short.parseShort(pair))
-								.build();				
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetMplsTtl()
+					.setMplsTtl(Short.parseShort(pair))
+					.build();							
 					break;
 				case STR_NW_TOS_SET:
 					a = decode_set_tos_bits(pair, fmb.getVersion(), log); // should only be used by OF1.0
@@ -674,55 +732,31 @@ public class ActionUtils {
 				case STR_NW_DST_SET:
 					a = decode_set_dst_ip(pair, fmb.getVersion(), log);
 					break;
-				case STR_NW_ECN_SET: // loxi does not support DSCP set for OF1.1
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwEcn()
-								.setNwEcn(IpEcn.of(Byte.parseByte(pair.replaceFirst("0x", ""), 16)))
-								.build();		
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwEcn()
-								.setNwEcn(IpEcn.of(Byte.parseByte(pair)))
-								.build();							
-					}
+				case STR_NW_ECN_SET: // loxi does not support DSCP set for OF1.3
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwEcn()
+					.setNwEcn(IpEcn.of(Byte.parseByte(pair)))
+					.build();							
 					break;
 				case STR_NW_TTL_DEC:
 					a = OFFactories.getFactory(fmb.getVersion()).actions().decNwTtl();
 					break;
 				case STR_NW_TTL_SET:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwTtl()
-								.setNwTtl(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-								.build();
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwTtl()
-								.setNwTtl(Short.parseShort(pair))
-								.build();						
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetNwTtl()
+					.setNwTtl(Short.parseShort(pair))
+					.build();							
 					break;
 				case STR_PBB_POP:
 					a = OFFactories.getFactory(fmb.getVersion()).actions().popPbb();
 					break;
 				case STR_PBB_PUSH:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushPbb()
-								.setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-								.build();				
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushPbb()
-								.setEthertype(EthType.of(Integer.parseInt(pair)))
-								.build();					
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushPbb()
+					.setEthertype(EthType.of(Integer.parseInt(pair)))
+					.build();							
 					break;
 				case STR_QUEUE_SET:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetQueue()
-								.setQueueId(Long.parseLong(pair.replaceFirst("0x", ""), 16))
-								.build();	
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetQueue()
-								.setQueueId(Long.parseLong(pair))
-								.build();					
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetQueue()
+					.setQueueId(Long.parseLong(pair))
+					.build();							
 					break;
 				case STR_TP_SRC_SET:
 					a = decode_set_src_port(pair, fmb.getVersion(), log);
@@ -740,15 +774,9 @@ public class ActionUtils {
 					a = OFFactories.getFactory(fmb.getVersion()).actions().popVlan();
 					break;
 				case STR_VLAN_PUSH:
-					if (pair.startsWith("0x")) {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushVlan()
-								.setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-								.build();
-					} else {
-						a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushVlan()
-								.setEthertype(EthType.of(Integer.parseInt(pair)))
-								.build();		
-					}
+					a = OFFactories.getFactory(fmb.getVersion()).actions().buildPushVlan()
+					.setEthertype(EthType.of(Integer.parseInt(pair)))
+					.build();							
 					break;
 				case STR_VLAN_STRIP:
 					a = OFFactories.getFactory(fmb.getVersion()).actions().stripVlan();
@@ -920,7 +948,7 @@ public class ActionUtils {
 			if (n.group(1) != null) {
 				try {
 					VlanPcp prior = VlanPcp.of(get_byte(n.group(1)));
-					OFActionSetVlanPcp.Builder ab = OFFactories.getFactory(version).actions().buildSetVlanPcp();
+					OFActionSetVlanPcp.Builder ab = OFFactories.getFactory(OFVersion.OF_13).actions().buildSetVlanPcp();
 					ab.setVlanPcp(prior);
 					log.debug("action {}", ab.build());
 					return ab.build();
