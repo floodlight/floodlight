@@ -96,7 +96,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
             String status = null;
             if (!checkMatchIp(rowValues)) {
-                status = "Warning! Must specify dl_type of IPv4/IPv6 to " +
+                status = "Warning! Must specify eth_type of IPv4/IPv6 to " +
                         "match on IPv4/IPv6 fields! The flow has been discarded.";
                 log.error(status);
             } else {
