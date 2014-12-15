@@ -26,9 +26,9 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+import net.floodlightcontroller.staticflowentry.HeaderFieldsException;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntries;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -62,11 +62,13 @@ public class StaticFlowEntryPusherResource extends ServerResource {
                     type = Integer.parseInt(val);
                 } catch (NumberFormatException e) { /* fail silently */}
             }
-            if (type == 2048) matchEther = true;
+            if ((type == 2048) || (type == 34525) ) matchEther = true;
         }
 
         if ((rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_SRC) ||
+                rows.containsKey(StaticFlowEntryPusher.COLUMN_NW6_SRC) ||
+                rows.containsKey(StaticFlowEntryPusher.COLUMN_NW6_DST) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_PROTO) ||
                 rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_TOS)) &&
                 (matchEther == false))
@@ -96,8 +98,9 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
             String status = null;
             if (!checkMatchIp(rowValues)) {
-                status = "Warning! Must specify dl_type of IPv4/IPv6 to " +
-                        "match on IPv4/IPv6 fields! The flow has been discarded.";
+                status = "Warning! Pushing a static flow entry that matches IP " +
+                        "fields without matching for IP payload (ether-type IPv4 or IPv6 ) will cause " +
+                        "the switch to wildcard higher level fields.";
                 log.error(status);
             } else {
                 status = "Entry pushed";
@@ -107,7 +110,12 @@ public class StaticFlowEntryPusherResource extends ServerResource {
         } catch (IOException e) {
             log.error("Error parsing push flow mod request: " + fmJson, e);
             return "{\"status\" : \"Error! Could not parse flod mod, see log for details.\"}";
+        } catch (HeaderFieldsException e) {
+            log.error("Error parsing push flow mod request: " + fmJson, e);
+            return "{\"status\" : \"Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
+            		+ "mandatory fields are specified.\"}";
         }
+        
     }
 
     @Delete
