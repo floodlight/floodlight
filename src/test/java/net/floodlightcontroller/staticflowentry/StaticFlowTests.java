@@ -80,7 +80,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         // setup match
         Match match;
         TestRule1.put(COLUMN_DL_DST, "00:20:30:40:50:60");
-        match = MatchUtils.fromString("dl_dst=00:20:30:40:50:60", factory.getVersion());
+        match = MatchUtils.fromString("eth_dst=00:20:30:40:50:60", factory.getVersion());
         // setup actions
         List<OFAction> actions = new LinkedList<OFAction>();
         TestRule1.put(COLUMN_ACTIONS, "output=1");
@@ -107,7 +107,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         Match match;        
         TestRule2.put(COLUMN_DL_TYPE, "0x800");
         TestRule2.put(COLUMN_NW_DST, "192.168.1.0/24");
-        match = MatchUtils.fromString("dl_type=0x800,nw_dst=192.168.1.0/24", factory.getVersion());
+        match = MatchUtils.fromString("eth_type=0x800,ipv4_dst=192.168.1.0/24", factory.getVersion());
         // setup actions
         List<OFAction> actions = new LinkedList<OFAction>();
         TestRule2.put(COLUMN_ACTIONS, "output=1");
@@ -142,7 +142,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         Match match;
         TestRule3.put(COLUMN_DL_DST, "00:20:30:40:50:60");
         TestRule3.put(COLUMN_DL_VLAN, 96);
-        match = MatchUtils.fromString("dl_dst=00:20:30:40:50:60,dl_vlan=96", factory.getVersion());
+        match = MatchUtils.fromString("eth_dst=00:20:30:40:50:60,eth_vlan_vid=96", factory.getVersion());
         // setup actions
         TestRule3.put(COLUMN_ACTIONS, "output=controller");
         List<OFAction> actions = new LinkedList<OFAction>();
@@ -317,7 +317,7 @@ public class StaticFlowTests extends FloodlightTestCase {
         FlowMod3 = FlowModUtils.toFlowDeleteStrict(FlowMod3);
         verifyFlowMod(removeFlowMod, FlowMod3);
         FlowMod3 = FlowModUtils.toFlowAdd(FlowMod3);
-        FlowMod3 = FlowMod3.createBuilder().setMatch(MatchUtils.fromString("dl_dst=00:20:30:40:50:60,dl_vlan=333", factory.getVersion())).setXid(14).build();
+        FlowMod3 = FlowMod3.createBuilder().setMatch(MatchUtils.fromString("eth_dst=00:20:30:40:50:60,eth_vlan_vid=333", factory.getVersion())).setXid(14).build();
         OFFlowMod updateFlowMod = (OFFlowMod) outList.get(1);
         verifyFlowMod(updateFlowMod, FlowMod3);
         writeCaptureList.reset();

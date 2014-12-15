@@ -17,11 +17,13 @@ import org.projectfloodlight.openflow.types.IpDscp;
 import org.projectfloodlight.openflow.types.IpEcn;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBooleanValue;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U32;
+import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
 import org.projectfloodlight.openflow.types.VlanPcp;
 
@@ -50,24 +52,24 @@ public class MatchUtils {
 	public static final String STR_IN_PORT = "in_port";
 	public static final String STR_IN_PHYS_PORT = "in_phys_port";
 
-	public static final String STR_DL_DST = "dl_dst";
-	public static final String STR_DL_SRC = "dl_src";
-	public static final String STR_DL_TYPE = "dl_type";
-	public static final String STR_DL_VLAN = "dl_vlan";
-	public static final String STR_DL_VLAN_PCP = "dl_vlan_pcp";
+	public static final String STR_DL_DST = "eth_dst";
+	public static final String STR_DL_SRC = "eth_src";
+	public static final String STR_DL_TYPE = "eth_type";
+	public static final String STR_DL_VLAN = "eth_vlan_vid";
+	public static final String STR_DL_VLAN_PCP = "eth_vlan_pcp";
 
-	public static final String STR_NW_DST = "nw_dst";
-	public static final String STR_NW_SRC = "nw_src"; // should change these to IP, since they don't apply to anything else really
+	public static final String STR_NW_DST = "ipv4_dst";
+	public static final String STR_NW_SRC = "ipv4_src";
 	public static final String STR_IPV6_DST = "ipv6_dst";
 	public static final String STR_IPV6_SRC = "ipv6_src";
 	public static final String STR_IPV6_FLOW_LABEL = "ipv6_label";
-	public static final String STR_IPV6_ND_SSL = "nd_ssl";
-	public static final String STR_IPV6_ND_TARGET = "nd_target";
-	public static final String STR_IPV6_ND_TTL = "nd_ttl";
-	public static final String STR_NW_PROTO = "nw_proto";
-	public static final String STR_NW_TOS = "nw_tos";
-	public static final String STR_NW_ECN = "nw_ecn";
-	public static final String STR_NW_DSCP = "nw_dscp";
+	public static final String STR_IPV6_ND_SSL = "ipv6_nd_ssl";
+	public static final String STR_IPV6_ND_TARGET = "ipv6_nd_target";
+	public static final String STR_IPV6_ND_TTL = "ipv6_nd_ttl";
+	public static final String STR_NW_PROTO = "ip_proto";
+	public static final String STR_NW_TOS = "ip_tos";
+	public static final String STR_NW_ECN = "ip_ecn";
+	public static final String STR_NW_DSCP = "ip_dscp";
 
 	public static final String STR_SCTP_DST = "sctp_dst";
 	public static final String STR_SCTP_SRC = "sctp_src";
@@ -78,8 +80,8 @@ public class MatchUtils {
 	public static final String STR_TP_DST = "tp_dst"; // support for OF1.0 generic transport ports (possibly sent from the rest api). Only use these to read them in, but store them as the type of port their IpProto is set to.
 	public static final String STR_TP_SRC = "tp_src";
 
-	public static final String STR_ICMP_TYPE = "icmp_type";
-	public static final String STR_ICMP_CODE = "icmp_code";
+	public static final String STR_ICMP_TYPE = "icmpv4_type";
+	public static final String STR_ICMP_CODE = "icmpv4_code";
 	public static final String STR_ICMPV6_TYPE = "icmpv6_type";
 	public static final String STR_ICMPV6_CODE = "icmpv6_code";
 
@@ -382,7 +384,11 @@ public class MatchUtils {
 				}
 				break;
 			case STR_DL_VLAN_PCP:
-				mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1]))));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
+				} else {
+					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1]))));
+				}
 				break;
 			case STR_NW_DST:
 				mb.setMasked(MatchField.IPV4_DST, IPv4AddressWithMask.of(key_value[1]));
@@ -391,17 +397,34 @@ public class MatchUtils {
 				mb.setMasked(MatchField.IPV4_SRC, IPv4AddressWithMask.of(key_value[1]));
 				break;
 			case STR_NW_PROTO:
-				mb.setExact(MatchField.IP_PROTO, IpProtocol.of(Short.valueOf(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(Short.valueOf(key_value[1])));
+				}
 				break;
 			case STR_NW_TOS:
-				mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
-				mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
+				} else {
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
+				}
 				break;
 			case STR_NW_ECN:
-				mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
+				} else {
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(Short.valueOf(key_value[1]))));
+				}
 				break;
 			case STR_NW_DSCP:
-				mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
+				} else {
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(Short.valueOf(key_value[1]))));
+				}
 				break;
 			case STR_SCTP_DST: // for transport ports, if we don't know the transport protocol yet, postpone parsing this [key, value] pair until we know. Put it at the back of the queue.
 				if (mb.get(MatchField.IP_PROTO) == null) {
@@ -468,13 +491,25 @@ public class MatchUtils {
 				}
 				break;
 			case STR_ICMP_TYPE:
-				mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(Short.parseShort(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(Short.parseShort(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(Short.parseShort(key_value[1])));
+				}
 				break;
 			case STR_ICMP_CODE:
-				mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(Short.parseShort(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(Short.parseShort(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(Short.parseShort(key_value[1])));
+				}
 				break;
 			case STR_ARP_OPCODE:
-				mb.setExact(MatchField.ARP_OP, ArpOpcode.of(Integer.parseInt(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.ARP_OP, ArpOpcode.of(Integer.parseInt(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.ARP_OP, ArpOpcode.of(Integer.parseInt(key_value[1])));
+				}
 				break;
 			case STR_ARP_SHA:
 				mb.setExact(MatchField.ARP_SHA, MacAddress.of(key_value[1]));
@@ -489,22 +524,43 @@ public class MatchUtils {
 				mb.setExact(MatchField.ARP_TPA, IPv4Address.of(key_value[1]));
 				break;
 			case STR_MPLS_LABEL:
-				mb.setExact(MatchField.MPLS_LABEL, U32.of(Long.parseLong(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.MPLS_LABEL, U32.of(Long.parseLong(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.MPLS_LABEL, U32.of(Long.parseLong(key_value[1])));
+				}
 				break;
 			case STR_MPLS_TC:
-				mb.setExact(MatchField.MPLS_TC, U8.of(Short.parseShort(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.MPLS_TC, U8.of(Short.parseShort(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.MPLS_TC, U8.of(Short.parseShort(key_value[1])));
+				}
 				break;
 			case STR_MPLS_BOS:
-				//no-op. Not implemented.
+				mb.setExact(MatchField.MPLS_BOS, key_value[1].equalsIgnoreCase("true") ? OFBooleanValue.TRUE : OFBooleanValue.FALSE);
 				break;
 			case STR_METADATA:
-				mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(Long.parseLong(key_value[1])));
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(Long.parseLong(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(Long.parseLong(key_value[1])));
+				}
 				break;
 			case STR_TUNNEL_ID:
-				//no-op. Not implemented.
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField.TUNNEL_ID, U64.of(Long.parseLong(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.TUNNEL_ID, U64.of(Long.parseLong(key_value[1])));
+				}
 				break;
 			case STR_PBB_ISID:
-				//no-op. Not implemented.
+				/*TODO no-op. Not implemented.
+				if (key_value[1].startsWith("0x")) {
+					mb.setExact(MatchField., U64.of(Long.parseLong(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField., U64.of(Long.parseLong(key_value[1])));
+				} */
 				break;
 			default:
 				throw new IllegalArgumentException("unknown token " + key_value + " parsing " + match);

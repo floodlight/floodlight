@@ -74,8 +74,6 @@ import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockEntityClassifierMac;
 import net.floodlightcontroller.devicemanager.test.MockFlexEntityClassifier;
-import net.floodlightcontroller.flowcache.FlowReconcileManager;
-import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -128,7 +126,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 	DeviceManagerImpl deviceManager;
 	MemoryStorageSource storageSource;
-	FlowReconcileManager flowReconcileMgr;
 	IDebugCounterService debugCounterService;
 	IDebugEventService debugEventService;
 
@@ -187,14 +184,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 
 		deviceManager = new DeviceManagerImpl();
-		flowReconcileMgr = new FlowReconcileManager();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
 		fmc.addService(IDeviceService.class, deviceManager);
 		storageSource = new MemoryStorageSource();
 		fmc.addService(IStorageSourceService.class, storageSource);
 		fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
 		fmc.addService(IRestApiService.class, restApi);
-		fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
 		fmc.addService(IEntityClassifierService.class, entityClassifier);
 		fmc.addService(ITopologyService.class, topology);
 		fmc.addService(ISyncService.class, syncService);
@@ -204,12 +199,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		restApi.init(fmc);
 		storageSource.init(fmc);
 		deviceManager.init(fmc);
-		flowReconcileMgr.init(fmc);
 		entityClassifier.init(fmc);
 		syncService.init(fmc);
 		storageSource.startUp(fmc);
 		deviceManager.startUp(fmc);
-		flowReconcileMgr.startUp(fmc);
 		tp.startUp(fmc);
 		entityClassifier.startUp(fmc);
 		syncService.startUp(fmc);

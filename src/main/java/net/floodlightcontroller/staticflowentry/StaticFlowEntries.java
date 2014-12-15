@@ -460,13 +460,13 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_MPLS_TC:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_MPLS_BOS: // not supported as match in loxi right now
+			case StaticFlowEntryPusher.COLUMN_MPLS_BOS:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_METADATA:
 				entry.put(StaticFlowEntryPusher.COLUMN_METADATA, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_TUNNEL_ID: // not supported as match in loxi right now
+			case StaticFlowEntryPusher.COLUMN_TUNNEL_ID:
 				entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_PBB_ISID: // not supported as match in loxi right now
