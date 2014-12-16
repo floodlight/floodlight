@@ -3,8 +3,6 @@ package net.floodlightcontroller.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.floodlightcontroller.staticflowentry.HeaderFieldsException;
-
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -31,12 +29,12 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  */
 public class InstructionUtils {
 	public static final String STR_GOTO_TABLE = "goto_table";
-	public static final String STR_WRITE_METADATA = "write_metadata";
-	public static final String STR_WRITE_ACTIONS = "write_actions";
-	public static final String STR_APPLY_ACTIONS = "apply_actions";
-	public static final String STR_CLEAR_ACTIONS = "clear_actions";
-	public static final String STR_GOTO_METER = "goto_meter";
-	public static final String STR_EXPERIMENTER = "experimenter";
+	public static final String STR_WRITE_METADATA = "instruction_write_metadata";
+	public static final String STR_WRITE_ACTIONS = "instruction_write_actions";
+	public static final String STR_APPLY_ACTIONS = "instruction_apply_actions";
+	public static final String STR_CLEAR_ACTIONS = "instruction_clear_actions";
+	public static final String STR_GOTO_METER = "instruction_goto_meter";
+	public static final String STR_EXPERIMENTER = "instruction_experimenter";
 
 	private static final String STR_SUB_WRITE_METADATA_METADATA = "metadata";
 	private static final String STR_SUB_WRITE_METADATA_MASK = "mask";
@@ -171,7 +169,7 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) throws HeaderFieldsException {
+	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) throws Exception {
 		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 
@@ -202,8 +200,8 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) throws HeaderFieldsException{
-		return ActionUtils.actionsToString(inst.getActions(), log);		
+	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) throws Exception {
+		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 
 	/**
