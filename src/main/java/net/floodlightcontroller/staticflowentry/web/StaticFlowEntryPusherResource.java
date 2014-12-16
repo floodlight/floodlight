@@ -71,6 +71,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
     	if (rows.containsKey(StaticFlowEntryPusher.COLUMN_DL_TYPE)) {
     		dl_type = true;
     		eth_type = (String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE);
+System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);    		
     		if (eth_type.equalsIgnoreCase("0x86dd") || eth_type.equals("34525")) {
     			ip6 = true;
     		}
@@ -132,7 +133,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
     	
     	if (nw_layer == true || nw_proto == true) {
     		if (dl_type == true) {
-    			if (ip4 == false || ip6 == false) {
+    			if (!(ip4 == true || ip6 == true)) {
     				//invalid dl_type
     				state = 2;
     				return state;
@@ -275,9 +276,9 @@ public class StaticFlowEntryPusherResource extends ServerResource {
             	status = "Warning! IPv4 & IPv6 fields cannot be specified in the same flow! The flow has been discarded.";
                 log.error(status);
             } else if (state == 0) {
-                status = "Entry pushed";
+                status = "Entry pushed";            
+                storageSource.insertRowAsync(StaticFlowEntryPusher.TABLE_NAME, rowValues);
             }
-            storageSource.insertRowAsync(StaticFlowEntryPusher.TABLE_NAME, rowValues);
             return ("{\"status\" : \"" + status + "\"}");
         } catch (IOException e) {
             log.error("Error parsing push flow mod request: " + fmJson, e);
