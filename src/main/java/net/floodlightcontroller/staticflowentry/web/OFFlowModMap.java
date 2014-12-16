@@ -1,7 +1,6 @@
 package net.floodlightcontroller.staticflowentry.web;
 
 import java.util.Map;
-import net.floodlightcontroller.core.web.serializers.OFFlowModMapSerializer;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 

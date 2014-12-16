@@ -43,14 +43,14 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         LoggerFactory.getLogger(AllSwitchStatisticsResource.class);
     
     @Get("json")
-    public Map<String, Object> retrieve() {
+    public Map<String, StatsReply> retrieve() {
         String statType = (String) getRequestAttributes().get(CoreWebRoutable.STR_STAT_TYPE);
         
         return retrieveInternal(statType);
     }
 
-    private Map<String, Object> retrieveInternal(String statType) {
-        HashMap<String, Object> model = new HashMap<String, Object>();
+    private Map<String, StatsReply> retrieveInternal(String statType) {
+        HashMap<String, StatsReply> model = new HashMap<String, StatsReply>();
 
         OFStatsType type = null;
         REQUESTTYPE rType = null;
@@ -108,9 +108,9 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             for (GetConcurrentStatsThread curThread : activeThreads) {
                 if (curThread.getState() == State.TERMINATED) {
                     if (rType == REQUESTTYPE.OFSTATS) {
-                        model.put(curThread.getSwitchId().toString(), curThread.getStatisticsReply());
+                        model.put(curThread.getSwitchId().toString(), new StatsReply(curThread.getSwitchId(), curThread.getStatisticsReply(), type));
                     } else if (rType == REQUESTTYPE.OFFEATURES) {
-                        model.put(curThread.getSwitchId().toString(), curThread.getFeaturesReply());
+                        model.put(curThread.getSwitchId().toString(), new StatsReply(curThread.getSwitchId(), curThread.getFeaturesReply(), type));
                     }
                     pendingRemovalThreads.add(curThread);
                 }

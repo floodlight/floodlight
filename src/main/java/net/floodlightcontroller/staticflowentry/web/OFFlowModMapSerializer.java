@@ -1,14 +1,15 @@
-package net.floodlightcontroller.core.web.serializers;
+package net.floodlightcontroller.staticflowentry.web;
 
 import java.io.IOException;
 import java.util.Map;
 
-import net.floodlightcontroller.staticflowentry.web.OFFlowModMap;
+import net.floodlightcontroller.core.web.serializers.OFFlowModSerializer;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 
@@ -29,6 +30,8 @@ public class OFFlowModMapSerializer extends JsonSerializer<OFFlowModMap> {
 	@Override
 	public void serialize(OFFlowModMap fmm, JsonGenerator jGen, SerializerProvider serializer)
 			throws IOException, JsonProcessingException {
+		
+        jGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true); // IMHO this just looks nicer and is easier to read if everything is quoted
 
 		if (fmm == null) {
 			jGen.writeStartObject();
@@ -38,7 +41,6 @@ public class OFFlowModMapSerializer extends JsonSerializer<OFFlowModMap> {
 		}
 
 		Map<String, Map<String, OFFlowMod>> theMap = fmm.getMap();
-		OFFlowModSerializer fms = new OFFlowModSerializer();
 
 		jGen.writeStartObject();
 		if (theMap.keySet() != null) {
@@ -47,9 +49,8 @@ public class OFFlowModMapSerializer extends JsonSerializer<OFFlowModMap> {
 					jGen.writeArrayFieldStart(dpid);
 					for (String name : theMap.get(dpid).keySet()) {
 						jGen.writeStartObject();
-						jGen.writeArrayFieldStart(name);
-						fms.serialize(theMap.get(dpid).get(name), jGen, serializer);
-						jGen.writeEndArray();
+						jGen.writeFieldName(name);
+						OFFlowModSerializer.serializeFlowMod(jGen, theMap.get(dpid).get(name));
 						jGen.writeEndObject();
 					}    
 					jGen.writeEndArray();
