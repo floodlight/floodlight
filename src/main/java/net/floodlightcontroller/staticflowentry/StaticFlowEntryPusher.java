@@ -90,7 +90,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String TABLE_NAME = "controller_staticflowtableentry";
 	public static final String COLUMN_NAME = "name";
 	public static final String COLUMN_SWITCH = "switch";
-	public static final String COLUMN_TABLE_ID = "table_id";
+	public static final String COLUMN_TABLE_ID = "table";
 	public static final String COLUMN_ACTIVE = "active";
 	public static final String COLUMN_IDLE_TIMEOUT = "idle_timeout";
 	public static final String COLUMN_HARD_TIMEOUT = "hard_timeout";
@@ -132,18 +132,18 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ARP_SPA = MatchUtils.STR_ARP_SPA;
 	public static final String COLUMN_ARP_DPA = MatchUtils.STR_ARP_DPA;
 	
-//san
-	//IPv6 related columns
-	public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
-	public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
-	public static final String COLUMN_IPV6_FLOW_LABEL = MatchUtils.STR_IPV6_FLOW_LABEL;
-	public static final String COLUMN_ICMP6_TYPE = MatchUtils.STR_ICMPV6_TYPE;
-	public static final String COLUMN_ICMP6_CODE = MatchUtils.STR_ICMPV6_CODE;
-	public static final String COLUMN_ND_SLL = MatchUtils.STR_IPV6_ND_SLL;
-	public static final String COLUMN_ND_TLL = MatchUtils.STR_IPV6_ND_TLL;
-	public static final String COLUMN_ND_TARGET = MatchUtils.STR_IPV6_ND_TARGET;	
-//san
-	
+	//sanjivini
+		//IPv6 related columns
+		public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
+		public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
+		public static final String COLUMN_IPV6_FLOW_LABEL = MatchUtils.STR_IPV6_FLOW_LABEL;
+		public static final String COLUMN_ICMP6_TYPE = MatchUtils.STR_ICMPV6_TYPE;
+		public static final String COLUMN_ICMP6_CODE = MatchUtils.STR_ICMPV6_CODE;
+		public static final String COLUMN_ND_SLL = MatchUtils.STR_IPV6_ND_SSL;
+		public static final String COLUMN_ND_TLL = MatchUtils.STR_IPV6_ND_TTL;
+		public static final String COLUMN_ND_TARGET = MatchUtils.STR_IPV6_ND_TARGET;	
+	//sanjivini
+
 	public static final String COLUMN_MPLS_LABEL = MatchUtils.STR_MPLS_LABEL;
 	public static final String COLUMN_MPLS_TC = MatchUtils.STR_MPLS_TC;
 	public static final String COLUMN_MPLS_BOS = MatchUtils.STR_MPLS_BOS;
@@ -176,11 +176,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_ICMP_TYPE, COLUMN_ICMP_CODE, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
-//san		
-		//IPv6 related matches
-		COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
-		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,
-//san		
+		
+		//sanjivini		
+				//IPv6 related matches
+				COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
+				COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,
+		//sanjivini		
+		
 		COLUMN_MPLS_LABEL, COLUMN_MPLS_TC, COLUMN_MPLS_BOS, 
 		COLUMN_METADATA, COLUMN_TUNNEL_ID, COLUMN_PBB_ISID,
 		/* end newly added matches */
@@ -344,6 +346,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 
 		StringBuffer matchString = new StringBuffer();
 		OFFlowMod.Builder fmb = null; 
+		
+		//boolean flow = true;
 
 		if (!row.containsKey(COLUMN_SWITCH) || !row.containsKey(COLUMN_NAME)) {
 			log.debug("skipping entry with missing required 'switch' or 'name' entry: {}", row);
@@ -360,9 +364,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 
 			// get the correct builder for the OF version supported by the switch
 			fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
-			//HashSet<OFFlowModFlags> flags = new HashSet<OFFlowModFlags>();
-			//flags.add(OFFlowModFlags.CHECK_OVERLAP);
-			//fmb.setFlags(flags);
 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
 
@@ -423,18 +424,33 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		String match = matchString.toString();
 
 		try {
+			//Match matchObt = MatchUtils.fromString(match, fmb.getVersion());
+			//Iterable <MatchField<?>> iter = matchObt.getMatchFields();					
+			
+			//while (iter.iterator().hasNext()) {
+			//	MatchField<?> field = iter.iterator().next();
+//System.out.println("$$$$$$$$$$$$$San FIELD :" + field);				
+	//			flow = field.arePrerequisitesOK(matchObt);
+	//			if (flow == false)
+	//				break;
+	//		}
+	//		if (flow == false) {
+	//			log.debug("Flow entry discarded with illegal OFMatch(): " + match);
+	//			return;
+	//		}				
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
 			log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
-		}
-//san		
-		catch (HeaderFieldsException e) {
+		} 
+//sanjivini		
+		catch (Exception e) {
 			log.error("OF version incompatible for the match: " + match);
 			e.printStackTrace();
 			return;
 		}
-//san
+//sanjivini
+
 		entries.get(switchName).put(entryName, fmb.build()); // add the FlowMod message to the table
 	}
 
@@ -531,6 +547,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				} else if (newFlowMod != null && oldFlowMod == null) {
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
+					entry2dpid.put(entry, dpid);
 					outQueue.add(addTmp);
 				/* Something strange happened, so remove the flow */
 				} else if (newFlowMod == null) { 
@@ -778,15 +795,14 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	// IStaticFlowEntryPusherService methods
 
 	@Override
-	public void addFlow(String name, OFFlowMod fm, DatapathId swDpid) {		
+	public void addFlow(String name, OFFlowMod fm, DatapathId swDpid) {
 		try {
 			Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
 			storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
-		} catch (HeaderFieldsException e) {
+		} catch (Exception e) {
 			log.error("Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
             		+ "mandatory fields are specified. ");
 		}
-		
 	}
 
 	@Override
