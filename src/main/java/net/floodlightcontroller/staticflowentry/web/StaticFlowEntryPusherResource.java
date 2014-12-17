@@ -40,9 +40,6 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 @LogMessageCategory("Static Flow Pusher")
 public class StaticFlowEntryPusherResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusherResource.class);
-
-	public static boolean ip6 = false;
-	public static boolean ip4 = false;
 	
 	/**
 	 * Validates if all the mandatory fields are set properly while adding an IPv6 flow
@@ -52,7 +49,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
     private int checkMatch(Map<String, Object> rows) {
     	
  //sanjivini   
-    	//Initializing flags
+    	//Declaring & Initializing flags
     	int state = 0;
     	boolean dl_type = false;
     	boolean nw_proto = false;
@@ -61,7 +58,9 @@ public class StaticFlowEntryPusherResource extends ServerResource {
     	boolean icmp6_code = false;
     	boolean nd_target = false;
     	boolean nd_sll = false;
-    	boolean nd_tll = false;
+    	boolean nd_tll = false; 
+    	boolean ip6 = false;
+    	boolean ip4 = false;
     	
     	String eth_type = null;
     	String nw_protocol = null;
@@ -70,8 +69,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
     	//Determine the dl_type if set
     	if (rows.containsKey(StaticFlowEntryPusher.COLUMN_DL_TYPE)) {
     		dl_type = true;
-    		eth_type = (String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE);
-System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);    		
+    		eth_type = (String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE);    		
     		if (eth_type.equalsIgnoreCase("0x86dd") || eth_type.equals("34525")) {
     			ip6 = true;
     		}
@@ -80,7 +78,7 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
     			ip4 = true;
     		}
     		else {
-    			state = 2;
+    			state = 2;    			
     			return state;
     		}
     	}
@@ -135,13 +133,13 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
     		if (dl_type == true) {
     			if (!(ip4 == true || ip6 == true)) {
     				//invalid dl_type
-    				state = 2;
+    				state = 2;    				
     				return state;
     			}
     		}
     		else {
     			//dl_type not set
-    			state = 1;
+    			state = 1;    			
     			return state;
     		}
     	}
@@ -149,13 +147,13 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
     		if (nw_proto == true) {
     			if (!(nw_protocol.equals("58") || nw_protocol.equalsIgnoreCase("0x3A"))) {
     				//invalid nw_proto
-    				state = 4;
+    				state = 4;    				
     				return state;
     			}
     		}
     		else {
     			//nw_proto not set
-    			state = 3;
+    			state = 3;    			
     			return state;
     		}
     	}
@@ -166,7 +164,7 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
 				if (nd_target == true) {
 					if (!(icmp_type == 135 || icmp_type == 136)) {
 						//invalid icmp6_type
-						state = 6;
+						state = 6;						
 						return state;
 					}
 				}
@@ -174,7 +172,7 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
 				else if (nd_tll == true) {
 					if (!(icmp_type == 136)) {
 						//invalid icmp6_type
-						state = 6;
+						state = 6;						
 						return state;
 					}
 				}
@@ -182,21 +180,24 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
 				else if (nd_sll == true) {
 					if (!(icmp_type == 135)) {
 						//invalid icmp6_type
-						state = 6;
+						state = 6;						
 						return state;
 					}
 				}
     		}
     		else {
     			//icmp6_type not set
-    			state = 5;
+    			state = 5;    			
     			return state;
     		}
     	}
     	
-    	if (ip4 == true && ip6 == true) {
+    	if ((ip4 == true && ip6 == true) || 
+    		(StaticFlowEntries.ip4 == true && StaticFlowEntries.ip6 == true) ||
+    		(StaticFlowEntries.ip4 == true && ip6 == true) ||
+    		(StaticFlowEntries.ip6 == true && ip4 == true)) {
     		//ipv4 & ipv6 conflict
-    		state = 7;
+    		state = 7;    		
     		return state;
     	}
     	
@@ -283,12 +284,7 @@ System.out.println("$$$$$$$$$$$$$SAN dl_type: " + eth_type);
         } catch (IOException e) {
             log.error("Error parsing push flow mod request: " + fmJson, e);
             return "{\"status\" : \"Error! Could not parse flod mod, see log for details.\"}";
-        }
-        catch (Exception e) {
-            log.error("Error parsing push flow mod request: " + fmJson, e);
-            return "{\"status\" : \"Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
-            		+ "mandatory fields are specified.\"}";
-        }
+        }        
     }
 
     @Delete
