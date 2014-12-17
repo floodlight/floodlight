@@ -351,7 +351,7 @@ public class ActionUtils {
 				String key;
 				String pair;
 				if (keyPair.length != 2) {
-					log.debug("[Key, Value] {} does not have form 'key=value' parsing ", keyPair);
+					log.debug("[Key, Value] {} does not have form 'key=value' parsing, which is okay for some actions e.g. 'pop_vlan'.", keyPair);
 					key = keyPair[0]; // could the be case of a constant actions (e.g. copy_ttl_in)
 					pair = "";
 				} else {

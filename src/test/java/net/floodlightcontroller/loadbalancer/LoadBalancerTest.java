@@ -73,8 +73,6 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
-import net.floodlightcontroller.flowcache.FlowReconcileManager;
-import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
@@ -101,7 +99,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected FloodlightModuleContext fmc;
 	protected MockDeviceManager deviceManager;
 	protected MockThreadPoolService tps;
-	protected FlowReconcileManager frm;
 	protected DefaultEntityClassifier entityClassifier;
 	protected IRoutingService routingEngine;
 	protected ITopologyService topology;
@@ -131,7 +128,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		cntx = new FloodlightContext();
 		fmc = new FloodlightModuleContext();
 		entityClassifier = new DefaultEntityClassifier(); // dependency for device manager
-		frm = new FlowReconcileManager(); //dependency for device manager
 		tps = new MockThreadPoolService(); //dependency for device manager
 		deviceManager = new MockDeviceManager();
 		topology = createMock(ITopologyService.class);
@@ -146,7 +142,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		fmc.addService(IRestApiService.class, restApi);
 		fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
 		fmc.addService(IEntityClassifierService.class, entityClassifier);
-		fmc.addService(IFlowReconcileService.class, frm);
 		fmc.addService(IThreadPoolService.class, tps);
 		fmc.addService(IDeviceService.class, deviceManager);
 		fmc.addService(ITopologyService.class, topology);
@@ -162,7 +157,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		lb.init(fmc);
 		//getMockFloodlightProvider().init(fmc);
 		entityClassifier.init(fmc);
-		frm.init(fmc);
 		tps.init(fmc);
 		mockSyncService.init(fmc);
 		deviceManager.init(fmc);
@@ -177,7 +171,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		lb.startUp(fmc);
 		//getMockFloodlightProvider().startUp(fmc);
 		entityClassifier.startUp(fmc);
-		frm.startUp(fmc);
 		tps.startUp(fmc);
 		mockSyncService.startUp(fmc);
 		deviceManager.startUp(fmc);

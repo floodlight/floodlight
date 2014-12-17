@@ -54,8 +54,6 @@ import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.OFMessageUtils;
-import net.floodlightcontroller.flowcache.FlowReconcileManager;
-import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.forwarding.Forwarding;
 
 import org.easymock.Capture;
@@ -92,7 +90,6 @@ public class ForwardingTest extends FloodlightTestCase {
     protected MockDeviceManager deviceManager;
     protected IRoutingService routingEngine;
     protected Forwarding forwarding;
-    protected FlowReconcileManager flowReconcileMgr;
     protected ITopologyService topology;
     protected MockThreadPoolService threadPool;
     protected IOFSwitch sw1, sw2;
@@ -139,7 +136,6 @@ public class ForwardingTest extends FloodlightTestCase {
         forwarding = new Forwarding();
         threadPool = new MockThreadPoolService();
         deviceManager = new MockDeviceManager();
-        flowReconcileMgr = new FlowReconcileManager();
         routingEngine = createMock(IRoutingService.class);
         topology = createMock(ITopologyService.class);
         mockSyncService = new MockSyncService();
@@ -153,7 +149,6 @@ public class ForwardingTest extends FloodlightTestCase {
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(IRoutingService.class, routingEngine);
         fmc.addService(IDeviceService.class, deviceManager);
-        fmc.addService(IFlowReconcileService.class, flowReconcileMgr);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
         fmc.addService(ISyncService.class, mockSyncService);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
@@ -169,13 +164,11 @@ public class ForwardingTest extends FloodlightTestCase {
         mockSyncService.init(fmc);
         forwarding.init(fmc);
         deviceManager.init(fmc);
-        flowReconcileMgr.init(fmc);
         entityClassifier.init(fmc);
         threadPool.startUp(fmc);
         mockSyncService.startUp(fmc);
         deviceManager.startUp(fmc);
         forwarding.startUp(fmc);
-        flowReconcileMgr.startUp(fmc);
         entityClassifier.startUp(fmc);
         verify(topology);
 
