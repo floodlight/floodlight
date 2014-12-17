@@ -99,7 +99,7 @@ public class MatchUtils {
 	public static final String STR_TUNNEL_ID = "tunnel_id";
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
-	
+
 	public static final String SET_FIELD_DELIM = "->";
 
 	/**
@@ -333,14 +333,14 @@ public class MatchUtils {
 		if (match.equals("") || match.equalsIgnoreCase("any") || match.equalsIgnoreCase("all") || match.equals("[]")) {
 			match = "Match[]";
 		}
-		
+
 		// Split into pairs of key=value
 		String[] tokens = match.split("[\\[,\\]]");
 		int initArg = 0;
 		if (tokens[0].equals("Match")) {
 			initArg = 1;
 		}
-		
+
 		// Split up key=value pairs into [key, value], and insert into array-deque
 		int i;
 		String[] tmp;
@@ -384,7 +384,7 @@ public class MatchUtils {
 				}
 				break;
 			case STR_DL_VLAN_PCP:
-				if (key_value[1].startsWith("0x")) {
+				if (key_value[1].startsWith("0x")) { 
 					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
 				} else {
 					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1]))));
