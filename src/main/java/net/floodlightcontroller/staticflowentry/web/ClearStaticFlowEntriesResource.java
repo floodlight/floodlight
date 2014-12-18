@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
 public class ClearStaticFlowEntriesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(ClearStaticFlowEntriesResource.class);
     
-    @Get
-    public void ClearStaticFlowEntries() {
+    @Get("json")
+    public String ClearStaticFlowEntries() {
         IStaticFlowEntryPusherService sfpService =
                 (IStaticFlowEntryPusherService)getContext().getAttributes().
                     get(IStaticFlowEntryPusherService.class.getCanonicalName());
@@ -41,13 +41,15 @@ public class ClearStaticFlowEntriesResource extends ServerResource {
         
         if (param.toLowerCase().equals("all")) {
             sfpService.deleteAllFlows();
+            return "{\"status\":\"Deleted all flows.\"}";
         } else {
             try {
                 sfpService.deleteFlowsForSwitch(DatapathId.of(param));
+                return "{\"status\":\"Deleted all flows for switch " + param + ".\"}";
             } catch (NumberFormatException e){
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, 
                           ControllerSwitchesResource.DPID_ERROR);
-                return;
+                return "'{\"status\":\"Could not delete flows requested! See controller log for details.\"}'";
             }
         }
     }

@@ -182,7 +182,7 @@ public class LoadBalancer implements IFloodlightModule,
     private net.floodlightcontroller.core.IListener.Command processPacketIn(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        IPacket pkt = eth.getPayload();
+        IPacket pkt = eth.getPayload(); 
  
         if (eth.isBroadcast() || eth.isMulticast()) {
             // handle ARP for VIP
