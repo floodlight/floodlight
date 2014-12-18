@@ -277,12 +277,16 @@ public class StaticFlowEntries {
 			case MPLS_TC:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, match.get(MatchField.MPLS_TC).getValue());
 				break;
-				// case MPLS_BOS not implemented in loxi
+			case MPLS_BOS:
+				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.get(MatchField.MPLS_BOS).getValue());
+				break;			
 			case METADATA:
 				entry.put(StaticFlowEntryPusher.COLUMN_METADATA, match.get(MatchField.METADATA).getValue().getValue());
 				break;
-				// case TUNNEL_ID not implemented in loxi
-				// case PBB_ISID not implemented in loxi
+			case TUNNEL_ID:
+				entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.get(MatchField.TUNNEL_ID).getValue());
+				break;				
+			// case PBB_ISID not implemented in loxi
 			default:
 				log.error("Unhandled Match when parsing OFFlowMod: {}, {}", mf, mf.id);
 				break;

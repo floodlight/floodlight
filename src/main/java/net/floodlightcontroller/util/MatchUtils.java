@@ -298,23 +298,23 @@ public class MatchUtils {
 	 * <TD>VALUE
 	 * </TR>
 	 * <TR>
-	 * <TD>"in_port","input_port"
+	 * <TD>"in_port"
 	 * <TD>integer
 	 * </TR>
 	 * <TR>
-	 * <TD>"dl_src", "dl_dst"
+	 * <TD>"eth_src", "eth_dst"
 	 * <TD>hex-string
 	 * </TR>
 	 * <TR>
-	 * <TD>"dl_type", "dl_vlan", "dl_vlan_pcp"
+	 * <TD>"eth_type", "eth_vlan_vid", "eth_vlan_pcp"
 	 * <TD>integer
 	 * </TR>
 	 * <TR>
-	 * <TD>"nw_src", "nw_dst"
+	 * <TD>"ipv4_src", "ipv4_dst"
 	 * <TD>CIDR-style netmask
 	 * </TR>
 	 * <TR>
-	 * <TD>"tp_src","tp_dst"
+	 * <TD>"tp_src","tp_dst", "tcp_src", "tcp_dst", "udp_src", "udp_dst", etc.
 	 * <TD>integer (max 64k)
 	 * </TR>
 	 * </TABLE>
