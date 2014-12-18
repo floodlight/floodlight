@@ -24,10 +24,9 @@ import java.util.Map;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryPusherResource;
 import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.InstructionUtils;
-import net.floodlightcontroller.util.MatchUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -322,7 +321,8 @@ public class StaticFlowEntries {
 			} // end switch-case
 		} // end while				
     	
-		if (!(checkActions(entry)))
+		int result = StaticFlowEntryPusherResource.checkActions(entry);
+		if (result == -1)
 			throw new Exception("Invalid action/instructions");
 				
 		return entry;
@@ -601,52 +601,8 @@ public class StaticFlowEntries {
 			}
 		} else {
 			log.debug("Got IP protocol of '{}' and tp-src of '{}' and tp-dst of '" + tpDstPort + "' via SFP REST API", ipProto, tpSrcPort);
-		}
-		checkActions(entry);
+		}		
 		return entry;
-	}   
-	
-	/**
-	 * Validates actions/instructions
-	 * @param Map containing the fields of the flow
-	 * @return state indicating whether a flow is valid or not
-	 */
-    private static boolean checkActions(Map<String, Object> entry) {
-	    	
-    	ip6 = false;
-    	ip4 = false;
-		String actions = null;
-		
-		if (entry.containsKey(StaticFlowEntryPusher.COLUMN_ACTIONS) || 
-				entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS) ||
-				entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS)) {
-			if (entry.containsKey(StaticFlowEntryPusher.COLUMN_ACTIONS)) {
-				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_ACTIONS);
-			}
-			else if (entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS)) {
-				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS);
-			}
-			else if (entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS)) {
-				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS);
-			}
-			if (actions.contains(MatchUtils.STR_ICMPV6_CODE) || actions.contains(MatchUtils.STR_ICMPV6_TYPE) ||
-					actions.contains(MatchUtils.STR_IPV6_DST) || actions.contains(MatchUtils.STR_IPV6_SRC) || 
-					actions.contains(MatchUtils.STR_IPV6_FLOW_LABEL) || actions.contains(MatchUtils.STR_IPV6_ND_SSL) ||
-					actions.contains(MatchUtils.STR_IPV6_ND_TARGET) || actions.contains(MatchUtils.STR_IPV6_ND_TTL)) {
-				ip6 = true;				
-			}
-			if (actions.contains(MatchUtils.STR_NW_SRC) || actions.contains(MatchUtils.STR_NW_DST) || 
-					actions.contains(MatchUtils.STR_ARP_OPCODE) || actions.contains(MatchUtils.STR_ARP_SHA) || 
-					actions.contains(MatchUtils.STR_ARP_DHA) || actions.contains(MatchUtils.STR_ARP_SPA) || 
-					actions.contains(MatchUtils.STR_ARP_DPA) || actions.contains(MatchUtils.STR_ICMP_CODE) || 
-					actions.contains(MatchUtils.STR_ICMP_TYPE)) {
-				ip4 = true;
-			}
-		}
-		if (ip6 == true && ip4 == true) {
-			return false;
-		}
-		return true;
-    }
+	}   		
 }
 
