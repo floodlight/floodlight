@@ -28,6 +28,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
@@ -52,12 +53,15 @@ import java.util.ArrayList;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.util.MatchUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -481,7 +485,38 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // make a pair of rule and wildcards, then return it
         RuleMatchPair rmp = new RuleMatchPair();
         rmp.rule = matched_rule;
-        if (matched_rule == null || matched_rule.action == FirewallRule.FirewallAction.DROP) {
+        if (matched_rule == null) {
+        	/*
+        	 * No rule was found, so drop the packet with as specific 
+        	 * of a drop rule as possible as not to interfere with other
+        	 * firewall rules.
+        	 */
+        	Match.Builder mb = MatchUtils.createRetentiveBuilder(pi.getMatch()); // capture the ingress port
+        	mb.setExact(MatchField.ETH_SRC, eth.getSourceMACAddress())
+        		.setExact(MatchField.ETH_DST, eth.getDestinationMACAddress())
+        		.setExact(MatchField.ETH_TYPE, EthType.of(eth.getEtherType()));
+        	
+        	if (mb.get(MatchField.ETH_TYPE).equals(EthType.IPv4)) {
+        		IPv4 ipv4 = (IPv4) eth.getPayload();
+        		mb.setExact(MatchField.IPV4_SRC, ipv4.getSourceAddress())
+        			.setExact(MatchField.IPV4_DST, ipv4.getDestinationAddress())
+        			.setExact(MatchField.IP_PROTO, ipv4.getProtocol());
+        		
+        		if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
+        			TCP tcp = (TCP) ipv4.getPayload();
+        			mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+        			.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+        		} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
+        			UDP udp = (UDP) ipv4.getPayload();
+        			mb.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+        			.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+        		} else {
+        			// could be ICMP, which will be taken care of via IPv4 src/dst + ip proto
+        		}
+        	}
+        	rmp.match = mb.build();
+            //rmp.match = adp.drop.build(); This inserted a "drop all" rule if no match was found (not what we want to do...)
+        } else if (matched_rule.action == FirewallRule.FirewallAction.DROP) {
             rmp.match = adp.drop.build();
         } else {
             rmp.match = adp.allow.build();

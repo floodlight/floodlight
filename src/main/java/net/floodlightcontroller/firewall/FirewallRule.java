@@ -293,10 +293,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_IN_PORT;
-            adp.drop.setExact(MatchField.IN_PORT, this.in_port);
+        	if (!OFPort.ANY.equals(this.in_port)) {
+        		adp.drop.setExact(MatchField.IN_PORT, this.in_port);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_IN_PORT;
-            adp.allow.setExact(MatchField.IN_PORT, this.in_port);
+        	if (!OFPort.ANY.equals(this.in_port)) {
+        		adp.allow.setExact(MatchField.IN_PORT, this.in_port);
+        	}
         }
 
         // mac address (src and dst) match?
@@ -304,20 +308,28 @@ public class FirewallRule implements Comparable<FirewallRule> {
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_SRC;
-            adp.drop.setExact(MatchField.ETH_SRC, this.dl_src);
+        	if (!MacAddress.NONE.equals(this.dl_src)) {
+        		adp.drop.setExact(MatchField.ETH_SRC, this.dl_src);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_SRC;
-            adp.allow.setExact(MatchField.ETH_SRC, this.dl_src);
+        	if (!MacAddress.NONE.equals(this.dl_src)) {
+        		adp.allow.setExact(MatchField.ETH_SRC, this.dl_src);
+        	}
         }
 
         if (any_dl_dst == false && !dl_dst.equals(packet.getDestinationMACAddress()))
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_DST;
-            adp.drop.setExact(MatchField.ETH_DST, this.dl_dst);
+        	if (!MacAddress.NONE.equals(this.dl_dst)) {
+        		adp.drop.setExact(MatchField.ETH_DST, this.dl_dst);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_DST;
-            adp.allow.setExact(MatchField.ETH_DST, this.dl_dst);
+        	if (!MacAddress.NONE.equals(this.dl_dst)) {
+        		adp.allow.setExact(MatchField.ETH_DST, this.dl_dst);
+        	}
         }
 
         // dl_type check: ARP, IP
@@ -331,10 +343,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
-                    	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	if (!EthType.NONE.equals(this.dl_type)) {
+                    		adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
-                    	adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	if (!EthType.NONE.equals(this.dl_type)) {
+                    		adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	}
                     }
                 }
             } else if (dl_type.equals(EthType.IPv4)) {
@@ -343,10 +359,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
-                    	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                    		adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
-                    	adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                    		adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	}
                     }
                     // IP packets, proceed with ip address check
                     pkt_ip = (IPv4) pkt;
@@ -357,11 +377,15 @@ public class FirewallRule implements Comparable<FirewallRule> {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
                         //wildcards.drop |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
-                    	adp.drop.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_src_prefix_and_mask)) {
+                    		adp.drop.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_SRC_ALL;
                         //wildcards.allow |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
-                    	adp.allow.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_src_prefix_and_mask)) {
+                    		adp.allow.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	}
                     }
 
                     if (any_nw_dst == false && !nw_dst_prefix_and_mask.matches(pkt_ip.getDestinationAddress()))
@@ -369,11 +393,15 @@ public class FirewallRule implements Comparable<FirewallRule> {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_DST_ALL;
                         //wildcards.drop |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
-                    	adp.drop.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_dst_prefix_and_mask)) {
+                    		adp.drop.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_DST_ALL;
                         //wildcards.allow |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
-                    	adp.allow.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_dst_prefix_and_mask)) {
+                    		adp.allow.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	}
                     }
 
                     // nw_proto check
@@ -403,10 +431,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
                         }
                         if (action == FirewallRule.FirewallAction.DROP) {
                             //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
-                        	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                        		adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	}
                         } else {
                             //wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
-                        	adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                        		adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	}
                         }
 
                         // TCP/UDP source and destination ports match?
@@ -418,16 +450,24 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_SRC;
                                 if (pkt_tcp != null) {
-                                	adp.drop.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.drop.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	}
                                 } else {
-                                	adp.drop.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.drop.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	}
                                 }
                             } else {
                                 //wildcards.allow &= ~OFMatch.OFPFW_TP_SRC;
                                 if (pkt_tcp != null) {
-                                	adp.allow.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.allow.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	}
                                 } else {
-                                	adp.allow.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.allow.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	}
                                 }
                             }
 
@@ -438,16 +478,24 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_DST;
                                 if (pkt_tcp != null) {
-                                	adp.drop.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.drop.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	}
                                 } else {
-                                	adp.drop.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.drop.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	}
                                 }
                             } else {
                                 //wildcards.allow &= ~OFMatch.OFPFW_TP_DST;
                             	if (pkt_tcp != null) {
-                            		adp.allow.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.allow.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	}
                                 } else {
-                                	adp.allow.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.allow.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	}
                                 }
                             }
                         }
@@ -461,10 +509,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
         }
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
-        	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	if (!EthType.NONE.equals(this.dl_type)) {
+        		adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
-        	adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	if (!EthType.NONE.equals(this.dl_type)) {
+        		adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	}
         }
 
         // all applicable checks passed
