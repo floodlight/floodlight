@@ -10,13 +10,13 @@
     <appender-ref ref="STDOUT" />
     <appender-ref ref="EV_WARN_ERR" />
   </root>
-  <logger name="org" level="DEBUG"/>
+  <logger name="org" level="WARN"/>
   <logger name="LogService" level="DEBUG"></logger> <!-- Restlet access logging -->
-  <logger name="net.floodlightcontroller" level="DEBUG"/>
+  <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="org.sdnplatform" level="INFO"></logger>
-  <logger name="net.floodlightcontroller.devicemanager" level="DEBUG"></logger>
-  <logger name="net.floodlightcontroller.packet" level="DEBUG"></logger>
-  <logger name="net.floodlightcontroller.forwarding" level="DEBUG"></logger>
-  <logger name="net.floodlightcontroller.routing" level="DEBUG"></logger>
-  <logger name="net.floodlightcontroller.core" level="DEBUG"></logger>
+  <logger name="net.floodlightcontroller.devicemanager" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.packet" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.routing" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.core" level="INFO"></logger>
 </configuration>
