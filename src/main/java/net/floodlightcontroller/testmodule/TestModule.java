@@ -18,6 +18,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFOxmClass;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
+import org.projectfloodlight.openflow.protocol.OFTableConfig;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActions;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfield;
 import org.projectfloodlight.openflow.protocol.OFTableMod;
@@ -140,13 +141,11 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 				.setCommand(0)
 				.build(); */
 		
-		/*HashSet<OFTableModPropEvictionFlag> efs = new HashSet<OFTableModPropEvictionFlag>();
-		efs.add(OFTableModPropEvictionFlag.IMPORTANCE);
+		/*HashSet<OFTableConfig> tblCfg = new HashSet<OFTableConfig>();
+		tblCfg.add(OFTableConfig.TABLE_MISS_CONTROLLER);
 		
 		ArrayList<OFTableModProp> tabModPropList = new ArrayList<OFTableModProp>();
-		OFTableFeaturePropWriteActions propEvic = switchService.getActiveSwitch(switchId).getOFFactory().buildTableFeaturePropWriteActions()
-				.setActionIds(actionIds)
-				.build();
+		OFTableModProp propEvic = switchService.getActiveSwitch(switchId).getOFFactory().tableDesc(TableId.ALL, arg1)
 		tabModPropList.add(propEvic);
 		OFTableMod tm = switchService.getActiveSwitch(switchId).getOFFactory().buildTableMod()
 				.setProperties(pro)

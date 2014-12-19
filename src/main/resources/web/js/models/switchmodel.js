@@ -186,13 +186,13 @@ window.Switch = Backbone.Model.extend({
                     f.applyActionText = '';
                     f.writeActionText = '';
                     if(f.hasOwnProperty('instructions')) {
-                        if(f.instructions.hasOwnProperty('apply_actions')) {
-                            _.each(f.instructions.apply_actions, function(value, key) {
+                        if(f.instructions.hasOwnProperty('instruction_apply_actions')) {
+                            _.each(f.instructions.instruction_apply_actions, function(value, key) {
                                 f.applyActionText  += key + ":" + value +" ";
                             },f);
                         }
-                        if(f.instructions.hasOwnProperty('write_actions')) {
-                            _.each(f.instructions.write_actions, function(value, key) {
+                        if(f.instructions.hasOwnProperty('instruction_write_actions')) {
+                            _.each(f.instructions.instruction_write_actions, function(value, key) {
                                 f.writeActionText  += key + ":" + value +" ";
                             },f);
                         }
