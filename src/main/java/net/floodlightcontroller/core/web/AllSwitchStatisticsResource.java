@@ -80,6 +80,31 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         	type = OFStatsType.TABLE;
             rType = REQUESTTYPE.OFSTATS;
             break;
+
+	case OFStatsTypeStrings.GROUP:
+        	type = OFStatsType.GROUP;
+            rType = REQUESTTYPE.OFSTATS;
+            break;
+        case OFStatsTypeStrings.GROUP_DESC:        	
+        	type = OFStatsType.GROUP_DESC;
+        	rType = REQUESTTYPE.OFSTATS;
+            break;
+        case OFStatsTypeStrings.GROUP_FEATURES:        	
+        	type = OFStatsType.GROUP_FEATURES;
+        	rType = REQUESTTYPE.OFSTATS;
+            break;
+        case OFStatsTypeStrings.METER:
+        	type = OFStatsType.METER;
+            rType = REQUESTTYPE.OFSTATS;
+            break;
+        case OFStatsTypeStrings.METER_CONFIG:        	
+        	type = OFStatsType.METER_CONFIG;
+        	rType = REQUESTTYPE.OFSTATS;
+            break;
+        case OFStatsTypeStrings.METER_FEATURES:        	
+        	type = OFStatsType.METER_FEATURES;
+        	rType = REQUESTTYPE.OFSTATS;
+            break;
         case OFStatsTypeStrings.FEATURES:
             rType = REQUESTTYPE.OFFEATURES;
             break;
