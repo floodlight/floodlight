@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
@@ -114,22 +115,55 @@ public class SwitchResourceBase extends ServerResource {
 				.build();
 				break;
 			case DESC:
-			case TABLE:
 				// pass - nothing todo besides set the type above
 				req = sw.getOFFactory().buildDescStatsRequest()
 				.build();
 				break;
+            case GROUP:
+				req = sw.getOFFactory().buildGroupStatsRequest()				
+				.build();
+				break;
+				
+			case METER:
+				req = sw.getOFFactory().buildMeterStatsRequest()
+				.setMeterId(OFMeterSerializerVer13.ALL_VAL)
+				.build();
+				break;
+				
+			case GROUP_DESC:				
+				req = sw.getOFFactory().buildGroupDescStatsRequest()			
+						.build();
+				break;
+				
+			case GROUP_FEATURES:
+				req = sw.getOFFactory().buildGroupFeaturesStatsRequest()
+						.build();
+				break;
+				
+			case METER_CONFIG:
+				req = sw.getOFFactory().buildMeterConfigStatsRequest()
+						.build();
+				break;
+				
+			case METER_FEATURES:
+				req = sw.getOFFactory().buildMeterFeaturesStatsRequest()
+						.build();
+				break;
+			
+			case TABLE:
+				req = sw.getOFFactory().buildTableStatsRequest()
+						.build();
+				break;
+				
+			case TABLE_FEATURES:				
+				req = sw.getOFFactory().buildTableFeaturesStatsRequest()
+						.build();				
+				break;
 			case PORT_DESC:
 				req = sw.getOFFactory().buildPortDescStatsRequest()
 				.build();
-			case EXPERIMENTER: //TODO @Ryan support new OF1.1+ stats types
-			case GROUP:
-			case GROUP_DESC:
-			case GROUP_FEATURES:
-			case METER:
-			case METER_CONFIG:
-			case METER_FEATURES:
-			case TABLE_FEATURES:
+                             break;
+			case EXPERIMENTER: //TODO @Ryan support new OF1.1+ stats types			
 			default:
 				log.error("Stats Request Type {} not implemented yet", statType.name());
 				break;
@@ -174,6 +208,5 @@ public class SwitchResourceBase extends ServerResource {
 
 	protected OFFeaturesReply getSwitchFeaturesReply(String switchId) {
 		return getSwitchFeaturesReply(DatapathId.of(switchId));
-	}
-
+	}	
 }

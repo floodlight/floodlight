@@ -36,6 +36,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 
 	@Get("json")
 	public StatsReply retrieve(){
+
 		StatsReply result = new StatsReply();
 		Object values = null; // set for error detection in serializer
 		String switchIdStr = (String) getRequestAttributes().get(CoreWebRoutable.STR_SWITCH_ID);
@@ -77,46 +78,46 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 			case OFStatsTypeStrings.DESC:
 				values = getSwitchStatistics(switchId, OFStatsType.DESC);
 				result.setStatType(OFStatsType.DESC);
+				break;			
+			case OFStatsTypeStrings.PORT_DESC:
+				values = getSwitchStatistics(switchId, OFStatsType.PORT_DESC);
+				result.setStatType(OFStatsType.PORT_DESC);
+				break;
+			case OFStatsTypeStrings.GROUP:
+				values = getSwitchStatistics(switchId, OFStatsType.GROUP);
+				result.setStatType(OFStatsType.GROUP);
+				break;
+			case OFStatsTypeStrings.GROUP_DESC:
+				values = getSwitchStatistics(switchId, OFStatsType.GROUP_DESC);
+				result.setStatType(OFStatsType.GROUP_DESC);
+				break;
+			case OFStatsTypeStrings.GROUP_FEATURES:
+				values = getSwitchStatistics(switchId, OFStatsType.GROUP_FEATURES);
+				result.setStatType(OFStatsType.GROUP_FEATURES);
+				break;
+			case OFStatsTypeStrings.METER:
+				values = getSwitchStatistics(switchId, OFStatsType.METER);
+				result.setStatType(OFStatsType.METER);
+				break;
+			case OFStatsTypeStrings.METER_CONFIG:
+				values = getSwitchStatistics(switchId, OFStatsType.METER_CONFIG);
+				result.setStatType(OFStatsType.METER_CONFIG);
+				break;
+			case OFStatsTypeStrings.METER_FEATURES:
+				values = getSwitchStatistics(switchId, OFStatsType.METER_FEATURES);
+				result.setStatType(OFStatsType.METER_FEATURES);
 				break;
 			case OFStatsTypeStrings.TABLE:
 				values = getSwitchStatistics(switchId, OFStatsType.TABLE);
 				result.setStatType(OFStatsType.TABLE);
 				break;
 			case OFStatsTypeStrings.TABLE_FEATURES:
-				values = getSwitchFeaturesReply(switchId);
+				values = getSwitchStatistics(switchId, OFStatsType.TABLE_FEATURES);
 				result.setStatType(OFStatsType.TABLE_FEATURES);
 				break;
 			case OFStatsTypeStrings.EXPERIMENTER:
 				values = getSwitchFeaturesReply(switchId);
 				result.setStatType(OFStatsType.EXPERIMENTER);
-				break;
-			case OFStatsTypeStrings.PORT_DESC:
-				values = getSwitchStatistics(switchId, OFStatsType.PORT_DESC);
-				result.setStatType(OFStatsType.PORT_DESC);
-				break;
-			case OFStatsTypeStrings.GROUP:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.GROUP);
-				break;
-			case OFStatsTypeStrings.GROUP_DESC:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.GROUP_DESC);
-				break;
-			case OFStatsTypeStrings.GROUP_FEATURES:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.GROUP_FEATURES);
-				break;
-			case OFStatsTypeStrings.METER:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.METER);
-				break;
-			case OFStatsTypeStrings.METER_CONFIG:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.METER_CONFIG);
-				break;
-			case OFStatsTypeStrings.METER_FEATURES:
-				values = getSwitchFeaturesReply(switchId);
-				result.setStatType(OFStatsType.METER_FEATURES);
 				break;
 			default:
 				log.error("Invalid or unimplemented stat request type {}", statType);
