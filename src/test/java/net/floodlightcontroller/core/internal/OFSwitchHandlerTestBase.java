@@ -32,6 +32,7 @@ import org.jboss.netty.util.TimerTask;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
@@ -43,6 +44,7 @@ import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.Quarantin
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.projectfloodlight.openflow.protocol.OFBadActionCode;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
@@ -65,6 +67,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -139,7 +142,7 @@ public abstract class OFSwitchHandlerTestBase {
         replay(switchManager);
         connection = new MockOFConnection(featuresReply.getDatapathId(), OFAuxId.MAIN);
         switchHandler = new OFSwitchHandshakeHandler(connection, featuresReply, switchManager, roleManager, timer);
-
+        
         // replay sw. Reset it if you need more specific behavior
         replay(sw);
     }
@@ -473,7 +476,8 @@ public abstract class OFSwitchHandlerTestBase {
      * Needs to verify and reset the controller since we need to set
      * an expectation
      */
-    private void setupSwitchRoleChangeUnsupported(int xid,
+    @SuppressWarnings("unchecked")
+	private void setupSwitchRoleChangeUnsupported(int xid,
                                                   OFControllerRole role) {
         SwitchStatus newStatus = role != OFControllerRole.ROLE_SLAVE ? SwitchStatus.MASTER : SwitchStatus.SLAVE;
         boolean supportsNxRole = false;
@@ -483,6 +487,12 @@ public abstract class OFSwitchHandlerTestBase {
                 .andReturn(supportsNxRole).atLeastOnce();
         // TODO: hmmm. While it's not incorrect that we set the attribute
         // again it looks odd. Maybe change
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        sw.write(anyObject(OFMessage.class));
+        expectLastCall().anyTimes();
+        sw.write(anyObject(Iterable.class));
+        expectLastCall().anyTimes();
+        expect(sw.getTables()).andStubReturn((short)0);
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, supportsNxRole);
         expectLastCall().anyTimes();
         sw.setControllerRole(role);
@@ -530,7 +540,8 @@ public abstract class OFSwitchHandlerTestBase {
      * This method tests only the simple case that the switch supports roles
      * and transitions to MASTER
      */
-    @Test
+    @SuppressWarnings("unchecked")
+	@Test
     public void testInitialMoveToMasterWithRole() throws Exception {
         // first, move us to WAIT_INITIAL_ROLE_STATE
         moveToWaitInitialRole();
@@ -542,6 +553,12 @@ public abstract class OFSwitchHandlerTestBase {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        sw.write(anyObject(OFMessage.class));
+        expectLastCall().anyTimes();
+        sw.write(anyObject(Iterable.class));
+        expectLastCall().anyTimes();
+        expect(sw.getTables()).andStubReturn((short)0);
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setControllerRole(OFControllerRole.ROLE_MASTER);
@@ -613,7 +630,8 @@ public abstract class OFSwitchHandlerTestBase {
      * The channel handler still needs to send the initial request to find
      * out that whether the switch supports roles.
      */
-    @Test
+    @SuppressWarnings("unchecked")
+	@Test
     public void testInitialMoveToMasterNoRole() throws Exception {
         // first, move us to WAIT_INITIAL_ROLE_STATE
         moveToWaitInitialRole();
@@ -625,6 +643,12 @@ public abstract class OFSwitchHandlerTestBase {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        sw.write(anyObject(OFMessage.class));
+        expectLastCall().anyTimes();
+        sw.write(anyObject(Iterable.class));
+        expectLastCall().anyTimes();
+        expect(sw.getTables()).andStubReturn((short)0);
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setControllerRole(OFControllerRole.ROLE_MASTER);
@@ -661,7 +685,8 @@ public abstract class OFSwitchHandlerTestBase {
      * We let the initial role request time out. Role support should be
      * disabled but the switch should be activated.
      */
-    @Test
+    @SuppressWarnings("unchecked")
+	@Test
     public void testInitialMoveToMasterTimeout() throws Exception {
         int timeout = 50;
         switchHandler.useRoleChangerWithOtherTimeoutForTesting(timeout);
@@ -676,6 +701,12 @@ public abstract class OFSwitchHandlerTestBase {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        sw.write(anyObject(OFMessage.class));
+        expectLastCall().anyTimes();
+        sw.write(anyObject(Iterable.class));
+        expectLastCall().anyTimes();
+        expect(sw.getTables()).andStubReturn((short)0);
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
         expectLastCall().once();
         sw.setControllerRole(OFControllerRole.ROLE_MASTER);
@@ -820,7 +851,8 @@ public abstract class OFSwitchHandlerTestBase {
      * Expects that the channel is in MASTER or SLAVE state.
      *
      */
-    public void changeRoleToMasterWithRequest() throws Exception {
+    @SuppressWarnings("unchecked")
+	public void changeRoleToMasterWithRequest() throws Exception {
         assertTrue("This method can only be called when handler is in " +
                    "MASTER or SLAVE role", switchHandler.isHandshakeComplete());
 
@@ -829,6 +861,12 @@ public abstract class OFSwitchHandlerTestBase {
 
         // prepare mocks and inject the role reply message
         reset(sw);
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        sw.write(anyObject(OFMessage.class));
+        expectLastCall().anyTimes();
+        sw.write(anyObject(Iterable.class));
+        expectLastCall().anyTimes();
+        expect(sw.getTables()).andStubReturn((short)0);
         sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
         expectLastCall().once();
         sw.setControllerRole(OFControllerRole.ROLE_MASTER);
