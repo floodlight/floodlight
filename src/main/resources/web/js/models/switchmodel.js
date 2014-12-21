@@ -225,18 +225,17 @@ window.Switch = Backbone.Model.extend({
                                                     } else {
                                                         f.gotoMeterText = "---";
                                                     }
+                                                    if(f.instructions.hasOwnProperty('instruction_experimenter')) {
+                                                        f.experimenterText = f.instructions.instruction_experimenter;
+                                                    } else {
+                                                        f.experimenterText = "---";
+                                                    }
                                                     
                                                     }
                                                     // build human-readable instrucions
                                                     f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 1);
                                                     f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 1);
-                                                    f.clearActionText = f.clearActionText.substr(0, f.clearActionText.length - 1);
-                                                    f.writeMetadataText = f.writeMetadataText.substr(0, f.writeMetadataText.length - 1);
-                                                    f.gotoGroupText = f.gotoGroupText.substr(0, f.gotoGroupText.length - 1);
-                                                    f.gotoMeterText = f.gotoMeterText.substr(0, f.gotoMeterText.length - 1);
-
-
-                                                    
+   
                                                     // table
                                                     f.tableText = '';
                                                     if(f.hasOwnProperty('tableId')) {
@@ -244,9 +243,6 @@ window.Switch = Backbone.Model.extend({
                                                     } else {
                                                         f.applyActionText = "---";
                                                     }
-                                                    f.tableText = f.tableText.substr(0, f.tableText.length - 1);
-                                                    
-                                                    
                                                     
                                                     //console.log(f);
                                                     self.flows.add(f, {silent: true});
