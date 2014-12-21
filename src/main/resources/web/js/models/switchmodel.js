@@ -236,6 +236,12 @@ window.Switch = Backbone.Model.extend({
                                                     _.each(f.actions, function(value, key) {
                                                            f.applyActionText += key + ":" + value + " ";
                                                            },f);
+                                                        f.writeActionText = "n/a "; // need extra space at end
+                                                        f.clearActionText = "n/a";
+                                                        f.writeMetadataText = "n/a";
+                                                        f.gotoGroupText = "n/a";
+                                                        f.gotoMeterText = "n/a";
+                                                        f.experimenterText = "n/a";
                                                     } else {
                                                         f.applyActionText = "----";
                                                         f.writeActionText = "n/a "; // need extra space at end
