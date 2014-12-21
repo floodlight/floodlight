@@ -178,6 +178,8 @@ window.Switch = Backbone.Model.extend({
                                                     _.each(f.match, function(value , key) {
                                                            f.matchHTML += key + "=" + value +" ";
                                                            },f);
+                                                    } else {
+                                                        f.matchHTML = "---";
                                                     }
                                                     f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 1);
                                                     
@@ -193,23 +195,35 @@ window.Switch = Backbone.Model.extend({
                                                     _.each(f.instructions.instruction_apply_actions, function(value, key) {
                                                            f.applyActionText += key + ":" + value + " ";
                                                            },f);
+                                                    } else {
+                                                        f.applyActionText = "---";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_write_actions')) {
                                                     _.each(f.instructions.instruction_write_actions, function(value, key) {
                                                            f.writeActionText += key + ":" + value + " ";
                                                            },f);
+                                                    } else {
+                                                        f.writeActionText = "---";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_clear_actions')) {
                                                            f.clearActionText = "clear";
+                                                    } else {
+                                                        f.clearActionText = "---";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_write_metadata')) {
                                                             f.writeMetadataText = f.instructions.instruction_write_metadata;
+                                                    } else {
+                                                        f.writeMetadataText = "---";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_goto_group')) {
                                                             f.gotoGroupText = f.instructions.instruction_goto_group;
+                                                    } else {
+                                                        f.gotoGroupText = "---";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_goto_meter')) {
                                                             f.gotoMeterText = f.instructions.instruction_goto_meter;
+                                                    } else {
+                                                        f.gotoMeterText = "---";
                                                     }
                                                     
                                                     }
@@ -227,6 +241,8 @@ window.Switch = Backbone.Model.extend({
                                                     f.tableText = '';
                                                     if(f.hasOwnProperty('tableId')) {
                                                            f.tableText = f.tableId;
+                                                    } else {
+                                                        f.applyActionText = "---";
                                                     }
                                                     f.tableText = f.tableText.substr(0, f.tableText.length - 1);
                                                     
