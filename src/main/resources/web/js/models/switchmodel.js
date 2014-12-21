@@ -196,14 +196,14 @@ window.Switch = Backbone.Model.extend({
                                                            f.applyActionText += key + ":" + value + " ";
                                                            },f);
                                                     } else {
-                                                        f.applyActionText = "---";
+                                                        f.applyActionText = "----";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_write_actions')) {
                                                     _.each(f.instructions.instruction_write_actions, function(value, key) {
                                                            f.writeActionText += key + ":" + value + " ";
                                                            },f);
                                                     } else {
-                                                        f.writeActionText = "---";
+                                                        f.writeActionText = "----";
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_clear_actions')) {
                                                            f.clearActionText = "clear";
@@ -231,7 +231,14 @@ window.Switch = Backbone.Model.extend({
                                                         f.experimenterText = "---";
                                                     }
                                                     
+                                                    } else if(f.hasOwnProperty('actions')) { // OF1.0's actions will go under "apply actions"
+                                                    _.each(f.actions, function(value, key) {
+                                                           f.applyActionText += key + ":" + value + " ";
+                                                           },f);
+                                                    } else {
+                                                        f.applyActionText = "----";
                                                     }
+                                                    
                                                     // build human-readable instrucions
                                                     f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 1);
                                                     f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 1);
