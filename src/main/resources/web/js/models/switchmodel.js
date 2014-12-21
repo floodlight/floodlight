@@ -168,7 +168,7 @@ window.Switch = Backbone.Model.extend({
                                              //console.log(flows);
                                              
                                              // create flow models
-                                             var i = 0;
+                                             var i = 0; 
                                              _.each(flows, function(f) {
                                                     f.id = self.id + '-' + i++;
                                                     
@@ -183,6 +183,11 @@ window.Switch = Backbone.Model.extend({
                                                     
                                                     f.applyActionText = '';
                                                     f.writeActionText = '';
+                                                    f.clearActionText = '';
+                                                    f.writeMetadataText = '';
+                                                    f.gotoMeterText = '';
+                                                    f.gotoGroupText = '';
+                                                    f.experimenterText = '';
                                                     if(f.hasOwnProperty('instructions')) {
                                                     if(f.instructions.hasOwnProperty('instruction_apply_actions')) {
                                                     _.each(f.instructions.instruction_apply_actions, function(value, key) {
@@ -240,5 +245,3 @@ window.SwitchCollection = Backbone.Collection.extend({
                                                      },
                                                      
                                                      });
-Status API Training Shop Blog About
-© 2014 GitHub, Inc. Terms Privacy Security Contact
