@@ -1,12 +1,10 @@
+
 /*
  Copyright 2012 IBM
- 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
  http://www.apache.org/licenses/LICENSE-2.0
- 
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -165,9 +163,9 @@ window.Switch = Backbone.Model.extend({
                                              url:hackBase + "/wm/core/switch/" + self.id + '/flow/json',
                                              dataType:"json",
                                              success:function (data) {
-                                             console.log("fetched  switch " + self.id + " flows");
+                                             //console.log("fetched  switch " + self.id + " flows");
                                              var flows = data['flows'];
-                                             console.log(flows);
+                                             //console.log(flows);
                                              
                                              // create flow models
                                              var i = 0;
@@ -181,7 +179,7 @@ window.Switch = Backbone.Model.extend({
                                                            f.matchHTML += key + "=" + value +" ";
                                                            },f);
                                                     }
-                                                    f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 1);
+                                                    f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 2);
                                                     
                                                     f.applyActionText = '';
                                                     f.writeActionText = '';
@@ -198,16 +196,10 @@ window.Switch = Backbone.Model.extend({
                                                     }
                                                     
                                                     }
-                                                    if(f.hasOwnProperty('actions')) {
-                                                    _.each(f.actions, function(value, key) {
-                                                           f.applyActionText += key + ":" + value +" ";
-                                                           },f);
-                                                    }
-                                                                                                        }
                                                     // build human-readable action list
-                                                    f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 1);
-                                                    f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 1);
-                                                    console.log(f);
+                                                    f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 2);
+                                                    f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 2);
+                                                    //console.log(f);
                                                     self.flows.add(f, {silent: true});
                                                     });
                                              self.flows.trigger('add');
@@ -248,3 +240,5 @@ window.SwitchCollection = Backbone.Collection.extend({
                                                      },
                                                      
                                                      });
+Status API Training Shop Blog About
+© 2014 GitHub, Inc. Terms Privacy Security Contact

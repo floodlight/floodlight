@@ -342,6 +342,7 @@ public class ForwardingTest extends FloodlightTestCase {
         		.setOutPort(action.getPort())
         		.setBufferId(OFBufferId.NO_BUFFER)
         		.setCookie(U64.of(2L << 52))
+        		.setPriority(1)
         		.build();
         OFFlowMod fm2 = fm1.createBuilder().build();
 
@@ -405,6 +406,7 @@ public class ForwardingTest extends FloodlightTestCase {
             .setOutPort(OFPort.of(3))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setCookie(U64.of(2L<< 52))
+            .setPriority(1)
             .build();
                 
         // Record expected packet-outs/flow-mods
