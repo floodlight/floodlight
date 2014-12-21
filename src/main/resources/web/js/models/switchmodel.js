@@ -191,19 +191,47 @@ window.Switch = Backbone.Model.extend({
                                                     if(f.hasOwnProperty('instructions')) {
                                                     if(f.instructions.hasOwnProperty('instruction_apply_actions')) {
                                                     _.each(f.instructions.instruction_apply_actions, function(value, key) {
-                                                           f.applyActionText  += key + ":" + value +" ";
+                                                           f.applyActionText += key + ":" + value + " ";
                                                            },f);
                                                     }
                                                     if(f.instructions.hasOwnProperty('instruction_write_actions')) {
                                                     _.each(f.instructions.instruction_write_actions, function(value, key) {
-                                                           f.writeActionText  += key + ":" + value +" ";
+                                                           f.writeActionText += key + ":" + value + " ";
                                                            },f);
+                                                    }
+                                                    if(f.instructions.hasOwnProperty('instruction_clear_actions')) {
+                                                           f.clearActionText = "clear";
+                                                    }
+                                                    if(f.instructions.hasOwnProperty('instruction_write_metadata')) {
+                                                            f.writeMetadataText = f.instructions.instruction_write_metadata;
+                                                    }
+                                                    if(f.instructions.hasOwnProperty('instruction_goto_group')) {
+                                                            f.gotoGroupText = f.instructions.instruction_goto_group;
+                                                    }
+                                                    if(f.instructions.hasOwnProperty('instruction_goto_meter')) {
+                                                            f.gotoMeterText = f.instructions.instruction_goto_meter;
                                                     }
                                                     
                                                     }
-                                                    // build human-readable action list
+                                                    // build human-readable instrucions
                                                     f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 1);
                                                     f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 1);
+                                                    f.clearActionText = f.clearActionText.substr(0, f.clearActionText.length - 1);
+                                                    f.writeMetadataText = f.writeMetadataText.substr(0, f.writeMetadataText.length - 1);
+                                                    f.gotoGroupText = f.gotoGroupText.substr(0, f.gotoGroupText.length - 1);
+                                                    f.gotoMeterText = f.gotoMeterText.substr(0, f.gotoMeterText.length - 1);
+
+
+                                                    
+                                                    // table
+                                                    f.table = '';
+                                                    if(f.hasOwnProperty('tableId')) {
+                                                           f.table = f.tableId;
+                                                    }
+                                                    f.table = f.table.substr(0, f.table.length - 1);
+                                                    
+                                                    
+                                                    
                                                     //console.log(f);
                                                     self.flows.add(f, {silent: true});
                                                     });
