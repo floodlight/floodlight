@@ -35,6 +35,7 @@ import org.projectfloodlight.openflow.protocol.OFFeaturesRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -119,50 +120,68 @@ public class SwitchResourceBase extends ServerResource {
 				req = sw.getOFFactory().buildDescStatsRequest()
 				.build();
 				break;
-            case GROUP:
-				req = sw.getOFFactory().buildGroupStatsRequest()				
-				.build();
+			case GROUP:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
+					req = sw.getOFFactory().buildGroupStatsRequest()				
+							.build();
+				}
 				break;
-				
+
 			case METER:
-				req = sw.getOFFactory().buildMeterStatsRequest()
-				.setMeterId(OFMeterSerializerVer13.ALL_VAL)
-				.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+					req = sw.getOFFactory().buildMeterStatsRequest()
+							.setMeterId(OFMeterSerializerVer13.ALL_VAL)
+							.build();
+				}
 				break;
-				
-			case GROUP_DESC:				
-				req = sw.getOFFactory().buildGroupDescStatsRequest()			
-						.build();
+
+			case GROUP_DESC:			
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
+					req = sw.getOFFactory().buildGroupDescStatsRequest()			
+							.build();
+				}
 				break;
-				
+
 			case GROUP_FEATURES:
-				req = sw.getOFFactory().buildGroupFeaturesStatsRequest()
-						.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
+					req = sw.getOFFactory().buildGroupFeaturesStatsRequest()
+							.build();
+				}
 				break;
-				
+
 			case METER_CONFIG:
-				req = sw.getOFFactory().buildMeterConfigStatsRequest()
-						.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+					req = sw.getOFFactory().buildMeterConfigStatsRequest()
+							.build();
+				}
 				break;
-				
+
 			case METER_FEATURES:
-				req = sw.getOFFactory().buildMeterFeaturesStatsRequest()
-						.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+					req = sw.getOFFactory().buildMeterFeaturesStatsRequest()
+							.build();
+				}
 				break;
-			
+
 			case TABLE:
-				req = sw.getOFFactory().buildTableStatsRequest()
-						.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
+					req = sw.getOFFactory().buildTableStatsRequest()
+							.build();
+				}
 				break;
-				
-			case TABLE_FEATURES:				
-				req = sw.getOFFactory().buildTableFeaturesStatsRequest()
-						.build();				
+
+			case TABLE_FEATURES:	
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
+					req = sw.getOFFactory().buildTableFeaturesStatsRequest()
+							.build();		
+				}
 				break;
 			case PORT_DESC:
-				req = sw.getOFFactory().buildPortDescStatsRequest()
-				.build();
-                             break;
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+					req = sw.getOFFactory().buildPortDescStatsRequest()
+							.build();
+				}
+				break;
 			case EXPERIMENTER: //TODO @Ryan support new OF1.1+ stats types			
 			default:
 				log.error("Stats Request Type {} not implemented yet", statType.name());

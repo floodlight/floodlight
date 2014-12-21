@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.protocol.ver10.OFFlowModFlagsSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver11.OFFlowModFlagsSerializerVer11;
 import org.projectfloodlight.openflow.protocol.ver12.OFFlowModFlagsSerializerVer12;
 import org.projectfloodlight.openflow.protocol.ver13.OFFlowModFlagsSerializerVer13;
@@ -70,7 +69,6 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 
 		switch (flowMod.getVersion()) {
 		case OF_10:
-			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer10.toWireValue(flowMod.getFlags()));
 			break;
 		case OF_11:
 			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer11.toWireValue(flowMod.getFlags()));
@@ -93,7 +91,9 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 
 		// handle OF1.1+ instructions with actions within
 		if (flowMod.getVersion() == OFVersion.OF_10) {
+			jGen.writeObjectFieldStart("actions");
 			OFActionListSerializer.serializeActions(jGen, flowMod.getActions());
+			jGen.writeEndObject();
 		} else {
 			OFInstructionListSerializer.serializeInstructionList(jGen, flowMod.getInstructions());
 		} // end not-empty instructions (else)

@@ -85,7 +85,6 @@ import org.projectfloodlight.openflow.protocol.ver12.OFFlowModFlagsSerializerVer
 import org.projectfloodlight.openflow.protocol.ver12.OFPortFeaturesSerializerVer12;
 import org.projectfloodlight.openflow.protocol.ver11.OFFlowModFlagsSerializerVer11;
 import org.projectfloodlight.openflow.protocol.ver11.OFPortFeaturesSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver10.OFFlowModFlagsSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver10.OFPortFeaturesSerializerVer10;
 import org.projectfloodlight.openflow.protocol.ver13.OFPortStateSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver12.OFPortStateSerializerVer12;
@@ -741,7 +740,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
                 jGen.writeNumberField("hardTimeoutSec", entry.getHardTimeout());
                 switch (entry.getVersion()) {
                 	case OF_10:
-                		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer10.toWireValue(entry.getFlags()));
+                		// flags not supported
                 		break;
                 	case OF_11:
                 		jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer11.toWireValue(entry.getFlags()));
@@ -764,7 +763,9 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 
                 // handle OF1.1+ instructions with actions within
                 if (entry.getVersion() == OFVersion.OF_10) {
+                	jGen.writeObjectFieldStart("actions");
                 	OFActionListSerializer.serializeActions(jGen, entry.getActions());
+                	jGen.writeEndObject();
                 } else {
                    OFInstructionListSerializer.serializeInstructionList(jGen, entry.getInstructions());
                 }
@@ -776,7 +777,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
     } // end method
 
     public static void serializeDescReply(List<OFDescStatsReply> descReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-        OFDescStatsReply descReply = descReplies.get(0); // There are only one descReply from the switch
+        OFDescStatsReply descReply = descReplies.get(0); // There is only one descReply from the switch
         jGen.writeObjectFieldStart("desc"); 
         jGen.writeStringField("version", descReply.getVersion().toString()); //return the enum name
         jGen.writeStringField("manufacturerDescription", descReply.getMfrDesc()); 

@@ -21,6 +21,7 @@ window.Switch = Backbone.Model.extend({
                                       hardwareDescription: '',
                                       manufacturerDescription: '',
                                       serialNumber: '',
+                                      version: '',
                                       softwareDescription: '',
                                       flowCount: ' ',
                                       packetCount: ' ',
@@ -237,6 +238,12 @@ window.Switch = Backbone.Model.extend({
                                                            },f);
                                                     } else {
                                                         f.applyActionText = "----";
+                                                        f.writeActionText = "n/a "; // need extra space at end
+                                                        f.clearActionText = "n/a";
+                                                        f.writeMetadataText = "n/a";
+                                                        f.gotoGroupText = "n/a";
+                                                        f.gotoMeterText = "n/a";
+                                                        f.experimenterText = "n/a";
                                                     }
                                                     
                                                     // build human-readable instrucions
