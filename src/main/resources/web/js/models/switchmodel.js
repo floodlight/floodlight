@@ -168,7 +168,7 @@ window.Switch = Backbone.Model.extend({
                                              //console.log(flows);
                                              
                                              // create flow models
-                                             var i = 0; 
+                                             var i = 0;
                                              _.each(flows, function(f) {
                                                     f.id = self.id + '-' + i++;
                                                     
@@ -179,7 +179,7 @@ window.Switch = Backbone.Model.extend({
                                                            f.matchHTML += key + "=" + value +" ";
                                                            },f);
                                                     }
-                                                    f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 2);
+                                                    f.matchHTML = f.matchHTML.substr(0, f.matchHTML.length - 1);
                                                     
                                                     f.applyActionText = '';
                                                     f.writeActionText = '';
@@ -202,8 +202,8 @@ window.Switch = Backbone.Model.extend({
                                                     
                                                     }
                                                     // build human-readable action list
-                                                    f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 2);
-                                                    f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 2);
+                                                    f.applyActionText = f.applyActionText.substr(0, f.applyActionText.length - 1);
+                                                    f.writeActionText = f.writeActionText.substr(0, f.writeActionText.length - 1);
                                                     //console.log(f);
                                                     self.flows.add(f, {silent: true});
                                                     });
