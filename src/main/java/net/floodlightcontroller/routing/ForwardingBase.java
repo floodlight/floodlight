@@ -80,8 +80,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
-	public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
-	public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 
 	public static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
 	public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
@@ -266,7 +267,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setCookie(cookie)
-			.setOutPort(outPort);
+			.setOutPort(outPort)
+			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 			try {
 				if (log.isTraceEnabled()) {
@@ -487,6 +489,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		fmb.setCookie(cookie)
 		.setHardTimeout(hardTimeout)
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+		.setPriority(FLOWMOD_DEFAULT_PRIORITY)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(mb.build())
 		.setActions(actions);

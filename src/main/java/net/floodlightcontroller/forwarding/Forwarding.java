@@ -75,9 +75,6 @@ import org.slf4j.LoggerFactory;
 public class Forwarding extends ForwardingBase implements IFloodlightModule {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
-	protected static int DEFAULT_HARD_TIMEOUT = 0; // not final b/c could be configured from config file
-	protected static int DEFAULT_IDLE_TIMEOUT = 5;
-
 	@Override
 	@LogMessageDoc(level="ERROR",
 	message="Unexpected decision made for this packet-in={}",
@@ -155,11 +152,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
 		fmb.setCookie(cookie)
-		.setHardTimeout(DEFAULT_HARD_TIMEOUT)
-		.setIdleTimeout(DEFAULT_IDLE_TIMEOUT)
+		.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(mb.build())
-		.setActions(actions); // empty list
+		.setActions(actions) // empty list
+		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 		try {
 			if (log.isDebugEnabled()) {
@@ -449,21 +447,25 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		Map<String, String> configParameters = context.getConfigParams(this);
 		String tmp = configParameters.get("hard-timeout");
 		if (tmp != null) {
-			DEFAULT_HARD_TIMEOUT = Integer.parseInt(tmp);
-			log.info("Default hard timeout set to {}.", DEFAULT_HARD_TIMEOUT);
+			FLOWMOD_DEFAULT_HARD_TIMEOUT = Integer.parseInt(tmp);
+			log.info("Default hard timeout set to {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		} else {
-			log.info("Default hard timeout not configured. Using {}.", DEFAULT_HARD_TIMEOUT);
+			log.info("Default hard timeout not configured. Using {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		}
 		tmp = configParameters.get("idle-timeout");
 		if (tmp != null) {
-			DEFAULT_IDLE_TIMEOUT = Integer.parseInt(tmp);
-			log.info("Default idle timeout set to {}.", DEFAULT_IDLE_TIMEOUT);
+			FLOWMOD_DEFAULT_IDLE_TIMEOUT = Integer.parseInt(tmp);
+			log.info("Default idle timeout set to {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		} else {
-			log.info("Default idle timeout not configured. Using {}.", DEFAULT_IDLE_TIMEOUT);
+			log.info("Default idle timeout not configured. Using {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		}
-
-
-
+		tmp = configParameters.get("priority");
+		if (tmp != null) {
+			FLOWMOD_DEFAULT_PRIORITY = Integer.parseInt(tmp);
+			log.info("Default priority set to {}.", FLOWMOD_DEFAULT_PRIORITY);
+		} else {
+			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
+		}
 	}
 
 	@Override
