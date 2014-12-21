@@ -224,11 +224,11 @@ window.Switch = Backbone.Model.extend({
 
                                                     
                                                     // table
-                                                    f.table = '';
+                                                    f.tableText = '';
                                                     if(f.hasOwnProperty('tableId')) {
-                                                           f.table = f.tableId;
+                                                           f.tableText = f.tableId;
                                                     }
-                                                    f.table = f.table.substr(0, f.table.length - 1);
+                                                    f.tableText = f.tableText.substr(0, f.tableText.length - 1);
                                                     
                                                     
                                                     
