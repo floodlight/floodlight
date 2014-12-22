@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryPusherResource;
 import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.InstructionUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,10 +59,7 @@ import org.projectfloodlight.openflow.types.U64;
 public class StaticFlowEntries {
 	protected static Logger log = LoggerFactory.getLogger(StaticFlowEntries.class);
 	private static final int INFINITE_TIMEOUT = 0;
-	
-	public static boolean ip6 = false;
-	public static boolean ip4 = false;
-		
+
 	/**
 	 * This function generates a random hash for the bottom half of the cookie
 	 * 
@@ -145,7 +143,7 @@ public class StaticFlowEntries {
 		entry.put(StaticFlowEntryPusher.COLUMN_NAME, name);
 		entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
 		entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
-		entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));	
+		entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));
 
 		switch (fm.getVersion()) {
 		case OF_10:
@@ -193,8 +191,8 @@ public class StaticFlowEntries {
 					}
 				}
 			}	
-		}
-		
+		}		
+
 		Match match = fm.getMatch();
 		// it's a shame we can't use the MatchUtils for this. It's kind of the same thing but storing in a different place.
 		Iterator<MatchField<?>> itr = match.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
@@ -215,10 +213,10 @@ public class StaticFlowEntries {
 				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.get(MatchField.VLAN_VID).getVlan());
 				break;
 			case VLAN_PCP:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Byte.toString(match.get(MatchField.VLAN_PCP).getValue()));				
+				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Byte.toString(match.get(MatchField.VLAN_PCP).getValue()));
 				break;
-			case ETH_TYPE:				
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).getValue());				
+			case ETH_TYPE:
+				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).getValue());
 				break;
 			case IP_ECN: // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte (have separate columns now though)
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, Byte.toString(match.get(MatchField.IP_ECN).getEcnValue()));
@@ -226,7 +224,7 @@ public class StaticFlowEntries {
 			case IP_DSCP: // Even for OF1.0, loxi will break ECN and DSCP up from the API's POV. This method is only invoked by a SFP service push from another module
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, Byte.toString((byte) (match.get(MatchField.IP_DSCP).getDscpValue())));
 				break;
-			case IP_PROTO:				
+			case IP_PROTO:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.get(MatchField.IP_PROTO).getIpProtocolNumber()));
 				break;
 			case IPV4_SRC:
@@ -301,7 +299,7 @@ public class StaticFlowEntries {
 				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.get(MatchField.IPV6_ND_TARGET).toString());
 				break;	
 				
-//sanjivini								
+//sanjivini	
 				
 			case MPLS_LABEL:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.get(MatchField.MPLS_LABEL).getValue());
@@ -309,22 +307,26 @@ public class StaticFlowEntries {
 			case MPLS_TC:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, match.get(MatchField.MPLS_TC).getValue());
 				break;
-				// case MPLS_BOS not implemented in loxi
+			case MPLS_BOS:
+				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.get(MatchField.MPLS_BOS).getValue());
+				break;			
 			case METADATA:
 				entry.put(StaticFlowEntryPusher.COLUMN_METADATA, match.get(MatchField.METADATA).getValue().getValue());
 				break;
-				// case TUNNEL_ID not implemented in loxi
-				// case PBB_ISID not implemented in loxi
+			case TUNNEL_ID:
+				entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.get(MatchField.TUNNEL_ID).getValue());
+				break;				
+			// case PBB_ISID not implemented in loxi
 			default:
 				log.error("Unhandled Match when parsing OFFlowMod: {}, {}", mf, mf.id);
 				break;
 			} // end switch-case
-		} // end while				
-    	
+		} // end while
+				
 		int result = StaticFlowEntryPusherResource.checkActions(entry);
 		if (result == -1)
 			throw new Exception("Invalid action/instructions");
-				
+		
 		return entry;
 	}
 
@@ -421,8 +423,8 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP:
 				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_DL_TYPE:				
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, jp.getText());				
+			case StaticFlowEntryPusher.COLUMN_DL_TYPE:
+				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_NW_TOS: // only valid for OF1.0; all other should specify specifics (ECN and/or DSCP bits)
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_TOS, jp.getText());
@@ -433,7 +435,7 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_NW_DSCP:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_NW_PROTO:				
+			case StaticFlowEntryPusher.COLUMN_NW_PROTO:
 				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, jp.getText());
 				ipProto = jp.getText();
 				break;
@@ -533,13 +535,13 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_TUNNEL_ID:
 				entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, jp.getText());
 				break;
-			case StaticFlowEntryPusher.COLUMN_PBB_ISID: // not suppnd_target = true;orted as match in loxi right now
+			case StaticFlowEntryPusher.COLUMN_PBB_ISID: // not supported as match in loxi right now
 				entry.put(StaticFlowEntryPusher.COLUMN_PBB_ISID, jp.getText());
 				break;
 			case StaticFlowEntryPusher.COLUMN_ACTIONS:
-				entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, jp.getText());				
+				entry.put(StaticFlowEntryPusher.COLUMN_ACTIONS, jp.getText());
 				break;
-//sanjivini				
+				
 			/* 
 			 * All OF1.1+ instructions.
 			 */
@@ -567,7 +569,7 @@ public class StaticFlowEntries {
 			default:
 				log.error("Could not decode field from JSON string: {}", n);
 			}  
-		} 						
+		} 
 		
 		// For OF1.0, transport ports are specified using generic tp_src, tp_dst type strings.
 		// Once the whole json string has been parsed, find out the IpProto to properly assign the ports.
@@ -601,8 +603,9 @@ public class StaticFlowEntries {
 			}
 		} else {
 			log.debug("Got IP protocol of '{}' and tp-src of '{}' and tp-dst of '" + tpDstPort + "' via SFP REST API", ipProto, tpSrcPort);
-		}		
+		}
+
 		return entry;
-	}   		
+	}   
 }
 
