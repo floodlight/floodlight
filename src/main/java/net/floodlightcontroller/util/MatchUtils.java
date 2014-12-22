@@ -102,7 +102,7 @@ public class MatchUtils {
 	public static final String STR_TUNNEL_ID = "tunnel_id";
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
-	
+
 	public static final String SET_FIELD_DELIM = "->";
 
 	/**
@@ -301,23 +301,23 @@ public class MatchUtils {
 	 * <TD>VALUE
 	 * </TR>
 	 * <TR>
-	 * <TD>"in_port","input_port"
+	 * <TD>"in_port"
 	 * <TD>integer
 	 * </TR>
 	 * <TR>
-	 * <TD>"dl_src", "dl_dst"
+	 * <TD>"eth_src", "eth_dst"
 	 * <TD>hex-string
 	 * </TR>
 	 * <TR>
-	 * <TD>"dl_type", "dl_vlan", "dl_vlan_pcp"
+	 * <TD>"eth_type", "eth_vlan_vid", "eth_vlan_pcp"
 	 * <TD>integer
 	 * </TR>
 	 * <TR>
-	 * <TD>"nw_src", "nw_dst"
+	 * <TD>"ipv4_src", "ipv4_dst"
 	 * <TD>CIDR-style netmask
 	 * </TR>
 	 * <TR>
-	 * <TD>"tp_src","tp_dst"
+	 * <TD>"tp_src","tp_dst", "tcp_src", "tcp_dst", "udp_src", "udp_dst", etc.
 	 * <TD>integer (max 64k)
 	 * </TR>
 	 * </TABLE>
@@ -339,14 +339,14 @@ public class MatchUtils {
 		if (match.equals("") || match.equalsIgnoreCase("any") || match.equalsIgnoreCase("all") || match.equals("[]")) {
 			match = "Match[]";
 		}
-		
+
 		// Split into pairs of key=value
 		String[] tokens = match.split("[\\[,\\]]");
 		int initArg = 0;
 		if (tokens[0].equals("Match")) {
 			initArg = 1;
 		}
-		
+
 		// Split up key=value pairs into [key, value], and insert into array-deque
 		int i;
 		String[] tmp;
@@ -361,15 +361,15 @@ public class MatchUtils {
 		}	
 
 		Match.Builder mb = OFFactories.getFactory(ofVersion).buildMatch();
-		
+
 //sanjivini		
-		
+
 		//Determine if the OF version is 1.0 before adding a flow
 				if (ofVersion.equals(OFVersion.OF_10)) {
 					ver10 = true;
 				}
 //sanjivini
-				
+		
 		while (!llValues.isEmpty()) {
 			IpProtocol ipProto = null;
 			String[] key_value = llValues.pollFirst(); // pop off the first element; this completely removes it from the queue.
@@ -398,7 +398,7 @@ public class MatchUtils {
 				}
 				break;
 			case STR_DL_VLAN_PCP:
-				if (key_value[1].startsWith("0x")) {
+				if (key_value[1].startsWith("0x")) { 
 					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16))));
 				} else {
 					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(Short.valueOf(key_value[1]))));
@@ -414,23 +414,26 @@ public class MatchUtils {
 //sanjivini
 			case STR_IPV6_DST:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setMasked(MatchField.IPV6_DST, IPv6AddressWithMask.of(key_value[1]));
 				break;
 			case STR_IPV6_SRC:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setMasked(MatchField.IPV6_SRC, IPv6AddressWithMask.of(key_value[1]));
 				break;
 			case STR_IPV6_FLOW_LABEL:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1])));
 				break;
-//sanjivini								
+//sanjivini	
 				
 			case STR_NW_PROTO:
 				if (key_value[1].startsWith("0x")) {
@@ -544,35 +547,40 @@ public class MatchUtils {
 //sanjivini
 			case STR_ICMPV6_TYPE:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.ICMPV6_TYPE, U8.of(Short.parseShort(key_value[1])));
 				break;
 			case STR_ICMPV6_CODE:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.ICMPV6_CODE, U8.of(Short.parseShort(key_value[1])));
 				break;
 			case STR_IPV6_ND_SSL:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.IPV6_ND_SLL, MacAddress.of(key_value[1]));
 				break;
 			case STR_IPV6_ND_TTL:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.IPV6_ND_TLL, MacAddress.of(key_value[1]));
 				break;
 			case STR_IPV6_ND_TARGET:
 				if (ver10 == true) {
-					throw new Exception("OF Version incompatible");
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
 				}
 				mb.setExact(MatchField.IPV6_ND_TARGET, IPv6Address.of(key_value[1]));
 				break;
-//sanjivini				
+//sanjivini	
 				
 			case STR_ARP_OPCODE:
 				if (key_value[1].startsWith("0x")) {
