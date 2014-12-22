@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
+
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFVersion;
@@ -151,8 +152,7 @@ public class ActionUtils {
             message="Could not decode action {action}",
             explanation="A static flow entry contained an invalid action",
             recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    public static String actionsToString(List<OFAction> actions, Logger log) throws Exception {    	
-    	
+    public static String actionsToString(List<OFAction> actions, Logger log) {
         StringBuilder sb = new StringBuilder();
         for (OFAction a : actions) {
             if (sb.length() > 0) {
@@ -220,10 +220,10 @@ public class ActionUtils {
                 case POP_MPLS:
                     sb.append(STR_MPLS_POP + "=" + Integer.toString(((OFActionPopMpls)a).getEthertype().getValue()));
                     break;
-                case SET_NW_SRC:                	
+                case SET_NW_SRC:
                     sb.append(STR_NW_SRC_SET + "=" + ((OFActionSetNwSrc)a).getNwAddr().toString());
                     break;
-                case SET_NW_DST:                	
+                case SET_NW_DST:
                     sb.append(STR_NW_DST_SET + "=" + ((OFActionSetNwDst)a).getNwAddr().toString());
                     break;
                 case SET_TP_SRC:
@@ -253,15 +253,15 @@ public class ActionUtils {
                 case SET_FIELD:
                 	log.debug("Got Set-Field action. Setting " + ((OFActionSetField)a));
                 	/* ARP */
-                	if (((OFActionSetField)a).getField() instanceof OFOxmArpOp) {                		
+                	if (((OFActionSetField)a).getField() instanceof OFOxmArpOp) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_OPCODE + MatchUtils.SET_FIELD_DELIM + Integer.toString(((OFOxmArpOp) ((OFActionSetField) a).getField()).getValue().getOpcode()));
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSha) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSha) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_SHA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpSha) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTha) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTha) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_DHA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpTha) ((OFActionSetField) a).getField()).getValue().toString());
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSpa) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpSpa) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_SPA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpSpa) ((OFActionSetField) a).getField()).getValue().toString()); // ipaddress formats string already
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTpa) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmArpTpa) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ARP_DPA + MatchUtils.SET_FIELD_DELIM + ((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {                		
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_ND_SSL + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
@@ -283,9 +283,9 @@ public class ActionUtils {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_DL_VLAN_PCP + MatchUtils.SET_FIELD_DELIM + Byte.toString(((OFOxmVlanPcp) ((OFActionSetField) a).getField()).getValue().getValue())); 
                 	} 
                 	/* ICMP */
-                	  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Code) {                		
+                	  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Code) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMP_CODE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv4Code) ((OFActionSetField) a).getField()).getValue().getCode())); 
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Type) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Type) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMP_TYPE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType())); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {                		
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_ICMPV6_CODE + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw())); 
@@ -295,9 +295,9 @@ public class ActionUtils {
                 	/* NETWORK LAYER */
                 	  else if (((OFActionSetField)a).getField() instanceof OFOxmIpProto) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_PROTO + MatchUtils.SET_FIELD_DELIM + Short.toString(((OFOxmIpProto) ((OFActionSetField) a).getField()).getValue().getIpProtocolNumber())); 
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Src) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Src) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_SRC + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv4Src) ((OFActionSetField) a).getField()).getValue().toString()); 
-                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {                		
+                	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_NW_DST + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
                 	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {                		
                     	sb.append(STR_FIELD_SET + "=" + MatchUtils.STR_IPV6_SRC + MatchUtils.SET_FIELD_DELIM + ((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
@@ -377,7 +377,7 @@ public class ActionUtils {
 				String key;
 				String pair;
 				if (keyPair.length != 2) {
-					log.debug("[Key, Value] {} does not have form 'key=value' parsing ", keyPair);
+					log.debug("[Key, Value] {} does not have form 'key=value' parsing, which is okay for some actions e.g. 'pop_vlan'.", keyPair);
 					key = keyPair[0]; // could the be case of a constant actions (e.g. copy_ttl_in)
 					pair = "";
 				} else {
@@ -458,7 +458,7 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdTarget().setValue(IPv6Address.of(actionData[1])).build())
 						.build();
 						break;
-//sanjivini						
+//sanjivini		
 						
 					case MatchUtils.STR_DL_TYPE:
 						if (actionData[1].startsWith("0x")) {
@@ -537,7 +537,7 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIcmpv6Type().setValue(U8.of(Short.parseShort(actionData[1]))).build())
 						.build();
 						break;
-//sanjivini
+//sanjivini						
 						
 					case MatchUtils.STR_NW_PROTO:
 						if (actionData[1].startsWith("0x")) {
@@ -577,7 +577,7 @@ public class ActionUtils {
 						.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6Flabel().setValue(IPv6FlowLabel.of(Integer.parseInt(actionData[1]))).build())
 						.build();						
 						break;
-//sanjivini
+//sanjivini						
 						
 					case MatchUtils.STR_NW_ECN:
 						if (actionData[1].startsWith("0x")) {
