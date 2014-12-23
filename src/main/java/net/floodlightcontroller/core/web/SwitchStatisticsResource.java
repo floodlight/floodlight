@@ -54,9 +54,7 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 		}
 		
 		// stop if the DPID is invalid or is not presently connected
-		if (!switchId.equals(DatapathId.NONE) && switchService.getSwitch(switchId) != null) {
-			// TODO these strings should be defined someplace. StatsReply.java?
-			
+		if (!switchId.equals(DatapathId.NONE) && switchService.getSwitch(switchId) != null) {			
 			// at this point, the switch DPID is valid AND exists; what about the OFStatsType?
 			switch (statType) {
 			case OFStatsTypeStrings.PORT:
@@ -119,6 +117,9 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 				values = getSwitchFeaturesReply(switchId);
 				result.setStatType(OFStatsType.EXPERIMENTER);
 				break;
+			case OFStatsTypeStrings.FEATURES:
+				values = getSwitchFeaturesReply(switchId);
+				result.setStatType(null); // we will assume anything in "values" with a null stattype is "features"
 			default:
 				log.error("Invalid or unimplemented stat request type {}", statType);
 				break;
