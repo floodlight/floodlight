@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntries;
 import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.util.MatchUtils;
 
 /**
  * Pushes a static flow entry to the storage source
@@ -43,137 +44,236 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 	protected static Logger log = LoggerFactory.getLogger(StaticFlowEntryPusherResource.class);
 
 	/**
-	 * Checks to see if the user matches IP information without
-	 * checking for the correct ether-type (2048).
-	 * @param rows The Map that is a string representation of
-	 * the static flow.
-	 * @reutrn True if they checked the ether-type, false otherwise
+	 * Validates if all the mandatory fields are set properly while adding an IPv6 flow
+	 * @param Map containing the fields of the flow
+	 * @return state indicating whether a flow is valid or not
 	 */
-	private boolean checkMatchIp(Map<String, Object> rows) {
-		boolean matchEther = false;
-		String val = (String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE);
-		if (val != null) {
-			int type = 0;
-			// check both hex and decimal
-			if (val.startsWith("0x")) {
-				type = Integer.parseInt(val.substring(2), 16);
+	private int checkFlow(Map<String, Object> rows) {    
+		//Declaring & Initializing flags
+		int state = 0;
+		boolean dl_type = false;
+		boolean nw_proto = false;
+		boolean nw_layer = false;
+		boolean icmp6_type = false;
+		boolean icmp6_code = false;
+		boolean nd_target = false;
+		boolean nd_sll = false;
+		boolean nd_tll = false; 
+		boolean ip6 = false;
+		boolean ip4 = false;
+
+		int eth_type = -1;
+		int nw_protocol = -1;
+		int icmp_type = -1;
+
+		//Determine the dl_type if set
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_DL_TYPE)) {
+			if (((String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE)).startsWith("0x")) {
+				eth_type = Integer.parseInt(((String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE)).replaceFirst("0x", ""), 16);
+				dl_type = true;
 			} else {
-				try {
-					type = Integer.parseInt(val);
-				} catch (NumberFormatException e) { /* fail silently */}
+				eth_type = Integer.parseInt((String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE));
+				dl_type = true;
 			}
-			if (type == 2048) matchEther = true;
+			if (eth_type == 0x86dd) { /* or 34525 */
+				ip6 = true;
+				dl_type = true;
+			} else if (eth_type == 0x800 || /* or 2048 */
+					eth_type == 0x806 || /* or 2054 */
+					eth_type == 0x8035) { /* or 32821*/
+				ip4 = true;
+				dl_type = true;
+			}	
+			//else {
+			//	state = 2;    
+			//	return state;
+			//}
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_SRC)) {
+			nw_layer = true;
+			ip4 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ICMP_CODE) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ICMP_TYPE) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ARP_DHA) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ARP_SHA) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ARP_SPA) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ARP_DPA) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_ARP_OPCODE)) {
+			ip4 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL) || 
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW6_SRC) ||
+				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW6_DST)) {
+			nw_layer = true;
+			ip6 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_PROTO)) {
+			nw_proto = true;
+			if (((String) rows.get(StaticFlowEntryPusher.COLUMN_NW_PROTO)).startsWith("0x")) {
+				nw_protocol = Integer.parseInt(((String) rows.get(StaticFlowEntryPusher.COLUMN_NW_PROTO)).replaceFirst("0x", ""), 16);
+			} else {
+				nw_protocol = Integer.parseInt((String) rows.get(StaticFlowEntryPusher.COLUMN_NW_PROTO));
+			}
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ICMP6_CODE)) {
+			icmp6_code = true;
+			ip6 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE)) {
+			icmp6_type = true;
+			ip6 = true;
+			if (((String) rows.get(StaticFlowEntryPusher.COLUMN_ICMP_TYPE)).startsWith("0x")) {
+				icmp_type = Integer.parseInt(((String) rows.get(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE)).replaceFirst("0x", ""), 16);
+			} else {
+				icmp_type = Integer.parseInt((String) rows.get(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE));
+			}
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ND_SLL)) {
+			nd_sll = true;
+			ip6 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ND_TLL)) {
+			nd_tll = true;
+			ip6 = true;
+		}
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_ND_TARGET)) {
+			nd_target = true;
+			ip6 = true;
+		}    
+
+		if (nw_layer == true || nw_proto == true) {
+			if (dl_type == true) {
+				if (!(ip4 == true || ip6 == true)) {
+					//invalid dl_type
+					state = 2;    
+					return state;
+				}
+			}
+			else {
+				//dl_type not set
+				state = 1;    
+				return state;
+			}
+		}
+		if (icmp6_type == true || icmp6_code == true ) {
+			if (nw_proto == true) {
+				if (nw_protocol != 0x3A) { /* or 58 */
+					//invalid nw_proto
+					state = 4;    
+					return state;
+				}
+			}
+			else {
+				//nw_proto not set
+				state = 3;    
+				return state;
+			}
 		}
 
-		if ((rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_DST) ||
-				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_SRC) ||
-				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_PROTO) ||
-				rows.containsKey(StaticFlowEntryPusher.COLUMN_NW_TOS)) &&
-				(matchEther == false))
-			return false;
+		if (nd_sll == true || nd_tll == true || nd_target == true) {
+			if (icmp6_type == true) {
+				//icmp_type must be set to 135/136 to set ipv6_nd_target
+				if (nd_target == true) {
+					if (!(icmp_type == 135 || icmp_type == 136)) {
+						//invalid icmp6_type
+						state = 6;
+						return state;
+					}
+				}
+				//icmp_type must be set to 136 to set ipv6_nd_tll
+				else if (nd_tll == true) {
+					if (!(icmp_type == 136)) {
+						//invalid icmp6_type
+						state = 6;
+						return state;
+					}
+				}
+				//icmp_type must be set to 135 to set ipv6_nd_sll
+				else if (nd_sll == true) {
+					if (!(icmp_type == 135)) {
+						//invalid icmp6_type
+						state = 6;
+						return state;
+					}
+				}
+			}
+			else {
+				//icmp6_type not set
+				state = 5;    
+				return state;
+			}
+		}
 
-		return true;
+		int result = checkActions(rows);
+
+		if ((ip4 == true && ip6 == true) || (result == -1) ||
+				(result == 1 && ip6 == true) || (result == 2 && ip4 == true)) {
+			//ipv4 & ipv6 conflict
+			state = 7;    
+			return state;
+		}
+
+		return state;
+
 	}
 
 	/**
-	 * The check for flow entry validity will happen only when the SFP's 
-	 * storage listener detects the row entry is inserted. This, unfortunately,
-	 * is after the REST API returns the message to the user who's inserting
-	 * the flow.
+	 * Validates actions/instructions
 	 * 
-	 * This function will perform the same error checking that will happen
-	 * automatically later when the OFFlowMod is composed and built. This is
-	 * somewhat redundant, since the flow entry will only be sent to the
-	 * switch if it's valid, but this is the only way to tell the user something
-	 * wasn't correct in their flow definition.
+	 * -1 --> IPv4/IPv6 conflict
+	 * 0 --> no IPv4 or IPv6 actions
+	 * 1 --> IPv4 only actions
+	 * 2 --> IPv6 only actions
 	 * 
-	 * @param row
-	 * @return A String describing the error if there is one; the empty string if all checks
-	 *
-	private String validateFlowEntry(Map<String, Object> row) {
-		/*
-		 * First, build the match string and try to turn it into a
-		 * Match.Builder with all the fields set. Then, before the
-		 * it's built, check all prerequisites.
-		 *
-		IOFSwitchService switchService = (IOFSwitchService) getContext()
-				.getAttributes()
-				.get(IOFSwitchService.class.getCanonicalName());
-		String switchName = (String) row.get(StaticFlowEntryPusher.COLUMN_SWITCH);
-		String entryName = (String) row.get(StaticFlowEntryPusher.COLUMN_NAME);
-		String matchString;
-		DatapathId dpid;
-		
-		try {
-			dpid = DatapathId.of(switchName);
-		} catch (NumberFormatException e) {
-			return "Invalid switch DPID " + switchName + ".";
-		}
-		
-		IOFSwitch theSwitch = switchService.getSwitch(DatapathId.of(switchName));
-		
-		if (theSwitch == null) {
-			return "Switch " + switchName + " is not connected to the controller.";		
-		}
-		
-		for (String key : row.keySet()) {
-			// get the correct builder for the OF version supported by the switch
-			OFFlowModify.Builder fmb = theSwitch.getOFFactory().buildFlowModify();
+	 * @param Map containing the fields of the flow
+	 * @return state indicating whether a flow is valid or not
+	 */
+	public static int checkActions(Map<String, Object> entry) {
 
-			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
+		boolean ip6 = false;
+		boolean ip4 = false;
+		String actions = null;
 
-			if (row.get(key) == null
-					|| key.equals(StaticFlowEntryPusher.COLUMN_SWITCH) 
-					|| key.equals(StaticFlowEntryPusher.COLUMN_NAME) 
-					|| key.equals("id")
-					|| key.equals(StaticFlowEntryPusher.COLUMN_HARD_TIMEOUT) 
-					|| key.equals(StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT)) {
-				continue;
+		if (entry.containsKey(StaticFlowEntryPusher.COLUMN_ACTIONS) || 
+				entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS) ||
+				entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS)) {
+			if (entry.containsKey(StaticFlowEntryPusher.COLUMN_ACTIONS)) {
+				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_ACTIONS);
+			}
+			else if (entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS)) {
+				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS);
+			}
+			else if (entry.containsKey(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS)) {
+				actions = (String) entry.get(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS);
 			}
 
-			if (key.equals(StaticFlowEntryPusher.COLUMN_ACTIVE)) {
-				if  (!Boolean.valueOf((String) row.get(StaticFlowEntryPusher.COLUMN_ACTIVE))) {
-					log.debug("Flow entry is inactive; verifying it anyway."); 
-				}
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_TABLE_ID)) {
-				if (fmb.getVersion() != OFVersion.OF_10) { // all except 1.0 support tables 
-					fmb.setTableId(TableId.of(Integer.parseInt((String) row.get(key)))); // support multiple flow tables for OF1.1+
-				} else {
-					return "Tables not supported in OpenFlow 1.0.";
-				}
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_ACTIONS)) {
-				ActionUtils.fromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_ACTIONS), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_COOKIE)) {
-				fmb.setCookie(StaticFlowEntries.computeEntryCookie(Integer.valueOf((String) row.get(StaticFlowEntryPusher.COLUMN_COOKIE)), entryName));
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_PRIORITY)) {
-				fmb.setPriority(U16.t(Integer.valueOf((String) row.get(StaticFlowEntryPusher.COLUMN_PRIORITY))));
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS)) {
-				InstructionUtils.applyActionsFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_APPLY_ACTIONS), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_CLEAR_ACTIONS)) {
-				InstructionUtils.clearActionsFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_CLEAR_ACTIONS), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER)) {
-				InstructionUtils.experimenterFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_EXPERIMENTER), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_METER)) {
-				InstructionUtils.meterFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_METER), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE)) {
-				InstructionUtils.gotoTableFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_GOTO_TABLE), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS)) {
-				InstructionUtils.writeActionsFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_ACTIONS), log);
-			} else if (key.equals(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_METADATA)) {
-				InstructionUtils.writeMetadataFromString(fmb, (String) row.get(StaticFlowEntryPusher.COLUMN_INSTR_WRITE_METADATA), log);
-			} else { // the rest of the keys are for Match().fromString()
-				if (matchString.length() > 0) {
-					matchString.append(",");
-				}
-				matchString.append(key + "=" + row.get(key).toString());
+			if (actions.contains(MatchUtils.STR_ICMPV6_CODE) || actions.contains(MatchUtils.STR_ICMPV6_TYPE) ||
+					actions.contains(MatchUtils.STR_IPV6_DST) || actions.contains(MatchUtils.STR_IPV6_SRC) || 
+					actions.contains(MatchUtils.STR_IPV6_FLOW_LABEL) || actions.contains(MatchUtils.STR_IPV6_ND_SSL) ||
+					actions.contains(MatchUtils.STR_IPV6_ND_TARGET) || actions.contains(MatchUtils.STR_IPV6_ND_TTL)) {
+				ip6 = true;
+			}
+			if (actions.contains(MatchUtils.STR_NW_SRC) || actions.contains(MatchUtils.STR_NW_DST) || 
+					actions.contains(MatchUtils.STR_ARP_OPCODE) || actions.contains(MatchUtils.STR_ARP_SHA) || 
+					actions.contains(MatchUtils.STR_ARP_DHA) || actions.contains(MatchUtils.STR_ARP_SPA) || 
+					actions.contains(MatchUtils.STR_ARP_DPA) || actions.contains(MatchUtils.STR_ICMP_CODE) || 
+					actions.contains(MatchUtils.STR_ICMP_TYPE)) {
+				ip4 = true;
 			}
 		}
-		String match = matchString.toString();
 
-		fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
-
-		return "";
-	} */
+		if (ip6 == false && ip4 == false) {
+			return 0; // no actions involving ipv4 or ipv6
+		} else if (ip6 == false && ip4 == true) {
+			return 1; //ipv4
+		} else if (ip6 == true && ip4 == false) {
+			return 2; //ipv6
+		} else {
+			return -1; // conflict of ipv4 and ipv6 actions
+		}
+	}
 
 	/**
 	 * Takes a Static Flow Pusher string in JSON format and parses it into
@@ -195,19 +295,39 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 		try {
 			rowValues = StaticFlowEntries.jsonToStorageEntry(fmJson);
 			String status = null;
-			if (!checkMatchIp(rowValues)) {
+
+			int state = checkFlow(rowValues);
+			if (state == 1) {
 				status = "Warning! Must specify eth_type of IPv4/IPv6 to " +
 						"match on IPv4/IPv6 fields! The flow has been discarded.";
 				log.error(status);
-			} else {
-				status = "Entry pushed";
+			} else if (state == 2) {
+				status = "Warning! eth_type not recognized! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 3) {
+				status = "Warning! Must specify ip_proto to match! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 4) {
+				status = "Warning! ip_proto invalid! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 5) {
+				status = "Warning! Must specify icmp6_type to match! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 6) {
+				status = "Warning! icmp6_type invalid! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 7) {
+				status = "Warning! IPv4 & IPv6 fields cannot be specified in the same flow! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 0) {
+				status = "Entry pushed";            
+				storageSource.insertRowAsync(StaticFlowEntryPusher.TABLE_NAME, rowValues);
 			}
-			storageSource.insertRowAsync(StaticFlowEntryPusher.TABLE_NAME, rowValues);
 			return ("{\"status\" : \"" + status + "\"}");
 		} catch (IOException e) {
 			log.error("Error parsing push flow mod request: " + fmJson, e);
 			return "{\"status\" : \"Error! Could not parse flod mod, see log for details.\"}";
-		}
+		}        
 	}
 
 	@Delete
