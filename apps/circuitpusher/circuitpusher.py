@@ -123,7 +123,7 @@ if args.action=='add':
     # retrieving route from source to destination
     # using Routing rest API
     
-    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort['shortPortNumber'], destSwitch, destPort['shortPortNumber'])
+    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort, destSwitch, destPort)
     result = os.popen(command).read()
     print result+"\n"
     print command+"\n"
