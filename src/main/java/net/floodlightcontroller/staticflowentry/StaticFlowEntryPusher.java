@@ -131,6 +131,18 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ARP_DHA = MatchUtils.STR_ARP_DHA;
 	public static final String COLUMN_ARP_SPA = MatchUtils.STR_ARP_SPA;
 	public static final String COLUMN_ARP_DPA = MatchUtils.STR_ARP_DPA;
+	
+//sanjivini
+	//IPv6 related columns
+	public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
+	public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
+	public static final String COLUMN_IPV6_FLOW_LABEL = MatchUtils.STR_IPV6_FLOW_LABEL;
+	public static final String COLUMN_ICMP6_TYPE = MatchUtils.STR_ICMPV6_TYPE;
+	public static final String COLUMN_ICMP6_CODE = MatchUtils.STR_ICMPV6_CODE;
+	public static final String COLUMN_ND_SLL = MatchUtils.STR_IPV6_ND_SSL;
+	public static final String COLUMN_ND_TLL = MatchUtils.STR_IPV6_ND_TTL;
+	public static final String COLUMN_ND_TARGET = MatchUtils.STR_IPV6_ND_TARGET;	
+//sanjivini
 
 	public static final String COLUMN_MPLS_LABEL = MatchUtils.STR_MPLS_LABEL;
 	public static final String COLUMN_MPLS_TC = MatchUtils.STR_MPLS_TC;
@@ -164,6 +176,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_ICMP_TYPE, COLUMN_ICMP_CODE, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
+		
+//sanjivini		
+		//IPv6 related matches
+		COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
+		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,
+//sanjivini		
+		
 		COLUMN_MPLS_LABEL, COLUMN_MPLS_TC, COLUMN_MPLS_BOS, 
 		COLUMN_METADATA, COLUMN_TUNNEL_ID, COLUMN_PBB_ISID,
 		/* end newly added matches */
@@ -408,6 +427,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
 		}
+//sanjivini		
+		catch (Exception e) {
+			log.error("OF version incompatible for the match: " + match);
+			e.printStackTrace();
+			return;
+		}
+//sanjivini
 
 		entries.get(switchName).put(entryName, fmb.build()); // add the FlowMod message to the table
 	}
@@ -754,8 +780,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 
 	@Override
 	public void addFlow(String name, OFFlowMod fm, DatapathId swDpid) {
-		Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
-		storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
+		try {
+			Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
+			storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
+		} catch (Exception e) {
+			log.error("Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
+            		+ "mandatory fields are specified. ");
+		}
 	}
 
 	@Override

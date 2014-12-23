@@ -41,11 +41,21 @@ import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthSrc;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthType;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv4Code;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv4Type;
+
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv6Code;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIcmpv6Type;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpDscp;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpEcn;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpProto;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv4Dst;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv4Src;
+
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Dst;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Flabel;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdSll;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdTarget;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6NdTll;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmIpv6Src;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMetadata;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMplsBos;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmMplsLabel;
@@ -203,7 +213,13 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
                     jsonGenerator.writeStringField(MatchUtils.STR_ARP_SPA, ((OFOxmArpSpa) ((OFActionSetField) a).getField()).getValue().toString()); // ipaddress formats string already
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmArpTpa) {
                     jsonGenerator.writeStringField(MatchUtils.STR_ARP_DPA, ((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } 
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {                		
+                	jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_SSL, ((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString());
+            	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTll) {                		
+            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_TTL, ((OFOxmIpv6NdTll) ((OFActionSetField) a).getField()).getValue().toString());
+            	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTarget) {                		
+            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_TARGET, ((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
+            	}
                 /* DATA LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmEthType) {
                     jsonGenerator.writeNumberField(MatchUtils.STR_DL_TYPE, ((OFOxmEthType) ((OFActionSetField) a).getField()).getValue().getValue());
@@ -220,7 +236,11 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
                     jsonGenerator.writeNumberField(MatchUtils.STR_ICMP_CODE, ((OFOxmIcmpv4Code) ((OFActionSetField) a).getField()).getValue().getCode()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Type) {
                     jsonGenerator.writeNumberField(MatchUtils.STR_ICMP_TYPE, ((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType()); 
-                } 
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {                		
+                	jsonGenerator.writeNumberField(MatchUtils.STR_ICMPV6_CODE, ((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw()); 
+            	}  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Type) {                		
+            		jsonGenerator.writeNumberField(MatchUtils.STR_ICMPV6_TYPE, ((OFOxmIcmpv6Type) ((OFActionSetField) a).getField()).getValue().getRaw()); 
+            	}
                 /* NETWORK LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmIpProto) {
                     jsonGenerator.writeNumberField(MatchUtils.STR_NW_PROTO, ((OFOxmIpProto) ((OFActionSetField) a).getField()).getValue().getIpProtocolNumber()); 
@@ -228,7 +248,13 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
                     jsonGenerator.writeStringField(MatchUtils.STR_NW_SRC, ((OFOxmIpv4Src) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {
                     jsonGenerator.writeStringField(MatchUtils.STR_NW_DST, ((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpEcn) {
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {                		
+                	jsonGenerator.writeStringField(MatchUtils.STR_IPV6_SRC, ((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
+            	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Dst) {                		
+            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_DST, ((OFOxmIpv6Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
+            	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Flabel) {                		
+            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_FLOW_LABEL, ((OFOxmIpv6Flabel) ((OFActionSetField) a).getField()).getValue().toString()); 
+            	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpEcn) {
                     jsonGenerator.writeNumberField(MatchUtils.STR_NW_ECN, ((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpDscp) {
                     jsonGenerator.writeNumberField(MatchUtils.STR_NW_DSCP, ((OFOxmIpDscp) ((OFActionSetField) a).getField()).getValue().getDscpValue()); 

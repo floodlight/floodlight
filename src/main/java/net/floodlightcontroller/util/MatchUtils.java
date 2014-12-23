@@ -13,6 +13,9 @@ import org.projectfloodlight.openflow.types.ICMPv4Code;
 import org.projectfloodlight.openflow.types.ICMPv4Type;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
+import org.projectfloodlight.openflow.types.IPv6Address;
+import org.projectfloodlight.openflow.types.IPv6AddressWithMask;
+import org.projectfloodlight.openflow.types.IPv6FlowLabel;
 import org.projectfloodlight.openflow.types.IpDscp;
 import org.projectfloodlight.openflow.types.IpEcn;
 import org.projectfloodlight.openflow.types.IpProtocol;
@@ -330,6 +333,9 @@ public class MatchUtils {
 	 *             on unexpected key or value
 	 */
 	public static Match fromString(String match, OFVersion ofVersion) throws IllegalArgumentException {
+		
+		boolean ver10 = false;
+		
 		if (match.equals("") || match.equalsIgnoreCase("any") || match.equalsIgnoreCase("all") || match.equals("[]")) {
 			match = "Match[]";
 		}
@@ -356,6 +362,14 @@ public class MatchUtils {
 
 		Match.Builder mb = OFFactories.getFactory(ofVersion).buildMatch();
 
+//sanjivini		
+
+		//Determine if the OF version is 1.0 before adding a flow
+				if (ofVersion.equals(OFVersion.OF_10)) {
+					ver10 = true;
+				}
+//sanjivini
+		
 		while (!llValues.isEmpty()) {
 			IpProtocol ipProto = null;
 			String[] key_value = llValues.pollFirst(); // pop off the first element; this completely removes it from the queue.
@@ -396,6 +410,28 @@ public class MatchUtils {
 			case STR_NW_SRC:
 				mb.setMasked(MatchField.IPV4_SRC, IPv4AddressWithMask.of(key_value[1]));
 				break;
+				
+//sanjivini
+			case STR_IPV6_DST:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+				}
+				mb.setMasked(MatchField.IPV6_DST, IPv6AddressWithMask.of(key_value[1]));
+				break;
+			case STR_IPV6_SRC:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+				}
+				mb.setMasked(MatchField.IPV6_SRC, IPv6AddressWithMask.of(key_value[1]));
+				break;
+			case STR_IPV6_FLOW_LABEL:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+				}
+				mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1])));
+				break;
+//sanjivini	
+				
 			case STR_NW_PROTO:
 				if (key_value[1].startsWith("0x")) {
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16)));
@@ -504,6 +540,45 @@ public class MatchUtils {
 					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(Short.parseShort(key_value[1])));
 				}
 				break;
+				
+//sanjivini
+			case STR_ICMPV6_TYPE:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
+				}
+				mb.setExact(MatchField.ICMPV6_TYPE, U8.of(Short.parseShort(key_value[1])));
+				break;
+			case STR_ICMPV6_CODE:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
+				}
+				mb.setExact(MatchField.ICMPV6_CODE, U8.of(Short.parseShort(key_value[1])));
+				break;
+			case STR_IPV6_ND_SSL:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
+				}
+				mb.setExact(MatchField.IPV6_ND_SLL, MacAddress.of(key_value[1]));
+				break;
+			case STR_IPV6_ND_TTL:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
+				}
+				mb.setExact(MatchField.IPV6_ND_TLL, MacAddress.of(key_value[1]));
+				break;
+			case STR_IPV6_ND_TARGET:
+				if (ver10 == true) {
+					throw new IllegalArgumentException("OF Version incompatible");
+					//throw new Exception("OF Version incompatible");
+				}
+				mb.setExact(MatchField.IPV6_ND_TARGET, IPv6Address.of(key_value[1]));
+				break;
+//sanjivini	
+				
 			case STR_ARP_OPCODE:
 				if (key_value[1].startsWith("0x")) {
 					mb.setExact(MatchField.ARP_OP, ArpOpcode.of(Integer.parseInt(key_value[1].replaceFirst("0x", ""), 16)));

@@ -28,7 +28,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  *
  */
 public class InstructionUtils {
-	public static final String STR_GOTO_TABLE = "goto_table";
+	public static final String STR_GOTO_TABLE = "instruction_goto_table";
 	public static final String STR_WRITE_METADATA = "instruction_write_metadata";
 	public static final String STR_WRITE_ACTIONS = "instruction_write_actions";
 	public static final String STR_APPLY_ACTIONS = "instruction_apply_actions";
@@ -169,7 +169,7 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) {
+	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) throws Exception {
 		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 
@@ -200,7 +200,7 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) {
+	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) throws Exception {
 		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 

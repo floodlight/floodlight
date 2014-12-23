@@ -24,6 +24,7 @@ import java.util.Map;
 
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryPusherResource;
 import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.InstructionUtils;
 
@@ -137,7 +138,7 @@ public class StaticFlowEntries {
 	 * @param name The name of this static flow entry
 	 * @return A Map representation of the storage entry 
 	 */
-	public static Map<String, Object> flowModToStorageEntry(OFFlowMod fm, String sw, String name) {
+	public static Map<String, Object> flowModToStorageEntry(OFFlowMod fm, String sw, String name) throws Exception {
 		Map<String, Object> entry = new HashMap<String, Object>();
 		entry.put(StaticFlowEntryPusher.COLUMN_NAME, name);
 		entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
@@ -271,6 +272,35 @@ public class StaticFlowEntries {
 			case ARP_TPA:
 				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, match.get(MatchField.ARP_TPA).toString());
 				break;
+				
+//sanjivini				
+			case IPV6_SRC:				
+				entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, match.get(MatchField.IPV6_SRC).toString());
+				break;
+			case IPV6_DST:			
+				entry.put(StaticFlowEntryPusher.COLUMN_NW6_DST, match.get(MatchField.IPV6_DST).toString());
+				break;	
+			case IPV6_FLABEL:			
+				entry.put(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, match.get(MatchField.IPV6_FLABEL).toString());
+				break;	
+			case ICMPV6_TYPE:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, String.valueOf(match.get(MatchField.ICMPV6_TYPE).getValue()));
+				break;
+			case ICMPV6_CODE:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_CODE, match.get(MatchField.ICMPV6_CODE).getValue());
+				break;
+			case IPV6_ND_SLL:			
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_SLL, match.get(MatchField.IPV6_ND_SLL).toString());
+				break;
+			case IPV6_ND_TLL:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_TLL, match.get(MatchField.IPV6_ND_TLL).toString());
+				break;	
+			case IPV6_ND_TARGET:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.get(MatchField.IPV6_ND_TARGET).toString());
+				break;	
+				
+//sanjivini	
+				
 			case MPLS_LABEL:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.get(MatchField.MPLS_LABEL).getValue());
 				break;
@@ -293,6 +323,10 @@ public class StaticFlowEntries {
 			} // end switch-case
 		} // end while
 				
+		int result = StaticFlowEntryPusherResource.checkActions(entry);
+		if (result == -1)
+			throw new Exception("Invalid action/instructions");
+		
 		return entry;
 	}
 
@@ -458,6 +492,34 @@ public class StaticFlowEntries {
 			case StaticFlowEntryPusher.COLUMN_ARP_DPA:
 				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, jp.getText());
 				break;
+				
+//sanjivini				
+			case StaticFlowEntryPusher.COLUMN_NW6_SRC:				
+				entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, jp.getText());
+				break;	
+			case StaticFlowEntryPusher.COLUMN_NW6_DST:				
+				entry.put(StaticFlowEntryPusher.COLUMN_NW6_DST, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL:								
+				entry.put(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, jp.getText());
+				break;	
+			case StaticFlowEntryPusher.COLUMN_ICMP6_TYPE:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_ICMP6_CODE:						
+				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_CODE, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_ND_SLL:				
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_SLL, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_ND_TLL:			
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_TLL, jp.getText());
+				break;
+			case StaticFlowEntryPusher.COLUMN_ND_TARGET:					
+				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, jp.getText());
+				break;
+//sanjivini	
+				
 			case StaticFlowEntryPusher.COLUMN_MPLS_LABEL:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, jp.getText());
 				break;
