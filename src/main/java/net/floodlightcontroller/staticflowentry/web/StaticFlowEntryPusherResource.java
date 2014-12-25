@@ -176,7 +176,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 			if (icmp6_type == true) {
 				//icmp_type must be set to 135/136 to set ipv6_nd_target
 				if (nd_target == true) {
-					if (!(icmp_type == 135 || icmp_type == 136)) {
+					if (!(icmp_type == 135 || icmp_type == 136)) { /* or 0x87 / 0x88 */
 						//invalid icmp6_type
 						state = 6;
 						return state;

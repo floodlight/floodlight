@@ -428,7 +428,11 @@ public class MatchUtils {
 				if (ver10 == true) {
 					throw new IllegalArgumentException("OF Version incompatible");
 				}
-				mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1])));
+				if (key_value[1].startsWith("0x")) { 
+					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1].replaceFirst("0x", ""), 16)));
+				} else {
+					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1])));
+				}
 				break;
 //sanjivini	
 				

@@ -243,7 +243,7 @@
     </target>
     <target name="coverage" depends="instrument,test,coverage-report"/>
 
-    <target name="dist" depends="compile">
+    <target name="dist" depends="compile,compile-test">
         <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
