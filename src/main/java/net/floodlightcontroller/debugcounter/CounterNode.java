@@ -180,8 +180,8 @@ class CounterNode implements Iterable<DebugCounterImpl> {
         if (cur != null) {
         	removed = cur.children.remove(keyToRemove);
         }
-        //TODO @Ryan this will remove the CounterNode from IDebugCounterService, but if any
-        // other modules still have a refernence to the IDebugCounter within the CounterNode
+        // TODO This will remove the CounterNode from IDebugCounterService, but if any
+        // other modules still have a reference to the IDebugCounter within the CounterNode
         // we just removed, they might mistakenly query the "dead" counter.
         
         return removed;
@@ -243,7 +243,7 @@ class CounterNode implements Iterable<DebugCounterImpl> {
         } else {
             CounterNode newNode = new CounterNode(path, counter);
             parent.children.put(newCounterName, newNode);
-            return null; //TODO @Ryan this SHOULD technically return null. Hopefully this wont break anything....
+            return null;
         }
     }
     

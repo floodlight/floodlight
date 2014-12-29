@@ -32,25 +32,18 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 
-import java.util.HashMap;
 
 import org.junit.After;
 
 import net.floodlightcontroller.core.HARole;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
-import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import org.projectfloodlight.openflow.types.DatapathId;
 
 public class RoleManagerTest extends FloodlightTestCase {
     private Controller controller;
     private RoleManager roleManager;
-
-    private static DatapathId DATAPATH_ID_1 = DatapathId.of(1);
 
     @Override
     @Before
@@ -133,104 +126,5 @@ public class RoleManagerTest extends FloodlightTestCase {
         replay(controller);
 
         roleManager.setRole(role, "test");
-    }
-
-
-    @Test
-    public void testNotifyFollower() throws Exception {
-        // Set by default
-        assertTrue(roleManager.getRole() == HARole.ACTIVE);
-
-        reset(controller);
-        controller.addUpdateToQueue(anyObject(IUpdate.class));
-        expectLastCall().anyTimes();
-        replay(controller);
-
-        // Test ACTIVE
-        roleManager.notify();
-
-        assertTrue(roleManager.getRole() == HARole.STANDBY);
-
-        // Test STANDBY
-        roleManager.notify();
-
-        assertTrue(roleManager.getRole() == HARole.STANDBY);
-
-    }
-
-    @Test
-    public void testNotifyLeaderNoMaster() {
-        doSetUp(HARole.STANDBY);
-
-        // Another master does NOT exist
-        setupSwitchesForNotifyLeader(false);
-
-        roleManager.notify();
-
-        assertTrue(roleManager.getRole() == HARole.ACTIVE);
-    }
-
-    @Test
-    public void testNotifyLeaderAnotherMaster() {
-        doSetUp(HARole.STANDBY);
-
-        // Another master exists
-        setupSwitchesForNotifyLeader(true);
-
-        roleManager.notify();
-
-        assertTrue(roleManager.getRole() == HARole.STANDBY);
-    }
-
-    @Test
-    public void testNotifyLeaderSplitBrainProtection() throws Exception {
-        doSetUp(HARole.STANDBY);
-
-        /* Split brain protection should not allow a controller to become ACTIVE
-         * if another ACTIVE controller exists in the cluster.
-         */
-        setupSwitchesForNotifyLeader(true);
-
-        roleManager.notify();
-
-        assertTrue(roleManager.getRole() == HARole.STANDBY);
-
-        /* At this point if the leader in the split brain scenario goes down,
-        * the controller connections should be updated to reflect that and
-        * leader notification should succeed as no other ACTIVE controller exists.
-        */
-        setupSwitchesForNotifyLeader(false);
-
-        /* Since the roleManager has already been notified, the controller connections
-         * should prompt an update.
-         */
-        roleManager.notifyControllerConnectionUpdate();
-
-        assertTrue(roleManager.getRole() == HARole.ACTIVE);
-    }
-
-    /**
-     * Helper to setup switches to test NotifyLeader scenarios.
-     * @param hasAnotherMaster whether or not the switches should have another master
-     */
-    public void setupSwitchesForNotifyLeader(boolean hasAnotherMaster) {
-        reset(controller);
-        // Setup switches with another master
-        MockSwitchManager switchManager = new MockSwitchManager();
-
-        IOFSwitchBackend sw1 = createMock(IOFSwitchBackend.class);
-        reset(sw1);
-        expect(sw1.hasAnotherMaster()).andReturn(hasAnotherMaster).anyTimes();
-        replay(sw1);
-
-        HashMap<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch> ();
-        switches.put(DATAPATH_ID_1, sw1);
-        switchManager.setSwitches(switches);
-
-        expect(controller.getSwitchService()).andReturn(switchManager).once();
-        controller.addUpdateToQueue(anyObject(IUpdate.class));
-        expectLastCall().anyTimes();
-        replay(controller);
-
     }
 }

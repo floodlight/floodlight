@@ -18,8 +18,10 @@ import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFEchoReply;
 import org.projectfloodlight.openflow.protocol.OFEchoRequest;
@@ -42,7 +44,9 @@ import org.projectfloodlight.openflow.protocol.errormsg.OFRoleRequestFailedError
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.util.FutureTestUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +68,7 @@ public class OFConnectionTest {
         factory = OFFactories.getFactory(OFVersion.OF_13);
         switchId = DatapathId.of(1);
         timer = new HashedWheelTimer();
-        channel = EasyMock.createMock(Channel.class);
+        channel = EasyMock.createNiceMock(Channel.class);        
         IDebugCounterService debugCounterService = new DebugCounterServiceImpl();
         debugCounterService.registerModule(OFConnectionCounters.COUNTER_MODULE);
         conn = new OFConnection(switchId, factory, channel, OFAuxId.MAIN,
@@ -214,38 +218,21 @@ public class OFConnectionTest {
 
     /** write a packetOut, which is buffered */
     @Test(timeout = 5000)
-    public void testMessageWriteBuffered() throws InterruptedException, ExecutionException {
+    public void testSingleMessageWrite() throws InterruptedException, ExecutionException {
         Capture<List<OFMessage>> cMsgList = prepareChannelForWriteList();
 
         OFPacketOut packetOut = factory.buildPacketOut()
                 .setData(new byte[] { 0x01, 0x02, 0x03, 0x04 })
                 .setActions(ImmutableList.<OFAction>of( factory.actions().output(OFPort.of(1), 0)))
                 .build();
+        
         conn.write(packetOut);
-        assertThat("Write should have been buffered", cMsgList.hasCaptured(), equalTo(false));
-
-        conn.flush();
-
         assertThat("Write should have been flushed", cMsgList.hasCaptured(), equalTo(true));
+        
         List<OFMessage> value = cMsgList.getValue();
         logger.info("Captured channel write: "+value);
         assertThat("Should have captured MsgList", cMsgList.getValue(),
                 Matchers.<OFMessage> contains(packetOut));
-    }
-
-    /** write a hello, which is not buffered */
-    @Test(timeout = 5000)
-    public void testMessageWriteNonBuffered() throws InterruptedException, ExecutionException {
-        Capture<List<OFMessage>> cMsgList = prepareChannelForWriteList();
-
-        OFHello hello = factory.hello(ImmutableList.<OFHelloElem>of());
-        conn.write(hello);
-
-        assertThat("Write should have been written immediately", cMsgList.hasCaptured(), equalTo(true));
-        List<OFMessage> value = cMsgList.getValue();
-        logger.info("Captured channel write: "+value);
-        assertThat("Should have captured MsgList", cMsgList.getValue(),
-                Matchers.<OFMessage> contains(hello));
     }
 
     /** write a list of messages */

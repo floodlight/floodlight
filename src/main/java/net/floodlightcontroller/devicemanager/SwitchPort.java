@@ -128,8 +128,8 @@ public class SwitchPort {
         if (getClass() != obj.getClass()) return false;
         SwitchPort other = (SwitchPort) obj;
         if (errorStatus != other.errorStatus) return false;
-        if (port != other.port) return false;
-        if (switchDPID != other.switchDPID) return false;
+        if (!port.equals(other.port)) return false;
+        if (!switchDPID.equals(other.switchDPID)) return false;
         return true;
     }
 

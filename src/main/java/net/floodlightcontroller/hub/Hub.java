@@ -66,7 +66,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
 
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
     	OFMessage outMessage;
-    	HubType ht = HubType.USE_FLOW_MOD;
+    	HubType ht = HubType.USE_PACKET_OUT;
     	switch (ht) {
     	case USE_FLOW_MOD:
             outMessage = createHubFlowMod(sw, msg);
@@ -84,7 +84,6 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     private OFMessage createHubFlowMod(IOFSwitch sw, OFMessage msg) {
     	OFPacketIn pi = (OFPacketIn) msg;
         OFFlowAdd.Builder fmb = sw.getOFFactory().buildFlowAdd();
-        
         fmb.setBufferId(pi.getBufferId())
         .setXid(pi.getXid());
 
@@ -99,7 +98,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     private OFMessage createHubPacketOut(IOFSwitch sw, OFMessage msg) {
     	OFPacketIn pi = (OFPacketIn) msg;
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+        pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
         // set actions
         OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();

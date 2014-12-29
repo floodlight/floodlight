@@ -19,6 +19,7 @@ package net.floodlightcontroller.flowcache;
 import java.util.ArrayList;
 
 import net.floodlightcontroller.core.IListener;
+
 import org.projectfloodlight.openflow.protocol.OFType;
 
 /**
@@ -26,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFType;
  *
  * @author subrata
  */
+@Deprecated
 public interface IFlowReconcileListener extends IListener<OFType> {
     /**
      * Given an input OFMatch, this method applies the policy of the reconciler

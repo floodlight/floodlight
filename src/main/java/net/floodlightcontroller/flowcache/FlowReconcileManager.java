@@ -46,7 +46,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+@Deprecated
 public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileService {
 	/** The logger. */
 	private static Logger logger =  LoggerFactory.getLogger(FlowReconcileManager.class);

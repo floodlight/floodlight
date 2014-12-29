@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -71,10 +70,6 @@ import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
-import net.floodlightcontroller.flowcache.IFlowReconcileEngineService;
-import net.floodlightcontroller.flowcache.IFlowReconcileListener;
-import net.floodlightcontroller.flowcache.IFlowReconcileService;
-import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.DHCP;
@@ -89,7 +84,6 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.MultiIterator;
-import net.floodlightcontroller.util.OFMatchWithSwDpid;
 import static net.floodlightcontroller.devicemanager.internal.
 DeviceManagerImpl.DeviceUpdate.Change.*;
 
@@ -100,7 +94,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -120,15 +113,13 @@ import org.slf4j.LoggerFactory;
  * within the network.
  * @author readams
  */
-public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, ITopologyListener, IFloodlightModule, IEntityClassListener, IFlowReconcileListener, IInfoProvider {
+public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, ITopologyListener, IFloodlightModule, IEntityClassListener, IInfoProvider {
 	protected static Logger logger = LoggerFactory.getLogger(DeviceManagerImpl.class);
 	protected IFloodlightProviderService floodlightProvider;
 	protected ITopologyService topology;
 	protected IStorageSourceService storageSource;
 	protected IRestApiService restApi;
 	protected IThreadPoolService threadPool;
-	protected IFlowReconcileService flowReconcileMgr;
-	protected IFlowReconcileEngineService flowReconcileEngine;
 	protected IDebugCounterService debugCounters;
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
@@ -774,70 +765,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return Command.CONTINUE;
 	}
 
-	// ***************
-	// IFlowReconcileListener
-	// ***************
-	@Override
-	public Command reconcileFlows(ArrayList<OFMatchReconcile> ofmRcList) {
-		ListIterator<OFMatchReconcile> iter = ofmRcList.listIterator();
-		while (iter.hasNext()) {
-			OFMatchReconcile ofm = iter.next();
-
-			// Remove the STOPPed flow.
-			if (Command.STOP == reconcileFlow(ofm)) {
-				iter.remove();
-			}
-		}
-
-		if (ofmRcList.size() > 0) {
-			return Command.CONTINUE;
-		} else {
-			return Command.STOP;
-		}
-	}
-
-	protected Command reconcileFlow(OFMatchReconcile ofm) {
-		cntReconcileRequest.increment();
-		// Extract source entity information
-		Entity srcEntity =
-				getEntityFromFlowMod(ofm.ofmWithSwDpid, true);
-		if (srcEntity == null) {
-			cntReconcileNoSource.increment();
-			return Command.STOP;
-		}
-
-		// Find the device by source entity
-		Device srcDevice = findDeviceByEntity(srcEntity);
-		if (srcDevice == null)  {
-			cntReconcileNoSource.increment();
-			return Command.STOP;
-		}
-		// Store the source device in the context
-		fcStore.put(ofm.cntx, CONTEXT_SRC_DEVICE, srcDevice);
-
-		// Find the device matching the destination from the entity
-		// classes of the source.
-		Entity dstEntity = getEntityFromFlowMod(ofm.ofmWithSwDpid, false);
-		Device dstDevice = null;
-		if (dstEntity != null) {
-			dstDevice = findDestByEntity(srcDevice.getEntityClass(), dstEntity);
-			if (dstDevice != null)
-				fcStore.put(ofm.cntx, CONTEXT_DST_DEVICE, dstDevice);
-			else
-				cntReconcileNoDest.increment();
-		} else {
-			cntReconcileNoDest.increment();
-		}
-		if (logger.isTraceEnabled()) {
-			logger.trace("Reconciling flow: match={}, srcEntity={}, srcDev={}, "
-					+ "dstEntity={}, dstDev={}",
-					new Object[] {ofm.ofmWithSwDpid.getMatch(),
-							srcEntity, srcDevice,
-							dstEntity, dstDevice } );
-		}
-		return Command.CONTINUE;
-	}
-
 	// *****************
 	// IFloodlightModule
 	// *****************
@@ -871,7 +798,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		l.add(ITopologyService.class);
 		l.add(IRestApiService.class);
 		l.add(IThreadPoolService.class);
-		l.add(IFlowReconcileService.class);
 		l.add(IEntityClassifierService.class);
 		l.add(ISyncService.class);
 		return l;
@@ -895,8 +821,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				fmc.getServiceImpl(ITopologyService.class);
 		this.restApi = fmc.getServiceImpl(IRestApiService.class);
 		this.threadPool = fmc.getServiceImpl(IThreadPoolService.class);
-		this.flowReconcileMgr = fmc.getServiceImpl(IFlowReconcileService.class);
-		this.flowReconcileEngine = fmc.getServiceImpl(IFlowReconcileEngineService.class);
 		this.entityClassifier = fmc.getServiceImpl(IEntityClassifierService.class);
 		this.debugCounters = fmc.getServiceImpl(IDebugCounterService.class);
 		this.debugEventService = fmc.getServiceImpl(IDebugEventService.class);
@@ -938,7 +862,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		floodlightProvider.addHAListener(this.haListenerDelegate);
 		if (topology != null)
 			topology.addListener(this);
-		flowReconcileMgr.addFlowReconcileListener(this);
 		entityClassifier.addListener(this);
 
 		ScheduledExecutorService ses = threadPool.getScheduledExecutor();
@@ -1139,8 +1062,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		@Override
 		public void transitionToStandby() {
 			DeviceManagerImpl.this.isMaster = false;
-			//TODO @Ryan is there a goToStandby()?
-			//DeviceManagerImpl.this.deviceSyncManager.goToSlave();
 		}
 	}
 
@@ -1151,9 +1072,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		// Extract source entity information
-		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), inPort);
 		if (srcEntity == null) {
 			cntInvalidSource.increment();
 			return Command.STOP;
@@ -1165,7 +1086,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		// the IP to MAC mapping of the VRRP IP address.  The source
 		// entity will not have that information.  Hence, a separate call
 		// to learn devices in such cases.
-		learnDeviceFromArpResponseData(eth, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+		learnDeviceFromArpResponseData(eth, sw.getId(), inPort);
 
 		// Learn/lookup device information
 		Device srcDevice = learnDeviceByEntity(srcEntity);
@@ -1198,7 +1119,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		if (logger.isTraceEnabled()) {
 			logger.trace("Received PI: {} on switch {}, port {} *** eth={}" +
 					" *** srcDev={} *** dstDev={} *** ",
-					new Object[] { pi, sw.getId().toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), eth,
+					new Object[] { pi, sw.getId().toString(), inPort, eth,
 					srcDevice, dstDevice });
 		}
 
@@ -1362,58 +1283,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				null,
 				null,
 				null);
-	}
-
-	/**
-	 * Parse an entity from an OFMatchWithSwDpid.
-	 * @param ofmWithSwDpid
-	 * @return the entity from the packet
-	 */
-	private Entity getEntityFromFlowMod(OFMatchWithSwDpid ofmWithSwDpid,
-			boolean isSource) {
-		MacAddress dlAddr = ofmWithSwDpid.getMatch().get(MatchField.ETH_SRC);
-		IPv4Address nwSrc = ofmWithSwDpid.getMatch().get(MatchField.IPV4_SRC);
-		if (!isSource) {
-			dlAddr = ofmWithSwDpid.getMatch().get(MatchField.ETH_DST);
-			nwSrc = ofmWithSwDpid.getMatch().get(MatchField.IPV4_DST);
-		}
-
-		// Ignore broadcast/multicast source
-		if (dlAddr.isBroadcast() || dlAddr.isMulticast())
-			return null;
-
-		DatapathId swDpid = DatapathId.NONE;
-		OFPort inPort = OFPort.ZERO;
-
-		if (isSource) {
-			swDpid = ofmWithSwDpid.getDpid();
-			inPort = ofmWithSwDpid.getMatch().get(MatchField.IN_PORT);
-		}
-
-		/**for the new flow cache design, the flow mods retrived are not always
-		 * from the source, learn AP should be disabled --meiyang*/
-		boolean learnap = false;
-		/**
-		 * if (swDpid == null ||
-            inPort == null ||
-            !isValidAttachmentPoint(swDpid, inPort)) {
-            // If this is an internal port or we otherwise don't want
-            // to learn on these ports.  In the future, we should
-            // handle this case by labeling flows with something that
-            // will give us the entity class.  For now, we'll do our
-            // best assuming attachment point information isn't used
-            // as a key field.
-            learnap = false;
-        }
-		 */
-
-		OFVlanVidMatch vlan = ofmWithSwDpid.getMatch().get(MatchField.VLAN_VID);
-		return new Entity(dlAddr,
-				((vlan.getVlan() >= 0) ? vlan.getVlanVid() : null),
-				((nwSrc.getInt() != 0) ? nwSrc : null),
-				(learnap ? swDpid : null),
-				(learnap ? inPort : null),
-				new Date());
 	}
 
 	/**
@@ -2482,10 +2351,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 					 for(SyncEntity se: storedDevice.getEntities()) {
 						 try {
 							 // Do we have a device for this entity??
-									 IDevice d = findDevice(se.macAddress, se.vlan,
-											 se.ipv4Address,
-											 se.switchDPID,
-											 se.switchPort);
+									 IDevice d = findDevice(MacAddress.of(se.macAddress), VlanVid.ofVlan(se.vlan),
+											 IPv4Address.of(se.ipv4Address),
+											 DatapathId.of(se.switchDPID),
+											 OFPort.of(se.switchPort));
 									 if (d != null) {
 										 found = true;
 										 break;

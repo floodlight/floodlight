@@ -67,6 +67,7 @@ import net.floodlightcontroller.util.OFMatchWithSwDpid;
  * @author Jason Parraga
  */
 
+@Deprecated
 public class PortDownReconciliation implements IFloodlightModule,
     ITopologyListener, IFlowReconcileListener {
     protected static Logger log = LoggerFactory.getLogger(PortDownReconciliation.class);
@@ -294,7 +295,7 @@ public class PortDownReconciliation implements IFloodlightModule,
         OFFlowStatsRequest req = sw.getOFFactory().buildFlowStatsRequest()
         		.setMatch(sw.getOFFactory().buildMatch().build())
         		.setOutPort(outPort)
-        		.setTableId(TableId.ALL) //TODO @Ryan I suppose 0xFF is all tables, maybe not though...
+        		.setTableId(TableId.ALL)
         		.build();
 
         try {
@@ -393,9 +394,9 @@ public class PortDownReconciliation implements IFloodlightModule,
             				&& entry.getMatch().get(MatchField.ETH_SRC).equals(match.get(MatchField.ETH_SRC))
             				&& entry.getMatch().get(MatchField.ETH_TYPE).equals(match.get(MatchField.ETH_TYPE))
             				&& entry.getMatch().get(MatchField.VLAN_VID).equals(match.get(MatchField.VLAN_VID))
-            				&& entry.getMatch().get(MatchField.IPV4_DST).equals(match.get(MatchField.IPV4_DST)) //TODO @Ryan mask lengths built into the MatchField for IPV4, I think
+            				&& entry.getMatch().get(MatchField.IPV4_DST).equals(match.get(MatchField.IPV4_DST))
             				&& entry.getMatch().get(MatchField.IP_PROTO).equals(match.get(MatchField.IP_PROTO))
-            				&& entry.getMatch().get(MatchField.IPV4_SRC).equals(match.get(MatchField.IPV4_SRC)) // same here I think
+            				&& entry.getMatch().get(MatchField.IPV4_SRC).equals(match.get(MatchField.IPV4_SRC))
             				&& entry.getMatch().get(MatchField.IP_DSCP).equals(match.get(MatchField.IP_DSCP)) // dscp and ecn replace tos
             				&& entry.getMatch().get(MatchField.IP_ECN).equals(match.get(MatchField.IP_ECN))) {
 

@@ -367,7 +367,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		// Check whether the port is a physical port. We should not learn
 		// attachment points on "special" ports.
-		//TODO @Ryan port numbers should be handled as ints now, not shorts. I suppose anything above 65280 up to 65533 is a "special" non-physical port.
 		if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
 
 		// Make sure that the port is enabled.
@@ -924,14 +923,14 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected Command dropFilter(DatapathId sw, OFPacketIn pi,
 			FloodlightContext cntx) {
 		Command result = Command.CONTINUE;
-		OFPort port = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
 		// If the input port is not allowed for data traffic, drop everything.
 		// BDDP packets will not reach this stage.
-		if (isAllowed(sw, port) == false) {
+		if (isAllowed(sw, inPort) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring packet because of topology " +
-						"restriction on switch={}, port={}", sw.getLong(), port.getPortNumber());
+						"restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
 				result = Command.STOP;
 			}
 		}
@@ -1068,7 +1067,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 			// remove the incoming switch port
 			if (pinSwitch == sid) {
-				ports.remove(pi.getInPort());
+				ports.remove((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 			}
 
 			// we have all the switch ports to which we need to broadcast.
@@ -1276,10 +1275,10 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				Link l2 = linkArray.get(1);
 
 				// check if these two are symmetric.
-				if (l1.getSrc() != l2.getDst() ||
-						l1.getSrcPort() != l2.getDstPort() ||
-						l1.getDst() != l2.getSrc() ||
-						l1.getDstPort() != l2.getSrcPort()) {
+				if (!l1.getSrc().equals(l2.getDst()) ||
+						!l1.getSrcPort().equals(l2.getDstPort()) ||
+						!l1.getDst().equals(l2.getSrc()) ||
+						!l1.getDstPort().equals(l2.getSrcPort())) {
 					bdPort = true;
 				}
 			}

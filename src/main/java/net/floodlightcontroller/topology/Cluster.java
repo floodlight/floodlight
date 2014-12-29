@@ -81,7 +81,7 @@ public class Cluster {
             return false;
 
         Cluster other = (Cluster) obj;
-        return (this.id == other.id);
+        return (this.id.equals(other.id));
     }
     
     public String toString() {

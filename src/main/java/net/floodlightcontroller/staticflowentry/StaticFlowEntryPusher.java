@@ -90,7 +90,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String TABLE_NAME = "controller_staticflowtableentry";
 	public static final String COLUMN_NAME = "name";
 	public static final String COLUMN_SWITCH = "switch";
-	public static final String COLUMN_TABLE_ID = "table_id";
+	public static final String COLUMN_TABLE_ID = "table";
 	public static final String COLUMN_ACTIVE = "active";
 	public static final String COLUMN_IDLE_TIMEOUT = "idle_timeout";
 	public static final String COLUMN_HARD_TIMEOUT = "hard_timeout";
@@ -131,6 +131,18 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ARP_DHA = MatchUtils.STR_ARP_DHA;
 	public static final String COLUMN_ARP_SPA = MatchUtils.STR_ARP_SPA;
 	public static final String COLUMN_ARP_DPA = MatchUtils.STR_ARP_DPA;
+	
+//sanjivini
+	//IPv6 related columns
+	public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
+	public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
+	public static final String COLUMN_IPV6_FLOW_LABEL = MatchUtils.STR_IPV6_FLOW_LABEL;
+	public static final String COLUMN_ICMP6_TYPE = MatchUtils.STR_ICMPV6_TYPE;
+	public static final String COLUMN_ICMP6_CODE = MatchUtils.STR_ICMPV6_CODE;
+	public static final String COLUMN_ND_SLL = MatchUtils.STR_IPV6_ND_SSL;
+	public static final String COLUMN_ND_TLL = MatchUtils.STR_IPV6_ND_TTL;
+	public static final String COLUMN_ND_TARGET = MatchUtils.STR_IPV6_ND_TARGET;	
+//sanjivini
 
 	public static final String COLUMN_MPLS_LABEL = MatchUtils.STR_MPLS_LABEL;
 	public static final String COLUMN_MPLS_TC = MatchUtils.STR_MPLS_TC;
@@ -164,6 +176,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_ICMP_TYPE, COLUMN_ICMP_CODE, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
+		
+//sanjivini		
+		//IPv6 related matches
+		COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
+		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,
+//sanjivini		
+		
 		COLUMN_MPLS_LABEL, COLUMN_MPLS_TC, COLUMN_MPLS_BOS, 
 		COLUMN_METADATA, COLUMN_TUNNEL_ID, COLUMN_PBB_ISID,
 		/* end newly added matches */
@@ -342,7 +361,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			}
 
 			// get the correct builder for the OF version supported by the switch
-			// TODO @Ryan this should arguably be a FlowAdd, not a FlowModify, but it really doesn't matter
 			fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
@@ -404,12 +422,18 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		String match = matchString.toString();
 
 		try {
-			//TODO @Ryan new fromString() method here. Should verify it especially
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
 			log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
 		}
+//sanjivini		
+		catch (Exception e) {
+			log.error("OF version incompatible for the match: " + match);
+			e.printStackTrace();
+			return;
+		}
+//sanjivini
 
 		entries.get(switchName).put(entryName, fmb.build()); // add the FlowMod message to the table
 	}
@@ -466,41 +490,56 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				entriesFromStorage.put(dpid, new HashMap<String, OFFlowMod>());
 
 			List<OFMessage> outQueue = new ArrayList<OFMessage>();
+			
+			/* For every flow per dpid, decide how to "add" the flow. */
 			for (String entry : entriesToAdd.get(dpid).keySet()) {
 				OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
 				OFFlowMod oldFlowMod = null;
+				
 				String dpidOldFlowMod = entry2dpid.get(entry);
 				if (dpidOldFlowMod != null) {
 					oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
 				}
-				// pre-existing case. should modify or delete, but not add
-				if (oldFlowMod != null && newFlowMod != null) {
-					// set the new flow mod to modify a pre-existing rule if these fields match
+				
+				/* Modify, which can be either a Flow MODIFY_STRICT or a Flow DELETE_STRICT with a side of Flow ADD */
+				if (oldFlowMod != null && newFlowMod != null) { 
+					/* MODIFY_STRICT b/c the match is still the same */
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
-							&& oldFlowMod.getCookie() == newFlowMod.getCookie()
+							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
 							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
+						entriesFromStorage.get(dpid).put(entry, newFlowMod);
+						entry2dpid.put(entry, dpid);
 						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
-						// if they don't match delete the old flow
+						outQueue.add(newFlowMod);
+					/* DELETE_STRICT and then ADD b/c the match is now different */
 					} else {
 						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
+						OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
+						/* If the flow's dpid and the current switch we're looking at are the same, add to the queue. */
 						if (dpidOldFlowMod.equals(dpid)) {
 							outQueue.add(oldFlowMod);
+							outQueue.add(addTmp); 
+						/* Otherwise, go ahead and send the flows now (since queuing them will send to the wrong switch). */
 						} else {
 							writeOFMessageToSwitch(DatapathId.of(dpidOldFlowMod), oldFlowMod);
+							writeOFMessageToSwitch(DatapathId.of(dpid), FlowModUtils.toFlowAdd(newFlowMod)); 
 						}
+						entriesFromStorage.get(dpid).put(entry, addTmp);
+						entry2dpid.put(entry, dpid);			
 					}
-				}
-				// new case. should add a flow, not modify or delete
-				if (newFlowMod != null) {
+				/* Add a brand-new flow with ADD */
+				} else if (newFlowMod != null && oldFlowMod == null) {
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
-					outQueue.add(addTmp);
 					entry2dpid.put(entry, dpid);
-				} else {
+					outQueue.add(addTmp);
+				/* Something strange happened, so remove the flow */
+				} else if (newFlowMod == null) { 
 					entriesFromStorage.get(dpid).remove(entry);
 					entry2dpid.remove(entry);
 				}
 			}
+			/* Batch-write all queued messages to the switch */
 			writeOFMessagesToSwitch(DatapathId.of(dpid), outQueue);
 		}
 	}
@@ -741,8 +780,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 
 	@Override
 	public void addFlow(String name, OFFlowMod fm, DatapathId swDpid) {
-		Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
-		storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
+		try {
+			Map<String, Object> fmMap = StaticFlowEntries.flowModToStorageEntry(fm, swDpid.toString(), name);
+			storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
+		} catch (Exception e) {
+			log.error("Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
+            		+ "mandatory fields are specified. ");
+		}
 	}
 
 	@Override

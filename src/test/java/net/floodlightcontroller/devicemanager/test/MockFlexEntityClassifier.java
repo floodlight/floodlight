@@ -79,10 +79,10 @@ public class MockFlexEntityClassifier extends DefaultEntityClassifier {
     }
     @Override
     public IEntityClass classifyEntity(Entity entity) {
-        if (switchEntities.containsKey(entity.getSwitchDPID()))
-        	return switchEntities.get(entity.getSwitchDPID());
-        if (vlanEntities.containsKey(entity.getVlan()))
-        	return vlanEntities.get(entity.getVlan());
+        if (switchEntities.containsKey(entity.getSwitchDPID().getLong()))
+        	return switchEntities.get(entity.getSwitchDPID().getLong());
+        if (vlanEntities.containsKey(entity.getVlan().getVlan()))
+        	return vlanEntities.get(entity.getVlan().getVlan());
         return defaultClass;
     }
     @Override

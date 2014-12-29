@@ -22,6 +22,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 /**
  * The Class for FlowReconcileQuery for link down event.
  */
+@Deprecated
 public class FlowReconcileQueryPortDown extends FlowReconcileQuery {
     /*down port switch DPID*/
     public DatapathId swId;

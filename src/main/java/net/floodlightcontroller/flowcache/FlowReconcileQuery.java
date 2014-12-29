@@ -29,6 +29,7 @@ import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 /**
  * The base Class for FlowReconcileQuery.
  */
+@Deprecated
 public class FlowReconcileQuery {
     public ReconcileQueryEvType evType;
     public EventPriority evPriority;

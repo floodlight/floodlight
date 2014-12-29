@@ -123,7 +123,7 @@ if args.action=='add':
     # retrieving route from source to destination
     # using Routing rest API
     
-    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort['shortPortNumber'], destSwitch, destPort['shortPortNumber'])
+    command = "curl -s http://%s/wm/topology/route/%s/%s/%s/%s/json" % (controllerRestIp, sourceSwitch, sourcePort, destSwitch, destPort)
     result = os.popen(command).read()
     print result+"\n"
     print command+"\n"
@@ -143,26 +143,26 @@ if args.action=='add':
             # send one flow mod per pair of APs in route
             # using StaticFlowPusher rest API
 
-            # IMPORTANT NOTE: current Floodlight StaticflowEntryPusher
+            # IMPORTANT NOTE: current Floodlight StaticflowPusher
             # assumes all flow entries to have unique name across all switches
             # this will most possibly be relaxed later, but for now we
             # encode each flow entry's name with both switch dpid, user
             # specified name, and flow type (f: forward, r: reverse, farp/rarp: arp)
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"nw_src\":\"%s\", \"nw_dst\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".f", args.srcAddress, args.dstAddress, "0x800", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"ipv4_src\":\"%s\", \"ipv4_dst\":\"%s\", \"eth_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"in_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowpusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".f", args.srcAddress, args.dstAddress, "0x800", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_dpa\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".farp", args.srcAddress, args.dstAddress, "0x806", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_tpa\":\"%s\", \"eth_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"in_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowpusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".farp", args.srcAddress, args.dstAddress, "0x806", ap1Port['shortPortNumber'], ap2Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"nw_src\":\"%s\", \"nw_dst\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".r", args.dstAddress, args.srcAddress, "0x800", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"ipv4_src\":\"%s\", \"ipv4_dst\":\"%s\", \"eth_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"in_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowpusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".r", args.dstAddress, args.srcAddress, "0x800", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
-            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_dpa\":\"%s\", \"dl_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"ingress_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowentrypusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".rarp",args.dstAddress, args.srcAddress, "0x806", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
+            command = "curl -s -d '{\"switch\": \"%s\", \"name\":\"%s\", \"arp_spa\":\"%s\", \"arp_tpa\":\"%s\", \"eth_type\":\"%s\", \"cookie\":\"0\", \"priority\":\"32768\", \"in_port\":\"%s\",\"active\":\"true\", \"actions\":\"output=%s\"}' http://%s/wm/staticflowpusher/json" % (ap1Dpid, ap1Dpid+"."+args.circuitName+".rarp",args.dstAddress, args.srcAddress, "0x806", ap2Port['shortPortNumber'], ap1Port['shortPortNumber'], controllerRestIp)
             result = os.popen(command).read()
             print command
 
@@ -198,19 +198,19 @@ elif args.action=='delete':
             sw = data['Dpid']
             print data, sw
 
-            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowentrypusher/json" % (sw+"."+args.circuitName+".f", sw, controllerRestIp)
+            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowpusher/json" % (sw+"."+args.circuitName+".f", sw, controllerRestIp)
             result = os.popen(command).read()
             print command, result
 
-            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowentrypusher/json" % (sw+"."+args.circuitName+".farp", sw, controllerRestIp)
+            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowpusher/json" % (sw+"."+args.circuitName+".farp", sw, controllerRestIp)
             result = os.popen(command).read()
             print command, result
 
-            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowentrypusher/json" % (sw+"."+args.circuitName+".r", sw, controllerRestIp)
+            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowpusher/json" % (sw+"."+args.circuitName+".r", sw, controllerRestIp)
             result = os.popen(command).read()
             print command, result
 
-            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowentrypusher/json" % (sw+"."+args.circuitName+".rarp", sw, controllerRestIp)
+            command = "curl -X DELETE -d '{\"name\":\"%s\", \"switch\":\"%s\"}' http://%s/wm/staticflowpusher/json" % (sw+"."+args.circuitName+".rarp", sw, controllerRestIp)
             result = os.popen(command).read()
             print command, result            
             

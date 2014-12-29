@@ -35,9 +35,11 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
@@ -90,7 +92,6 @@ public class HubTest extends FloodlightTestCase {
         this.testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        //TODO @Ryan should this just be OF_13 or include OF_10 too?
         this.packetIn = (OFPacketIn) OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
             .setBufferId(OFBufferId.NO_BUFFER)
             .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch()
@@ -105,6 +106,7 @@ public class HubTest extends FloodlightTestCase {
     public void testFloodNoBufferId() throws Exception {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         
         // build our expected flooded packetOut
     	OFActionOutput ao = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput().setPort(OFPort.FLOOD).build();
@@ -134,9 +136,7 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        //TODO @Ryan the wc1 message has inport=ANY and the next xid
-        // Can this be asserted anymore with OF1.3?
-        assertEquals(po, m);
+        assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
     }
 
     @Test
@@ -160,6 +160,7 @@ public class HubTest extends FloodlightTestCase {
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         Capture<OFPacketOut> wc1 = new Capture<OFPacketOut>(CaptureType.ALL);
         mockSwitch.write(capture(wc1));
 
@@ -175,9 +176,6 @@ public class HubTest extends FloodlightTestCase {
         verify(mockSwitch);
         
         assertTrue(wc1.hasCaptured());
-        //TODO @Ryan the wc1 message has inport=ANY,
-        // bufferid=NONE, and the next xid
-        // Can this be asserted anymore with OF1.3?
         OFMessage m = wc1.getValue();
         assertEquals(po, m);
     }

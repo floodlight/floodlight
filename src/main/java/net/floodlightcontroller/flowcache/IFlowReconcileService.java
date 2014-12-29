@@ -25,6 +25,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
+@Deprecated
 public interface IFlowReconcileService extends IFloodlightService {
     /**
      * Add a flow reconcile listener

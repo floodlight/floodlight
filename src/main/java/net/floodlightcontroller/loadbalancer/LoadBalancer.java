@@ -16,12 +16,10 @@
 
 package net.floodlightcontroller.loadbalancer;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,12 +27,15 @@ import java.util.Map;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -55,7 +56,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -72,10 +75,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.util.ActionUtils;
 import net.floodlightcontroller.util.FlowModUtils;
-import net.floodlightcontroller.util.MatchUtils;
-import net.floodlightcontroller.util.OFMessageDamper;
 
 /**
  * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
@@ -89,6 +89,7 @@ import net.floodlightcontroller.util.OFMessageDamper;
  * - health monitoring feature not implemented yet
  *  
  * @author kcwang
+ * @edited Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  */
 public class LoadBalancer implements IFloodlightModule,
     ILoadBalancerService, IOFMessageListener {
@@ -100,7 +101,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected IRestApiService restApiService;
     
     protected IDebugCounterService debugCounterService;
-    protected OFMessageDamper messageDamper;
+    private IDebugCounter counterPacketOut;
     protected IDeviceService deviceManagerService;
     protected IRoutingService routingEngineService;
     protected ITopologyService topologyService;
@@ -181,7 +182,7 @@ public class LoadBalancer implements IFloodlightModule,
     private net.floodlightcontroller.core.IListener.Command processPacketIn(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        IPacket pkt = eth.getPayload();
+        IPacket pkt = eth.getPayload(); 
  
         if (eth.isBroadcast() || eth.isMulticast()) {
             // handle ARP for VIP
@@ -233,7 +234,7 @@ public class LoadBalancer implements IFloodlightModule,
                     pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
                    
                     // packet out based on table rule
-                    pushPacket(pkt, sw, pi.getBufferId(), pi.getInPort(), OFPort.TABLE,
+                    pushPacket(pkt, sw, pi.getBufferId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0) ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
                                 cntx, true);
 
                     return Command.STOP;
@@ -289,7 +290,7 @@ public class LoadBalancer implements IFloodlightModule,
                         arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
-        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ZERO, pi.getInPort(), cntx, true);
+        pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), cntx, true);
         log.debug("proxy ARP reply pushed as {}", IPv4.fromIPv4Address(vips.get(vipId).address));
         
         return;
@@ -322,7 +323,7 @@ public class LoadBalancer implements IFloodlightModule,
 
         // set actions
         List<OFAction> actions = new ArrayList<OFAction>();
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).build());
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
 
         pob.setActions(actions);
         
@@ -343,12 +344,8 @@ public class LoadBalancer implements IFloodlightModule,
             pob.setData(packetData);
         }
 
-        try {
-            //TODO @Ryan debugCounterService.updatePktOutFMCounterStoreLocal(sw, pob.build());
-            messageDamper.write(sw, pob.build(), cntx, flush);
-        } catch (IOException e) {
-            log.error("Failure writing packet out", e);
-        }
+        counterPacketOut.increment();
+        sw.write(pob.build());
     }
 
     /**
@@ -402,8 +399,7 @@ public class LoadBalancer implements IFloodlightModule,
             DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
-                if ((sw.getId().equals(dstSwDpid)) &&
-                        (pi.getInPort().equals(dstDap.getPort()))) {
+                if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
                     on_same_if = true;
                 }
                 break;
@@ -469,11 +465,11 @@ public class LoadBalancer implements IFloodlightModule,
                     // out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
                     
                     if (routeIn != null) {
-                        pushStaticVipRoute(true, routeIn, client, member, sw.getId());
+                        pushStaticVipRoute(true, routeIn, client, member, sw);
                     }
                     
                     if (routeOut != null) {
-                        pushStaticVipRoute(false, routeOut, client, member, sw.getId());
+                        pushStaticVipRoute(false, routeOut, client, member, sw);
                     }
 
                 }
@@ -496,18 +492,16 @@ public class LoadBalancer implements IFloodlightModule,
      * @param LBMember member
      * @param long pinSwitch
      */
-    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, DatapathId pinSwitch) {
+    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {
-               
                DatapathId sw = path.get(i).getNodeId();
-               String swString = path.get(i).getNodeId().toString();
                String entryName;
-               String matchString = null;
-               String actionString = null;
+               Match.Builder mb = pinSwitch.getOFFactory().buildMatch();
+               ArrayList<OFAction> actions = new ArrayList<OFAction>();
                
-               OFFlowMod.Builder fmb = switchService.getSwitch(pinSwitch).getOFFactory().buildFlowAdd();
+               OFFlowMod.Builder fmb = pinSwitch.getOFFactory().buildFlowAdd();
 
                fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
                fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
@@ -519,53 +513,70 @@ public class LoadBalancer implements IFloodlightModule,
                if (inBound) {
                    entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   matchString = MatchUtils.STR_NW_SRC + "="+client.ipAddress.toString()+","
-                               + MatchUtils.STR_NW_PROTO + "="+String.valueOf(client.nw_proto)+","
-                               + MatchUtils.STR_TP_SRC + "="+client.srcPort.toString()+","
-                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
-                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
-
-                   if (sw == pinSwitch) {
-                       actionString = "set-dst-ip="+IPv4.fromIPv4Address(member.address)+"," 
-                                + "set-dst-mac="+member.macString+","
-                                + "output="+path.get(i+1).getPortId();
+                   mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                   .setExact(MatchField.IP_PROTO, client.nw_proto)
+                   .setExact(MatchField.IPV4_SRC, client.ipAddress)
+                   .setExact(MatchField.IN_PORT, path.get(i).getPortId());
+                   if (client.nw_proto.equals(IpProtocol.TCP)) {
+                	   mb.setExact(MatchField.TCP_SRC, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.UDP)) {
+                	   mb.setExact(MatchField.UDP_SRC, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.SCTP)) {
+                	   mb.setExact(MatchField.SCTP_SRC, client.srcPort);
                    } else {
-                       actionString =
-                               "output="+path.get(i+1).getPortId();
+                	   log.error("Unknown IpProtocol {} detected during inbound static VIP route push.", client.nw_proto);
+                   }
+
+                   if (sw.equals(pinSwitch.getId())) {
+                       if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
+                    	   actions.add(pinSwitch.getOFFactory().actions().setDlDst(MacAddress.of(member.macString)));
+                    	   actions.add(pinSwitch.getOFFactory().actions().setNwDst(IPv4Address.of(member.address)));
+                    	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                       } else { // OXM introduced in OF1.2
+                    	   actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ethDst(MacAddress.of(member.macString))));
+                    	   actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Dst(IPv4Address.of(member.address))));
+                    	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                       }
+                   } else {
+                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                    }
                } else {
                    entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
-                   matchString = MatchUtils.STR_NW_DST + "="+client.ipAddress.toString()+","
-                               + MatchUtils.STR_NW_PROTO + "="+client.nw_proto.toString()+","
-                               + MatchUtils.STR_TP_DST + "="+client.srcPort.toString()+","
-                               + MatchUtils.STR_DL_TYPE + "="+LB_ETHER_TYPE+","
-                               + MatchUtils.STR_IN_PORT + "="+path.get(i).getPortId().toString();
-
-                   if (sw == pinSwitch) {
-                       actionString = ActionUtils.STR_NW_SRC_SET + "="+IPv4.fromIPv4Address(vips.get(member.vipId).address)+","
-                               + ActionUtils.STR_DL_SRC_SET + "="+vips.get(member.vipId).proxyMac.toString()+","
-                               + ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
+                   mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                   .setExact(MatchField.IP_PROTO, client.nw_proto)
+                   .setExact(MatchField.IPV4_DST, client.ipAddress)
+                   .setExact(MatchField.IN_PORT, path.get(i).getPortId());
+                   if (client.nw_proto.equals(IpProtocol.TCP)) {
+                	   mb.setExact(MatchField.TCP_DST, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.UDP)) {
+                	   mb.setExact(MatchField.UDP_DST, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.SCTP)) {
+                	   mb.setExact(MatchField.SCTP_DST, client.srcPort);
                    } else {
-                       actionString = ActionUtils.STR_OUTPUT + "="+path.get(i+1).getPortId();
+                	   log.error("Unknown IpProtocol {} detected during outbound static VIP route push.", client.nw_proto);
+                   }
+                   
+                   if (sw.equals(pinSwitch.getId())) {
+                       if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
+                    	   actions.add(pinSwitch.getOFFactory().actions().setDlSrc(vips.get(member.vipId).proxyMac));
+                    	   actions.add(pinSwitch.getOFFactory().actions().setNwSrc(IPv4Address.of(vips.get(member.vipId).address)));
+                    	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                       } else { // OXM introduced in OF1.2
+                    	   actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ethSrc(vips.get(member.vipId).proxyMac)));
+                    	   actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Src(IPv4Address.of(vips.get(member.vipId).address))));
+                    	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                       }
+                   } else {
+                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                    }
                    
                }
                
-               ActionUtils.fromString(fmb, actionString, log);
-
+               fmb.setActions(actions);
                fmb.setPriority(U16.t(LB_PRIORITY));
-
-               Match match = null;
-               try {
-                   match = MatchUtils.fromString(matchString, switchService.getSwitch(sw).getOFFactory().getVersion());
-               } catch (IllegalArgumentException e) {
-                   log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + matchString, entryName, swString);
-               }
-        
-               fmb.setMatch(match);
+               fmb.setMatch(mb.build());
                sfpService.addFlow(entryName, fmb.build(), sw);
-
            }
         }
         return;
@@ -796,10 +807,6 @@ public class LoadBalancer implements IFloodlightModule,
         sfpService = context.getServiceImpl(IStaticFlowEntryPusherService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         
-        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY, 
-                                            EnumSet.of(OFType.FLOW_MOD),
-                                            OFMESSAGE_DAMPER_TIMEOUT);
-        
         vips = new HashMap<String, LBVip>();
         pools = new HashMap<String, LBPool>();
         members = new HashMap<String, LBMember>();
@@ -812,5 +819,7 @@ public class LoadBalancer implements IFloodlightModule,
     public void startUp(FloodlightModuleContext context) {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
         restApiService.addRestletRoutable(new LoadBalancerWebRoutable());
+        debugCounterService.registerModule(this.getName());
+        counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written by the LoadBalancer", MetaData.WARN);
     }
 }

@@ -37,6 +37,8 @@ import org.projectfloodlight.openflow.protocol.OFExperimenter;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
@@ -57,10 +59,13 @@ import org.projectfloodlight.openflow.protocol.OFStatsRequestFlags;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -414,6 +419,51 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					OFSwitchHandshakeHandler.this.setState(new SlaveState());
 				}
 			}
+		}
+	}
+
+	/**
+	 * Removes all present flows and adds an initial table-miss flow to each
+	 * and every table on the switch. This replaces the default behavior of
+	 * forwarding table-miss packets to the controller. The table-miss flows
+	 * inserted will forward all packets that do not match a flow to the 
+	 * controller for processing.
+	 * 
+	 * Adding the default flow only applies to OpenFlow 1.3+ switches, which 
+	 * remove the default forward-to-controller behavior of flow tables.
+	 */
+	private void clearAndSetDefaultFlows() {
+		/*
+		 * No tables for OF1.0, so omit that field for flow deletion.
+		 */
+		if (this.sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) == 0) {
+			OFFlowDelete deleteFlows = this.factory.buildFlowDelete()
+					.build();
+			this.sw.write(deleteFlows);
+		} else { /* All other OFVersions support multiple tables. */
+			OFFlowDelete deleteFlows = this.factory.buildFlowDelete()
+					.setTableId(TableId.ALL)
+					.build();
+			this.sw.write(deleteFlows);
+		}
+		
+		/*
+		 * Only for OF1.3+, insert the default forward-to-controller flow for
+		 * each table. This is priority=0 with no Match.
+		 */
+		if (this.sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			ArrayList<OFAction> actions = new ArrayList<OFAction>(1);
+			actions.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
+			ArrayList<OFMessage> flows = new ArrayList<OFMessage>();
+			for (int tableId = 0; tableId < this.sw.getTables(); tableId++) {
+				OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+						.setTableId(TableId.of(tableId))
+						.setPriority(0)
+						.setActions(actions)
+						.build();
+				flows.add(defaultFlow);
+			}
+			this.sw.write(flows);
 		}
 	}
 
@@ -812,7 +862,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 *    - use the switch driver to bind the switch and get an IOFSwitch
 	 *      instance, setup the switch instance
 	 *    - setup the IOFSwitch instance
-	 *    - add switch to FloodlightProvider and send the intial role
+	 *    - add switch to FloodlightProvider and send the initial role
 	 *      request to the switch.
 	 *
 	 * Next state: WaitOFAuxCxnsReplyState (if OF1.3), else
@@ -1084,6 +1134,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void enterState() {
 			setSwitchStatus(SwitchStatus.MASTER);
+			clearAndSetDefaultFlows();
 		}
 
 		@LogMessageDoc(level="WARN",

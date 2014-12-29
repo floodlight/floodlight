@@ -96,18 +96,9 @@ public class DeviceIterator extends FilterIterator<Device> {
             if (!searchableVlanList.contains(vlan)) {
             	return false;
             }
-            /*TODO @Ryan Does the above replace the below?
-             * Maybe should change the return of Device to be List/ArrayList instead
-            if (Arrays.binarySearch(vlans.vlans, vlan) < 0) 
-                return false;
-            */
         }
         if (ipv4Address != null) {
             IPv4Address[] ipv4Addresses = value.getIPv4Addresses();
-            /*TODO @Ryan same here...
-               if (Arrays.binarySearch(ipv4Addresses, ipv4Address) < 0) 
-                return false;
-             */
             List<IPv4Address> searchableIPv4AddrList = Arrays.asList(ipv4Addresses);
             if (!searchableIPv4AddrList.contains(ipv4Address)) {
             	return false;
@@ -120,11 +111,11 @@ public class DeviceIterator extends FilterIterator<Device> {
             match = false;
             for (SwitchPort sp : sps) {
                 if (switchDPID != null) {
-                    if (switchDPID.getLong() != sp.getSwitchDPID().getLong())
+                    if (!switchDPID.equals(sp.getSwitchDPID()))
                         return false;
                 }
                 if (switchPort != null) {
-                    if (switchPort.getPortNumber() != sp.getPort().getPortNumber())
+                    if (!switchPort.equals(sp.getPort()))
                         return false;
                 }
                 match = true;

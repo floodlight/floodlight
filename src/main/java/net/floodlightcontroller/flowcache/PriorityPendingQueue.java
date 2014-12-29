@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author meiyang
  *
  */
+@Deprecated
 public class PriorityPendingQueue<E> {
     private LinkedBlockingQueue<E> highPriorityQueue;
     private LinkedBlockingQueue<E> mediumPriorityQueue;

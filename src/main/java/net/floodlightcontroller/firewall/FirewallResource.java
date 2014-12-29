@@ -69,7 +69,7 @@ public class FirewallResource extends ServerResource {
         // REST API set local subnet mask -- this only makes sense for one subnet
         // will remove later
         if (op.equalsIgnoreCase("subnet-mask")) {
-            return firewall.getSubnetMask();
+            return "{\"subnet-mask\":\"" + firewall.getSubnetMask() + "\"}";
         }
 
         // no known options found

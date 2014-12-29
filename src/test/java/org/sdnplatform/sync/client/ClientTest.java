@@ -8,10 +8,15 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -30,6 +35,7 @@ public class ClientTest {
     protected SyncManager syncManager;
     protected final static ObjectMapper mapper = new ObjectMapper();
     protected String nodeString;
+    protected IDebugCounterService debugCounterService;
     ArrayList<Node> nodes;
     ThreadPool tp;
 
@@ -51,11 +57,15 @@ public class ClientTest {
         nodes.add(new Node("localhost", 40101, (short)1, (short)1));
         nodeString = mapper.writeValueAsString(nodes);
         
+        debugCounterService = new MockDebugCounterService();
+        
         tp = new ThreadPool();
         syncManager = new SyncManager();
         
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IThreadPoolService.class, tp);
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+1);

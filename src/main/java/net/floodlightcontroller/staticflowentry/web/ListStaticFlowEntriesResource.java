@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 public class ListStaticFlowEntriesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(ListStaticFlowEntriesResource.class);
     
-    @Get
-    public Map<String, Map<String, OFFlowMod>> ListStaticFlowEntries() {
+    @Get("json")
+    public OFFlowModMap ListStaticFlowEntries() {
         IStaticFlowEntryPusherService sfpService =
                 (IStaticFlowEntryPusherService)getContext().getAttributes().
                     get(IStaticFlowEntryPusherService.class.getCanonicalName());
@@ -44,12 +44,12 @@ public class ListStaticFlowEntriesResource extends ServerResource {
             log.debug("Listing all static flow entires for switch: " + param);
         
         if (param.toLowerCase().equals("all")) {
-            return sfpService.getFlows();
+            return new OFFlowModMap(sfpService.getFlows());
         } else {
             try {
                 Map<String, Map<String, OFFlowMod>> retMap = new HashMap<String, Map<String, OFFlowMod>>();
                 retMap.put(param, sfpService.getFlows(DatapathId.of(param)));
-                return retMap;
+                return new OFFlowModMap(retMap);
                 
             } catch (NumberFormatException e){
                 setStatus(Status.CLIENT_ERROR_BAD_REQUEST, ControllerSwitchesResource.DPID_ERROR);

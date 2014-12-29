@@ -98,8 +98,6 @@ public class Entity implements Comparable<Entity> {
      */
     protected Date activeSince;
     
-    private int hashCode = 0;
-
     // ************
     // Constructors
     // ************
@@ -157,7 +155,7 @@ public class Entity implements Comparable<Entity> {
     
     @JsonIgnore
     public boolean hasSwitchPort() {
-        return (switchDPID != null && switchPort != null);
+        return (switchDPID != null && !switchDPID.equals(DatapathId.NONE) && switchPort != null && !switchPort.equals(OFPort.ZERO));
     }
 
     public Date getLastSeenTimestamp() {
@@ -185,43 +183,57 @@ public class Entity implements Comparable<Entity> {
     }
     
     @Override
-    public int hashCode() {
-        if (hashCode != 0) return hashCode;
-        final int prime = 31;
-        hashCode = 1;
-        hashCode = prime * hashCode
-                 + ((ipv4Address == null) ? 0 : ipv4Address.hashCode());
-        hashCode = prime * hashCode + (int) (macAddress.getLong() ^ (macAddress.getLong() >>> 32));
-        hashCode = prime * hashCode
-                 + ((switchDPID == null) ? 0 : switchDPID.hashCode());
-        hashCode = prime * hashCode
-                 + ((switchPort == null) ? 0 : switchPort.hashCode());
-        hashCode = prime * hashCode + ((vlan == null) ? 0 : vlan.hashCode());
-        return hashCode;
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((ipv4Address == null) ? 0 : ipv4Address.hashCode());
+		result = prime * result
+				+ ((macAddress == null) ? 0 : macAddress.hashCode());
+		result = prime * result
+				+ ((switchDPID == null) ? 0 : switchDPID.hashCode());
+		result = prime * result
+				+ ((switchPort == null) ? 0 : switchPort.hashCode());
+		result = prime * result + ((vlan == null) ? 0 : vlan.hashCode());
+		return result;
+	}
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null) return false;
-        if (getClass() != obj.getClass()) return false;
-        Entity other = (Entity) obj;
-        if (hashCode() != other.hashCode()) return false;
-        if (ipv4Address == null) {
-            if (other.ipv4Address != null) return false;
-        } else if (!ipv4Address.equals(other.ipv4Address)) return false;
-        if (!macAddress.equals(other.macAddress)) return false;
-        if (switchDPID == null) {
-            if (other.switchDPID != null) return false;
-        } else if (!switchDPID.equals(other.switchDPID)) return false;
-        if (switchPort == null) {
-            if (other.switchPort != null) return false;
-        } else if (!switchPort.equals(other.switchPort)) return false;
-        if (vlan == null) {
-            if (other.vlan != null) return false;
-        } else if (!vlan.equals(other.vlan)) return false;
-        return true;
-    }
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Entity other = (Entity) obj;
+		if (ipv4Address == null) {
+			if (other.ipv4Address != null)
+				return false;
+		} else if (!ipv4Address.equals(other.ipv4Address))
+			return false;
+		if (macAddress == null) {
+			if (other.macAddress != null)
+				return false;
+		} else if (!macAddress.equals(other.macAddress))
+			return false;
+		if (switchDPID == null) {
+			if (other.switchDPID != null)
+				return false;
+		} else if (!switchDPID.equals(other.switchDPID))
+			return false;
+		if (switchPort == null) {
+			if (other.switchPort != null)
+				return false;
+		} else if (!switchPort.equals(other.switchPort))
+			return false;
+		if (vlan == null) {
+			if (other.vlan != null)
+				return false;
+		} else if (!vlan.equals(other.vlan))
+			return false;
+		return true;
+	}
 
     
     

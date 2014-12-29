@@ -83,9 +83,9 @@ public class NodePortTuple implements Comparable<NodePortTuple> {
         if (getClass() != obj.getClass())
             return false;
         NodePortTuple other = (NodePortTuple) obj;
-        if (nodeId != other.nodeId)
+        if (!nodeId.equals(other.nodeId))
             return false;
-        if (portId != other.portId)
+        if (!portId.equals(other.portId))
             return false;
         return true;
     }

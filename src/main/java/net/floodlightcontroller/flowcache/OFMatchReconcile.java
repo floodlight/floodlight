@@ -24,6 +24,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 /**
  * OFMatchReconcile class to indicate result of a flow-reconciliation.
  */
+@Deprecated
 public class OFMatchReconcile  {
  
     /**

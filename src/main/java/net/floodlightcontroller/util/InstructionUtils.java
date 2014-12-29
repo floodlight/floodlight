@@ -28,13 +28,13 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  *
  */
 public class InstructionUtils {
-	public static final String STR_GOTO_TABLE = "goto_table";
-	public static final String STR_WRITE_METADATA = "write_metadata";
-	public static final String STR_WRITE_ACTIONS = "write_actions";
-	public static final String STR_APPLY_ACTIONS = "apply_actions";
-	public static final String STR_CLEAR_ACTIONS = "clear_actions";
-	public static final String STR_GOTO_METER = "goto_meter";
-	public static final String STR_EXPERIMENTER = "experimenter";
+	public static final String STR_GOTO_TABLE = "instruction_goto_table";
+	public static final String STR_WRITE_METADATA = "instruction_write_metadata";
+	public static final String STR_WRITE_ACTIONS = "instruction_write_actions";
+	public static final String STR_APPLY_ACTIONS = "instruction_apply_actions";
+	public static final String STR_CLEAR_ACTIONS = "instruction_clear_actions";
+	public static final String STR_GOTO_METER = "instruction_goto_meter";
+	public static final String STR_EXPERIMENTER = "instruction_experimenter";
 
 	private static final String STR_SUB_WRITE_METADATA_METADATA = "metadata";
 	private static final String STR_SUB_WRITE_METADATA_MASK = "mask";
@@ -88,7 +88,7 @@ public class InstructionUtils {
 	 */
 	public static void gotoTableFromString(OFFlowMod.Builder fmb, String instStr, Logger log) {
 		if (instStr == null || instStr.equals("")) {
-			return; //TODO @Ryan fail silently?
+			return;
 		}
 		// Split into pairs of key=value
 		String[] keyValue = instStr.split("=");
@@ -111,7 +111,8 @@ public class InstructionUtils {
 	 * @return
 	 */
 	public static String writeMetadataToString(OFInstructionWriteMetadata inst, Logger log) {
-		/*TODO @Ryan U64.toString()'s look like they format with a leading 0x. getLong() will allow us to work with just the value
+		/* 
+		 * U64.toString() looks like it formats with a leading 0x. getLong() will allow us to work with just the value
 		 * For the rest api though, will the user provide a hex value or a long? I'd guess a hex value would be more useful.
 		 */
 		return STR_SUB_WRITE_METADATA_METADATA + "=" + Long.toString(inst.getMetadata().getValue()) + "," + STR_SUB_WRITE_METADATA_MASK + "=" + Long.toString(inst.getMetadataMask().getValue());
@@ -128,7 +129,7 @@ public class InstructionUtils {
 	 */
 	public static void writeMetadataFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
 		if (inst == null || inst.equals("")) {
-			return; // TODO @Ryan quietly fail?
+			return;
 		}
 		// Split into pairs of key=value
 		String[] tokens = inst.split(",");
@@ -168,7 +169,7 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) {
+	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) throws Exception {
 		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 
@@ -199,7 +200,7 @@ public class InstructionUtils {
 	 * @param log
 	 * @return
 	 */
-	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) {
+	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) throws Exception {
 		return ActionUtils.actionsToString(inst.getActions(), log);
 	}
 
@@ -277,8 +278,8 @@ public class InstructionUtils {
 	 * @param log
 	 */
 	public static void meterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
-		if (inst == null || inst.equals("")) {
-			return; // TODO @Ryan quietly fail?
+		if (inst == null || inst.isEmpty()) {
+			return;
 		}
 
 		OFInstructionMeter.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildMeter();

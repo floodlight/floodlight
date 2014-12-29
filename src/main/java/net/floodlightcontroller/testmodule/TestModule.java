@@ -3,6 +3,7 @@ package net.floodlightcontroller.testmodule;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -11,11 +12,19 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
 import org.projectfloodlight.openflow.protocol.OFMeterBandType;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFOxmClass;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
+import org.projectfloodlight.openflow.protocol.OFTableConfig;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActions;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfield;
+import org.projectfloodlight.openflow.protocol.OFTableMod;
+import org.projectfloodlight.openflow.protocol.OFTableModProp;
+import org.projectfloodlight.openflow.protocol.OFTableModPropEviction;
+import org.projectfloodlight.openflow.protocol.OFTableModPropEvictionFlag;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
@@ -58,6 +67,8 @@ import org.projectfloodlight.openflow.types.VlanPcp;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
 
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
@@ -114,7 +125,34 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 	@Override
 	public void switchAdded(DatapathId switchId) {
 		OFFactory factory = switchService.getSwitch(switchId).getOFFactory();
-		OFFlowAdd.Builder fmb = factory.buildFlowAdd();
+		
+		/*
+		 * An attempt at meters, but they aren't supported anywhere, yet... 
+		 * OFMeterBand mb = factory.meterBands().buildDrop()
+				.setRate(1000)
+				.setBurstSize(1000)
+				.build();
+		ArrayList<OFMeterBand> mbl = new ArrayList<OFMeterBand>();
+		mbl.add(mb);
+		
+		OFMeterMod mm = factory.buildMeterMod()
+				.setMeters(mbl)
+				.setMeterId(1)
+				.setCommand(0)
+				.build(); */
+		
+		/*HashSet<OFTableConfig> tblCfg = new HashSet<OFTableConfig>();
+		tblCfg.add(OFTableConfig.TABLE_MISS_CONTROLLER);
+		
+		ArrayList<OFTableModProp> tabModPropList = new ArrayList<OFTableModProp>();
+		OFTableModProp propEvic = switchService.getActiveSwitch(switchId).getOFFactory().tableDesc(TableId.ALL, arg1)
+		tabModPropList.add(propEvic);
+		OFTableMod tm = switchService.getActiveSwitch(switchId).getOFFactory().buildTableMod()
+				.setProperties(pro)
+		
+		switchService.getActiveSwitch(switchId).write(mm);*/
+		
+		/*OFFlowAdd.Builder fmb = factory.buildFlowAdd();
 		List<OFAction> actions = new ArrayList<OFAction>();
         Match.Builder mb = factory.buildMatch();
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
@@ -136,7 +174,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 			e.printStackTrace();
 		}*/
         
-        //TODO @Ryan set a bunch of matches. Test for an OF1.0 and OF1.3 switch. See what happens if they are incorrectly applied.
+        // set a bunch of matches. Test for an OF1.0 and OF1.3 switch. See what happens if they are incorrectly applied.
         /* L2 and ICMP TESTS  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.ETH_SRC, MacAddress.BROADCAST);
         mb.setExact(MatchField.ETH_DST, MacAddress.BROADCAST);
@@ -147,7 +185,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.ECHO); 
         OFActionOutput.Builder actionBuilder = factory.actions().buildOutput();
         actions.add(factory.actions().output(OFPort.of(1), Integer.MAX_VALUE));
-        //actions.add(factory.actions().setField(factory.oxms().icmpv4Code(ICMPv4Code.of((short)1)))); //TODO @Ryan is ICMP rewrite not supported? The message is okay leaving (loxi doens't complain), but the switch rejects both actions
+        //actions.add(factory.actions().setField(factory.oxms().icmpv4Code(ICMPv4Code.of((short)1))));
         //actions.add(factory.actions().setField(factory.oxms().icmpv4Type(ICMPv4Type.ALTERNATE_HOST_ADDRESS))); */
  
         
@@ -166,7 +204,7 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         actions.add(factory.actions().setField(factory.oxms().arpTpa(IPv4Address.of("255.255.255.255")))); 
         fmb.setTableId(TableId.of(16)); */
         
-        /* TP, IP OPT, VLAN TESTS */  mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        /* TP, IP OPT, VLAN TESTS   mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         mb.setExact(MatchField.VLAN_PCP, VlanPcp.of((byte) 1)); // might as well test these now too
         //mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(512));
         mb.setExact(MatchField.MPLS_LABEL, U32.of(32));
@@ -202,17 +240,17 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
         actions.add(factory.actions().setField(factory.oxms().mplsTc(U8.ZERO))); */
         
         /* METADATA TEST 
-        mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(1)); */
+        mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(1)); 
         //fmb.setActions(actions); // this will automatically create the apply actions instruction
         applyActInstBldr.setActions(actions);
         //mtrBldr.setMeterId(1);
         instructions.add(applyActInstBldr.build());
         //instructions.add(mtrBldr.build());
         fmb.setInstructions(instructions);
-        fmb.setMatch(mb.build());
+        fmb.setMatch(mb.build()); 
 		        
 		sfps.addFlow("test-flow", fmb.build(), switchId);
-		//sfps.deleteFlow("test-flow");
+		//sfps.deleteFlow("test-flow"); */
 		
 	}
 

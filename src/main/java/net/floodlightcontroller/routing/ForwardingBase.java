@@ -43,6 +43,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.MatchUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
 import net.floodlightcontroller.util.TimedCache;
 
@@ -79,8 +80,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
-	public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
-	public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 
 	public static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
 	public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
@@ -189,7 +191,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 *        written to the switch
 	 * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
 	 *        OFFlowMod.OFPFC_MODIFY etc.
-	 * @return srcSwitchIincluded True if the source switch is included in this route
+	 * @return srcSwitchIncluded True if the source switch is included in this route
 	 */
 	@LogMessageDocs({
 		@LogMessageDoc(level="WARN",
@@ -248,27 +250,27 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
-			//Match.Builder mb = match.createBuilder();
+			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
 
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
-			//OFPort inPort = switchPortList.get(indx - 1).getPortId();
-			//mb.setExact(MatchField.IN_PORT, inPort);
+			OFPort inPort = switchPortList.get(indx - 1).getPortId();
+			mb.setExact(MatchField.IN_PORT, inPort);
 			aob.setPort(outPort);
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
 			
 			// compile
-			fmb.setMatch(match) //mb.build()
+			fmb.setMatch(mb.build()) // was match w/o modifying input port
 			.setActions(actions)
 			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setCookie(cookie)
-			.setOutPort(outPort); // TODO @Ryan why does this need to be set in addition to the action???
+			.setOutPort(outPort)
+			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 			try {
-				//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, fm);
 				if (log.isTraceEnabled()) {
 					log.trace("Pushing Route flowmod routeIndx={} " +
 							"sw={} inPort={} outPort={}",
@@ -277,10 +279,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 							fmb.getMatch().get(MatchField.IN_PORT),
 							outPort });
 				}
-				messageDamper.write(sw, fmb.build(), cntx);
+				messageDamper.write(sw, fmb.build());
 				if (doFlush) {
 					sw.flush();
-					//TODO @Ryan counterStore.updateFlush();
 				}
 
 				// Push the packet out the source switch
@@ -349,7 +350,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		// The assumption here is (sw) is the switch that generated the
 		// packet-in. If the input port is the same as output port, then
 		// the packet-out should be ignored.
-		if ((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
+		if ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
 			if (log.isDebugEnabled()) {
 				log.debug("Attempting to do packet-out to the same " +
 						"interface as packet-in. Dropping packet. " +
@@ -381,11 +382,10 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			pob.setData(packetData);
 		}
 
-		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
 		try {
-			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 		} catch (IOException e) {
 			log.error("Failure writing packet out", e);
 		}
@@ -421,13 +421,12 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		pob.setData(packetData);
 
 		try {
-			//TODO @Ryan counterStore.updatePktOutFMCounterStoreLocal(sw, po);
 			if (log.isTraceEnabled()) {
 				log.trace("write broadcast packet on switch-id={} " +
 						"interfaces={} packet-out={}",
 						new Object[] {sw.getId(), outPorts, pob.build()});
 			}
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 
 		} catch (IOException e) {
 			log.error("Failure writing packet out", e);
@@ -490,6 +489,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		fmb.setCookie(cookie)
 		.setHardTimeout(hardTimeout)
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+		.setPriority(FLOWMOD_DEFAULT_PRIORITY)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(mb.build())
 		.setActions(actions);

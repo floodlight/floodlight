@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -37,7 +36,95 @@ import net.floodlightcontroller.packet.UDP;
 
 @JsonSerialize(using=FirewallRuleSerializer.class)
 public class FirewallRule implements Comparable<FirewallRule> {
-    public int ruleid;
+    @Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		FirewallRule other = (FirewallRule) obj;
+		if (action != other.action)
+			return false;
+		if (any_dl_dst != other.any_dl_dst)
+			return false;
+		if (any_dl_src != other.any_dl_src)
+			return false;
+		if (any_dl_type != other.any_dl_type)
+			return false;
+		if (any_dpid != other.any_dpid)
+			return false;
+		if (any_in_port != other.any_in_port)
+			return false;
+		if (any_nw_dst != other.any_nw_dst)
+			return false;
+		if (any_nw_proto != other.any_nw_proto)
+			return false;
+		if (any_nw_src != other.any_nw_src)
+			return false;
+		if (any_tp_dst != other.any_tp_dst)
+			return false;
+		if (any_tp_src != other.any_tp_src)
+			return false;
+		if (dl_dst == null) {
+			if (other.dl_dst != null)
+				return false;
+		} else if (!dl_dst.equals(other.dl_dst))
+			return false;
+		if (dl_src == null) {
+			if (other.dl_src != null)
+				return false;
+		} else if (!dl_src.equals(other.dl_src))
+			return false;
+		if (dl_type == null) {
+			if (other.dl_type != null)
+				return false;
+		} else if (!dl_type.equals(other.dl_type))
+			return false;
+		if (dpid == null) {
+			if (other.dpid != null)
+				return false;
+		} else if (!dpid.equals(other.dpid))
+			return false;
+		if (in_port == null) {
+			if (other.in_port != null)
+				return false;
+		} else if (!in_port.equals(other.in_port))
+			return false;
+		if (nw_dst_prefix_and_mask == null) {
+			if (other.nw_dst_prefix_and_mask != null)
+				return false;
+		} else if (!nw_dst_prefix_and_mask.equals(other.nw_dst_prefix_and_mask))
+			return false;
+		if (nw_proto == null) {
+			if (other.nw_proto != null)
+				return false;
+		} else if (!nw_proto.equals(other.nw_proto))
+			return false;
+		if (nw_src_prefix_and_mask == null) {
+			if (other.nw_src_prefix_and_mask != null)
+				return false;
+		} else if (!nw_src_prefix_and_mask.equals(other.nw_src_prefix_and_mask))
+			return false;
+		if (priority != other.priority)
+			return false;
+		if (ruleid != other.ruleid)
+			return false;
+		if (tp_dst == null) {
+			if (other.tp_dst != null)
+				return false;
+		} else if (!tp_dst.equals(other.tp_dst))
+			return false;
+		if (tp_src == null) {
+			if (other.tp_src != null)
+				return false;
+		} else if (!tp_src.equals(other.tp_src))
+			return false;
+		return true;
+	}
+
+	public int ruleid;
 
     public DatapathId dpid; 
     public OFPort in_port; 
@@ -81,18 +168,16 @@ public class FirewallRule implements Comparable<FirewallRule> {
      * The default rule is to match on anything.
      */
     public FirewallRule() {
-        this.in_port = OFPort.ZERO; 
+        this.dpid = DatapathId.NONE;
+        this.in_port = OFPort.ANY; 
         this.dl_src = MacAddress.NONE;
-        this.nw_src_prefix_and_mask = IPv4AddressWithMask.NONE;
-        //this.nw_src_maskbits = 0; 
         this.dl_dst = MacAddress.NONE;
+        this.dl_type = EthType.NONE;
+        this.nw_src_prefix_and_mask = IPv4AddressWithMask.NONE;
+        this.nw_dst_prefix_and_mask = IPv4AddressWithMask.NONE;
         this.nw_proto = IpProtocol.NONE;
         this.tp_src = TransportPort.NONE;
         this.tp_dst = TransportPort.NONE;
-        this.dl_dst = MacAddress.NONE;
-        this.nw_dst_prefix_and_mask = IPv4AddressWithMask.NONE;
-        //this.nw_dst_maskbits = 0; 
-        this.dpid = DatapathId.NONE;
         this.any_dpid = true; 
         this.any_in_port = true; 
         this.any_dl_src = true; 
@@ -208,10 +293,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_IN_PORT;
-            adp.drop.setExact(MatchField.IN_PORT, this.in_port);
+        	if (!OFPort.ANY.equals(this.in_port)) {
+        		adp.drop.setExact(MatchField.IN_PORT, this.in_port);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_IN_PORT;
-            adp.allow.setExact(MatchField.IN_PORT, this.in_port);
+        	if (!OFPort.ANY.equals(this.in_port)) {
+        		adp.allow.setExact(MatchField.IN_PORT, this.in_port);
+        	}
         }
 
         // mac address (src and dst) match?
@@ -219,20 +308,28 @@ public class FirewallRule implements Comparable<FirewallRule> {
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_SRC;
-            adp.drop.setExact(MatchField.ETH_SRC, this.dl_src);
+        	if (!MacAddress.NONE.equals(this.dl_src)) {
+        		adp.drop.setExact(MatchField.ETH_SRC, this.dl_src);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_SRC;
-            adp.allow.setExact(MatchField.ETH_SRC, this.dl_src);
+        	if (!MacAddress.NONE.equals(this.dl_src)) {
+        		adp.allow.setExact(MatchField.ETH_SRC, this.dl_src);
+        	}
         }
 
         if (any_dl_dst == false && !dl_dst.equals(packet.getDestinationMACAddress()))
             return false;
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_DST;
-            adp.drop.setExact(MatchField.ETH_DST, this.dl_dst);
+        	if (!MacAddress.NONE.equals(this.dl_dst)) {
+        		adp.drop.setExact(MatchField.ETH_DST, this.dl_dst);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_DST;
-            adp.allow.setExact(MatchField.ETH_DST, this.dl_dst);
+        	if (!MacAddress.NONE.equals(this.dl_dst)) {
+        		adp.allow.setExact(MatchField.ETH_DST, this.dl_dst);
+        	}
         }
 
         // dl_type check: ARP, IP
@@ -246,10 +343,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
-                    	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	if (!EthType.NONE.equals(this.dl_type)) {
+                    		adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
-                    	adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	if (!EthType.NONE.equals(this.dl_type)) {
+                    		adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+                    	}
                     }
                 }
             } else if (dl_type.equals(EthType.IPv4)) {
@@ -258,37 +359,49 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
-                    	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                    		adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
-                    	adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                    		adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                    	}
                     }
                     // IP packets, proceed with ip address check
                     pkt_ip = (IPv4) pkt;
 
                     // IP addresses (src and dst) match?
-                    if (any_nw_src == false && this.matchIPAddress(nw_src_prefix_and_mask.getValue().getInt(), nw_src_prefix_and_mask.getMask().getInt(), pkt_ip.getSourceAddress()) == false)
+                    if (any_nw_src == false && !nw_src_prefix_and_mask.matches(pkt_ip.getSourceAddress()))
                         return false;
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_SRC_ALL;
                         //wildcards.drop |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
-                    	adp.drop.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_src_prefix_and_mask)) {
+                    		adp.drop.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_SRC_ALL;
                         //wildcards.allow |= (nw_src_maskbits << OFMatch.OFPFW_NW_SRC_SHIFT);
-                    	adp.allow.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_src_prefix_and_mask)) {
+                    		adp.allow.setMasked(MatchField.IPV4_SRC, nw_src_prefix_and_mask);
+                    	}
                     }
 
-                    if (any_nw_dst == false && this.matchIPAddress(nw_dst_prefix_and_mask.getValue().getInt(), nw_dst_prefix_and_mask.getMask().getInt(), pkt_ip.getDestinationAddress()) == false)
+                    if (any_nw_dst == false && !nw_dst_prefix_and_mask.matches(pkt_ip.getDestinationAddress()))
                         return false;
                     if (action == FirewallRule.FirewallAction.DROP) {
                         //wildcards.drop &= ~OFMatch.OFPFW_NW_DST_ALL;
                         //wildcards.drop |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
-                    	adp.drop.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_dst_prefix_and_mask)) {
+                    		adp.drop.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	}
                     } else {
                         //wildcards.allow &= ~OFMatch.OFPFW_NW_DST_ALL;
                         //wildcards.allow |= (nw_dst_maskbits << OFMatch.OFPFW_NW_DST_SHIFT);
-                    	adp.allow.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	if (!IPv4AddressWithMask.NONE.equals(this.nw_dst_prefix_and_mask)) {
+                    		adp.allow.setMasked(MatchField.IPV4_DST, nw_dst_prefix_and_mask);
+                    	}
                     }
 
                     // nw_proto check
@@ -318,10 +431,14 @@ public class FirewallRule implements Comparable<FirewallRule> {
                         }
                         if (action == FirewallRule.FirewallAction.DROP) {
                             //wildcards.drop &= ~OFMatch.OFPFW_NW_PROTO;
-                        	adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                        		adp.drop.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	}
                         } else {
                             //wildcards.allow &= ~OFMatch.OFPFW_NW_PROTO;
-                        	adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	if (!IpProtocol.NONE.equals(this.nw_proto)) {
+                        		adp.allow.setExact(MatchField.IP_PROTO, this.nw_proto);
+                        	}
                         }
 
                         // TCP/UDP source and destination ports match?
@@ -333,16 +450,24 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_SRC;
                                 if (pkt_tcp != null) {
-                                	adp.drop.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.drop.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	}
                                 } else {
-                                	adp.drop.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.drop.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	}
                                 }
                             } else {
                                 //wildcards.allow &= ~OFMatch.OFPFW_TP_SRC;
                                 if (pkt_tcp != null) {
-                                	adp.allow.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.allow.setExact(MatchField.TCP_SRC, this.tp_src);
+                                	}
                                 } else {
-                                	adp.allow.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	if (!TransportPort.NONE.equals(this.tp_src)) {
+                                		adp.allow.setExact(MatchField.UDP_SRC, this.tp_src);   
+                                	}
                                 }
                             }
 
@@ -353,16 +478,24 @@ public class FirewallRule implements Comparable<FirewallRule> {
                             if (action == FirewallRule.FirewallAction.DROP) {
                                 //wildcards.drop &= ~OFMatch.OFPFW_TP_DST;
                                 if (pkt_tcp != null) {
-                                	adp.drop.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.drop.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	}
                                 } else {
-                                	adp.drop.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.drop.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	}
                                 }
                             } else {
                                 //wildcards.allow &= ~OFMatch.OFPFW_TP_DST;
                             	if (pkt_tcp != null) {
-                            		adp.allow.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.allow.setExact(MatchField.TCP_DST, this.tp_dst);
+                                	}
                                 } else {
-                                	adp.allow.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	if (!TransportPort.NONE.equals(this.tp_dst)) {
+                                		adp.allow.setExact(MatchField.UDP_DST, this.tp_dst);   
+                                	}
                                 }
                             }
                         }
@@ -376,81 +509,54 @@ public class FirewallRule implements Comparable<FirewallRule> {
         }
         if (action == FirewallRule.FirewallAction.DROP) {
             //wildcards.drop &= ~OFMatch.OFPFW_DL_TYPE;
-        	adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	if (!EthType.NONE.equals(this.dl_type)) {
+        		adp.drop.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	}
         } else {
             //wildcards.allow &= ~OFMatch.OFPFW_DL_TYPE;
-        	adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	if (!EthType.NONE.equals(this.dl_type)) {
+        		adp.allow.setExact(MatchField.ETH_TYPE, this.dl_type);
+        	}
         }
 
         // all applicable checks passed
         return true;
     }
 
-    /**
-     * Determines if rule's CIDR address matches IP address of the packet
-     * 
-     * @param rulePrefix
-     *            prefix part of the CIDR address
-     * @param ruleBits
-     *            the size of mask of the CIDR address
-     * @param packetAddress
-     *            the IP address of the incoming packet to match with
-     * @return true if CIDR address matches the packet's IP address, false
-     *         otherwise
-     */
-    protected boolean matchIPAddress(int rulePrefix, int ruleBits, IPv4Address packetAddress) {
-        boolean matched = true;
-
-        int rule_iprng = 32 - ruleBits;
-        int rule_ipint = rulePrefix;
-        int pkt_ipint = packetAddress.getInt();
-        // if there's a subnet range (bits to be wildcarded > 0)
-        if (rule_iprng > 0) {
-            // right shift bits to remove rule_iprng of LSB that are to be
-            // wildcarded
-            rule_ipint = rule_ipint >> rule_iprng;
-            pkt_ipint = pkt_ipint >> rule_iprng;
-            // now left shift to return to normal range, except that the
-            // rule_iprng number of LSB
-            // are now zeroed
-            rule_ipint = rule_ipint << rule_iprng;
-            pkt_ipint = pkt_ipint << rule_iprng;
-        }
-        // check if we have a match
-        if (rule_ipint != pkt_ipint)
-            matched = false;
-
-        return matched;
-    }
-
     @Override
-    public int hashCode() {
-        final int prime = 2521;
-        int result = super.hashCode();
-        result = prime * result + (int) dpid.getLong();
-        result = prime * result + in_port.getPortNumber();
-        result = prime * result + (int) dl_src.getLong();
-        result = prime * result + (int) dl_dst.getLong();
-        result = prime * result + dl_type.getValue();
-        result = prime * result + nw_src_prefix_and_mask.getValue().getInt();
-        result = prime * result + nw_src_prefix_and_mask.getMask().getInt();
-        result = prime * result + nw_dst_prefix_and_mask.getValue().getInt();
-        result = prime * result + nw_dst_prefix_and_mask.getMask().getInt();
-        result = prime * result + nw_proto.getIpProtocolNumber();
-        result = prime * result + tp_src.getPort();
-        result = prime * result + tp_dst.getPort();
-        result = prime * result + action.ordinal();
-        result = prime * result + priority;
-        result = prime * result + (new Boolean(any_dpid)).hashCode();
-        result = prime * result + (new Boolean(any_in_port)).hashCode();
-        result = prime * result + (new Boolean(any_dl_src)).hashCode();
-        result = prime * result + (new Boolean(any_dl_dst)).hashCode();
-        result = prime * result + (new Boolean(any_dl_type)).hashCode();
-        result = prime * result + (new Boolean(any_nw_src)).hashCode();
-        result = prime * result + (new Boolean(any_nw_dst)).hashCode();
-        result = prime * result + (new Boolean(any_nw_proto)).hashCode();
-        result = prime * result + (new Boolean(any_tp_src)).hashCode();
-        result = prime * result + (new Boolean(any_tp_dst)).hashCode();
-        return result;
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((action == null) ? 0 : action.hashCode());
+		result = prime * result + (any_dl_dst ? 1231 : 1237);
+		result = prime * result + (any_dl_src ? 1231 : 1237);
+		result = prime * result + (any_dl_type ? 1231 : 1237);
+		result = prime * result + (any_dpid ? 1231 : 1237);
+		result = prime * result + (any_in_port ? 1231 : 1237);
+		result = prime * result + (any_nw_dst ? 1231 : 1237);
+		result = prime * result + (any_nw_proto ? 1231 : 1237);
+		result = prime * result + (any_nw_src ? 1231 : 1237);
+		result = prime * result + (any_tp_dst ? 1231 : 1237);
+		result = prime * result + (any_tp_src ? 1231 : 1237);
+		result = prime * result + ((dl_dst == null) ? 0 : dl_dst.hashCode());
+		result = prime * result + ((dl_src == null) ? 0 : dl_src.hashCode());
+		result = prime * result + ((dl_type == null) ? 0 : dl_type.hashCode());
+		result = prime * result + ((dpid == null) ? 0 : dpid.hashCode());
+		result = prime * result + ((in_port == null) ? 0 : in_port.hashCode());
+		result = prime
+				* result
+				+ ((nw_dst_prefix_and_mask == null) ? 0
+						: nw_dst_prefix_and_mask.hashCode());
+		result = prime * result
+				+ ((nw_proto == null) ? 0 : nw_proto.hashCode());
+		result = prime
+				* result
+				+ ((nw_src_prefix_and_mask == null) ? 0
+						: nw_src_prefix_and_mask.hashCode());
+		result = prime * result + priority;
+		result = prime * result + ruleid;
+		result = prime * result + ((tp_dst == null) ? 0 : tp_dst.hashCode());
+		result = prime * result + ((tp_src == null) ? 0 : tp_src.hashCode());
+		return result;
+	}
 }

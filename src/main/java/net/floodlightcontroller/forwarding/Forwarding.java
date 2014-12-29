@@ -42,6 +42,8 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -58,6 +60,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -71,9 +74,6 @@ import org.slf4j.LoggerFactory;
 @LogMessageCategory("Flow Programming")
 public class Forwarding extends ForwardingBase implements IFloodlightModule {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
-
-	protected static int DEFAULT_HARD_TIMEOUT = 0; // not final b/c could be configured from config file
-	protected static int DEFAULT_IDLE_TIMEOUT = 5;
 
 	@Override
 	@LogMessageDoc(level="ERROR",
@@ -133,10 +133,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		// initialize match structure and populate it based on the packet in's match
 		Match.Builder mb = null;
 		if (decision.getMatch() != null) {
-			/* TODO @Ryan This routing decision should be a match object with all appropriate fields set,
+			/* This routing decision should be a match object with all appropriate fields set,
 			 * not just masked. If it's a decision that matches the packet we received, then simply setting
 			 * the masks to the new match will create the same match in the end. We can just use the routing
-			 * match object instead (right?).
+			 * match object instead.
 			 * 
 			 * The Firewall is currently the only module/service that sets routing decisions in the context 
 			 * store (or instantiates any for that matter). It's disabled by default, so as-is a decision's 
@@ -152,18 +152,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
 		fmb.setCookie(cookie)
-		.setHardTimeout(DEFAULT_HARD_TIMEOUT)
-		.setIdleTimeout(DEFAULT_IDLE_TIMEOUT)
+		.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(mb.build())
-		.setActions(actions); // empty list
+		.setActions(actions) // empty list
+		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 		try {
 			if (log.isDebugEnabled()) {
 				log.debug("write drop flow-mod sw={} match={} flow-mod={}",
 						new Object[] { sw, mb.build(), fmb.build() });
 			}
-			boolean dampened = messageDamper.write(sw, fmb.build(), cntx);
+			boolean dampened = messageDamper.write(sw, fmb.build());
 			log.debug("OFMessage dampened: {}", dampened);
 		} catch (IOException e) {
 			log.error("Failure writing drop flow mod", e);
@@ -171,7 +172,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 	}
 
 	protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		// Check if we have the location of the destination
 		IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 
@@ -185,7 +186,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			}
 			if (srcIsland == null) {
 				log.debug("No openflow island found for source {}/{}",
-						sw.getId().toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+						sw.getId().toString(), inPort);
 				return;
 			}
 
@@ -198,7 +199,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
 				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
 					on_same_island = true;
-					if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
+					if (sw.getId().equals(dstSwDpid) && inPort.equals(dstDap.getPort())) {
 						on_same_if = true;
 					}
 					break;
@@ -219,7 +220,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				if (log.isTraceEnabled()) {
 					log.trace("Both source and destination are on the same " +
 							"switch/port {}/{}, Action = NOP",
-							sw.toString(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+							sw.toString(), inPort);
 				}
 				return;
 			}
@@ -279,6 +280,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 												
 												// A retentive builder will remember all MatchFields of the parent the builder was generated from
 												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
+												// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
 												Match.Builder mb = sw.getOFFactory().buildMatch();
 												mb.setExact(MatchField.IN_PORT, inPort)
 												.setExact(MatchField.ETH_SRC, srcMac)
@@ -288,6 +290,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 												}
 												
+												// TODO Detect switch type and match to create hardware-implemented flow
+												// TODO Set option in config file to support specific or MAC-only matches
 												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
 													IPv4 ip = (IPv4) eth.getPayload();
 													IPv4Address srcIp = ip.getSourceAddress();
@@ -295,9 +299,21 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 													mb.setExact(MatchField.IPV4_SRC, srcIp)
 													.setExact(MatchField.IPV4_DST, dstIp)
 													.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+													
+													if (ip.getProtocol().equals(IpProtocol.TCP)) {
+														TCP tcp = (TCP) ip.getPayload();
+														mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+														.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+														.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+													} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+														UDP udp = (UDP) ip.getPayload();
+														mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+														.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+														.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+													}	
 												} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
 													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
-												} //TODO @Ryan should probably include other ethertypes
+												} 
 												
 												routeMatch = mb.build();
 											}
@@ -336,11 +352,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 							"out message to the switch",
 							recommendation=LogMessageDoc.CHECK_SWITCH)
 	protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT))) == false) {
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), inPort) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("doFlood, drop broadcast packet, pi={}, " +
 						"from a blocked port, srcSwitch=[{},{}], linkInfo={}",
-						new Object[] {pi, sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT))});
+						new Object[] {pi, sw.getId(), inPort});
 			}
 			return;
 		}
@@ -357,7 +374,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
 		// set buffer-id, in-port and packet-data based on packet-in
 		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_13) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+		pob.setInPort(inPort);
 		pob.setData(pi.getData());
 
 		try {
@@ -365,7 +382,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
 						new Object[] {sw, pi, pob.build()});
 			}
-			messageDamper.write(sw, pob.build(), cntx);
+			messageDamper.write(sw, pob.build());
 		} catch (IOException e) {
 			log.error("Failure writing PacketOut switch={} packet-in={} packet-out={}",
 					new Object[] {sw, pi, pob.build()}, e);
@@ -430,21 +447,25 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		Map<String, String> configParameters = context.getConfigParams(this);
 		String tmp = configParameters.get("hard-timeout");
 		if (tmp != null) {
-			DEFAULT_HARD_TIMEOUT = Integer.parseInt(tmp);
-			log.info("Default hard timeout set to {}.", DEFAULT_HARD_TIMEOUT);
+			FLOWMOD_DEFAULT_HARD_TIMEOUT = Integer.parseInt(tmp);
+			log.info("Default hard timeout set to {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		} else {
-			log.info("Default hard timeout not configured. Using {}.", DEFAULT_HARD_TIMEOUT);
+			log.info("Default hard timeout not configured. Using {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		}
 		tmp = configParameters.get("idle-timeout");
 		if (tmp != null) {
-			DEFAULT_IDLE_TIMEOUT = Integer.parseInt(tmp);
-			log.info("Default idle timeout set to {}.", DEFAULT_IDLE_TIMEOUT);
+			FLOWMOD_DEFAULT_IDLE_TIMEOUT = Integer.parseInt(tmp);
+			log.info("Default idle timeout set to {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		} else {
-			log.info("Default idle timeout not configured. Using {}.", DEFAULT_IDLE_TIMEOUT);
+			log.info("Default idle timeout not configured. Using {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		}
-
-
-
+		tmp = configParameters.get("priority");
+		if (tmp != null) {
+			FLOWMOD_DEFAULT_PRIORITY = Integer.parseInt(tmp);
+			log.info("Default priority set to {}.", FLOWMOD_DEFAULT_PRIORITY);
+		} else {
+			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
+		}
 	}
 
 	@Override

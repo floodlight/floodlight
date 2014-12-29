@@ -24,34 +24,55 @@ import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.util.OFMessageUtils;
 
+import org.easymock.Capture;
+import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 
 /**
  *
@@ -67,6 +88,9 @@ public class LearningSwitchTest extends FloodlightTestCase {
     protected byte[] testPacketReplySerialized;
     private LearningSwitch learningSwitch;
     private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+    private FloodlightModuleContext fmc;
+    private RestApiServer restApiService;
+    private MockDebugCounterService debugCounterService;
 
     @Override
     @Before
@@ -123,42 +147,80 @@ public class LearningSwitchTest extends FloodlightTestCase {
 
         // Build the PacketIn
         this.packetIn = factory.buildPacketIn()
+        	.setMatch(factory.buildMatch()
+        			.setExact(MatchField.IN_PORT, OFPort.of(1))
+        			.setExact(MatchField.ETH_SRC, MacAddress.of("00:44:33:22:11:00"))
+        			.setExact(MatchField.ETH_DST, MacAddress.of("00:11:22:33:44:55"))
+        			.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        			.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(42))
+        			.setExact(MatchField.IPV4_SRC, IPv4Address.of("192.168.1.1"))
+        			.setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.1.2"))
+        			.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+        			.setExact(MatchField.UDP_SRC, TransportPort.of(5000))
+        			.setExact(MatchField.UDP_DST, TransportPort.of(5001))
+        			.build()
+        	)
             .setBufferId(OFBufferId.NO_BUFFER)
-            .setInPort(OFPort.of(1))
             .setData(this.testPacketSerialized)
             .setReason(OFPacketInReason.NO_MATCH)
             .build();
+        
+        this.debugCounterService = new MockDebugCounterService();
+        this.learningSwitch = new LearningSwitch();
+        this.restApiService = new RestApiServer();
+        
+        this.fmc = new FloodlightModuleContext();
+        fmc.addService(IOFSwitchService.class, getMockSwitchService());
+        fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
+        fmc.addService(IDebugCounterService.class, debugCounterService);
+        fmc.addService(IRestApiService.class, this.restApiService);
+        
+        this.debugCounterService.init(fmc);
+        this.restApiService.init(fmc);
+        this.learningSwitch.init(fmc);
+        this.debugCounterService.startUp(fmc);
+        this.restApiService.startUp(fmc);
+        this.learningSwitch.startUp(fmc);
+                
+        this.mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
+
     }
 
     @Test
     public void testFlood() throws Exception {
         // build our expected flooded packetOut
         OFPacketOut po = factory.buildPacketOut()
+        	.setInPort(OFPort.of(1))
             .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE)))
             .setBufferId(OFBufferId.NO_BUFFER)
-            .setInPort(OFPort.of(1))
             .setData(this.testPacketSerialized)
 	        .build();
-
+        
+        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        expect(mockSwitch.getId().toString()).andReturn("00:11:22:33:44:55:66:77").anyTimes();
-        mockSwitch.write(po, null);
+        expect(mockSwitch.getId()).andReturn(DatapathId.of("00:11:22:33:44:55:66:77")).anyTimes();
+        expect(mockSwitch.getOFFactory()).andReturn(factory).anyTimes();
+        mockSwitch.write(EasyMock.capture(wc1)); // expect po
+        EasyMock.expectLastCall().once();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);
         // Get the listener and trigger the packet in
-        IOFMessageListener listener = mockFloodlightProvider.getListeners().get(
-                OFType.PACKET_IN).get(0);
+        IOFMessageListener listener = mockFloodlightProvider.getListeners().get(OFType.PACKET_IN).get(0);
         // Make sure it's the right listener
         listener.receive(mockSwitch, this.packetIn, parseAndAnnotate(this.packetIn));
 
         // Verify the replay matched our expectations
         OFPort result = learningSwitch.getFromPortMap(mockSwitch, MacAddress.of("00:44:33:22:11:00"), VlanVid.ofVlan(42));
         verify(mockSwitch);
+        
+        assertTrue(wc1.hasCaptured());
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), po));
 
         // Verify the MAC table inside the switch
-        assertEquals(1, result);
+        assertEquals(OFPort.of(1), result);
     }
 
     @Test
@@ -166,27 +228,47 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // tweak the test packet in since we need a bufferId
         this.packetIn = packetIn.createBuilder().setBufferId(OFBufferId.of(50)).build();
 
+        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc3 = new Capture<OFMessage>(CaptureType.ALL);
+        
+        Set<OFFlowModFlags> flags = new HashSet<OFFlowModFlags>();
+        flags.add(OFFlowModFlags.SEND_FLOW_REM);
         // build expected flow mods
-        OFMessage fm1 = factory.buildFlowAdd()
-            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.FLOOD, -1)))
+        OFFlowAdd fm1 = factory.buildFlowAdd()
+            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(2), Integer.MAX_VALUE)))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setIdleTimeout((short) 5)
-            .setMatch(((OFPacketIn) testPacket).getMatch())
-            .setOutPort(OFPort.ANY)
+            .setMatch(packetIn.getMatch())
+            .setOutPort(OFPort.of(2))
             .setCookie(U64.of(1L << 52))
             .setPriority((short) 100)
+            .setFlags(flags)
             .build();
-        OFMessage fm2 = factory.buildFlowAdd()
-            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(1), -1)))
+        OFFlowAdd fm2 = factory.buildFlowAdd()
+            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(1), Integer.MAX_VALUE)))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setIdleTimeout((short) 5)
-            .setMatch(((OFPacketIn) testPacketReply).getMatch())
-            .setOutPort(OFPort.ANY)
+            .setMatch(factory.buildMatch()
+        			.setExact(MatchField.IN_PORT, OFPort.of(2))
+        			.setExact(MatchField.ETH_DST, MacAddress.of("00:44:33:22:11:00"))
+        			.setExact(MatchField.ETH_SRC, MacAddress.of("00:11:22:33:44:55"))
+        			.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        			.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(42))
+        			.setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.1.1"))
+        			.setExact(MatchField.IPV4_SRC, IPv4Address.of("192.168.1.2"))
+        			.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+        			.setExact(MatchField.UDP_DST, TransportPort.of(5000))
+        			.setExact(MatchField.UDP_SRC, TransportPort.of(5001))
+        			.build()
+        	)
+            .setOutPort(OFPort.of(1))
+            .setFlags(flags)
             .setCookie(U64.of(1L << 52))
             .setPriority((short) 100)
             .build();
 
-        OFActionOutput ofAcOut = factory.actions().output(OFPort.of(2), -1);
+        OFActionOutput ofAcOut = factory.actions().output(OFPort.of(2), Integer.MAX_VALUE);
 
         OFPacketOut packetOut = factory.buildPacketOut()
         .setActions(Arrays.asList((OFAction)ofAcOut))
@@ -198,9 +280,14 @@ public class LearningSwitchTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         expect(mockSwitch.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         expect(mockSwitch.getBuffers()).andReturn((long)100).anyTimes();
-        mockSwitch.write(packetOut, null);
-        mockSwitch.write(fm1, null);
-        mockSwitch.write(fm2, null);
+        expect(mockSwitch.getOFFactory()).andReturn(factory).anyTimes();
+        
+        mockSwitch.write(EasyMock.capture(wc1)); // expect packetOut
+        EasyMock.expectLastCall().once();
+        mockSwitch.write(EasyMock.capture(wc2)); // expect fm1
+        EasyMock.expectLastCall().once();
+        mockSwitch.write(EasyMock.capture(wc3)); // expect fm2
+        EasyMock.expectLastCall().once();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);
@@ -217,8 +304,15 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // Verify the replay matched our expectations
         OFPort result = learningSwitch.getFromPortMap(mockSwitch, MacAddress.of("00:44:33:22:11:00"), VlanVid.ofVlan(42));
         verify(mockSwitch);
+        
+        assertTrue(wc1.hasCaptured());
+        assertTrue(wc2.hasCaptured());
+        assertTrue(wc3.hasCaptured());
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOut));
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), fm1));
+        assertTrue(OFMessageUtils.equalsIgnoreXid(wc3.getValue(), fm2));
 
         // Verify the MAC table inside the switch
-        assertEquals(1, result);
+        assertEquals(OFPort.of(1), result);
     }
 }

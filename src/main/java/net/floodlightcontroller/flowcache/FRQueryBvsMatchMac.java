@@ -21,6 +21,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 /**
  * The Class for FlowReconcileQuery for link down event.
  */
+@Deprecated
 public class FRQueryBvsMatchMac extends FlowReconcileQuery {
     /*the match mac*/
     public String mac;

@@ -178,9 +178,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_ACCESS_PRIORITY,
             FLOW_COLUMN_CORE_PRIORITY
     };
-
-    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_ACCESS_PRIORITY = 10;
-    // TODO @Ryan delete? not referenced anywhere private static short DEFAULT_CORE_PRIORITY = 1000;
     
     // Perf. related configuration
     protected static final int SEND_BUFFER_SIZE = 128 * 1024;
@@ -250,9 +247,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
          */
         public void dispatch();
     }
-    
-    //TODO @Ryan ReadyForReconcileUpdate was here. Obsolete?
-    
+        
     /**
      * Update message indicating
      * IPs of controllers in controller cluster have changed.
@@ -443,7 +438,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     public void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext) {
         Ethernet eth = null;
-        log.debug("~~~~~~~~GOT PACKET IN MESSAGE FROM SWITCH~~~~~~~~~");
+        log.trace("Dispatching OFMessage to listeners.");
         if (this.notifiedRole == HARole.STANDBY) {
             counters.dispatchMessageWhileStandby.increment();
             // We are SLAVE. Do not dispatch messages to listeners.
@@ -796,7 +791,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         storageSourceService.createTable(FLOW_PRIORITY_TABLE_NAME, null);
         storageSourceService.setTablePrimaryKeyName(FLOW_PRIORITY_TABLE_NAME, FLOW_COLUMN_PRIMARY_KEY);
         storageSourceService.addListener(FLOW_PRIORITY_TABLE_NAME, this);
-        readFlowPriorityConfigurationFromStorage();
+        readFlowPriorityConfigurationFromStorage(); // 
         
         // Startup load monitoring
         if (overload_drop) {
@@ -833,10 +828,10 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     String primary_key = (String) row.get(FLOW_COLUMN_PRIMARY_KEY);
                     if (primary_key.equals(FLOW_VALUE_PRIMARY_KEY)) {
                         if (row.containsKey(FLOW_COLUMN_ACCESS_PRIORITY)) {
-                            //TODO @Ryan delete? Not referenced anywhere DEFAULT_ACCESS_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
+                            // Not used anymore DEFAULT_ACCESS_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_ACCESS_PRIORITY));
                         }
                         if (row.containsKey(FLOW_COLUMN_CORE_PRIORITY)) {
-                            //TODO @Ryan delete? Not referenced anywhere DEFAULT_CORE_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
+                            // Not used anymore DEFAULT_CORE_PRIORITY = Short.valueOf((String) row.get(FLOW_COLUMN_CORE_PRIORITY));
                         }
                     }
                 }

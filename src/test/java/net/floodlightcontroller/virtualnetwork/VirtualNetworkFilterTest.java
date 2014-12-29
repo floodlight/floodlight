@@ -45,12 +45,14 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.test.PacketFactory;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
-import net.floodlightcontroller.flowcache.FlowReconcileManager;
-import net.floodlightcontroller.flowcache.IFlowReconcileService;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -111,7 +113,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         RestApiServer restApi = new RestApiServer();
         deviceService = new MockDeviceManager();
-        FlowReconcileManager frm = new FlowReconcileManager();
         MockThreadPoolService tps = new MockThreadPoolService();
         ITopologyService topology = createMock(ITopologyService.class);
         vns = new VirtualNetworkFilter();
@@ -119,34 +120,35 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         fmc.addService(IRestApiService.class, restApi);
         fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         fmc.addService(IDeviceService.class, deviceService);
-        fmc.addService(IFlowReconcileService.class, frm);
         fmc.addService(IThreadPoolService.class, tps);
         fmc.addService(IEntityClassifierService.class, entityClassifier);
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(ISyncService.class, mockSyncService);
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         tps.init(fmc);
-        frm.init(fmc);
         deviceService.init(fmc);
         restApi.init(fmc);
         getMockFloodlightProvider().init(fmc);
         entityClassifier.init(fmc);
         tps.startUp(fmc);
         vns.init(fmc);
-        frm.startUp(fmc);
         deviceService.startUp(fmc);
         restApi.startUp(fmc);
         getMockFloodlightProvider().startUp(fmc);
         vns.startUp(fmc);
         entityClassifier.startUp(fmc);
-
+        expect(topology.isAttachmentPointPort(DatapathId.of(0), OFPort.ZERO)).andReturn(anyBoolean()).anyTimes();
         topology.addListener(deviceService);
         expectLastCall().times(1);
         replay(topology);
+        
         // Mock switches
         //fastWilcards mocked as this constant
         sw1 = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+        expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         replay(sw1);
 
         // Mock packets
@@ -167,7 +169,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac2PacketIntestPacketSerialized = mac1ToMac2PacketIntestPacket.serialize();
         mac1ToMac2PacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                         .setBufferId(OFBufferId.NO_BUFFER)
-                        .setInPort(OFPort.of(1))
                         .setData(mac1ToMac2PacketIntestPacketSerialized)
                         .setReason(OFPacketInReason.NO_MATCH)
                         .build();
@@ -188,7 +189,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac4PacketIntestPacketSerialized = mac1ToMac4PacketIntestPacket.serialize(); 
         mac1ToMac4PacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                     .setBufferId(OFBufferId.NO_BUFFER)
-                    .setInPort(OFPort.of(1))
                     .setData(mac1ToMac4PacketIntestPacketSerialized)
                     .setReason(OFPacketInReason.NO_MATCH)
                     .build();
@@ -209,7 +209,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToGwPacketIntestPacketSerialized = mac1ToGwPacketIntestPacket.serialize();
         mac1ToGwPacketIn =  OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                     .setBufferId(OFBufferId.NO_BUFFER)
-                    .setInPort(OFPort.of(1))
                     .setData(mac1ToGwPacketIntestPacketSerialized)
                     .setReason(OFPacketInReason.NO_MATCH)
                     .build();

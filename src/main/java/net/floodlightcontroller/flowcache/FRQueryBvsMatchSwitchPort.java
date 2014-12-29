@@ -22,6 +22,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match switch port.
  */
+@Deprecated
 public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
     /*switch DPID*/
     public DatapathId swId;

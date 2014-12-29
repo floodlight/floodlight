@@ -27,8 +27,12 @@ import java.util.Map;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -49,12 +53,15 @@ import java.util.ArrayList;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.util.MatchUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +72,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Amer Tahir
  * @edited KC Wang
+ * @edited Ryan Izard
  */
 public class Firewall implements IFirewallService, IOFMessageListener,
         IFloodlightModule {
@@ -77,7 +85,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     protected List<FirewallRule> rules; // protected by synchronized
     protected boolean enabled;
-    protected int subnet_mask = IPv4.toIPv4Address("255.255.255.0");
+    protected IPv4Address subnet_mask = IPv4Address.of("255.255.255.0");
 
     // constant strings for storage/parsing
     public static final String TABLE_NAME = "controller_firewallrules";
@@ -204,13 +212,13 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                         } else if (key.equals(COLUMN_DL_TYPE)) {
                             r.dl_type = EthType.of(Integer.parseInt((String) row.get(COLUMN_DL_TYPE)));
                         } else if (key.equals(COLUMN_NW_SRC_PREFIX)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_PREFIX)), r.nw_src_prefix_and_mask.getMask().getInt());
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_PREFIX))), r.nw_src_prefix_and_mask.getMask());
                         } else if (key.equals(COLUMN_NW_SRC_MASKBITS)) {
-                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_SRC_MASKBITS)));
+                            r.nw_src_prefix_and_mask = IPv4AddressWithMask.of(r.nw_src_prefix_and_mask.getValue(), IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_SRC_MASKBITS))));
                         } else if (key.equals(COLUMN_NW_DST_PREFIX)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_PREFIX)), r.nw_dst_prefix_and_mask.getMask().getInt());
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_PREFIX))), r.nw_dst_prefix_and_mask.getMask());
                         } else if (key.equals(COLUMN_NW_DST_MASKBITS)) {
-                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue().getInt(), Integer.parseInt((String) row.get(COLUMN_NW_DST_MASKBITS)));
+                            r.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(r.nw_dst_prefix_and_mask.getValue(), IPv4Address.of(Integer.parseInt((String) row.get(COLUMN_NW_DST_MASKBITS))));
                         } else if (key.equals(COLUMN_NW_PROTO)) {
                             r.nw_proto = IpProtocol.of(Short.parseShort((String) row.get(COLUMN_NW_PROTO)));
                         } else if (key.equals(COLUMN_TP_SRC)) {
@@ -346,14 +354,14 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
     @Override
     public String getSubnetMask() {
-        return IPv4.fromIPv4Address(this.subnet_mask);
+        return this.subnet_mask.toString();
     }
 
     @Override
     public void setSubnetMask(String newMask) {
         if (newMask.trim().isEmpty())
             return;
-        this.subnet_mask = IPv4.toIPv4Address(newMask.trim());
+        this.subnet_mask = IPv4Address.of(newMask.trim());
     }
 
     @Override
@@ -455,7 +463,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
     protected RuleMatchPair matchWithRule(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         FirewallRule matched_rule = null;
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        AllowDropPair adp = new AllowDropPair();
+        AllowDropPair adp = new AllowDropPair(sw.getOFFactory());
 
         synchronized (rules) {
             Iterator<FirewallRule> iter = this.rules.iterator();
@@ -467,8 +475,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
                 // check if rule matches
                 // AllowDropPair adp's allow and drop matches will modified with what matches
-                // TODO @Ryan might need to re-init adp each time (look into later) 
-                if (rule.matchesThisPacket(sw.getId(), pi.getInPort(), eth, adp) == true) {
+                if (rule.matchesThisPacket(sw.getId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), eth, adp) == true) {
                     matched_rule = rule;
                     break;
                 }
@@ -478,7 +485,38 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         // make a pair of rule and wildcards, then return it
         RuleMatchPair rmp = new RuleMatchPair();
         rmp.rule = matched_rule;
-        if (matched_rule == null || matched_rule.action == FirewallRule.FirewallAction.DROP) {
+        if (matched_rule == null) {
+        	/*
+        	 * No rule was found, so drop the packet with as specific 
+        	 * of a drop rule as possible as not to interfere with other
+        	 * firewall rules.
+        	 */
+        	Match.Builder mb = MatchUtils.createRetentiveBuilder(pi.getMatch()); // capture the ingress port
+        	mb.setExact(MatchField.ETH_SRC, eth.getSourceMACAddress())
+        		.setExact(MatchField.ETH_DST, eth.getDestinationMACAddress())
+        		.setExact(MatchField.ETH_TYPE, EthType.of(eth.getEtherType()));
+        	
+        	if (mb.get(MatchField.ETH_TYPE).equals(EthType.IPv4)) {
+        		IPv4 ipv4 = (IPv4) eth.getPayload();
+        		mb.setExact(MatchField.IPV4_SRC, ipv4.getSourceAddress())
+        			.setExact(MatchField.IPV4_DST, ipv4.getDestinationAddress())
+        			.setExact(MatchField.IP_PROTO, ipv4.getProtocol());
+        		
+        		if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.TCP)) {
+        			TCP tcp = (TCP) ipv4.getPayload();
+        			mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+        			.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+        		} else if (mb.get(MatchField.IP_PROTO).equals(IpProtocol.UDP)) {
+        			UDP udp = (UDP) ipv4.getPayload();
+        			mb.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+        			.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+        		} else {
+        			// could be ICMP, which will be taken care of via IPv4 src/dst + ip proto
+        		}
+        	}
+        	rmp.match = mb.build();
+            //rmp.match = adp.drop.build(); This inserted a "drop all" rule if no match was found (not what we want to do...)
+        } else if (matched_rule.action == FirewallRule.FirewallAction.DROP) {
             rmp.match = adp.drop.build();
         } else {
             rmp.match = adp.allow.build();
@@ -494,22 +532,23 @@ public class Firewall implements IFirewallService, IOFMessageListener,
      *            the IP address to check
      * @return true if it is a broadcast address, false otherwise
      */
-    protected boolean IPIsBroadcast(int IPAddress) {
+    protected boolean isIPBroadcast(IPv4Address ip) {
         // inverted subnet mask
-        int inv_subnet_mask = ~this.subnet_mask;
-        return ((IPAddress & inv_subnet_mask) == inv_subnet_mask);
+        IPv4Address inv_subnet_mask = subnet_mask.not();
+        return ip.and(inv_subnet_mask).equals(inv_subnet_mask);
     }
 
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
+        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        
         // Allowing L2 broadcast + ARP broadcast request (also deny malformed
         // broadcasts -> L2 broadcast + L3 unicast)
         if (eth.isBroadcast() == true) {
             boolean allowBroadcast = true;
-            // the case to determine if we have L2 broadcast + L3 unicast
+            // the case to determine if we have L2 broadcast + L3 unicast (L3 broadcast default set to /24 or 255.255.255.0)
             // don't allow this broadcast packet if such is the case (malformed packet)
-            if ((eth.getPayload() instanceof IPv4) && (((IPv4) eth.getPayload()).getDestinationAddress().isBroadcast() == false)) {
+            if ((eth.getPayload() instanceof IPv4) && !isIPBroadcast(((IPv4) eth.getPayload()).getDestinationAddress())) {
                 allowBroadcast = false;
             }
             if (allowBroadcast == true) {
@@ -517,7 +556,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     logger.trace("Allowing broadcast traffic for PacketIn={}", pi);
                 }
                                         
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.MULTICAST);
                 decision.addToContext(cntx);
@@ -526,7 +565,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                     logger.trace("Blocking malformed broadcast traffic for PacketIn={}", pi);
                 }
 
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(),
+                decision = new RoutingDecision(sw.getId(), inPort,
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.DROP);
                 decision.addToContext(cntx);
@@ -552,7 +591,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
 
             // Drop the packet if we don't have a rule allowing or dropping it or if we explicitly drop it
             if (rule == null || rule.action == FirewallRule.FirewallAction.DROP) {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE), 
                 		IRoutingDecision.RoutingAction.DROP);
                 decision.setMatch(rmp.match);
@@ -566,7 +605,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
                 }
             // Found a rule and the rule is not a drop, so allow the packet
             } else {
-                decision = new RoutingDecision(sw.getId(), pi.getInPort(), 
+                decision = new RoutingDecision(sw.getId(), inPort, 
                 		IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
                         IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
                 decision.setMatch(rmp.match);

@@ -55,8 +55,8 @@ import net.floodlightcontroller.core.OFSwitch;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.debugevent.DebugEventService;
 import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -118,7 +118,7 @@ public class OFSwitchManagerTest{
         
         // TODO: should mock IDebugCounterService and make sure
         // the expected counters are updated.
-        DebugCounterServiceImpl debugCounterService = new DebugCounterServiceImpl();
+        MockDebugCounterService debugCounterService = new MockDebugCounterService();
         fmc.addService(IDebugCounterService.class, debugCounterService);
 
         DebugEventService debugEventService = new DebugEventService();
@@ -141,6 +141,7 @@ public class OFSwitchManagerTest{
         syncService.init(fmc);
         switchManager.init(fmc);
         debugCounterService.init(fmc);
+        memstorage.init(fmc);
         debugEventService.init(fmc);
         restApi.init(fmc);
         cm.init(fmc);
@@ -148,6 +149,7 @@ public class OFSwitchManagerTest{
         syncService.init(fmc);
         switchManager.startUpBase(fmc);
         debugCounterService.startUp(fmc);
+        memstorage.startUp(fmc);
         debugEventService.startUp(fmc);
         threadPool.startUp(fmc);
         restApi.startUp(fmc);

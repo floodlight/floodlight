@@ -24,6 +24,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 /**
  * The Class for FlowReconcileQuery for device move event.
  */
+@Deprecated
 public class FlowReconcileQueryDeviceMove extends FlowReconcileQuery {
     /* The moved device. */
     public IDevice deviceMoved;

@@ -100,13 +100,13 @@ public class Link implements Comparable<Link> {
         if (getClass() != obj.getClass())
             return false;
         Link other = (Link) obj;
-        if (dst != other.dst)
+        if (!dst.equals(other.dst))
             return false;
-        if (dstPort != other.dstPort)
+        if (!dstPort.equals(other.dstPort))
             return false;
-        if (src != other.src)
+        if (!src.equals(other.src))
             return false;
-        if (srcPort != other.srcPort)
+        if (!srcPort.equals(other.srcPort))
             return false;
         return true;
     }
@@ -123,7 +123,6 @@ public class Link implements Comparable<Link> {
                 + "]";
     }
     
-    //TODO @Ryan there was some short 0xFFFF bitmasking here when ports were shorts. I don't get what that did other than just allow all bits of the short (16), so I just stringified the whole thing
     public String toKeyString() {
     	return (this.src.toString() + "|" +
     			this.srcPort.toString() + "|" +

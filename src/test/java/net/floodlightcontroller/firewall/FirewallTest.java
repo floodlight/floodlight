@@ -29,7 +29,10 @@ import java.util.Map;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -51,6 +54,7 @@ import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
@@ -76,6 +80,7 @@ public class FirewallTest extends FloodlightTestCase {
     protected IPacket tcpPacketReply;
     protected IPacket broadcastMalformedPacket;
     private Firewall firewall;
+    private MockDebugCounterService debugCounterService;
     public static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
 
     @Override
@@ -85,15 +90,16 @@ public class FirewallTest extends FloodlightTestCase {
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
         mockSwitchManager = getMockSwitchService();
+        debugCounterService = new MockDebugCounterService(); 
         firewall = new Firewall();
-        IStorageSourceService storageService = new MemoryStorageSource();
+        MemoryStorageSource storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
 
         // Mock switches
         DatapathId dpid = DatapathId.of(TestSwitch1DPID);
         sw = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(dpid).anyTimes();
-        expect(sw.getId().toString()).andReturn(TestSwitch1DPID).anyTimes();
+        expect(sw.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         replay(sw);
         // Load the switch map
         Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
@@ -101,15 +107,19 @@ public class FirewallTest extends FloodlightTestCase {
         mockSwitchManager.setSwitches(switches);
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class,
-                mockFloodlightProvider);
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IDebugCounterService.class, debugCounterService);
+        fmc.addService(IOFSwitchService.class, mockSwitchManager);
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);
 
+        debugCounterService.init(fmc);
+        storageService.init(fmc);
         restApi.init(fmc);
-
         firewall.init(fmc);
+        debugCounterService.startUp(fmc);
+        storageService.startUp(fmc);
         firewall.startUp(fmc);
 
         // Build our test packet
@@ -219,7 +229,7 @@ public class FirewallTest extends FloodlightTestCase {
         // Build the PacketIn
         this.packetIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setInPort(OFPort.of(1))
+                .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
                 .setData(serializedPacket)
                 .setReason(OFPacketInReason.NO_MATCH)
                 .build();
@@ -270,19 +280,19 @@ public class FirewallTest extends FloodlightTestCase {
         List<FirewallRule> rules = firewall.readRulesFromStorage();
         // verify rule 1
         FirewallRule r = rules.get(0);
-        assertEquals(r.in_port, 2);
+        assertEquals(r.in_port, OFPort.of(2));
         assertEquals(r.priority, 1);
         assertEquals(r.dl_src, MacAddress.of("00:00:00:00:00:01"));
         assertEquals(r.dl_dst, MacAddress.of("00:00:00:00:00:02"));
         assertEquals(r.action, FirewallRule.FirewallAction.DROP);
         // verify rule 2
         r = rules.get(1);
-        assertEquals(r.in_port, 3);
+        assertEquals(r.in_port, OFPort.of(3));
         assertEquals(r.priority, 2);
         assertEquals(r.dl_src, MacAddress.of("00:00:00:00:00:02"));
         assertEquals(r.dl_dst, MacAddress.of("00:00:00:00:00:01"));
         assertEquals(r.nw_proto, IpProtocol.TCP);
-        assertEquals(r.tp_dst, 80);
+        assertEquals(r.tp_dst, TransportPort.of(80));
         assertEquals(r.any_nw_proto, false);
         assertEquals(r.action, FirewallRule.FirewallAction.ALLOW);
     }
@@ -355,7 +365,7 @@ public class FirewallTest extends FloodlightTestCase {
         rule.nw_proto = IpProtocol.TCP;
         rule.any_nw_proto = false;
         // source is IP 192.168.1.2
-        rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of("192.168.1.2/24");
+        rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of("192.168.1.2/32");
         rule.any_nw_src = false;
         // dest is network 192.168.1.0/24
         rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of("192.168.1.0/24");
@@ -370,7 +380,7 @@ public class FirewallTest extends FloodlightTestCase {
         verify(sw);
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD, decision.getRoutingAction());
 
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -380,7 +390,7 @@ public class FirewallTest extends FloodlightTestCase {
         verify(sw);
 
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+        assertEquals(IRoutingDecision.RoutingAction.DROP, decision.getRoutingAction());
     }
 
     @Test

@@ -20,7 +20,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
  */
 public class FlowModUtils {
 	public static final int INFINITE_TIMEOUT = 0;
-	
+
 	public static final int PRIORITY_MAX = 32768;
 	public static final int PRIORITY_VERY_HIGH = 28672;
 	public static final int PRIORITY_HIGH = 24576;
@@ -30,104 +30,195 @@ public class FlowModUtils {
 	public static final int PRIORITY_LOW = 8192;
 	public static final int PRIORITY_VERY_LOW = 4096;
 	public static final int PRIORITY_MIN = 0;
-	
+
 	public static OFFlowAdd toFlowAdd(OFFlowMod fm) {
 		OFVersion version = fm.getVersion();
 		OFFlowAdd.Builder b = OFFactories.getFactory(version).buildFlowAdd();
-		return b.setActions(fm.getActions())
-				.setBufferId(fm.getBufferId())
-				.setCookie(fm.getCookie())
-				.setCookieMask(fm.getCookieMask())
-				.setFlags(fm.getFlags())
-				.setHardTimeout(fm.getHardTimeout())
-				.setIdleTimeout(fm.getIdleTimeout())
-				.setInstructions(fm.getInstructions())
-				.setMatch(fm.getMatch())
-				.setOutGroup(fm.getOutGroup())
-				.setOutPort(fm.getOutPort())
-				.setPriority(fm.getPriority())
-				.setTableId(fm.getTableId())
-				.setXid(fm.getXid())
-				.build();
+
+		if (b.getVersion().compareTo(OFVersion.OF_10) == 0) {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					// cookie-mask not supported
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					// instructions not supported
+					.setMatch(fm.getMatch())
+					// out-group not supported
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					// table-id not supported
+					.setXid(fm.getXid())
+					.build();
+		} else {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					.setCookieMask(fm.getCookieMask()) // added in OF1.1
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					.setInstructions(fm.getInstructions()) // added in OF1.1
+					.setMatch(fm.getMatch())
+					.setOutGroup(fm.getOutGroup()) // added in OF1.1
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					.setTableId(fm.getTableId())
+					.setXid(fm.getXid())
+					.build();
+		}
 	}
 
 	public static OFFlowDelete toFlowDelete(OFFlowMod fm) {
 		OFVersion version = fm.getVersion();
 		OFFlowDelete.Builder b = OFFactories.getFactory(version).buildFlowDelete();
-		return b.setActions(fm.getActions())
-				.setBufferId(fm.getBufferId())
-				.setCookie(fm.getCookie())
-				.setCookieMask(fm.getCookieMask())
-				.setFlags(fm.getFlags())
-				.setHardTimeout(fm.getHardTimeout())
-				.setIdleTimeout(fm.getIdleTimeout())
-				.setInstructions(fm.getInstructions())
-				.setMatch(fm.getMatch())
-				.setOutGroup(fm.getOutGroup())
-				.setOutPort(fm.getOutPort())
-				.setPriority(fm.getPriority())
-				.setTableId(fm.getTableId())
-				.setXid(fm.getXid())
-				.build();
+		if (b.getVersion().compareTo(OFVersion.OF_10) == 0) {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					// cookie-mask not supported
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					// instructions not supported
+					.setMatch(fm.getMatch())
+					// out-group not supported
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					// table-id not supported
+					.setXid(fm.getXid())
+					.build();
+		} else {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					.setCookieMask(fm.getCookieMask()) // added in OF1.1
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					.setInstructions(fm.getInstructions()) // added in OF1.1
+					.setMatch(fm.getMatch())
+					.setOutGroup(fm.getOutGroup()) // added in OF1.1
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					.setTableId(fm.getTableId())
+					.setXid(fm.getXid())
+					.build();
+		}
 	}
 
 	public static OFFlowDeleteStrict toFlowDeleteStrict(OFFlowMod fm) {
 		OFVersion version = fm.getVersion();
 		OFFlowDeleteStrict.Builder b = OFFactories.getFactory(version).buildFlowDeleteStrict();
-		return b.setActions(fm.getActions())
-				.setBufferId(fm.getBufferId())
-				.setCookie(fm.getCookie())
-				.setCookieMask(fm.getCookieMask())
-				.setFlags(fm.getFlags())
-				.setHardTimeout(fm.getHardTimeout())
-				.setIdleTimeout(fm.getIdleTimeout())
-				.setInstructions(fm.getInstructions())
-				.setMatch(fm.getMatch())
-				.setOutGroup(fm.getOutGroup())
-				.setOutPort(fm.getOutPort())
-				.setPriority(fm.getPriority())
-				.setTableId(fm.getTableId())
-				.setXid(fm.getXid())
-				.build();
+		if (b.getVersion().compareTo(OFVersion.OF_10) == 0) {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					// cookie-mask not supported
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					// instructions not supported
+					.setMatch(fm.getMatch())
+					// out-group not supported
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					// table-id not supported
+					.setXid(fm.getXid())
+					.build();
+		} else {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					.setCookieMask(fm.getCookieMask()) // added in OF1.1
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					.setInstructions(fm.getInstructions()) // added in OF1.1
+					.setMatch(fm.getMatch())
+					.setOutGroup(fm.getOutGroup()) // added in OF1.1
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					.setTableId(fm.getTableId())
+					.setXid(fm.getXid())
+					.build();
+		}
 	}
 
 	public static OFFlowModify toFlowModify(OFFlowMod fm) {
 		OFVersion version = fm.getVersion();
 		OFFlowModify.Builder b = OFFactories.getFactory(version).buildFlowModify();
-		return b.setActions(fm.getActions())
-				.setBufferId(fm.getBufferId())
-				.setCookie(fm.getCookie())
-				.setCookieMask(fm.getCookieMask())
-				.setFlags(fm.getFlags())
-				.setHardTimeout(fm.getHardTimeout())
-				.setIdleTimeout(fm.getIdleTimeout())
-				.setInstructions(fm.getInstructions())
-				.setMatch(fm.getMatch())
-				.setOutGroup(fm.getOutGroup())
-				.setOutPort(fm.getOutPort())
-				.setPriority(fm.getPriority())
-				.setTableId(fm.getTableId())
-				.setXid(fm.getXid())
-				.build();
+		if (b.getVersion().compareTo(OFVersion.OF_10) == 0) {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					// cookie-mask not supported
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					// instructions not supported
+					.setMatch(fm.getMatch())
+					// out-group not supported
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					// table-id not supported
+					.setXid(fm.getXid())
+					.build();
+		} else {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					.setCookieMask(fm.getCookieMask()) // added in OF1.1
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					.setInstructions(fm.getInstructions()) // added in OF1.1
+					.setMatch(fm.getMatch())
+					.setOutGroup(fm.getOutGroup()) // added in OF1.1
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					.setTableId(fm.getTableId())
+					.setXid(fm.getXid())
+					.build();
+		}
 	}
 
 	public static OFFlowModifyStrict toFlowModifyStrict(OFFlowMod fm) {
 		OFVersion version = fm.getVersion();
 		OFFlowModifyStrict.Builder b = OFFactories.getFactory(version).buildFlowModifyStrict();
-		return b.setActions(fm.getActions())
-				.setBufferId(fm.getBufferId())
-				.setCookie(fm.getCookie())
-				.setCookieMask(fm.getCookieMask())
-				.setFlags(fm.getFlags())
-				.setHardTimeout(fm.getHardTimeout())
-				.setIdleTimeout(fm.getIdleTimeout())
-				.setInstructions(fm.getInstructions())
-				.setMatch(fm.getMatch())
-				.setOutGroup(fm.getOutGroup())
-				.setOutPort(fm.getOutPort())
-				.setPriority(fm.getPriority())
-				.setTableId(fm.getTableId())
-				.setXid(fm.getXid())
-				.build();
+		if (b.getVersion().compareTo(OFVersion.OF_10) == 0) {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					// cookie-mask not supported
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					// instructions not supported
+					.setMatch(fm.getMatch())
+					// out-group not supported
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					// table-id not supported
+					.setXid(fm.getXid())
+					.build();
+		} else {
+			return b.setActions(fm.getActions())
+					.setBufferId(fm.getBufferId())
+					.setCookie(fm.getCookie())
+					.setCookieMask(fm.getCookieMask()) // added in OF1.1
+					.setFlags(fm.getFlags())
+					.setHardTimeout(fm.getHardTimeout())
+					.setIdleTimeout(fm.getIdleTimeout())
+					.setInstructions(fm.getInstructions()) // added in OF1.1
+					.setMatch(fm.getMatch())
+					.setOutGroup(fm.getOutGroup()) // added in OF1.1
+					.setOutPort(fm.getOutPort())
+					.setPriority(fm.getPriority())
+					.setTableId(fm.getTableId())
+					.setXid(fm.getXid())
+					.build();
+		}
 	}
 }

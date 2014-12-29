@@ -33,7 +33,7 @@ public class RoutingDecision implements IRoutingDecision {
 
     protected RoutingAction action;
     protected Match match;
-    protected short hardTimeout;
+    protected int hardTimeout;
     protected SwitchPort srcPort;
     protected IDevice srcDevice;
     protected List<IDevice> destDevices;
@@ -105,7 +105,7 @@ public class RoutingDecision implements IRoutingDecision {
     }
    
     @Override
-    public short getHardTimeout() {
+    public int getHardTimeout() {
         return hardTimeout;
     }
 
