@@ -173,7 +173,7 @@ public class LearningSwitch
      */
     public OFPort getFromPortMap(IOFSwitch sw, MacAddress mac, VlanVid vlan) {
         if (vlan == VlanVid.FULL_MASK) {
-            vlan = VlanVid.FULL_MASK;
+            vlan = VlanVid.ofVlan(0);
         }
         Map<MacVlanPair, OFPort> swMap = macVlanToSwitchPortMap.get(sw);
         if (swMap != null) {

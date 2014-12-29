@@ -191,7 +191,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 *        written to the switch
 	 * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
 	 *        OFFlowMod.OFPFC_MODIFY etc.
-	 * @return srcSwitchIincluded True if the source switch is included in this route
+	 * @return srcSwitchIncluded True if the source switch is included in this route
 	 */
 	@LogMessageDocs({
 		@LogMessageDoc(level="WARN",
