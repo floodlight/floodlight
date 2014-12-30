@@ -27,6 +27,7 @@ import java.util.Arrays;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.IpProtocol;
 
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -62,7 +63,7 @@ public class IPv4Test {
         IPv4 packet = new IPv4()
             .setIdentification((short) 24142)
             .setTtl((byte) 63)
-            .setProtocol((byte) 0x06)
+            .setProtocol(IpProtocol.of((byte) 0x06))
             .setSourceAddress("172.24.74.223")
             .setDestinationAddress("171.64.74.48");
         byte[] actual = packet.serialize();

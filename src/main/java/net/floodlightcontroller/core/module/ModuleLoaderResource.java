@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -53,6 +52,9 @@ public class ModuleLoaderResource extends ServerResource {
      */
     public Map<String, Object> retrieveInternal(boolean loadedOnly) {    
         Map<String, Object> model = new HashMap<String, Object>();
+        FloodlightModuleLoader floodlightModuleLoader =
+                (FloodlightModuleLoader) getContext().getAttributes().
+                get(FloodlightModuleLoader.class.getCanonicalName());
 
         Set<String> loadedModules = new HashSet<String>();
         for (Object val : getContext().getAttributes().values()) {
@@ -63,13 +65,11 @@ public class ModuleLoaderResource extends ServerResource {
         	}
         }
 
-        for (String moduleName : 
-        				FloodlightModuleLoader.moduleNameMap.keySet() ) {
+        for (String moduleName : floodlightModuleLoader.getModuleNameMap().keySet() ) {
         	Map<String,Object> moduleInfo = new HashMap<String, Object>();
 
         	IFloodlightModule module = 
-        				FloodlightModuleLoader.moduleNameMap.get(
-        						moduleName);
+        			floodlightModuleLoader.getModuleNameMap().get(moduleName);
         		
         	Collection<Class<? extends IFloodlightService>> deps = 
         			module.getModuleDependencies();

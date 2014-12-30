@@ -1,6 +1,6 @@
 package net.floodlightcontroller.core;
 
-import org.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 
 /**
  * Indicates that a message was passed to a switch driver's subhandshake

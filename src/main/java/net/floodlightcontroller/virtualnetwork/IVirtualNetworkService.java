@@ -17,8 +17,11 @@
 package net.floodlightcontroller.virtualnetwork;
 
 import java.util.Collection;
+
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.util.MACAddress;
 
 public interface IVirtualNetworkService extends IFloodlightService {
     /**
@@ -29,7 +32,7 @@ public interface IVirtualNetworkService extends IFloodlightService {
      * @param guid The ID of the network. Must be unique.
      * @param gateway The IP address of the network gateway, null if none.
      */
-    public void createNetwork(String guid, String network, Integer gateway);
+    public void createNetwork(String guid, String network, IPv4Address gateway);
     
     /**
      * Deletes a virtual network.
@@ -44,7 +47,7 @@ public interface IVirtualNetworkService extends IFloodlightService {
      * @param network The network to add the host to.
      * @param port The logical port name to attach the host to. Must be unique.
      */
-    public void addHost(MACAddress mac, String network, String port); 
+    public void addHost(MacAddress mac, String network, String port); 
     
     /**
      * Deletes a host from a virtual network. Either the MAC or Port must
@@ -52,7 +55,7 @@ public interface IVirtualNetworkService extends IFloodlightService {
      * @param mac The MAC address to delete.
      * @param port The logical port the host is attached to.
      */
-    public void deleteHost(MACAddress mac, String port);
+    public void deleteHost(MacAddress mac, String port);
     
     /**
      * Return list of all virtual networks.

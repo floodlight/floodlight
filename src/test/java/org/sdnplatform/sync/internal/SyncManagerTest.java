@@ -14,12 +14,15 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.NullDebugCounter;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -70,7 +73,8 @@ public class SyncManagerTest {
                                     SyncManager syncManager, Node thisNode)
             throws Exception {        
         fmc.addService(IThreadPoolService.class, tp);
-        fmc.addService(IDebugCounterService.class, new NullDebugCounter());
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         fmc.addConfigParam(syncManager, "configProviders", 
                            PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);

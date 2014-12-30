@@ -21,10 +21,11 @@ import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.capture;
+import static org.junit.Assert.*;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
-import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
@@ -34,19 +35,25 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.action.OFAction;
-import org.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  *
@@ -56,7 +63,7 @@ public class HubTest extends FloodlightTestCase {
     protected OFPacketIn packetIn;
     protected IPacket testPacket;
     protected byte[] testPacketSerialized;
-    private   MockFloodlightProvider mockFloodlightProvider;
+    private MockFloodlightProvider mockFloodlightProvider;
     private Hub hub;
     
     @Before
@@ -85,33 +92,36 @@ public class HubTest extends FloodlightTestCase {
         this.testPacketSerialized = testPacket.serialize();
 
         // Build the PacketIn
-        this.packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-            .setBufferId(-1)
-            .setInPort((short) 1)
-            .setPacketData(this.testPacketSerialized)
+        this.packetIn = (OFPacketIn) OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+            .setBufferId(OFBufferId.NO_BUFFER)
+            .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch()
+            		.setExact(MatchField.IN_PORT, OFPort.of(1))
+            		.build())
+            .setData(this.testPacketSerialized)
             .setReason(OFPacketInReason.NO_MATCH)
-            .setTotalLength((short) this.testPacketSerialized.length);
+            .setTotalLen((short) this.testPacketSerialized.length).build();
     }
 
     @Test
     public void testFloodNoBufferId() throws Exception {
-        // build our expected flooded packetOut
-        OFPacketOut po = ((OFPacketOut) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT))
-            .setActions(Arrays.asList(new OFAction[] {new OFActionOutput().setPort(OFPort.OFPP_FLOOD.getValue())}))
-            .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
-            .setBufferId(-1)
-            .setInPort((short) 1)
-            .setPacketData(this.testPacketSerialized);
-        po.setLengthU(OFPacketOut.MINIMUM_LENGTH + po.getActionsLengthU()
-                + this.testPacketSerialized.length);
-
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
+        
+        // build our expected flooded packetOut
+    	OFActionOutput ao = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput().setPort(OFPort.FLOOD).build();
+    	List<OFAction> al = new ArrayList<OFAction>();
+    	al.add(ao);
+        OFPacketOut po = OFFactories.getFactory(OFVersion.OF_13).buildPacketOut()
+            .setActions(al)
+            .setBufferId(OFBufferId.NO_BUFFER)
+            .setXid(1)
+            .setInPort(OFPort.of(1))
+            .setData(this.testPacketSerialized).build();
         
         Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<FloodlightContext> bc1 = new Capture<FloodlightContext>(CaptureType.ALL);
         
-        mockSwitch.write(capture(wc1), capture(bc1));
+        mockSwitch.write(capture(wc1));
 
         // Start recording the replay on the mocks
         replay(mockSwitch);
@@ -126,28 +136,33 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        assertEquals(po, m);
+        assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
     }
 
     @Test
     public void testFloodBufferId() throws Exception {
         MockFloodlightProvider mockFloodlightProvider = getMockFloodlightProvider();
-        this.packetIn.setBufferId(10);
+        this.packetIn = this.packetIn.createBuilder()
+        		.setBufferId(OFBufferId.of(10))
+        		.setXid(1)
+        		.build();
 
+        OFActionOutput ao = OFFactories.getFactory(OFVersion.OF_13).actions().buildOutput().setPort(OFPort.FLOOD).build();
+    	List<OFAction> al = new ArrayList<OFAction>();
+    	al.add(ao);
         // build our expected flooded packetOut
-        OFPacketOut po = ((OFPacketOut) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT))
-            .setActions(Arrays.asList(new OFAction[] {new OFActionOutput().setPort(OFPort.OFPP_FLOOD.getValue())}))
-            .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH)
-            .setBufferId(10)
-            .setInPort((short) 1);
-        po.setLengthU(OFPacketOut.MINIMUM_LENGTH + po.getActionsLengthU());
+        OFPacketOut po = OFFactories.getFactory(OFVersion.OF_13).buildPacketOut()
+        	.setActions(al)
+            .setXid(1)
+            .setBufferId(OFBufferId.of(10))
+            .setInPort(OFPort.of(1))
+            .build();
 
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<FloodlightContext> bc1 = new Capture<FloodlightContext>(CaptureType.ALL);
-        
-        mockSwitch.write(capture(wc1), capture(bc1));
+        EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
+        Capture<OFPacketOut> wc1 = new Capture<OFPacketOut>(CaptureType.ALL);
+        mockSwitch.write(capture(wc1));
 
         // Start recording the replay on the mocks
         replay(mockSwitch);

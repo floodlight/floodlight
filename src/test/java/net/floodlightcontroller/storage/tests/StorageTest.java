@@ -23,13 +23,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IStorageExceptionHandler;
@@ -44,7 +48,6 @@ import net.floodlightcontroller.storage.RowOrdering;
 import net.floodlightcontroller.storage.nosql.NoSqlStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 
-import org.junit.Test;
 
 public abstract class StorageTest extends FloodlightTestCase {
     
@@ -145,6 +148,7 @@ public abstract class StorageTest extends FloodlightTestCase {
         indexedColumnNames.add(PERSON_FIRST_NAME);
         indexedColumnNames.add(PERSON_LAST_NAME);
         storageSource.setExceptionHandler(null);
+        storageSource.setDebugCounterService(new MockDebugCounterService());
         storageSource.createTable(PERSON_TABLE_NAME, indexedColumnNames);
         storageSource.setTablePrimaryKeyName(PERSON_TABLE_NAME, PERSON_SSN);        
         initPersons();

@@ -160,7 +160,7 @@ public class ListenerStorageEngine
 
     protected void updateCounter(IDebugCounter counter) {
         if (debugCounter != null) {
-            counter.updateCounterWithFlush();
+            counter.increment();
         }
     }
 }

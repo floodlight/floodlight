@@ -1,38 +1,38 @@
 package net.floodlightcontroller.debugcounter;
 
+/**
+ * A concurrent counter.
+ * The counter returned when registering a counter. The counter value
+ * is a positive long. The counter cannot be decremented, but it can be
+ * reset to 0. The counter does not protect against overflow. If the
+ * value exceeds MAX_LONG it will silently overflow to MIN_LONG
+ * @author gregor
+ *
+ */
 public interface IDebugCounter {
     /**
-     * Increments the counter by 1 thread-locally, and immediately flushes to
-     * the global counter storage. This method should be used for counters that
-     * are updated outside the OF message processing pipeline.
+     * Increment this counter by 1.
      */
-    void updateCounterWithFlush();
+    void increment();
 
     /**
-     * Increments the counter by 1 thread-locally. Flushing to the global
-     * counter storage is delayed (happens with flushCounters() in IDebugCounterService),
-     * resulting in higher performance. This method should be used for counters
-     * updated in the OF message processing pipeline.
+     * Add the given increment to this counter
+     * @param incr
      */
-    void updateCounterNoFlush();
+    void add(long incr);
 
     /**
-     * Increments the counter thread-locally by the 'incr' specified, and immediately
-     * flushes to the global counter storage. This method should be used for counters
-     * that are updated outside the OF message processing pipeline.
-     */
-    void updateCounterWithFlush(int incr);
-
-    /**
-     * Increments the counter thread-locally by the 'incr' specified. Flushing to the global
-     * counter storage is delayed (happens with flushCounters() in IDebugCounterService),
-     * resulting in higher performance. This method should be used for counters
-     * updated in the OF message processing pipeline.
-     */
-    void updateCounterNoFlush(int incr);
-
-    /**
-     * Retrieve the value of the counter from the global counter store
+     * Retrieve the value of the counter.
      */
     long getCounterValue();
+    
+    /**
+     * Retrieve the last-modified date of the counter.
+     */
+    long getLastModified();
+
+    /**
+     * Reset the value of the counter to 0.
+     */
+	void reset();
 }

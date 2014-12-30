@@ -20,10 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
@@ -32,24 +34,24 @@ public class EnabledPortsResource extends ServerResource {
     public List<NodePortTuple> retrieve() {
         List<NodePortTuple> result = new ArrayList<NodePortTuple>();
 
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                get(IFloodlightProviderService.class.getCanonicalName());
+        IOFSwitchService switchService =
+                (IOFSwitchService) getContext().getAttributes().
+                get(IOFSwitchService.class.getCanonicalName());
 
-        ITopologyService topology=
-                (ITopologyService)getContext().getAttributes().
+        ITopologyService topologyService =
+                (ITopologyService) getContext().getAttributes().
                 get(ITopologyService.class.getCanonicalName());
 
-        if (floodlightProvider == null || topology == null)
+        if (switchService == null || topologyService == null)
             return result;
 
-        Set<Long> switches = floodlightProvider.getAllSwitchDpids();
+        Set<DatapathId> switches = switchService.getAllSwitchDpids();
         if (switches == null) return result;
 
-        for(long sw: switches) {
-            Set<Short> ports = topology.getPorts(sw);
+        for(DatapathId sw: switches) {
+            Set<OFPort> ports = topologyService.getPorts(sw);
             if (ports == null) continue;
-            for(short p: ports) {
+            for(OFPort p: ports) {
                 result.add(new NodePortTuple(sw, p));
             }
         }

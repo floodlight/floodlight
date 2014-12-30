@@ -1,9 +1,12 @@
 package net.floodlightcontroller.core.internal;
 
-import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFConnectionBackend;
+import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
+import net.floodlightcontroller.core.SwitchDescription;
 
-import org.openflow.protocol.statistics.OFDescriptionStatistics;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.types.DatapathId;
 
 /**
  * Maintain a registry for SwitchDrivers. Drivers can register with the
@@ -27,7 +30,7 @@ public interface ISwitchDriverRegistry {
      *
      * @param manufacturerDescriptionPrefix Register the given prefix
      * with the driver.
-     * @param driver A IOFSwitchDriver instance to handle IOFSwitch instaniation
+     * @param driver A IOFSwitchDriver instance to handle IOFSwitch instantiation
      * for the given manufacturer description prefix
      * @throws IllegalStateException If the the manufacturer description is
      * already registered
@@ -37,7 +40,7 @@ public interface ISwitchDriverRegistry {
     void addSwitchDriver(String manufacturerDescriptionPrefix,
                          IOFSwitchDriver driver);
     /**
-     * Return an IOFSwitch instance according to the description stats.
+     * Return an IOFSwitch instance according to the switch description.
      *
      * The driver with the <i>longest matching prefix</i> will be picked first.
      * The description is then handed over to the choosen driver to return an
@@ -47,14 +50,18 @@ public interface ISwitchDriverRegistry {
      * IOFSwitch instance the registry returns a default OFSwitchImpl instance.
      *
      * The returned switch will have its description reply and
-     * switch properties set according to the DescriptionStats passed in
+     * switch properties set according to the SwitchDescription passed in
      *
-     * @param description The OFDescriptionStatistics for which to return an
+     *@param connection The main OF connection
+     * @param description The SwitchDescription for which to return an
      * IOFSwitch implementation
+     * @param factory The factory to use to create OF messages.
+     * @param datapathId
+     * @param debugCounterService; used to create a new switch if one does not exist
      * @return A IOFSwitch implementation matching the description or an
      * OFSwitchImpl if no driver returned a more concrete instance.
-     * @throws NullPointerException If the OFDescriptionStatistics or any
-     * of its members is null.
+     * @throws NullPointerException If the SwitchDescription or any of its
+     * members is null.
      */
-    IOFSwitch getOFSwitchInstance(OFDescriptionStatistics description);
+    IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection, SwitchDescription description, OFFactory factory, DatapathId datapathId);
 }

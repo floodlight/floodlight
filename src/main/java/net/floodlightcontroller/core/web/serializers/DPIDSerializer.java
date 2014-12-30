@@ -23,18 +23,17 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.openflow.util.HexString;
-
+import org.projectfloodlight.openflow.types.DatapathId;
 /**
  * Serialize a DPID as colon-separated hexadecimal
  */
-public class DPIDSerializer extends JsonSerializer<Long> {
+public class DPIDSerializer extends JsonSerializer<DatapathId> {
 
     @Override
-    public void serialize(Long dpid, JsonGenerator jGen,
+    public void serialize(DatapathId dpid, JsonGenerator jGen,
                           SerializerProvider serializer)
                                   throws IOException, JsonProcessingException {
-        jGen.writeString(HexString.toHexString(dpid, 8));
+        jGen.writeString(dpid.toString());
     }
 
 }

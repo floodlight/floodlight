@@ -184,7 +184,6 @@ public class SyncTorture implements IFloodlightModule {
                     logger.error("Error in worker: ", e);
                 }
                 long iterend = System.currentTimeMillis();
-                debugCounter.flushCounters();
                 logger.info("Completed iteration of {} values in {}ms" + 
                             " ({}/s)", 
                             new Object[]{values.size(), (iterend-start),

@@ -74,11 +74,11 @@ public class DeviceMultiIndex extends DeviceIndex {
     }
     
     @Override
-    public void updateIndex(Entity entity, Long deviceKey) {
+    public boolean updateIndex(Entity entity, Long deviceKey) {
         Collection<Long> devices = null;
 
         IndexedEntity ie = new IndexedEntity(keyFields, entity);
-        if (!ie.hasNonNullKeys()) return;
+        if (!ie.hasNonNullKeys()) return false;
 
         devices = index.get(ie);
         if (devices == null) {
@@ -90,6 +90,7 @@ public class DeviceMultiIndex extends DeviceIndex {
         }
         
         devices.add(deviceKey);
+        return true;
     }
 
     @Override

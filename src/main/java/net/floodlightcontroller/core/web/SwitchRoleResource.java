@@ -18,12 +18,12 @@ package net.floodlightcontroller.core.web;
 
 import java.util.HashMap;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.ServerResource;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.RoleInfo;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.restlet.resource.Get;
 import org.slf4j.Logger;
@@ -35,29 +35,25 @@ public class SwitchRoleResource extends ServerResource {
 
     @Get("json")
     public Object getRole() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+    	IOFSwitchService switchService =
+                (IOFSwitchService)getContext().getAttributes().
+                    get(IOFSwitchService.class.getCanonicalName());
 
-        String switchId = (String) getRequestAttributes().get("switchId");
+        String switchId = (String) getRequestAttributes().get(CoreWebRoutable.STR_SWITCH_ID);
 
-        RoleInfo roleInfo;
-
-        if (switchId.equalsIgnoreCase("all")) {
-            HashMap<String,RoleInfo> model = new HashMap<String,RoleInfo>();
-            for (IOFSwitch sw: floodlightProvider.getAllSwitchMap().values()) {
-                switchId = sw.getStringId();
-                roleInfo = new RoleInfo(sw.getHARole(), null);
-                model.put(switchId, roleInfo);
+        if (switchId.equalsIgnoreCase(CoreWebRoutable.STR_ALL)) {
+            HashMap<String, OFControllerRole> model = new HashMap<String, OFControllerRole>();
+            for (IOFSwitch sw: switchService.getAllSwitchMap().values()) {
+                switchId = sw.getId().toString();
+                model.put(switchId, sw.getControllerRole());
             }
             return model;
         }
 
-        Long dpid = HexString.toLong(switchId);
-        IOFSwitch sw = floodlightProvider.getSwitch(dpid);
+        DatapathId dpid = DatapathId.of(switchId);
+        IOFSwitch sw = switchService.getSwitch(dpid);
         if (sw == null)
             return null;
-        roleInfo = new RoleInfo(sw.getHARole(), null);
-        return roleInfo;
+        return sw.getControllerRole();
     }
 }

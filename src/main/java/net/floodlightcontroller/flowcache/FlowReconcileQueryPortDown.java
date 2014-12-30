@@ -16,22 +16,24 @@
 
 package net.floodlightcontroller.flowcache;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  * The Class for FlowReconcileQuery for link down event.
  */
+@Deprecated
 public class FlowReconcileQueryPortDown extends FlowReconcileQuery {
     /*down port switch DPID*/
-    public long swId;
+    public DatapathId swId;
     /*down port ID */
-    public short port;
+    public OFPort port;
 
     public FlowReconcileQueryPortDown() {
         super(ReconcileQueryEvType.LINK_DOWN);
     }
 
-    public FlowReconcileQueryPortDown(long swId, short portDown) {
+    public FlowReconcileQueryPortDown(DatapathId swId, OFPort portDown) {
         this();
         this.swId = swId;
         this.port = portDown;
@@ -41,8 +43,8 @@ public class FlowReconcileQueryPortDown extends FlowReconcileQuery {
     public int hashCode() {
         final int prime = 347;
         int result = super.hashCode();
-        result = prime * result + (int)swId;
-        result = prime * result + port;
+        result = prime * result + (int) swId.getLong();
+        result = prime * result + port.getPortNumber();
         return result;
     }
 
@@ -68,9 +70,9 @@ public class FlowReconcileQueryPortDown extends FlowReconcileQuery {
         StringBuilder builder = new StringBuilder();
         builder.append("[");
         builder.append("Switch: ");
-        builder.append(HexString.toHexString(swId));
+        builder.append(swId.toString());
         builder.append(", Port: ");
-        builder.append(port);
+        builder.append(port.getPortNumber());
         builder.append("]");
         return builder.toString();
     }

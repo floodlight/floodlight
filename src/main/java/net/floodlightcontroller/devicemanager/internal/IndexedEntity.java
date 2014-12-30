@@ -89,8 +89,8 @@ public class IndexedEntity {
             switch (f) {
                 case MAC:
                     hashCode = prime * hashCode
-                        + (int) (entity.macAddress ^ 
-                                (entity.macAddress >>> 32));
+                        + (int) (entity.macAddress.getLong() ^ 
+                                (entity.macAddress.getLong() >>> 32));
                     break;
                 case IPV4:
                     hashCode = prime * hashCode
@@ -134,32 +134,28 @@ public class IndexedEntity {
         for (IDeviceService.DeviceField f : keyFields) {
             switch (f) {
                 case MAC:
-                    if (entity.macAddress != other.entity.macAddress)
+                    if (!entity.macAddress.equals(other.entity.macAddress))
                         return false;
                     break;
                 case IPV4:
                     if (entity.ipv4Address == null) {
                         if (other.entity.ipv4Address != null) return false;
-                    } else if (!entity.ipv4Address.
-                            equals(other.entity.ipv4Address)) return false;
+                    } else if (!entity.ipv4Address.equals(other.entity.ipv4Address)) return false;
                     break;
                 case SWITCH:
                     if (entity.switchDPID == null) {
                         if (other.entity.switchDPID != null) return false;
-                    } else if (!entity.switchDPID.
-                            equals(other.entity.switchDPID)) return false;
+                    } else if (!entity.switchDPID.equals(other.entity.switchDPID)) return false;
                     break;
                 case PORT:
                     if (entity.switchPort == null) {
                         if (other.entity.switchPort != null) return false;
-                    } else if (!entity.switchPort.
-                            equals(other.entity.switchPort)) return false;
+                    } else if (!entity.switchPort.equals(other.entity.switchPort)) return false;
                     break;
                 case VLAN:
                     if (entity.vlan == null) {
                         if (other.entity.vlan != null) return false;
-                    } else if (!entity.vlan.
-                            equals(other.entity.vlan)) return false;
+                    } else if (!entity.vlan.equals(other.entity.vlan)) return false;
                     break;
             }
         }

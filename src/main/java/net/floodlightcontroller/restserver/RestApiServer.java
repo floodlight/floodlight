@@ -113,6 +113,11 @@ public class RestApiServer
                                             fmlContext.getServiceImpl(s));
             }
             
+            /*
+             * Specifically add the FML for use by the REST API's /wm/core/modules/...
+             */
+            context.getAttributes().put(fmlContext.getModuleLoader().getClass().getCanonicalName(), fmlContext.getModuleLoader());
+            
             // Start listening for REST requests
             try {
                 final Component component = new Component();

@@ -20,48 +20,48 @@ import java.util.HashMap;
 
 import net.floodlightcontroller.routing.Link;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 
 public class BroadcastTree {
-    protected HashMap<Long, Link> links;
-    protected HashMap<Long, Integer> costs;
+    protected HashMap<DatapathId, Link> links;
+    protected HashMap<DatapathId, Integer> costs;
 
     public BroadcastTree() {
-        links = new HashMap<Long, Link>();
-        costs = new HashMap<Long, Integer>();
+        links = new HashMap<DatapathId, Link>();
+        costs = new HashMap<DatapathId, Integer>();
     }
 
-    public BroadcastTree(HashMap<Long, Link> links, HashMap<Long, Integer> costs) {
+    public BroadcastTree(HashMap<DatapathId, Link> links, HashMap<DatapathId, Integer> costs) {
         this.links = links;
         this.costs = costs;
     }
 
-    public Link getTreeLink(long node) {
+    public Link getTreeLink(DatapathId node) {
         return links.get(node);
     }
 
-    public int getCost(long node) {
+    public int getCost(DatapathId node) {
         if (costs.get(node) == null) return -1;
         return (costs.get(node));
     }
 
-    public HashMap<Long, Link> getLinks() {
+    public HashMap<DatapathId, Link> getLinks() {
         return links;
     }
 
-    public void addTreeLink(long myNode, Link link) {
+    public void addTreeLink(DatapathId myNode, Link link) {
         links.put(myNode, link);
     }
 
     public String toString() {
         StringBuffer sb = new StringBuffer();
-        for(long n: links.keySet()) {
-            sb.append("[" + HexString.toHexString(n) + ": cost=" + costs.get(n) + ", " + links.get(n) + "]");
+        for(DatapathId n: links.keySet()) {
+            sb.append("[" + n.toString() + ": cost=" + costs.get(n) + ", " + links.get(n) + "]");
         }
         return sb.toString();
     }
 
-    public HashMap<Long, Integer> getCosts() {
+    public HashMap<DatapathId, Integer> getCosts() {
         return costs;
     }
 }

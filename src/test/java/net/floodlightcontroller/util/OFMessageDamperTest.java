@@ -18,24 +18,22 @@ package net.floodlightcontroller.util;
 
 import static org.junit.Assert.*;
 
-import net.floodlightcontroller.core.FloodlightContext;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFEchoRequest;
-import org.openflow.protocol.OFHello;
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.factory.BasicFactory;
-import org.openflow.protocol.factory.OFMessageFactory;
+import org.projectfloodlight.openflow.protocol.OFEchoRequest;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFHello;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 
 import java.io.IOException;
 import java.util.EnumSet;
 
 public class OFMessageDamperTest {
-    OFMessageFactory factory;
+    OFFactory factory;
     OFMessageDamper damper;
-    FloodlightContext cntx;
     
     OFMessageDamperMockSwitch sw1;
     OFMessageDamperMockSwitch sw2;
@@ -50,39 +48,30 @@ public class OFMessageDamperTest {
     
     @Before
     public void setUp() throws IOException {
-        factory = BasicFactory.getInstance();
-        cntx = new FloodlightContext();
+        factory = OFFactories.getFactory(OFVersion.OF_13);
         
         sw1 = new OFMessageDamperMockSwitch();
         sw2 = new OFMessageDamperMockSwitch();
         
-        echoRequst1 = (OFEchoRequest)factory.getMessage(OFType.ECHO_REQUEST);
-        echoRequst1.setPayload(new byte[] { 1 });
-        echoRequst1Clone = (OFEchoRequest)
-                factory.getMessage(OFType.ECHO_REQUEST);
-        echoRequst1Clone.setPayload(new byte[] { 1 });
-        echoRequst2 = (OFEchoRequest)factory.getMessage(OFType.ECHO_REQUEST);
-        echoRequst2.setPayload(new byte[] { 2 });
+        echoRequst1 = factory.buildEchoRequest().setData(new byte[] { 1 }).build();
+        echoRequst1Clone = echoRequst1.createBuilder().build();
+        echoRequst2 = factory.buildEchoRequest().setData(new byte[] { 2 }).build();
         
-        hello1 = (OFHello)factory.getMessage(OFType.HELLO);
-        hello1.setXid(1);
-        hello2 = (OFHello)factory.getMessage(OFType.HELLO);
-        hello2.setXid(2);
-        
+        hello1 = factory.buildHello().setXid(1L).build();
+        hello2 = factory.buildHello().setXid(2L).build();
     }
     
     protected void doWrite(boolean expectWrite, 
                            OFMessageDamperMockSwitch sw, 
-                           OFMessage msg,
-                           FloodlightContext cntx) throws IOException {
+                           OFMessage msg) throws IOException {
         
         boolean result;
         sw.reset();
-        result = damper.write(sw, msg, cntx);
+        result = damper.write(sw, msg);
         
         if (expectWrite) {
             assertEquals(true, result);
-            sw.assertMessageWasWritten(msg, cntx);
+            sw.assertMessageWasWritten(msg);
         } else {
             assertEquals(false, result);
             sw.assertNoMessageWritten();
@@ -101,26 +90,26 @@ public class OFMessageDamperTest {
         
         
         // echo requests should be dampened 
-        doWrite(true, sw1, echoRequst1, cntx);
-        doWrite(false, sw1, echoRequst1, cntx);
-        doWrite(false, sw1, echoRequst1Clone, cntx);
-        doWrite(true, sw1, echoRequst2, cntx);
-        doWrite(false, sw1, echoRequst2, cntx);
+        doWrite(true, sw1, echoRequst1);
+        doWrite(false, sw1, echoRequst1);
+        doWrite(false, sw1, echoRequst1Clone);
+        doWrite(true, sw1, echoRequst2);
+        doWrite(false, sw1, echoRequst2);
         
         // we don't dampen hellos. All should succeed 
-        doWrite(true, sw1, hello1, cntx);
-        doWrite(true, sw1, hello1, cntx);
-        doWrite(true, sw1, hello1, cntx);
+        doWrite(true, sw1, hello1);
+        doWrite(true, sw1, hello1);
+        doWrite(true, sw1, hello1);
         
         // echo request should also be dampened on sw2
-        doWrite(true, sw2, echoRequst1, cntx);
-        doWrite(false, sw2, echoRequst1, cntx);
-        doWrite(true, sw2, echoRequst2, cntx);
+        doWrite(true, sw2, echoRequst1);
+        doWrite(false, sw2, echoRequst1);
+        doWrite(true, sw2, echoRequst2);
         
         
         Thread.sleep(sleepTime);
-        doWrite(true, sw1, echoRequst1, cntx);
-        doWrite(true, sw2, echoRequst1, cntx);
+        doWrite(true, sw1, echoRequst1);
+        doWrite(true, sw2, echoRequst1);
         
     }
     
@@ -136,31 +125,31 @@ public class OFMessageDamperTest {
         
         
         // echo requests should be dampened 
-        doWrite(true, sw1, echoRequst1, cntx);
-        doWrite(false, sw1, echoRequst1, cntx);
-        doWrite(false, sw1, echoRequst1Clone, cntx);
-        doWrite(true, sw1, echoRequst2, cntx);
-        doWrite(false, sw1, echoRequst2, cntx);
+        doWrite(true, sw1, echoRequst1);
+        doWrite(false, sw1, echoRequst1);
+        doWrite(false, sw1, echoRequst1Clone);
+        doWrite(true, sw1, echoRequst2);
+        doWrite(false, sw1, echoRequst2);
         
         // hello should be dampened as well
-        doWrite(true, sw1, hello1, cntx);
-        doWrite(false, sw1, hello1, cntx);
-        doWrite(false, sw1, hello1, cntx);
+        doWrite(true, sw1, hello1);
+        doWrite(false, sw1, hello1);
+        doWrite(false, sw1, hello1);
         
-        doWrite(true, sw1, hello2, cntx);
-        doWrite(false, sw1, hello2, cntx);
-        doWrite(false, sw1, hello2, cntx);
+        doWrite(true, sw1, hello2);
+        doWrite(false, sw1, hello2);
+        doWrite(false, sw1, hello2);
         
         // echo request should also be dampened on sw2
-        doWrite(true, sw2, echoRequst1, cntx);
-        doWrite(false, sw2, echoRequst1, cntx);
-        doWrite(true, sw2, echoRequst2, cntx);
+        doWrite(true, sw2, echoRequst1);
+        doWrite(false, sw2, echoRequst1);
+        doWrite(true, sw2, echoRequst2);
         
         Thread.sleep(sleepTime);
-        doWrite(true, sw1, echoRequst1, cntx);
-        doWrite(true, sw2, echoRequst1, cntx);
-        doWrite(true, sw1, hello1, cntx);
-        doWrite(true, sw1, hello2, cntx);
+        doWrite(true, sw1, echoRequst1);
+        doWrite(true, sw2, echoRequst1);
+        doWrite(true, sw1, hello1);
+        doWrite(true, sw1, hello2);
     }
     
 }

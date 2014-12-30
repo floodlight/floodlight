@@ -30,6 +30,6 @@ public class LoadedModuleLoaderResource extends ModuleLoaderResource {
 	 */
     @Get("json")
     public Map<String, Object> retrieve() {
-    	return retrieveInternal(true);
+    	return retrieveInternal(false);
     }
 }

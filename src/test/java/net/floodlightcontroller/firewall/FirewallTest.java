@@ -20,6 +20,7 @@ package net.floodlightcontroller.firewall;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
+import static org.junit.Assert.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,10 @@ import java.util.Map;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
@@ -42,15 +46,23 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.util.MACAddress;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketIn.OFPacketInReason;
-import org.openflow.protocol.OFType;
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 /**
  * Unit test for stateless firewall implemented as a Google Summer of Code project.
@@ -68,6 +80,7 @@ public class FirewallTest extends FloodlightTestCase {
     protected IPacket tcpPacketReply;
     protected IPacket broadcastMalformedPacket;
     private Firewall firewall;
+    private MockDebugCounterService debugCounterService;
     public static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
 
     @Override
@@ -76,31 +89,37 @@ public class FirewallTest extends FloodlightTestCase {
         super.setUp();
         cntx = new FloodlightContext();
         mockFloodlightProvider = getMockFloodlightProvider();
+        mockSwitchManager = getMockSwitchService();
+        debugCounterService = new MockDebugCounterService(); 
         firewall = new Firewall();
-        IStorageSourceService storageService = new MemoryStorageSource();
+        MemoryStorageSource storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
 
         // Mock switches
-        long dpid = HexString.toLong(TestSwitch1DPID);
+        DatapathId dpid = DatapathId.of(TestSwitch1DPID);
         sw = EasyMock.createNiceMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(dpid).anyTimes();
-        expect(sw.getStringId()).andReturn(TestSwitch1DPID).anyTimes();
+        expect(sw.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         replay(sw);
         // Load the switch map
-        Map<Long, IOFSwitch> switches = new HashMap<Long, IOFSwitch>();
+        Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
         switches.put(dpid, sw);
-        mockFloodlightProvider.setSwitches(switches);
+        mockSwitchManager.setSwitches(switches);
 
         FloodlightModuleContext fmc = new FloodlightModuleContext();
-        fmc.addService(IFloodlightProviderService.class,
-                mockFloodlightProvider);
+        fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IDebugCounterService.class, debugCounterService);
+        fmc.addService(IOFSwitchService.class, mockSwitchManager);
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);
 
+        debugCounterService.init(fmc);
+        storageService.init(fmc);
         restApi.init(fmc);
-
         firewall.init(fmc);
+        debugCounterService.startUp(fmc);
+        storageService.startUp(fmc);
         firewall.startUp(fmc);
 
         // Build our test packet
@@ -208,13 +227,12 @@ public class FirewallTest extends FloodlightTestCase {
     protected void setPacketIn(IPacket packet) {
         byte[] serializedPacket = packet.serialize();
         // Build the PacketIn
-        this.packetIn = ((OFPacketIn) mockFloodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_IN))
-                .setBufferId(-1)
-                .setInPort((short) 1)
-                .setPacketData(serializedPacket)
+        this.packetIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
+                .setData(serializedPacket)
                 .setReason(OFPacketInReason.NO_MATCH)
-                .setTotalLength((short) serializedPacket.length);
-
+                .build();
         // Add the packet to the context store
         IFloodlightProviderService.bcStore.
         put(cntx,
@@ -242,19 +260,19 @@ public class FirewallTest extends FloodlightTestCase {
     public void testReadRulesFromStorage() throws Exception {
         // add 2 rules first
         FirewallRule rule = new FirewallRule();
-        rule.in_port = 2;
-        rule.dl_src = MACAddress.valueOf("00:00:00:00:00:01").toLong();
-        rule.dl_dst = MACAddress.valueOf("00:00:00:00:00:02").toLong();
+        rule.in_port = OFPort.of(2);
+        rule.dl_src = MacAddress.of("00:00:00:00:00:01");
+        rule.dl_dst = MacAddress.of("00:00:00:00:00:02");
         rule.priority = 1;
-        rule.action = FirewallRule.FirewallAction.DENY;
+        rule.action = FirewallRule.FirewallAction.DROP;
         firewall.addRule(rule);
         rule = new FirewallRule();
-        rule.in_port = 3;
-        rule.dl_src = MACAddress.valueOf("00:00:00:00:00:02").toLong();
-        rule.dl_dst = MACAddress.valueOf("00:00:00:00:00:01").toLong();
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
-        rule.tp_dst = 80;
+        rule.in_port = OFPort.of(3);
+        rule.dl_src = MacAddress.of("00:00:00:00:00:02");
+        rule.dl_dst = MacAddress.of("00:00:00:00:00:01");
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
+        rule.tp_dst = TransportPort.of(80);
         rule.priority = 2;
         rule.action = FirewallRule.FirewallAction.ALLOW;
         firewall.addRule(rule);
@@ -262,20 +280,20 @@ public class FirewallTest extends FloodlightTestCase {
         List<FirewallRule> rules = firewall.readRulesFromStorage();
         // verify rule 1
         FirewallRule r = rules.get(0);
-        assertEquals(r.in_port, 2);
+        assertEquals(r.in_port, OFPort.of(2));
         assertEquals(r.priority, 1);
-        assertEquals(r.dl_src, MACAddress.valueOf("00:00:00:00:00:01").toLong());
-        assertEquals(r.dl_dst, MACAddress.valueOf("00:00:00:00:00:02").toLong());
-        assertEquals(r.action, FirewallRule.FirewallAction.DENY);
+        assertEquals(r.dl_src, MacAddress.of("00:00:00:00:00:01"));
+        assertEquals(r.dl_dst, MacAddress.of("00:00:00:00:00:02"));
+        assertEquals(r.action, FirewallRule.FirewallAction.DROP);
         // verify rule 2
         r = rules.get(1);
-        assertEquals(r.in_port, 3);
+        assertEquals(r.in_port, OFPort.of(3));
         assertEquals(r.priority, 2);
-        assertEquals(r.dl_src, MACAddress.valueOf("00:00:00:00:00:02").toLong());
-        assertEquals(r.dl_dst, MACAddress.valueOf("00:00:00:00:00:01").toLong());
-        assertEquals(r.nw_proto, IPv4.PROTOCOL_TCP);
-        assertEquals(r.tp_dst, 80);
-        assertEquals(r.wildcard_nw_proto, false);
+        assertEquals(r.dl_src, MacAddress.of("00:00:00:00:00:02"));
+        assertEquals(r.dl_dst, MacAddress.of("00:00:00:00:00:01"));
+        assertEquals(r.nw_proto, IpProtocol.TCP);
+        assertEquals(r.tp_dst, TransportPort.of(80));
+        assertEquals(r.any_nw_proto, false);
         assertEquals(r.action, FirewallRule.FirewallAction.ALLOW);
     }
 
@@ -283,8 +301,8 @@ public class FirewallTest extends FloodlightTestCase {
     public void testRuleInsertionIntoStorage() throws Exception {
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -297,8 +315,8 @@ public class FirewallTest extends FloodlightTestCase {
     public void testRuleDeletion() throws Exception {
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
         int rid = rule.ruleid;
@@ -320,8 +338,8 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -342,17 +360,16 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP rule
         FirewallRule rule = new FirewallRule();
-        rule.dl_type = Ethernet.TYPE_IPv4;
-        rule.wildcard_dl_type = false;
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
+        rule.dl_type = EthType.IPv4;
+        rule.any_dl_type = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
         // source is IP 192.168.1.2
-        rule.nw_src_prefix = IPv4.toIPv4Address("192.168.1.2");
-        rule.wildcard_nw_src = false;
+        rule.nw_src_prefix_and_mask = IPv4AddressWithMask.of("192.168.1.2/32");
+        rule.any_nw_src = false;
         // dest is network 192.168.1.0/24
-        rule.nw_dst_prefix = IPv4.toIPv4Address("192.168.1.0");
-        rule.nw_dst_maskbits = 24;
-        rule.wildcard_nw_dst = false;
+        rule.nw_dst_prefix_and_mask = IPv4AddressWithMask.of("192.168.1.0/24");
+        rule.any_nw_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
@@ -363,7 +380,7 @@ public class FirewallTest extends FloodlightTestCase {
         verify(sw);
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD, decision.getRoutingAction());
 
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -373,7 +390,7 @@ public class FirewallTest extends FloodlightTestCase {
         verify(sw);
 
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-        assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+        assertEquals(IRoutingDecision.RoutingAction.DROP, decision.getRoutingAction());
     }
 
     @Test
@@ -382,17 +399,17 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add TCP port 80 (destination only) allow rule
         FirewallRule rule = new FirewallRule();
-        rule.dl_type = Ethernet.TYPE_IPv4;
-        rule.wildcard_dl_type = false;
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
-        rule.tp_dst = 80;
+        rule.dl_type = EthType.IPv4;
+        rule.any_dl_type = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
+        rule.tp_dst = TransportPort.of(80);
         rule.priority = 1;
         firewall.addRule(rule);
 
         // add block all rule
         rule = new FirewallRule();
-        rule.action = FirewallRule.FirewallAction.DENY;
+        rule.action = FirewallRule.FirewallAction.DROP;
         rule.priority = 2;
         firewall.addRule(rule);
 
@@ -497,19 +514,19 @@ public class FirewallTest extends FloodlightTestCase {
 
         // add L2 rule
         FirewallRule rule = new FirewallRule();
-        rule.dl_src = MACAddress.valueOf("00:44:33:22:11:00").toLong();
-        rule.wildcard_dl_src = false;
-        rule.dl_dst = MACAddress.valueOf("00:11:22:33:44:55").toLong();
-        rule.wildcard_dl_dst = false;
+        rule.dl_src = MacAddress.of("00:44:33:22:11:00");
+        rule.any_dl_src = false;
+        rule.dl_dst = MacAddress.of("00:11:22:33:44:55");
+        rule.any_dl_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
 
         // add TCP deny all rule
         rule = new FirewallRule();
-        rule.nw_proto = IPv4.PROTOCOL_TCP;
-        rule.wildcard_nw_proto = false;
+        rule.nw_proto = IpProtocol.TCP;
+        rule.any_nw_proto = false;
         rule.priority = 2;
-        rule.action = FirewallRule.FirewallAction.DENY;
+        rule.action = FirewallRule.FirewallAction.DROP;
         firewall.addRule(rule);
 
         // simulate a packet-in event
