@@ -17,8 +17,6 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 /**
  * Convert OFInstructions to and from dpctl/ofctl-style strings.
  * Used primarily by the static flow pusher to store and retreive
@@ -322,8 +320,9 @@ public class InstructionUtils {
 	 * @param instStr; The string to parse the instruction from
 	 * @param log
 	 */
-	public static void experimenterFromString(OFFlowMod.Builder fmb, String inst, Logger log) throws NotImplementedException {
-		throw new NotImplementedException();
+	public static void experimenterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+		/* TODO This is a no-op right now. */
+		
 		/*
 		if (inst == null || inst.equals("")) {
 			return; // TODO @Ryan quietly fail?
