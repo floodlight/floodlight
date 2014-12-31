@@ -1,88 +1,26 @@
 package net.floodlightcontroller.debugcounter;
 
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.debugcounter.DebugCounter.DebugCounterInfo;
-
 import java.util.List;
 
+import net.floodlightcontroller.core.module.IFloodlightService;
+
 public interface IDebugCounterService extends IFloodlightService {
-
-    /**
-     * Different counter types. Counters that are meant to be counted-on-demand
-     * need to be separately enabled/disabled.
-     */
-    public enum CounterType {
-        ALWAYS_COUNT,
-        COUNT_ON_DEMAND
+    public enum MetaData {
+        WARN,
+        DROP,
+        ERROR
     }
 
     /**
-     * Debug Counter Qualifiers
+     * All modules that wish to have the DebugCounterService count for them, must
+     * register themselves. If a module is registered multiple times subsequent
+     * registrations will reset all counter in the module.
+     *
+     * @param moduleName
+     * @return true if the module is registered for the first time, false if
+     * the modue was previously registered
      */
-    public static final String CTR_MDATA_WARN = "warn";
-    public static final String CTR_MDATA_ERROR = "error";
-
-    /**
-     *  A limit on the maximum number of counters that can be created
-     */
-    public static final int MAX_COUNTERS = 5000;
-
-    /**
-     * Exception thrown when MAX_COUNTERS have been registered
-     */
-    public class MaxCountersRegistered extends CounterException {
-        private static final long serialVersionUID = 3173747663719376745L;
-        String errormsg;
-        public MaxCountersRegistered(String errormsg) {
-            this.errormsg = errormsg;
-        }
-        @Override
-        public String getMessage() {
-            return this.errormsg;
-        }
-    }
-    /**
-     * Exception thrown when MAX_HIERARCHY has been reached
-     */
-    public class MaxHierarchyRegistered extends CounterException {
-        private static final long serialVersionUID = 967431358683523871L;
-        String errormsg;
-        public MaxHierarchyRegistered(String errormsg) {
-            this.errormsg = errormsg;
-        }
-        @Override
-        public String getMessage() {
-            return this.errormsg;
-        }
-    }
-    /**
-     * Exception thrown when attempting to register a hierarchical counter
-     * where higher levels of the hierarchy have not been pre-registered
-     */
-    public class MissingHierarchicalLevel extends CounterException {
-        private static final long serialVersionUID = 517315311533995739L;
-        String errormsg;
-        public MissingHierarchicalLevel(String errormsg) {
-            this.errormsg = errormsg;
-        }
-        @Override
-        public String getMessage() {
-            return this.errormsg;
-        }
-    }
-
-    public class CounterException extends Exception {
-        private static final long serialVersionUID = 2219781500857866035L;
-    }
-
-    /**
-     *  maximum levels of hierarchy
-     *  Example of moduleName/counterHierarchy:
-     *           switch/00:00:00:00:01:02:03:04/pktin/drops where
-     *           moduleName ==> "switch"  and
-     *           counterHierarchy of 3 ==> "00:00:00:00:01:02:03:04/pktin/drops"
-     */
-    public static final int MAX_HIERARCHY = 3;
+    public boolean registerModule(String moduleName);
 
     /**
      * All modules that wish to have the DebugCounterService count for them, must
@@ -105,32 +43,15 @@ public interface IDebugCounterService extends IFloodlightService {
      *                             of what the counter is measuring. For example,
      *                             "Measures the number of incoming packets seen by
      *                             this module".
-     * @param counterType          One of CounterType. On-demand counter types
-     *                             need to be explicitly enabled/disabled using other
-     *                             methods in this API -- i.e. registering them is
-     *                             not enough to start counting.
      * @param metaData             variable arguments that qualify a counter
      *                             eg. warn, error etc.
      * @return                     IDebugCounter with update methods that can be
      *                             used to update a counter.
-     * @throws MaxCountersRegistered
-     * @throws MaxHierarchyRegistered
-     * @throws MissingHierarchicalLevel
      */
-    public IDebugCounter registerCounter(String moduleName, String counterHierarchy,
-                             String counterDescription, CounterType counterType,
-                             String... metaData)
-                throws MaxCountersRegistered, MaxHierarchyRegistered,
-                       MissingHierarchicalLevel;
+    public IDebugCounter
+    registerCounter(String moduleName, String counterHierarchy,
+                    String counterDescription, MetaData... metaData);
 
-    /**
-     * Flush all thread-local counter values (from the current thread)
-     * to the global counter store. This method is not intended for use by any
-     * module. It's typical usage is from floodlight core and it is meant
-     * to flush those counters that are updated in the packet-processing pipeline,
-     * typically with the 'updateCounterNoFlush" methods in IDebugCounter.
-     */
-    public void flushCounters();
 
     /**
      * Resets the value of counters in the hierarchy to zero. Note that the reset
@@ -142,8 +63,10 @@ public interface IDebugCounterService extends IFloodlightService {
      *              while specifying a reset hierarchy: ""00:00:00:00:01:02:03:04/pktin"
      *              will reset the pktin counter and all levels below it (like drops)
      *              for the switch dpid specified.
+     * @return false if the given moduleName, counterHierarchy
+     * does not exist
      */
-    void resetCounterHierarchy(String moduleName, String counterHierarchy);
+    public boolean resetCounterHierarchy(String moduleName, String counterHierarchy);
 
     /**
      * Resets the values of all counters in the system.
@@ -153,38 +76,22 @@ public interface IDebugCounterService extends IFloodlightService {
     /**
      * Resets the values of all counters belonging
      * to a module with the given 'moduleName'.
+     * @return false if the given module name does not exists
      */
-    public void resetAllModuleCounters(String moduleName);
-
+    public boolean resetAllModuleCounters(String moduleName);
+    
     /**
-     * This method applies only to CounterType.COUNT_ON_DEMAND. It is used to
-     * enable counting on the counter. Note that this step is necessary to start
-     * counting for these counter types - merely registering the counter is not
-     * enough (as is the case for CounterType.ALWAYS_COUNT). Newly
-     * enabled counters start from an initial value of zero.
-     *
-     * Enabling a counter in a counterHierarchy enables only THAT counter. It
-     * does not enable any other part of the counterHierarchy. For example, if
-     * a hierarchy exists like "00:00:00:00:01:02:03:04/pktin/drops", where the
-     * 'pktin' and 'drops' counters are CounterType.COUNT_ON_DEMAND, then enabling
-     * the 'pktin' counter by specifying the counterHierarchy as
-     * "00:00:00:00:01:02:03:04/pktin" does NOT enable the 'drops' counter.
+     * Removes/deletes the counter hierarchy AND ALL LEVELS BELOW it in the hierarchy.
+     * For example: If a hierarchy exists like "00:00:00:00:01:02:03:04/pktin/drops"
+     *              specifying a remove hierarchy: "00:00:00:00:01:02:03:04"
+     *              will remove all counters for the switch dpid specified;
+     *              while specifying a remove hierarchy: ""00:00:00:00:01:02:03:04/pktin"
+     *              will remove the pktin counter and all levels below it (like drops)
+     *              for the switch dpid specified.
+     * @return false if the given moduleName, counterHierarchy does not exist
      */
-    public void enableCtrOnDemand(String moduleName, String counterHierarchy);
+    public boolean removeCounterHierarchy(String moduleName, String counterHierarchy);
 
-    /**
-     * This method applies only to CounterType.COUNT_ON_DEMAND. It is used to
-     * enable counting on the counter. Note that disabling a counter results in a loss
-     * of the counter value. When re-enabled the counter will restart from zero.
-     *
-     * Disabling a counter in a counterHierarchy disables only THAT counter. It
-     * does not disable any other part of the counterHierarchy. For example, if
-     * a hierarchy exists like "00:00:00:00:01:02:03:04/pktin/drops", where the
-     * 'pktin' and 'drops' counters are CounterType.COUNT_ON_DEMAND, then disabling
-     * the 'pktin' counter by specifying the counterHierarchy as
-     * "00:00:00:00:01:02:03:04/pktin" does NOT disable the 'drops' counter.
-     */
-    public void disableCtrOnDemand(String moduleName, String counterHierarchy);
 
     /**
      * Get counter value and associated information for the specified counterHierarchy.
@@ -197,11 +104,13 @@ public interface IDebugCounterService extends IFloodlightService {
      * get call will return information on the 'pktin' as well as the 'drops'
      * counters for the switch dpid specified.
      *
-     * @return A list of DebugCounterInfo or an empty list if the counter
+     * If the module or hierarchy is not registered, returns an empty list
+     *
+     * @return A list of DebugCounterResource or an empty list if the counter
      *         could not be found
      */
-    public List<DebugCounterInfo> getCounterHierarchy(String moduleName,
-                                                      String counterHierarchy);
+    public List<DebugCounterResource>
+    getCounterHierarchy(String moduleName, String counterHierarchy);
 
     /**
      * Get counter values and associated information for all counters in the
@@ -209,51 +118,16 @@ public interface IDebugCounterService extends IFloodlightService {
      *
      * @return the list of values/info or an empty list
      */
-    public  List<DebugCounterInfo> getAllCounterValues();
+    public List<DebugCounterResource> getAllCounterValues();
 
     /**
      * Get counter values and associated information for all counters associated
      * with a module.
+     * If the module is not registered, returns an empty list
      *
      * @param moduleName
      * @return the list of values/info or an empty list
      */
-    public  List<DebugCounterInfo> getModuleCounterValues(String moduleName);
-
-    /**
-     * Convenience method to figure out if the the given 'counterHierarchy' corresponds
-     * to a registered counterHierarchy for 'moduleName'. Note that the counter may or
-     * may not be enabled for counting, but if it is registered the method will
-     * return true.
-     *
-     * @param param
-     * @return false if moduleCounterHierarchy is not a registered counter
-     */
-    public boolean containsModuleCounterHierarchy(String moduleName,
-                                                  String counterHierarchy);
-
-    /**
-     * Convenience method to figure out if the the given 'moduleName' corresponds
-     * to a registered moduleName or not. Note that the module may or may not have
-     * a counter enabled for counting, but if it is registered the method will
-     * return true.
-     *
-     * @param param
-     * @return false if moduleName is not a registered counter
-     */
-    public boolean containsModuleName(String moduleName);
-
-    /**
-     * Returns a list of moduleNames registered for debug counters or an empty
-     * list if no counters have been registered in the system
-     */
-    public List<String> getModuleList();
-
-    /**
-     * Returns a list of all counters registered for a specific moduleName
-     * or a empty list
-     */
-    public List<String> getModuleCounterList(String moduleName);
-
+    public  List<DebugCounterResource> getModuleCounterValues(String moduleName);
 
 }

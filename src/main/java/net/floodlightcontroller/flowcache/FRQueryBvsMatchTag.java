@@ -21,6 +21,7 @@ import java.util.List;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match tag.
  */
+@Deprecated
 public class FRQueryBvsMatchTag extends FlowReconcileQuery {
     public List<String> tag;
 

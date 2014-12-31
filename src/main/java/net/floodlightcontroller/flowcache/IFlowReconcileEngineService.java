@@ -30,6 +30,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  *
  * @author MeiYang
  */
+@Deprecated
 public interface IFlowReconcileEngineService extends IFloodlightService {
     /**
      * A FloodlightContextStore object that can be used to interact with the

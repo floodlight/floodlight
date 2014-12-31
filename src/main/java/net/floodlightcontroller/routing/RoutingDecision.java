@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -28,25 +32,23 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 public class RoutingDecision implements IRoutingDecision {
 
     protected RoutingAction action;
-    protected Integer wildcards;
-    protected short hardTimeout;
+    protected Match match;
+    protected int hardTimeout;
     protected SwitchPort srcPort;
     protected IDevice srcDevice;
     protected List<IDevice> destDevices;
     protected List<SwitchPort> broadcastIntertfaces;
 
-    public RoutingDecision(long swDipd,
-                                  short inPort,
+    public RoutingDecision(DatapathId swDipd,
+                                  OFPort inPort,
                                   IDevice srcDevice,
                                   RoutingAction action) {
         this.srcPort = new SwitchPort(swDipd, inPort);
         this.srcDevice = srcDevice;
-        this.destDevices = 
-                Collections.synchronizedList(new ArrayList<IDevice>());
-        this.broadcastIntertfaces = 
-                Collections.synchronizedList(new ArrayList<SwitchPort>());
+        this.destDevices = Collections.synchronizedList(new ArrayList<IDevice>());
+        this.broadcastIntertfaces = Collections.synchronizedList(new ArrayList<SwitchPort>());
         this.action = action;
-        this.wildcards = null;
+        this.match = null;
         this.hardTimeout = ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT;
     }
     
@@ -93,17 +95,17 @@ public class RoutingDecision implements IRoutingDecision {
     }
     
     @Override
-    public Integer getWildcards() {
-        return this.wildcards;
+    public Match getMatch() {
+        return this.match;
     }
     
     @Override
-    public void setWildcards(Integer wildcards) {
-        this.wildcards = wildcards;
+    public void setMatch(Match match) {
+        this.match = match;
     }
    
     @Override
-    public short getHardTimeout() {
+    public int getHardTimeout() {
         return hardTimeout;
     }
 
@@ -120,6 +122,6 @@ public class RoutingDecision implements IRoutingDecision {
     public String toString() {
         return "action " + action +
                " wildcard " +
-               ((wildcards == null) ? null : "0x"+Integer.toHexString(wildcards.intValue()));
+               ((match == null) ? null : match.toString());
     }
 }

@@ -19,6 +19,7 @@ package net.floodlightcontroller.flowcache;
 /**
  * The Class for FlowReconcileQuery for BVS config ACL application change .
  */
+@Deprecated
 public class FRQueryBvsAcl extends FlowReconcileQuery {
     /* The BVS name. */
     public String bvsName;

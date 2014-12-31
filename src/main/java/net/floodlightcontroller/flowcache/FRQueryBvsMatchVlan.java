@@ -21,6 +21,7 @@ import java.util.List;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match VLAN.
  */
+@Deprecated
 public class FRQueryBvsMatchVlan extends FlowReconcileQuery {
     /* The match vlan IDs. */
     public List<Integer> vlans;

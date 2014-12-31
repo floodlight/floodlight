@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.util.MACAddress;
+import org.projectfloodlight.openflow.types.MacAddress;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -44,10 +44,10 @@ public class VirtualNetworkSerializer extends JsonSerializer<VirtualNetwork> {
         jGen.writeStringField("gateway", vNet.gateway);
 
         jGen.writeArrayFieldStart("portMac");
-		Iterator entries = vNet.portToMac.entrySet().iterator();
+		Iterator<Entry<String, MacAddress>> entries = vNet.portToMac.entrySet().iterator();
 		while (entries.hasNext()){
 			jGen.writeStartObject();
-			Entry entry = (Entry)entries.next();
+			Entry<String, MacAddress> entry = entries.next();
 			jGen.writeStringField("port",entry.getKey().toString());
 			jGen.writeStringField("mac",entry.getValue().toString());
 			jGen.writeEndObject();

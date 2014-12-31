@@ -42,6 +42,6 @@ public class StaticFlowEntryWebRoutable implements RestletRoutable {
      */
     @Override
     public String basePath() {
-        return "/wm/staticflowentrypusher";
+        return "/wm/staticflowpusher";
     }
 }

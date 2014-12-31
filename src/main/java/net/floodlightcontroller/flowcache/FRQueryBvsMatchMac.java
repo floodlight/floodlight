@@ -16,11 +16,12 @@
 
 package net.floodlightcontroller.flowcache;
 
-import net.floodlightcontroller.util.MACAddress;
+import org.projectfloodlight.openflow.types.MacAddress;
 
 /**
  * The Class for FlowReconcileQuery for link down event.
  */
+@Deprecated
 public class FRQueryBvsMatchMac extends FlowReconcileQuery {
     /*the match mac*/
     public String mac;
@@ -63,7 +64,7 @@ public class FRQueryBvsMatchMac extends FlowReconcileQuery {
         StringBuilder builder = new StringBuilder();
         builder.append("[");
         builder.append("MAC: ");
-        builder.append(MACAddress.valueOf(mac).toString());
+        builder.append(MacAddress.of(mac).toString());
         builder.append("]");
         return builder.toString();
     }

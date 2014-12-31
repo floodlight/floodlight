@@ -67,7 +67,6 @@ public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
     public void startUp(FloodlightModuleContext context) {
         // Add our REST API
         restApi.addRestletRoutable(this);
-        
     }
 
 	@Override

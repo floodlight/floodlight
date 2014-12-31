@@ -19,15 +19,16 @@ package net.floodlightcontroller.devicemanager.web;
 
 import java.io.IOException;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.VlanVid;
+
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.devicemanager.internal.Device;
-import net.floodlightcontroller.packet.IPv4;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.openflow.util.HexString;
 
 /**
  * Serialize a device object
@@ -43,18 +44,18 @@ public class DeviceSerializer extends JsonSerializer<Device> {
         jGen.writeStringField("entityClass", device.getEntityClass().getName());
         
         jGen.writeArrayFieldStart("mac");
-        jGen.writeString(HexString.toHexString(device.getMACAddress(), 6));
+        jGen.writeString(device.getMACAddress().toString());
         jGen.writeEndArray();
 
         jGen.writeArrayFieldStart("ipv4");
-        for (Integer ip : device.getIPv4Addresses())
-            jGen.writeString(IPv4.fromIPv4Address(ip));
+        for (IPv4Address ip : device.getIPv4Addresses())
+            jGen.writeString(ip.toString());
         jGen.writeEndArray();
 
         jGen.writeArrayFieldStart("vlan");
-        for (Short vlan : device.getVlanId())
-            if (vlan >= 0)
-                jGen.writeNumber(vlan);
+        for (VlanVid vlan : device.getVlanId())
+            if (vlan.getVlan() >= 0)
+                jGen.writeString(vlan.toString());
         jGen.writeEndArray();
         jGen.writeArrayFieldStart("attachmentPoint");
         for (SwitchPort ap : device.getAttachmentPoints(true)) {

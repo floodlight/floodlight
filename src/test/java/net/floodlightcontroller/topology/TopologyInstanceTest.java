@@ -21,12 +21,16 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import static org.junit.Assert.*;
 
+import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -37,6 +41,8 @@ import net.floodlightcontroller.topology.TopologyManager;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +64,8 @@ public class TopologyInstanceTest {
         mockFloodlightProvider = new MockFloodlightProvider();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(ILinkDiscoveryService.class, linkDiscovery);
+        fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         MockThreadPoolService tp = new MockThreadPoolService();
         topologyManager  = new TopologyManager();
         fmc.addService(IThreadPoolService.class, tp);
@@ -71,7 +79,7 @@ public class TopologyInstanceTest {
     }
 
     protected void verifyClusters(int[][] clusters, boolean tunnelsEnabled) {
-        List<Long> verifiedSwitches = new ArrayList<Long>();
+        List<DatapathId> verifiedSwitches = new ArrayList<DatapathId>();
 
         // Make sure the expected cluster arrays are sorted so we can
         // use binarySearch to test for membership
@@ -80,24 +88,24 @@ public class TopologyInstanceTest {
 
         TopologyInstance ti = 
                 topologyManager.getCurrentInstance(tunnelsEnabled);
-        Set<Long> switches = ti.getSwitches();
+        Set<DatapathId> switches = ti.getSwitches();
 
-        for (long sw: switches) {
+        for (DatapathId sw: switches) {
             if (!verifiedSwitches.contains(sw)) {
 
                 int[] expectedCluster = null;
 
                 for (int j = 0; j < clusters.length; j++) {
-                    if (Arrays.binarySearch(clusters[j], (int) sw) >= 0) {
+                    if (Arrays.binarySearch(clusters[j], (int)sw.getLong()) >= 0) {
                         expectedCluster = clusters[j];
                         break;
                     }
                 }
                 if (expectedCluster != null) {
-                    Set<Long> cluster = ti.getSwitchesInOpenflowDomain(sw);
+                    Set<DatapathId> cluster = ti.getSwitchesInOpenflowDomain(sw);
                     assertEquals(expectedCluster.length, cluster.size());
-                    for (long sw2: cluster) {
-                        assertTrue(Arrays.binarySearch(expectedCluster, (int)sw2) >= 0);
+                    for (DatapathId sw2: cluster) {
+                        assertTrue(Arrays.binarySearch(expectedCluster, (int)sw2.getLong()) >= 0);
                         verifiedSwitches.add(sw2);
                     }
                 }
@@ -119,7 +127,7 @@ public class TopologyInstanceTest {
             int [][] nptList = ebp[i];
             expected.clear();
             for(int j=0; j<nptList.length; ++j) {
-                npt = new NodePortTuple((long)nptList[j][0], (short)nptList[j][1]);
+                npt = new NodePortTuple(DatapathId.of(nptList[j][0]), OFPort.of(nptList[j][1]));
                 expected.add(npt);
             }
             TopologyInstance ti = topologyManager.getCurrentInstance(tunnelsEnabled);
@@ -145,7 +153,7 @@ public class TopologyInstanceTest {
             else if (r[4] == TUNNEL_LINK)
                 type = ILinkDiscovery.LinkType.TUNNEL;
 
-            topologyManager.addOrUpdateLink((long)r[0], (short)r[1], (long)r[2], (short)r[3], type);
+            topologyManager.addOrUpdateLink(DatapathId.of(r[0]), OFPort.of(r[1]), DatapathId.of(r[2]), OFPort.of(r[3]), type);
         }
         topologyManager.createNewInstance();
     }
@@ -258,8 +266,8 @@ public class TopologyInstanceTest {
 
         // Test 3. Remove links
         {
-            tm.removeLink((long)5,(short)3,(long)6,(short)1);
-            tm.removeLink((long)6,(short)1,(long)5,(short)3);
+            tm.removeLink(DatapathId.of(5), OFPort.of((short)3), DatapathId.of(6), OFPort.of((short)1));
+            tm.removeLink(DatapathId.of(6), OFPort.of((short)1), DatapathId.of(5), OFPort.of((short)3));
 
             int [][] expectedClusters = {
                                          {1,2,3,4,5},
@@ -270,7 +278,7 @@ public class TopologyInstanceTest {
 
         // Remove Switch
         {
-            tm.removeSwitch(4);
+            tm.removeSwitch(DatapathId.of(4));
             int [][] expectedClusters = {
                                          {1,2,3,5},
             };

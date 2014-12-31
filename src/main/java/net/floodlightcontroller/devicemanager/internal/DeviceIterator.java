@@ -19,6 +19,13 @@ package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
 
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -30,11 +37,11 @@ import net.floodlightcontroller.util.FilterIterator;
 public class DeviceIterator extends FilterIterator<Device> {
     private IEntityClass[] entityClasses;
     
-    private Long macAddress;
-    private Short vlan;
-    private Integer ipv4Address; 
-    private Long switchDPID;
-    private Integer switchPort;
+    private MacAddress macAddress;
+    private VlanVid vlan;
+    private IPv4Address ipv4Address; 
+    private DatapathId switchDPID;
+    private OFPort switchPort;
     
     /**
      * Construct a new device iterator over the key fields
@@ -48,11 +55,11 @@ public class DeviceIterator extends FilterIterator<Device> {
      */
     public DeviceIterator(Iterator<Device> subIterator, 
                           IEntityClass[] entityClasses,
-                          Long macAddress,
-                          Short vlan, 
-                          Integer ipv4Address, 
-                          Long switchDPID,
-                          Integer switchPort) {
+                          MacAddress macAddress,
+                          VlanVid vlan, 
+                          IPv4Address ipv4Address, 
+                          DatapathId switchDPID,
+                          OFPort switchPort) {
         super(subIterator);
         this.entityClasses = entityClasses;
         this.subIterator = subIterator;
@@ -80,18 +87,22 @@ public class DeviceIterator extends FilterIterator<Device> {
             if (!match) return false;                
         }
         if (macAddress != null) {
-            if (macAddress.longValue() != value.getMACAddress())
+            if (!macAddress.equals(value.getMACAddress()))
                 return false;
         }
         if (vlan != null) {
-            Short[] vlans = value.getVlanId();
-            if (Arrays.binarySearch(vlans, vlan) < 0) 
-                return false;
+            VlanVid[] vlans = value.getVlanId();
+            List<VlanVid> searchableVlanList = Arrays.asList(vlans);
+            if (!searchableVlanList.contains(vlan)) {
+            	return false;
+            }
         }
         if (ipv4Address != null) {
-            Integer[] ipv4Addresses = value.getIPv4Addresses();
-            if (Arrays.binarySearch(ipv4Addresses, ipv4Address) < 0) 
-                return false;
+            IPv4Address[] ipv4Addresses = value.getIPv4Addresses();
+            List<IPv4Address> searchableIPv4AddrList = Arrays.asList(ipv4Addresses);
+            if (!searchableIPv4AddrList.contains(ipv4Address)) {
+            	return false;
+            }
         }
         if (switchDPID != null || switchPort != null) {
             SwitchPort[] sps = value.getAttachmentPoints();
@@ -100,11 +111,11 @@ public class DeviceIterator extends FilterIterator<Device> {
             match = false;
             for (SwitchPort sp : sps) {
                 if (switchDPID != null) {
-                    if (switchDPID.longValue() != sp.getSwitchDPID())
+                    if (!switchDPID.equals(sp.getSwitchDPID()))
                         return false;
                 }
                 if (switchPort != null) {
-                    if (switchPort.intValue() != sp.getPort())
+                    if (!switchPort.equals(sp.getPort()))
                         return false;
                 }
                 match = true;

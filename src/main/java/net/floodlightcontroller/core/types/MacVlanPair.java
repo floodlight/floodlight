@@ -17,20 +17,23 @@
 
 package net.floodlightcontroller.core.types;
 
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.VlanVid;
+
 public class MacVlanPair {
-    public Long mac;
-    public Short vlan;
-    public MacVlanPair(Long mac, Short vlan) {
-        this.mac = mac;
-        this.vlan = vlan;
+    public MacAddress mac;
+    public VlanVid vlan;
+    public MacVlanPair(MacAddress mac2, VlanVid vlan2) {
+        this.mac = mac2;
+        this.vlan = vlan2;
     }
     
-    public long getMac() {
-        return mac.longValue();
+    public MacAddress getMac() {
+        return mac;
     }
     
-    public short getVlan() {
-        return vlan.shortValue();
+    public VlanVid getVlan() {
+        return vlan;
     }
     
     public boolean equals(Object o) {

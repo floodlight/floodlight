@@ -80,8 +80,7 @@ public interface IEntityClassifierService extends IFloodlightService {
     * @param entity the entity to reclassify
     * @return the IEntityClass resulting from the classification
     */
-   IEntityClass reclassifyEntity(IDevice curDevice,
-                                             Entity entity);
+   IEntityClass reclassifyEntity(IDevice curDevice, Entity entity);
 
    /**
     * Once reclassification is complete for a device, this method will be
@@ -95,8 +94,7 @@ public interface IEntityClassifierService extends IFloodlightService {
     * @param newDevices all the new devices derived from the entities of the
     * old device.  If null, the old device was unchanged.
     */
-   void deviceUpdate(IDevice oldDevice, 
-                     Collection<? extends IDevice> newDevices);
+   void deviceUpdate(IDevice oldDevice, Collection<? extends IDevice> newDevices);
 
    /**
     * Adds a listener to listen for IEntityClassifierServices notifications

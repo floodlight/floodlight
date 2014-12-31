@@ -16,67 +16,34 @@
 
 package net.floodlightcontroller.core;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
-
-import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 
 public class RoleInfo {
-    protected String role;
-    protected String roleChangeDescription;
-    protected Date roleChangeDateTime;
+    private final HARole role;
+    private final String roleChangeDescription;
+    private final Date roleChangeDateTime;
 
-    public RoleInfo() {
-    }
-
-    public RoleInfo(RoleInfo o) {
-        role = o.role;
-        roleChangeDescription = o.roleChangeDescription;
-        roleChangeDateTime = (Date)o.roleChangeDateTime.clone();
-    }
-
-    public RoleInfo(String role) {
-        setRole(role);
-    }
-
-    public RoleInfo(Role role, String description) {
-        this.role = (role != null) ? role.name() : "DISABLED";
-        this.roleChangeDescription = description;
-    }
-
-    public RoleInfo(Role role, String description, Date dt) {
-        this.role = (role != null) ? role.name() : "DISABLED";
+    public RoleInfo(HARole role, String description, Date dt) {
+        this.role = role;
         this.roleChangeDescription = description;
         this.roleChangeDateTime = dt;
     }
 
-    public String getRole() {
+    public HARole getRole() {
         return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
     }
 
     @JsonProperty(value="change-description")
     public String getRoleChangeDescription() {
         return roleChangeDescription;
     }
-    @JsonProperty(value="change-description")
-    public void setRoleChangeDescription(String roleChangeDescription) {
-        this.roleChangeDescription = roleChangeDescription;
-    }
+
     @JsonProperty(value="change-date-time")
-    public String getRoleChangeDateTime() {
-        SimpleDateFormat formatter =
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return roleChangeDateTime == null ?
-                  "" : formatter.format(roleChangeDateTime);
+    public Date getRoleChangeDateTime() {
+        return roleChangeDateTime;
     }
 
 }

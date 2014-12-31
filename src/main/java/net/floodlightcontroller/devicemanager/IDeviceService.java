@@ -22,6 +22,12 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.types.OFPort;
+
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
@@ -95,9 +101,9 @@ public interface IDeviceService extends IFloodlightService {
      * @throws IllegalArgumentException if not all key fields of the
      * current {@link IEntityClassifierService} are specified.
      */
-    public IDevice findDevice(long macAddress, Short vlan,
-                              Integer ipv4Address, Long switchDPID,
-                              Integer switchPort)
+    public IDevice findDevice(MacAddress macAddress, VlanVid vlan,
+                              IPv4Address ipv4Address, DatapathId switchDPID,
+                              OFPort switchPort)
                               throws IllegalArgumentException;
     
     /**
@@ -122,8 +128,8 @@ public interface IDeviceService extends IFloodlightService {
      * source's {@link IEntityClass} are specified.
      */
     public IDevice findClassDevice(IEntityClass entityClass,
-                                   long macAddress, Short vlan,
-                                   Integer ipv4Address)
+                                   MacAddress macAddress, VlanVid vlan,
+                                   IPv4Address ipv4Address)
                                    throws IllegalArgumentException;
 
     /**
@@ -162,11 +168,11 @@ public interface IDeviceService extends IFloodlightService {
      * @see IDeviceService#queryClassDevices(IEntityClass, Long, 
      * Short, Integer, Long, Integer)
      */
-    public Iterator<? extends IDevice> queryDevices(Long macAddress,
-                                                    Short vlan,
-                                                    Integer ipv4Address, 
-                                                    Long switchDPID,
-                                                    Integer switchPort);
+    public Iterator<? extends IDevice> queryDevices(MacAddress macAddress,
+                                                    VlanVid vlan,
+                                                    IPv4Address ipv4Address, 
+                                                    DatapathId switchDPID,
+                                                    OFPort switchPort);
 
     /**
      * Find devices that match the provided query.  Only the index for
@@ -187,11 +193,11 @@ public interface IDeviceService extends IFloodlightService {
      * Short, Integer, Long, Integer)
      */
     public Iterator<? extends IDevice> queryClassDevices(IEntityClass entityClass,
-                                                         Long macAddress,
-                                                         Short vlan,
-                                                         Integer ipv4Address, 
-                                                         Long switchDPID,
-                                                         Integer switchPort);
+                                                         MacAddress macAddress,
+                                                         VlanVid vlan,
+                                                         IPv4Address ipv4Address, 
+                                                         DatapathId switchDPID,
+                                                         OFPort switchPort);
     
     /**
      * Adds a listener to listen for IDeviceManagerServices notifications
@@ -207,9 +213,9 @@ public interface IDeviceService extends IFloodlightService {
      * @param sw
      * @param port
      */
-    public void addSuppressAPs(long swId, short port);
+    public void addSuppressAPs(DatapathId swId, OFPort port);
 
-    public void removeSuppressAPs(long swId, short port);
+    public void removeSuppressAPs(DatapathId swId, OFPort port);
 
     public Set<SwitchPort> getSuppressAPs();
 

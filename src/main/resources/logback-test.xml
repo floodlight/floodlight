@@ -6,13 +6,18 @@
   </appender>
   <appender name="EV_WARN_ERR" class="net.floodlightcontroller.debugevent.DebugEventAppender">
   </appender>
-  <root level="INFO">
+  <root level="DEBUG">
     <appender-ref ref="STDOUT" />
     <appender-ref ref="EV_WARN_ERR" />
   </root>
   <logger name="org" level="WARN"/>
-  <logger name="LogService" level="WARN"/> <!-- Restlet access logging -->
-  <logger name="net.bigdb" level="INFO"/>
+  <logger name="LogService" level="DEBUG"></logger> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="INFO"/>
-  <logger name="org.sdnplatform" level="INFO"/>
+  <logger name="org.sdnplatform" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.devicemanager" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.packet" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.routing" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.core" level="INFO"></logger>
+  <logger level="DEBUG" name="net.floodlightcontroller.firewall"></logger>
 </configuration>

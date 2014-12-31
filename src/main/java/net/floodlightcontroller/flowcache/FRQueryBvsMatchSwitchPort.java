@@ -18,13 +18,14 @@ package net.floodlightcontroller.flowcache;
 
 import java.util.List;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match switch port.
  */
+@Deprecated
 public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
     /*switch DPID*/
-    public long swId;
+    public DatapathId swId;
     /*List of ports:*/
     public List<String> matchPortList;
 
@@ -32,7 +33,7 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
         super(ReconcileQueryEvType.BVS_INTERFACE_RULE_CHANGED_MATCH_SWITCH_PORT);
     }
 
-    public FRQueryBvsMatchSwitchPort(Long swId, List<String> portList) {
+    public FRQueryBvsMatchSwitchPort(DatapathId swId, List<String> portList) {
         this();
         this.swId = swId;
         this.matchPortList = portList;
@@ -42,7 +43,7 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
     public int hashCode() {
         final int prime = 347;
         int result = super.hashCode();
-        result = prime * result + (int)swId;
+        result = (int) (prime * result + swId.getLong());
         return result;
     }
 
@@ -58,8 +59,8 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
             return false;
         }
         FRQueryBvsMatchSwitchPort other = (FRQueryBvsMatchSwitchPort) obj;
-        if (swId != other.swId) return false;
-        if (! matchPortList.equals(other.matchPortList)) return false;
+        if (swId.equals(other.swId)) return false;
+        if (!matchPortList.equals(other.matchPortList)) return false;
         return true;
     }
 
@@ -68,7 +69,7 @@ public class FRQueryBvsMatchSwitchPort extends FlowReconcileQuery {
         StringBuilder builder = new StringBuilder();
         builder.append("[");
         builder.append("Switch: ");
-        builder.append(HexString.toHexString(swId));
+        builder.append(swId.toString());
         builder.append(", Match Port List:");
         builder.append(matchPortList);
         builder.append("]");

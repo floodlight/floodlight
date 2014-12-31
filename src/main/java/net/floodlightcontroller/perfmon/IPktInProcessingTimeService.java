@@ -18,7 +18,7 @@ package net.floodlightcontroller.perfmon;
 
 import java.util.List;
 
-import org.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;

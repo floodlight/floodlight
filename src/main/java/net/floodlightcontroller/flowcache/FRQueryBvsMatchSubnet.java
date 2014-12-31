@@ -19,6 +19,7 @@ package net.floodlightcontroller.flowcache;
 /**
  * The Class for FlowReconcileQuery for BVS config interface match IP subnet .
  */
+@Deprecated
 public class FRQueryBvsMatchSubnet extends FlowReconcileQuery {
     /*match ip subnet*/
     public String ipSubnet;
