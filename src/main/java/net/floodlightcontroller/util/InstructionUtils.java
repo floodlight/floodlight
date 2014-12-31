@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionClearActions;
@@ -88,6 +89,12 @@ public class InstructionUtils {
 		if (instStr == null || instStr.equals("")) {
 			return;
 		}
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
+			log.error("Goto Table Instruction not supported in OpenFlow 1.0");
+			return;
+		}
+		
 		// Split into pairs of key=value
 		String[] keyValue = instStr.split("=");
 		if (keyValue.length != 2) {
@@ -129,6 +136,12 @@ public class InstructionUtils {
 		if (inst == null || inst.equals("")) {
 			return;
 		}
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
+			log.error("Write Metadata Instruction not supported in OpenFlow 1.0");
+			return;
+		}
+		
 		// Split into pairs of key=value
 		String[] tokens = inst.split(",");
 		if (tokens.length != 2) {
@@ -181,6 +194,12 @@ public class InstructionUtils {
 	 * @param log
 	 */
 	public static void writeActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
+			log.error("Write Actions Instruction not supported in OpenFlow 1.0");
+			return;
+		}
+		
 		OFFlowMod.Builder tmpFmb = OFFactories.getFactory(fmb.getVersion()).buildFlowModify(); // ActionUtils.fromString() will use setActions(), which should not be used for OF1.3; use temp to avoid overwriting any applyActions data
 		OFInstructionWriteActions.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildWriteActions();
 		ActionUtils.fromString(tmpFmb, inst, log);
@@ -212,6 +231,12 @@ public class InstructionUtils {
 	 * @param log
 	 */
 	public static void applyActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
+			log.error("Apply Actions Instruction not supported in OpenFlow 1.0");
+			return;
+		}
+		
 		OFFlowMod.Builder tmpFmb = OFFactories.getFactory(fmb.getVersion()).buildFlowModify();
 		OFInstructionApplyActions.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildApplyActions();
 		ActionUtils.fromString(tmpFmb, inst, log);
@@ -243,6 +268,12 @@ public class InstructionUtils {
 	 * @param log
 	 */
 	public static void clearActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
+			log.error("Clear Actions Instruction not supported in OpenFlow 1.0");
+			return;
+		}
+		
 		if (inst != null && inst.isEmpty()) {
 			OFInstructionClearActions i = OFFactories.getFactory(fmb.getVersion()).instructions().clearActions();
 			log.debug("Appending ClearActions instruction: {}", i);
@@ -277,6 +308,11 @@ public class InstructionUtils {
 	 */
 	public static void meterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
 		if (inst == null || inst.isEmpty()) {
+			return;
+		}
+		
+		if (fmb.getVersion().compareTo(OFVersion.OF_13) < 0) {
+			log.error("Goto Meter Instruction not supported in OpenFlow 1.0, 1.1, or 1.2");
 			return;
 		}
 

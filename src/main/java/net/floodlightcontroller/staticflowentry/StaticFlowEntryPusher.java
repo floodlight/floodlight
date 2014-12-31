@@ -64,6 +64,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowRemovedReason;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U16;
@@ -383,7 +384,11 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						return;
 					}
 				} else if (key.equals(COLUMN_TABLE_ID)) {
-					fmb.setTableId(TableId.of(Integer.parseInt((String) row.get(key)))); // support multiple flow tables for OF1.1+
+					if (fmb.getVersion().compareTo(OFVersion.OF_10) > 0) {
+						fmb.setTableId(TableId.of(Integer.parseInt((String) row.get(key)))); // support multiple flow tables for OF1.1+
+					} else {
+						log.error("Table not supported in OpenFlow 1.0");
+					}
 				} else if (key.equals(COLUMN_ACTIONS)) {
 					ActionUtils.fromString(fmb, (String) row.get(COLUMN_ACTIONS), log);
 				} else if (key.equals(COLUMN_COOKIE)) {
@@ -424,7 +429,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		try {
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
-			log.debug("ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
+			log.debug("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
 		}
 //sanjivini		
