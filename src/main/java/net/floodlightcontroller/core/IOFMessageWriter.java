@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFRequest;
@@ -63,7 +64,7 @@ public interface IOFMessageWriter{
      *         If the connection is not currently connected, will
      *         return a Future that immediately fails with a @link{SwitchDisconnectedException}.
      */
-    <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request);
+    <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request);
 
     /** write a Stats (Multipart-) request, register for all corresponding reply messages.
      * Returns a Future object that can be used to retrieve the List of asynchronous
@@ -74,6 +75,6 @@ public interface IOFMessageWriter{
      *         If the connection is not currently connected, will
      *         return a Future that immediately fails with a @link{SwitchDisconnectedException}.
      */
-    <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(
+    <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(
             OFStatsRequest<REPLY> request);
 }

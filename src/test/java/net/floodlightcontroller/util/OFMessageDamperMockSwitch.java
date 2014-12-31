@@ -24,6 +24,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -210,14 +211,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 	}
 
 	@Override
-	public <R extends OFMessage> ListenableFuture<R> writeRequest(
+	public <R extends OFMessage> CompletableFuture<R> writeRequest(
 			OFRequest<R> request) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(
+	public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(
 			OFStatsRequest<REPLY> request) {
 		// TODO Auto-generated method stub
 		return null;
@@ -298,14 +299,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 	}
 
 	@Override
-	public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(
+	public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(
 			OFStatsRequest<REPLY> request, LogicalOFMessageCategory category) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <R extends OFMessage> ListenableFuture<R> writeRequest(
+	public <R extends OFMessage> CompletableFuture<R> writeRequest(
 			OFRequest<R> request, LogicalOFMessageCategory category) {
 		// TODO Auto-generated method stub
 		return null;

@@ -33,6 +33,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.Nonnull;
@@ -74,7 +75,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.ListenableFuture;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -743,12 +743,12 @@ public class OFSwitch implements IOFSwitchBackend {
     }
 
     @Override
-    public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request, LogicalOFMessageCategory category) {
+    public <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request, LogicalOFMessageCategory category) {
         return getConnection(category).writeRequest(request);
     }
 
     @Override
-    public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request) {
+    public <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request) {
         return connections.get(OFAuxId.MAIN).writeRequest(request);
     }
 
@@ -902,12 +902,12 @@ public class OFSwitch implements IOFSwitchBackend {
     }
 
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request) {
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request) {
         return connections.get(OFAuxId.MAIN).writeStatsRequest(request);
     }
 
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request, LogicalOFMessageCategory category) {
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request, LogicalOFMessageCategory category) {
         return getConnection(category).writeStatsRequest(request);
     }
 

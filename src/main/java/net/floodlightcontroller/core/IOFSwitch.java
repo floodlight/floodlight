@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
@@ -36,7 +37,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 /**
@@ -322,7 +322,7 @@ public interface IOFSwitch extends IOFMessageWriter {
      *         If the connection is not currently connected, will
      *         return a Future that immediately fails with a @link{SwitchDisconnectedException}.
      */
-    <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request, LogicalOFMessageCategory category);
+    <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request, LogicalOFMessageCategory category);
 
     /** write an OpenFlow Request message, register for a single corresponding reply message
      *  or error message.
@@ -335,5 +335,5 @@ public interface IOFSwitch extends IOFMessageWriter {
      *         If the connection is not currently connected, will
      *         return a Future that immediately fails with a @link{SwitchDisconnectedException}.
      */
-    <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request, LogicalOFMessageCategory category);
+    <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request, LogicalOFMessageCategory category);
 }

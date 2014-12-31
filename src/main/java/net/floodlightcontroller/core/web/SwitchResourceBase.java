@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core.web;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.primitives.UnsignedLong;
-import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Base class for server resources related to switches
@@ -82,7 +82,7 @@ public class SwitchResourceBase extends ServerResource {
 		IOFSwitchService switchService = (IOFSwitchService) getContext().getAttributes().get(IOFSwitchService.class.getCanonicalName());
 
 		IOFSwitch sw = switchService.getSwitch(switchId);
-		ListenableFuture<?> future;
+		CompletableFuture<?> future;
 		List<OFStatsReply> values = null;
 		Match match;
 		if (sw != null) {

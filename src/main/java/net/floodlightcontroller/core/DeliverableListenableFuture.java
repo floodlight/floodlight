@@ -1,6 +1,6 @@
 package net.floodlightcontroller.core;
 
-import com.google.common.util.concurrent.AbstractFuture;
+import java.util.concurrent.CompletableFuture;
 
 /** Implementation of a ListenableFuture that provides a Deliverable interface to
  *  the provider.
@@ -9,14 +9,14 @@ import com.google.common.util.concurrent.AbstractFuture;
  * @see Deliverable
  * @param <T>
  */
-public class DeliverableListenableFuture<T> extends AbstractFuture<T> implements Deliverable<T> {
+public class DeliverableListenableFuture<T> extends CompletableFuture<T> implements Deliverable<T> {
     @Override
     public void deliver(final T result) {
-        set(result);
+        complete(result);
     }
 
     @Override
     public void deliverError(final Throwable cause) {
-        setException(cause);
+    	completeExceptionally(cause);
     }
 }
