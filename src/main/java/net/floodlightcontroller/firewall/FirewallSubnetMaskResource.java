@@ -29,63 +29,24 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FirewallResource extends ServerResource {
-    protected static Logger log = LoggerFactory.getLogger(FirewallResource.class);
+
+public class FirewallSubnetMaskResource extends FirewallResourceBase {
+    // REST API to get or set local subnet mask -- this only makes sense for one subnet
+    // will remove later
+
+    private static final Logger log = LoggerFactory.getLogger(FirewallSubnetMaskResource.class);
 
     @Get("json")
     public Object handleRequest() {
-        IFirewallService firewall =
-                (IFirewallService)getContext().getAttributes().
-                get(IFirewallService.class.getCanonicalName());
+        IFirewallService firewall = getFirewallService();
 
-        String op = (String) getRequestAttributes().get("op");
-
-        // REST API check status
-        if (op.equalsIgnoreCase("status")) {
-            if (firewall.isEnabled())
-                return "{\"result\" : \"firewall enabled\"}";
-            else
-                return "{\"result\" : \"firewall disabled\"}";
-        }
-
-        // REST API enable firewall
-        if (op.equalsIgnoreCase("enable")) {
-            firewall.enableFirewall(true);
-            return "{\"status\" : \"success\", \"details\" : \"firewall running\"}";
-        }
-
-        // REST API disable firewall
-        if (op.equalsIgnoreCase("disable")) {
-            firewall.enableFirewall(false);
-            return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
-        }
-
-        // REST API retrieving rules from storage
-        // currently equivalent to /wm/firewall/rules/json
-        if (op.equalsIgnoreCase("storageRules")) {
-            return firewall.getStorageRules();
-        }
-
-        // REST API set local subnet mask -- this only makes sense for one subnet
-        // will remove later
-        if (op.equalsIgnoreCase("subnet-mask")) {
-            return "{\"subnet-mask\":\"" + firewall.getSubnetMask() + "\"}";
-        }
-
-        // no known options found
-        return "{\"status\" : \"failure\", \"details\" : \"invalid operation\"}";
+	return "{\"subnet-mask\":\"" + firewall.getSubnetMask() + "\"}";
     }
 
-    /**
-     * Allows setting of subnet mask
-     * @param fmJson The Subnet Mask in JSON format.
-     * @return A string status message
-     */
+
     @Post
     public String handlePost(String fmJson) {
-        IFirewallService firewall =
-                (IFirewallService)getContext().getAttributes().
-                get(IFirewallService.class.getCanonicalName());
+        IFirewallService firewall = getFirewallService();
 
         String newMask;
         try {
