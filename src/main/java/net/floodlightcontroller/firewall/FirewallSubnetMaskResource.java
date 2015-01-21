@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.MappingJsonFactory;
 import org.restlet.resource.Post;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
+import org.restlet.data.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,9 +54,14 @@ public class FirewallSubnetMaskResource extends FirewallResourceBase {
             newMask = jsonExtractSubnetMask(fmJson);
         } catch (IOException e) {
             log.error("Error parsing new subnet mask: " + fmJson, e);
+            setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
             return "{\"status\" : \"Error! Could not parse new subnet mask, see log for details.\"}";
         }
+
         firewall.setSubnetMask(newMask);
+
+        setStatus(Status.SUCCESS_OK);
+
         return ("{\"status\" : \"subnet mask set\"}");
     }
 

@@ -17,8 +17,9 @@
 
 package net.floodlightcontroller.firewall;
 
-import org.restlet.resource.Post;
 import org.restlet.resource.Get;
+import org.restlet.resource.Put;
+import org.restlet.data.Status;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,26 +27,25 @@ import org.slf4j.LoggerFactory;
 
 /*
  * Rest API endpoint to disable the firewall
- *
- * Contrary to best practices it changes the state on both GET and POST
- * We should disable this behavior for GET as soon as we can be sure
- * that no clients depend on this behavior.
  */
 public class FirewallDisableResource extends FirewallResourceBase {
     private static final Logger log = LoggerFactory.getLogger(FirewallDisableResource.class);
 
     @Get("json")
     public Object handleRequest() {
-	log.warn("REST call to FirewallDisableResource with method GET is depreciated. Use POST: ");
-	
-	return handlePost();
+        log.warn("call to FirewallDisableResource with method GET is not allowed. Use PUT: ");
+        
+        setStatus(Status.CLIENT_ERROR_METHOD_NOT_ALLOWED);
+	return "{\"status\" : \"failure\", \"details\" : \"Use PUT to disable firewall\"}";
     }
 
-    @Post("json")
-    public Object handlePost() {
+    @Put("json")
+    public Object handlePut() {
         IFirewallService firewall = getFirewallService();
 
 	firewall.enableFirewall(false);
+
+        setStatus(Status.SUCCESS_OK);
 
 	return "{\"status\" : \"success\", \"details\" : \"firewall stopped\"}";
     }
