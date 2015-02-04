@@ -365,19 +365,21 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				if (row.get(key) == null) {
 					continue;
 				}
+				
 				if (key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME) || key.equals("id")) {
 					continue; // already handled
 				}
-				// explicitly ignore timeouts and wildcards
-				if (key.equals(COLUMN_HARD_TIMEOUT) || key.equals(COLUMN_IDLE_TIMEOUT)) {
-					continue;
-				}
+				
 				if (key.equals(COLUMN_ACTIVE)) {
 					if  (!Boolean.valueOf((String) row.get(COLUMN_ACTIVE))) {
 						log.debug("skipping inactive entry {} for switch {}", entryName, switchName);
 						entries.get(switchName).put(entryName, null);  // mark this an inactive
 						return;
 					}
+				} else if (key.equals(COLUMN_HARD_TIMEOUT)) {
+					fmb.setHardTimeout(Integer.valueOf((String) row.get(COLUMN_HARD_TIMEOUT)));
+				} else if (key.equals(COLUMN_IDLE_TIMEOUT)) {
+					fmb.setIdleTimeout(Integer.valueOf((String) row.get(COLUMN_IDLE_TIMEOUT)));
 				} else if (key.equals(COLUMN_TABLE_ID)) {
 					if (fmb.getVersion().compareTo(OFVersion.OF_10) > 0) {
 						fmb.setTableId(TableId.of(Integer.parseInt((String) row.get(key)))); // support multiple flow tables for OF1.1+
@@ -426,14 +428,11 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		} catch (IllegalArgumentException e) {
 			log.debug("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
-		}
-//sanjivini		
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error("OF version incompatible for the match: " + match);
 			e.printStackTrace();
 			return;
 		}
-//sanjivini
 
 		entries.get(switchName).put(entryName, fmb.build()); // add the FlowMod message to the table
 	}
