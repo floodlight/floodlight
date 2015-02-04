@@ -367,13 +367,10 @@ public class MatchUtils {
 
 		Match.Builder mb = OFFactories.getFactory(ofVersion).buildMatch();
 
-		//sanjivini		
-
 		//Determine if the OF version is 1.0 before adding a flow
 		if (ofVersion.equals(OFVersion.OF_10)) {
 			ver10 = true;
 		}
-		//sanjivini
 
 		while (!llValues.isEmpty()) {
 			IpProtocol ipProto = null;
@@ -428,8 +425,6 @@ public class MatchUtils {
 			case STR_NW_SRC:
 				mb.setMasked(MatchField.IPV4_SRC, IPv4AddressWithMask.of(key_value[1]));
 				break;
-
-				//sanjivini
 			case STR_IPV6_DST:
 				if (ver10 == true) {
 					throw new IllegalArgumentException("OF Version incompatible");
@@ -452,8 +447,6 @@ public class MatchUtils {
 					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(Integer.parseInt(key_value[1])));
 				}
 				break;
-				//sanjivini	
-
 			case STR_NW_PROTO:
 				if (key_value[1].startsWith("0x")) {
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(Short.valueOf(key_value[1].replaceFirst("0x", ""), 16)));
