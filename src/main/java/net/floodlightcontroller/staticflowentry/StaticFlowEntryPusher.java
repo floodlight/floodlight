@@ -133,8 +133,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ARP_SPA = MatchUtils.STR_ARP_SPA;
 	public static final String COLUMN_ARP_DPA = MatchUtils.STR_ARP_DPA;
 	
-//sanjivini
-	//IPv6 related columns
+	/* IPv6 related columns */
 	public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
 	public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
 	public static final String COLUMN_IPV6_FLOW_LABEL = MatchUtils.STR_IPV6_FLOW_LABEL;
@@ -143,7 +142,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ND_SLL = MatchUtils.STR_IPV6_ND_SSL;
 	public static final String COLUMN_ND_TLL = MatchUtils.STR_IPV6_ND_TTL;
 	public static final String COLUMN_ND_TARGET = MatchUtils.STR_IPV6_ND_TARGET;	
-//sanjivini
 
 	public static final String COLUMN_MPLS_LABEL = MatchUtils.STR_MPLS_LABEL;
 	public static final String COLUMN_MPLS_TC = MatchUtils.STR_MPLS_TC;
@@ -153,7 +151,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_TUNNEL_ID = MatchUtils.STR_TUNNEL_ID;
 
 	public static final String COLUMN_PBB_ISID = MatchUtils.STR_PBB_ISID;
-	/* end newly added matches TODO @Ryan should look into full IPv6 support */
+	/* end newly added matches */
 
 	public static final String COLUMN_ACTIONS = "actions";
 	
@@ -178,12 +176,9 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
 		
-//sanjivini		
-		//IPv6 related matches
+		/* IPv6 related matches */
 		COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
-		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,
-//sanjivini		
-		
+		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,		
 		COLUMN_MPLS_LABEL, COLUMN_MPLS_TC, COLUMN_MPLS_BOS, 
 		COLUMN_METADATA, COLUMN_TUNNEL_ID, COLUMN_PBB_ISID,
 		/* end newly added matches */
@@ -512,12 +507,14 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
 							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
 							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
+						log.debug("ModifyStrict SFP Flow");
 						entriesFromStorage.get(dpid).put(entry, newFlowMod);
 						entry2dpid.put(entry, dpid);
 						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
 						outQueue.add(newFlowMod);
 					/* DELETE_STRICT and then ADD b/c the match is now different */
 					} else {
+						log.debug("DeleteStrict and Add SFP Flow");
 						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
 						OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 						/* If the flow's dpid and the current switch we're looking at are the same, add to the queue. */
@@ -534,6 +531,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					}
 				/* Add a brand-new flow with ADD */
 				} else if (newFlowMod != null && oldFlowMod == null) {
+					log.debug("Add SFP Flow");
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
 					entry2dpid.put(entry, dpid);

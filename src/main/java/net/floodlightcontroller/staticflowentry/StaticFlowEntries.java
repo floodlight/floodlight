@@ -272,8 +272,6 @@ public class StaticFlowEntries {
 			case ARP_TPA:
 				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, match.get(MatchField.ARP_TPA).toString());
 				break;
-				
-//sanjivini				
 			case IPV6_SRC:				
 				entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, match.get(MatchField.IPV6_SRC).toString());
 				break;
@@ -297,10 +295,7 @@ public class StaticFlowEntries {
 				break;	
 			case IPV6_ND_TARGET:				
 				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.get(MatchField.IPV6_ND_TARGET).toString());
-				break;	
-				
-//sanjivini	
-				
+				break;					
 			case MPLS_LABEL:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.get(MatchField.MPLS_LABEL).getValue());
 				break;
@@ -491,9 +486,7 @@ public class StaticFlowEntries {
 				break;
 			case StaticFlowEntryPusher.COLUMN_ARP_DPA:
 				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, jp.getText());
-				break;
-				
-//sanjivini				
+				break;		
 			case StaticFlowEntryPusher.COLUMN_NW6_SRC:				
 				entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, jp.getText());
 				break;	
@@ -517,9 +510,7 @@ public class StaticFlowEntries {
 				break;
 			case StaticFlowEntryPusher.COLUMN_ND_TARGET:					
 				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, jp.getText());
-				break;
-//sanjivini	
-				
+				break;				
 			case StaticFlowEntryPusher.COLUMN_MPLS_LABEL:
 				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, jp.getText());
 				break;

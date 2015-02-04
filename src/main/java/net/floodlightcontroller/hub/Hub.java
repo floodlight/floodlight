@@ -77,7 +77,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
             break;
     	}
         sw.write(outMessage);
-
+        
         return Command.CONTINUE;
     }
     
@@ -99,7 +99,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     	OFPacketIn pi = (OFPacketIn) msg;
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
-
+        
         // set actions
         OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
         actionBuilder.setPort(OFPort.FLOOD);
@@ -110,7 +110,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
             byte[] packetData = pi.getData();
             pob.setData(packetData);
         }
-        return pob.build();  	
+        return pob.build();  
     }
 
     @Override
