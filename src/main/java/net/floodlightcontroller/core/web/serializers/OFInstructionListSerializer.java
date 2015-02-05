@@ -45,20 +45,20 @@ public class OFInstructionListSerializer extends JsonSerializer<List<OFInstructi
                     jGen.writeObjectFieldStart(InstructionUtils.STR_CLEAR_ACTIONS);
                     break;
                 case WRITE_METADATA:
-                    jGen.writeStartObject();
+                    jGen.writeObjectFieldStart(InstructionUtils.STR_WRITE_METADATA);
                     jGen.writeNumberField(InstructionUtils.STR_WRITE_METADATA, ((OFInstructionWriteMetadata)i).getMetadata().getValue());
                     jGen.writeNumberField(InstructionUtils.STR_WRITE_METADATA + "_mask", ((OFInstructionWriteMetadata)i).getMetadataMask().getValue());
                     break;
                 case EXPERIMENTER:
-                    jGen.writeStartObject();
+                    jGen.writeObjectFieldStart(InstructionUtils.STR_EXPERIMENTER);
                     jGen.writeNumberField(InstructionUtils.STR_EXPERIMENTER, ((OFInstructionExperimenter)i).getExperimenter());
                     break;
                 case GOTO_TABLE:
-                    jGen.writeStartObject();
+                    jGen.writeObjectFieldStart(InstructionUtils.STR_GOTO_TABLE);
                     jGen.writeNumberField(InstructionUtils.STR_GOTO_TABLE, ((OFInstructionGotoTable)i).getTableId().getValue());
                     break;
                 case METER:
-                    jGen.writeStartObject();
+                    jGen.writeObjectFieldStart(InstructionUtils.STR_GOTO_METER);
                     jGen.writeNumberField(InstructionUtils.STR_GOTO_METER, ((OFInstructionMeter)i).getMeterId());
                     break;
                 case APPLY_ACTIONS:

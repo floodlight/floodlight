@@ -31,6 +31,11 @@ public class MatchSerializer extends JsonSerializer<Match> {
 	JsonProcessingException {
 		serializeMatch(jGen, match);
 	}
+	
+	@SuppressWarnings("unchecked") 
+	public static String matchValueToString(Match m, @SuppressWarnings("rawtypes") MatchField mf) {
+		return m.isPartiallyMasked(mf) ? m.getMasked(mf).toString() : m.get(mf).toString();
+	}
 
 	public static void serializeMatch(JsonGenerator jGen, Match match) throws IOException, JsonProcessingException {
 		// list flow matches
@@ -42,115 +47,116 @@ public class MatchSerializer extends JsonSerializer<Match> {
 			MatchField<?> mf = mi.next();
 			switch (mf.id) {
 			case IN_PORT:
-				jGen.writeStringField(MatchUtils.STR_IN_PORT, m.get(MatchField.IN_PORT).toString());
+				jGen.writeStringField(MatchUtils.STR_IN_PORT, matchValueToString(m, mf));
 				break;
 			case IN_PHY_PORT:
-				jGen.writeStringField(MatchUtils.STR_IN_PHYS_PORT, m.get(MatchField.IN_PHY_PORT).toString());
+				jGen.writeStringField(MatchUtils.STR_IN_PHYS_PORT, matchValueToString(m, mf));
 				break;
 			case ARP_OP:
-				jGen.writeNumberField(MatchUtils.STR_ARP_OPCODE, m.get(MatchField.ARP_OP).getOpcode());
+				jGen.writeStringField(MatchUtils.STR_ARP_OPCODE, matchValueToString(m, mf));
 				break;
 			case ARP_SHA:
-				jGen.writeStringField(MatchUtils.STR_ARP_SHA, m.get(MatchField.ARP_SHA).toString());
+				jGen.writeStringField(MatchUtils.STR_ARP_SHA, matchValueToString(m, mf));
 				break;
 			case ARP_SPA:
-				jGen.writeStringField(MatchUtils.STR_ARP_SPA, m.get(MatchField.ARP_SPA).toString());
+				jGen.writeStringField(MatchUtils.STR_ARP_SPA, matchValueToString(m, mf));
 				break;
 			case ARP_THA:
-				jGen.writeStringField(MatchUtils.STR_ARP_DHA, m.get(MatchField.ARP_THA).toString());
+				jGen.writeStringField(MatchUtils.STR_ARP_DHA, matchValueToString(m, mf));
 				break;
 			case ARP_TPA:
-				jGen.writeStringField(MatchUtils.STR_ARP_DPA, m.get(MatchField.ARP_TPA).toString());
+				jGen.writeStringField(MatchUtils.STR_ARP_DPA, matchValueToString(m, mf));
 				break;
-			case ETH_TYPE:
-				jGen.writeNumberField(MatchUtils.STR_DL_TYPE, m.get(MatchField.ETH_TYPE).getValue());
+			case ETH_TYPE: // TODO Remove this "0x" when Loxigen is updated.
+				jGen.writeStringField(MatchUtils.STR_DL_TYPE, m.isPartiallyMasked(mf) ?
+						"0x" + m.getMasked(mf).toString() : "0x" + m.get(mf).toString());
 				break;
 			case ETH_SRC:
-				jGen.writeStringField(MatchUtils.STR_DL_SRC, m.get(MatchField.ETH_SRC).toString());
+				jGen.writeStringField(MatchUtils.STR_DL_SRC, matchValueToString(m, mf));
 				break;
 			case ETH_DST:
-				jGen.writeStringField(MatchUtils.STR_DL_DST, m.get(MatchField.ETH_DST).toString());
+				jGen.writeStringField(MatchUtils.STR_DL_DST, matchValueToString(m, mf));
 				break;
 			case VLAN_VID:
-				jGen.writeNumberField(MatchUtils.STR_DL_VLAN, m.get(MatchField.VLAN_VID).getVlan());
+				jGen.writeStringField(MatchUtils.STR_DL_VLAN, matchValueToString(m, mf));
 				break;
 			case VLAN_PCP:
-				jGen.writeNumberField(MatchUtils.STR_DL_VLAN_PCP, m.get(MatchField.VLAN_PCP).getValue());
+				jGen.writeStringField(MatchUtils.STR_DL_VLAN_PCP, matchValueToString(m, mf));
 				break;
 			case ICMPV4_TYPE:
-				jGen.writeNumberField(MatchUtils.STR_ICMP_TYPE, m.get(MatchField.ICMPV4_TYPE).getType());
+				jGen.writeStringField(MatchUtils.STR_ICMP_TYPE, matchValueToString(m, mf));
 				break;
 			case ICMPV4_CODE:
-				jGen.writeNumberField(MatchUtils.STR_ICMP_CODE, m.get(MatchField.ICMPV4_CODE).getCode());
+				jGen.writeStringField(MatchUtils.STR_ICMP_CODE, matchValueToString(m, mf));
 				break;
 			case ICMPV6_TYPE:
-				jGen.writeNumberField(MatchUtils.STR_ICMPV6_TYPE, m.get(MatchField.ICMPV6_TYPE).getValue());
+				jGen.writeStringField(MatchUtils.STR_ICMPV6_TYPE, matchValueToString(m, mf));
 				break;
 			case ICMPV6_CODE:
-				jGen.writeNumberField(MatchUtils.STR_ICMPV6_CODE, m.get(MatchField.ICMPV6_CODE).getValue());
+				jGen.writeStringField(MatchUtils.STR_ICMPV6_CODE, matchValueToString(m, mf));
 				break;
 			case IP_DSCP:
-				jGen.writeNumberField(MatchUtils.STR_NW_DSCP, m.get(MatchField.IP_DSCP).getDscpValue());
+				jGen.writeStringField(MatchUtils.STR_NW_DSCP, matchValueToString(m, mf));
 				break;
 			case IP_ECN:
-				jGen.writeNumberField(MatchUtils.STR_NW_ECN, m.get(MatchField.IP_ECN).getEcnValue());
+				jGen.writeStringField(MatchUtils.STR_NW_ECN, matchValueToString(m, mf));
 				break;
 			case IP_PROTO:
-				jGen.writeNumberField(MatchUtils.STR_NW_PROTO, m.get(MatchField.IP_PROTO).getIpProtocolNumber());
+				jGen.writeStringField(MatchUtils.STR_NW_PROTO, matchValueToString(m, mf));
 				break;
 			case IPV4_SRC:
-				jGen.writeStringField(MatchUtils.STR_NW_SRC, m.get(MatchField.IPV4_SRC).toString());
+				jGen.writeStringField(MatchUtils.STR_NW_SRC, matchValueToString(m, mf));
 				break;
 			case IPV4_DST:
-				jGen.writeStringField(MatchUtils.STR_NW_DST, m.get(MatchField.IPV4_DST).toString());
+				jGen.writeStringField(MatchUtils.STR_NW_DST, matchValueToString(m, mf));
 				break;
 			case IPV6_SRC:
-				jGen.writeStringField(MatchUtils.STR_IPV6_SRC, m.get(MatchField.IPV6_SRC).toString());
+				jGen.writeStringField(MatchUtils.STR_IPV6_SRC, matchValueToString(m, mf));
 				break;
 			case IPV6_DST:
-				jGen.writeStringField(MatchUtils.STR_IPV6_DST, m.get(MatchField.IPV6_DST).toString());
+				jGen.writeStringField(MatchUtils.STR_IPV6_DST, matchValueToString(m, mf));
 				break;
 			case IPV6_FLABEL:
-				jGen.writeNumberField(MatchUtils.STR_IPV6_FLOW_LABEL, m.get(MatchField.IPV6_FLABEL).getIPv6FlowLabelValue());
+				jGen.writeStringField(MatchUtils.STR_IPV6_FLOW_LABEL, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_SLL:
-				jGen.writeNumberField(MatchUtils.STR_IPV6_ND_SSL, m.get(MatchField.IPV6_ND_SLL).getLong());
+				jGen.writeStringField(MatchUtils.STR_IPV6_ND_SSL, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_TARGET:
-				jGen.writeNumberField(MatchUtils.STR_IPV6_ND_TARGET, m.get(MatchField.IPV6_ND_TARGET).getZeroCompressStart());
+				jGen.writeStringField(MatchUtils.STR_IPV6_ND_TARGET, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_TLL:
-				jGen.writeNumberField(MatchUtils.STR_IPV6_ND_TTL, m.get(MatchField.IPV6_ND_TLL).getLong());
+				jGen.writeStringField(MatchUtils.STR_IPV6_ND_TTL, matchValueToString(m, mf));
 				break;
 			case METADATA:
-				jGen.writeNumberField(MatchUtils.STR_METADATA, m.get(MatchField.METADATA).getValue().getValue());
+				jGen.writeStringField(MatchUtils.STR_METADATA, matchValueToString(m, mf));
 				break;
 			case MPLS_LABEL:
-				jGen.writeNumberField(MatchUtils.STR_MPLS_LABEL, m.get(MatchField.MPLS_LABEL).getValue());
+				jGen.writeStringField(MatchUtils.STR_MPLS_LABEL, matchValueToString(m, mf));
 				break;
 			case MPLS_TC:
-				jGen.writeNumberField(MatchUtils.STR_MPLS_TC, m.get(MatchField.MPLS_TC).getValue());
+				jGen.writeStringField(MatchUtils.STR_MPLS_TC, matchValueToString(m, mf));
 				break;
 			case MPLS_BOS:
-				jGen.writeStringField(MatchUtils.STR_MPLS_BOS, m.get(MatchField.MPLS_BOS).toString());
+				jGen.writeStringField(MatchUtils.STR_MPLS_BOS, matchValueToString(m, mf));
 				break;
 			case SCTP_SRC:
-				jGen.writeNumberField(MatchUtils.STR_SCTP_SRC, m.get(MatchField.SCTP_SRC).getPort());
+				jGen.writeStringField(MatchUtils.STR_SCTP_SRC, matchValueToString(m, mf));
 				break;
 			case SCTP_DST:
-				jGen.writeNumberField(MatchUtils.STR_SCTP_DST, m.get(MatchField.SCTP_DST).getPort());
+				jGen.writeStringField(MatchUtils.STR_SCTP_DST, matchValueToString(m, mf));
 				break;
 			case TCP_SRC:
-				jGen.writeNumberField(MatchUtils.STR_TCP_SRC, m.get(MatchField.TCP_SRC).getPort());
+				jGen.writeStringField(MatchUtils.STR_TCP_SRC, matchValueToString(m, mf));
 				break;
 			case TCP_DST:
-				jGen.writeNumberField(MatchUtils.STR_TCP_DST, m.get(MatchField.TCP_DST).getPort());
+				jGen.writeStringField(MatchUtils.STR_TCP_DST, matchValueToString(m, mf));
 				break;
 			case UDP_SRC:
-				jGen.writeNumberField(MatchUtils.STR_UDP_SRC, m.get(MatchField.UDP_SRC).getPort());
+				jGen.writeStringField(MatchUtils.STR_UDP_SRC, matchValueToString(m, mf));
 				break;
 			case UDP_DST:
-				jGen.writeNumberField(MatchUtils.STR_UDP_DST, m.get(MatchField.UDP_DST).getPort());
+				jGen.writeStringField(MatchUtils.STR_UDP_DST, matchValueToString(m, mf));
 				break;
 			default:
 				// either a BSN or unknown match type

@@ -17,6 +17,7 @@
 package net.floodlightcontroller.staticflowentry;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -37,6 +38,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionClearActions;
@@ -90,7 +92,8 @@ public class StaticFlowEntries {
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setOutPort(OFPort.ANY) 
 		.setCookie(computeEntryCookie(0, entryName))
-		.setPriority(Integer.MAX_VALUE);
+		.setPriority(Integer.MAX_VALUE)
+		.setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM));
 		return;
 	}
 
@@ -144,6 +147,8 @@ public class StaticFlowEntries {
 		entry.put(StaticFlowEntryPusher.COLUMN_SWITCH, sw);
 		entry.put(StaticFlowEntryPusher.COLUMN_ACTIVE, Boolean.toString(true));
 		entry.put(StaticFlowEntryPusher.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));
+		entry.put(StaticFlowEntryPusher.COLUMN_IDLE_TIMEOUT, Integer.toString(fm.getIdleTimeout()));
+		entry.put(StaticFlowEntryPusher.COLUMN_HARD_TIMEOUT, Integer.toString(fm.getHardTimeout()));
 
 		switch (fm.getVersion()) {
 		case OF_10:
@@ -367,9 +372,6 @@ public class StaticFlowEntries {
 
 			String n = jp.getCurrentName();
 			jp.nextToken();
-			if (jp.getText().equals("")) {
-				continue;
-			}
 
 			// Java 7 switch-case on strings automatically checks for (deep) string equality.
 			// IMHO, this makes things easier on the eyes than if, else if, else's, and it
@@ -559,6 +561,7 @@ public class StaticFlowEntries {
 				break;
 			default:
 				log.error("Could not decode field from JSON string: {}", n);
+				break;
 			}  
 		} 
 		
