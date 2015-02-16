@@ -65,6 +65,11 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.ver10.OFFlowRemovedReasonSerializerVer10;
+import org.projectfloodlight.openflow.protocol.ver11.OFFlowRemovedReasonSerializerVer11;
+import org.projectfloodlight.openflow.protocol.ver12.OFFlowRemovedReasonSerializerVer12;
+import org.projectfloodlight.openflow.protocol.ver13.OFFlowRemovedReasonSerializerVer13;
+import org.projectfloodlight.openflow.protocol.ver14.OFFlowRemovedReasonSerializerVer14;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U16;
@@ -132,7 +137,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	public static final String COLUMN_ARP_DHA = MatchUtils.STR_ARP_DHA;
 	public static final String COLUMN_ARP_SPA = MatchUtils.STR_ARP_SPA;
 	public static final String COLUMN_ARP_DPA = MatchUtils.STR_ARP_DPA;
-	
+
 	/* IPv6 related columns */
 	public static final String COLUMN_NW6_SRC = MatchUtils.STR_IPV6_SRC;
 	public static final String COLUMN_NW6_DST = MatchUtils.STR_IPV6_DST;
@@ -154,7 +159,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	/* end newly added matches */
 
 	public static final String COLUMN_ACTIONS = "actions";
-	
+
 	public static final String COLUMN_INSTR_GOTO_TABLE = InstructionUtils.STR_GOTO_TABLE; // instructions are each getting their own column, due to write and apply actions, which themselves contain a variable list of actions
 	public static final String COLUMN_INSTR_WRITE_METADATA = InstructionUtils.STR_WRITE_METADATA;
 	public static final String COLUMN_INSTR_WRITE_ACTIONS = InstructionUtils.STR_WRITE_ACTIONS;
@@ -175,7 +180,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_ICMP_TYPE, COLUMN_ICMP_CODE, 
 		COLUMN_ARP_OPCODE, COLUMN_ARP_SHA, COLUMN_ARP_DHA, 
 		COLUMN_ARP_SPA, COLUMN_ARP_DPA,
-		
+
 		/* IPv6 related matches */
 		COLUMN_NW6_SRC, COLUMN_NW6_DST, COLUMN_ICMP6_TYPE, COLUMN_ICMP6_CODE, 
 		COLUMN_IPV6_FLOW_LABEL, COLUMN_ND_SLL, COLUMN_ND_TLL, COLUMN_ND_TARGET,		
@@ -189,7 +194,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		COLUMN_INSTR_CLEAR_ACTIONS, COLUMN_INSTR_GOTO_METER,
 		COLUMN_INSTR_EXPERIMENTER
 		/* end newly added instructions */
-		};
+	};
 
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IOFSwitchService switchService;
@@ -365,11 +370,11 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				if (row.get(key) == null) {
 					continue;
 				}
-				
+
 				if (key.equals(COLUMN_SWITCH) || key.equals(COLUMN_NAME) || key.equals("id")) {
 					continue; // already handled
 				}
-				
+
 				if (key.equals(COLUMN_ACTIVE)) {
 					if  (!Boolean.valueOf((String) row.get(COLUMN_ACTIVE))) {
 						log.debug("skipping inactive entry {} for switch {}", entryName, switchName);
@@ -489,17 +494,17 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				entriesFromStorage.put(dpid, new HashMap<String, OFFlowMod>());
 
 			List<OFMessage> outQueue = new ArrayList<OFMessage>();
-			
+
 			/* For every flow per dpid, decide how to "add" the flow. */
 			for (String entry : entriesToAdd.get(dpid).keySet()) {
 				OFFlowMod newFlowMod = entriesToAdd.get(dpid).get(entry);
 				OFFlowMod oldFlowMod = null;
-				
+
 				String dpidOldFlowMod = entry2dpid.get(entry);
 				if (dpidOldFlowMod != null) {
 					oldFlowMod = entriesFromStorage.get(dpidOldFlowMod).remove(entry);
 				}
-				
+
 				/* Modify, which can be either a Flow MODIFY_STRICT or a Flow DELETE_STRICT with a side of Flow ADD */
 				if (oldFlowMod != null && newFlowMod != null) { 
 					/* MODIFY_STRICT b/c the match is still the same */
@@ -511,7 +516,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						entry2dpid.put(entry, dpid);
 						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
 						outQueue.add(newFlowMod);
-					/* DELETE_STRICT and then ADD b/c the match is now different */
+						/* DELETE_STRICT and then ADD b/c the match is now different */
 					} else {
 						log.debug("DeleteStrict and Add SFP Flow");
 						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
@@ -520,7 +525,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						if (dpidOldFlowMod.equals(dpid)) {
 							outQueue.add(oldFlowMod);
 							outQueue.add(addTmp); 
-						/* Otherwise, go ahead and send the flows now (since queuing them will send to the wrong switch). */
+							/* Otherwise, go ahead and send the flows now (since queuing them will send to the wrong switch). */
 						} else {
 							writeOFMessageToSwitch(DatapathId.of(dpidOldFlowMod), oldFlowMod);
 							writeOFMessageToSwitch(DatapathId.of(dpid), FlowModUtils.toFlowAdd(newFlowMod)); 
@@ -528,14 +533,14 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						entriesFromStorage.get(dpid).put(entry, addTmp);
 						entry2dpid.put(entry, dpid);			
 					}
-				/* Add a brand-new flow with ADD */
+					/* Add a brand-new flow with ADD */
 				} else if (newFlowMod != null && oldFlowMod == null) {
 					log.debug("Add SFP Flow");
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);
 					entriesFromStorage.get(dpid).put(entry, addTmp);
 					entry2dpid.put(entry, dpid);
 					outQueue.add(addTmp);
-				/* Something strange happened, so remove the flow */
+					/* Something strange happened, so remove the flow */
 				} else if (newFlowMod == null) { 
 					entriesFromStorage.get(dpid).remove(entry);
 					entry2dpid.remove(entry);
@@ -666,7 +671,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		sw.write(flowMod);
 		sw.flush();
 	}
-
 	@Override
 	public String getName() {
 		return StaticFlowName;
@@ -688,13 +692,74 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		 * never expire.
 		 */
 		if (AppCookie.extractApp(cookie) == STATIC_FLOW_APP_ID) {
-			if (OFFlowRemovedReason.DELETE.equals(msg.getReason()))
-				log.error("Got a FlowRemove message for a infinite " +
-						"timeout flow: {} from switch {}", msg, sw);
-			// Stop the processing chain since we sent the delete.
-			return Command.STOP;
+			OFFlowRemovedReason reason = null;
+			switch (msg.getVersion()) {
+			case OF_10:
+				reason = OFFlowRemovedReasonSerializerVer10.ofWireValue((byte) msg.getReason());
+				break;
+			case OF_11:
+				reason = OFFlowRemovedReasonSerializerVer11.ofWireValue((byte) msg.getReason());
+				break;
+			case OF_12:
+				reason = OFFlowRemovedReasonSerializerVer12.ofWireValue((byte) msg.getReason());
+				break;
+			case OF_13:
+				reason = OFFlowRemovedReasonSerializerVer13.ofWireValue((byte) msg.getReason());
+				break;
+			case OF_14:
+				reason = OFFlowRemovedReasonSerializerVer14.ofWireValue((byte) msg.getReason());
+				break;
+			default:
+				log.debug("OpenFlow version {} unsupported for OFFlowRemovedReasonSerializerVerXX", msg.getVersion());
+				break;
+			}
+			if (reason != null) {
+				if (OFFlowRemovedReason.DELETE == reason) {
+					log.error("Got a FlowRemove message for a infinite " + 
+							"timeout flow: {} from switch {}", msg, sw);
+				} else if (OFFlowRemovedReason.HARD_TIMEOUT == reason || OFFlowRemovedReason.IDLE_TIMEOUT == reason) {
+					/* Remove the Flow from the DB since it timed out */
+					log.debug("Received an IDLE or HARD timeout for an SFP flow. Removing it from the SFP DB.");
+					/* 
+					 * Lookup the flow based on the flow contents. We do not know/care about the name of the 
+					 * flow based on this message, but we can get the table values for this switch and search.
+					 */
+					String flowToRemove = null;
+					Map<String, OFFlowMod> flowsByName = getFlows(sw.getId());
+					for (Map.Entry<String, OFFlowMod> entry : flowsByName.entrySet()) {
+						if (msg.getCookie().equals(entry.getValue().getCookie()) &&
+								msg.getHardTimeout() == entry.getValue().getHardTimeout() &&
+								msg.getIdleTimeout() == entry.getValue().getIdleTimeout() &&
+								msg.getMatch().equals(entry.getValue().getMatch()) &&
+								msg.getPriority() == entry.getValue().getPriority() &&
+								msg.getTableId().equals(entry.getValue().getTableId())
+							) {
+							flowToRemove = entry.getKey();
+							break;
+						}
+					}
+					
+					log.debug("Flow to Remove: {}", flowToRemove);
+					
+					/*
+					 * Remove the flow. This will send the delete message to the switch,
+					 * since we cannot tell the storage listener rowsdeleted() that we
+					 * are only removing our local DB copy of the flow and that it actually
+					 * timed out on the switch and is already gone. The switch will silently
+					 * discard the delete message in this case.
+					 * 
+					 * TODO: We should come up with a way to convey to the storage listener
+					 * the reason for the flow being removed.
+					 */
+					if (flowToRemove != null) {
+						deleteFlow(flowToRemove);
+					}
+				}
+				/* Stop the processing chain since we sent or asked for the delete message. */
+				return Command.STOP;
+			}
 		}
-
+		/* Continue the processing chain, since we did not send the delete. */
 		return Command.CONTINUE;
 	}
 
@@ -787,7 +852,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			storageSourceService.insertRowAsync(TABLE_NAME, fmMap);
 		} catch (Exception e) {
 			log.error("Error! Check the fields specified for the flow.Make sure IPv4 fields are not mixed with IPv6 fields or all "
-            		+ "mandatory fields are specified. ");
+					+ "mandatory fields are specified. ");
 		}
 	}
 

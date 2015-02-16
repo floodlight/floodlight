@@ -11,5 +11,5 @@
   <logger name="LogService" level="DEBUG"/> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="DEBUG"/>
   <logger name="net.floodlightcontroller.logging" level="DEBUG"/>
-  <logger name="org.sdnplatform" level="DEBUG"/>
+  <logger name="org.sdnplatform" level="INFO"/>
 </configuration>

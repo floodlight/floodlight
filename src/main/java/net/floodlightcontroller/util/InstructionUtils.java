@@ -278,7 +278,7 @@ public class InstructionUtils {
 			return;
 		}
 
-		if (inst != null && inst.isEmpty()) {
+		if (inst != null && inst.trim().isEmpty()) { /* Allow the empty string, since this is what specifies clear (i.e. key clear does not have any defined values). */
 			OFInstructionClearActions i = OFFactories.getFactory(fmb.getVersion()).instructions().clearActions();
 			log.debug("Appending ClearActions instruction: {}", i);
 			appendInstruction(fmb, i);
