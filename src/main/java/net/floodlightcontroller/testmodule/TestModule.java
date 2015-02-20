@@ -43,6 +43,7 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthSrc;
+import org.projectfloodlight.openflow.protocol.ver13.OFMeterModCommandSerializerVer13;
 import org.projectfloodlight.openflow.types.ArpOpcode;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
@@ -125,7 +126,6 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 	@Override
 	public void switchAdded(DatapathId switchId) {
 		OFFactory factory = switchService.getSwitch(switchId).getOFFactory();
-		
 		/*
 		 * An attempt at meters, but they aren't supported anywhere, yet... 
 		 * OFMeterBand mb = factory.meterBands().buildDrop()
@@ -134,12 +134,13 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 				.build();
 		ArrayList<OFMeterBand> mbl = new ArrayList<OFMeterBand>();
 		mbl.add(mb);
-		
+				
 		OFMeterMod mm = factory.buildMeterMod()
 				.setMeters(mbl)
 				.setMeterId(1)
-				.setCommand(0)
-				.build(); */
+				.setCommand(OFMeterModCommandSerializerVer13.ADD_VAL) 
+				.build(); 
+		// This is a bug. You should be able to directly do OFMeterModCommand.ADD */
 		
 		/*HashSet<OFTableConfig> tblCfg = new HashSet<OFTableConfig>();
 		tblCfg.add(OFTableConfig.TABLE_MISS_CONTROLLER);

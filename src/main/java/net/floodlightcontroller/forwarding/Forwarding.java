@@ -251,76 +251,64 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 										srcDap.getPort(),
 										dstDap.getSwitchDPID(),
 										dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
-										if (route != null) {
-											if (log.isTraceEnabled()) {
-												log.trace("pushRoute inPort={} route={} " +
-														"destination={}:{}",
-														new Object[] { inPort, route,
-														dstDap.getSwitchDPID(),
-														dstDap.getPort()});
-											}
-											U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+						if (route != null) {
+							if (log.isTraceEnabled()) {
+								log.trace("pushRoute inPort={} route={} " +
+										"destination={}:{}",
+										new Object[] { inPort, route,
+										dstDap.getSwitchDPID(),
+										dstDap.getPort()});
+							}
+							U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
-											// if there is prior routing decision use route's match
-											Match routeMatch = null;
-											IRoutingDecision decision = null;
-											if (cntx != null) {
-												decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-											}
-											if (decision != null) {
-												routeMatch = decision.getMatch();
-											} else {
-												// The packet in match will only contain the port number.
-												// We need to add in specifics for the hosts we're routing between.
-												Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-												VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
-												MacAddress srcMac = eth.getSourceMACAddress();
-												MacAddress dstMac = eth.getDestinationMACAddress();
-												
-												// A retentive builder will remember all MatchFields of the parent the builder was generated from
-												// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
-												// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
-												Match.Builder mb = sw.getOFFactory().buildMatch();
-												mb.setExact(MatchField.IN_PORT, inPort)
-												.setExact(MatchField.ETH_SRC, srcMac)
-												.setExact(MatchField.ETH_DST, dstMac);
-												
-												if (!vlan.equals(VlanVid.ZERO)) {
-													mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
-												}
-												
-												// TODO Detect switch type and match to create hardware-implemented flow
-												// TODO Set option in config file to support specific or MAC-only matches
-												if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
-													IPv4 ip = (IPv4) eth.getPayload();
-													IPv4Address srcIp = ip.getSourceAddress();
-													IPv4Address dstIp = ip.getDestinationAddress();
-													mb.setExact(MatchField.IPV4_SRC, srcIp)
-													.setExact(MatchField.IPV4_DST, dstIp)
-													.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-													
-													if (ip.getProtocol().equals(IpProtocol.TCP)) {
-														TCP tcp = (TCP) ip.getPayload();
-														mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-														.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
-														.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
-													} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
-														UDP udp = (UDP) ip.getPayload();
-														mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-														.setExact(MatchField.UDP_SRC, udp.getSourcePort())
-														.setExact(MatchField.UDP_DST, udp.getDestinationPort());
-													}	
-												} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
-													mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
-												} 
-												
-												routeMatch = mb.build();
-											}
+							// The packet in match will only contain the port number.
+							// We need to add in specifics for the hosts we're routing between.
+							Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+							VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
+							MacAddress srcMac = eth.getSourceMACAddress();
+							MacAddress dstMac = eth.getDestinationMACAddress();
 
-											pushRoute(route, routeMatch, pi, sw.getId(), cookie,
-													cntx, requestFlowRemovedNotifn, false,
-													OFFlowModCommand.ADD);
-										}
+							// A retentive builder will remember all MatchFields of the parent the builder was generated from
+							// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
+							// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
+							Match.Builder mb = sw.getOFFactory().buildMatch();
+							mb.setExact(MatchField.IN_PORT, inPort)
+							.setExact(MatchField.ETH_SRC, srcMac)
+							.setExact(MatchField.ETH_DST, dstMac);
+
+							if (!vlan.equals(VlanVid.ZERO)) {
+								mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+							}
+
+							// TODO Detect switch type and match to create hardware-implemented flow
+							// TODO Set option in config file to support specific or MAC-only matches
+							if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
+								IPv4 ip = (IPv4) eth.getPayload();
+								IPv4Address srcIp = ip.getSourceAddress();
+								IPv4Address dstIp = ip.getDestinationAddress();
+								mb.setExact(MatchField.IPV4_SRC, srcIp)
+								.setExact(MatchField.IPV4_DST, dstIp)
+								.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+
+								if (ip.getProtocol().equals(IpProtocol.TCP)) {
+									TCP tcp = (TCP) ip.getPayload();
+									mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+									.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+									.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+								} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+									UDP udp = (UDP) ip.getPayload();
+									mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+									.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+									.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+								}	
+							} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+								mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+							}
+
+							pushRoute(route, mb.build(), pi, sw.getId(), cookie,
+									cntx, requestFlowRemovedNotifn, false,
+									OFFlowModCommand.ADD);
+						}
 					}
 					iSrcDaps++;
 					iDstDaps++;
