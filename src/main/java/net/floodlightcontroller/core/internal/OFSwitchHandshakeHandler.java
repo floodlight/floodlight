@@ -43,6 +43,8 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupDelete;
+import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRole;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRoleReply;
@@ -64,6 +66,7 @@ import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
@@ -440,11 +443,33 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			OFFlowDelete deleteFlows = this.factory.buildFlowDelete()
 					.build();
 			this.sw.write(deleteFlows);
-		} else { /* All other OFVersions support multiple tables. */
+		} else { /* All other OFVersions support multiple tables and groups. */
 			OFFlowDelete deleteFlows = this.factory.buildFlowDelete()
 					.setTableId(TableId.ALL)
 					.build();
 			this.sw.write(deleteFlows);
+			
+			/*
+			 * Clear all groups.
+			 * We have to do this for all types manually as of Loxi 0.9.0.
+			 */
+			OFGroupDelete delgroup = this.sw.getOFFactory().buildGroupDelete()
+				.setGroup(OFGroup.ALL)
+				.setGroupType(OFGroupType.ALL)
+				.build();
+			this.sw.write(delgroup);
+			delgroup.createBuilder()
+				.setGroupType(OFGroupType.FF)
+				.build();
+			this.sw.write(delgroup);
+			delgroup.createBuilder()
+				.setGroupType(OFGroupType.INDIRECT)
+				.build();
+			this.sw.write(delgroup);
+			delgroup.createBuilder()
+				.setGroupType(OFGroupType.SELECT)
+				.build();
+			this.sw.write(delgroup);
 		}
 		
 		/*
@@ -845,15 +870,28 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void processOFError(OFErrorMsg m) {
-			logErrorDisconnect(m);
-		}
+			/*
+			 * HP ProCurve switches do not support
+			 * the ofpt_barrier_request message.
+			 * 
+			 * Look for an error from a bad ofpt_barrier_request,
+			 * log a warning, but proceed.
+			 */
+			if (m.getErrType() == OFErrorType.BAD_REQUEST &&
+					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE &&
+					((OFBadRequestErrorMsg) m).getData().getParsedMessage().get() instanceof OFBarrierRequest) {
+					log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+			} else {
+				logErrorDisconnect(m);
+			}
+		} 
 
 		@Override
 		void enterState() {
 			sendHandshakeSetConfig();
 		}
 	}
-
+	
 	/**
 	 * We are waiting for a OFDescriptionStat message from the switch.
 	 * Once we receive any stat message we try to parse it. If it's not
