@@ -11,6 +11,9 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
@@ -27,6 +30,7 @@ import com.google.common.collect.ImmutableList;
  */
 class CounterNode implements Iterable<DebugCounterImpl> {
     private static final String QUOTED_SEP = Pattern.quote("/");
+    private static final Logger log = LoggerFactory.getLogger(CounterNode.class);
 
     /** path/hierarchy of this counter without leading /. An empty string
      * represents the root. A string without a / is a module name
@@ -168,6 +172,14 @@ class CounterNode implements Iterable<DebugCounterImpl> {
          * We're directly reusing the shrunken hierarchyElements List and
          * keyToRemove String, which IMHO is pretty cool how it works out.
          */
+        
+        /*
+         * Make sure it's possible to remove something.
+         */
+        if (hierarchyElements.isEmpty()) {
+        	log.error("Cannot remove a CounterNode from an empty list of hierarchy elements. Returning null.");
+        	return null;
+        } 
         String keyToRemove = hierarchyElements.remove(hierarchyElements.size() - 1); 
         for (String element: hierarchyElements) {
             cur = cur.children.get(element);
