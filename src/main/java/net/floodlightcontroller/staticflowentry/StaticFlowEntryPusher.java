@@ -510,7 +510,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					/* MODIFY_STRICT b/c the match is still the same */
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
 							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
-							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
+							&& oldFlowMod.getPriority() == newFlowMod.getPriority()
+							&& dpidOldFlowMod.equalsIgnoreCase(dpid)) {
 						log.debug("ModifyStrict SFP Flow");
 						entriesFromStorage.get(dpid).put(entry, newFlowMod);
 						entry2dpid.put(entry, dpid);

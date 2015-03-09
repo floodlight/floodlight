@@ -359,7 +359,7 @@ public class ActionUtils {
 			recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	public static void fromString(OFFlowMod.Builder fmb, String bigString, Logger log) {
 		List<OFAction> actions = new LinkedList<OFAction>();
-		if (bigString != null) {
+		if (bigString != null && !bigString.trim().isEmpty()) {
 			bigString = bigString.toLowerCase();
 			String[] bigStringSplit = bigString.split(","); // split into separate action=value or action=key@value pairs
 
@@ -410,7 +410,7 @@ public class ActionUtils {
 						if (actionData.length != 2) {
 							throw new IllegalArgumentException("[Action, Data] " + keyPair + " does not have form 'action=data'" + actionData);
 						}
-						
+
 						switch (actionData[0]) {
 						case MatchUtils.STR_ARP_OPCODE:
 							if (actionData[1].startsWith("0x")) {
@@ -857,10 +857,11 @@ public class ActionUtils {
 					actions.add(a);
 				}
 			}
-		}
-		log.debug("action {}", actions);
-
-		fmb.setActions(actions);
+			log.debug("actions: {}", actions);
+			fmb.setActions(actions);
+		} else {
+			log.debug("actions not found --> drop");
+		}		
 		return;
 	} 
 
