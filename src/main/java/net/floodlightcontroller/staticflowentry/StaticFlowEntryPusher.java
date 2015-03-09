@@ -424,10 +424,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			} else {
 				log.warn("Skipping entry with bad data: {} :: {} ", e.getMessage(), e.getStackTrace());
 			}
-		} catch (NullPointerException e) {
-			if (fmb == null) {
-				log.error("Skipping entry with bad switch DPID {}. Could not find DPID in switch manager.", switchName);
-			}
 		}
 
 		String match = matchString.toString();
@@ -514,14 +510,13 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					/* MODIFY_STRICT b/c the match is still the same */
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
 							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
-							&& oldFlowMod.getPriority() == newFlowMod.getPriority()
-							&& dpid.equals(dpidOldFlowMod)) {
+							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
 						log.debug("ModifyStrict SFP Flow");
 						entriesFromStorage.get(dpid).put(entry, newFlowMod);
 						entry2dpid.put(entry, dpid);
 						newFlowMod = FlowModUtils.toFlowModifyStrict(newFlowMod);
 						outQueue.add(newFlowMod);
-					/* DELETE_STRICT and then ADD b/c the match is now different */
+						/* DELETE_STRICT and then ADD b/c the match is now different */
 					} else {
 						log.debug("DeleteStrict and Add SFP Flow");
 						oldFlowMod = FlowModUtils.toFlowDeleteStrict(oldFlowMod);
@@ -538,7 +533,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 						entriesFromStorage.get(dpid).put(entry, addTmp);
 						entry2dpid.put(entry, dpid);			
 					}
-				/* Add a brand-new flow with ADD */
+					/* Add a brand-new flow with ADD */
 				} else if (newFlowMod != null && oldFlowMod == null) {
 					log.debug("Add SFP Flow");
 					OFFlowAdd addTmp = FlowModUtils.toFlowAdd(newFlowMod);

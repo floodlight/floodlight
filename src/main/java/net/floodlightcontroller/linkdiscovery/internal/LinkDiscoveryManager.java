@@ -582,7 +582,7 @@ IFloodlightModule, IInfoProvider {
 			return handleLldp((LLDP) bsn.getPayload(), sw, inPort, false, cntx);
 		} else if (eth.getPayload() instanceof LLDP) {
 			return handleLldp((LLDP) eth.getPayload(), sw, inPort, true, cntx);
-		} else if (eth.getEtherType() < 1536 && eth.getEtherType() >= 17) {
+		} else if (eth.getEtherType() < 1500) {
 			long destMac = eth.getDestinationMACAddress().getLong();
 			if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
 				ctrLinkLocalDrops.increment();
@@ -592,9 +592,6 @@ IFloodlightModule, IInfoProvider {
 				}
 				return Command.STOP;
 			}
-		} else if (eth.getEtherType() < 17) {
-			log.error("Received invalid ethertype of {}.", eth.getEtherType());
-			return Command.STOP;
 		}
 
 		if (ignorePacketInFromSource(eth.getSourceMACAddress())) {
