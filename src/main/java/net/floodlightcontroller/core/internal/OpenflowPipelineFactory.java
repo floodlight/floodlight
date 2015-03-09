@@ -20,10 +20,13 @@ package net.floodlightcontroller.core.internal;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
+import org.jboss.netty.handler.ssl.SslContext;
+import org.jboss.netty.handler.ssl.util.SelfSignedCertificate;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
 import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.Timer;
+
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 /**
@@ -65,6 +68,16 @@ public class OpenflowPipelineFactory
                                                         debugCounters,
                                                         timer);
 
+        /*
+         * Secure the pipeline with SSL (encrypt/decrypt first).
+         */
+		SelfSignedCertificate ssc = new SelfSignedCertificate();
+        SslContext sslCtx = SslContext.newServerContext(ssc.certificate(), ssc.privateKey());
+        pipeline.addLast("ofmessagecrypto", sslCtx.newHandler());
+        
+        /*
+         * Then add the handlers to be called after.
+         */
         pipeline.addLast(PipelineHandler.OF_MESSAGE_DECODER,
                          new OFMessageDecoder());
         pipeline.addLast(PipelineHandler.OF_MESSAGE_ENCODER,

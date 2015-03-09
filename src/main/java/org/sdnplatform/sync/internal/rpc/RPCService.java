@@ -31,7 +31,7 @@ import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.util.internal.LinkedTransferQueue;
+import java.util.concurrent.LinkedTransferQueue; /* No longer in Netty v3.10.0 */
 import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.util.Pair;
