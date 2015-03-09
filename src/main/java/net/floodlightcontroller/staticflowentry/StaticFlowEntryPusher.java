@@ -431,7 +431,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		try {
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
-			log.debug("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
+			log.error(e.toString());
+			log.error("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
 		} catch (Exception e) {
 			log.error("OF version incompatible for the match: " + match);
