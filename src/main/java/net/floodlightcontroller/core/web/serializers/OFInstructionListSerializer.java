@@ -74,7 +74,7 @@ public class OFInstructionListSerializer extends JsonSerializer<List<OFInstructi
                 } // end switch on instruction
                 jGen.writeEndObject(); // end specific instruction
             } // end for instructions
-            jGen.writeEndObject();
         } // end process instructions (OF1.1+ only)
+        jGen.writeEndObject(); // end object (either has instructions or a "none":"drop" key:value as specified above)
     } // end not-empty instructions (else)
 }
