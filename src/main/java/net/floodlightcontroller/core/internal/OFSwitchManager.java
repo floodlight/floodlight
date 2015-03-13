@@ -90,10 +90,13 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private IStoreClient<DatapathId, SwitchSyncRepresentation> storeClient;
 	public static final String SWITCH_SYNC_STORE_NAME = OFSwitchManager.class.getCanonicalName() + ".stateStore";
 
+	private static String keyStorePassword;
+	private static String keyStore;
+	private static boolean useSsl = false;
 
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
-    private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
+	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
 
 
 	private ISwitchDriverRegistry driverRegistry;
@@ -631,7 +634,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		// Module variables
 		switchHandlers = new ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler>();
 		switches = new ConcurrentHashMap<DatapathId, IOFSwitchBackend>();
-        syncedSwitches = new ConcurrentHashMap<DatapathId, IOFSwitch>();
+		syncedSwitches = new ConcurrentHashMap<DatapathId, IOFSwitch>();
 		floodlightProvider.getTimer();
 		counters = new SwitchManagerCounters(debugCounterService);
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
@@ -649,6 +652,36 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			throw new FloodlightModuleException("Error while setting up sync store client", e);
 		} */
 
+		/* 
+		 * Get SSL config.
+		 * 
+		 * If a password is blank, the password field may or may not be specified.
+		 * If it is specified, an empty string will be expected for blank.
+		 * 
+		 * The path MUST be specified if SSL is enabled.
+		 */
+		Map<String, String> configParams = context.getConfigParams(this);
+		String path = configParams.get("keyStorePath");
+		String pass = configParams.get("keyStorePassword");
+		String useSsl = configParams.get("useSsl");
+
+		if (useSsl == null || path == null || path.isEmpty() || 
+				(!useSsl.equalsIgnoreCase("yes") && !useSsl.equalsIgnoreCase("true") &&
+						!useSsl.equalsIgnoreCase("yep") && !useSsl.equalsIgnoreCase("ja") &&
+						!useSsl.equalsIgnoreCase("stimmt")
+						)
+				) {
+			log.warn("SSL disabled. Using unsecure connections between Floodlight and switches.");
+			OFSwitchManager.useSsl = false;
+			OFSwitchManager.keyStore = null;
+			OFSwitchManager.keyStorePassword = null;
+		} else {
+			log.warn("SSL enabled. Using secure connections between Floodlight and switches.");
+			log.info("SSL keystore path: {}, password: {}", path, (pass == null ? "" : pass)); 
+			OFSwitchManager.useSsl = true;
+			OFSwitchManager.keyStore = path;
+			OFSwitchManager.keyStorePassword = (pass == null ? "" : pass);
+		}
 	}
 
 	@Override
@@ -687,8 +720,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			bootstrap.setOption("child.tcpNoDelay", true);
 			bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
 
-			ChannelPipelineFactory pfact =
-					new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService);
+			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, keyStore, keyStorePassword) :
+				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService);
+
 			bootstrap.setPipelineFactory(pfact);
 			InetSocketAddress sa = new InetSocketAddress(floodlightProvider.getOFPort());
 			final ChannelGroup cg = new DefaultChannelGroup();
@@ -805,60 +839,60 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			switchAddedToStore(sw);
 		}
 	}
-	
+
 	/**
-     * Called when we receive a store notification about a switch that
-     * has been removed from the sync store
-     * @param dpid
-     */
-    private synchronized void switchRemovedFromStore(DatapathId dpid) {
-        if (floodlightProvider.getRole() != HARole.STANDBY) {
-            return; // only read from store if slave
-        }
-        IOFSwitch oldSw = syncedSwitches.remove(dpid);
-        if (oldSw != null) {
-            addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
-        } else {
-            // TODO: the switch was deleted (tombstone) before we ever
-            // knew about it (or was deleted repeatedly). Can this
-            // happen? When/how?
-        }
-    }
-    
-    /**
-     * Called when we receive a store notification about a new or updated
-     * switch.
-     * @param sw
-     */
-    private synchronized void switchAddedToStore(IOFSwitch sw) {
-        if (floodlightProvider.getRole() != HARole.STANDBY) {
-            return; // only read from store if slave
-        }
-        DatapathId dpid = sw.getId();
+	 * Called when we receive a store notification about a switch that
+	 * has been removed from the sync store
+	 * @param dpid
+	 */
+	private synchronized void switchRemovedFromStore(DatapathId dpid) {
+		if (floodlightProvider.getRole() != HARole.STANDBY) {
+			return; // only read from store if slave
+		}
+		IOFSwitch oldSw = syncedSwitches.remove(dpid);
+		if (oldSw != null) {
+			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
+		} else {
+			// TODO: the switch was deleted (tombstone) before we ever
+			// knew about it (or was deleted repeatedly). Can this
+			// happen? When/how?
+		}
+	}
 
-        IOFSwitch oldSw = syncedSwitches.put(dpid, sw);
-        if (oldSw == null)  {
-            addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.ADDED));
-        } else {
-            // The switch already exists in storage, see if anything
-            // has changed
-            sendNotificationsIfSwitchDiffers(oldSw, sw);
-        }
-    }
+	/**
+	 * Called when we receive a store notification about a new or updated
+	 * switch.
+	 * @param sw
+	 */
+	private synchronized void switchAddedToStore(IOFSwitch sw) {
+		if (floodlightProvider.getRole() != HARole.STANDBY) {
+			return; // only read from store if slave
+		}
+		DatapathId dpid = sw.getId();
 
-    /**
-     * Check if the two switches differ in their ports or in other
-     * fields and if they differ enqueue a switch update
-     * @param oldSw
-     * @param newSw
-     */
-    private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch oldSw, IOFSwitch newSw) {
-        /*TODO @Ryan Collection<PortChangeEvent> portDiffs = oldSw.comparePorts(newSw.getPorts());
+		IOFSwitch oldSw = syncedSwitches.put(dpid, sw);
+		if (oldSw == null)  {
+			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.ADDED));
+		} else {
+			// The switch already exists in storage, see if anything
+			// has changed
+			sendNotificationsIfSwitchDiffers(oldSw, sw);
+		}
+	}
+
+	/**
+	 * Check if the two switches differ in their ports or in other
+	 * fields and if they differ enqueue a switch update
+	 * @param oldSw
+	 * @param newSw
+	 */
+	private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch oldSw, IOFSwitch newSw) {
+		/*TODO @Ryan Collection<PortChangeEvent> portDiffs = oldSw.comparePorts(newSw.getPorts());
         for (PortChangeEvent ev: portDiffs) {
             SwitchUpdate update = new SwitchUpdate(newSw.getId(),
                                      SwitchUpdateType.PORTCHANGED,
                                      ev.port, ev.type);
             addUpdateToQueue(update);
         }*/
-    }
+	}
 }
