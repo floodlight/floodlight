@@ -59,12 +59,9 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 		jGen.writeStringField("version", flowMod.getVersion().toString()); // return the enum names
 		jGen.writeStringField("command", flowMod.getCommand().toString());
 		jGen.writeNumberField("cookie", flowMod.getCookie().getValue());
-		jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
-		jGen.writeStringField("tableId", flowMod.getTableId().toString());
 		jGen.writeNumberField("priority", flowMod.getPriority());
 		jGen.writeNumberField("idleTimeoutSec", flowMod.getIdleTimeout());
 		jGen.writeNumberField("hardTimeoutSec", flowMod.getHardTimeout());
-		jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
 		jGen.writeStringField("outPort", flowMod.getOutPort().toString());
 
 		switch (flowMod.getVersion()) {
@@ -72,15 +69,26 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 			break;
 		case OF_11:
 			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer11.toWireValue(flowMod.getFlags()));
+			jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
+			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
+			jGen.writeStringField("tableId", flowMod.getTableId().toString());
 			break;
 		case OF_12:
 			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer12.toWireValue(flowMod.getFlags()));
+			jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
+			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
+			jGen.writeStringField("tableId", flowMod.getTableId().toString());
 			break;
 		case OF_13:
 			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer13.toWireValue(flowMod.getFlags()));
+			jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
+			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
 			break;
 		case OF_14:
 			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer14.toWireValue(flowMod.getFlags()));
+			jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
+			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
+			jGen.writeStringField("tableId", flowMod.getTableId().toString());
 			break;
 		default:
 			logger.error("Could not decode OFVersion {}", flowMod.getVersion());

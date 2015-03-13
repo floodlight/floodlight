@@ -431,7 +431,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		try {
 			fmb.setMatch(MatchUtils.fromString(match, fmb.getVersion()));
 		} catch (IllegalArgumentException e) {
-			log.debug("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
+			log.error(e.toString());
+			log.error("Ignoring flow entry {} on switch {} with illegal OFMatch() key: " + match, entryName, switchName);
 			return;
 		} catch (Exception e) {
 			log.error("OF version incompatible for the match: " + match);
@@ -510,7 +511,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					/* MODIFY_STRICT b/c the match is still the same */
 					if (oldFlowMod.getMatch().equals(newFlowMod.getMatch())
 							&& oldFlowMod.getCookie().equals(newFlowMod.getCookie())
-							&& oldFlowMod.getPriority() == newFlowMod.getPriority()) {
+							&& oldFlowMod.getPriority() == newFlowMod.getPriority()
+							&& dpidOldFlowMod.equalsIgnoreCase(dpid)) {
 						log.debug("ModifyStrict SFP Flow");
 						entriesFromStorage.get(dpid).put(entry, newFlowMod);
 						entry2dpid.put(entry, dpid);

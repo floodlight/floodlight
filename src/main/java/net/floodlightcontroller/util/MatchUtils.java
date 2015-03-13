@@ -24,6 +24,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.OFVlanVidMatchWithMask;
 import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
@@ -387,10 +388,10 @@ public class MatchUtils {
 			switch (key_value[0]) {
 			case STR_IN_PORT:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IN_PORT, OFPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+					mb.setExact(MatchField.IN_PORT, OFPort.ofShort(dataMask[0].contains("0x") ? U16.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[0])).getRaw()));
 				} else {
-					mb.setMasked(MatchField.IN_PORT, OFPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-					OFPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.IN_PORT, OFPort.ofShort(dataMask[0].contains("0x") ? U16.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[0])).getRaw()), 
+					OFPort.ofShort(dataMask[1].contains("0x") ? U16.of(Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[1])).getRaw()));
 				}
 				break;
 			case STR_DL_DST: /* Only accept hex-string for MAC addresses */

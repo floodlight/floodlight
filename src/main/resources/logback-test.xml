@@ -19,6 +19,6 @@
   <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>
   <logger name="net.floodlightcontroller.routing" level="INFO"></logger>
   <logger name="net.floodlightcontroller.core.internal" level="INFO"></logger>
-  <logger level="DEBUG" name="net.floodlightcontroller.firewall"></logger>
+  <logger level="INFO" name="net.floodlightcontroller.firewall"></logger>
   <logger level="INFO" name="net.floodlightcontroller.staticflowentry"></logger>
 </configuration>

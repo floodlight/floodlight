@@ -31,6 +31,7 @@ public class SwitchManagerCounters {
     public final IDebugCounter roleReplyTimeout;
     public final IDebugCounter roleReplyReceived;
     public final IDebugCounter roleReplyErrorUnsupported;
+    public final IDebugCounter switchSslConfigurationError;
 
     public SwitchManagerCounters(IDebugCounterService debugCounters) {
         debugCounters.registerModule(prefix);
@@ -199,6 +200,15 @@ public class SwitchManagerCounters {
                                     "error from a switch in response to a role " +
                                     "request indicating that the switch does not " +
                                     "support roles.");
+                    
+                    switchSslConfigurationError =
+                            debugCounters.registerCounter(
+                                        prefix, "switch-ssl-configuration-error",
+                                        "Number of times the controller could not " +
+                                        "handshake with a switch due to an " +
+                                        "IllegalArgumentException, which is likely " +
+                                        "due to the switch trying to speak SSL whereas " +
+                                        "the controller wants to use vanilla TCP.");
     }
 
     public String getPrefix(){
