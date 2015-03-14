@@ -17,22 +17,14 @@
 
 package net.floodlightcontroller.firewall;
 
-import java.io.IOException;
-
 import org.restlet.resource.Get;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 public class FirewallStorageRulesResource extends FirewallResourceBase {
-    // REST API for retrieving rules from storage
+	// REST API for retrieving rules from storage
 
-    private static final Logger log = LoggerFactory.getLogger(FirewallStorageRulesResource.class);
-
-    @Get("json")
-    public Object handleRequest() {
-        IFirewallService firewall = getFirewallService();
-
-	return firewall.getStorageRules();
-    }
+	@Get("json")
+	public Object handleRequest() {
+		IFirewallService firewall = getFirewallService();
+		return firewall.getStorageRules();
+	}
 }
