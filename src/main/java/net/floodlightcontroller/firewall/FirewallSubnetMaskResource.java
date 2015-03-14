@@ -25,84 +25,80 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 import org.restlet.resource.Post;
 import org.restlet.resource.Get;
-import org.restlet.resource.ServerResource;
 import org.restlet.data.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class FirewallSubnetMaskResource extends FirewallResourceBase {
-    // REST API to get or set local subnet mask -- this only makes sense for one subnet
-    // will remove later
+	// REST API to get or set local subnet mask -- this only makes sense for one subnet
+	// will remove later
 
-    private static final Logger log = LoggerFactory.getLogger(FirewallSubnetMaskResource.class);
+	private static final Logger log = LoggerFactory.getLogger(FirewallSubnetMaskResource.class);
 
-    @Get("json")
-    public Object handleRequest() {
-        IFirewallService firewall = getFirewallService();
+	@Get("json")
+	public Object handleRequest() {
+		IFirewallService firewall = getFirewallService();
+		return "{\"subnet-mask\":\"" + firewall.getSubnetMask() + "\"}";
+	}
 
-	return "{\"subnet-mask\":\"" + firewall.getSubnetMask() + "\"}";
-    }
 
+	@Post
+	public String handlePost(String fmJson) {
+		IFirewallService firewall = getFirewallService();
 
-    @Post
-    public String handlePost(String fmJson) {
-        IFirewallService firewall = getFirewallService();
+		String newMask;
+		try {
+			newMask = jsonExtractSubnetMask(fmJson);
+		} catch (IOException e) {
+			log.error("Error parsing new subnet mask: " + fmJson, e);
+			setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+			return "{\"status\" : \"Error! Could not parse new subnet mask, see log for details.\"}";
+		}
 
-        String newMask;
-        try {
-            newMask = jsonExtractSubnetMask(fmJson);
-        } catch (IOException e) {
-            log.error("Error parsing new subnet mask: " + fmJson, e);
-            setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-            return "{\"status\" : \"Error! Could not parse new subnet mask, see log for details.\"}";
-        }
+		firewall.setSubnetMask(newMask);
 
-        firewall.setSubnetMask(newMask);
+		setStatus(Status.SUCCESS_OK);
+		return ("{\"status\" : \"subnet mask set\"}");
+	}
 
-        setStatus(Status.SUCCESS_OK);
+	/**
+	 * Extracts subnet mask from a JSON string
+	 * @param fmJson The JSON formatted string
+	 * @return The subnet mask
+	 * @throws IOException If there was an error parsing the JSON
+	 */
+	public static String jsonExtractSubnetMask(String fmJson) throws IOException {
+		String subnet_mask = "";
+		MappingJsonFactory f = new MappingJsonFactory();
+		JsonParser jp;
 
-        return ("{\"status\" : \"subnet mask set\"}");
-    }
+		try {
+			jp = f.createJsonParser(fmJson);
+		} catch (JsonParseException e) {
+			throw new IOException(e);
+		}
 
-    /**
-     * Extracts subnet mask from a JSON string
-     * @param fmJson The JSON formatted string
-     * @return The subnet mask
-     * @throws IOException If there was an error parsing the JSON
-     */
-    public static String jsonExtractSubnetMask(String fmJson) throws IOException {
-        String subnet_mask = "";
-        MappingJsonFactory f = new MappingJsonFactory();
-        JsonParser jp;
+		jp.nextToken();
+		if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+			throw new IOException("Expected START_OBJECT");
+		}
 
-        try {
-            jp = f.createJsonParser(fmJson);
-        } catch (JsonParseException e) {
-            throw new IOException(e);
-        }
+		while (jp.nextToken() != JsonToken.END_OBJECT) {
+			if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
+				throw new IOException("Expected FIELD_NAME");
+			}
 
-        jp.nextToken();
-        if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
-            throw new IOException("Expected START_OBJECT");
-        }
+			String n = jp.getCurrentName();
+			jp.nextToken();
+			if (jp.getText().equals(""))
+				continue;
 
-        while (jp.nextToken() != JsonToken.END_OBJECT) {
-            if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
-                throw new IOException("Expected FIELD_NAME");
-            }
+			if (n == "subnet-mask") {
+				subnet_mask = jp.getText();
+				break;
+			}
+		}
 
-            String n = jp.getCurrentName();
-            jp.nextToken();
-            if (jp.getText().equals(""))
-                continue;
-
-            if (n == "subnet-mask") {
-                subnet_mask = jp.getText();
-                break;
-            }
-        }
-
-        return subnet_mask;
-    }
+		return subnet_mask;
+	}
 }
