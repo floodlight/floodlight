@@ -66,7 +66,7 @@
         <include name="org.restlet.ext.simple-2.2M3.jar"/>
         <include name="org.restlet.ext.slf4j-2.2M3.jar"/>
         <include name="simple-5.1.1.jar"/>
-        <include name="netty-3.2.6.Final.jar"/>
+        <include name="netty-3.10.0.Final.jar"/>
         <include name="args4j-2.0.16.jar"/>
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
