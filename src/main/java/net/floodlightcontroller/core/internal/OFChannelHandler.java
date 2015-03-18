@@ -587,6 +587,10 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		} else if (e.getCause() instanceof RejectedExecutionException) {
 			log.warn("Could not process message: queue full");
 			counters.rejectedExecutionException.increment();
+		} else if (e.getCause() instanceof IllegalArgumentException) {
+			log.error("Could not decode OpenFlow protocol version from switch {}. Perhaps the switch is trying to use SSL and the controller is not (or vice versa)? {}", getConnectionInfoString(), e.getCause());
+			counters.switchSslConfigurationError.increment();
+			ctx.getChannel().close();
 		} else {
 			log.error("Error while processing message from switch "
 					+ getConnectionInfoString()

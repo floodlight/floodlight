@@ -359,7 +359,7 @@ public class ActionUtils {
 			recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	public static void fromString(OFFlowMod.Builder fmb, String bigString, Logger log) {
 		List<OFAction> actions = new LinkedList<OFAction>();
-		if (bigString != null) {
+		if (bigString != null && !bigString.trim().isEmpty()) {
 			bigString = bigString.toLowerCase();
 			String[] bigStringSplit = bigString.split(","); // split into separate action=value or action=key@value pairs
 
@@ -408,8 +408,9 @@ public class ActionUtils {
 					case STR_FIELD_SET: /* ONLY OF1.1+ should get in here. These should only be header fields valid within a set-field. */
 						String[] actionData = pair.split(MatchUtils.SET_FIELD_DELIM);
 						if (actionData.length != 2) {
-							throw new IllegalArgumentException("[Action, Data] " + keyPair + " does not have form 'action=data' parsing " + actionData);
+							throw new IllegalArgumentException("[Action, Data] " + keyPair + " does not have form 'action=data'" + actionData);
 						}
+
 						switch (actionData[0]) {
 						case MatchUtils.STR_ARP_OPCODE:
 							if (actionData[1].startsWith("0x")) {
@@ -442,8 +443,6 @@ public class ActionUtils {
 							.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildArpTpa().setValue(IPv4Address.of(actionData[1])).build())
 							.build();
 							break;
-
-							//sanjivini						
 						case MatchUtils.STR_IPV6_ND_SSL:
 							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
 							.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdSll().setValue(MacAddress.of(actionData[1])).build())
@@ -459,8 +458,6 @@ public class ActionUtils {
 							.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6NdTarget().setValue(IPv6Address.of(actionData[1])).build())
 							.build();
 							break;
-							//sanjivini		
-
 						case MatchUtils.STR_DL_TYPE:
 							if (actionData[1].startsWith("0x")) {
 								a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -526,8 +523,6 @@ public class ActionUtils {
 										.build();
 							}
 							break;
-
-							//sanjivini
 						case MatchUtils.STR_ICMPV6_CODE:
 							if (actionData[1].startsWith("0x")) {
 								a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -550,8 +545,6 @@ public class ActionUtils {
 										.build();
 							}
 							break;
-							//sanjivini						
-
 						case MatchUtils.STR_NW_PROTO:
 							if (actionData[1].startsWith("0x")) {
 								a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -573,8 +566,6 @@ public class ActionUtils {
 							.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv4Dst().setValue(IPv4Address.of(actionData[1])).build())
 							.build();						
 							break;
-
-							//sanjivini						
 						case MatchUtils.STR_IPV6_SRC:
 							a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
 							.setField(OFFactories.getFactory(fmb.getVersion()).oxms().buildIpv6Src().setValue(IPv6Address.of(actionData[1])).build())
@@ -596,8 +587,6 @@ public class ActionUtils {
 										.build();
 							}
 							break;
-							//sanjivini						
-
 						case MatchUtils.STR_NW_ECN:
 							if (actionData[1].startsWith("0x")) {
 								a = OFFactories.getFactory(fmb.getVersion()).actions().buildSetField()
@@ -868,10 +857,11 @@ public class ActionUtils {
 					actions.add(a);
 				}
 			}
-		}
-		log.debug("action {}", actions);
-
-		fmb.setActions(actions);
+			log.debug("actions: {}", actions);
+			fmb.setActions(actions);
+		} else {
+			log.debug("actions not found --> drop");
+		}		
 		return;
 	} 
 
