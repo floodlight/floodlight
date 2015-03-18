@@ -389,7 +389,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	 *            passed to constructor to modify in case of aux connection.
 	 * @param debugCounters
 	 */
-	OFChannelHandler(@Nonnull IOFSwitchManager switchManager,
+	protected OFChannelHandler(@Nonnull IOFSwitchManager switchManager,
 			@Nonnull INewOFConnectionListener newConnectionListener,
 			@Nonnull ChannelPipeline pipeline,
 			@Nonnull IDebugCounterService debugCounters,
