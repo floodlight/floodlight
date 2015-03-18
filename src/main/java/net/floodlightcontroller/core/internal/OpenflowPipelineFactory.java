@@ -64,7 +64,22 @@ public class OpenflowPipelineFactory
                                                         pipeline,
                                                         debugCounters,
                                                         timer);
-
+        /* if switch connection is desired in SSL mode, then add the
+         * SSLHandler for handling of SSL messages
+         */
+        if(SecurechannelHandler.secureStatus.equals("true"))
+        {
+           handler=new SecurechannelHandler(switchManager,
+                                            connectionListener,
+                                            pipeline,
+                                            debugCounters,
+                                            timer);    
+            
+           SSLEngine engine =
+         	   SecurechannelHandler.getServerContext().createSSLEngine();
+           engine.setUseClientMode(false);
+     	   pipeline.addLast("ssl", new SslHandler(engine));   
+        }
         pipeline.addLast(PipelineHandler.OF_MESSAGE_DECODER,
                          new OFMessageDecoder());
         pipeline.addLast(PipelineHandler.OF_MESSAGE_ENCODER,
