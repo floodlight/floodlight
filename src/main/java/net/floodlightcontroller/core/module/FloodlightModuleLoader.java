@@ -77,6 +77,21 @@ public class FloodlightModuleLoader {
     public static final String FLOODLIGHT_MODULES_KEY =
             "floodlight.modules";
 
+    public static final String FLOODLIGHT_SECURE=
+            "net.floodlightcontroller.core.internal.Controller.secureChannel";
+    
+    public static final String TRUST_STORE_PATH=
+            "org.sdnplatform.sync.internal.SyncManager.trustStorePath";
+
+    public static final String KEY_STORE_PATH=
+            "org.sdnplatform.sync.internal.SyncManager.keyStorePath";
+
+    public static final String TRUST_PASSWORD=
+            "org.sdnplatform.sync.internal.SyncManager.trustStorePassword";
+
+    public static final String KEY_PASSWORD=
+            "org.sdnplatform.sync.internal.SyncManager.keyStorePassword";
+    
     public FloodlightModuleLoader() {
         loadedModuleList = Collections.emptyList();
         floodlightModuleContext = new FloodlightModuleContext(this);
@@ -278,6 +293,18 @@ public class FloodlightModuleLoader {
                 moduleList = moduleList.replaceAll("\\s", "");
                 configMods.addAll(Arrays.asList(moduleList.split(",")));
             }
+            /* Loads the properties for setting up SSL connection between the
+             * switch and the floodlight controller. 
+             * secureStatus set as true represents that the connection desired is secure
+             * keyStorePath and trustStorePath are the path of JKS keystore and JKS truststore
+             * trustStorePassword and keyStorePassword are the passwords used for creation of JKS keystore and truststore
+             */
+            SecurechannelHandler.secureStatus = fprop.getProperty(FLOODLIGHT_SECURE);
+            SecurechannelHandler.keyStorePath=fprop.getProperty(KEY_STORE_PATH);
+            SecurechannelHandler.trustStorePath=fprop.getProperty(TRUST_STORE_PATH);
+            SecurechannelHandler.trustStorePassword=fprop.getProperty(TRUST_PASSWORD);
+            SecurechannelHandler.keyStorePassword=fprop.getProperty(KEY_PASSWORD);
+            
             fprop.remove(FLOODLIGHT_MODULES_KEY);
 
             prop.putAll(fprop);
