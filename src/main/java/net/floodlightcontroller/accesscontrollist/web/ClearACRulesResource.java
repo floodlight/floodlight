@@ -1,6 +1,9 @@
 /**
  *    Copyright 2015, Big Switch Networks, Inc.
- *    Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology
+ *    Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology, China 
+ *    Advisers: Keqiu Li and Heng Qi 
+ *    This work is supported by the State Key Program of National Natural Science of China(Grant No. 61432002) 
+ *    and Prospective Research Project on Future Networks in Jiangsu Future Networks Innovation Institute.
  *    
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may 
  *    not use this file except in compliance with the License. You may obtain
