@@ -301,7 +301,11 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		@Override
 		void processOFHello(OFHello m) throws IOException {
 			OFVersion version = m.getVersion();
-			factory = OFFactories.getFactory(version);
+			/* Choose the lower of the two supported versions. */
+			if (version.compareTo(factory.getVersion()) < 0) {
+				factory = OFFactories.getFactory(version);
+			} /* else The controller's version is < or = the switch's, so keep original controller factory. */
+			
 			OFMessageDecoder decoder = pipeline.get(OFMessageDecoder.class);
 			decoder.setVersion(version);
 			setState(new WaitFeaturesReplyState());
