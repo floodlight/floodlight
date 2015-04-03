@@ -27,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -163,11 +164,11 @@ public class PacketFactory {
                                 .setTransactionId(0x00003d1d)
                                 .setSeconds((short)0)
                                 .setFlags((short)0)
-                                .setClientIPAddress(0)
-                                .setYourIPAddress(0)
-                                .setServerIPAddress(0)
-                                .setGatewayIPAddress(0)
-                                .setClientHardwareAddress(hostMac.getBytes())
+                                .setClientIPAddress(IPv4Address.NONE)
+                                .setYourIPAddress(IPv4Address.NONE)
+                                .setServerIPAddress(IPv4Address.NONE)
+                                .setGatewayIPAddress(IPv4Address.NONE)
+                                .setClientHardwareAddress(hostMac)
                                 .setOptions(optionList))));
 
         return requestPacket;
