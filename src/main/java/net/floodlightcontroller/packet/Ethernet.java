@@ -233,7 +233,7 @@ public class Ethernet extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
-        if (length <= 16)  // Ethernet packet minium should be 60, this is reasonable
+        if (length <= 16)  // Ethernet packet minimum should be 60, this is reasonable
             return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
@@ -260,7 +260,7 @@ public class Ethernet extends BasePacket {
          * loxigen.
          */
         EthType etherType = EthType.of(bb.getShort() & 0xffff);
-        if (etherType.equals(EthType.VLAN_FRAME)) { /* In loxigen, EthType will give the same objects for a given ethertype --> shallow compare. */
+        if (etherType == EthType.VLAN_FRAME) { /* In loxigen, EthType will give the same objects for a given ethertype --> shallow compare. */
             short tci = bb.getShort();
             this.priorityCode = (byte) ((tci >> 13) & 0x07);
             this.vlanID = (short) (tci & 0x0fff);
