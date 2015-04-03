@@ -301,7 +301,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
 		// TODO Detect switch type and match to create hardware-implemented flow
 		// TODO Set option in config file to support specific or MAC-only matches
-		if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
+		if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
 			IPv4Address dstIp = ip.getDestinationAddress();
@@ -320,7 +320,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				.setExact(MatchField.UDP_SRC, udp.getSourcePort())
 				.setExact(MatchField.UDP_DST, udp.getDestinationPort());
 			}	
-		} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
+		} else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
 			mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
 		}
 		return mb.build();

@@ -127,7 +127,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("00:11:22:33:44:55")
         .setSourceMACAddress("00:44:33:22:11:00")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)
@@ -143,7 +143,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
         .setSourceMACAddress("00:44:33:22:11:00")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_ARP)
+        .setEtherType(EthType.ARP)
         .setPayload(
                 new ARP()
                 .setHardwareType(ARP.HW_TYPE_ETHERNET)
@@ -162,7 +162,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("00:44:33:22:11:00")
         .setSourceMACAddress("00:11:22:33:44:55")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_ARP)
+        .setEtherType(EthType.ARP)
         .setPayload(
                 new ARP()
                 .setHardwareType(ARP.HW_TYPE_ETHERNET)
@@ -181,7 +181,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
         .setSourceMACAddress("00:44:33:22:11:00")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)
@@ -197,7 +197,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
         .setSourceMACAddress("00:44:33:22:11:00")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)
@@ -212,7 +212,7 @@ public class FirewallTest extends FloodlightTestCase {
         .setDestinationMACAddress("00:44:33:22:11:00")
         .setSourceMACAddress("00:11:22:33:44:55")
         .setVlanID((short) 42)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)

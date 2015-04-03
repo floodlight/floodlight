@@ -30,6 +30,7 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -156,7 +157,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac2PacketIntestPacket = new Ethernet()
             .setDestinationMACAddress(mac2.getBytes())
             .setSourceMACAddress(mac1.getBytes())
-            .setEtherType(Ethernet.TYPE_IPv4)
+            .setEtherType(EthType.IPv4)
             .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)
@@ -176,7 +177,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToMac4PacketIntestPacket = new Ethernet()
         .setDestinationMACAddress(mac4.getBytes())
         .setSourceMACAddress(mac1.getBytes())
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
             new IPv4()
             .setTtl((byte) 128)
@@ -196,7 +197,7 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         mac1ToGwPacketIntestPacket = new Ethernet()
         .setDestinationMACAddress("00:11:33:33:44:55")
         .setSourceMACAddress(mac1.getBytes())
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
             new IPv4()
             .setTtl((byte) 128)

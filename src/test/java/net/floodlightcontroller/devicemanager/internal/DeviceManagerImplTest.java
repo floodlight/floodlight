@@ -97,6 +97,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketInReason;import org.proje
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -233,7 +234,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		this.testARPReplyPacket_1 = new Ethernet()
 		.setSourceMACAddress("00:44:33:22:11:01")
 		.setDestinationMACAddress("00:11:22:33:44:55")
-		.setEtherType(Ethernet.TYPE_ARP)
+		.setEtherType(EthType.ARP)
 		.setVlanID((short)5)
 		.setPayload(
 				new ARP()
@@ -253,7 +254,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		this.testARPReplyPacket_2 = new Ethernet()
 		.setSourceMACAddress("00:99:88:77:66:55")
 		.setDestinationMACAddress("00:11:22:33:44:55")
-		.setEtherType(Ethernet.TYPE_ARP)
+		.setEtherType(EthType.ARP)
 		.setVlanID((short)5)
 		.setPayload(
 				new ARP()
@@ -272,7 +273,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		this.testUDPPacket = (Ethernet) new Ethernet()
 		.setSourceMACAddress("00:11:22:33:44:55")
 		.setDestinationMACAddress("00:44:33:22:11:01")
-		.setEtherType(Ethernet.TYPE_IPv4)
+		.setEtherType(EthType.IPv4)
 		.setVlanID((short)5)
 		.setPayload(
 				new IPv4()

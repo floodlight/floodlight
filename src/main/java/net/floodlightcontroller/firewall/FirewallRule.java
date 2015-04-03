@@ -338,7 +338,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
         // return false match - no need to continue protocol specific check
         if (any_dl_type == false) {
             if (dl_type.equals(EthType.ARP)) {
-                if (packet.getEtherType() != EthType.ARP.getValue())
+                if (packet.getEtherType() != EthType.ARP) /* shallow check for equality is okay for EthType */
                     return false;
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {
@@ -354,7 +354,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                     }
                 }
             } else if (dl_type.equals(EthType.IPv4)) {
-                if (packet.getEtherType() != EthType.IPv4.getValue())
+                if (packet.getEtherType() != EthType.IPv4) /* shallow check for equality is okay for EthType */
                     return false;
                 else {
                     if (action == FirewallRule.FirewallAction.DROP) {

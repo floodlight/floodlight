@@ -26,6 +26,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -135,7 +136,7 @@ public class PacketFactory {
         Ethernet requestPacket = new Ethernet();
         requestPacket.setSourceMACAddress(hostMac.getBytes())
         .setDestinationMACAddress(broadcastMac)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setVersion((byte)4)
