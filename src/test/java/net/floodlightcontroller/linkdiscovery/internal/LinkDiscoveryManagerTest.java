@@ -79,6 +79,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortFeatures;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -500,7 +501,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         .setDestinationMACAddress(dstMAC)
         .setSourceMACAddress(srcMAC)
         .setVlanID(vlan)
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)

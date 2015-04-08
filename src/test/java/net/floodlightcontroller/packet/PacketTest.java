@@ -22,6 +22,7 @@ import java.util.Arrays;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.EthType;
 
 public class PacketTest {
     protected IPacket pkt1, pkt2, pkt3, pkt4;
@@ -33,7 +34,7 @@ public class PacketTest {
         this.pkt1 = new Ethernet()
         .setDestinationMACAddress("00:11:22:33:44:55")
         .setSourceMACAddress("00:44:33:22:11:00")
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                     new IPv4()
                     .setTtl((byte) 128)
@@ -47,7 +48,7 @@ public class PacketTest {
         this.pkt2 = new Ethernet()
         .setSourceMACAddress("00:44:33:22:11:01")
         .setDestinationMACAddress("00:11:22:33:44:55")
-        .setEtherType(Ethernet.TYPE_ARP)
+        .setEtherType(EthType.ARP)
         .setVlanID((short)5)
         .setPayload(
                     new ARP()
@@ -65,7 +66,7 @@ public class PacketTest {
         this.pkt3 = new Ethernet()
         .setSourceMACAddress("00:44:33:22:11:01")
         .setDestinationMACAddress("00:11:22:33:44:55")
-        .setEtherType(Ethernet.TYPE_ARP)
+        .setEtherType(EthType.ARP)
         .setPayload(
                     new ARP()
                     .setHardwareType(ARP.HW_TYPE_ETHERNET)
@@ -81,7 +82,7 @@ public class PacketTest {
         this.pkt4 = new Ethernet()
         .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
         .setSourceMACAddress("00:11:33:55:77:01")
-        .setEtherType(Ethernet.TYPE_IPv4)
+        .setEtherType(EthType.IPv4)
         .setPayload(
                     new IPv4()
                     .setTtl((byte) 128)

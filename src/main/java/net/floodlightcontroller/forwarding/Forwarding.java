@@ -129,23 +129,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 					"drop flow mod to a switch",
 					recommendation=LogMessageDoc.CHECK_SWITCH)
 	protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-		// initialize match structure and populate it based on the packet in's match
-		Match.Builder mb = null;
-		if (decision.getMatch() != null) {
-			/* This routing decision should be a match object with all appropriate fields set,
-			 * not just masked. If it's a decision that matches the packet we received, then simply setting
-			 * the masks to the new match will create the same match in the end. We can just use the routing
-			 * match object instead.
-			 * 
-			 * The Firewall is currently the only module/service that sets routing decisions in the context 
-			 * store (or instantiates any for that matter). It's disabled by default, so as-is a decision's 
-			 * match should always be null, meaning this will never be true.
-			 */
-			mb = decision.getMatch().createBuilder();
-		} else {
-			mb = pi.getMatch().createBuilder(); // otherwise no route is known so go based on packet's match object
-		}
-
+		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		Match m = createMatchFromPacket(sw, inPort, cntx);
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
 		List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
 		U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
@@ -154,14 +139,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
-		.setMatch(mb.build())
+		.setMatch(m)
 		.setActions(actions) // empty list
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 		try {
 			if (log.isDebugEnabled()) {
 				log.debug("write drop flow-mod sw={} match={} flow-mod={}",
-						new Object[] { sw, mb.build(), fmb.build() });
+						new Object[] { sw, m, fmb.build() });
 			}
 			boolean dampened = messageDamper.write(sw, fmb.build());
 			log.debug("OFMessage dampened: {}", dampened);
@@ -259,53 +244,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 										dstDap.getSwitchDPID(),
 										dstDap.getPort()});
 							}
+
 							U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
-							// The packet in match will only contain the port number.
-							// We need to add in specifics for the hosts we're routing between.
-							Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-							VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
-							MacAddress srcMac = eth.getSourceMACAddress();
-							MacAddress dstMac = eth.getDestinationMACAddress();
+							Match m = createMatchFromPacket(sw, inPort, cntx);
 
-							// A retentive builder will remember all MatchFields of the parent the builder was generated from
-							// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
-							// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
-							Match.Builder mb = sw.getOFFactory().buildMatch();
-							mb.setExact(MatchField.IN_PORT, inPort)
-							.setExact(MatchField.ETH_SRC, srcMac)
-							.setExact(MatchField.ETH_DST, dstMac);
-
-							if (!vlan.equals(VlanVid.ZERO)) {
-								mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
-							}
-
-							// TODO Detect switch type and match to create hardware-implemented flow
-							// TODO Set option in config file to support specific or MAC-only matches
-							if (eth.getEtherType() == Ethernet.TYPE_IPv4) {
-								IPv4 ip = (IPv4) eth.getPayload();
-								IPv4Address srcIp = ip.getSourceAddress();
-								IPv4Address dstIp = ip.getDestinationAddress();
-								mb.setExact(MatchField.IPV4_SRC, srcIp)
-								.setExact(MatchField.IPV4_DST, dstIp)
-								.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-
-								if (ip.getProtocol().equals(IpProtocol.TCP)) {
-									TCP tcp = (TCP) ip.getPayload();
-									mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-									.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
-									.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
-								} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
-									UDP udp = (UDP) ip.getPayload();
-									mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-									.setExact(MatchField.UDP_SRC, udp.getSourcePort())
-									.setExact(MatchField.UDP_DST, udp.getDestinationPort());
-								}	
-							} else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
-								mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
-							}
-
-							pushRoute(route, mb.build(), pi, sw.getId(), cookie,
+							pushRoute(route, m, pi, sw.getId(), cookie,
 									cntx, requestFlowRemovedNotifn, false,
 									OFFlowModCommand.ADD);
 						}
@@ -324,6 +268,64 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		}
 	}
 
+	/**
+	 * Instead of using the Firewall's routing decision Match, which might be as general
+	 * as "in_port" and inadvertently Match packets erroneously, construct a more
+	 * specific Match based on the deserialized OFPacketIn's payload, which has been 
+	 * placed in the FloodlightContext already by the Controller.
+	 * 
+	 * @param sw, the switch on which the packet was received
+	 * @param inPort, the ingress switch port on which the packet was received
+	 * @param cntx, the current context which contains the deserialized packet
+	 * @return a composed Match object based on the provided information
+	 */
+	protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx) {
+		// The packet in match will only contain the port number.
+		// We need to add in specifics for the hosts we're routing between.
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
+		MacAddress srcMac = eth.getSourceMACAddress();
+		MacAddress dstMac = eth.getDestinationMACAddress();
+
+		// A retentive builder will remember all MatchFields of the parent the builder was generated from
+		// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
+		// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		mb.setExact(MatchField.IN_PORT, inPort)
+		.setExact(MatchField.ETH_SRC, srcMac)
+		.setExact(MatchField.ETH_DST, dstMac);
+
+		if (!vlan.equals(VlanVid.ZERO)) {
+			mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+		}
+
+		// TODO Detect switch type and match to create hardware-implemented flow
+		// TODO Set option in config file to support specific or MAC-only matches
+		if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
+			IPv4 ip = (IPv4) eth.getPayload();
+			IPv4Address srcIp = ip.getSourceAddress();
+			IPv4Address dstIp = ip.getDestinationAddress();
+			mb.setExact(MatchField.IPV4_SRC, srcIp)
+			.setExact(MatchField.IPV4_DST, dstIp)
+			.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+
+			if (ip.getProtocol().equals(IpProtocol.TCP)) {
+				TCP tcp = (TCP) ip.getPayload();
+				mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+				.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+				.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+			} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+				UDP udp = (UDP) ip.getPayload();
+				mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+				.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+				.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+			}	
+		} else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
+			mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+		}
+		return mb.build();
+	}
+	
 	/**
 	 * Creates a OFPacketOut with the OFPacketIn data that is flooded on all ports unless
 	 * the port is blocked, in which case the packet will be dropped.

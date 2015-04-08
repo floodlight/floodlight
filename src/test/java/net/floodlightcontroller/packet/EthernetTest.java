@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.EthType;
 
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
@@ -47,7 +48,7 @@ public class EthernetTest {
         Ethernet ethernet = new Ethernet()
             .setDestinationMACAddress("de:ad:be:ef:de:ad")
             .setSourceMACAddress("be:ef:de:ad:be:ef")
-            .setEtherType((short) 0);
+            .setEtherType(EthType.of(0));
         byte[] expected = new byte[] { (byte) 0xde, (byte) 0xad, (byte) 0xbe,
                 (byte) 0xef, (byte) 0xde, (byte) 0xad, (byte) 0xbe,
                 (byte) 0xef, (byte) 0xde, (byte) 0xad, (byte) 0xbe,

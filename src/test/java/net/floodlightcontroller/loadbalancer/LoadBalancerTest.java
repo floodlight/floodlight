@@ -45,6 +45,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -479,7 +480,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		arpRequest1 = new Ethernet()
 		.setSourceMACAddress("00:00:00:00:00:01")
 		.setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
-		.setEtherType(Ethernet.TYPE_ARP)
+		.setEtherType(EthType.ARP)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)
 		.setPayload(
@@ -511,7 +512,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		arpReply1 = new Ethernet()
 		.setSourceMACAddress(LBVip.LB_PROXY_MAC)
 		.setDestinationMACAddress(HexString.fromHexString("00:00:00:00:00:01"))
-		.setEtherType(Ethernet.TYPE_ARP)
+		.setEtherType(EthType.ARP)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)
 		.setPayload(
@@ -568,7 +569,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		icmpPacket1 = new Ethernet()
 		.setSourceMACAddress("00:00:00:00:00:01")
 		.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
-		.setEtherType(Ethernet.TYPE_IPv4)
+		.setEtherType(EthType.IPv4)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)
 		.setPayload(
@@ -591,7 +592,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		icmpPacket2 = new Ethernet()
 		.setSourceMACAddress("00:00:00:00:00:02")
 		.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
-		.setEtherType(Ethernet.TYPE_IPv4)
+		.setEtherType(EthType.IPv4)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)
 		.setPayload(

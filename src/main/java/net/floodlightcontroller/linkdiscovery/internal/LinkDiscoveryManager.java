@@ -99,6 +99,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -370,7 +371,7 @@ IFloodlightModule, IInfoProvider {
 		if (isStandard) {
 			ethernet = new Ethernet().setSourceMACAddress(ofpPort.getHwAddr())
 					.setDestinationMACAddress(LLDP_STANDARD_DST_MAC_STRING)
-					.setEtherType(Ethernet.TYPE_LLDP);
+					.setEtherType(EthType.LLDP);
 			ethernet.setPayload(lldp);
 		} else {
 			BSN bsn = new BSN(BSN.BSN_TYPE_BDDP);
@@ -378,7 +379,7 @@ IFloodlightModule, IInfoProvider {
 
 			ethernet = new Ethernet().setSourceMACAddress(ofpPort.getHwAddr())
 					.setDestinationMACAddress(LLDP_BSN_DST_MAC_STRING)
-					.setEtherType(Ethernet.TYPE_BSN);
+					.setEtherType(EthType.of(Ethernet.TYPE_BSN & 0xffff)); /* treat as unsigned */
 			ethernet.setPayload(bsn);
 		}
 
@@ -582,7 +583,7 @@ IFloodlightModule, IInfoProvider {
 			return handleLldp((LLDP) bsn.getPayload(), sw, inPort, false, cntx);
 		} else if (eth.getPayload() instanceof LLDP) {
 			return handleLldp((LLDP) eth.getPayload(), sw, inPort, true, cntx);
-		} else if (eth.getEtherType() < 1536 && eth.getEtherType() >= 17) {
+		} else if (eth.getEtherType().getValue() < 1536 && eth.getEtherType().getValue() >= 17) {
 	        long destMac = eth.getDestinationMACAddress().getLong();
 	        if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
 	            ctrLinkLocalDrops.increment();
@@ -592,7 +593,7 @@ IFloodlightModule, IInfoProvider {
 	            }
 	            return Command.STOP;
 	        }
-	    } else if (eth.getEtherType() < 17) {
+	    } else if (eth.getEtherType().getValue() < 17) {
 	        log.error("Received invalid ethertype of {}.", eth.getEtherType());
 	        return Command.STOP;
 	    }

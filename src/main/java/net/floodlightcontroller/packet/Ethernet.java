@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.VlanVid;
 
@@ -53,7 +54,7 @@ public class Ethernet extends BasePacket {
     protected MacAddress sourceMACAddress;
     protected byte priorityCode;
     protected short vlanID;
-    protected short etherType;
+    protected EthType etherType;
     protected boolean pad = false;
 
     /**
@@ -159,14 +160,14 @@ public class Ethernet extends BasePacket {
     /**
      * @return the etherType
      */
-    public short getEtherType() {
+    public EthType getEtherType() {
         return etherType;
     }
 
     /**
      * @param etherType the etherType to set
      */
-    public Ethernet setEtherType(short etherType) {
+    public Ethernet setEtherType(EthType etherType) {
         this.etherType = etherType;
         return this;
     }
@@ -218,10 +219,10 @@ public class Ethernet extends BasePacket {
         bb.put(destinationMACAddress.getBytes());
         bb.put(sourceMACAddress.getBytes());
         if (vlanID != VLAN_UNTAGGED) {
-            bb.putShort((short) 0x8100);
+            bb.putShort((short) EthType.VLAN_FRAME.getValue());
             bb.putShort((short) ((priorityCode << 13) | (vlanID & 0x0fff)));
         }
-        bb.putShort(etherType);
+        bb.putShort((short) etherType.getValue());
         if (payloadData != null)
             bb.put(payloadData);
         if (pad) {
@@ -232,7 +233,7 @@ public class Ethernet extends BasePacket {
 
     @Override
     public IPacket deserialize(byte[] data, int offset, int length) {
-        if (length <= 16)  // Ethernet packet minium should be 60, this is reasonable
+        if (length <= 16)  // Ethernet packet minimum should be 60, this is reasonable
             return null;
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         if (this.destinationMACAddress == null)
@@ -247,23 +248,34 @@ public class Ethernet extends BasePacket {
         bb.get(srcAddr);
         this.sourceMACAddress = MacAddress.of(srcAddr);
 
-        short etherType = bb.getShort();
-        if (etherType == (short) 0x8100) {
+        /* 
+         * The ethertype is represented as 2 bytes in the packet header;
+         * however, EthType can only parse an int. Negative shorts (1 in 
+         * the most sig place b/c 2's complement) are still valid ethertypes,
+         * but it doesn't appear this way unless we treat the sign bit as
+         * part of an unsigned number. If we natively cast the short to an
+         * integer, it will sign extend into the extra bytes when in fact
+         * it should still be a positive number. We can bitmask to force the
+         * upper bytes to remain 0's. TODO this should be incorporated into
+         * loxigen.
+         */
+        EthType etherType = EthType.of(bb.getShort() & 0xffff);
+        if (etherType == EthType.VLAN_FRAME) { /* In loxigen, EthType will give the same objects for a given ethertype --> shallow compare. */
             short tci = bb.getShort();
             this.priorityCode = (byte) ((tci >> 13) & 0x07);
             this.vlanID = (short) (tci & 0x0fff);
-            etherType = bb.getShort();
+            etherType = EthType.of(bb.getShort() & 0xffff);
         } else {
             this.vlanID = VLAN_UNTAGGED;
         }
         this.etherType = etherType;
         
         IPacket payload;
-        if (Ethernet.etherTypeClassMap.containsKey(this.etherType)) {
-            Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get(this.etherType);
+        if (Ethernet.etherTypeClassMap.containsKey((short) this.etherType.getValue())) {
+            Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get((short) this.etherType.getValue());
             try {
                 payload = clazz.newInstance();
-                this.payload = payload.deserialize(data, bb.position(), bb.limit()-bb.position());
+                this.payload = payload.deserialize(data, bb.position(), bb.limit() - bb.position());
             } catch (PacketParsingException e) {
                 if (log.isTraceEnabled()) {
                     log.trace("Failed to parse ethernet packet {}->{}" +
@@ -347,48 +359,57 @@ public class Ethernet extends BasePacket {
         return MacAddress.of(macAddress).getBytes();
     }
     
-    /* (non-Javadoc)
-     * @see java.lang.Object#hashCode()
-     */
     @Override
-    public int hashCode() {
-        final int prime = 7867;
-        int result = super.hashCode();
-        result = prime * result + destinationMACAddress.hashCode();
-        result = prime * result + etherType;
-        result = prime * result + vlanID;
-        result = prime * result + priorityCode;
-        result = prime * result + (pad ? 1231 : 1237);
-        result = prime * result + sourceMACAddress.hashCode();
-        return result;
-    }
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime
+				* result
+				+ ((destinationMACAddress == null) ? 0 : destinationMACAddress
+						.hashCode());
+		result = prime * result
+				+ ((etherType == null) ? 0 : etherType.hashCode());
+		result = prime * result + (pad ? 1231 : 1237);
+		result = prime * result + priorityCode;
+		result = prime
+				* result
+				+ ((sourceMACAddress == null) ? 0 : sourceMACAddress.hashCode());
+		result = prime * result + vlanID;
+		return result;
+	}
 
-    /* (non-Javadoc)
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (!(obj instanceof Ethernet))
-            return false;
-        Ethernet other = (Ethernet) obj;
-        if (!destinationMACAddress.equals(other.destinationMACAddress))
-            return false;
-        if (priorityCode != other.priorityCode)
-            return false;
-        if (vlanID != other.vlanID)
-            return false;
-        if (etherType != other.etherType)
-            return false;
-        if (pad != other.pad)
-            return false;
-        if (!sourceMACAddress.equals(other.sourceMACAddress))
-            return false;
-        return true;
-    }
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Ethernet other = (Ethernet) obj;
+		if (destinationMACAddress == null) {
+			if (other.destinationMACAddress != null)
+				return false;
+		} else if (!destinationMACAddress.equals(other.destinationMACAddress))
+			return false;
+		if (etherType == null) {
+			if (other.etherType != null)
+				return false;
+		} else if (!etherType.equals(other.etherType))
+			return false;
+		if (pad != other.pad)
+			return false;
+		if (priorityCode != other.priorityCode)
+			return false;
+		if (sourceMACAddress == null) {
+			if (other.sourceMACAddress != null)
+				return false;
+		} else if (!sourceMACAddress.equals(other.sourceMACAddress))
+			return false;
+		if (vlanID != other.vlanID)
+			return false;
+		return true;
+	}
     
     /* (non-Javadoc)
      * @see java.lang.Object#toString(java.lang.Object)
@@ -410,7 +431,7 @@ public class Ethernet extends BasePacket {
             sb.append("ip");
         else if (pkt instanceof DHCP)
             sb.append("dhcp");
-        else  sb.append(this.getEtherType());
+        else  sb.append(this.getEtherType().toString());
 
         sb.append("\ndl_vlan: ");
         if (this.getVlanID() == Ethernet.VLAN_UNTAGGED)
