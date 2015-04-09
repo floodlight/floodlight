@@ -1,6 +1,8 @@
 #!/bin/sh
 
 # Set paths
+JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
+export JAVA_HOME
 FL_HOME=`dirname $0`
 FL_JAR="${FL_HOME}/target/floodlight.jar"
 FL_LOGBACK="${FL_HOME}/logback.xml"
@@ -33,4 +35,4 @@ JVM_OPTS="$JVM_OPTS -Dpython.security.respectJavaAccessibility=false"
 EOF_LOGBACK
 
 echo "Starting floodlight server ..."
-java ${JVM_OPTS} -Dlogback.configurationFile=${FL_LOGBACK} -jar ${FL_JAR}
+$JAVA_HOME/bin/java ${JVM_OPTS} -Dlogback.configurationFile=${FL_LOGBACK} -jar ${FL_JAR}
