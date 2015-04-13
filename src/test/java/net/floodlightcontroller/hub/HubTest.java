@@ -52,6 +52,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 
@@ -79,7 +80,7 @@ public class HubTest extends FloodlightTestCase {
         this.testPacket = new Ethernet()
             .setDestinationMACAddress("00:11:22:33:44:55")
             .setSourceMACAddress("00:44:33:22:11:00")
-            .setEtherType(Ethernet.TYPE_IPv4)
+            .setEtherType(EthType.IPv4)
             .setPayload(
                 new IPv4()
                 .setTtl((byte) 128)

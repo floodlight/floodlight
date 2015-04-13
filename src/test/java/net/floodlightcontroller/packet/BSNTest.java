@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.EthType;
 
 /**
  *
@@ -50,7 +51,7 @@ public class BSNTest {
         return (Ethernet) new Ethernet()
             .setSourceMACAddress("00:00:00:00:00:04")
             .setDestinationMACAddress("00:00:00:00:00:01")
-            .setEtherType(Ethernet.TYPE_BSN)
+            .setEtherType(EthType.of(Ethernet.TYPE_BSN & 0xffff)) /* need to treat as unsigned */
             .setPayload(new BSN(BSN.BSN_TYPE_PROBE)
 	            .setPayload(new BSNPROBE()
 		            .setSequenceId(3)
@@ -72,7 +73,8 @@ public class BSNTest {
     @Test
     public void testDeserialize() throws Exception {
         Ethernet pkt = (Ethernet) new Ethernet().deserialize(probePkt, 0, probePkt.length);
-        assertTrue(Arrays.equals(probePkt, pkt.serialize()));
+        byte[] pktarr = pkt.serialize();
+        assertTrue(Arrays.equals(probePkt, pktarr));
 
         Ethernet expected = getProbePacket();
         assertEquals(expected, pkt);

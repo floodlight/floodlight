@@ -24,6 +24,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.projectfloodlight.openflow.types.EthType;
+
 /**
  * @author David Erickson (daviderickson@cs.stanford.edu)
  *
@@ -33,11 +35,11 @@ public class LLDP extends BasePacket {
     protected LLDPTLV portId;
     protected LLDPTLV ttl;
     protected List<LLDPTLV> optionalTLVList;
-    protected short ethType;
+    protected EthType ethType;
 
     public LLDP() {
         this.optionalTLVList = new ArrayList<LLDPTLV>();
-        this.ethType = Ethernet.TYPE_LLDP;
+        this.ethType = EthType.LLDP;
     }
 
     /**
@@ -209,7 +211,7 @@ public class LLDP extends BasePacket {
         str += "chassisId=" + ((this.chassisId == null) ? "null" : this.chassisId.toString());
         str += " portId=" + ((this.portId == null) ? "null" : this.portId.toString());
         str += " ttl=" + ((this.ttl == null) ? "null" : this.ttl.toString());
-        str += " etherType=" + Integer.toString(this.ethType, 16).toUpperCase();
+        str += " etherType=" + ethType.toString();
         str += " optionalTlvList=[";
         if (this.optionalTLVList != null) {
             for (LLDPTLV l : optionalTLVList) str += l.toString() + ", ";

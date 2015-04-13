@@ -271,7 +271,7 @@ public class LoadBalancer implements IFloodlightModule,
         IPacket arpReply = new Ethernet()
             .setSourceMACAddress(vipProxyMacBytes)
             .setDestinationMACAddress(eth.getSourceMACAddress())
-            .setEtherType(Ethernet.TYPE_ARP)
+            .setEtherType(EthType.ARP)
             .setVlanID(eth.getVlanID())
             .setPriorityCode(eth.getPriorityCode())
             .setPayload(
@@ -523,9 +523,12 @@ public class LoadBalancer implements IFloodlightModule,
                 	   mb.setExact(MatchField.UDP_SRC, client.srcPort);
                    } else if (client.nw_proto.equals(IpProtocol.SCTP)) {
                 	   mb.setExact(MatchField.SCTP_SRC, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.ICMP)) {
+                	   /* no-op */
                    } else {
                 	   log.error("Unknown IpProtocol {} detected during inbound static VIP route push.", client.nw_proto);
                    }
+                   
 
                    if (sw.equals(pinSwitch.getId())) {
                        if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
@@ -553,6 +556,8 @@ public class LoadBalancer implements IFloodlightModule,
                 	   mb.setExact(MatchField.UDP_DST, client.srcPort);
                    } else if (client.nw_proto.equals(IpProtocol.SCTP)) {
                 	   mb.setExact(MatchField.SCTP_DST, client.srcPort);
+                   } else if (client.nw_proto.equals(IpProtocol.ICMP)) {
+                	   /* no-op */
                    } else {
                 	   log.error("Unknown IpProtocol {} detected during outbound static VIP route push.", client.nw_proto);
                    }

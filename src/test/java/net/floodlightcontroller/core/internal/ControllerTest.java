@@ -62,8 +62,8 @@ import net.floodlightcontroller.core.IShutdownListener;
 import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.test.MockSwitchManager;
-
 import net.floodlightcontroller.core.IOFSwitchBackend;
+
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
@@ -73,6 +73,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -171,7 +172,7 @@ public class ControllerTest extends FloodlightTestCase {
         testPacket = new Ethernet()
         .setSourceMACAddress("00:44:33:22:11:00")
         .setDestinationMACAddress("00:11:22:33:44:55")
-        .setEtherType(Ethernet.TYPE_ARP)
+        .setEtherType(EthType.ARP)
         .setPayload(
                 new ARP()
                 .setHardwareType(ARP.HW_TYPE_ETHERNET)

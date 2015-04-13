@@ -494,7 +494,7 @@ public class Firewall implements IFirewallService, IOFMessageListener,
         	Match.Builder mb = MatchUtils.createRetentiveBuilder(pi.getMatch()); // capture the ingress port
         	mb.setExact(MatchField.ETH_SRC, eth.getSourceMACAddress())
         		.setExact(MatchField.ETH_DST, eth.getDestinationMACAddress())
-        		.setExact(MatchField.ETH_TYPE, EthType.of(eth.getEtherType()));
+        		.setExact(MatchField.ETH_TYPE, eth.getEtherType());
         	
         	if (mb.get(MatchField.ETH_TYPE).equals(EthType.IPv4)) {
         		IPv4 ipv4 = (IPv4) eth.getPayload();
