@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -57,8 +58,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Implementation of an openflow connection to switch. Encapsulates a
@@ -137,9 +136,12 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
     }
 
     @Override
-    public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request) {
-        if (!isConnected())
-            return Futures.immediateFailedFuture(new SwitchDisconnectedException(getDatapathId()));
+    public <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request) {
+        if (!isConnected()) {
+            CompletableFuture<R> future = new CompletableFuture<>();
+            future.completeExceptionally(new SwitchDisconnectedException(getDatapathId()));
+            return future;
+        }
 
         DeliverableListenableFuture<R> future = new DeliverableListenableFuture<R>();
         xidDeliverableMap.put(request.getXid(), future);
@@ -201,10 +203,13 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
     }
 
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(
             OFStatsRequest<REPLY> request) {
-        if (!isConnected())
-            return Futures.immediateFailedFuture(new SwitchDisconnectedException(getDatapathId()));
+        if (!isConnected()) {
+            CompletableFuture<List<REPLY>> future = new CompletableFuture<>();
+            future.completeExceptionally(new SwitchDisconnectedException(getDatapathId()));
+            return future;
+        }
 
         final DeliverableListenableFuture<List<REPLY>> future =
                 new DeliverableListenableFuture<List<REPLY>>();

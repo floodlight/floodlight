@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -19,8 +20,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 
 public class MockOFConnection implements IOFConnectionBackend {
 
@@ -81,25 +80,25 @@ public class MockOFConnection implements IOFConnectionBackend {
 
     static class RequestAndFuture<R extends OFMessage> {
         final OFRequest<R> request;
-        final SettableFuture<R> replyFuture;
+        final CompletableFuture<R> replyFuture;
 
         public RequestAndFuture(OFRequest<R> request) {
             this.request = request;
-            this.replyFuture = SettableFuture.create();
+            this.replyFuture = new CompletableFuture<>();
         }
 
         public OFRequest<R> getRequest() {
             return request;
         }
 
-        public SettableFuture<R> getReplyFuture() {
+        public CompletableFuture<R> getReplyFuture() {
             return replyFuture;
         }
 
     }
 
     @Override
-    public <R extends OFMessage> ListenableFuture<R>
+    public <R extends OFMessage> CompletableFuture<R>
             writeRequest(OFRequest<R> request) {
         RequestAndFuture<R> raf = new RequestAndFuture<>(request);
         messages.add(request);
@@ -108,7 +107,7 @@ public class MockOFConnection implements IOFConnectionBackend {
     }
 
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>>
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>>
             writeStatsRequest(OFStatsRequest<REPLY> request) {
         return null;
     }

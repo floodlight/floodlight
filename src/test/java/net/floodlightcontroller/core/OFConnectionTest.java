@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.easymock.Capture;
@@ -52,7 +53,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListenableFuture;
 
 public class OFConnectionTest {
     private static final Logger logger = LoggerFactory.getLogger(OFConnectionTest.class);
@@ -80,7 +80,7 @@ public class OFConnectionTest {
         Capture<List<OFMessage>> cMsgList = prepareChannelForWriteList();
 
         OFEchoRequest echoRequest = factory.echoRequest(new byte[] {});
-        ListenableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
+        CompletableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
         assertThat("Connection should have 1 pending request",
                 conn.getPendingRequestIds().size(), equalTo(1));
 
@@ -108,7 +108,7 @@ public class OFConnectionTest {
         Capture<List<OFMessage>> cMsgList = prepareChannelForWriteList();
 
         OFFlowStatsRequest flowStatsRequest = factory.buildFlowStatsRequest().build();
-        ListenableFuture<List<OFFlowStatsReply>> future = conn.writeStatsRequest(flowStatsRequest);
+        CompletableFuture<List<OFFlowStatsReply>> future = conn.writeStatsRequest(flowStatsRequest);
         assertThat("Connection should have 1 pending request",
                 conn.getPendingRequestIds().size(), equalTo(1));
 
@@ -155,7 +155,7 @@ public class OFConnectionTest {
         Capture<List<OFMessage>> cMsgList = prepareChannelForWriteList();
 
         OFRoleRequest roleRequest = factory.buildRoleRequest().setRole(OFControllerRole.ROLE_MASTER).build();
-        ListenableFuture<OFRoleReply> future = conn.writeRequest(roleRequest);
+        CompletableFuture<OFRoleReply> future = conn.writeRequest(roleRequest);
         assertThat("Connection should have 1 pending request",
                 conn.getPendingRequestIds().size(), equalTo(1));
 
@@ -185,7 +185,7 @@ public class OFConnectionTest {
         replay(channel);
 
         OFEchoRequest echoRequest = factory.echoRequest(new byte[] {});
-        ListenableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
+        CompletableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
 
         SwitchDisconnectedException e =
                 FutureTestUtils.assertFutureFailedWithException(future,
@@ -200,7 +200,7 @@ public class OFConnectionTest {
         prepareChannelForWriteList();
 
         OFEchoRequest echoRequest = factory.echoRequest(new byte[] {});
-        ListenableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
+        CompletableFuture<OFEchoReply> future = conn.writeRequest(echoRequest);
 
         assertThat("Connection should have 1 pending request", conn.getPendingRequestIds().size(),
                 equalTo(1));

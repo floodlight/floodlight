@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 
 import org.easymock.EasyMock;
 import net.floodlightcontroller.core.OFSwitch;
@@ -14,8 +15,6 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
-
-import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * A sublcass of OFSwitchImpl that contains extra setters.
@@ -47,9 +46,9 @@ public class MockOFSwitchImpl extends OFSwitch {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request) {
-        ListenableFuture<List<REPLY>> ofStatsFuture =
-                EasyMock.createNiceMock(ListenableFuture.class);
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request) {
+    CompletableFuture<List<REPLY>> ofStatsFuture =
+                EasyMock.createNiceMock(CompletableFuture.class);
 
         // We create a mock future and return info from the map
         try {

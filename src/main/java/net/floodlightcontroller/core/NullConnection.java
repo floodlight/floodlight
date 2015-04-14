@@ -4,6 +4,7 @@ import java.net.SocketAddress;
 import java.util.List;
 
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 import net.floodlightcontroller.core.internal.IOFConnectionListener;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -16,9 +17,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 
 public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     private static final Logger logger = LoggerFactory.getLogger(NullConnection.class);
@@ -63,9 +61,11 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     }
 
     @Override
-    public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(
+    public <REPLY extends OFStatsReply> CompletableFuture<List<REPLY>> writeStatsRequest(
             OFStatsRequest<REPLY> request) {
-        return Futures.immediateFailedFuture(new SwitchDisconnectedException(getDatapathId()));
+        CompletableFuture<List<REPLY>> future = new CompletableFuture<>();
+        future.completeExceptionally(new SwitchDisconnectedException(getDatapathId()));
+        return future;
     }
 
     @Override
@@ -79,8 +79,10 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     }
 
     @Override
-    public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request) {
-        return Futures.immediateFailedFuture(new SwitchDisconnectedException(getDatapathId()));
+    public <R extends OFMessage> CompletableFuture<R> writeRequest(OFRequest<R> request) {
+        CompletableFuture<R> future = new CompletableFuture<>();
+        future.completeExceptionally(new SwitchDisconnectedException(getDatapathId()));
+        return future;
     }
 
     @Override
