@@ -93,6 +93,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private static String keyStorePassword;
 	private static String keyStore;
 	private static boolean useSsl = false;
+	
+	protected static boolean clearTablesOnInitialConnectAsMaster = false;
+	protected static boolean clearTablesOnEachTransitionToMaster = false;
 
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
@@ -681,6 +684,36 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			OFSwitchManager.useSsl = true;
 			OFSwitchManager.keyStore = path;
 			OFSwitchManager.keyStorePassword = (pass == null ? "" : pass);
+		}
+		
+		/*
+		 * Get config to define what to do when a switch connects.
+		 * 
+		 * If a field is blank or unspecified, it will default
+		 */
+		String clearInitial = configParams.get("clearTablesOnInitialHandshakeAsMaster");
+		String clearLater = configParams.get("clearTablesOnEachTransitionToMaster");
+		
+		if (clearInitial == null || clearInitial.isEmpty() || 
+				(!clearInitial.equalsIgnoreCase("yes") && !clearInitial.equalsIgnoreCase("true") &&
+				!clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
+				!clearInitial.equalsIgnoreCase("stimmt"))) {
+			log.warn("Clear switch flow tables on initial handshake as master: FALSE");
+			OFSwitchManager.clearTablesOnInitialConnectAsMaster = false;
+		} else {
+			log.warn("Clear switch flow tables on initial handshake as master: TRUE");
+			OFSwitchManager.clearTablesOnInitialConnectAsMaster = true;
+		}
+		
+		if (clearLater == null || clearLater.isEmpty() || 
+				(!clearLater.equalsIgnoreCase("yes") && !clearLater.equalsIgnoreCase("true") &&
+				!clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
+				!clearLater.equalsIgnoreCase("stimmt"))) {
+			log.warn("Clear switch flow tables on each transition to master: FALSE");
+			OFSwitchManager.clearTablesOnEachTransitionToMaster = false;
+		} else {
+			log.warn("Clear switch flow tables on each transition to master: TRUE");
+			OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
 		}
 	}
 

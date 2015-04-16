@@ -39,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
+import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
@@ -99,6 +100,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
 	private final OFFeaturesReply featuresReply;
 	private final Timer timer;
+	
+	private volatile boolean visitedMaster = false;
 
 	private final ArrayList<OFPortStatus> pendingPortStatusMsg;
 
@@ -287,7 +290,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		 * @throws SwitchStateException if no request is pending
 		 */
 		synchronized void deliverRoleReply(long xid, OFControllerRole role) {
-			log.warn("DELIVERING ROLE REPLY {}", role.toString());
+			log.debug("DELIVERING ROLE REPLY {}", role.toString());
 			if (!requestPending) {
 				// Maybe don't disconnect if the role reply we received is
 				// for the same role we are already in.
@@ -428,16 +431,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	}
 
 	/**
-	 * Removes all present flows and adds an initial table-miss flow to each
-	 * and every table on the switch. This replaces the default behavior of
-	 * forwarding table-miss packets to the controller. The table-miss flows
-	 * inserted will forward all packets that do not match a flow to the 
-	 * controller for processing.
-	 * 
-	 * Adding the default flow only applies to OpenFlow 1.3+ switches, which 
-	 * remove the default forward-to-controller behavior of flow tables.
+	 * Removes all present flows 
 	 */
-	private void clearAndSetDefaultFlows() {
+	private void clearAllTables() {
 		/*
 		 * No tables for OF1.0, so omit that field for flow deletion.
 		 */
@@ -450,35 +446,56 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					.setTableId(TableId.ALL)
 					.build();
 			this.sw.write(deleteFlows);
-			
+
 			/*
 			 * Clear all groups.
 			 * We have to do this for all types manually as of Loxi 0.9.0.
 			 */
 			OFGroupDelete delgroup = this.sw.getOFFactory().buildGroupDelete()
-				.setGroup(OFGroup.ALL)
-				.setGroupType(OFGroupType.ALL)
-				.build();
+					.setGroup(OFGroup.ALL)
+					.setGroupType(OFGroupType.ALL)
+					.build();
 			this.sw.write(delgroup);
 			delgroup.createBuilder()
-				.setGroupType(OFGroupType.FF)
-				.build();
+			.setGroupType(OFGroupType.FF)
+			.build();
 			this.sw.write(delgroup);
 			delgroup.createBuilder()
-				.setGroupType(OFGroupType.INDIRECT)
-				.build();
+			.setGroupType(OFGroupType.INDIRECT)
+			.build();
 			this.sw.write(delgroup);
 			delgroup.createBuilder()
-				.setGroupType(OFGroupType.SELECT)
-				.build();
+			.setGroupType(OFGroupType.SELECT)
+			.build();
 			this.sw.write(delgroup);
 		}
-		
+	}
+
+	/** 
+	 * Adds an initial table-miss flow to each
+	 * and every table on the switch. This replaces the default behavior of
+	 * forwarding table-miss packets to the controller. The table-miss flows
+	 * inserted will forward all packets that do not match a flow to the 
+	 * controller for processing.
+	 * 
+	 * Adding the default flow only applies to OpenFlow 1.3+ switches, which 
+	 * remove the default forward-to-controller behavior of flow tables.
+	 */
+	private void addDefaultFlows() {
 		/*
 		 * Only for OF1.3+, insert the default forward-to-controller flow for
 		 * each table. This is priority=0 with no Match.
 		 */
 		if (this.sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			/*
+			 * Remove the default flow if it's present.
+			 */
+			OFFlowDeleteStrict deleteFlow = this.factory.buildFlowDeleteStrict()
+					.setTableId(TableId.ALL)
+					.setOutPort(OFPort.CONTROLLER)
+					.build();
+			this.sw.write(deleteFlow);
+						
 			ArrayList<OFAction> actions = new ArrayList<OFAction>(1);
 			actions.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
 			ArrayList<OFMessage> flows = new ArrayList<OFMessage>();
@@ -562,11 +579,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFRoleReply(OFRoleReply m) {
 			unhandledMessageReceived(m);
 		}
-		
+
 		void processOFRoleRequest(OFRoleRequest m) {
 			unhandledMessageWritten(m);
 		}
-		
+
 		void processOFNiciraControllerRoleRequest(OFNiciraControllerRoleRequest m) {
 			unhandledMessageWritten(m);
 		}
@@ -657,7 +674,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				log.debug(msg);
 			}
 		}
-		
+
 		/**
 		 * We have an OFMessage we didn't expect given the current state and
 		 * we want to ignore the message
@@ -804,7 +821,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				break;
 			}
 		}
-		
+
 		void processWrittenOFMessage(OFMessage m) {
 			switch(m.getType()) {
 			case ROLE_REQUEST:
@@ -922,7 +939,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (m.getErrType() == OFErrorType.BAD_REQUEST &&
 					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE &&
 					((OFBadRequestErrorMsg) m).getData().getParsedMessage().get() instanceof OFBarrierRequest) {
-					log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+				log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
 			} else {
 				logErrorDisconnect(m);
 			}
@@ -933,7 +950,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			sendHandshakeSetConfig();
 		}
 	}
-	
+
 	/**
 	 * We are waiting for a OFDescriptionStat message from the switch.
 	 * Once we receive any stat message we try to parse it. If it's not
@@ -1214,7 +1231,15 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void enterState() {
 			setSwitchStatus(SwitchStatus.MASTER);
-			clearAndSetDefaultFlows();
+			if (OFSwitchManager.clearTablesOnEachTransitionToMaster) {
+				log.info("Clearing flow tables of {} on recent transition to MASTER.", sw.getId().toString());
+				clearAllTables();
+			} else if (OFSwitchManager.clearTablesOnInitialConnectAsMaster && !visitedMaster) {
+				visitedMaster = true;
+				log.info("Clearing flow tables of {} on initial role as MASTER.", sw.getId().toString());
+				clearAllTables();
+			}
+			addDefaultFlows();
 		}
 
 		@LogMessageDoc(level="WARN",
@@ -1275,7 +1300,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
 		}
-		
+
 		@Override
 		void processOFNiciraControllerRoleRequest(OFNiciraControllerRoleRequest m) {
 			OFControllerRole role;
@@ -1378,12 +1403,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFRoleReply(OFRoleReply m) {
 			roleChanger.deliverRoleReply(m.getXid(), m.getRole());
 		}
-		
+
 		@Override
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
 		}
-		
+
 		@Override
 		void processOFNiciraControllerRoleRequest(OFNiciraControllerRoleRequest m) {
 			OFControllerRole role;
@@ -1592,7 +1617,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	public void processOFMessage(OFMessage m) {
 		state.processOFMessage(m);
 	}
-	
+
 	public void processWrittenOFMessage(OFMessage m) {
 		state.processWrittenOFMessage(m);
 	}
@@ -1756,7 +1781,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	public void messageReceived(IOFConnectionBackend connection, OFMessage m) {
 		processOFMessage(m);
 	}
-	
+
 	@Override
 	public void messageWritten(IOFConnectionBackend connection, OFMessage m) {
 		processWrittenOFMessage(m);
