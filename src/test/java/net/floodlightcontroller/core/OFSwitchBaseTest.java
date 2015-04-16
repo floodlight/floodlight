@@ -148,6 +148,7 @@ public class OFSwitchBaseTest {
 
         sw = new OFSwitchTest(conn, switchManager);
         sw.registerConnection(auxConn);
+        sw.setControllerRole(OFControllerRole.ROLE_MASTER); /* must supply role now, otherwise write() will be blocked if not master/equal/other */
 
         switches = new ConcurrentHashMap<DatapathId, IOFSwitchBackend>();
         switches.put(sw.getId(), sw);

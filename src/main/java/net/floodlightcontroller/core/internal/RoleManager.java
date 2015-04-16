@@ -125,7 +125,6 @@ public class RoleManager {
         currentRoleInfo =
                 new RoleInfo(role, roleChangeDescription, new Date());
 
-        // NOTE: HARoleUpdate will terminate floodlight on transition to STANDBY
         controller.addUpdateToQueue(new HARoleUpdate(role));
         controller.addUpdateToQueue(new SwitchRoleUpdate(role));
 
