@@ -101,7 +101,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	private final OFFeaturesReply featuresReply;
 	private final Timer timer;
 	
-	private volatile boolean visitedMaster = false;
+	private volatile OFControllerRole initialRole = null;
 
 	private final ArrayList<OFPortStatus> pendingPortStatusMsg;
 
@@ -1234,8 +1234,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (OFSwitchManager.clearTablesOnEachTransitionToMaster) {
 				log.info("Clearing flow tables of {} on recent transition to MASTER.", sw.getId().toString());
 				clearAllTables();
-			} else if (OFSwitchManager.clearTablesOnInitialConnectAsMaster && !visitedMaster) {
-				visitedMaster = true;
+			} else if (OFSwitchManager.clearTablesOnInitialConnectAsMaster && initialRole == null) { /* don't do it if we were slave first */
+				initialRole = OFControllerRole.ROLE_MASTER;
 				log.info("Clearing flow tables of {} on initial role as MASTER.", sw.getId().toString());
 				clearAllTables();
 			}
@@ -1367,6 +1367,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void enterState() {
 			setSwitchStatus(SwitchStatus.SLAVE);
+			if (initialRole == null) {
+				initialRole = OFControllerRole.ROLE_SLAVE;
+			}
 		}
 
 		@Override
