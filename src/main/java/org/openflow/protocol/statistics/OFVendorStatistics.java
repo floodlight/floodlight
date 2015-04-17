@@ -80,4 +80,10 @@ public class OFVendorStatistics implements OFStatistics {
     public void setLength(int length) {
         this.length = length;
     }
+     @Override
+    public byte[] getBody()
+    {
+       return body;
+    }
+
 }
