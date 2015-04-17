@@ -71,8 +71,9 @@ public abstract class DeviceIndex {
      * update will not fail because of a concurrent update 
      * @param device the device to update
      * @param deviceKey the device key for the device
+     * @return 
      */
-    public abstract void updateIndex(Entity entity, Long deviceKey);
+    public abstract boolean updateIndex(Entity entity, Long deviceKey);
 
     /**
      * Remove the entry for the given entity

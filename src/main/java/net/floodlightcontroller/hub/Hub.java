@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.hub;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,25 +31,26 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
-import org.openflow.protocol.OFMessage;
-import org.openflow.protocol.OFPacketIn;
-import org.openflow.protocol.OFPacketOut;
-import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFType;
-import org.openflow.protocol.action.OFAction;
-import org.openflow.protocol.action.OFActionOutput;
-import org.openflow.util.U16;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  *
  * @author David Erickson (daviderickson@cs.stanford.edu) - 04/04/10
  */
 public class Hub implements IFloodlightModule, IOFMessageListener {
-    protected static Logger log = LoggerFactory.getLogger(Hub.class);
+	private enum HubType {USE_PACKET_OUT, USE_FLOW_MOD};
 
-    protected IFloodlightProviderService floodlightProvider;
+    private IFloodlightProviderService floodlightProvider;
 
     /**
      * @param floodlightProvider the floodlightProvider to set
@@ -65,35 +65,52 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     }
 
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        OFPacketIn pi = (OFPacketIn) msg;
-        OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory()
-                .getMessage(OFType.PACKET_OUT);
-        po.setBufferId(pi.getBufferId())
-            .setInPort(pi.getInPort());
+    	OFMessage outMessage;
+    	HubType ht = HubType.USE_PACKET_OUT;
+    	switch (ht) {
+    	case USE_FLOW_MOD:
+            outMessage = createHubFlowMod(sw, msg);
+            break;
+        default:
+    	case USE_PACKET_OUT:
+            outMessage = createHubPacketOut(sw, msg);
+            break;
+    	}
+        sw.write(outMessage);
+        
+        return Command.CONTINUE;
+    }
+    
+    private OFMessage createHubFlowMod(IOFSwitch sw, OFMessage msg) {
+    	OFPacketIn pi = (OFPacketIn) msg;
+        OFFlowAdd.Builder fmb = sw.getOFFactory().buildFlowAdd();
+        fmb.setBufferId(pi.getBufferId())
+        .setXid(pi.getXid());
 
         // set actions
-        OFActionOutput action = new OFActionOutput()
-            .setPort(OFPort.OFPP_FLOOD.getValue());
-        po.setActions(Collections.singletonList((OFAction)action));
-        po.setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+        OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
+        actionBuilder.setPort(OFPort.FLOOD);
+        fmb.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
 
-        // set data if is is included in the packetin
-        if (pi.getBufferId() == OFPacketOut.BUFFER_ID_NONE) {
-            byte[] packetData = pi.getPacketData();
-            po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
-                    + po.getActionsLength() + packetData.length));
-            po.setPacketData(packetData);
-        } else {
-            po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
-                    + po.getActionsLength()));
-        }
-        try {
-            sw.write(po, cntx);
-        } catch (IOException e) {
-            log.error("Failure writing PacketOut", e);
-        }
+        return fmb.build();
+    }
+    
+    private OFMessage createHubPacketOut(IOFSwitch sw, OFMessage msg) {
+    	OFPacketIn pi = (OFPacketIn) msg;
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        pob.setBufferId(pi.getBufferId()).setXid(pi.getXid()).setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+        
+        // set actions
+        OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
+        actionBuilder.setPort(OFPort.FLOOD);
+        pob.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
 
-        return Command.CONTINUE;
+        // set data if it is included in the packetin
+        if (pi.getBufferId() == OFBufferId.NO_BUFFER) {
+            byte[] packetData = pi.getData();
+            pob.setData(packetData);
+        }
+        return pob.build();  
     }
 
     @Override
@@ -133,8 +150,7 @@ public class Hub implements IFloodlightModule, IOFMessageListener {
     @Override
     public void init(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        floodlightProvider =
-                context.getServiceImpl(IFloodlightProviderService.class);
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
     }
 
     @Override

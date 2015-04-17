@@ -19,6 +19,7 @@ package net.floodlightcontroller.flowcache;
 /**
  * The Class for FlowReconcileQuery for BVS config priority change .
  */
+@Deprecated
 public class FRQueryBvsPriority extends FlowReconcileQuery {
     /*BVS priority change*/
     public int lowP;   //lower priority

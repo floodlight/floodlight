@@ -22,7 +22,9 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.NodePortTuple;
 
-import org.openflow.util.HexString;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -45,15 +47,15 @@ public class RouteResource extends ServerResource {
 
         log.debug( srcDpid + "--" + srcPort + "--" + dstDpid + "--" + dstPort);
 
-        long longSrcDpid = HexString.toLong(srcDpid);
-        short shortSrcPort = Short.parseShort(srcPort);
-        long longDstDpid = HexString.toLong(dstDpid);
-        short shortDstPort = Short.parseShort(dstPort);
+        DatapathId longSrcDpid = DatapathId.of(srcDpid);
+        OFPort shortSrcPort = OFPort.of(Integer.parseInt(srcPort));
+        DatapathId longDstDpid = DatapathId.of(dstDpid);
+        OFPort shortDstPort = OFPort.of(Integer.parseInt(dstPort));
         
-        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0);
+        Route result = routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, U64.of(0));
         
-        if (result!=null) {
-            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, 0).getPath();
+        if (result != null) {
+            return routing.getRoute(longSrcDpid, shortSrcPort, longDstDpid, shortDstPort, U64.of(0)).getPath();
         }
         else {
             log.debug("ERROR! no route found");

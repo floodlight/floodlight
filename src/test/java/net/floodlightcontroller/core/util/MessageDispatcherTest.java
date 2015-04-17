@@ -18,6 +18,12 @@
 package net.floodlightcontroller.core.util;
 
 import static org.easymock.EasyMock.createNiceMock;
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+import net.floodlightcontroller.test.FloodlightTestCase;
+
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
@@ -26,11 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.Test;
-import org.openflow.protocol.OFType;
-
+import org.projectfloodlight.openflow.protocol.OFType;
 import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.core.util.ListenerDispatcher;
 
 public class MessageDispatcherTest extends FloodlightTestCase {
 

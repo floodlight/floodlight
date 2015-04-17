@@ -60,8 +60,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterException;
-import net.floodlightcontroller.debugcounter.IDebugCounterService.CounterType;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
@@ -513,39 +511,28 @@ public class SyncManager extends AbstractSyncManager {
 
     private void registerDebugCounters(FloodlightModuleContext context)
             throws FloodlightModuleException {
-        if (context != null) {
-            try {
-                counterHints = debugCounter.registerCounter(PACKAGE, "hints",
-                                    "Queued sync events processed",
-                                    CounterType.ALWAYS_COUNT);
-                counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
-                                    "Values synced to remote node",
-                                    CounterType.ALWAYS_COUNT);
-                counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
-                                    "Values received from remote node",
-                                    CounterType.ALWAYS_COUNT);
-                counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
-                                    "Local puts to store",
-                                    CounterType.ALWAYS_COUNT);
-                counterGets = debugCounter.registerCounter(PACKAGE, "gets",
-                                    "Local gets from store",
-                                    CounterType.ALWAYS_COUNT);
-                counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
-                                    "Local iterators created over store",
-                                    CounterType.ALWAYS_COUNT);
-                counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
-                                    "Number of errors sent from remote clients",
-                                    CounterType.ALWAYS_COUNT,
-                                    IDebugCounterService.CTR_MDATA_ERROR);
-                counterErrorProcessing = debugCounter.registerCounter(PACKAGE,
-                                    "error-processing",
-                                    "Number of errors processing messages from remote clients",
-                                    CounterType.ALWAYS_COUNT,
-                                    IDebugCounterService.CTR_MDATA_ERROR);
-            } catch (CounterException e) {
-                throw new FloodlightModuleException(e.getMessage());
-            }
-        }
+    	if (context != null) {
+    		debugCounter.registerModule(PACKAGE);
+    		counterHints = debugCounter.registerCounter(PACKAGE, "hints",
+    				"Queued sync events processed");
+    		counterSentValues = debugCounter.registerCounter(PACKAGE, "sent-values",
+    				"Values synced to remote node");
+    		counterReceivedValues = debugCounter.registerCounter(PACKAGE, "received-values",
+    				"Values received from remote node");
+    		counterPuts = debugCounter.registerCounter(PACKAGE, "puts",
+    				"Local puts to store");
+    		counterGets = debugCounter.registerCounter(PACKAGE, "gets",
+    				"Local gets from store");
+    		counterIterators = debugCounter.registerCounter(PACKAGE, "iterators",
+    				"Local iterators created over store");
+    		counterErrorRemote = debugCounter.registerCounter(PACKAGE, "error-remote",
+    				"Number of errors sent from remote clients",
+    				IDebugCounterService.MetaData.ERROR);
+    		counterErrorProcessing = debugCounter.registerCounter(PACKAGE,
+    				"error-processing",
+    				"Number of errors processing messages from remote clients",
+    				IDebugCounterService.MetaData.ERROR);
+    	}
 
     }
 
@@ -780,7 +767,7 @@ public class SyncManager extends AbstractSyncManager {
                     // XXX - todo - handle hints targeted to specific nodes
                     storeRegistry.takeHints(tasks, 50);
                     for (Hint task : tasks) {
-                        counterHints.updateCounterWithFlush();
+                        counterHints.increment();
                         SynchronizingStorageEngine store =
                                 storeRegistry.get(task.getHintKey().
                                                   getStoreName());
@@ -811,10 +798,8 @@ public class SyncManager extends AbstractSyncManager {
                             }
 
                             svm.getHeader().
-                            setTransactionId(rpcService.
-                                             getTransactionId());
-                            counterSentValues.updateCounterWithFlush(bsm.getSyncValue().
-                                                           getValuesSize());
+                            setTransactionId(rpcService.getTransactionId());
+                            counterSentValues.add(bsm.getSyncValue().getValuesSize());
                             rpcService.writeToNode(n.getNodeId(), bsm);
                         }
                     }

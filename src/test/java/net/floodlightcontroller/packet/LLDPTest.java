@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.EthType;
 
 /**
  *
@@ -43,7 +44,7 @@ public class LLDPTest {
         .setPad(true)
         .setDestinationMACAddress("01:23:20:00:00:01")
         .setSourceMACAddress("00:12:e2:78:67:78")
-        .setEtherType(Ethernet.TYPE_LLDP)
+        .setEtherType(EthType.LLDP)
         .setPayload(
                 new LLDP()
                 .setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7).setValue(new byte[] {0x04, 0x00, 0x12, (byte) 0xe2, 0x78, 0x67, 0x64}))

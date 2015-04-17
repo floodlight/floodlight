@@ -187,6 +187,11 @@ public class MemoryStorageSource extends NoSqlStorageSource {
         super.startUp(context);
         executorService = new SynchronousExecutorService();
     }
+    
+    @Override
+    public void init(FloodlightModuleContext context) throws net.floodlightcontroller.core.module.FloodlightModuleException {
+    	super.init(context);
+    };
 
     @Override
     public Map<Class<? extends IFloodlightService>,

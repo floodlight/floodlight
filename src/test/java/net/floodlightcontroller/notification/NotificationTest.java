@@ -2,6 +2,7 @@ package net.floodlightcontroller.notification;
 
 import static org.junit.Assert.*;
 
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class NotificationTest {
@@ -14,7 +15,12 @@ public class NotificationTest {
         INotificationManagerFactory factory =
                 NotificationManagerFactory.getNotificationManagerFactory();
         assertNotNull(factory);
-        assertTrue(factory instanceof MockNotificationManagerFactory);
+        assertTrue(factory instanceof MockNotificationManagerFactory);        
     }
-
+    
+    @AfterClass
+    public static void resetDefaultFactory() {
+        System.clearProperty(NotificationManagerFactory.NOTIFICATION_FACTORY_NAME);
+        NotificationManagerFactory.init();
+    }
 }

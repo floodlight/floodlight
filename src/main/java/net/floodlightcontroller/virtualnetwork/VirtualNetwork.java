@@ -19,9 +19,10 @@ package net.floodlightcontroller.virtualnetwork;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import net.floodlightcontroller.util.MACAddress;
+import org.projectfloodlight.openflow.types.MacAddress;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Data structure for storing and outputing information of a virtual network created
@@ -35,7 +36,7 @@ public class VirtualNetwork{
     protected String name; // network name
     protected String guid; // network id
     protected String gateway; // network gateway
-	protected Map<String,MACAddress> portToMac; //port's logical namd and the host's mac address connected
+	protected Map<String, MacAddress> portToMac; //port's logical namd and the host's mac address connected
     /**
      * Constructor requires network name and id
      * @param name: network name
@@ -45,7 +46,7 @@ public class VirtualNetwork{
         this.name = name;
         this.guid = guid;
         this.gateway = null;
-		this.portToMac = new ConcurrentHashMap<String,MACAddress>();
+		this.portToMac = new ConcurrentHashMap<String,MacAddress>();
         return;        
     }
 
@@ -71,9 +72,9 @@ public class VirtualNetwork{
      * Adds a host to this network record
      * @param host: MAC address as MACAddress
      */
-    public void addHost(String port,MACAddress host){
-        this.portToMac.put(port,host); // ignore old mapping
-        return;        
+    public void addHost(String port, MacAddress host){
+        this.portToMac.put(port, host); // ignore old mapping
+        return;         
     }
     
     /**
@@ -81,9 +82,9 @@ public class VirtualNetwork{
      * @param host: MAC address as MACAddress
      * @return boolean: true: removed, false: host not found
      */
-    public boolean removeHost(MACAddress host){
-		for (Entry<String,MACAddress> entry : this.portToMac.entrySet()){
-			if(entry.getValue().equals(host)){
+    public boolean removeHost(MacAddress host){
+		for (Entry<String, MacAddress> entry : this.portToMac.entrySet()) {
+			if (entry.getValue().equals(host)){
 				this.portToMac.remove(entry.getKey());
 				return true;
 			}

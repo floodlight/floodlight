@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -17,14 +17,12 @@
 
 package net.floodlightcontroller.core.internal;
 
-import java.util.List;
-
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
-import org.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 
 /**
  * Encode an openflow message for output into a ChannelBuffer, for use in a
@@ -36,21 +34,16 @@ public class OFMessageEncoder extends OneToOneEncoder {
     @Override
     protected Object encode(ChannelHandlerContext ctx, Channel channel,
                             Object msg) throws Exception {
-        if (!(  msg instanceof List))
+        if (!(msg instanceof Iterable))
             return msg;
 
         @SuppressWarnings("unchecked")
-        List<OFMessage> msglist = (List<OFMessage>)msg;
-        int size = 0;
-        for (OFMessage ofm :  msglist) {
-                size += ofm.getLengthU();
-        }
+        Iterable<OFMessage> msgList = (Iterable<OFMessage>)msg;
 
-        ChannelBuffer buf = ChannelBuffers.buffer(size);;
-        for (OFMessage ofm :  msglist) {
+        ChannelBuffer buf = ChannelBuffers.dynamicBuffer();
+        for (OFMessage ofm :  msgList) {
             ofm.writeTo(buf);
         }
         return buf;
     }
-
 }

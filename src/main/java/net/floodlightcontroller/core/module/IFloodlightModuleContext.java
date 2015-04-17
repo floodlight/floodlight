@@ -19,8 +19,8 @@ package net.floodlightcontroller.core.module;
 import java.util.Collection;
 import java.util.Map;
 
-	
-public interface IFloodlightModuleContext {	
+    
+public interface IFloodlightModuleContext {    
     /**
      * Retrieves a casted version of a module from the registry.
      * @param name The IFloodlightService object type
@@ -36,12 +36,6 @@ public interface IFloodlightModuleContext {
      */
     public Collection<Class<? extends IFloodlightService>> getAllServices();
     
-    /**
-     * Returns all loaded modules
-     * @return All Floodlight modules that are going to be loaded
-     */
-    public Collection<IFloodlightModule> getAllModules();
-
     /**
      * Gets module specific configuration parameters.
      * @param module The module to get the configuration parameters for

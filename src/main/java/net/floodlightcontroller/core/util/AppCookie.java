@@ -20,6 +20,8 @@ package net.floodlightcontroller.core.util;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.projectfloodlight.openflow.types.U64;
+
 /***
  * A static utility class to register flow cookiue AppIds and generating
  * flow cookies for a particular App`
@@ -76,13 +78,13 @@ public class AppCookie {
      * @throws IllegalStateException if the application has not been registered
      */
 
-    static public long makeCookie(int application, int user) {
+    static public U64 makeCookie(int application, int user) {
         if (!appIdMap.containsKey(application)) {
             throw new AppIDNotRegisteredException(application);
         }
         long longApp = application;
         long longUser = user & USER_MASK; // mask to prevent sign extend
-        return (longApp << APP_ID_SHIFT) | longUser;
+        return U64.of((longApp << APP_ID_SHIFT) | longUser);
     }
 
     /**
@@ -91,54 +93,54 @@ public class AppCookie {
      * @param cookie
      * @return
      */
-    static public int extractApp(long cookie) {
-        return (int)((cookie >>> APP_ID_SHIFT) & APP_ID_MASK);
+    static public int extractApp(U64 cookie) {
+        return (int)((cookie.getValue() >>> APP_ID_SHIFT) & APP_ID_MASK);
     }
 
-    static public int extractUser(long cookie) {
-        return (int)(cookie & USER_MASK);
+    static public int extractUser(U64 cookie) {
+        return (int)(cookie.getValue() & USER_MASK);
     }
 
-    static public boolean isRewriteFlagSet(long cookie) {
-        if ((cookie & REWRITE_MASK) !=0L)
+    static public boolean isRewriteFlagSet(U64 cookie) {
+        if ((cookie.getValue() & REWRITE_MASK) !=0L)
             return true;
         return false;
     }
-    static public boolean isSrcMacRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (SRC_MAC_REWRITE_BIT-1))) !=0L)
+    static public boolean isSrcMacRewriteFlagSet(U64 cookie) {
+        if ((cookie.getValue() & (1L << (SRC_MAC_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
-    static public boolean isDestMacRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (DEST_MAC_REWRITE_BIT-1))) !=0L)
+    static public boolean isDestMacRewriteFlagSet(U64 cookie) {
+        if ((cookie.getValue() & (1L << (DEST_MAC_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
-    static public boolean isSrcIpRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (SRC_IP_REWRITE_BIT-1))) !=0L)
+    static public boolean isSrcIpRewriteFlagSet(U64 cookie) {
+        if ((cookie.getValue() & (1L << (SRC_IP_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
-    static public boolean isDestIpRewriteFlagSet(long cookie) {
-        if ((cookie & (1L << (DEST_IP_REWRITE_BIT-1))) !=0L)
+    static public boolean isDestIpRewriteFlagSet(U64 cookie) {
+        if ((cookie.getValue() & (1L << (DEST_IP_REWRITE_BIT-1))) !=0L)
             return true;
         return false;
     }
-    static public long setSrcMacRewriteFlag(long cookie) {
-        return cookie | (1L << (SRC_MAC_REWRITE_BIT-1));
+    static public U64 setSrcMacRewriteFlag(U64 cookie) {
+        return U64.of(cookie.getValue() | (1L << (SRC_MAC_REWRITE_BIT-1)));
     }
-    static public long setDestMacRewriteFlag(long cookie) {
-        return cookie | (1L << (DEST_MAC_REWRITE_BIT-1));
+    static public U64 setDestMacRewriteFlag(U64 cookie) {
+        return U64.of(cookie.getValue() | (1L << (DEST_MAC_REWRITE_BIT-1)));
     }
-    static public long setSrcIpRewriteFlag(long cookie) {
-        return cookie | (1L << (SRC_IP_REWRITE_BIT-1));
+    static public U64 setSrcIpRewriteFlag(U64 cookie) {
+        return U64.of(cookie.getValue() | (1L << (SRC_IP_REWRITE_BIT-1)));
     }
-    static public long setDestIpRewriteFlag(long cookie) {
-        return cookie | (1L << (DEST_IP_REWRITE_BIT-1));
+    static public U64 setDestIpRewriteFlag(U64 cookie) {
+        return U64.of(cookie.getValue() | (1L << (DEST_IP_REWRITE_BIT-1)));
     }
     /**
      * A lame attempt to prevent duplicate application ID.
-     * TODO: Once bigdb is merged, we should expose appID->appName map
+     * TODO: We should expose appID->appName map
      *       via REST API so CLI doesn't need a separate copy of the map.
      *
      * @param application

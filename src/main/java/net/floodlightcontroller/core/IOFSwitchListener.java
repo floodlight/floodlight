@@ -17,6 +17,9 @@
 
 package net.floodlightcontroller.core;
 
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.types.DatapathId;
+
 /**
  * Switch lifecycle notifications.
  *
@@ -45,20 +48,20 @@ public interface IOFSwitchListener {
      * the switch is connected at some controller in the cluster
      * @param switchId the datapath Id of the new switch
      */
-    public void switchAdded(long switchId);
+    public void switchAdded(DatapathId switchId);
 
     /**
      * Fired when a switch disconnects from the cluster ,
      * @param switchId the datapath Id of the switch
      */
-    public void switchRemoved(long switchId);
+    public void switchRemoved(DatapathId switchId);
 
     /**
      * Fired when a switch becomes active *on the local controller*, I.e.,
      * the switch is connected to the local controller and is in MASTER mode
      * @param switchId the datapath Id of the switch
      */
-    public void switchActivated(long switchId);
+    public void switchActivated(DatapathId switchId);
 
     /**
      * Fired when a port on a known switch changes.
@@ -74,9 +77,9 @@ public interface IOFSwitchListener {
      * @param port
      * @param type
      */
-    public void switchPortChanged(long switchId,
-                                  ImmutablePort port,
-                                  IOFSwitch.PortChangeType type);
+    public void switchPortChanged(DatapathId switchId,
+                                  OFPortDesc port,
+                                  PortChangeType type);
 
     /**
      * Fired when any non-port related information (e.g., attributes,
@@ -84,5 +87,5 @@ public interface IOFSwitchListener {
      * TODO: currently unused
      * @param switchId
      */
-    public void switchChanged(long switchId);
+    public void switchChanged(DatapathId switchId);
 }

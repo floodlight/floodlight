@@ -21,14 +21,15 @@ import java.lang.ref.SoftReference;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
 import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
-import net.floodlightcontroller.debugevent.IDebugEventService.MaxEventsRegistered;
+import net.floodlightcontroller.debugevent.IEventCategory;
 import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.IEventUpdater;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
 /**
  * The base Class for FlowReconcileQuery.
  */
+@Deprecated
 public class FlowReconcileQuery {
     public ReconcileQueryEvType evType;
     public EventPriority evPriority;
@@ -93,38 +94,37 @@ public class FlowReconcileQuery {
 
         private String description;
         private EventPriority priority;
-        private IEventUpdater<FlowReconcileQueryDebugEvent>
-                evReconcileQueryDebugEvent;
+        private IEventCategory<FlowReconcileQueryDebugEvent> eventCategory;
+        private IDebugEventService debugEventService;
 
-        private ReconcileQueryEvType(EventPriority priority,
-                                     String description) {
+        private ReconcileQueryEvType(EventPriority priority, String description) {
             this.priority = priority;
             this.description = description;
         }
+        
         public EventPriority getPriority() {
              return this.priority;
         }
+        
         public String getDescription() {
             return description;
         }
-        public void registerDebugEvent(String packageName,
-                                       IDebugEventService debugEvents)
-                                       throws MaxEventsRegistered {
-            try {
-                evReconcileQueryDebugEvent =
-                    debugEvents.registerEvent(
-                        packageName,
-                        this.toString().toLowerCase().replace("_", "-"),
-                        this.getDescription(),
-                        EventType.ALWAYS_LOG,
-                        FlowReconcileQueryDebugEvent.class,
-                        500);
-            } catch (MaxEventsRegistered e) {
-                throw e;
-            }
+        
+        public void registerDebugEvent(String packageName, IDebugEventService debugEvents) {
+        	 if (debugEventService == null) {
+                 debugEventService = new MockDebugEventService();
+             }
+                eventCategory = debugEventService.buildEvent(FlowReconcileQueryDebugEvent.class)
+                    .setModuleName(packageName)
+                    .setEventName(this.toString().toLowerCase().replace("_", "-"))
+                    .setEventDescription(this.getDescription())
+                    .setEventType(EventType.ALWAYS_LOG)
+                    .setBufferCapacity(500)
+                    .register();
         }
-        public IEventUpdater<FlowReconcileQueryDebugEvent> getDebugEvent() {
-            return evReconcileQueryDebugEvent;
+    
+        public IEventCategory<FlowReconcileQueryDebugEvent> getDebugEvent() {
+            return eventCategory;
         }
     }
     public FlowReconcileQuery(ReconcileQueryEvType evType) {

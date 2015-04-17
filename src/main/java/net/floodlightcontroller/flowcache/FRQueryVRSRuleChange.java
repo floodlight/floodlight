@@ -21,6 +21,7 @@ import java.util.Set;
 /**
  * The Class for FlowReconcileQuery for VRS routing rule change event .
  */
+@Deprecated
 public class FRQueryVRSRuleChange extends FlowReconcileQuery {
     /* The list of impacted bvs names. */
     public Set<String> bvsNames;

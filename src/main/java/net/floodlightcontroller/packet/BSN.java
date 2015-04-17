@@ -23,6 +23,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.projectfloodlight.openflow.types.EthType;
+
 /**
  * @author Shudong Zhou (shudong.zhou@bigswitch.com)
  *
@@ -90,7 +92,7 @@ public class BSN extends BasePacket {
             bb.put(payloadData);
 
         if (this.parent != null && this.parent instanceof Ethernet)
-            ((Ethernet)this.parent).setEtherType(Ethernet.TYPE_BSN);
+            ((Ethernet)this.parent).setEtherType(EthType.of(Ethernet.TYPE_BSN & 0xffff)); /* treat as unsigned */
 
         return data;
     }

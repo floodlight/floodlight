@@ -27,6 +27,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.routing.Link;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
@@ -47,10 +49,10 @@ public class ExternalLinksResource extends ServerResource {
                 if (type == LinkType.MULTIHOP_LINK) {
                     LinkWithType lwt;
 
-                    long src = link.getSrc();
-                    long dst = link.getDst();
-                    short srcPort = link.getSrcPort();
-                    short dstPort = link.getDstPort();
+                    DatapathId src = link.getSrc();
+                    DatapathId dst = link.getDst();
+                    OFPort srcPort = link.getSrcPort();
+                    OFPort dstPort = link.getDstPort();
                     Link otherLink = new Link(dst, dstPort, src, srcPort);
                     LinkInfo otherInfo = links.get(otherLink);
                     LinkType otherType = null;
@@ -59,7 +61,8 @@ public class ExternalLinksResource extends ServerResource {
                     if (otherType == LinkType.MULTIHOP_LINK) {
                         // This is a bi-direcitonal link.
                         // It is sufficient to add only one side of it.
-                        if ((src < dst) || (src == dst && srcPort < dstPort)) {
+                        if ((src.getLong() < dst.getLong()) || (src.getLong() == dst.getLong() 
+                        		&& srcPort.getPortNumber() < dstPort.getPortNumber())) {
                             lwt = new LinkWithType(link,
                                     type,
                                     LinkDirection.BIDIRECTIONAL);

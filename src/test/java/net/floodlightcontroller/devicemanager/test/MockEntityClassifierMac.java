@@ -59,11 +59,11 @@ public class MockEntityClassifierMac extends DefaultEntityClassifier {
         if (entity.getSwitchDPID() == null) {
             throw new IllegalArgumentException("Not all key fields specified."
                     + " Required fields: " + getKeyFields());
-        } else if (entity.getSwitchDPID() == 1L) {
+        } else if (entity.getSwitchDPID().getLong() == 1L) {
             return testECMac1;
-        } else if (entity.getSwitchDPID() == 2L) {
+        } else if (entity.getSwitchDPID().getLong() == 2L) {
             return testECMac2;
-        } else if (entity.getSwitchDPID() == -1L) {
+        } else if (entity.getSwitchDPID().getLong() == -1L) {
             return null;
         }
         return DefaultEntityClassifier.entityClass;

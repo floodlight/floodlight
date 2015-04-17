@@ -6,9 +6,14 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
+
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
-
-
 import net.floodlightcontroller.devicemanager.SwitchPort;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,13 +23,13 @@ public class DeviceSyncRepresentation {
         @JsonProperty
         public long macAddress;
         @JsonProperty
-        public Integer ipv4Address;
+        public int ipv4Address;
         @JsonProperty
-        public Short vlan;
+        public short vlan;
         @JsonProperty
-        public Long switchDPID;
+        public long switchDPID;
         @JsonProperty
-        public Integer switchPort;
+        public int switchPort;
         @JsonProperty
         public Date lastSeenTimestamp;
         @JsonProperty
@@ -35,11 +40,11 @@ public class DeviceSyncRepresentation {
         }
 
         public SyncEntity(Entity e) {
-            this.macAddress = e.getMacAddress();
-            this.ipv4Address = e.getIpv4Address();
-            this.vlan = e.getVlan();
-            this.switchDPID = e.getSwitchDPID();
-            this.switchPort = e.getSwitchPort();
+            this.macAddress = (e.getMacAddress() != null ? e.getMacAddress().getLong() : 0);
+            this.ipv4Address = (e.getIpv4Address() != null ? e.getIpv4Address().getInt() : 0);
+            this.vlan = (e.getVlan() != null ? e.getVlan().getVlan() : -1);
+            this.switchDPID = (e.getSwitchDPID() != null ? e.getSwitchDPID().getLong() : 0);
+            this.switchPort = (e.getSwitchPort() != null ? e.getSwitchPort().getPortNumber() : 0);
             if (e.getLastSeenTimestamp() == null)
                 this.lastSeenTimestamp = null;
             else
@@ -51,8 +56,12 @@ public class DeviceSyncRepresentation {
         }
 
         public Entity asEntity() {
-            Entity e = new Entity(macAddress, vlan, ipv4Address, switchDPID,
-                                  switchPort, lastSeenTimestamp);
+            Entity e = new Entity(macAddress == 0 ? null : MacAddress.of(macAddress), 
+            		vlan == -1 ? null : VlanVid.ofVlan(vlan), 
+            		ipv4Address == 0 ? null : IPv4Address.of(ipv4Address), 
+            		switchDPID == 0 ? null : DatapathId.of(switchDPID),
+                    switchPort == 0 ? null : OFPort.of(switchPort), 
+                    lastSeenTimestamp);
             e.setActiveSince(activeSince);
             return e;
         }

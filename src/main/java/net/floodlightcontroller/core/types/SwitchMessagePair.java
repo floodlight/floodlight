@@ -17,7 +17,7 @@
 
 package net.floodlightcontroller.core.types;
 
-import org.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import net.floodlightcontroller.core.IOFSwitch;
 

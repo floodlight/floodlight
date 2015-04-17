@@ -18,28 +18,43 @@ package net.floodlightcontroller.core;
 
 import java.util.Map;
 
+
+/** Listener interface for the {@link HARole} of the local controller. Listeners
+ *  are notified when the controller transitions to role {@link HARole#ACTIVE}.
+ *  <p>
+ *  <strong>NOTE:</strong> The floodlight platform currently does not support
+ *  a transition to the STANDBY role.
+ *
+ * @author Andreas Wundsam <andreas.wundsam@bigswitch.com>
+ */
 public interface IHAListener extends IListener<HAListenerTypeMarker> {
+    /**
+     * This notification is fired if the controller's initial role was STANDBY
+     * and the controller is now transitioning to ACTIVE.
+     * Clients can query the current (and initial) role from
+     * {@link IFloodlightProviderService#getRole()} (in startup).
+     */
+    public void transitionToActive();
 
     /**
-     * This notification is fired if the controller's initial role was SLAVE
-     * and the controller is now transitioning to MASTER.
-     * Modules need to read their initial role in startUp from floodlight
-     * provider.
+     * This notification is fired if the controller's initial role was ACTIVE
+     * and the controller is now transitioning to STANDBY.
+     * <strong>NOTE:</strong> The floodlight platform currently terminates
+     * after the transition to STANDBY. Clients should prepare for the shutdown
+     * in transitionToStandby (e.g., ensure that current updates to operational
+     * states are fully synced).
      */
-    public void transitionToMaster();
-
+    public void transitionToStandby();
+    
     /**
-     * Gets called when the IP addresses of the controller nodes in the
-     * controller cluster change. All parameters map controller ID to
-     * the controller's IP.
-     *
-     * @param curControllerNodeIPs The current mapping of controller IDs to IP
-     * @param addedControllerNodeIPs These IPs were added since the last update
-     * @param removedControllerNodeIPs These IPs were removed since the last update
+     * Gets called when the IP addresses of the controller nodes in the controller cluster
+     * change. All parameters map controller ID to the controller's IP.
+     * 
+     * @param curControllerNodeIPs
+     * @param addedControllerNodeIPs
+     * @param removedControllerNodeIPs
      */
-    public void controllerNodeIPsChanged(
-            Map<String, String> curControllerNodeIPs,
-            Map<String, String> addedControllerNodeIPs,
-            Map<String, String> removedControllerNodeIPs
-            );
+    public void controllerNodeIPsChanged(Map<String, String> curControllerNodeIPs,
+    									Map<String, String> addedControllerNodeIPs,
+    									Map<String, String> removedControllerNodeIPs);
 }

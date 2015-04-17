@@ -3,7 +3,7 @@ package net.floodlightcontroller.notification;
 /**
  * Base interface for managing notifications.
  *
- * Notification is used to alsert or inform notification receiver.
+ * Notification is used to alert or inform notification receiver.
  * Notification can be a message written into log file or an SNMP trap or
  * SNMP notification.
  *

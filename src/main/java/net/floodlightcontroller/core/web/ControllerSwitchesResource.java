@@ -17,184 +17,60 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.net.SocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Collection;
+import java.util.Set;
+import java.util.HashSet;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.ImmutablePort;
-import net.floodlightcontroller.util.FilterIterator;
 
-import org.openflow.protocol.OFPhysicalPort;
-import org.openflow.util.HexString;
-import org.restlet.data.Form;
-import org.restlet.data.Status;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
+import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Get a list of switches connected to the controller
  * @author readams
  */
 public class ControllerSwitchesResource extends ServerResource {
-    /**
-     * A wrapper class around IOFSwitch that defines the REST serialization
-     * fields. Could have written a Jackson serializer but this is easier.
-     */
-    public static class SwitchJsonSerializerWrapper {
-        private final IOFSwitch sw;
-
-        public SwitchJsonSerializerWrapper(IOFSwitch sw) {
-            this.sw = sw;
+    
+    public static final String DPID_ERROR = "Invalid switch DPID string. Must be a 64-bit value in the form 00:11:22:33:44:55:66:77.";
+    public static class DatapathIDJsonSerializerWrapper {
+        private final DatapathId dpid;
+        private final String inetAddress; 
+        private final long connectedSince;
+        public DatapathIDJsonSerializerWrapper(DatapathId dpid, String inetAddress, long connectedSince) {
+            this.dpid = dpid;
+            this.inetAddress = inetAddress;
+            this.connectedSince = connectedSince;
         }
-
-        public int getActions() {
-            return sw.getActions();
+        
+        @JsonSerialize(using=DPIDSerializer.class)
+        public DatapathId getSwitchDPID() {
+            return dpid;
         }
-
-        public Map<Object, Object> getAttributes() {
-            return sw.getAttributes();
-        }
-
-        public Map<String,String> getDescription() {
-            Map<String,String> rv = new HashMap<String, String>();
-            if (sw.getDescriptionStatistics() == null) {
-                rv.put("manufacturer", "");
-                rv.put("hardware", "");
-                rv.put("software", "");
-                rv.put("serialNum", "");
-                rv.put("datapath", "");
-            } else {
-                rv.put("manufacturer",
-                       sw.getDescriptionStatistics().getManufacturerDescription());
-                rv.put("hardware",
-                       sw.getDescriptionStatistics().getHardwareDescription());
-                rv.put("software",
-                       sw.getDescriptionStatistics().getSoftwareDescription());
-                rv.put("serialNum",
-                       sw.getDescriptionStatistics().getSerialNumber());
-                rv.put("datapath",
-                       sw.getDescriptionStatistics().getDatapathDescription());
-            }
-            return rv;
-        }
-
-        public int getBuffers() {
-            return sw.getBuffers();
-        }
-
-        public int getCapabilities() {
-            return sw.getCapabilities();
-        }
-
-        public long getConnectedSince() {
-            if (sw.getConnectedSince() == null)
-                return 0;
-            return sw.getConnectedSince().getTime();
-        }
-
-        public String getDpid() {
-            return sw.getStringId();
-        }
-
-        public String getHarole() {
-            if (sw.getHARole() == null)
-                return "null";
-            return sw.getHARole().toString();
-        }
-
         public String getInetAddress() {
-            SocketAddress addr = sw.getInetAddress();
-            if (addr == null)
-                return null;
-            return addr.toString();
+            return inetAddress;
+        }
+        public long getConnectedSince() {
+            return connectedSince;
         }
 
-        public Collection<OFPhysicalPort> getPorts() {
-            return ImmutablePort.ofPhysicalPortListOf(sw.getPorts());
-        }
+
+
     }
-
-    /**
-     * Wraps an iterator of IOFSwitch into an iterator of
-     * SwitchJsonSerializerWrapper
-     * @author gregor
-     */
-    private static class SwitchJsonSerializerWrapperIterator
-            implements Iterator<SwitchJsonSerializerWrapper> {
-        private final Iterator<IOFSwitch> iter;
-
-        public SwitchJsonSerializerWrapperIterator(Iterator<IOFSwitch> iter) {
-            this.iter = iter;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return this.iter.hasNext();
-        }
-
-        @Override
-        public SwitchJsonSerializerWrapper next() {
-            return new SwitchJsonSerializerWrapper(iter.next());
-        }
-
-        @Override
-        public void remove() {
-            this.iter.remove();
-        }
-    }
-
-    public static final String DPID_ERROR =
-            "Invalid Switch DPID: must be a 64-bit quantity, expressed in " +
-            "hex as AA:BB:CC:DD:EE:FF:00:11";
 
     @Get("json")
-    public Iterator<SwitchJsonSerializerWrapper> retrieve() {
-        IFloodlightProviderService floodlightProvider =
-                (IFloodlightProviderService)getContext().getAttributes().
-                    get(IFloodlightProviderService.class.getCanonicalName());
+    public Set<DatapathIDJsonSerializerWrapper> retrieve(){
+        IOFSwitchService switchService = 
+            (IOFSwitchService) getContext().getAttributes().
+                get(IOFSwitchService.class.getCanonicalName());
+        Set<DatapathIDJsonSerializerWrapper> dpidSets = new HashSet<DatapathIDJsonSerializerWrapper>();
+        for(IOFSwitch sw: switchService.getAllSwitchMap().values()) {
+            dpidSets.add(new DatapathIDJsonSerializerWrapper(sw.getId(), sw.getInetAddress().toString(),  sw.getConnectedSince().getTime()));
 
-        Long switchDPID = null;
-
-        Form form = getQuery();
-        String dpid = form.getFirstValue("dpid", true);
-        if (dpid != null) {
-            try {
-                switchDPID = HexString.toLong(dpid);
-            } catch (Exception e) {
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, DPID_ERROR);
-                return null;
-            }
         }
-        if (switchDPID != null) {
-            IOFSwitch sw =
-                    floodlightProvider.getSwitch(switchDPID);
-            if (sw != null) {
-                SwitchJsonSerializerWrapper wrappedSw =
-                        new SwitchJsonSerializerWrapper(sw);
-                return Collections.singleton(wrappedSw).iterator();
-            }
-            return Collections.<SwitchJsonSerializerWrapper>emptySet().iterator();
-        }
-        final String dpidStartsWith =
-                form.getFirstValue("dpid__startswith", true);
-
-        Iterator<IOFSwitch> iofSwitchIter =
-                floodlightProvider.getAllSwitchMap().values().iterator();
-        Iterator<SwitchJsonSerializerWrapper> switer =
-                new SwitchJsonSerializerWrapperIterator(iofSwitchIter);
-        if (dpidStartsWith != null) {
-            return new FilterIterator<SwitchJsonSerializerWrapper>(switer) {
-                @Override
-                protected boolean matches(SwitchJsonSerializerWrapper value) {
-                    return value.getDpid().startsWith(dpidStartsWith);
-                }
-            };
-        }
-        return switer;
+        return dpidSets;
     }
 }
