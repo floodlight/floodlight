@@ -37,6 +37,7 @@ public class CoreWebRoutable implements RestletRoutable {
 	public static final String STR_CTR_MODULE = "counterModule";
 	public static final String STR_LAYER = "layer";
 	public static final String STR_ALL = "all";
+	public static final String STR_ROLE = "role";
 	
     @Override
     public String basePath() {

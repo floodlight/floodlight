@@ -745,12 +745,11 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 	}
 
 	public static void serializeFlowReply(List<OFFlowStatsReply> flowReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
+		/* start the array before each reply */
+		jGen.writeFieldName("flows"); 
+		jGen.writeStartArray();
 		for (OFFlowStatsReply flowReply : flowReplies) { // for each flow stats reply
-			//Dose the switch will reply multiple OFFlowStatsReply ?
-			//Or we juse need to use the first item of the list.
 			List<OFFlowStatsEntry> entries = flowReply.getEntries();
-			jGen.writeFieldName("flows");
-			jGen.writeStartArray();
 			for (OFFlowStatsEntry entry : entries) { // for each flow
 				jGen.writeStartObject();
 				// list flow stats/info
@@ -796,9 +795,10 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				}
 
 				jGen.writeEndObject();
-			} // end for each OFFlowStatsReply entry
-			jGen.writeEndArray();
+			} // end for each OFFlowStatsReply entry */
 		} // end for each OFStatsReply
+		//jGen.writeEndObject();
+		jGen.writeEndArray();
 	} // end method
 
 	public static void serializeDescReply(List<OFDescStatsReply> descReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{

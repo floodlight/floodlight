@@ -30,7 +30,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * switch(-channel) so it can notify the switches of role changes.
  *
  * We need to ensure that every connected switch is always send the
- * correct role. Therefore, switch add, sending of the intial role, and
+ * correct role. Therefore, switch add, sending of the initial role, and
  * changing role need to use mutexes to ensure this. This has the ugly
  * side-effect of requiring calls between controller and OFChannelHandler
  *
@@ -125,7 +125,6 @@ public class RoleManager {
         currentRoleInfo =
                 new RoleInfo(role, roleChangeDescription, new Date());
 
-        // NOTE: HARoleUpdate will terminate floodlight on transition to STANDBY
         controller.addUpdateToQueue(new HARoleUpdate(role));
         controller.addUpdateToQueue(new SwitchRoleUpdate(role));
 

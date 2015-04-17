@@ -1190,6 +1190,7 @@ IFloodlightModule, IInfoProvider {
 		for (DatapathId sw : switchService.getAllSwitchDpids()) {
 			IOFSwitch iofSwitch = switchService.getSwitch(sw);
 			if (iofSwitch == null) continue;
+			if (!iofSwitch.isActive()) continue; /* can't do anything if the switch is SLAVE */
 			if (iofSwitch.getEnabledPorts() != null) {
 				for (OFPortDesc ofp : iofSwitch.getEnabledPorts()) {
 					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {
