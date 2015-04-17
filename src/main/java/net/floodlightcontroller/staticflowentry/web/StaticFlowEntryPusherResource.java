@@ -65,7 +65,7 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 		int eth_type = -1;
 		int nw_protocol = -1;
 		int icmp_type = -1;
-
+		
 		//Determine the dl_type if set
 		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_DL_TYPE)) {
 			if (((String) rows.get(StaticFlowEntryPusher.COLUMN_DL_TYPE)).startsWith("0x")) {

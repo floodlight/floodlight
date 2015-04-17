@@ -60,13 +60,10 @@ import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -149,15 +146,6 @@ public class LearningSwitchTest extends FloodlightTestCase {
         this.packetIn = factory.buildPacketIn()
         	.setMatch(factory.buildMatch()
         			.setExact(MatchField.IN_PORT, OFPort.of(1))
-        			.setExact(MatchField.ETH_SRC, MacAddress.of("00:44:33:22:11:00"))
-        			.setExact(MatchField.ETH_DST, MacAddress.of("00:11:22:33:44:55"))
-        			.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        			.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(42))
-        			.setExact(MatchField.IPV4_SRC, IPv4Address.of("192.168.1.1"))
-        			.setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.1.2"))
-        			.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-        			.setExact(MatchField.UDP_SRC, TransportPort.of(5000))
-        			.setExact(MatchField.UDP_DST, TransportPort.of(5001))
         			.build()
         	)
             .setBufferId(OFBufferId.NO_BUFFER)
@@ -191,7 +179,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // build our expected flooded packetOut
         OFPacketOut po = factory.buildPacketOut()
         	.setInPort(OFPort.of(1))
-            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE)))
+            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.FLOOD, 0xffFFffFF)))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setData(this.testPacketSerialized)
 	        .build();
@@ -236,30 +224,29 @@ public class LearningSwitchTest extends FloodlightTestCase {
         flags.add(OFFlowModFlags.SEND_FLOW_REM);
         // build expected flow mods
         OFFlowAdd fm1 = factory.buildFlowAdd()
-            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(2), Integer.MAX_VALUE)))
+            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(2), 0xffFFffFF)))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setIdleTimeout((short) 5)
-            .setMatch(packetIn.getMatch())
+            .setMatch(factory.buildMatch()
+        			.setExact(MatchField.IN_PORT, OFPort.of(1))
+        			.setExact(MatchField.ETH_SRC, MacAddress.of("00:44:33:22:11:00"))
+        			.setExact(MatchField.ETH_DST, MacAddress.of("00:11:22:33:44:55"))
+        			.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(42))
+        			.build())
             .setOutPort(OFPort.of(2))
             .setCookie(U64.of(1L << 52))
             .setPriority((short) 100)
             .setFlags(flags)
             .build();
         OFFlowAdd fm2 = factory.buildFlowAdd()
-            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(1), Integer.MAX_VALUE)))
+            .setActions(Arrays.asList((OFAction)factory.actions().output(OFPort.of(1), 0xffFFffFF)))
             .setBufferId(OFBufferId.NO_BUFFER)
             .setIdleTimeout((short) 5)
             .setMatch(factory.buildMatch()
         			.setExact(MatchField.IN_PORT, OFPort.of(2))
         			.setExact(MatchField.ETH_DST, MacAddress.of("00:44:33:22:11:00"))
         			.setExact(MatchField.ETH_SRC, MacAddress.of("00:11:22:33:44:55"))
-        			.setExact(MatchField.ETH_TYPE, EthType.IPv4)
         			.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(42))
-        			.setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.1.1"))
-        			.setExact(MatchField.IPV4_SRC, IPv4Address.of("192.168.1.2"))
-        			.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-        			.setExact(MatchField.UDP_DST, TransportPort.of(5000))
-        			.setExact(MatchField.UDP_SRC, TransportPort.of(5001))
         			.build()
         	)
             .setOutPort(OFPort.of(1))
@@ -268,7 +255,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setPriority((short) 100)
             .build();
 
-        OFActionOutput ofAcOut = factory.actions().output(OFPort.of(2), Integer.MAX_VALUE);
+        OFActionOutput ofAcOut = factory.actions().output(OFPort.of(2), 0xffFFffFF);
 
         OFPacketOut packetOut = factory.buildPacketOut()
         .setActions(Arrays.asList((OFAction)ofAcOut))
