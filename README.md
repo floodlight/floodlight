@@ -23,39 +23,41 @@ One of the key features of Floodlight v1.1 is its full support for OpenFlow 1.0 
 
 To best demonstrate the extent to which constructing and working with OpenFlow concepts such as FlowMods has been improved in Floodlight v1.0, consider the following before and after example.
 
-/* Pre-v1.0 -- the old way to compose an OFFlowMod */
-OFFlowMod flow = new OFFlowMod(); // no builder pattern; not immutable
-OFMatch match = new OFMatch();
-ArrayList<OFAction> actions = new ArrayList<OFAction>();
-OFActionOutput outputAction = new OFActionOutput();
-match.setInputPort((short) 1); // not type-safe; many OpenFlow concepts are represented as shorts
-match.setDataLayerType(Ethernet.TYPE_IPv4);
-match.setWildcards(Wildcards.FULL.matchOn(Flag.IN_PORT).matchOn(Flag.DL_TYPE)); // wildcarding necessary
-outputAction.setType(OFActionType.OUTPUT); 
-outputAction.setPort((short) 2); // raw types used; casting required
-outputAction.setLength((short) OFActionOutput.MINIMUM_LENGTH);
-actions(outputAction);
-flow.setBufferId(-1);
-flow.setActions(actions);
-flow.setMatch(match);
-flow.setLengthU(OFFlowMod.MINIMUM_LENGTH + outputAction.getLengthU()); // length must be set correctly
-sw.write(flow);
+**Pre-v1.0 -- the old way to compose an OFFlowMod**
 
-/* Floodlight v1.0, v1.1 -- the new and improved way to compose an OFFlowMod */
-ArrayList<OFAction> actions = new ArrayList<OFAction();
-actions.add(myFactory.actions().buildOutput() // builder pattern used throughout
-.setPort(OFPort.of(1)) // raw types replaced with objects for type-checking and readability
-.build()); // list of immutable OFAction objects
-OFFlowAdd flow = myFactory.buildFlowAdd()
-.setMatch(myfactory.buildMatch()
-.setExact(MatchField.IN_PORT, OFPort.of(1)) // type-checked matching
-.setExact(MatchField.ETH_TYPE, EthType.IPv4))
-.build()) // immutable Match object
-.setActions(actions)
-.setOutPort(OFPort.of(2))
-.setBufferId(OFBufferId.NO_BUFFER)
-.build(); // immutable OFFlowMod; no lengths to set; no wildcards to set
-sw.write(flow);
+    OFFlowMod flow = new OFFlowMod(); // no builder pattern; not immutable
+    OFMatch match = new OFMatch();
+    ArrayList<OFAction> actions = new ArrayList<OFAction>();
+    OFActionOutput outputAction = new OFActionOutput();
+    match.setInputPort((short) 1); // not type-safe; many OpenFlow concepts are represented as shorts
+    match.setDataLayerType(Ethernet.TYPE_IPv4);
+    match.setWildcards(Wildcards.FULL.matchOn(Flag.IN_PORT).matchOn(Flag.DL_TYPE)); // wildcarding necessary
+    outputAction.setType(OFActionType.OUTPUT); 
+    outputAction.setPort((short) 2); // raw types used; casting required
+    outputAction.setLength((short) OFActionOutput.MINIMUM_LENGTH);
+    actions(outputAction);
+    flow.setBufferId(-1);
+    flow.setActions(actions);
+    flow.setMatch(match);
+    flow.setLengthU(OFFlowMod.MINIMUM_LENGTH + outputAction.getLengthU()); // length must be set correctly
+    sw.write(flow);
+
+**Floodlight v1.0, v1.1 -- the new and improved way to compose an OFFlowMod**
+
+    ArrayList<OFAction> actions = new ArrayList<OFAction();
+    actions.add(myFactory.actions().buildOutput() // builder pattern used throughout
+    .setPort(OFPort.of(1)) // raw types replaced with objects for type-checking and readability
+    .build()); // list of immutable OFAction objects
+    OFFlowAdd flow = myFactory.buildFlowAdd()
+    .setMatch(myfactory.buildMatch()
+    .setExact(MatchField.IN_PORT, OFPort.of(1)) // type-checked matching
+    .setExact(MatchField.ETH_TYPE, EthType.IPv4))
+    .build()) // immutable Match object
+    .setActions(actions)
+    .setOutPort(OFPort.of(2))
+    .setBufferId(OFBufferId.NO_BUFFER)
+    .build(); // immutable OFFlowMod; no lengths to set; no wildcards to set
+    sw.write(flow);
 
 Some of the concepts above will be discussed further below, but the major items to note are the use of the builder design pattern for ease-of-use and the production of immutable objects, the use of objects instead of raw types to enforce type-safe coding and to produce more readable code, built-in wildcarding, and finally there is no need to deal with message lengths.
 
@@ -69,47 +71,51 @@ For more information on how to use the new APIs exposed in Floodlight v1.1, plea
 
 There are many more minor details, which can be found in the release notes. I have been grateful to have the support of many Floodlight developers, and together we have worked to provide the highest quality release within a reasonable time frame. I would especially like to thank the following individuals and beta testers for their code contributions and debugging efforts:
 
-Rui Cardoso
-Hung-Wei Chiu
-Rich Lane
-Qingxiang Lin
-Sanjivini Naikar
-Jason Paraga
-Naveen Sampath
-Rob Sherwood
-Sebastian Szwaczyk
-KC Wang
-Andreas Wundsam
-electricjay
-Pengfei (Alex) Lu
+* Rui Cardoso
+* Hung-Wei Chiu
+* Rich Lane
+* Qingxiang Lin
+* Sanjivini Naikar
+* Jason Paraga
+* Naveen Sampath
+* Rob Sherwood
+* Sebastian Szwaczyk
+* KC Wang
+* Andreas Wundsam
+* electricjay
+* Pengfei (Alex) Lu
 
 Based on further community feedback, there will be minor releases to address any issues found or enhancements anyone would like to contribute. The mailing list has seen quite an uptick in activity over the last few months! 
 
 If at any time you have a question or concern, please reach out to us. We rely on our fellow developers to make the most effective improvements and find any bugs. Thank you all for the support and I hope you find your work with Floodlight v1.1 fun and productive! 
 
-Happy coding!
-Ryan Izard
-ryan.izard@bigswitch.com
+Happy coding!  
+Ryan Izard  
+ryan.izard@bigswitch.com  
 rizard@g.clemson.edu
 
 
 
 
-Floodlight v1.1 can be found on GitHub at:
+Floodlight v1.1 can be found on GitHub at:  
 http://github.com/floodlight/floodlight/tree/v1.1.
-Any updates leading up to a minor release after v1.1 will be placed in master at:
+
+Any updates leading up to a minor release after v1.1 will be placed in master at:  
 http://github.com/floodlight/floodlight.
-And finally all "bleeding edge" updates will be in my repository's master branch at:
+
+And finally all "bleeding edge" updates will be in my repository's master branch at:  
 http://github.com/rizard/floodlight.
 
-If you need an older version of Floodlight for any reason, they can still be found on GitHub:
-Floodlight v1.0 can be found on GitHub at:
-http://github.com/floodlight/floodlight/tree/v1.0
-Floodlight v0.91 (old master) can be found at:
+If you need an older version of Floodlight for any reason, they can still be found on GitHub:  
+
+Floodlight v1.0 can be found on GitHub at:  
+http://github.com/floodlight/floodlight/tree/v1.0  
+
+Floodlight v0.91 (old master) can be found at:  
 https://github.com/floodlight/floodlight/tree/v0.91
-Floodlight v0.90 can be found at:
+
+Floodlight v0.90 can be found at:  
 https://github.com/floodlight/floodlight/tree/v0.90
 
-To download a pre-built VM appliance, access documentation, and sign up for the mailing list, go to:
+To download a pre-built VM appliance, access documentation, and sign up for the mailing list, go to:  
 http://www.projectfloodlight.org/floodlight
-
