@@ -152,7 +152,7 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
                 jsonGenerator.writeStringField(ActionUtils.STR_GROUP, ((OFActionGroup)a).getGroup().toString());
                 break;
             case STRIP_VLAN:
-                jsonGenerator.writeString(ActionUtils.STR_VLAN_STRIP);
+                jsonGenerator.writeStringField(ActionUtils.STR_VLAN_STRIP, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case PUSH_VLAN:
                 jsonGenerator.writeNumberField(ActionUtils.STR_VLAN_PUSH, ((OFActionPushVlan)a).getEthertype().getValue());
@@ -164,25 +164,25 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
                 jsonGenerator.writeNumberField(ActionUtils.STR_PBB_PUSH, ((OFActionPushPbb)a).getEthertype().getValue());
                 break;
             case POP_VLAN:
-                jsonGenerator.writeString(ActionUtils.STR_VLAN_POP);
+                jsonGenerator.writeStringField(ActionUtils.STR_VLAN_POP, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case POP_MPLS:
                 jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_POP, ((OFActionPopMpls)a).getEthertype().getValue());
                 break;
             case POP_PBB:
-                jsonGenerator.writeString(ActionUtils.STR_PBB_POP);
+                jsonGenerator.writeStringField(ActionUtils.STR_PBB_POP, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case COPY_TTL_IN:
-                jsonGenerator.writeString(ActionUtils.STR_TTL_IN_COPY);
+                jsonGenerator.writeStringField(ActionUtils.STR_TTL_IN_COPY, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case COPY_TTL_OUT:
-                jsonGenerator.writeString(ActionUtils.STR_TTL_OUT_COPY);
+                jsonGenerator.writeStringField(ActionUtils.STR_TTL_OUT_COPY, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case DEC_NW_TTL:
-                jsonGenerator.writeString(ActionUtils.STR_NW_TTL_DEC);
+                jsonGenerator.writeStringField(ActionUtils.STR_NW_TTL_DEC, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case DEC_MPLS_TTL:
-                jsonGenerator.writeString(ActionUtils.STR_MPLS_TTL_DEC);
+                jsonGenerator.writeStringField(ActionUtils.STR_MPLS_TTL_DEC, ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case SET_MPLS_LABEL:
                 jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_LABEL_SET, ((OFActionSetMplsLabel)a).getMplsLabel());

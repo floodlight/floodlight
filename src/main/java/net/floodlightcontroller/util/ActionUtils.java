@@ -137,6 +137,7 @@ public class ActionUtils {
 	public static final String STR_GROUP = "group";
 	public static final String STR_FIELD_SET = "set_field";
 	public static final String STR_EXPERIMENTER = "experimenter";
+	public static final String STR_NOT_APPLICABLE = "n/a";
 
 	/* OF1.3 set-field operations are defined as any OF1.3 match.
 	 * We will borrow MatchUtils's String definitions of all OF1.3
