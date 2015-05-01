@@ -287,45 +287,60 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		MacAddress srcMac = eth.getSourceMACAddress();
 		MacAddress dstMac = eth.getDestinationMACAddress();
 
-		// A retentive builder will remember all MatchFields of the parent the builder was generated from
-		// With a normal builder, all parent MatchFields will be lost if any MatchFields are added, mod, del
-		// TODO (This is a bug in Loxigen and the retentive builder is a workaround.)
 		Match.Builder mb = sw.getOFFactory().buildMatch();
-		mb.setExact(MatchField.IN_PORT, inPort)
-		.setExact(MatchField.ETH_SRC, srcMac)
-		.setExact(MatchField.ETH_DST, dstMac);
+		mb.setExact(MatchField.IN_PORT, inPort);
 
-		if (!vlan.equals(VlanVid.ZERO)) {
-			mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+		if (FLOWMOD_DEFAULT_MATCH_MAC) {
+			mb.setExact(MatchField.ETH_SRC, srcMac)
+			.setExact(MatchField.ETH_DST, dstMac);
+		}
+
+		if (FLOWMOD_DEFAULT_MATCH_VLAN) {
+			if (!vlan.equals(VlanVid.ZERO)) {
+				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+			}
 		}
 
 		// TODO Detect switch type and match to create hardware-implemented flow
-		// TODO Set option in config file to support specific or MAC-only matches
+		// TODO Allow for IPv6 matches
 		if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
 			IPv4Address dstIp = ip.getDestinationAddress();
-			mb.setExact(MatchField.IPV4_SRC, srcIp)
-			.setExact(MatchField.IPV4_DST, dstIp)
-			.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+			
+			if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+				.setExact(MatchField.IPV4_SRC, srcIp)
+				.setExact(MatchField.IPV4_DST, dstIp);
+			}
 
-			if (ip.getProtocol().equals(IpProtocol.TCP)) {
-				TCP tcp = (TCP) ip.getPayload();
-				mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-				.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
-				.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
-			} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
-				UDP udp = (UDP) ip.getPayload();
-				mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-				.setExact(MatchField.UDP_SRC, udp.getSourcePort())
-				.setExact(MatchField.UDP_DST, udp.getDestinationPort());
-			}	
+			if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
+				/*
+				 * Take care of the ethertype if not included earlier,
+				 * since it's a prerequisite for transport ports.
+				 */
+				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+				}
+				
+				if (ip.getProtocol().equals(IpProtocol.TCP)) {
+					TCP tcp = (TCP) ip.getPayload();
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+					.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+					.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+				} else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+					UDP udp = (UDP) ip.getPayload();
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+					.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+					.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+				}
+			}
 		} else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
 			mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
 		}
 		return mb.build();
 	}
-	
+
 	/**
 	 * Creates a OFPacketOut with the OFPacketIn data that is flooded on all ports unless
 	 * the port is blocked, in which case the packet will be dropped.
@@ -455,6 +470,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		} else {
 			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
 		}
+		tmp = configParameters.get("match");
+		if (tmp != null) {
+			tmp = tmp.toLowerCase();
+			if (!tmp.contains("vlan") && !tmp.contains("mac") && !tmp.contains("ip") && !tmp.contains("port")) {
+				/* leave the default configuration -- blank or invalid 'match' value */
+			} else {
+				FLOWMOD_DEFAULT_MATCH_VLAN = tmp.contains("vlan") ? true : false;
+				FLOWMOD_DEFAULT_MATCH_MAC = tmp.contains("mac") ? true : false;
+				FLOWMOD_DEFAULT_MATCH_IP_ADDR = tmp.contains("ip") ? true : false;
+				FLOWMOD_DEFAULT_MATCH_TRANSPORT = tmp.contains("port") ? true : false;
+
+			}
+		}
+		log.info("Default flow matches set to: VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
+				+ ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
+				+ ", IP=" + FLOWMOD_DEFAULT_MATCH_IP_ADDR
+				+ ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT);
+
 	}
 
 	@Override
