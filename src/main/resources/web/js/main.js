@@ -109,7 +109,12 @@ tpl.loadTemplates(['home', 'status', 'topology', 'header', 'switch', 'switch-lis
                 if ( target.nodeName.toLowerCase() === 'a' ) {
                     e.preventDefault()
                     var uri = target.getAttribute('href')
-                    app.navigate(uri.substr(1), true)
+                    if (uri.substr(0,4) !== 'http') {
+                        app.navigate(uri.substr(1), true)
+                    }
+                    else {
+                        parent.window.location.assign(uri)
+                    }
                 }
             });
             window.addEventListener('popstate', function(e) {
