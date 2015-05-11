@@ -11,6 +11,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
 import java.util.EnumSet;
+import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
@@ -20,6 +21,7 @@ import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
+import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitTableFeaturesReplyState;
 
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
@@ -33,6 +35,8 @@ import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
@@ -93,7 +97,7 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         switchHandler.processOFMessage(getPortDescStatsReply());
     }
 
-    public void handleDescStatsAndCreateSwitch(boolean subHandShakeComplete) throws Exception {
+    public void handleDescStatsAndCreateSwitch() throws Exception {
         // build the stats reply
         OFDescStatsReply sr = createDescriptionStatsReply();
 
@@ -102,9 +106,8 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         setupSwitchForInstantiationWithReset();
         sw.setPortDescStats(anyObject(OFPortDescStatsReply.class));
         expectLastCall().once();
-        sw.startDriverHandshake();
-        expectLastCall().once();
-        expect(sw.isDriverHandshakeComplete()).andReturn(subHandShakeComplete).once();
+       
+        expect(sw.getOFFactory()).andReturn(factory).once();
         replay(sw);
 
         reset(switchManager);
@@ -122,14 +125,43 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         // send the description stats reply
         switchHandler.processOFMessage(sr);
 
+        OFMessage msg = connection.retrieveMessage();
+        assertThat(msg, CoreMatchers.instanceOf(OFTableFeaturesStatsRequest.class));
+        verifyUniqueXids(msg);
+        
         verify(sw, switchManager);
+    }
+    
+    public void handleTableFeatures(boolean subHandShakeComplete) throws Exception {
+    	// build the table features stats reply
+    	OFTableFeaturesStatsReply tf = createTableFeaturesStatsReply();
+    	
+    	reset(sw);
+    	sw.startDriverHandshake();
+        expectLastCall().once();
+        expect(sw.isDriverHandshakeComplete()).andReturn(subHandShakeComplete).once();
+    	sw.processOFTableFeatures(anyObject(List.class));
+    	expectLastCall().once();
+    	expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+    	replay(sw);
+    	
+    	switchHandler.processOFMessage(tf);
+    }
+    
+    @Test
+    public void moveToWaitTableFeaturesReplyState() throws Exception {
+    	moveToWaitDescriptionStatReply();
+    	handleDescStatsAndCreateSwitch();
+    	
+        assertThat(switchHandler.getStateForTesting(),
+                   CoreMatchers.instanceOf(WaitTableFeaturesReplyState.class));
     }
 
     @Test
     @Override
     public void moveToWaitAppHandshakeState() throws Exception {
-    	moveToWaitDescriptionStatReply();
-    	handleDescStatsAndCreateSwitch(true);
+    	moveToWaitTableFeaturesReplyState();
+    	handleTableFeatures(true);
     	
         assertThat(switchHandler.getStateForTesting(),
                    CoreMatchers.instanceOf(WaitAppHandshakeState.class));
@@ -186,8 +218,8 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
     @Override
     @Test
     public void moveToWaitSwitchDriverSubHandshake() throws Exception {
-        moveToWaitDescriptionStatReply();
-        handleDescStatsAndCreateSwitch(false);
+        moveToWaitTableFeaturesReplyState();
+        handleTableFeatures(false); //TODO
 
         assertThat(switchHandler.getStateForTesting(), CoreMatchers.instanceOf(OFSwitchHandshakeHandler.WaitSwitchDriverSubHandshakeState.class));
         assertThat("Unexpected message captured", connection.getMessages(), Matchers.empty());

@@ -19,6 +19,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -62,11 +63,16 @@ import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U32;
+import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.OrderedCollection;
@@ -306,6 +312,25 @@ public abstract class OFSwitchHandlerTestBase {
                 .setSerialNum("Serial Number")
                 .build();
         return statsReply;
+    }
+    
+    protected OFTableFeaturesStatsReply createTableFeaturesStatsReply() {
+    	OFTableFeaturesStatsReply statsReply = factory.buildTableFeaturesStatsReply()
+    			.setEntries(Collections.singletonList(factory.buildTableFeatures()
+    					.setConfig(0)
+    					.setMaxEntries(100)
+    					.setMetadataMatch(U64.NO_MASK)
+    					.setMetadataWrite(U64.NO_MASK)
+    					.setName("MyTable")
+    					.setTableId(TableId.of(1))
+    					.setProperties(Collections.singletonList((OFTableFeatureProp)factory.buildTableFeaturePropMatch()
+    							.setOxmIds(Collections.singletonList(U32.of(100)))
+    							.build())
+    				).build()
+    			)
+    			
+    		).build();
+    	return statsReply;
     }
 
     /**

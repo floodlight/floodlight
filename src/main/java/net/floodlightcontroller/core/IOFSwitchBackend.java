@@ -18,6 +18,7 @@
 package net.floodlightcontroller.core;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsReply;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
@@ -26,6 +27,8 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
+import org.projectfloodlight.openflow.protocol.OFTableFeatures;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
 
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -82,6 +85,15 @@ public interface IOFSwitchBackend extends IOFSwitch {
      * conflicting appear before before events adding new ports
      */
     OrderedCollection<PortChangeEvent> processOFPortStatus(OFPortStatus ps);
+    
+    /**
+     * Add or modify a switch table.
+     * This is called by the core controller code in response to an OFTableFeaturesReply message.
+     * It should not typically be called by other Floodlight modules or applications.
+     * 
+     * @param tf, The table features to be updated.
+     */
+    void processOFTableFeatures(List<OFTableFeaturesStatsReply> replies);
 
     /**
      * Compute the changes that would be required to replace the old ports

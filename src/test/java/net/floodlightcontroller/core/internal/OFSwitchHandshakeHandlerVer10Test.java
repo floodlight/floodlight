@@ -79,6 +79,7 @@ public class OFSwitchHandshakeHandlerVer10Test extends OFSwitchHandlerTestBase {
         setupSwitchForInstantiationWithReset();
         sw.startDriverHandshake();
         expectLastCall().once();
+        expect(sw.getOFFactory()).andReturn(factory).once();
         sw.isDriverHandshakeComplete();
         expectLastCall().andReturn(switchDriverComplete).once();
 
