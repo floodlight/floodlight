@@ -30,6 +30,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.internal.TableFeatures;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
@@ -42,6 +43,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -331,6 +333,12 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
 	@Override
 	public Collection<OFPortDesc> getPorts() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public TableFeatures getTableFeatures(TableId table) {
 		// TODO Auto-generated method stub
 		return null;
 	}

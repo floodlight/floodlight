@@ -20,5 +20,5 @@
   <logger name="net.floodlightcontroller.routing" level="INFO"></logger>
   <logger name="net.floodlightcontroller.core.internal" level="INFO"></logger>
   <logger level="INFO" name="net.floodlightcontroller.learningswitch"></logger>
-  <logger level="INFO" name="net.floodlightcontroller.staticflowentry"></logger>
+  <logger level="INFO" name="org.projectfloodlight.openflow"></logger>
 </configuration>

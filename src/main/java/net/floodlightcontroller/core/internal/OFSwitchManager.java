@@ -715,6 +715,11 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			log.warn("Clear switch flow tables on each transition to master: TRUE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
 		}
+		
+		String tablesToGetFTCFlow = configParams.get("addDefaultSendToControllerFlowInTables");
+		if (tablesToGetFTCFlow == null || tablesToGetFTCFlow.isEmpty()) {
+			
+		}
 	}
 
 	@Override

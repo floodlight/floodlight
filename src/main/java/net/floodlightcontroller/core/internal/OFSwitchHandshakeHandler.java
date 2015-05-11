@@ -58,8 +58,11 @@ import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
 import org.projectfloodlight.openflow.protocol.OFStatsRequestFlags;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -96,8 +99,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	private final Map<OFAuxId, IOFConnectionBackend> auxConnections;
 	private volatile OFSwitchHandshakeState state;
 	private RoleChanger roleChanger;
-	// Default to 1.3 - This is overwritten by the features reply
-	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+	// Default to 1.4 - This is overwritten by the features reply
+	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_14);
 	private final OFFeaturesReply featuresReply;
 	private final Timer timer;
 	
@@ -763,6 +766,28 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					switchManager.notifyPortChanged(sw, ev.port, ev.type);
 			}
 		}
+		
+		/**
+		 * Handle a table features message.
+		 *
+		 * Handle a table features message by updating the tables in the
+		 * IOFSwitch instance and notifying Controller about the change so
+		 * it can dispatch a switch update.
+		 *
+		 * @param h The OFChannelHandler that received the message
+		 * @param m The OFTableFeatures message we received
+		 * @param doNotify if true switch table changed events will be
+		 * dispatched
+		 */
+		protected void handleTableFeaturesMessage(List<OFTableFeaturesStatsReply> replies, boolean doNotify) {
+			if (sw == null) {
+				String msg = getSwitchStateMessage(!replies.isEmpty() ? replies.get(0) : null, "State machine error: switch is null. Should never happen");
+				throw new SwitchStateException(msg);
+			}
+			sw.processOFTableFeatures(replies);
+			//TODO like port status, might want to create an event and dispatch it. Not sure how useful this would be though...
+		}
+
 
 		/**
 		 * Process an OF message received on the channel and
@@ -1001,12 +1026,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			// Handle pending messages now that we have a sw object
 			handlePendingPortStatusMessages(description);
 
-			sw.startDriverHandshake();
-			if (sw.isDriverHandshakeComplete()) {
-				setState(new WaitAppHandshakeState());
-			} else {
-				setState(new WaitSwitchDriverSubHandshakeState());
-			}
+			setState(new WaitTableFeaturesReplyState());
 		}
 
 		void handlePendingPortStatusMessages(SwitchDescription description){
@@ -1021,6 +1041,77 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void enterState() {
 			sendHandshakeDescriptionStatsRequest();
 		}
+	}
+	
+	/*
+	 * New state: WaitSwitchTableFeaturesReplyState
+	 */
+	public class WaitTableFeaturesReplyState extends OFSwitchHandshakeState {
+
+		private ArrayList<OFTableFeaturesStatsReply> replies;
+		WaitTableFeaturesReplyState() {
+			super(false);
+			replies = new ArrayList<OFTableFeaturesStatsReply>();
+		}
+		
+		@Override
+		/**
+		 * Accumulate a list of the OFTableFeaturesStatsReply's until there 
+		 * are no more remaining. Then, pass the list to the switch for 
+		 * parsing and configuration.
+		 * 
+		 * The assumption is that the OFMessage dispatcher will call this each
+		 * time, which it does. We don't loop and receive here.
+		 * 
+		 * @param m, The potential OFTableFeaturesStatsReply message we want to include
+		 */
+		void processOFStatsReply(OFStatsReply m) {
+			if (m.getStatsType() == OFStatsType.TABLE_FEATURES) {
+				replies.add((OFTableFeaturesStatsReply) m);
+				if (!((OFTableFeaturesStatsReply)m).getFlags().contains(OFStatsReplyFlags.REPLY_MORE)) {
+					handleTableFeaturesMessage(replies, false);
+					nextState();
+				} 
+			} else {
+				/* should only receive TABLE_FEATURES here */
+				log.error("Received {} message but expected TABLE_FEATURES.", m.getStatsType().toString());
+			}
+		
+		}
+		
+		@Override
+		void processOFError(OFErrorMsg m) {
+			if ((m.getErrType() == OFErrorType.BAD_REQUEST) &&
+					((((OFBadRequestErrorMsg)m).getCode() == OFBadRequestCode.MULTIPART_BUFFER_OVERFLOW)
+					|| ((OFBadRequestErrorMsg)m).getCode() == OFBadRequestCode.BAD_STAT)) { 
+				log.warn("Switch {} is {} but does not support OFTableFeaturesStats. Assuming all tables can perform any match, action, and instruction in the spec.", 
+						sw.getId().toString(), sw.getOFFactory().getVersion().toString());
+			} else {
+				log.error("Received unexpected OFErrorMsg {} on switch {}.", m.toString(), sw.getId().toString());
+			}
+			nextState();
+			
+		}
+		
+		private void nextState() {
+			/* move on to the next state */
+			sw.startDriverHandshake();
+			if (sw.isDriverHandshakeComplete()) {
+				setState(new WaitAppHandshakeState());
+			} else {
+				setState(new WaitSwitchDriverSubHandshakeState());
+			}
+		}
+		
+		@Override
+		void enterState() {
+			if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0) {
+				nextState();
+			} else {
+				sendHandshakeTableFeaturesRequest();
+			}
+		}
+		
 	}
 
 	public class WaitSwitchDriverSubHandshakeState extends OFSwitchHandshakeState {
@@ -1348,6 +1439,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFFlowRemoved(OFFlowRemoved m) {
 			dispatchMessage(m);
 		}
+		
+		@Override
+		void processOFStatsReply(OFStatsReply m) {
+			// TODO Auto-generated method stub
+			super.processOFStatsReply(m);
+		}
 	}
 
 	/**
@@ -1664,6 +1761,17 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				.setXid(handshakeTransactionIds--)
 				.build();
 		mainConnection.write(descStatsRequest);
+	}
+	
+	/**
+	 * send a table features request
+	 */
+	private void sendHandshakeTableFeaturesRequest() {
+		OFTableFeaturesStatsRequest tfsr = factory.buildTableFeaturesStatsRequest()
+				/* leave entries blank --> just ask, don't set */
+				.setXid(handshakeTransactionIds--)
+				.build();
+		mainConnection.write(tfsr);
 	}
 
 	OFSwitchHandshakeState getStateForTesting() {

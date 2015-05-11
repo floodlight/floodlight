@@ -62,7 +62,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	private Channel channel;
 	private final Timer timer;
 	private volatile OFChannelState state;
-	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_14);
 	private OFFeaturesReply featuresReply;
 	private volatile OFConnection connection;
 	private final IDebugCounterService debugCounters;
