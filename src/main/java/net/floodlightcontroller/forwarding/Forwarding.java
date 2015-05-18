@@ -473,9 +473,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		tmp = configParameters.get("set-send-flow-rem-flag");
 		if (tmp != null) {
 			FLOWMOD_SET_SEND_FLOW_REM_FLAG = Boolean.parseBoolean(tmp);
-			log.info("Default flags will include SEND_FLOW_REM");
+			log.info("Default flags will include SEND_FLOW_REM.");
 		} else {
-			log.info("Default flags will be empty");
+			log.info("Default flags will be empty.");
 		}
 		tmp = configParameters.get("match");
 		if (tmp != null) {
