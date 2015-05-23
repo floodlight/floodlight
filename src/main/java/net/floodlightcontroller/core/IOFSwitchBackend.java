@@ -27,8 +27,8 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
-import org.projectfloodlight.openflow.protocol.OFTableFeatures;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.types.TableId;
 
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -194,4 +194,35 @@ public interface IOFSwitchBackend extends IOFSwitch {
      * @return true if another viable master exists
      */
     boolean hasAnotherMaster();
+    
+    /**
+     * In OF1.3+ switches, the table miss behavior is defined by a flow.
+     * We assume the default behavior is to forward to the controller, but
+     * not all tables need that behavior if a limited set of tables are used.
+     * So, we can cap the number of tables we set this flow in to reduce
+     * clutter in API output and to reduce memory consumption on the switch.
+     * 
+     * This gets the TableId cap set for this particular switch.
+     * 
+     * @return, the highest TableId that should receive a table-miss flow
+     */
+    TableId getMaxTableForTableMissFlow();
+    
+    /**
+     * In OF1.3+ switches, the table miss behavior is defined by a flow.
+     * We assume the default behavior is to forward to the controller, but
+     * not all tables need that behavior if a limited set of tables are used.
+     * So, we can cap the number of tables we set this flow in to reduce
+     * clutter in API output and to reduce memory consumption on the switch.
+     * 
+     * This sets the TableId cap set for this particular switch. If the max
+     * desired is higher than the number of tables this switch supports, the
+     * max table supported will be used:
+     * 
+     * set_max_table = max_supported <= max ? max_supported-1 : max
+     * 
+ 	 * @param max, the highest TableId that should receive a table-miss flow
+     * @return the TableId set as the highest
+     */
+    TableId setMaxTableForTableMissFlow(TableId max);
 }

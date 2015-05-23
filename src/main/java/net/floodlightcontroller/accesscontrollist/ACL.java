@@ -143,10 +143,10 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 		while (ruleIdIter.hasNext()) {
 			int ruleId = ruleIdIter.next();
 			Set<String> flowNameSet = ruleId2FlowName.get(ruleId);
-			logger.info("No.{} ACL rule removed.", ruleId);
+			logger.debug("No.{} ACL rule removed.", ruleId);
 			for (String flowName : flowNameSet) {
 				removeFlow(flowName);
-				logger.info("ACL flow {} removed.", flowName);
+				logger.debug("ACL flow {} removed.", flowName);
 			}
 		}
 		this.ruleId2FlowName = new HashMap<Integer, Set<String>>();
@@ -187,7 +187,7 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 		while (iter.hasNext()) {
 			String name = iter.next();
 			removeFlow(name);
-			logger.info("ACL flow " + name + " removed.");
+			logger.debug("ACL flow " + name + " removed.");
 		}
 
 	}
@@ -333,7 +333,7 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 		}
 		String dpid = HexString.toHexString(switchPort[0].getSwitchDPID().getLong());
 		String ip = IPv4.fromIPv4Address(ips[0].getInt());
-		logger.info("New AP added. [dpid:" + dpid + " ip:" + ip + "]");
+		logger.debug("New AP added. [dpid:" + dpid + " ip:" + ip + "]");
 
 		AP ap = new AP(ip,dpid);
 		apManager.addAP(ap);

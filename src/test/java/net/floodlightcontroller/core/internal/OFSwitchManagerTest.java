@@ -258,6 +258,7 @@ public class OFSwitchManagerTest{
         expect(sw.getStatus()).andReturn(SwitchStatus.MASTER).anyTimes();
         sw.disconnect();
         expectLastCall().once();
+        expect(sw.getOFFactory()).andReturn(factory).once();
         replay(sw, listener); // nothing recorded
         switchManager.switchAdded(sw);
         switchManager.switchStatusChanged(sw, SwitchStatus.HANDSHAKE, SwitchStatus.MASTER);

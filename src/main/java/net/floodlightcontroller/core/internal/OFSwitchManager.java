@@ -1,5 +1,6 @@
 package net.floodlightcontroller.core.internal;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,8 +56,10 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.TableId;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
@@ -65,6 +68,10 @@ import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -93,9 +100,12 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private static String keyStorePassword;
 	private static String keyStore;
 	private static boolean useSsl = false;
-	
+
 	protected static boolean clearTablesOnInitialConnectAsMaster = false;
 	protected static boolean clearTablesOnEachTransitionToMaster = false;
+
+	protected static Map<DatapathId, TableId> forwardToControllerFlowsUpToTableByDpid;
+	protected static TableId forwardToControllerFlowsUpToTable = TableId.of(4); /* this should cover most HW switches that have a couple SW-based flow tables */
 
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
@@ -167,6 +177,16 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			oldSw.disconnect();
 		}
 
+		/*
+		 * Set other config options for this switch.
+		 */
+		if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			if (forwardToControllerFlowsUpToTableByDpid.containsKey(sw.getId())) {
+				sw.setMaxTableForTableMissFlow(forwardToControllerFlowsUpToTableByDpid.get(sw.getId()));
+			} else {
+				sw.setMaxTableForTableMissFlow(forwardToControllerFlowsUpToTable);
+			}
+		}
 	}
 
 	@LogMessageDocs({
@@ -679,13 +699,13 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			OFSwitchManager.keyStore = null;
 			OFSwitchManager.keyStorePassword = null;
 		} else {
-			log.warn("SSL enabled. Using secure connections between Floodlight and switches.");
+			log.info("SSL enabled. Using secure connections between Floodlight and switches.");
 			log.info("SSL keystore path: {}, password: {}", path, (pass == null ? "" : pass)); 
 			OFSwitchManager.useSsl = true;
 			OFSwitchManager.keyStore = path;
 			OFSwitchManager.keyStorePassword = (pass == null ? "" : pass);
 		}
-		
+
 		/*
 		 * Get config to define what to do when a switch connects.
 		 * 
@@ -693,33 +713,122 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 */
 		String clearInitial = configParams.get("clearTablesOnInitialHandshakeAsMaster");
 		String clearLater = configParams.get("clearTablesOnEachTransitionToMaster");
-		
+
 		if (clearInitial == null || clearInitial.isEmpty() || 
 				(!clearInitial.equalsIgnoreCase("yes") && !clearInitial.equalsIgnoreCase("true") &&
-				!clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
-				!clearInitial.equalsIgnoreCase("stimmt"))) {
-			log.warn("Clear switch flow tables on initial handshake as master: FALSE");
+						!clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
+						!clearInitial.equalsIgnoreCase("stimmt"))) {
+			log.info("Clear switch flow tables on initial handshake as master: FALSE");
 			OFSwitchManager.clearTablesOnInitialConnectAsMaster = false;
 		} else {
-			log.warn("Clear switch flow tables on initial handshake as master: TRUE");
+			log.info("Clear switch flow tables on initial handshake as master: TRUE");
 			OFSwitchManager.clearTablesOnInitialConnectAsMaster = true;
 		}
-		
+
 		if (clearLater == null || clearLater.isEmpty() || 
 				(!clearLater.equalsIgnoreCase("yes") && !clearLater.equalsIgnoreCase("true") &&
-				!clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
-				!clearLater.equalsIgnoreCase("stimmt"))) {
-			log.warn("Clear switch flow tables on each transition to master: FALSE");
+						!clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
+						!clearLater.equalsIgnoreCase("stimmt"))) {
+			log.info("Clear switch flow tables on each transition to master: FALSE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = false;
 		} else {
-			log.warn("Clear switch flow tables on each transition to master: TRUE");
+			log.info("Clear switch flow tables on each transition to master: TRUE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
 		}
-		
-		String tablesToGetFTCFlow = configParams.get("addDefaultSendToControllerFlowInTables");
-		if (tablesToGetFTCFlow == null || tablesToGetFTCFlow.isEmpty()) {
-			
+
+		/*
+		 * Get default max table for forward to controller flows. 
+		 * Internal default set as class variable at top of OFSwitchManager.
+		 */
+		String defaultFlowsUpToTable = configParams.get("defaultMaxTableToReceiveTableMissFlow");
+		if (defaultFlowsUpToTable != null && !defaultFlowsUpToTable.isEmpty()) {
+			defaultFlowsUpToTable = defaultFlowsUpToTable.toLowerCase().trim();
+			try {
+				forwardToControllerFlowsUpToTable = TableId.of(defaultFlowsUpToTable.startsWith("0x") 
+						? Integer.parseInt(defaultFlowsUpToTable.replaceFirst("0x", ""), 16) 
+								: Integer.parseInt(defaultFlowsUpToTable));
+				log.info("Setting {} as the default max table to receive table-miss flow", forwardToControllerFlowsUpToTable.toString());
+			} catch (IllegalArgumentException e) {
+				log.error("Invalid table ID {} for default max table to receive table-miss flow. Using pre-set of {}", 
+						defaultFlowsUpToTable, forwardToControllerFlowsUpToTable.toString());
+			}
+		} else {
+			log.info("Default max table to receive table-miss flow not configured. Using {}", forwardToControllerFlowsUpToTable.toString());
 		}
+
+		/*
+		 * Get config to define which tables per switch will get a
+		 * default forward-to-controller flow. This can be used to
+		 * reduce the number of such flows if only a reduced set of
+		 * tables are being used.
+		 * 
+		 * By default, 
+		 */
+		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(configParams.get("maxTableToReceiveTableMissFlowPerDpid"));
+	}
+
+	private static Map<DatapathId, TableId> jsonToSwitchTableIdMap(String json) {
+		MappingJsonFactory f = new MappingJsonFactory();
+		JsonParser jp;
+		Map<DatapathId, TableId> retValue = new HashMap<DatapathId, TableId>();
+
+		if (json == null || json.isEmpty()) {
+			return retValue;
+		}
+
+		try {
+			try {
+				jp = f.createJsonParser(json);
+			} catch (JsonParseException e) {
+				throw new IOException(e);
+			}
+
+			jp.nextToken();
+			if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+				throw new IOException("Expected START_OBJECT");
+			}
+
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
+					throw new IOException("Expected FIELD_NAME");
+				}
+
+				String n = jp.getCurrentName();
+				jp.nextToken();
+				if (jp.getText().equals("")) {
+					continue;
+				}
+
+				DatapathId dpid;
+				try {
+					n = n.trim();
+					dpid = DatapathId.of(n);
+
+					TableId tablesToGetDefaultFlow;
+					String value = jp.getText();
+					if (value != null && !value.isEmpty()) {
+						value = value.trim().toLowerCase();
+						try {
+							tablesToGetDefaultFlow = TableId.of(
+									value.startsWith("0x") 
+									? Integer.parseInt(value.replaceFirst("0x", ""), 16) 
+											: Integer.parseInt(value)
+									); /* will throw exception if outside valid TableId number range */
+							retValue.put(dpid, tablesToGetDefaultFlow);
+							log.info("Setting max table to receive table-miss flow to {} for DPID {}", 
+									tablesToGetDefaultFlow.toString(), dpid.toString());
+						} catch (IllegalArgumentException e) { /* catches both IllegalArgumentExcpt. and NumberFormatExcpt. */
+							log.error("Invalid value of {} for max table to receive table-miss flow for DPID {}. Using default of {}.", value, dpid.toString());
+						}
+					}
+				} catch (NumberFormatException e) {
+					log.error("Invalid DPID format {} for max table to receive table-miss flow for specific DPID. Using default for the intended DPID.", n);
+				}
+			}
+		} catch (IOException e) {
+			log.error("Using default for remaining DPIDs. JSON formatting error in max table to receive table-miss flow for DPID input String: {}", e);
+		}
+		return retValue;
 	}
 
 	@Override

@@ -475,11 +475,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	}
 
 	/** 
-	 * Adds an initial table-miss flow to each
-	 * and every table on the switch. This replaces the default behavior of
-	 * forwarding table-miss packets to the controller. The table-miss flows
-	 * inserted will forward all packets that do not match a flow to the 
-	 * controller for processing.
+	 * Adds an initial table-miss flow to tables on the switch. 
+	 * This replaces the default behavior of forwarding table-miss packets 
+	 * to the controller. The table-miss flows inserted will forward all 
+	 * packets that do not match a flow to the controller for processing.
+	 * 
+	 * The OFSwitchManager is checked for used-defined behavior and default
+	 * max table to try to use.
 	 * 
 	 * Adding the default flow only applies to OpenFlow 1.3+ switches, which 
 	 * remove the default forward-to-controller behavior of flow tables.
@@ -502,7 +504,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			ArrayList<OFAction> actions = new ArrayList<OFAction>(1);
 			actions.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
 			ArrayList<OFMessage> flows = new ArrayList<OFMessage>();
-			for (int tableId = 0; tableId < this.sw.getTables(); tableId++) {
+			for (int tableId = 0; tableId <= this.sw.getMaxTableForTableMissFlow().getValue(); tableId++) {
 				OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
 						.setTableId(TableId.of(tableId))
 						.setPriority(0)
@@ -1014,7 +1016,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			OFDescStatsReply descStatsReply = (OFDescStatsReply) m;
 			SwitchDescription description = new SwitchDescription(descStatsReply);
 			sw = switchManager.getOFSwitchInstance(mainConnection, description, factory, featuresReply.getDatapathId());
-			switchManager.switchAdded(sw);
 			// set switch information
 			// set features reply and channel first so we a DPID and
 			// channel info.
@@ -1022,6 +1023,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (portDescStats != null) {
 				sw.setPortDescStats(portDescStats);
 			}
+			/*
+			 * Need to add after setting the features.
+			 */
+			switchManager.switchAdded(sw);
+
 
 			// Handle pending messages now that we have a sw object
 			handlePendingPortStatusMessages(description);
