@@ -86,7 +86,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
 	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 	
-	public static boolean FLOWMOD_SET_SEND_FLOW_REM_FLAG = false;
+	public static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 	
 	public static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
 	public static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
@@ -269,7 +269,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
 			
-			if(FLOWMOD_SET_SEND_FLOW_REM_FLAG) {
+			if(FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG) {
 				Set<OFFlowModFlags> flags = new HashSet<>();
 				flags.add(OFFlowModFlags.SEND_FLOW_REM);
 				fmb.setFlags(flags);
