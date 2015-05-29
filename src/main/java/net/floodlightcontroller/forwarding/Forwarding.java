@@ -470,6 +470,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		} else {
 			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
 		}
+		tmp = configParameters.get("set-send-flow-rem-flag");
+		if (tmp != null) {
+			FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = Boolean.parseBoolean(tmp);
+			log.info("Default flags will be set to SEND_FLOW_REM.");
+		} else {
+			log.info("Default flags will be empty.");
+		}
 		tmp = configParameters.get("match");
 		if (tmp != null) {
 			tmp = tmp.toLowerCase();

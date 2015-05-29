@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +52,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -83,6 +85,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
 	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
 	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
+	
+	public static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 	
 	public static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
 	public static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
@@ -264,6 +268,12 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			aob.setPort(outPort);
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
+			
+			if(FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG) {
+				Set<OFFlowModFlags> flags = new HashSet<>();
+				flags.add(OFFlowModFlags.SEND_FLOW_REM);
+				fmb.setFlags(flags);
+			}
 			
 			// compile
 			fmb.setMatch(mb.build()) // was match w/o modifying input port
