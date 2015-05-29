@@ -108,182 +108,183 @@ public class OFActionListSerializer extends JsonSerializer<List<OFAction>> {
         if (actions.isEmpty()) {
             jsonGenerator.writeStringField("none", "drop");
         }
+        StringBuilder sb = new StringBuilder();
         for (OFAction a : actions) {
             switch (a.getType()) {
             case OUTPUT:
-                jsonGenerator.writeStringField(ActionUtils.STR_OUTPUT, ((OFActionOutput)a).getPort().toString());
+                sb.append(ActionUtils.STR_OUTPUT).append(((OFActionOutput)a).getPort().toString());
                 break;
             /* begin OF1.0 ONLY actions */
             case SET_VLAN_VID:
-                jsonGenerator.writeNumberField(ActionUtils.STR_VLAN_SET_VID, ((OFActionSetVlanVid)a).getVlanVid().getVlan());
+                sb.append(ActionUtils.STR_VLAN_SET_VID).append(((OFActionSetVlanVid)a).getVlanVid().getVlan());
                 break;
             case SET_VLAN_PCP:
-                jsonGenerator.writeNumberField(ActionUtils.STR_VLAN_SET_PCP, ((OFActionSetVlanPcp)a).getVlanPcp().getValue());
+                sb.append(ActionUtils.STR_VLAN_SET_PCP).append(((OFActionSetVlanPcp)a).getVlanPcp().getValue());
                 break;
             case SET_QUEUE:
-                jsonGenerator.writeNumberField(ActionUtils.STR_QUEUE_SET, ((OFActionSetQueue)a).getQueueId());
+                sb.append(ActionUtils.STR_QUEUE_SET).append(((OFActionSetQueue)a).getQueueId());
                 break;
             case SET_DL_SRC:
-                jsonGenerator.writeStringField(ActionUtils.STR_DL_SRC_SET, ((OFActionSetDlSrc)a).getDlAddr().toString());
+                sb.append(ActionUtils.STR_DL_SRC_SET).append(((OFActionSetDlSrc)a).getDlAddr().toString());
                 break;
             case SET_DL_DST:
-                jsonGenerator.writeStringField(ActionUtils.STR_DL_DST_SET, ((OFActionSetDlDst)a).getDlAddr().toString());
+                sb.append(ActionUtils.STR_DL_DST_SET).append(((OFActionSetDlDst)a).getDlAddr().toString());
                 break;
             case SET_NW_SRC:
-                jsonGenerator.writeStringField(ActionUtils.STR_NW_SRC_SET, ((OFActionSetNwSrc)a).getNwAddr().toString());
+                sb.append(ActionUtils.STR_NW_SRC_SET).append(((OFActionSetNwSrc)a).getNwAddr().toString());
                 break;
             case SET_NW_DST:
-                jsonGenerator.writeStringField(ActionUtils.STR_NW_DST_SET, ((OFActionSetNwDst)a).getNwAddr().toString());
+                sb.append(ActionUtils.STR_NW_DST_SET).append(((OFActionSetNwDst)a).getNwAddr().toString());
                 break;
             case SET_NW_TOS:
-                jsonGenerator.writeNumberField(ActionUtils.STR_NW_TOS_SET, ((OFActionSetNwTos)a).getNwTos());
+            	sb.append(ActionUtils.STR_NW_TOS_SET).append(((OFActionSetNwTos)a).getNwTos());
                 break;    
             case SET_TP_SRC:
-                jsonGenerator.writeNumberField(ActionUtils.STR_TP_SRC_SET, ((OFActionSetTpSrc)a).getTpPort().getPort());
+            	sb.append(ActionUtils.STR_TP_SRC_SET).append(((OFActionSetTpSrc)a).getTpPort().getPort());
                 break;
             case SET_TP_DST:
-                jsonGenerator.writeNumberField(ActionUtils.STR_TP_DST_SET, ((OFActionSetTpDst)a).getTpPort().getPort());
+            	sb.append(ActionUtils.STR_TP_DST_SET).append(((OFActionSetTpDst)a).getTpPort().getPort());
                 break;
             /* end OF1.0 ONLY actions; begin OF1.1+ actions */
             case ENQUEUE:
-                jsonGenerator.writeNumberField(ActionUtils.STR_ENQUEUE, ((OFActionEnqueue)a).getPort().getPortNumber());
+                sb.append(ActionUtils.STR_ENQUEUE).append(((OFActionEnqueue)a).getPort().getPortNumber());
                 break;
             case GROUP:
-                jsonGenerator.writeStringField(ActionUtils.STR_GROUP, ((OFActionGroup)a).getGroup().toString());
+            	sb.append(ActionUtils.STR_GROUP).append(((OFActionGroup)a).getGroup().toString());
                 break;
             case STRIP_VLAN:
-                jsonGenerator.writeStringField(ActionUtils.STR_VLAN_STRIP, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_VLAN_STRIP).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case PUSH_VLAN:
-                jsonGenerator.writeNumberField(ActionUtils.STR_VLAN_PUSH, ((OFActionPushVlan)a).getEthertype().getValue());
+            	sb.append(ActionUtils.STR_VLAN_PUSH).append(((OFActionPushVlan)a).getEthertype().getValue());
                 break;
             case PUSH_MPLS:
-                jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_PUSH, ((OFActionPushMpls)a).getEthertype().getValue());
+            	sb.append(ActionUtils.STR_MPLS_PUSH).append(((OFActionPushMpls)a).getEthertype().getValue());
                 break;
             case PUSH_PBB:
-                jsonGenerator.writeNumberField(ActionUtils.STR_PBB_PUSH, ((OFActionPushPbb)a).getEthertype().getValue());
+            	sb.append(ActionUtils.STR_PBB_PUSH).append(((OFActionPushPbb)a).getEthertype().getValue());
                 break;
             case POP_VLAN:
-                jsonGenerator.writeStringField(ActionUtils.STR_VLAN_POP, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_VLAN_POP).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case POP_MPLS:
-                jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_POP, ((OFActionPopMpls)a).getEthertype().getValue());
+            	sb.append(ActionUtils.STR_MPLS_POP).append(((OFActionPopMpls)a).getEthertype().getValue());
                 break;
             case POP_PBB:
-                jsonGenerator.writeStringField(ActionUtils.STR_PBB_POP, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_PBB_POP).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case COPY_TTL_IN:
-                jsonGenerator.writeStringField(ActionUtils.STR_TTL_IN_COPY, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_TTL_IN_COPY).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case COPY_TTL_OUT:
-                jsonGenerator.writeStringField(ActionUtils.STR_TTL_OUT_COPY, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_TTL_OUT_COPY).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case DEC_NW_TTL:
-                jsonGenerator.writeStringField(ActionUtils.STR_NW_TTL_DEC, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_NW_TTL_DEC).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case DEC_MPLS_TTL:
-                jsonGenerator.writeStringField(ActionUtils.STR_MPLS_TTL_DEC, ActionUtils.STR_NOT_APPLICABLE);
+            	sb.append(ActionUtils.STR_MPLS_TTL_DEC).append(ActionUtils.STR_NOT_APPLICABLE);
                 break;
             case SET_MPLS_LABEL:
-                jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_LABEL_SET, ((OFActionSetMplsLabel)a).getMplsLabel());
+            	sb.append(ActionUtils.STR_MPLS_LABEL_SET).append(((OFActionSetMplsLabel)a).getMplsLabel());
                 break;
             case SET_MPLS_TC:
-                jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_TC_SET, ((OFActionSetMplsTc)a).getMplsTc());
+            	sb.append(ActionUtils.STR_MPLS_TC_SET).append(((OFActionSetMplsTc)a).getMplsTc());
                 break;
             case SET_MPLS_TTL:
-                jsonGenerator.writeNumberField(ActionUtils.STR_MPLS_TTL_SET, ((OFActionSetMplsTtl)a).getMplsTtl());
+                sb.append(ActionUtils.STR_MPLS_TTL_SET).append(((OFActionSetMplsTtl)a).getMplsTtl());
                 break;
             case SET_NW_ECN:
-                jsonGenerator.writeNumberField(ActionUtils.STR_NW_ECN_SET, ((OFActionSetNwEcn)a).getNwEcn().getEcnValue());
+            	sb.append(ActionUtils.STR_NW_ECN_SET).append(((OFActionSetNwEcn)a).getNwEcn().getEcnValue());
                 break;
             case SET_NW_TTL:
-                jsonGenerator.writeNumberField(ActionUtils.STR_NW_TTL_SET, ((OFActionSetNwTtl)a).getNwTtl());
+            	sb.append(ActionUtils.STR_NW_TTL_SET).append(((OFActionSetNwTtl)a).getNwTtl());
                 break;
             case EXPERIMENTER:
-                jsonGenerator.writeNumberField(ActionUtils.STR_EXPERIMENTER, ((OFActionExperimenter)a).getExperimenter());
+            	sb.append(ActionUtils.STR_EXPERIMENTER).append(((OFActionExperimenter)a).getExperimenter());
                 break;
             case SET_FIELD:
                 if (((OFActionSetField)a).getField() instanceof OFOxmArpOp) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_ARP_OPCODE, ((OFOxmArpOp) ((OFActionSetField) a).getField()).getValue().getOpcode());
+                	sb.append(MatchUtils.STR_ARP_OPCODE).append(((OFOxmArpOp) ((OFActionSetField) a).getField()).getValue().getOpcode());
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmArpSha) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_ARP_SHA, ((OFOxmArpSha) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
+                	sb.append(MatchUtils.STR_ARP_SHA).append(((OFOxmArpSha) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmArpTha) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_ARP_DHA, ((OFOxmArpTha) ((OFActionSetField) a).getField()).getValue().toString());
+                	sb.append(MatchUtils.STR_ARP_DHA).append(((OFOxmArpTha) ((OFActionSetField) a).getField()).getValue().toString());
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmArpSpa) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_ARP_SPA, ((OFOxmArpSpa) ((OFActionSetField) a).getField()).getValue().toString()); // ipaddress formats string already
+                	sb.append(MatchUtils.STR_ARP_SPA).append(((OFOxmArpSpa) ((OFActionSetField) a).getField()).getValue().toString()); // ipaddress formats string already
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmArpTpa) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_ARP_DPA, ((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_ARP_DPA).append(((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {                		
-                	jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_SSL, ((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString());
+                	sb.append(MatchUtils.STR_IPV6_ND_SSL).append(((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString());
             	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTll) {                		
-            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_TTL, ((OFOxmIpv6NdTll) ((OFActionSetField) a).getField()).getValue().toString());
+            		sb.append(MatchUtils.STR_IPV6_ND_TTL).append(((OFOxmIpv6NdTll) ((OFActionSetField) a).getField()).getValue().toString());
             	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTarget) {                		
-            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_ND_TARGET, ((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
+            		sb.append(MatchUtils.STR_IPV6_ND_TARGET).append(((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
             	}
                 /* DATA LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmEthType) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_DL_TYPE, ((OFOxmEthType) ((OFActionSetField) a).getField()).getValue().getValue());
+                	sb.append(MatchUtils.STR_DL_TYPE).append(((OFOxmEthType) ((OFActionSetField) a).getField()).getValue().getValue());
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmEthSrc) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_DL_SRC, ((OFOxmEthSrc) ((OFActionSetField) a).getField()).getValue().toString());
+                	sb.append(MatchUtils.STR_DL_SRC).append(((OFOxmEthSrc) ((OFActionSetField) a).getField()).getValue().toString());
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmEthDst) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_DL_DST, ((OFOxmEthDst) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_DL_DST).append(((OFOxmEthDst) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmVlanVid) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_DL_VLAN, ((OFOxmVlanVid) ((OFActionSetField) a).getField()).getValue().getVlan()); 
+                	sb.append(MatchUtils.STR_DL_VLAN).append(((OFOxmVlanVid) ((OFActionSetField) a).getField()).getValue().getVlan()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmVlanPcp) {
                 } 
                 /* ICMP */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Code) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_ICMP_CODE, ((OFOxmIcmpv4Code) ((OFActionSetField) a).getField()).getValue().getCode()); 
+                	sb.append(MatchUtils.STR_ICMP_CODE).append(((OFOxmIcmpv4Code) ((OFActionSetField) a).getField()).getValue().getCode()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv4Type) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_ICMP_TYPE, ((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType()); 
+                	sb.append(MatchUtils.STR_ICMP_TYPE).append(((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {                		
-                	jsonGenerator.writeNumberField(MatchUtils.STR_ICMPV6_CODE, ((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw()); 
+                	sb.append(MatchUtils.STR_ICMPV6_CODE).append(((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw()); 
             	}  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Type) {                		
-            		jsonGenerator.writeNumberField(MatchUtils.STR_ICMPV6_TYPE, ((OFOxmIcmpv6Type) ((OFActionSetField) a).getField()).getValue().getRaw()); 
+            		sb.append(MatchUtils.STR_ICMPV6_TYPE).append(((OFOxmIcmpv6Type) ((OFActionSetField) a).getField()).getValue().getRaw()); 
             	}
                 /* NETWORK LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmIpProto) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_NW_PROTO, ((OFOxmIpProto) ((OFActionSetField) a).getField()).getValue().getIpProtocolNumber()); 
+                	sb.append(MatchUtils.STR_NW_PROTO).append(((OFOxmIpProto) ((OFActionSetField) a).getField()).getValue().getIpProtocolNumber()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Src) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_NW_SRC, ((OFOxmIpv4Src) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_NW_SRC).append(((OFOxmIpv4Src) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv4Dst) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_NW_DST, ((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_NW_DST).append(((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {                		
-                	jsonGenerator.writeStringField(MatchUtils.STR_IPV6_SRC, ((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_IPV6_SRC).append(((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
             	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Dst) {                		
-            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_DST, ((OFOxmIpv6Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
+            		sb.append(MatchUtils.STR_IPV6_DST).append(((OFOxmIpv6Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
             	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Flabel) {                		
-            		jsonGenerator.writeStringField(MatchUtils.STR_IPV6_FLOW_LABEL, ((OFOxmIpv6Flabel) ((OFActionSetField) a).getField()).getValue().toString()); 
+            		sb.append(MatchUtils.STR_IPV6_FLOW_LABEL).append(((OFOxmIpv6Flabel) ((OFActionSetField) a).getField()).getValue().toString()); 
             	} else if (((OFActionSetField)a).getField() instanceof OFOxmIpEcn) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_NW_ECN, ((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue()); 
+            		sb.append(MatchUtils.STR_NW_ECN).append(((OFOxmIpEcn) ((OFActionSetField) a).getField()).getValue().getEcnValue()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmIpDscp) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_NW_DSCP, ((OFOxmIpDscp) ((OFActionSetField) a).getField()).getValue().getDscpValue()); 
+                	sb.append(MatchUtils.STR_NW_DSCP).append(((OFOxmIpDscp) ((OFActionSetField) a).getField()).getValue().getDscpValue()); 
                 } 
                 /* TRANSPORT LAYER, TCP, UDP, and SCTP */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmTcpSrc) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_TCP_SRC, ((OFOxmTcpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_TCP_SRC).append(((OFOxmTcpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmTcpDst) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_TCP_DST, ((OFOxmTcpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_TCP_DST).append(((OFOxmTcpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmUdpSrc) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_UDP_SRC, ((OFOxmUdpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_UDP_SRC).append(((OFOxmUdpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmUdpDst) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_UDP_DST, ((OFOxmUdpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_UDP_DST).append(((OFOxmUdpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmSctpSrc) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_SCTP_SRC, ((OFOxmSctpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_SCTP_SRC).append(((OFOxmSctpSrc) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmSctpDst) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_SCTP_DST, ((OFOxmSctpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
+                	sb.append(MatchUtils.STR_SCTP_DST).append(((OFOxmSctpDst) ((OFActionSetField) a).getField()).getValue().getPort()); 
                 }
                 /* MPLS */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmMplsLabel) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_MPLS_LABEL, ((OFOxmMplsLabel) ((OFActionSetField) a).getField()).getValue().getValue()); 
+                	sb.append(MatchUtils.STR_MPLS_LABEL).append(((OFOxmMplsLabel) ((OFActionSetField) a).getField()).getValue().getValue()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmMplsTc) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_MPLS_TC, ((OFOxmMplsTc) ((OFActionSetField) a).getField()).getValue().getValue()); 
+                	sb.append(MatchUtils.STR_MPLS_TC).append(((OFOxmMplsTc) ((OFActionSetField) a).getField()).getValue().getValue()); 
                 } else if (((OFActionSetField)a).getField() instanceof OFOxmMplsBos) {
-                    jsonGenerator.writeStringField(MatchUtils.STR_MPLS_TC, ((OFOxmMplsBos) ((OFActionSetField) a).getField()).getValue().toString()); 
+                	sb.append(MatchUtils.STR_MPLS_TC).append(((OFOxmMplsBos) ((OFActionSetField) a).getField()).getValue().toString()); 
                 } 
                 /* METADATA */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmMetadata) {
-                    jsonGenerator.writeNumberField(MatchUtils.STR_METADATA, ((OFOxmMetadata) ((OFActionSetField) a).getField()).getValue().getValue().getValue()); 
+                	sb.append(MatchUtils.STR_METADATA).append(((OFOxmMetadata) ((OFActionSetField) a).getField()).getValue().getValue().getValue()); 
                 } else {
                     logger.error("Could not decode Set-Field action field: {}", ((OFActionSetField) a));
                     // need to get a logger in here somehow log.error("Could not decode Set-Field action field: {}", ((OFActionSetField) a));
