@@ -115,7 +115,7 @@ public abstract class OFSwitchHandlerTestBase {
 		}
 	}
 
-	@Before
+	
 	public void setUpFeaturesReply() {
 		getFeaturesReply();
 		this.featuresReply = getFeaturesReply();
@@ -132,6 +132,12 @@ public abstract class OFSwitchHandlerTestBase {
 
 	@Before
 	public void setUp() throws Exception {
+		/*
+		 * This needs to be called explicitly to ensure the featuresReply is not null.
+		 * Otherwise, there is no guarantee @Before will for setUpFeaturesReply() will
+		 * call that function before our @Before setUp() here.
+		 */
+		setUpFeaturesReply(); 
 		switchManager = createMock(IOFSwitchManager.class);
 		roleManager = createMock(RoleManager.class);
 		sw = createMock(IOFSwitchBackend.class);
