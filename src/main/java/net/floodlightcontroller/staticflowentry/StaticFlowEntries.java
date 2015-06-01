@@ -206,116 +206,375 @@ public class StaticFlowEntries {
 			MatchField mf = itr.next();
 			switch (mf.id) {
 			case IN_PORT: // iterates over only exact/masked fields. No need to check for null entries.
-				entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, Integer.toString((match.get(MatchField.IN_PORT)).getPortNumber()));
+				if (match.supports(MatchField.IN_PORT) && match.isExact(MatchField.IN_PORT)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, match.get(MatchField.IN_PORT).toString());
+				} else if (match.supportsMasked(MatchField.IN_PORT) && match.isPartiallyMasked(MatchField.IN_PORT)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_IN_PORT, match.getMasked(MatchField.IN_PORT).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_IN_PORT, match.getVersion().toString());
+				}
 				break;
 			case ETH_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, match.get(MatchField.ETH_SRC).toString());
+				if (match.supports(MatchField.ETH_SRC) && match.isExact(MatchField.ETH_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, match.get(MatchField.ETH_SRC).toString());
+				} else if (match.supportsMasked(MatchField.ETH_SRC) && match.isPartiallyMasked(MatchField.ETH_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_SRC, match.getMasked(MatchField.ETH_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_DL_SRC, match.getVersion().toString());
+				}
 				break;
 			case ETH_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, match.get(MatchField.ETH_DST).toString());
+				if (match.supports(MatchField.ETH_DST) && match.isExact(MatchField.ETH_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, match.get(MatchField.ETH_DST).toString());
+				} else if (match.supportsMasked(MatchField.ETH_DST) && match.isPartiallyMasked(MatchField.ETH_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_DST, match.getMasked(MatchField.ETH_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_DL_DST, match.getVersion().toString());
+				}
 				break;
 			case VLAN_VID:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.get(MatchField.VLAN_VID).getVlan());
+				if (match.supports(MatchField.VLAN_VID) && match.isExact(MatchField.VLAN_VID)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.get(MatchField.VLAN_VID).toString());
+				} else if (match.supportsMasked(MatchField.VLAN_VID) && match.isPartiallyMasked(MatchField.VLAN_VID)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN, match.getMasked(MatchField.VLAN_VID).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_DL_VLAN, match.getVersion().toString());
+				}
 				break;
 			case VLAN_PCP:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, Byte.toString(match.get(MatchField.VLAN_PCP).getValue()));
+				if (match.supports(MatchField.VLAN_PCP) && match.isExact(MatchField.VLAN_PCP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, match.get(MatchField.VLAN_PCP).toString());
+				} else if (match.supportsMasked(MatchField.VLAN_PCP) && match.isPartiallyMasked(MatchField.VLAN_PCP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, match.getMasked(MatchField.VLAN_PCP).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_DL_VLAN_PCP, match.getVersion().toString());
+				}
 				break;
 			case ETH_TYPE:
-				entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).getValue());
+				if (match.supports(MatchField.ETH_TYPE) && match.isExact(MatchField.ETH_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.get(MatchField.ETH_TYPE).toString());
+				} else if (match.supportsMasked(MatchField.ETH_TYPE) && match.isPartiallyMasked(MatchField.ETH_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_DL_TYPE, match.getMasked(MatchField.ETH_TYPE).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_DL_TYPE, match.getVersion().toString());
+				}
 				break;
 			case IP_ECN: // TOS = [DSCP bits 0-5] + [ECN bits 6-7] --> bitwise OR to get TOS byte (have separate columns now though)
-				entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, Byte.toString(match.get(MatchField.IP_ECN).getEcnValue()));
+				if (match.supports(MatchField.IP_ECN) && match.isExact(MatchField.IP_ECN)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, match.get(MatchField.IP_ECN).toString());
+				} else if (match.supportsMasked(MatchField.IP_ECN) && match.isPartiallyMasked(MatchField.IP_ECN)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_ECN, match.getMasked(MatchField.IP_ECN).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW_ECN, match.getVersion().toString());
+				}
 				break;
 			case IP_DSCP: // Even for OF1.0, loxi will break ECN and DSCP up from the API's POV. This method is only invoked by a SFP service push from another module
-				entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, Byte.toString((byte) (match.get(MatchField.IP_DSCP).getDscpValue())));
+				if (match.supports(MatchField.IP_DSCP) && match.isExact(MatchField.IP_DSCP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, match.get(MatchField.IP_DSCP).toString());
+				} else if (match.supportsMasked(MatchField.IP_DSCP) && match.isPartiallyMasked(MatchField.IP_DSCP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_DSCP, match.getMasked(MatchField.IP_DSCP).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW_DSCP, match.getVersion().toString());
+				}
 				break;
 			case IP_PROTO:
-				entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, Short.toString(match.get(MatchField.IP_PROTO).getIpProtocolNumber()));
+				if (match.supports(MatchField.IP_PROTO) && match.isExact(MatchField.IP_PROTO)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, match.get(MatchField.IP_PROTO).toString());
+				} else if (match.supportsMasked(MatchField.IP_PROTO) && match.isPartiallyMasked(MatchField.IP_PROTO)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_PROTO, match.getMasked(MatchField.IP_PROTO).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW_PROTO, match.getVersion().toString());
+				}
 				break;
 			case IPV4_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, match.get(MatchField.IPV4_SRC).toString());
+				if (match.supports(MatchField.IPV4_SRC) && match.isExact(MatchField.IPV4_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, match.get(MatchField.IPV4_SRC).toString());
+				} else if (match.supportsMasked(MatchField.IPV4_SRC) && match.isPartiallyMasked(MatchField.IPV4_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_SRC, match.getMasked(MatchField.IPV4_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW_SRC, match.getVersion().toString());
+				}
 				break;
 			case IPV4_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.get(MatchField.IPV4_DST).toString());
+				if (match.supports(MatchField.IPV4_DST) && match.isExact(MatchField.IPV4_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.get(MatchField.IPV4_DST).toString());
+				} else if (match.supportsMasked(MatchField.IPV4_DST) && match.isPartiallyMasked(MatchField.IPV4_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW_DST, match.getMasked(MatchField.IPV4_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW_DST, match.getVersion().toString());
+				}
 				break;
 			case TCP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, match.get(MatchField.TCP_SRC).getPort());
+				if (match.supports(MatchField.TCP_SRC) && match.isExact(MatchField.TCP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, match.get(MatchField.TCP_SRC).toString());
+				} else if (match.supportsMasked(MatchField.TCP_SRC) && match.isPartiallyMasked(MatchField.TCP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TCP_SRC, match.getMasked(MatchField.TCP_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_TCP_SRC, match.getVersion().toString());
+				}
 				break;
 			case UDP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, match.get(MatchField.UDP_SRC).getPort());
+				if (match.supports(MatchField.UDP_SRC) && match.isExact(MatchField.UDP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, match.get(MatchField.UDP_SRC).toString());
+				} else if (match.supportsMasked(MatchField.UDP_SRC) && match.isPartiallyMasked(MatchField.UDP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_UDP_SRC, match.getMasked(MatchField.UDP_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_UDP_SRC, match.getVersion().toString());
+				}
 				break;
 			case SCTP_SRC:
-				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, match.get(MatchField.SCTP_SRC).getPort());
+				if (match.supports(MatchField.SCTP_SRC) && match.isExact(MatchField.SCTP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, match.get(MatchField.SCTP_SRC).toString());
+				} else if (match.supportsMasked(MatchField.SCTP_SRC) && match.isPartiallyMasked(MatchField.SCTP_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_SCTP_SRC, match.getMasked(MatchField.SCTP_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_SCTP_SRC, match.getVersion().toString());
+				}
 				break;
 			case TCP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, match.get(MatchField.TCP_DST).getPort());
+				if (match.supports(MatchField.TCP_DST) && match.isExact(MatchField.TCP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, match.get(MatchField.TCP_DST).toString());
+				} else if (match.supportsMasked(MatchField.TCP_DST) && match.isPartiallyMasked(MatchField.TCP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TCP_DST, match.getMasked(MatchField.TCP_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_TCP_DST, match.getVersion().toString());
+				}
 				break;
 			case UDP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, match.get(MatchField.UDP_DST).getPort());
+				if (match.supports(MatchField.UDP_DST) && match.isExact(MatchField.UDP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, match.get(MatchField.UDP_DST).toString());
+				} else if (match.supportsMasked(MatchField.UDP_DST) && match.isPartiallyMasked(MatchField.UDP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_UDP_DST, match.getMasked(MatchField.UDP_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_UDP_DST, match.getVersion().toString());
+				}
 				break;
 			case SCTP_DST:
-				entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, match.get(MatchField.SCTP_DST).getPort());
+				if (match.supports(MatchField.SCTP_DST) && match.isExact(MatchField.SCTP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, match.get(MatchField.SCTP_DST).toString());
+				} else if (match.supportsMasked(MatchField.SCTP_DST) && match.isPartiallyMasked(MatchField.SCTP_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_SCTP_DST, match.getMasked(MatchField.SCTP_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_SCTP_DST, match.getVersion().toString());
+				}
 				break;
 			case ICMPV4_TYPE:
-				entry.put(StaticFlowEntryPusher.COLUMN_ICMP_TYPE, match.get(MatchField.ICMPV4_TYPE).getType());
+				if (match.supports(MatchField.ICMPV4_TYPE) && match.isExact(MatchField.ICMPV4_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP_TYPE, match.get(MatchField.ICMPV4_TYPE).toString());
+				} else if (match.supportsMasked(MatchField.ICMPV4_TYPE) && match.isPartiallyMasked(MatchField.ICMPV4_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP_TYPE, match.getMasked(MatchField.ICMPV4_TYPE).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ICMP_TYPE, match.getVersion().toString());
+				}
 				break;
 			case ICMPV4_CODE:
-				entry.put(StaticFlowEntryPusher.COLUMN_ICMP_CODE, match.get(MatchField.ICMPV4_CODE).getCode());
+				if (match.supports(MatchField.ICMPV4_CODE) && match.isExact(MatchField.ICMPV4_CODE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP_CODE, match.get(MatchField.ICMPV4_CODE).toString());
+				} else if (match.supportsMasked(MatchField.ICMPV4_CODE) && match.isPartiallyMasked(MatchField.ICMPV4_CODE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP_CODE, match.getMasked(MatchField.ICMPV4_CODE).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ICMP_CODE, match.getVersion().toString());
+				}
 				break;
 			case ARP_OP:
-				entry.put(StaticFlowEntryPusher.COLUMN_ARP_OPCODE, match.get(MatchField.ARP_OP).getOpcode());
+				if (match.supports(MatchField.ARP_OP) && match.isExact(MatchField.ARP_OP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_OPCODE, match.get(MatchField.ARP_OP).toString());
+				} else if (match.supportsMasked(MatchField.ARP_OP) && match.isPartiallyMasked(MatchField.ARP_OP)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_OPCODE, match.getMasked(MatchField.ARP_OP).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ARP_OPCODE, match.getVersion().toString());
+				}
 				break;
 			case ARP_SHA:
-				entry.put(StaticFlowEntryPusher.COLUMN_ARP_SHA, match.get(MatchField.ARP_SHA).toString());
+				if (match.supports(MatchField.ARP_SHA) && match.isExact(MatchField.ARP_SHA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_SHA, match.get(MatchField.ARP_SHA).toString());
+				} else if (match.supportsMasked(MatchField.ARP_SHA) && match.isPartiallyMasked(MatchField.ARP_SHA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_SHA, match.getMasked(MatchField.ARP_SHA).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ARP_SHA, match.getVersion().toString());
+				}
 				break;
 			case ARP_THA:
-				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DHA, match.get(MatchField.ARP_THA).toString());
+				if (match.supports(MatchField.ARP_THA) && match.isExact(MatchField.ARP_THA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_DHA, match.get(MatchField.ARP_THA).toString());
+				} else if (match.supportsMasked(MatchField.ARP_THA) && match.isPartiallyMasked(MatchField.ARP_THA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_DHA, match.getMasked(MatchField.ARP_THA).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ARP_DHA, match.getVersion().toString());
+				}
 				break;
 			case ARP_SPA:
-				entry.put(StaticFlowEntryPusher.COLUMN_ARP_SPA, match.get(MatchField.ARP_SPA).toString());
+				if (match.supports(MatchField.ARP_SPA) && match.isExact(MatchField.ARP_SPA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_SPA, match.get(MatchField.ARP_SPA).toString());
+				} else if (match.supportsMasked(MatchField.ARP_SPA) && match.isPartiallyMasked(MatchField.ARP_SPA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_SPA, match.getMasked(MatchField.ARP_SPA).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ARP_SPA, match.getVersion().toString());
+				}
 				break;
 			case ARP_TPA:
-				entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, match.get(MatchField.ARP_TPA).toString());
+				if (match.supports(MatchField.ARP_TPA) && match.isExact(MatchField.ARP_TPA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, match.get(MatchField.ARP_TPA).toString());
+				} else if (match.supportsMasked(MatchField.ARP_TPA) && match.isPartiallyMasked(MatchField.ARP_TPA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ARP_DPA, match.getMasked(MatchField.ARP_TPA).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ARP_DPA, match.getVersion().toString());
+				}
 				break;
 			case IPV6_SRC:				
-				entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, match.get(MatchField.IPV6_SRC).toString());
+				if (match.supports(MatchField.IPV6_SRC) && match.isExact(MatchField.IPV6_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, match.get(MatchField.IPV6_SRC).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_SRC) && match.isPartiallyMasked(MatchField.IPV6_SRC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW6_SRC, match.getMasked(MatchField.IPV6_SRC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW6_SRC, match.getVersion().toString());
+				}
 				break;
 			case IPV6_DST:			
-				entry.put(StaticFlowEntryPusher.COLUMN_NW6_DST, match.get(MatchField.IPV6_DST).toString());
+				if (match.supports(MatchField.IPV6_DST) && match.isExact(MatchField.IPV6_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW6_DST, match.get(MatchField.IPV6_DST).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_DST) && match.isPartiallyMasked(MatchField.IPV6_DST)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_NW6_DST, match.getMasked(MatchField.IPV6_DST).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_NW6_DST, match.getVersion().toString());
+				}
 				break;	
 			case IPV6_FLABEL:			
-				entry.put(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, match.get(MatchField.IPV6_FLABEL).toString());
+				if (match.supports(MatchField.IPV6_FLABEL) && match.isExact(MatchField.IPV6_FLABEL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, match.get(MatchField.IPV6_FLABEL).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_FLABEL) && match.isPartiallyMasked(MatchField.IPV6_FLABEL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, match.getMasked(MatchField.IPV6_FLABEL).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_IPV6_FLOW_LABEL, match.getVersion().toString());
+				}
 				break;	
 			case ICMPV6_TYPE:				
-				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, String.valueOf(match.get(MatchField.ICMPV6_TYPE).getValue()));
+				if (match.supports(MatchField.ICMPV6_TYPE) && match.isExact(MatchField.ICMPV6_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, match.get(MatchField.ICMPV6_TYPE).toString());
+				} else if (match.supportsMasked(MatchField.ICMPV6_TYPE) && match.isPartiallyMasked(MatchField.ICMPV6_TYPE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, match.getMasked(MatchField.ICMPV6_TYPE).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ICMP6_TYPE, match.getVersion().toString());
+				}
 				break;
 			case ICMPV6_CODE:				
-				entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_CODE, match.get(MatchField.ICMPV6_CODE).getValue());
+				if (match.supports(MatchField.ICMPV6_CODE) && match.isExact(MatchField.ICMPV6_CODE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_CODE, match.get(MatchField.ICMPV6_CODE).toString());
+				} else if (match.supportsMasked(MatchField.ICMPV6_CODE) && match.isPartiallyMasked(MatchField.ICMPV6_CODE)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ICMP6_CODE, match.getMasked(MatchField.ICMPV6_CODE).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ICMP6_CODE, match.getVersion().toString());
+				}
 				break;
 			case IPV6_ND_SLL:			
-				entry.put(StaticFlowEntryPusher.COLUMN_ND_SLL, match.get(MatchField.IPV6_ND_SLL).toString());
-				break;
+				if (match.supports(MatchField.IPV6_ND_SLL) && match.isExact(MatchField.IPV6_ND_SLL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_SLL, match.get(MatchField.IPV6_ND_SLL).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_ND_SLL) && match.isPartiallyMasked(MatchField.IPV6_ND_SLL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_SLL, match.getMasked(MatchField.IPV6_ND_SLL).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ND_SLL, match.getVersion().toString());
+				}
+				break;	
 			case IPV6_ND_TLL:				
-				entry.put(StaticFlowEntryPusher.COLUMN_ND_TLL, match.get(MatchField.IPV6_ND_TLL).toString());
+				if (match.supports(MatchField.IPV6_ND_TLL) && match.isExact(MatchField.IPV6_ND_TLL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_TLL, match.get(MatchField.IPV6_ND_TLL).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_ND_TLL) && match.isPartiallyMasked(MatchField.IPV6_ND_TLL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_TLL, match.getMasked(MatchField.IPV6_ND_TLL).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ND_TLL, match.getVersion().toString());
+				}
 				break;	
 			case IPV6_ND_TARGET:				
-				entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.get(MatchField.IPV6_ND_TARGET).toString());
+				if (match.supports(MatchField.IPV6_ND_TARGET) && match.isExact(MatchField.IPV6_ND_TARGET)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.get(MatchField.IPV6_ND_TARGET).toString());
+				} else if (match.supportsMasked(MatchField.IPV6_ND_TARGET) && match.isPartiallyMasked(MatchField.IPV6_ND_TARGET)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_ND_TARGET, match.getMasked(MatchField.IPV6_ND_TARGET).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_ND_TARGET, match.getVersion().toString());
+				}
 				break;					
 			case MPLS_LABEL:
-				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.get(MatchField.MPLS_LABEL).getValue());
+				if (match.supports(MatchField.MPLS_LABEL) && match.isExact(MatchField.MPLS_LABEL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.get(MatchField.MPLS_LABEL).toString());
+				} else if (match.supportsMasked(MatchField.MPLS_LABEL) && match.isPartiallyMasked(MatchField.MPLS_LABEL)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.getMasked(MatchField.MPLS_LABEL).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_MPLS_LABEL, match.getVersion().toString());
+				}
 				break;
 			case MPLS_TC:
-				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, match.get(MatchField.MPLS_TC).getValue());
+				if (match.supports(MatchField.MPLS_TC) && match.isExact(MatchField.MPLS_TC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, match.get(MatchField.MPLS_TC).toString());
+				} else if (match.supportsMasked(MatchField.MPLS_TC) && match.isPartiallyMasked(MatchField.MPLS_TC)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_TC, match.getMasked(MatchField.MPLS_TC).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_MPLS_TC, match.getVersion().toString());
+				}
 				break;
 			case MPLS_BOS:
-				entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.get(MatchField.MPLS_BOS).getValue());
+				if (match.supports(MatchField.MPLS_BOS) && match.isExact(MatchField.MPLS_BOS)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.get(MatchField.MPLS_BOS).toString());
+				} else if (match.supportsMasked(MatchField.MPLS_BOS) && match.isPartiallyMasked(MatchField.MPLS_BOS)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.getMasked(MatchField.MPLS_BOS).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_MPLS_BOS, match.getVersion().toString());
+				}
 				break;			
 			case METADATA:
-				entry.put(StaticFlowEntryPusher.COLUMN_METADATA, match.get(MatchField.METADATA).getValue().getValue());
+				if (match.supports(MatchField.METADATA) && match.isExact(MatchField.METADATA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_METADATA, match.get(MatchField.METADATA).toString());
+				} else if (match.supportsMasked(MatchField.METADATA) && match.isPartiallyMasked(MatchField.METADATA)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_METADATA, match.getMasked(MatchField.METADATA).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_METADATA, match.getVersion().toString());
+				}
 				break;
 			case TUNNEL_ID:
-				entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.get(MatchField.TUNNEL_ID).getValue());
-				break;				
+				if (match.supports(MatchField.TUNNEL_ID) && match.isExact(MatchField.TUNNEL_ID)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.get(MatchField.TUNNEL_ID).toString());
+				} else if (match.supportsMasked(MatchField.TUNNEL_ID) && match.isPartiallyMasked(MatchField.TUNNEL_ID)) {
+					entry.put(StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.getMasked(MatchField.TUNNEL_ID).toString());
+				} else {
+					log.error("Got match for {} but protocol {} does not support said match. Ignoring match.", 
+							StaticFlowEntryPusher.COLUMN_TUNNEL_ID, match.getVersion().toString());
+				}
+				break;	
 			// case PBB_ISID not implemented in loxi
 			default:
 				log.error("Unhandled Match when parsing OFFlowMod: {}, {}", mf, mf.id);
