@@ -114,6 +114,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
+			<artifactId>org.restlet</artifactId>
+			<version>${lib-restlet-version}</version>
+		</dependency>		
+		<dependency>
+			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.jackson</artifactId>
 			<version>${lib-restlet-version}</version>
 		</dependency>
@@ -129,7 +134,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
-			<artifactId>org.restlet</artifactId>
+			<artifactId>org.restlet.ext.jsslutils</artifactId>
 			<version>${lib-restlet-version}</version>
 		</dependency>		
 		<dependency>
