@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -35,6 +35,7 @@ public class Ethernet extends BasePacket {
     public static final short TYPE_ARP = 0x0806;
     public static final short TYPE_RARP = (short) 0x8035;
     public static final short TYPE_IPv4 = 0x0800;
+    public static final short TYPE_IPv6 = (short) 0x86DD;
     public static final short TYPE_LLDP = (short) 0x88cc;
     public static final short TYPE_BSN = (short) 0x8942;
     public static final short VLAN_UNTAGGED = VlanVid.ZERO.getVlan(); // untagged vlan must be 0x0000 for loxi. We can use the convenient ZERO field
@@ -46,6 +47,7 @@ public class Ethernet extends BasePacket {
         etherTypeClassMap.put(TYPE_ARP, ARP.class);
         etherTypeClassMap.put(TYPE_RARP, ARP.class);
         etherTypeClassMap.put(TYPE_IPv4, IPv4.class);
+        etherTypeClassMap.put(TYPE_IPv6, IPv6.class);
         etherTypeClassMap.put(TYPE_LLDP, LLDP.class);
         etherTypeClassMap.put(TYPE_BSN, BSN.class);
     }
@@ -64,7 +66,7 @@ public class Ethernet extends BasePacket {
         super();
         this.vlanID = VLAN_UNTAGGED;
     }
-    
+
     /**
      * @return the destination MAC
      */
@@ -79,7 +81,7 @@ public class Ethernet extends BasePacket {
         this.destinationMACAddress = MacAddress.of(destinationMACAddress);
         return this;
     }
-    
+
     /**
      * @param destinationMACAddress the destination MAC to set
      */
@@ -110,7 +112,7 @@ public class Ethernet extends BasePacket {
         this.sourceMACAddress = MacAddress.of(sourceMACAddress);
         return this;
     }
-    
+
     /**
      * @param sourceMACAddress the source MAC to set
      */
@@ -171,7 +173,7 @@ public class Ethernet extends BasePacket {
         this.etherType = etherType;
         return this;
     }
-    
+
     /**
      * @return True if the Ethernet frame is broadcast, false otherwise
      */
@@ -179,7 +181,7 @@ public class Ethernet extends BasePacket {
         assert(destinationMACAddress.getLength() == 6);
         return destinationMACAddress.isBroadcast();
     }
-    
+
     /**
      * @return True is the Ethernet frame is multicast, False otherwise
      */
@@ -248,9 +250,9 @@ public class Ethernet extends BasePacket {
         bb.get(srcAddr);
         this.sourceMACAddress = MacAddress.of(srcAddr);
 
-        /* 
+        /*
          * The ethertype is represented as 2 bytes in the packet header;
-         * however, EthType can only parse an int. Negative shorts (1 in 
+         * however, EthType can only parse an int. Negative shorts (1 in
          * the most sig place b/c 2's complement) are still valid ethertypes,
          * but it doesn't appear this way unless we treat the sign bit as
          * part of an unsigned number. If we natively cast the short to an
@@ -269,7 +271,7 @@ public class Ethernet extends BasePacket {
             this.vlanID = VLAN_UNTAGGED;
         }
         this.etherType = etherType;
-        
+
         IPacket payload;
         if (Ethernet.etherTypeClassMap.containsKey((short) this.etherType.getValue())) {
             Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get((short) this.etherType.getValue());
@@ -321,7 +323,7 @@ public class Ethernet extends BasePacket {
         if (macBytes.length != 6)
             return false;
         for (int i = 0; i < 6; ++i) {
-            if (HEXES.indexOf(macBytes[i].toUpperCase().charAt(0)) == -1 || 
+            if (HEXES.indexOf(macBytes[i].toUpperCase().charAt(0)) == -1 ||
                 HEXES.indexOf(macBytes[i].toUpperCase().charAt(1)) == -1) {
                 return false;
             }
@@ -333,7 +335,7 @@ public class Ethernet extends BasePacket {
      * Accepts a MAC address of the form 00:aa:11:bb:22:cc, case does not
      * matter, and returns a corresponding byte[].
      * @param macAddress The MAC address to convert into a bye array
-     * @return The macAddress as a byte array 
+     * @return The macAddress as a byte array
      */
     public static byte[] toMACAddress(String macAddress) {
         return MacAddress.of(macAddress).getBytes();
@@ -358,7 +360,7 @@ public class Ethernet extends BasePacket {
     public static byte[] toByteArray(long macAddress) {
         return MacAddress.of(macAddress).getBytes();
     }
-    
+
     @Override
 	public int hashCode() {
 		final int prime = 31;
@@ -410,7 +412,7 @@ public class Ethernet extends BasePacket {
 			return false;
 		return true;
 	}
-    
+
     /* (non-Javadoc)
      * @see java.lang.Object#toString(java.lang.Object)
      */
