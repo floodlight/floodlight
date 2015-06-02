@@ -14,4 +14,3 @@ findbugs-results
 /thrift
 *.idea/*
 *.iml
-/target/

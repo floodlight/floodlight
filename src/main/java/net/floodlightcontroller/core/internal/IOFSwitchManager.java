@@ -61,9 +61,8 @@ public interface IOFSwitchManager {
      * Process written messages through the message listeners for the controller
      * @param sw The switch being written to
      * @param m the message
-     * @throws NullPointerException if switch or msg is null
      */
-    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m);    
+    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m);
 
     /**
      * Gets an unmodifiable collection of OFSwitchHandshakeHandlers
