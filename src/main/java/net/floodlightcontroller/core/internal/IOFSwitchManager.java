@@ -5,6 +5,7 @@ import java.util.List;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
@@ -55,6 +56,13 @@ public interface IOFSwitchManager {
      * @param bContext the Floodlight context of the message, normally null in this case.
      */
     void handleMessage(IOFSwitchBackend sw, OFMessage m, FloodlightContext bContext);
+    
+    /**
+     * Process written messages through the message listeners for the controller
+     * @param sw The switch being written to
+     * @param m the message
+     */
+    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m);
 
     /**
      * Gets an unmodifiable collection of OFSwitchHandshakeHandlers

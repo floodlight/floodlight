@@ -503,6 +503,11 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public void handleMessage(IOFSwitchBackend sw, OFMessage m, FloodlightContext bContext) {
 		floodlightProvider.handleMessage(sw, m, bContext);
 	}
+	
+	@Override
+	public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
+		floodlightProvider.handleOutgoingMessage(sw, m);
+	}
 
 	@Override
 	public void addOFSwitchDriver(String manufacturerDescriptionPrefix,

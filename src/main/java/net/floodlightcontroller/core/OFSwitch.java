@@ -715,6 +715,7 @@ public class OFSwitch implements IOFSwitchBackend {
 		log.trace("Channel: {}, Connected: {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(m);
+			switchManager.handleOutgoingMessage(this, m);
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -746,6 +747,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(OFMessage m, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(m);
+			switchManager.handleOutgoingMessage(this, m);
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -755,6 +757,10 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(msglist);
+			
+			for(OFMessage m : msglist) {
+				switchManager.handleOutgoingMessage(this, m);				
+			}
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -785,6 +791,10 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist) {
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(msglist);
+						
+			for(OFMessage m : msglist) {
+				switchManager.handleOutgoingMessage(this, m);
+			}
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
