@@ -1394,6 +1394,8 @@ public class OFSwitchBaseTest {
 
         reset(switchManager);
         expect(switchManager.isCategoryRegistered(category)).andReturn(true);
+        switchManager.handleOutgoingMessage(sw, testMessage);
+        expectLastCall();
         replay(switchManager);
 
         sw.write(testMessage, category);
