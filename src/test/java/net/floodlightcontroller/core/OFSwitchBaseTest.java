@@ -154,9 +154,9 @@ public class OFSwitchBaseTest {
         switches.put(sw.getId(), sw);
         reset(switchManager);
         //expect(switchManager.getSwitch(sw.getId())).andReturn(sw).anyTimes();
+        setUpPorts();
     }
 
-    @Before
     public void setUpPorts() {
         OFPortDesc.Builder pdb = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc();
         // p1a is disabled

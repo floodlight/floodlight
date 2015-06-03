@@ -190,11 +190,10 @@ public class LoadBalancer implements IFloodlightModule,
                 // retrieve arp to determine target IP address                                                       
                 ARP arpRequest = (ARP) eth.getPayload();
 
-                int targetProtocolAddress = IPv4.toIPv4Address(arpRequest
-                                                               .getTargetProtocolAddress());
+                IPv4Address targetProtocolAddress = arpRequest.getTargetProtocolAddress();
 
-                if (vipIpToId.containsKey(targetProtocolAddress)) {
-                    String vipId = vipIpToId.get(targetProtocolAddress);
+                if (vipIpToId.containsKey(targetProtocolAddress.getInt())) {
+                    String vipId = vipIpToId.get(targetProtocolAddress.getInt());
                     vipProxyArpReply(sw, pi, cntx, vipId);
                     return Command.STOP;
                 }
@@ -265,11 +264,10 @@ public class LoadBalancer implements IFloodlightModule,
         ARP arpRequest = (ARP) eth.getPayload();
         
         // have to do proxy arp reply since at this point we cannot determine the requesting application type
-        byte[] vipProxyMacBytes = vips.get(vipId).proxyMac.getBytes();
         
         // generate proxy ARP reply
         IPacket arpReply = new Ethernet()
-            .setSourceMACAddress(vipProxyMacBytes)
+            .setSourceMACAddress(vips.get(vipId).proxyMac)
             .setDestinationMACAddress(eth.getSourceMACAddress())
             .setEtherType(EthType.ARP)
             .setVlanID(eth.getVlanID())
@@ -281,13 +279,10 @@ public class LoadBalancer implements IFloodlightModule,
                 .setHardwareAddressLength((byte) 6)
                 .setProtocolAddressLength((byte) 4)
                 .setOpCode(ARP.OP_REPLY)
-                .setSenderHardwareAddress(vipProxyMacBytes)
-                .setSenderProtocolAddress(
-                        arpRequest.getTargetProtocolAddress())
-                .setTargetHardwareAddress(
-                        eth.getSourceMACAddress().getBytes())
-                .setTargetProtocolAddress(
-                        arpRequest.getSenderProtocolAddress()));
+                .setSenderHardwareAddress(vips.get(vipId).proxyMac)
+                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
+                .setTargetHardwareAddress(eth.getSourceMACAddress())
+                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
         pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), cntx, true);

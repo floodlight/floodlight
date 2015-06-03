@@ -213,7 +213,10 @@
 				    <include name="**/*Test*.java"/>
                     <exclude name="**/core/test/**"/>
                     <exclude name="**/core/module/**"/>
-                </fileset>
+		    <exclude name="**/util/FutureTestUtils.java"/> <!-- No tests here. Used within others that have Futures -->
+		    <exclude name="**/test/FloodlightTestCase.java"/> <!-- Base class for other tests. Can't run it individually. -->
+                    <exclude name="**/core/internal/OFSwitchHandlerTestBase.java"/> <!-- Abstract class used by protocol version handshake handlers. -->
+		</fileset>
             </batchtest>
         </junit>
         <fail if="junit.failure" message="Unit test(s) failed.  See reports!"/>

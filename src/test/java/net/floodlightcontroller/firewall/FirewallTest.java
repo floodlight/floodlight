@@ -57,6 +57,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -151,10 +152,10 @@ public class FirewallTest extends FloodlightTestCase {
                 .setOpCode(ARP.OP_REQUEST)
                 .setHardwareAddressLength((byte)6)
                 .setProtocolAddressLength((byte)4)
-                .setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
-                .setSenderProtocolAddress(IPv4.toIPv4Address("192.168.1.1"))
-                .setTargetHardwareAddress(Ethernet.toMACAddress("00:00:00:00:00:00"))
-                .setTargetProtocolAddress(IPv4.toIPv4Address("192.168.1.2"))
+                .setSenderHardwareAddress(MacAddress.of("00:44:33:22:11:00"))
+                .setSenderProtocolAddress(IPv4Address.of("192.168.1.1"))
+                .setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:00"))
+                .setTargetProtocolAddress(IPv4Address.of("192.168.1.2"))
                 .setPayload(new Data(new byte[] {0x01})));
 
         // Build a ARP packet
@@ -170,10 +171,10 @@ public class FirewallTest extends FloodlightTestCase {
                 .setOpCode(ARP.OP_REQUEST)
                 .setHardwareAddressLength((byte)6)
                 .setProtocolAddressLength((byte)4)
-                .setSenderHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
-                .setSenderProtocolAddress(IPv4.toIPv4Address("192.168.1.2"))
-                .setTargetHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:00"))
-                .setTargetProtocolAddress(IPv4.toIPv4Address("192.168.1.1"))
+                .setSenderHardwareAddress(MacAddress.of("00:11:22:33:44:55"))
+                .setSenderProtocolAddress(IPv4Address.of("192.168.1.2"))
+                .setTargetHardwareAddress(MacAddress.of("00:44:33:22:11:00"))
+                .setTargetProtocolAddress(IPv4Address.of("192.168.1.1"))
                 .setPayload(new Data(new byte[] {0x01})));
 
         // Build a broadcast IP packet

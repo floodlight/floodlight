@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -16,6 +17,8 @@ import org.projectfloodlight.openflow.protocol.OFMeterBandType;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFMeterStats;
+import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFOxmClass;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -76,6 +79,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
@@ -140,6 +144,20 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 		fab.setBufferId(OFBufferId.NO_BUFFER);
 		if (switchId.equals(DatapathId.of(1)))
 		switchService.getSwitch(switchId).write(fab.build());*/
+		
+		/*OFMeterStatsRequest req;
+		ListenableFuture<OFMeterStatsReply> reply = switchService.getActiveSwitch(switchId).writeRequest(req);
+		try {
+			for (OFMeterStats entry : reply.get().getEntries()) {
+				U64 byteInCount = entry.getByteInCount();
+				for (OFMeterBandStats mbs : entry.getBandStats()) {
+					U64 byteBandCount = mbs.getByteBandCount();
+					U64 pktBandCount = mbs.getPacketBandCount();
+				}
+			}
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}*/
 		
 		OFFactory f =factory;
         Match.Builder mb =f.buildMatch();
