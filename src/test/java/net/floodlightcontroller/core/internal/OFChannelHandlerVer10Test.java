@@ -92,7 +92,6 @@ public class OFChannelHandlerVer10Test {
     private Capture<IOFConnectionBackend> newConnection;
     private Capture<OFFeaturesReply> newFeaturesReply;
 
-    @Before
     public void setUpFeaturesReply() {
        portDesc = factory.buildPortDesc()
                 .setName("Eth1")
@@ -111,6 +110,7 @@ public class OFChannelHandlerVer10Test {
 
     @Before
     public void setUp() throws Exception {
+    	setUpFeaturesReply();
         switchManager = createMock(IOFSwitchManager.class);
         connectionListener = createMock(IOFConnectionListener.class);
         newConnectionListener = createMock(INewOFConnectionListener.class);
