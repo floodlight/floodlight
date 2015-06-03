@@ -164,10 +164,10 @@ public class IPv6 extends BasePacket {
         this.payloadLength = bb.getShort();
         this.nextHeader = IpProtocol.of(bb.get()); // TODO: U8.f()?
         this.hopLimit = bb.get();
-        byte[] sourceAddress = new byte[8];
-        bb.get(sourceAddress, 0, 8);
-        byte[] destinationAddress = new byte[8];
-        bb.get(destinationAddress, 0, 8);
+        byte[] sourceAddress = new byte[16];
+        bb.get(sourceAddress, 0, 16);
+        byte[] destinationAddress = new byte[16];
+        bb.get(destinationAddress, 0, 16);
         this.sourceAddress = IPv6Address.of( sourceAddress );
         this.destinationAddress = IPv6Address.of( destinationAddress );
         // Retrieve the payload, if possible.
