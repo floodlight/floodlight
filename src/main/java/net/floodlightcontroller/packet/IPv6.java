@@ -115,9 +115,9 @@ public class IPv6 extends BasePacket {
     public byte[] serialize() {
         // Get the raw bytes of the payload we encapsulate.
         byte[] payloadData = null;
-        if (payload != null) {
-            payload.setParent(this);
-            payloadData = payload.serialize();
+        if (this.payload != null) {
+            this.payload.setParent(this);
+            payloadData = this.payload.serialize();
         }
         // Update our internal payload length.
         this.payloadLength = (short) ((payloadData != null) ? payloadData.length : 0);
@@ -168,8 +168,8 @@ public class IPv6 extends BasePacket {
         bb.get(sourceAddress, 0, 16);
         byte[] destinationAddress = new byte[16];
         bb.get(destinationAddress, 0, 16);
-        this.sourceAddress = IPv6Address.of( sourceAddress );
-        this.destinationAddress = IPv6Address.of( destinationAddress );
+        this.sourceAddress = IPv6Address.of(sourceAddress);
+        this.destinationAddress = IPv6Address.of(destinationAddress);
         // Retrieve the payload, if possible.
         IPacket payload;
         if (IPv6.nextHeaderClassMap.containsKey(this.nextHeader)) {
