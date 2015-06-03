@@ -195,17 +195,21 @@ public class IPv6 extends BasePacket {
      */
     @Override
     public int hashCode() {
-        // TODO: Change prime and the order of results?
-        final int prime = 2521;
+        final int prime = 31;
         int result = super.hashCode();
-        result = prime * result + this.destinationAddress.getBytes().hashCode();
-        result = prime * result + this.payloadLength;
-        result = prime * result + this.hopLimit;
-        result = prime * result + this.nextHeader.hashCode();
-        result = prime * result + this.sourceAddress.getBytes().hashCode();
-        result = prime * result + this.trafficClass;
-        result = prime * result + this.flowLabel;
-        result = prime * result + this.version;
+        result = prime
+                * result
+                + ((destinationAddress == null) ? 0 : destinationAddress
+                        .hashCode());
+        result = prime * result + flowLabel;
+        result = prime * result + hopLimit;
+        result = prime * result
+                + ((nextHeader == null) ? 0 : nextHeader.hashCode());
+        result = prime * result + payloadLength;
+        result = prime * result
+                + ((sourceAddress == null) ? 0 : sourceAddress.hashCode());
+        result = prime * result + trafficClass;
+        result = prime * result + version;
         return result;
     }
 
@@ -221,21 +225,30 @@ public class IPv6 extends BasePacket {
         if (!(obj instanceof IPv6))
             return false;
         IPv6 other = (IPv6) obj;
-        if (!this.destinationAddress.equals(other.destinationAddress))
+        if (destinationAddress == null) {
+            if (other.destinationAddress != null)
+                return false;
+        } else if (!destinationAddress.equals(other.destinationAddress))
             return false;
-        if (this.payloadLength != other.payloadLength)
+        if (flowLabel != other.flowLabel)
             return false;
-        if (this.hopLimit != other.hopLimit)
+        if (hopLimit != other.hopLimit)
             return false;
-        if (!this.nextHeader.equals(other.nextHeader))
+        if (nextHeader == null) {
+            if (other.nextHeader != null)
+                return false;
+        } else if (!nextHeader.equals(other.nextHeader))
             return false;
-        if (!this.sourceAddress.equals(other.sourceAddress))
+        if (payloadLength != other.payloadLength)
             return false;
-        if (this.trafficClass != other.trafficClass)
+        if (sourceAddress == null) {
+            if (other.sourceAddress != null)
+                return false;
+        } else if (!sourceAddress.equals(other.sourceAddress))
             return false;
-        if (this.flowLabel != other.flowLabel)
+        if (trafficClass != other.trafficClass)
             return false;
-        if (this.version != other.version)
+        if (version != other.version)
             return false;
         return true;
     }
