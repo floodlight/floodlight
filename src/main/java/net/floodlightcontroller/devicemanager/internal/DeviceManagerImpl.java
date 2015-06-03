@@ -1183,8 +1183,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	private IPv4Address getSrcNwAddr(Ethernet eth, MacAddress dlAddr) {
 		if (eth.getPayload() instanceof ARP) {
 			ARP arp = (ARP) eth.getPayload();
-			if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP) && (MacAddress.of(arp.getSenderHardwareAddress()).equals(dlAddr))) {
-				return IPv4Address.of(arp.getSenderProtocolAddress());
+			if ((arp.getProtocolType() == ARP.PROTO_TYPE_IP) && (arp.getSenderHardwareAddress().equals(dlAddr))) {
+				return arp.getSenderProtocolAddress();
 			}
 		}
 		return IPv4Address.NONE;
@@ -1231,7 +1231,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 		MacAddress dlAddr = eth.getSourceMACAddress();
 
-		MacAddress senderAddr = MacAddress.of(arp.getSenderHardwareAddress());
+		MacAddress senderAddr = arp.getSenderHardwareAddress();
 
 		if (dlAddr.equals(senderAddr)) return; // arp request
 
@@ -1243,7 +1243,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			return;
 
 		VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
-		IPv4Address nwSrc = IPv4Address.of(arp.getSenderProtocolAddress());
+		IPv4Address nwSrc = arp.getSenderProtocolAddress();
 
 		Entity e =  new Entity(senderAddr,
 				((vlan.getVlan() >= 0) ? vlan : null),

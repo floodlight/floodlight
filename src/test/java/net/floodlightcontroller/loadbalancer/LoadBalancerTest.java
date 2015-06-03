@@ -490,10 +490,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REQUEST)
-				.setSenderHardwareAddress(HexString.fromHexString("00:00:00:00:00:01"))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.1"))
-				.setTargetHardwareAddress(HexString.fromHexString("00:00:00:00:00:00"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.100")));
+				.setSenderHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+				.setSenderProtocolAddress(IPv4Address.of("10.0.0.1"))
+				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:00"))
+				.setTargetProtocolAddress(IPv4Address.of("10.0.0.100")));
 
 		arpRequest1Serialized = arpRequest1.serialize();
 
@@ -522,10 +522,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(HexString.fromHexString(LBVip.LB_PROXY_MAC))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.100"))
-				.setTargetHardwareAddress(HexString.fromHexString("00:00:00:00:00:01"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.1")));
+				.setSenderHardwareAddress(MacAddress.of(LBVip.LB_PROXY_MAC))
+				.setSenderProtocolAddress(IPv4Address.of("10.0.0.100"))
+				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+				.setTargetProtocolAddress(IPv4Address.of("10.0.0.1")));
 
 		arpReply1Serialized = arpReply1.serialize();
 

@@ -243,10 +243,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
-				.setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+				.setSenderHardwareAddress(MacAddress.of("00:44:33:22:11:01"))
+				.setSenderProtocolAddress(IPv4Address.of("192.168.1.1"))
+				.setTargetHardwareAddress(MacAddress.of("00:11:22:33:44:55"))
+				.setTargetProtocolAddress(IPv4Address.of("192.168.1.2")));
 		this.testARPReplyPacket_1_Srld = testARPReplyPacket_1.serialize();
 
 		// Another test packet with the same ARP payload as packet 1 but with
@@ -263,10 +263,10 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(Ethernet.toMACAddress("00:44:33:22:11:01"))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.1"))
-				.setTargetHardwareAddress(Ethernet.toMACAddress("00:11:22:33:44:55"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("192.168.1.2")));
+				.setSenderHardwareAddress(MacAddress.of("00:44:33:22:11:01"))
+				.setSenderProtocolAddress(IPv4Address.of("192.168.1.1"))
+				.setTargetHardwareAddress(MacAddress.of("00:11:22:33:44:55"))
+				.setTargetProtocolAddress(IPv4Address.of("192.168.1.2")));
 		this.testARPReplyPacket_2_Srld = testARPReplyPacket_2.serialize();
 
 		// This packet reverses the MACs and IP from testARPReplyPacket_1
@@ -1315,7 +1315,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	@Test
 	public void testDeviceLearningFromArpResponseData() throws Exception {
 		ARP arp = (ARP)((Ethernet)this.testARPReplyPacket_2).getPayload();
-		MacAddress senderMac = MacAddress.of(arp.getSenderHardwareAddress());
+		MacAddress senderMac = arp.getSenderHardwareAddress();
 		MacAddress sourceMac =
 				((Ethernet)this.testARPReplyPacket_2)
 				.getSourceMACAddress();
@@ -1460,7 +1460,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				IDeviceService.CONTEXT_SRC_DEVICE);
 		// yes: we check that cntxSrcDev matched dstMAC because we are
 		// just adding the dest device
-		int ip = IPv4.toIPv4Address("192.168.1.1");
+		int ip = IPv4Address.of("192.168.1.1").getInt();
 		verifyDevice(cntxSrcDev, dstMac.getLong(), (short)5, ip,
 				1L, testARPReplyPacketIn_1.getMatch().get(MatchField.IN_PORT).getShortPortNumber());
 		// yes: we set the expected dst device to the current srcDev

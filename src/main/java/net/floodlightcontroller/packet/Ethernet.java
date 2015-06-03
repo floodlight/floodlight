@@ -449,9 +449,9 @@ public class Ethernet extends BasePacket {
         if (pkt instanceof ARP) {
             ARP p = (ARP) pkt;
             sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getSenderProtocolAddress())));
+            sb.append(p.getSenderProtocolAddress().toString());
             sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getTargetProtocolAddress())));
+            sb.append(p.getTargetProtocolAddress().toString());
         }
         else if (pkt instanceof LLDP) {
             sb.append("lldp packet");
