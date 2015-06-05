@@ -48,7 +48,7 @@ public class OFMessageUtils {
 	 * @param egressPort
 	 *            The switchport to output the PacketOut.
 	 */
-	private void writePacketOutForPacketIn(IOFSwitch sw,
+	public void writePacketOutForPacketIn(IOFSwitch sw,
 			OFPacketIn packetInMessage, OFPort egressPort) {
 		
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
