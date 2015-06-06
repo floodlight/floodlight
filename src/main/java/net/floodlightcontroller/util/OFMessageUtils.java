@@ -1,6 +1,19 @@
 package net.floodlightcontroller.util;
 
+
+import java.util.ArrayList;
+import java.util.List;
+
+import net.floodlightcontroller.core.IOFSwitch;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  * Tools to help work with OFMessages.
@@ -48,7 +61,7 @@ public class OFMessageUtils {
 	 * @param egressPort
 	 *            The switchport to output the PacketOut.
 	 */
-	public void writePacketOutForPacketIn(IOFSwitch sw,
+	public static void writePacketOutForPacketIn(IOFSwitch sw,
 			OFPacketIn packetInMessage, OFPort egressPort) {
 		
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
