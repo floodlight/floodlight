@@ -1,6 +1,19 @@
 package net.floodlightcontroller.util;
 
+
+import java.util.ArrayList;
+import java.util.List;
+
+import net.floodlightcontroller.core.IOFSwitch;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 /**
  * Tools to help work with OFMessages.
@@ -36,5 +49,42 @@ public class OFMessageUtils {
 	public static boolean equalsIgnoreXid(OFMessage a, OFMessage b) {
 		OFMessage.Builder mb = b.createBuilder().setXid(a.getXid());
 		return a.equals(mb.build());
+	}
+	
+	/**
+	 * Writes an OFPacketOut message to a switch.
+	 * 
+	 * @param sw
+	 *            The switch to write the PacketOut to.
+	 * @param packetInMessage
+	 *            The corresponding PacketIn.
+	 * @param egressPort
+	 *            The switchport to output the PacketOut.
+	 */
+	public static void writePacketOutForPacketIn(IOFSwitch sw,
+			OFPacketIn packetInMessage, OFPort egressPort) {
+		
+		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+
+		// Set buffer_id, in_port, actions_len
+		pob.setBufferId(packetInMessage.getBufferId());
+		pob.setInPort(packetInMessage.getVersion().compareTo(OFVersion.OF_12) < 0 ? packetInMessage
+				.getInPort() : packetInMessage.getMatch().get(
+				MatchField.IN_PORT));
+
+		// set actions
+		List<OFAction> actions = new ArrayList<OFAction>(1);
+		actions.add(sw.getOFFactory().actions().buildOutput()
+				.setPort(egressPort).setMaxLen(0xffFFffFF).build());
+		pob.setActions(actions);
+
+		// set data - only if buffer_id == -1
+		if (packetInMessage.getBufferId() == OFBufferId.NO_BUFFER) {
+			byte[] packetData = packetInMessage.getData();
+			pob.setData(packetData);
+		}
+
+		// and write it out
+		sw.write(pob.build());
 	}
 }
