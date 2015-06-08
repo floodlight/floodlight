@@ -85,6 +85,16 @@
 				</plugin>
 			</plugins>
 		</pluginManagement>
+		<resources>
+			<resource>
+				<directory>${basedir}</directory>
+				<includes>
+					<include>LICENSE.txt</include>
+					<include>NOTICE.txt</include>
+					<include>README.md</include>
+				</includes>
+			</resource>
+		</resources>
 	</build>
 	<dependencies>
 		<dependency>
@@ -106,7 +116,7 @@
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet</artifactId>
 			<version>${lib-restlet-version}</version>
-		</dependency>		
+		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.jackson</artifactId>
@@ -126,7 +136,7 @@
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.jsslutils</artifactId>
 			<version>${lib-restlet-version}</version>
-		</dependency>		
+		</dependency>
 		<dependency>
 			<groupId>args4j</groupId>
 			<artifactId>args4j</artifactId>
