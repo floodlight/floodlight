@@ -355,27 +355,8 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener {
 	 * @param egressPort The switchport to output the PacketOut.
 	 */
 	private void writePacketOutForPacketIn(IOFSwitch sw, OFPacketIn packetInMessage, OFPort egressPort) {
-		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-
-		// Set buffer_id, in_port, actions_len
-		pob.setBufferId(packetInMessage.getBufferId());
-		pob.setInPort(packetInMessage.getVersion().compareTo(OFVersion.OF_12) < 0 ? packetInMessage.getInPort() : packetInMessage.getMatch().get(MatchField.IN_PORT));
-
-		// set actions
-		List<OFAction> actions = new ArrayList<OFAction>(1);
-		actions.add(sw.getOFFactory().actions().buildOutput().setPort(egressPort).setMaxLen(0xffFFffFF).build());
-		pob.setActions(actions);
-
-		// set data - only if buffer_id == -1
-		if (packetInMessage.getBufferId() == OFBufferId.NO_BUFFER) {
-			byte[] packetData = packetInMessage.getData();
-			pob.setData(packetData);
-		}
-
-		// and write it out
+		OFMessageUtils.writePacketOutForPacketIn(sw, packetInMessage, egressPort);
 		counterPacketOut.increment();
-		sw.write(pob.build());
-
 	}
 
 	protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx) {
